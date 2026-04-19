@@ -1,0 +1,4 @@
+repository "DungeonCore/DungeonCore@2474336413710@cloud"
+  path "/"
+    br "/main"
+    co "/main"
