@@ -17,7 +17,7 @@ public class PlayerMovement : MonoBehaviour
     {
         rb.linearVelocity = moveInput * moveSpeed;
     }
-
+    
     public void Move(InputAction.CallbackContext context)
     {
         animator.SetBool("isWalking", true);
