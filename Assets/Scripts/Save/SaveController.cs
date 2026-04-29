@@ -5,11 +5,14 @@ using UnityEngine;
 public class SaveController : MonoBehaviour
 {
     private string saveLocation;
+    private InventoryController inventoryController;
+
 
     void Start()
     {
         //define save location
         saveLocation = Path.Combine(Application.persistentDataPath, "SaveData.json");
+        inventoryController = FindAnyObjectByType<InventoryController>();
 
         LoadGame();
     }
@@ -19,7 +22,8 @@ public class SaveController : MonoBehaviour
         SaveData saveData = new SaveData
         {
             playerPosition = GameObject.FindGameObjectWithTag("Player").transform.position,
-            mapBoundary = FindAnyObjectByType<CinemachineConfiner2D>().BoundingShape2D.gameObject.name
+            mapBoundary = FindAnyObjectByType<CinemachineConfiner2D>().BoundingShape2D.gameObject.name,
+            inventorySaveData = inventoryController.GetInventoryItems()
         };
 
         File.WriteAllText(saveLocation, JsonUtility.ToJson(saveData));
@@ -34,6 +38,8 @@ public class SaveController : MonoBehaviour
             GameObject.FindGameObjectWithTag("Player").transform.position = saveData.playerPosition;
 
             FindAnyObjectByType<CinemachineConfiner2D>().BoundingShape2D = GameObject.Find(saveData.mapBoundary).GetComponent<PolygonCollider2D>();
+
+            inventoryController.SetInventoryItems(saveData.inventorySaveData);
         }
         else
         {
