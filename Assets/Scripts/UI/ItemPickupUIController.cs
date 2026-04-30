@@ -51,7 +51,7 @@ public class ItemPickupUIController : MonoBehaviour
     private IEnumerator FadeOutAndDestroy(GameObject popup)
     {
         yield return new WaitForSeconds(popupDuration);
-        if (popup != null) yield break;
+        if (popup == null) yield break;
 
         CanvasGroup canvasGroup = popup.GetComponent<CanvasGroup>();
         for(float timePassed = 0f; timePassed < 1f; timePassed += Time.deltaTime)
