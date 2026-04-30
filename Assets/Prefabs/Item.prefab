@@ -117,6 +117,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   ID: 0
+  Name: Health Potion
 --- !u!212 &-2877174841112144069
 SpriteRenderer:
   serializedVersion: 2

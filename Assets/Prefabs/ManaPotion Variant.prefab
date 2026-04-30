@@ -96,6 +96,10 @@ PrefabInstance:
       propertyPath: m_Sprite
       value: 
       objectReference: {fileID: 593563532, guid: a03640cf8adc7b241bc0ff8817e11c91, type: 3}
+    - target: {fileID: 4911005505920448560, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
+      propertyPath: Name
+      value: Mana Potion
+      objectReference: {fileID: 0}
     - target: {fileID: 5061771848345555875, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Name
       value: ManaPotion Variant
