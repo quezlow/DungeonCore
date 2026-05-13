@@ -19,8 +19,10 @@ MonoBehaviour:
   - You looking for something to do?
   - Great, go fetch my axe.
   - Kids these days...
+  - Good luck, you'll need it.
+  - Great, thanks. Go bother someone else...
   autoProgressLines: 0100
-  endDialogueLines: 00000101
+  endDialogueLines: 000001010101
   autoProgressDelay: 1.5
   typingSpeed: 0.05
   voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
@@ -31,3 +33,7 @@ MonoBehaviour:
     - Sure!
     - Not really...
     nextDialogueIndexes: 0200000003000000
+    givesQuest: 0100
+  questInProgressIndex: 6
+  questCompletedIndex: 7
+  quest: {fileID: 11400000, guid: e024f040639936a4394cdaf929c5fee6, type: 2}

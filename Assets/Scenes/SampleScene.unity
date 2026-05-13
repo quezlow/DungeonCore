@@ -1324,11 +1324,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 100
+      value: 75
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 100
+      value: 75
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1360,11 +1360,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 15.09935
+      value: 14.5
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 5.8785257
+      value: 5.16
       objectReference: {fileID: 0}
     - target: {fileID: 3429262317119105982, guid: 5a544016dcc5abc4e9de65fa7a7aac85, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -4488,6 +4488,7 @@ GameObject:
   - component: {fileID: 961714403}
   - component: {fileID: 961714405}
   - component: {fileID: 961714406}
+  - component: {fileID: 961714407}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -4558,6 +4559,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b41e7155a283e784a8d953179cdbd7f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+--- !u!114 &961714407
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 961714402}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9a6508d5b5735948b801590408b6d43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  activateQuests: []
 --- !u!1 &988118222
 GameObject:
   m_ObjectHideFlags: 0
@@ -5092,9 +5106,6 @@ MonoBehaviour:
   questListContent: {fileID: 1054547229}
   questEntryPrefab: {fileID: 3777396060651721407, guid: 65b6d2ac8d973f74c9e2a5ff14e8de7b, type: 3}
   objectiveTextPrefab: {fileID: 513067648285359648, guid: f03a1c5f261f53f4cb543b11b08bf889, type: 3}
-  testQuest: {fileID: 11400000, guid: e024f040639936a4394cdaf929c5fee6, type: 2}
-  testQuestAmount: 1
-  testQuests: []
 --- !u!1 &1084480156
 GameObject:
   m_ObjectHideFlags: 0
