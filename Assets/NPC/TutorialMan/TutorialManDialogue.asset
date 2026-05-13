@@ -16,9 +16,18 @@ MonoBehaviour:
   npcPortrait: {fileID: 3295236706101327806, guid: 5545d212ce3f0b444a831283eedecc26, type: 3}
   dialogueLines:
   - Hey you!
-  - Go do something.. I guess..
+  - You looking for something to do?
+  - Great, go fetch my axe.
+  - Kids these days...
   autoProgressLines: 0100
+  endDialogueLines: 00000101
   autoProgressDelay: 1.5
   typingSpeed: 0.05
   voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
   voicePitch: 1
+  choices:
+  - dialogueIndex: 1
+    choices:
+    - Sure!
+    - Not really...
+    nextDialogueIndexes: 0200000003000000
