@@ -510,6 +510,8 @@ GameObject:
   - component: {fileID: 201126313}
   - component: {fileID: 201126314}
   - component: {fileID: 201126315}
+  - component: {fileID: 201126317}
+  - component: {fileID: 201126316}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -716,7 +718,7 @@ SpriteRenderer:
   m_SortingLayer: 4
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 3295236706101327806, guid: 79e8b8c5bb560e545aeab70be1ee6a73, type: 3}
+  m_Sprite: {fileID: 2030389912997841323, guid: c82a13ed62fd6a248b6e3dffebc53547, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -802,7 +804,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1.1875, y: 1.875}
+    oldSize: {x: 1.0625, y: 1.8125}
     newSize: {x: 1.1875, y: 1.875}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -822,6 +824,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9cbd68e1f0d13c84495166a51fc684a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+--- !u!114 &201126316
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 201126307}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed8b1ae4e4e52b34ea557c1c11e076fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.2D.Animation.Runtime::UnityEngine.U2D.Animation.SpriteResolver
+  m_CategoryHash: 1.8625731e-11
+  m_labelHash: 5.456667e-11
+  m_SpriteKey: 0
+  m_SpriteHash: 187559197
+--- !u!114 &201126317
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 201126307}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c29cff538c195c249b69c6f2236de67b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.2D.Animation.Runtime::UnityEngine.U2D.Animation.SpriteLibrary
+  m_Library: []
+  m_SpriteLibraryAsset: {fileID: 7108339969198208228, guid: 9698ff44c9c676249b254cf51e404aa8, type: 3}
 --- !u!1 &256741051
 GameObject:
   m_ObjectHideFlags: 0
@@ -40184,6 +40216,9 @@ GameObject:
   - component: {fileID: 1735978208}
   - component: {fileID: 1735978207}
   - component: {fileID: 1735978211}
+  - component: {fileID: 1735978212}
+  - component: {fileID: 1735978213}
+  - component: {fileID: 1735978214}
   m_Layer: 0
   m_Name: NPC
   m_TagString: Untagged
@@ -40344,6 +40379,58 @@ MonoBehaviour:
   moveSpeed: 2
   waitTime: 2
   loopWaypoints: 1
+--- !u!114 &1735978212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1735978206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c29cff538c195c249b69c6f2236de67b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.2D.Animation.Runtime::UnityEngine.U2D.Animation.SpriteLibrary
+  m_Library: []
+  m_SpriteLibraryAsset: {fileID: 7108339969198208228, guid: 9af6c1861d2ccc547b9ff3e1469c583e, type: 3}
+--- !u!114 &1735978213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1735978206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed8b1ae4e4e52b34ea557c1c11e076fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.2D.Animation.Runtime::UnityEngine.U2D.Animation.SpriteResolver
+  m_CategoryHash: 0
+  m_labelHash: 0
+  m_SpriteKey: 0
+  m_SpriteHash: 0
+--- !u!95 &1735978214
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1735978206}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 014858ce72068b34ca217de132eb814b, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &1747372410
 GameObject:
   m_ObjectHideFlags: 0
