@@ -37,7 +37,9 @@ public class SaveController : MonoBehaviour
             mapBoundary = FindAnyObjectByType<CinemachineConfiner2D>().BoundingShape2D.gameObject.name,
             inventorySaveData = inventoryController.GetInventoryItems(),
             hotbarSaveData = hotbarController.GetHotbarItems(),
-            chestSaveData = GetChestsState()
+            chestSaveData = GetChestsState(),
+            questProgressData = QuestController.Instance.activateQuests,
+            handInQuestIDs = QuestController.Instance.handInQuestIDs
         };
 
         File.WriteAllText(saveLocation, JsonUtility.ToJson(saveData));
@@ -60,6 +62,9 @@ public class SaveController : MonoBehaviour
             hotbarController.SetHotbarItems(saveData.hotbarSaveData);
 
             LoadChestStates(saveData.chestSaveData);
+
+            QuestController.Instance.LoadQuestProgress(saveData.questProgressData);
+            QuestController.Instance.handInQuestIDs = saveData.handInQuestIDs;
         }
         else
         {

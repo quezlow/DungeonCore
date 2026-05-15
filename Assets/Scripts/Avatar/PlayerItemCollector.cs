@@ -21,7 +21,7 @@ public class PlayerItemCollector : MonoBehaviour
 
                 if (itemAdded)
                 {
-                    item.Pickup();
+                    item.ShowPopup();
                     Destroy(collision.gameObject);
                 }
             }

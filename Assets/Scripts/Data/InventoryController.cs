@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,6 +13,8 @@ public class InventoryController : MonoBehaviour
     public GameObject[] itemPrefabs;
 
     public static InventoryController Instance { get; private set; }
+    Dictionary<int, int> itemsCountCache = new();
+    public event Action OnInventoryChanged; //event to notify quest system of change in inventory
 
     private void Awake()
     {
@@ -27,7 +30,30 @@ public class InventoryController : MonoBehaviour
     void Start()
     {
         itemDictionary = FindAnyObjectByType<ItemDictionary>();
+        RebuildItemCounts();
     }
+
+    public void RebuildItemCounts()
+    {
+        itemsCountCache.Clear();
+
+        foreach(Transform slotTransform in inventoryPanel.transform)
+        {
+            Slot slot = slotTransform.GetComponent<Slot>();
+            if(slot.currentItem != null)
+            {
+                Item item = slot.currentItem.GetComponent<Item>();
+                if(item != null)
+                {
+                    itemsCountCache[item.ID] = itemsCountCache.GetValueOrDefault(item.ID, 0) + item.quantity;
+                }
+            }
+        }
+
+        OnInventoryChanged?.Invoke();
+    }
+
+    public Dictionary<int, int> GetItemCounts() => itemsCountCache;
 
     public bool AddItem(GameObject itemPrefab)
     {
@@ -44,6 +70,7 @@ public class InventoryController : MonoBehaviour
                 if(slotItem != null && slotItem.ID == itemToAdd.ID)
                 {
                     slotItem.AddToStack();
+                    RebuildItemCounts();
                     return true;
                 }
             }
@@ -58,6 +85,7 @@ public class InventoryController : MonoBehaviour
                 GameObject newItem = Instantiate(itemPrefab, slotTransform);
                 newItem.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
                 slot.currentItem = newItem;
+                RebuildItemCounts();
                 return true;
             }
         }
@@ -125,5 +153,31 @@ public class InventoryController : MonoBehaviour
                 }
             }
         }
+
+        RebuildItemCounts();
+    }
+
+    public void RemoveItemsFromInventory(int itemID, int amountToRemove)
+    {
+        foreach(Transform slotTransform in inventoryPanel.transform)
+        {
+            if (amountToRemove <= 0) break;
+
+            Slot slot = slotTransform.GetComponent<Slot>();
+            if(slot?.currentItem?.GetComponent<Item>() is Item item && item.ID == itemID)
+            {
+                int removed = Mathf.Min(amountToRemove, item.quantity);
+                item.RemoveFromStack(removed);
+                amountToRemove -= removed;
+
+                if(item.quantity == 0)
+                {
+                    Destroy(slot.currentItem);
+                    slot.currentItem = null;
+                }
+            }
+        }
+
+        RebuildItemCounts();
     }
 }

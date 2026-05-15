@@ -22,7 +22,7 @@ MonoBehaviour:
   - Good luck, you'll need it.
   - Great, thanks. Go bother someone else...
   autoProgressLines: 0100
-  endDialogueLines: 000001010101
+  endDialogueLines: 00000101010101
   autoProgressDelay: 1.5
   typingSpeed: 0.05
   voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
@@ -34,6 +34,6 @@ MonoBehaviour:
     - Not really...
     nextDialogueIndexes: 0200000003000000
     givesQuest: 0100
-  questInProgressIndex: 6
-  questCompletedIndex: 7
+  questInProgressIndex: 4
+  questCompletedIndex: 5
   quest: {fileID: 11400000, guid: e024f040639936a4394cdaf929c5fee6, type: 2}
