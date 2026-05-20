@@ -6,9 +6,10 @@ public class MapTransition : MonoBehaviour
     [SerializeField] PolygonCollider2D mapBoundary;
     CinemachineConfiner2D confiner;
     [SerializeField] Direction direction;
-    [SerializeField] float additivePos = 2;
+    [SerializeField] Transform teleportTargetTransition;
+    [SerializeField] float additivePos = 0;
 
-    enum Direction {Up, Down, Left, Right}
+    enum Direction { Teleport, Up, Down, Left, Right}
 
     private void Awake()
     {
@@ -19,16 +20,36 @@ public class MapTransition : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            confiner.BoundingShape2D = mapBoundary;
-            UpdatePlayerPosition(collision.gameObject);
+            FadeTransition(collision.gameObject);
 
             MapController_Manual.Instance?.HighlightArea(mapBoundary.name);
             MapController_Dynamic.Instance?.UpdateCurrentArea(mapBoundary.name);
         }
     }
 
+    async void FadeTransition(GameObject player)
+    {
+        PauseController.SetPause(true);
+
+        await ScreenFader.Instance.FadeOut();
+
+        confiner.BoundingShape2D = mapBoundary;
+        UpdatePlayerPosition(player);
+
+        await ScreenFader.Instance.FadeIn();
+
+        PauseController.SetPause(false);
+    }
+
     private void UpdatePlayerPosition(GameObject player)
     {
+        if(direction == Direction.Teleport)
+        {
+            player.transform.position = teleportTargetTransition.position;
+
+            return;
+        }
+
         Vector3 newPos = player.transform.position;
 
         switch (direction)

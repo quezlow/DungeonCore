@@ -21,33 +21,41 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = Vector2.zero;
             animator.SetBool("isWalking", false);
+            StopMovementAnimations();
             StopFootsteps();
             return;
         }
+
         rb.linearVelocity = moveInput * moveSpeed;
         animator.SetBool("isWalking", rb.linearVelocity.magnitude > 0);
 
         if (rb.linearVelocity.magnitude > 0 && !playingFootsteps)
         {
             StartFootsteps();
-        } else if(rb.linearVelocity.magnitude == 0)
+        }
+        else if (rb.linearVelocity.magnitude == 0)
         {
             StopFootsteps();
         }
     }
-    
+
     public void Move(InputAction.CallbackContext context)
     {
         if (context.canceled)
         {
-            animator.SetBool("isWalking", false);
-            animator.SetFloat("LastInputX", moveInput.x);
-            animator.SetFloat("LastInputY", moveInput.y);
+            StopMovementAnimations();
         }
 
         moveInput = context.ReadValue<Vector2>();
         animator.SetFloat("InputX", moveInput.x);
         animator.SetFloat("InputY", moveInput.y);
+    }
+
+    void StopMovementAnimations()
+    {
+        animator.SetBool("isWalking", false);
+        animator.SetFloat("LastInputX", moveInput.x);
+        animator.SetFloat("LastInputY", moveInput.y);
     }
 
     void StartFootsteps()
