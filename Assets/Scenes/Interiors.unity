@@ -1513,7 +1513,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 484967637174817742, guid: 9b05489c72c77624baed66cdcf66ce84, type: 3}
       propertyPath: targetScene
-      value: TutorialTown
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 484967637174817742, guid: 9b05489c72c77624baed66cdcf66ce84, type: 3}
       propertyPath: spawnPointID
@@ -6188,6 +6188,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.b
+      value: 0.28627452
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.g
+      value: 0.25490198
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.r
+      value: 0.20784315
+      objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -6541,10 +6553,10 @@ SceneRoots:
   - {fileID: 609907972}
   - {fileID: 76018121}
   - {fileID: 799412980}
-  - {fileID: 95563433}
   - {fileID: 654706970}
   - {fileID: 696292203}
   - {fileID: 1978468993}
   - {fileID: 155837290}
   - {fileID: 1209843627}
   - {fileID: 1501058236}
+  - {fileID: 95563433}

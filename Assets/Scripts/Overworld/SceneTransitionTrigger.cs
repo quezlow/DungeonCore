@@ -16,21 +16,16 @@
 //     Spawn Point ID = "Inn_Exit"
 
 using UnityEngine;
+using static SceneNames;
 
 public class SceneTransitionTrigger : MonoBehaviour
 {
-    [SerializeField] private string targetScene;
+    [SerializeField] private GameScene targetScene;
     [SerializeField] private string spawnPointID;
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!collision.CompareTag("Player")) return;
-
-        if (string.IsNullOrEmpty(targetScene))
-        {
-            Debug.LogWarning($"SceneTransitionTrigger on '{gameObject.name}': Target Scene is empty.");
-            return;
-        }
 
         if (SceneLoader.Instance == null)
         {
@@ -39,7 +34,7 @@ public class SceneTransitionTrigger : MonoBehaviour
             return;
         }
 
-        SceneLoader.Instance.TransitionToScene(targetScene, spawnPointID);
+        SceneLoader.Instance.TransitionToScene(targetScene.ToString(), spawnPointID);
     }
 
     // Draws a cyan outline and destination label in the Scene view
