@@ -31,6 +31,12 @@ public class MapController_Manual : MonoBehaviour
         mapImages = mapParent.GetComponentsInChildren<Image>().ToList();
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
     public void HighlightArea(string areaName)
     {
         foreach(Image area in mapImages)

@@ -8,7 +8,7 @@ public class SaveData
     public string mapBoundary; //Boundary name for the map
     public List<InventorySaveData> inventorySaveData;
     public List<InventorySaveData> hotbarSaveData;
-    public List<ChestSaveData> chestSaveData;
+    public List<SceneChestData> allSceneChests = new List<SceneChestData>();
     public List<QuestProgress> questProgressData;
     public List<string> handInQuestIDs;
 }

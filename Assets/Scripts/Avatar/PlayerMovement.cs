@@ -17,6 +17,8 @@ public class PlayerMovement : MonoBehaviour
     }
     void Update()
     {
+        // Debug.Log("PauseController.IsGamePaused: " + PauseController.IsGamePaused);
+
         if (PauseController.IsGamePaused)
         {
             rb.linearVelocity = Vector2.zero;

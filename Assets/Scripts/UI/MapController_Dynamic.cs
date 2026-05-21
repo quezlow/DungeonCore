@@ -35,7 +35,13 @@ public class MapController_Dynamic : MonoBehaviour
         }
 
         mapAreas = mapBounds.GetComponentsInChildren<PolygonCollider2D>();
-    } 
+    }
+
+    private void OnDestroy()
+    {
+        if(Instance ==  this)
+            Instance = null;
+    }
 
     //generate map
     public void GenerateMap(PolygonCollider2D newCurrentArea = null)
