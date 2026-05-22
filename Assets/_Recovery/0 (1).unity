@@ -1923,6 +1923,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   mapBoundary: {fileID: 988118224}
   direction: 1
+  teleportTargetTransition: {fileID: 0}
   additivePos: 20
 --- !u!61 &357476363
 BoxCollider2D:
@@ -2017,6 +2018,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   mapBoundary: {fileID: 1938660075}
   direction: 0
+  teleportTargetTransition: {fileID: 0}
   additivePos: 20
 --- !u!61 &381642020
 BoxCollider2D:
