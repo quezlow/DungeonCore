@@ -62,6 +62,12 @@ TagManager:
   - name: Decor
     uniqueID: 4248949339
     locked: 0
+  - name: OwnedTiles
+    uniqueID: 45063661
+    locked: 0
+  - name: AdjacentHighlight
+    uniqueID: 1073072259
+    locked: 0
   m_RenderingLayers:
   - Default
   m_MigratedRenderPipelines: []
