@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+[DefaultExecutionOrder(-20)]
+
 public class DungeonCore : MonoBehaviour
 {
     public static DungeonCore Instance { get; private set; }
@@ -65,12 +67,17 @@ public class DungeonCore : MonoBehaviour
     private void Start()
     {
         currentMana = MaxMana;
+
+        if (dungeonType == DungeonType.None)
+            Debug.LogWarning("DungeonCore: DungeonType is None. Call SetDungeonType() from the tutorial sequence.");
+
         NotifyManaChanged();
         NotifyXPChanged();
     }
 
     private void Update()
     {
+        if (PauseController.IsGamePaused) return;
         RegenerateMana();
     }
 

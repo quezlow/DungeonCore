@@ -1,5 +1,6 @@
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 public class DungeonCameraController : MonoBehaviour
@@ -91,7 +92,8 @@ public class DungeonCameraController : MonoBehaviour
                 move += new Vector3(h, v, 0f).normalized * keyboardPanSpeed * Time.deltaTime;
         }
 
-        if (enableEdgeScroll && mouse != null)
+        if (enableEdgeScroll && mouse != null
+            && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
         {
             Vector2 mousePos = mouse.position.ReadValue();
             if (mousePos.x < edgeScrollThreshold) move.x -= edgeScrollSpeed * Time.deltaTime;

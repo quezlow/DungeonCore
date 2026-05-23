@@ -70,30 +70,33 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Claiming ──────────────────────────────────────────────────
 
     /// <summary>Claims a tile, updates neighbours, notifies DungeonCore.</summary>
-    public void ClaimTile(Vector3Int pos)
+    public void ClaimTile(Vector3Int pos, bool silent = false)
     {
         if (ownedTiles.Contains(pos)) return;
-        if (!DungeonTerrain.Instance.IsWithinBounds(pos)) return; // ← bounds guard
+        if (!DungeonTerrain.Instance.IsWithinBounds(pos)) return;
 
         ownedTiles.Add(pos);
         claimableTiles.Remove(pos);
 
-        DungeonTerrain.Instance.RevealTile(pos);          // ← remove fog
-        claimableTilemap.SetTile(pos, null);               // ← remove claimable highlight
+        DungeonTerrain.Instance.RevealTile(pos);
+        claimableTilemap.SetTile(pos, null);
 
         foreach (Vector3Int dir in Neighbours)
         {
             Vector3Int neighbour = pos + dir;
             if (ownedTiles.Contains(neighbour)) continue;
             if (claimableTiles.Contains(neighbour)) continue;
-            if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue; // ← bounds guard
+            if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue;
 
             claimableTiles.Add(neighbour);
             claimableTilemap.SetTile(neighbour, claimableTile);
         }
 
-        DungeonCore.Instance?.AddOwnedTiles(1);
-        OnTileCountChanged?.Invoke(ownedTiles.Count);
+        if (!silent)
+        {
+            DungeonCore.Instance?.AddOwnedTiles(1);
+            OnTileCountChanged?.Invoke(ownedTiles.Count);
+        }
     }
 
     /// <summary>Removes a tile from ownership (e.g. Destroyer consequence).</summary>
@@ -148,11 +151,15 @@ public class TileInfluenceManager : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(passiveExpansionInterval);
+            float elapsed = 0f;
+            while (elapsed < passiveExpansionInterval)
+            {
+                if (!PauseController.IsGamePaused)
+                    elapsed += Time.deltaTime;
+                yield return null;
+            }
 
             if (claimableTiles.Count == 0) continue;
-
-            // Pick a random tile from the claimable ring
             int index = UnityEngine.Random.Range(0, claimableTiles.Count);
             Vector3Int target = claimableTiles.ElementAt(index);
             ClaimTile(target);
@@ -217,14 +224,15 @@ public class TileInfluenceManager : MonoBehaviour
 
     public void LoadSaveData(TileInfluenceSaveData data)
     {
-        // Clear existing state
         ownedTiles.Clear();
         claimableTiles.Clear();
         claimableTilemap.ClearAllTiles();
 
-        // Re-claim all saved tiles (rebuilds claimable ring automatically)
         foreach (var tile in data.ownedTiles)
-            ClaimTile(tile.ToVector3Int());
+            ClaimTile(tile.ToVector3Int(), silent: true); // ← DungeonCore count already restored
+
+        // Fire count event once with final total
+        OnTileCountChanged?.Invoke(ownedTiles.Count);
     }
 }
 
