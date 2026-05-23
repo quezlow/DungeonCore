@@ -105,14 +105,7 @@ public class TileInfluenceManager : MonoBehaviour
         if (!ownedTiles.Contains(pos)) return;
 
         ownedTiles.Remove(pos);
-
-        // Recalculate whether this tile should become claimable
-        bool adjacentToOwned = Neighbours.Any(dir => ownedTiles.Contains(pos + dir));
-        if (adjacentToOwned)
-        {
-            claimableTiles.Add(pos);
-            claimableTilemap.SetTile(pos, claimableTile);
-        }
+        DungeonTerrain.Instance?.RefogTile(pos);
 
         // Clean up claimable tiles that are no longer adjacent to any owned tile
         RebuildClaimableSet();
@@ -199,11 +192,12 @@ public class TileInfluenceManager : MonoBehaviour
             foreach (Vector3Int dir in Neighbours)
             {
                 Vector3Int neighbour = owned + dir;
-                if (!ownedTiles.Contains(neighbour) && !claimableTiles.Contains(neighbour))
-                {
-                    claimableTiles.Add(neighbour);
-                    claimableTilemap.SetTile(neighbour, claimableTile);
-                }
+                if (ownedTiles.Contains(neighbour)) continue;
+                if (claimableTiles.Contains(neighbour)) continue;
+                if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue; // ← add this
+
+                claimableTiles.Add(neighbour);
+                claimableTilemap.SetTile(neighbour, claimableTile);
             }
         }
     }

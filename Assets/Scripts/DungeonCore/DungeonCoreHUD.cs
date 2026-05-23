@@ -132,8 +132,9 @@ public class DungeonCoreHUD : MonoBehaviour
         float t = 0f;
         while (true)
         {
-            t += Time.deltaTime * pulseSpeed;
-            // Sine wave: 0→1→0 smooth cycle
+            if (!PauseController.IsGamePaused)
+                t += Time.deltaTime * pulseSpeed;
+
             float alpha = Mathf.Lerp(pulseMinAlpha, pulseMaxAlpha, (Mathf.Sin(t * Mathf.PI * 2f) + 1f) * 0.5f);
             if (levelUpButtonImage != null)
             {

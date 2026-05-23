@@ -24,6 +24,8 @@ public class DungeonCameraController : MonoBehaviour
     [SerializeField] private float returnDelay = 5f;
     [SerializeField] private float returnSpeed = 4f;
 
+    private Camera mainCamera;
+
     private Transform coreTransform;
     private float timeSinceLastInput;
     private bool isReturning;
@@ -34,12 +36,21 @@ public class DungeonCameraController : MonoBehaviour
 
     void Start()
     {
+        mainCamera = Camera.main;
+
         GameObject core = GameObject.FindGameObjectWithTag("DungeonCore");
         if (core != null)
             coreTransform = core.transform;
 
         if (coreTransform != null)
             transform.position = new Vector3(coreTransform.position.x, coreTransform.position.y, transform.position.z);
+
+        if (cmCam == null)
+        {
+            Debug.LogError("DungeonCameraController: cmCam is not assigned.");
+            enabled = false;
+            return;
+        }
 
         targetZoom = cmCam.Lens.OrthographicSize;
     }
@@ -107,14 +118,14 @@ public class DungeonCameraController : MonoBehaviour
             if (mouse.middleButton.wasPressedThisFrame)
             {
                 Vector2 screenPos = mouse.position.ReadValue();
-                dragOrigin = Camera.main.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+                dragOrigin = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
                 isDragging = true;
             }
 
             if (mouse.middleButton.isPressed && isDragging)
             {
                 Vector2 screenPos = mouse.position.ReadValue();
-                Vector3 dragCurrent = Camera.main.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+                Vector3 dragCurrent = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
                 Vector3 dragDelta = dragOrigin - dragCurrent;
                 move += new Vector3(dragDelta.x, dragDelta.y, 0f);
                 dragOrigin = dragCurrent;

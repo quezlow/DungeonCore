@@ -93,6 +93,13 @@ public class DungeonTerrain : MonoBehaviour
         TileInfluenceManager.Instance?.OnBoundsExpanded();
     }
 
+    /// <summary>Re-applies fog to a tile (e.g. when a Destroyer unclaims it).</summary>
+    public void RefogTile(Vector3Int pos)
+    {
+        if (IsWithinBounds(pos))
+            fogTilemap.SetTile(pos, fogTile);
+    }
+
     // ── Public API ────────────────────────────────────────────────
 
     /// <summary>Removes fog at a position, revealing the floor beneath.</summary>
