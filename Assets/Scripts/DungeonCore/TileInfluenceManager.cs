@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
 
 [DefaultExecutionOrder(0)]
@@ -64,7 +62,6 @@ public class TileInfluenceManager : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-        HandleClickInput();
     }
 
     // ── Claiming ──────────────────────────────────────────────────
@@ -112,24 +109,6 @@ public class TileInfluenceManager : MonoBehaviour
 
         DungeonCore.Instance?.RemoveOwnedTiles(1);
         OnTileCountChanged?.Invoke(ownedTiles.Count);
-    }
-
-    // ── Input ─────────────────────────────────────────────────────
-
-    private void HandleClickInput()
-    {
-        var mouse = Mouse.current;
-        if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
-
-        // Don't register clicks that land on UI
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-
-        Vector2 screenPos = mouse.position.ReadValue();
-        Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
-        Vector3Int cell = claimableTilemap.WorldToCell(worldPos);
-
-        if (claimableTiles.Contains(cell))
-            ClaimTile(cell);
     }
 
     // ── Passive Expansion ─────────────────────────────────────────
@@ -201,6 +180,14 @@ public class TileInfluenceManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>Converts a world position to a tilemap cell coordinate.</summary>
+    public Vector3Int WorldToCell(Vector3 worldPos)
+        => claimableTilemap.WorldToCell(worldPos);
+
+    /// <summary>Converts a tilemap cell to the world-space centre of that cell.</summary>
+    public Vector3 CellToWorld(Vector3Int cell)
+        => claimableTilemap.GetCellCenterWorld(cell);
 
     public bool IsTileOwned(Vector3Int pos) => ownedTiles.Contains(pos);
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
