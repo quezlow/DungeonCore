@@ -139,7 +139,7 @@ MonoBehaviour:
   attackRange: 1.2
   attackCooldown: 1.5
   detectionRange: 2.5
-  retreatThreshold: 0.05
+  retreatThreshold: 0.3
   lootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
   goldDrop: 1
   xpOnDeath: 15

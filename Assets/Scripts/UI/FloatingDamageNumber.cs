@@ -20,7 +20,6 @@ public class FloatingDamageNumber : MonoBehaviour
     [SerializeField] private float arcHeight = 1.0f;  // peak height above spawn
     [SerializeField] private float arcSpread = 0.6f;  // max horizontal offset at peak
     [SerializeField] private float lifetime = 1.1f;  // total duration in seconds
-    [SerializeField] private float spawnYOffset = 0.5f;  // upward offset from entity pivot
 
     [Header("Fade")]
     [Tooltip("Fraction of lifetime before fading begins (0.6 = fade starts at 60%).")]

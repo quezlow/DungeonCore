@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonsterSpawner
   monsterPrefab: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+  capacityCost: 10
   patrolRadius: 4
   patrolSpeed: 1.2
   patrolWait: 2

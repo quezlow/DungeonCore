@@ -150,14 +150,21 @@ public class DungeonBuildController : MonoBehaviour
 
         if (spawnerPrefab == null)
         {
-            Debug.LogError("[BuildController] spawnerPrefab is not assigned in the Inspector.");
+            Debug.LogError("[BuildController] spawnerPrefab is not assigned.");
+            return;
+        }
+
+        int cost = spawnerPrefab.CapacityCost;
+        if (!DungeonCore.Instance.TrySpendCapacity(cost))
+        {
+            Debug.Log($"[BuildController] Not enough capacity (costs {cost}, free: {DungeonCore.Instance.FreeCapacity}).");
             return;
         }
 
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
         Instantiate(spawnerPrefab, worldPos, Quaternion.identity);
 
-        Debug.Log($"[BuildController] Spawner placed at cell {cell}.");
+        Debug.Log($"[BuildController] Spawner placed. Capacity used: {DungeonCore.Instance.MaxCapacity} - {DungeonCore.Instance.UsedCapacity}/{DungeonCore.Instance.MaxCapacity}");
         SetMode(BuildMode.Claim);
     }
 

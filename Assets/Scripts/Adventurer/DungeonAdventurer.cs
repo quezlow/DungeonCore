@@ -128,6 +128,8 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
+            // Adventurer escaped — reward Reputation
+            DungeonCore.Instance?.AddReputation(2f);
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
@@ -217,6 +219,8 @@ public class DungeonAdventurer : MonoBehaviour
     {
         // Core XP always comes from adventurer deaths
         DungeonCore.Instance?.AddXP(xpOnDeath);
+        DungeonCore.Instance?.AddNotoriety(5f);
+
         if (statusBars != null) Destroy(statusBars.gameObject);
 
         if (lootPrefab != null)

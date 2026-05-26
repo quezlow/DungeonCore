@@ -18,20 +18,29 @@ public class DungeonCore : MonoBehaviour
     [SerializeField] private float baseRegenPerSecond = 1f;
     [SerializeField] private float regenPerTile = 0.1f;
 
+    // ── Monster Capacity ────────────────────────────────────────────────
+    [Header("Monster Capacity")]
+    [SerializeField] private int baseCapacity = 100;
+    [SerializeField] private int capacityPerLevel = 50;
+
     // ── XP / Level ───────────────────────────────────────────────
     [Header("XP & Level")]
     [SerializeField] private float baseXPToLevel = 100f;
     [SerializeField] private float xpScalingExponent = 1.5f;
 
-    // ── Notoriety ────────────────────────────────────────────────
+    // ── Notoriety / Reputation ────────────────────────────────────────────────
     [Header("Notoriety")]
     [SerializeField] private float notoriety = 0f;
+    [SerializeField] private float notorietyDecayPerSecond = 0.1f;
+    [Header("Reputation")]
+    [SerializeField] private float reputation = 0f;
 
     // ── Runtime State ────────────────────────────────────────────
     private float currentMana;
     private float currentXP;
     private int dungeonLevel = 1;
     private int ownedTileCount = 0;
+    private int usedCapacity = 0;
 
     // ── Events ───────────────────────────────────────────────────
     public event Action<float, float> OnManaChanged;        // (current, max)
@@ -39,6 +48,8 @@ public class DungeonCore : MonoBehaviour
     public event Action<int> OnLevelUp;            // (newLevel)
     public event Action OnLevelUpAvailable;   // UI prompt
     public event Action<float> OnNotorietyChanged;   // (total notoriety)
+    public event Action<float> OnReputationChanged;  // (total reputation)
+    public event Action<int, int> OnCapacityChanged; // (used, max)
     public event Action OnCoreDestroyed;
 
     // ── Public Reads ─────────────────────────────────────────────
@@ -49,7 +60,11 @@ public class DungeonCore : MonoBehaviour
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
+    public float Reputation => reputation;
     public int OwnedTileCount => ownedTileCount;
+    public int MaxCapacity => baseCapacity + (dungeonLevel - 1) * capacityPerLevel;
+    public int UsedCapacity => usedCapacity;
+    public int FreeCapacity => MaxCapacity - usedCapacity;
     public bool LevelUpAvailable { get; private set; }
 
     // ── Materials ─────────────────────────────────────────────
@@ -80,13 +95,16 @@ public class DungeonCore : MonoBehaviour
 
         NotifyManaChanged();
         NotifyXPChanged();
+        OnReputationChanged?.Invoke(reputation);
         OnGoldChanged?.Invoke(currentGold);
+        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
     }
 
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
         RegenerateMana();
+        DecayNotoriety();
     }
 
     // ── Mana ─────────────────────────────────────────────────────
@@ -134,6 +152,22 @@ public class DungeonCore : MonoBehaviour
         Debug.Log($"[DungeonCore] Gold +{amount}. Total: {currentGold}");
     }
 
+    /// <summary>Returns true if the capacity cost can be met and reserves it.</summary>
+    public bool TrySpendCapacity(int cost)
+    {
+        if (usedCapacity + cost > MaxCapacity) return false;
+        usedCapacity += cost;
+        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+        return true;
+    }
+
+    /// <summary>Returns capacity when a spawner or monster is removed.</summary>
+    public void ReturnCapacity(int cost)
+    {
+        usedCapacity = Mathf.Max(0, usedCapacity - cost);
+        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+    }
+
     private void CheckLevelUp()
     {
         if (!LevelUpAvailable && currentXP >= CalculateXPThreshold(dungeonLevel))
@@ -155,6 +189,7 @@ public class DungeonCore : MonoBehaviour
         OnLevelUp?.Invoke(dungeonLevel);
         NotifyManaChanged(); // max mana went up
         NotifyXPChanged();
+        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
 
         // In case banked XP already meets the next threshold
         CheckLevelUp();
@@ -165,12 +200,37 @@ public class DungeonCore : MonoBehaviour
         return baseXPToLevel * Mathf.Pow(level, xpScalingExponent);
     }
 
-    // ── Notoriety ────────────────────────────────────────────────
+    // ── Notoriety / Reputation ────────────────────────────────────────────────
 
     /// <summary>Called by Pilgrim visits, dungeon milestones, etc.</summary>
     public void AddNotoriety(float amount)
     {
         notoriety += amount;
+        timeSinceLastKill = 0f;   // reset decay cooldown
+        OnNotorietyChanged?.Invoke(notoriety);
+    }
+
+    /// <summary>Called when an adventurer exits alive, Pilgrim visits, etc.</summary>
+    public void AddReputation(float amount)
+    {
+        reputation += amount;
+        OnReputationChanged?.Invoke(reputation);
+    }
+
+    [Header("Notoriety Decay")]
+    [SerializeField] private float notorietyDecayCooldown = 10f; // seconds after last kill before decay starts
+
+    private float timeSinceLastKill = 0f;
+
+    private void DecayNotoriety()
+    {
+        if (notoriety <= 0f) return;
+
+        timeSinceLastKill += Time.deltaTime;
+
+        if (timeSinceLastKill < notorietyDecayCooldown) return;
+
+        notoriety = Mathf.Max(0f, notoriety - notorietyDecayPerSecond * Time.deltaTime);
         OnNotorietyChanged?.Invoke(notoriety);
     }
 
@@ -212,8 +272,10 @@ public class DungeonCore : MonoBehaviour
         dungeonLevel = this.dungeonLevel,
         currentXP = this.currentXP,
         notoriety = this.notoriety,
+        reputation = this.reputation,
         currentMana = this.currentMana,
         ownedTileCount = this.ownedTileCount,
+        usedCapacity = this.usedCapacity,
         levelUpAvailable = this.LevelUpAvailable
     };
 
@@ -223,6 +285,7 @@ public class DungeonCore : MonoBehaviour
         dungeonLevel = data.dungeonLevel;
         currentXP = data.currentXP;
         notoriety = data.notoriety;
+        reputation = data.reputation;
         currentMana = Mathf.Min(data.currentMana, MaxMana);
         ownedTileCount = data.ownedTileCount;
         LevelUpAvailable = data.levelUpAvailable;
@@ -230,6 +293,9 @@ public class DungeonCore : MonoBehaviour
         NotifyManaChanged();
         NotifyXPChanged();
         OnNotorietyChanged?.Invoke(notoriety);
+        OnReputationChanged?.Invoke(reputation);
+        usedCapacity = data.usedCapacity;
+        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
 
         if (LevelUpAvailable)
             OnLevelUpAvailable?.Invoke();
@@ -251,7 +317,9 @@ public class DungeonCoreSaveData
     public int dungeonLevel;
     public float currentXP;
     public float notoriety;
+    public float reputation;
     public float currentMana;
     public int ownedTileCount;
     public bool levelUpAvailable;
+    public int usedCapacity;
 }

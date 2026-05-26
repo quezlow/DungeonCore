@@ -1,16 +1,23 @@
 using UnityEngine;
 
 /// <summary>
-/// Spawns one adventurer at the dungeon entrance on a fixed interval.
-/// Requires a DungeonEntrance to be placed before spawning begins.
-/// Phase 2 will expand this with party sizes, notoriety scaling, and day/night gating.
+/// Spawns one adventurer at the dungeon entrance on a timer.
+/// Spawn interval shortens as Notoriety increases.
+/// Phase 2: party sizes, day/night gating, intent weighting.
 /// </summary>
 public class AdventurerSpawner : MonoBehaviour
 {
     // ── Inspector ─────────────────────────────────────────────────
     [Header("Spawning")]
     [SerializeField] private DungeonAdventurer adventurerPrefab;
-    [SerializeField] private float spawnInterval = 30f;
+
+    [Header("Spawn Interval by Notoriety")]
+    [SerializeField] private float intervalLow = 30f; // Notoriety 0–25
+    [SerializeField] private float intervalMedium = 20f; // Notoriety 25–75
+    [SerializeField] private float intervalHigh = 10f; // Notoriety 75+
+
+    [SerializeField] private float notorietyMediumThreshold = 25f;
+    [SerializeField] private float notorietyHighThreshold = 75f;
 
     // ── State ─────────────────────────────────────────────────────
     private float timer = 0f;
@@ -20,17 +27,28 @@ public class AdventurerSpawner : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-
-        // Don't tick until an entrance exists
         if (DungeonEntrance.Instance == null) return;
 
         timer += Time.deltaTime;
 
-        if (timer >= spawnInterval)
+        if (timer >= CurrentInterval())
         {
             timer = 0f;
             SpawnAdventurer();
         }
+    }
+
+    // ── Interval ──────────────────────────────────────────────────
+
+    private float CurrentInterval()
+    {
+        if (DungeonCore.Instance == null) return intervalLow;
+
+        float notoriety = DungeonCore.Instance.Notoriety;
+
+        if (notoriety >= notorietyHighThreshold) return intervalHigh;
+        if (notoriety >= notorietyMediumThreshold) return intervalMedium;
+        return intervalLow;
     }
 
     // ── Spawning ──────────────────────────────────────────────────
@@ -43,14 +61,12 @@ public class AdventurerSpawner : MonoBehaviour
             return;
         }
 
-        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
-        Instantiate(adventurerPrefab, spawnPos, Quaternion.identity);
-        Debug.Log($"[AdventurerSpawner] Adventurer spawned at {spawnPos}.");
+        Instantiate(adventurerPrefab, DungeonEntrance.Instance.SpawnPosition, Quaternion.identity);
+        Debug.Log($"[AdventurerSpawner] Adventurer spawned. Notoriety: {DungeonCore.Instance?.Notoriety:F0} — next in {CurrentInterval()}s");
     }
 
-    // ── Debug Helper ──────────────────────────────────────────────
+    // ── Debug ─────────────────────────────────────────────────────
 
-    /// <summary>Force-spawn immediately — useful for testing without waiting 30s.</summary>
     [ContextMenu("Force Spawn Now")]
     public void ForceSpawn()
     {

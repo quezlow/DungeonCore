@@ -2,9 +2,9 @@ using UnityEngine;
 
 /// <summary>
 /// Placed by the player via DungeonBuildController (PlaceSpawner mode).
-/// Spawns one monster on placement and gives it a two-point WaypointMover patrol
-/// between the spawner and one nearby owned tile.
-/// Respawn is stubbed for Phase 2.
+/// Reserves capacity on placement and returns it on monster death.
+/// Spawns one monster with a two-point WaypointMover patrol.
+/// Respawn stubbed for Phase 2.
 /// </summary>
 public class MonsterSpawner : MonoBehaviour
 {
@@ -12,8 +12,11 @@ public class MonsterSpawner : MonoBehaviour
     [Header("Monster")]
     [SerializeField] private DungeonMonster monsterPrefab;
 
+    [Header("Capacity")]
+    [SerializeField] private int capacityCost = 5;
+
     [Header("Patrol")]
-    [SerializeField] private float patrolRadius = 2f;   // search radius for second waypoint
+    [SerializeField] private float patrolRadius = 2f;
     [SerializeField] private float patrolSpeed = 1.2f;
     [SerializeField] private float patrolWait = 2f;
 
@@ -25,11 +28,21 @@ public class MonsterSpawner : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     private DungeonMonster spawnedMonster;
 
+    // ── Public ────────────────────────────────────────────────────
+    public int CapacityCost => capacityCost;
+
     // ─────────────────────────────────────────────────────────────
 
     private void Start()
     {
         SpawnMonster();
+    }
+
+    private void OnDestroy()
+    {
+        // Return capacity if the spawner itself is removed (e.g. Destroyer consequences)
+        if (spawnedMonster != null)
+            DungeonCore.Instance?.ReturnCapacity(capacityCost);
     }
 
     // ── Spawning ──────────────────────────────────────────────────
@@ -44,36 +57,29 @@ public class MonsterSpawner : MonoBehaviour
 
         spawnedMonster = Instantiate(monsterPrefab, transform.position, Quaternion.identity);
         spawnedMonster.Initialise(this);
-
         SetupPatrol(spawnedMonster);
     }
 
     private void SetupPatrol(DungeonMonster monster)
     {
-        // Create a hidden waypoint parent as a child of this spawner
         var waypointParent = new GameObject("WaypointParent").transform;
         waypointParent.SetParent(transform);
         waypointParent.localPosition = Vector3.zero;
 
-        // Waypoint A — spawner position itself
         var wpA = new GameObject("Waypoint_A").transform;
         wpA.SetParent(waypointParent);
         wpA.position = transform.position;
 
-        // Waypoint B — a nearby owned tile (fallback: offset from spawner)
-        Vector3 wpBPos = FindNearbyOwnedTile();
         var wpB = new GameObject("Waypoint_B").transform;
         wpB.SetParent(waypointParent);
-        wpB.position = wpBPos;
+        wpB.position = FindNearbyOwnedTile();
 
-        // Add WaypointMover to the monster and point it at the waypoint parent
         var mover = monster.gameObject.AddComponent<WaypointMover>();
         mover.waypointParent = waypointParent;
         mover.moveSpeed = patrolSpeed;
         mover.waitTime = patrolWait;
         mover.loopWaypoints = true;
 
-        // Tell DungeonMonster about the mover so it can disable it during combat
         monster.SetPatrolMover(mover);
     }
 
@@ -82,7 +88,6 @@ public class MonsterSpawner : MonoBehaviour
         var influence = TileInfluenceManager.Instance;
         if (influence == null) return transform.position + Vector3.right;
 
-        // Try random positions within radius, return first owned tile found
         for (int i = 0; i < 20; i++)
         {
             Vector2 offset = Random.insideUnitCircle * patrolRadius;
@@ -93,15 +98,16 @@ public class MonsterSpawner : MonoBehaviour
                 return influence.CellToWorld(cell);
         }
 
-        // Fallback: one tile directly right
         return transform.position + Vector3.right;
     }
 
     // ── Called by DungeonMonster on death ─────────────────────────
     public void OnMonsterDied()
     {
+        // Return capacity when monster dies — spawner slot is now empty
+        DungeonCore.Instance?.ReturnCapacity(capacityCost);
         spawnedMonster = null;
-        Debug.Log("[MonsterSpawner] Monster died. Respawn stubbed — Phase 2.");
+        Debug.Log("[MonsterSpawner] Monster died. Capacity returned. Respawn stubbed — Phase 2.");
         // Phase 2: StartCoroutine(RespawnAfterDelay());
     }
 

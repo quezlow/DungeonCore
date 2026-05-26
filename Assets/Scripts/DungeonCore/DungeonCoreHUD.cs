@@ -8,6 +8,7 @@ public class DungeonCoreHUD : MonoBehaviour
     [Header("Level Panel")]
     [SerializeField] private TextMeshProUGUI levelValueLabel;
     [SerializeField] private TextMeshProUGUI notorietyValueLabel;
+    [SerializeField] private TMP_Text reputationValueLabel;
     [SerializeField] private GameObject levelUpButton;
     [SerializeField] private Image levelUpButtonImage;
 
@@ -29,6 +30,9 @@ public class DungeonCoreHUD : MonoBehaviour
     [Header("Materials Panel")]
     [SerializeField] private TMP_Text goldValueLabel;
 
+    [Header("Capacity")]
+    [SerializeField] private TMP_Text capacityLabel;
+
     private Coroutine pulseCoroutine;
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -46,7 +50,9 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnLevelUp += HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable += HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged += HandleNotorietyChanged;
+        DungeonCore.Instance.OnReputationChanged += HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged += HandleGoldChanged;
+        DungeonCore.Instance.OnCapacityChanged += HandleCapacityChanged;
 
         RefreshAll();
     }
@@ -60,7 +66,9 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable -= HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged -= HandleNotorietyChanged;
+        DungeonCore.Instance.OnReputationChanged -= HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged -= HandleGoldChanged;
+        DungeonCore.Instance.OnCapacityChanged -= HandleCapacityChanged;
     }
 
     // ── Event Handlers ────────────────────────────────────────────
@@ -96,6 +104,18 @@ public class DungeonCoreHUD : MonoBehaviour
     private void HandleNotorietyChanged(float notoriety)
     {
         notorietyValueLabel.text = Mathf.FloorToInt(notoriety).ToString();
+    }
+
+    private void HandleReputationChanged(float reputation)
+    {
+        if (reputationValueLabel != null)
+            reputationValueLabel.text = Mathf.FloorToInt(reputation).ToString();
+    }
+
+    private void HandleCapacityChanged(int used, int max)
+    {
+        if (capacityLabel != null)
+            capacityLabel.text = $"{max - used}/{max}";
     }
 
     private void HandleGoldChanged(int gold)
@@ -166,6 +186,8 @@ public class DungeonCoreHUD : MonoBehaviour
         HandleXPChanged(core.CurrentXP, core.XPToNextLevel);
         HandleLevelUp(core.DungeonLevel);
         HandleNotorietyChanged(core.Notoriety);
+        HandleReputationChanged(core.Reputation);
+        HandleCapacityChanged(core.UsedCapacity, core.MaxCapacity);
         HandleGoldChanged(core.Gold);
 
         if (core.LevelUpAvailable)
