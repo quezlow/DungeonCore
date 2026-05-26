@@ -52,7 +52,14 @@ public class DungeonCore : MonoBehaviour
     public int OwnedTileCount => ownedTileCount;
     public bool LevelUpAvailable { get; private set; }
 
-    // ─────────────────────────────────────────────────────────────
+    // ── Materials ─────────────────────────────────────────────
+
+    // ── Gold ──────────────────────────────────────────────────────
+    private int currentGold = 0;
+    public int Gold => currentGold;
+    public event Action<int> OnGoldChanged;
+
+
 
     private void Awake()
     {
@@ -73,6 +80,7 @@ public class DungeonCore : MonoBehaviour
 
         NotifyManaChanged();
         NotifyXPChanged();
+        OnGoldChanged?.Invoke(currentGold);
     }
 
     private void Update()
@@ -116,6 +124,14 @@ public class DungeonCore : MonoBehaviour
         currentXP += amount;
         NotifyXPChanged();
         CheckLevelUp();
+    }
+
+    /// <summary>Called by DroppedLoot on auto-absorption, and GiftGiver adventurers.</summary>
+    public void AddGold(int amount)
+    {
+        currentGold += amount;
+        OnGoldChanged?.Invoke(currentGold);
+        Debug.Log($"[DungeonCore] Gold +{amount}. Total: {currentGold}");
     }
 
     private void CheckLevelUp()

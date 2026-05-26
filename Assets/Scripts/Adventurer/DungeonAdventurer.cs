@@ -2,46 +2,48 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Prototype adventurer. Spawns at the entrance, pathfinds through owned tiles
-/// to the Core Room, fights monsters it encounters, retreats when low on HP,
-/// and exits (or damages the core) when it reaches its destination.
+/// Prototype adventurer. Pathfinds through owned tiles to the Core Room,
+/// fights monsters, retreats when HP is low, and exits or breaches the core.
+/// TakeDamage() returns true if the hit was lethal — monster uses this for kill XP.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonAdventurer : MonoBehaviour
 {
-    // ── State Machine ─────────────────────────────────────────────
-    public enum AdventurerState
-    {
-        MovingToCore,   // default — heading for the core
-        Combat,         // locked onto a monster
-        Retreating      // HP low — heading back to entrance
-    }
+    public enum AdventurerState { MovingToCore, Combat, Retreating }
 
     // ── Inspector ─────────────────────────────────────────────────
     [Header("Stats")]
-    [SerializeField] private float maxHP           = 50f;
-    [SerializeField] private float moveSpeed       = 2f;
-    [SerializeField] private float attackDamage    = 8f;
-    [SerializeField] private float attackRange     = 1.2f;
-    [SerializeField] private float attackCooldown  = 1.5f;
-    [SerializeField] private float detectionRange  = 2.5f;
+    [SerializeField] private float maxHP = 50f;
+    [SerializeField] private float moveSpeed = 2f;
+    [SerializeField] private float attackDamage = 8f;
+    [SerializeField] private float attackRange = 1.2f;
+    [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField] private float detectionRange = 2.5f;
 
     [Header("Behaviour")]
     [Tooltip("Retreat when HP falls below this fraction (0.3 = 30%).")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
-    [Header("XP reward on death")]
+    [Header("Loot")]
+    [SerializeField] private DroppedLoot lootPrefab;
+    [SerializeField] private int goldDrop = 1;
+
+    [Header("Core XP on death")]
     [SerializeField] private float xpOnDeath = 15f;
+
+    [Header("UI")]
+    [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
     private float currentHP;
     private AdventurerState state = AdventurerState.MovingToCore;
 
-    private List<Vector3> currentPath  = new();
-    private int           pathIndex    = 0;
+    private List<Vector3> currentPath = new();
+    private int pathIndex = 0;
 
     private float lastAttackTime;
     private DungeonMonster combatTarget;
+    private EntityStatusBars statusBars;
 
     // ─────────────────────────────────────────────────────────────
 
@@ -50,6 +52,14 @@ public class DungeonAdventurer : MonoBehaviour
         currentHP = maxHP;
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
+
+        if (statusBarsPrefab != null)
+        {
+            statusBars = Instantiate(statusBarsPrefab);
+            statusBars.Initialise(transform);
+            statusBars.SetHP(currentHP, maxHP);
+        }
+
         RefreshPath();
     }
 
@@ -57,7 +67,6 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
-        // Check retreat threshold every frame regardless of state
         if (state != AdventurerState.Retreating && currentHP / maxHP < retreatThreshold)
             StartRetreat();
 
@@ -67,11 +76,9 @@ public class DungeonAdventurer : MonoBehaviour
                 ScanForMonsters();
                 FollowPath();
                 break;
-
             case AdventurerState.Combat:
                 HandleCombat();
                 break;
-
             case AdventurerState.Retreating:
                 FollowPath();
                 break;
@@ -86,24 +93,18 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (state == AdventurerState.Retreating)
         {
-            if (DungeonEntrance.Instance != null)
-                currentPath = DungeonPathfinder.FindPath(
-                    transform.position,
-                    DungeonEntrance.Instance.SpawnPosition);
-            else
-                currentPath = new List<Vector3>();
+            currentPath = DungeonEntrance.Instance != null
+                ? DungeonPathfinder.FindPath(transform.position, DungeonEntrance.Instance.SpawnPosition)
+                : new List<Vector3>();
         }
         else
         {
-            if (DungeonCore.Instance != null)
-                currentPath = DungeonPathfinder.FindPath(
-                    transform.position,
-                    DungeonCore.Instance.transform.position);
-            else
-                currentPath = new List<Vector3>();
+            currentPath = DungeonCore.Instance != null
+                ? DungeonPathfinder.FindPath(transform.position, DungeonCore.Instance.transform.position)
+                : new List<Vector3>();
 
             if (currentPath.Count == 0)
-                Debug.LogWarning("[Adventurer] No path found to core — is the entrance connected to the core by owned tiles?");
+                Debug.LogWarning("[Adventurer] No path to core — check owned tile chain from entrance to core.");
         }
     }
 
@@ -115,11 +116,11 @@ public class DungeonAdventurer : MonoBehaviour
             return;
         }
 
-        Vector3 target = currentPath[pathIndex];
+        Vector3 waypoint = currentPath[pathIndex];
         transform.position = Vector2.MoveTowards(
-            transform.position, target, moveSpeed * Time.deltaTime);
+            transform.position, waypoint, moveSpeed * Time.deltaTime);
 
-        if (Vector2.Distance(transform.position, target) < 0.08f)
+        if (Vector2.Distance(transform.position, waypoint) < 0.08f)
             pathIndex++;
     }
 
@@ -127,14 +128,14 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
-            Debug.Log("[Adventurer] Reached entrance — exiting dungeon.");
+            if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
         else
         {
-            // Reached the Core Room
-            Debug.Log("[Adventurer] Reached Core Room — triggering core breach!");
+            Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
+            if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
     }
@@ -143,14 +144,13 @@ public class DungeonAdventurer : MonoBehaviour
 
     private void ScanForMonsters()
     {
-        // NOTE: FindObjectsByType is acceptable for the prototype.
-        // Replace with MonsterRegistry in a later session.
-        var all = FindObjectsByType<DungeonMonster>(FindObjectsSortMode.None);
+        var all = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
         DungeonMonster nearest = null;
         float nearestDist = detectionRange;
 
         foreach (var m in all)
         {
+            if (!m.gameObject.activeInHierarchy) continue;
             float d = Vector2.Distance(transform.position, m.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
@@ -159,16 +159,13 @@ public class DungeonAdventurer : MonoBehaviour
         {
             combatTarget = nearest;
             state = AdventurerState.Combat;
-            Debug.Log("[Adventurer] Monster detected — entering combat.");
         }
     }
 
     private void HandleCombat()
     {
-        // Target was destroyed (monster died)
         if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy)
         {
-            Debug.Log("[Adventurer] Monster dead — resuming path to core.");
             combatTarget = null;
             state = AdventurerState.MovingToCore;
             RefreshPath();
@@ -179,27 +176,19 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (dist > attackRange)
         {
-            // Step toward the monster
             transform.position = Vector2.MoveTowards(
-                transform.position,
-                combatTarget.transform.position,
-                moveSpeed * Time.deltaTime);
+                transform.position, combatTarget.transform.position, moveSpeed * Time.deltaTime);
+            return;
         }
-        else
-        {
-            // In range — attack on cooldown
-            if (Time.time - lastAttackTime >= attackCooldown)
-            {
-                combatTarget.TakeDamage(attackDamage);
-                lastAttackTime = Time.time;
-                Debug.Log($"[Adventurer] hit monster for {attackDamage}. Monster HP: {combatTarget.CurrentHP:F0}");
-            }
-        }
+
+        if (Time.time - lastAttackTime < attackCooldown) return;
+        lastAttackTime = Time.time;
+        DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position, FloatingDamageNumber.DamageType.MonsterHit);
+        combatTarget.TakeDamage(attackDamage);
     }
 
     private void StartRetreat()
     {
-        Debug.Log("[Adventurer] HP low — retreating to entrance.");
         state = AdventurerState.Retreating;
         combatTarget = null;
         RefreshPath();
@@ -207,22 +196,40 @@ public class DungeonAdventurer : MonoBehaviour
 
     // ── Health ────────────────────────────────────────────────────
 
-    public void TakeDamage(float amount)
+    /// <summary>
+    /// Returns true if this hit was lethal so the attacker can credit the kill.
+    /// Core XP is awarded here on death, regardless of kill source.
+    /// </summary>
+    public bool TakeDamage(float amount)
     {
         currentHP -= amount;
+        statusBars?.SetHP(currentHP, maxHP);
+
         if (currentHP <= 0f)
+        {
             Die();
+            return true;
+        }
+        return false;
     }
 
     private void Die()
     {
-        Debug.Log("[Adventurer] died — awarding XP to core.");
+        // Core XP always comes from adventurer deaths
         DungeonCore.Instance?.AddXP(xpOnDeath);
+        if (statusBars != null) Destroy(statusBars.gameObject);
+
+        if (lootPrefab != null)
+        {
+            var loot = Instantiate(lootPrefab, transform.position, Quaternion.identity);
+            loot.Initialise(goldDrop);
+        }
+
         Destroy(gameObject);
     }
 
     // ── Public Reads ──────────────────────────────────────────────
-    public float CurrentHP  => currentHP;
-    public float MaxHP      => maxHP;
+    public float CurrentHP => currentHP;
+    public float MaxHP => maxHP;
     public AdventurerState State => state;
 }

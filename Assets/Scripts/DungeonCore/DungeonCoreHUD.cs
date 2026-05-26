@@ -26,6 +26,9 @@ public class DungeonCoreHUD : MonoBehaviour
     [SerializeField] private float pulseMinAlpha = 0.15f;
     [SerializeField] private float pulseMaxAlpha = 0.40f;
 
+    [Header("Materials Panel")]
+    [SerializeField] private TMP_Text goldValueLabel;
+
     private Coroutine pulseCoroutine;
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -43,6 +46,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnLevelUp += HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable += HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged += HandleNotorietyChanged;
+        DungeonCore.Instance.OnGoldChanged += HandleGoldChanged;
 
         RefreshAll();
     }
@@ -56,6 +60,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable -= HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged -= HandleNotorietyChanged;
+        DungeonCore.Instance.OnGoldChanged -= HandleGoldChanged;
     }
 
     // ── Event Handlers ────────────────────────────────────────────
@@ -91,6 +96,12 @@ public class DungeonCoreHUD : MonoBehaviour
     private void HandleNotorietyChanged(float notoriety)
     {
         notorietyValueLabel.text = Mathf.FloorToInt(notoriety).ToString();
+    }
+
+    private void HandleGoldChanged(int gold)
+    {
+        if (goldValueLabel != null)
+            goldValueLabel.text = "Gold: " + gold.ToString();
     }
 
     // ── Level Up Button ───────────────────────────────────────────
@@ -155,6 +166,7 @@ public class DungeonCoreHUD : MonoBehaviour
         HandleXPChanged(core.CurrentXP, core.XPToNextLevel);
         HandleLevelUp(core.DungeonLevel);
         HandleNotorietyChanged(core.Notoriety);
+        HandleGoldChanged(core.Gold);
 
         if (core.LevelUpAvailable)
             HandleLevelUpAvailable();
