@@ -3,8 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Prototype adventurer. Pathfinds through owned tiles to the Core Room,
-/// fights monsters, retreats when HP is low, and exits or breaches the core.
-/// TakeDamage() returns true if the hit was lethal — monster uses this for kill XP.
+/// fights monsters, collects CarriableLoot while moving, retreats when
+/// HP is low. If they escape, carried loot is lost. If they die,
+/// carried loot drops as DroppedLoot and auto-absorbs into the core.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonAdventurer : MonoBehaviour
@@ -21,15 +22,17 @@ public class DungeonAdventurer : MonoBehaviour
     [SerializeField] private float detectionRange = 2.5f;
 
     [Header("Behaviour")]
-    [Tooltip("Retreat when HP falls below this fraction (0.3 = 30%).")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
-    [Header("Loot")]
-    [SerializeField] private DroppedLoot lootPrefab;
-    [SerializeField] private int goldDrop = 1;
-
-    [Header("Core XP on death")]
+    [Header("XP & Notoriety")]
     [SerializeField] private float xpOnDeath = 15f;
+
+    [Header("Loot Pickup")]
+    [SerializeField] private float pickupRadius = 0.6f;
+
+    [Header("Dropped Loot Prefab")]
+    [Tooltip("Used to spawn absorbed loot when this adventurer dies carrying items.")]
+    [SerializeField] private DroppedLoot droppedLootPrefab;
 
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
@@ -44,6 +47,10 @@ public class DungeonAdventurer : MonoBehaviour
     private float lastAttackTime;
     private DungeonMonster combatTarget;
     private EntityStatusBars statusBars;
+    private LootTable lootTable;
+
+    // Carried loot — monster drops picked up while exploring
+    private readonly List<CarriableLoot> carriedLoot = new();
 
     // ─────────────────────────────────────────────────────────────
 
@@ -52,6 +59,8 @@ public class DungeonAdventurer : MonoBehaviour
         currentHP = maxHP;
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
+
+        lootTable = GetComponent<LootTable>();
 
         if (statusBarsPrefab != null)
         {
@@ -74,12 +83,14 @@ public class DungeonAdventurer : MonoBehaviour
         {
             case AdventurerState.MovingToCore:
                 ScanForMonsters();
+                ScanForLoot();
                 FollowPath();
                 break;
             case AdventurerState.Combat:
                 HandleCombat();
                 break;
             case AdventurerState.Retreating:
+                ScanForLoot(); // still pick up loot while retreating
                 FollowPath();
                 break;
         }
@@ -104,7 +115,7 @@ public class DungeonAdventurer : MonoBehaviour
                 : new List<Vector3>();
 
             if (currentPath.Count == 0)
-                Debug.LogWarning("[Adventurer] No path to core — check owned tile chain from entrance to core.");
+                Debug.LogWarning("[Adventurer] No path to core.");
         }
     }
 
@@ -128,7 +139,12 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
-            // Adventurer escaped — reward Reputation
+            Debug.Log($"[Adventurer] Escaped carrying {carriedLoot.Count} loot item(s) — loot is lost.");
+            // Carried loot leaves with the adventurer — do NOT absorb
+            foreach (var loot in carriedLoot)
+                if (loot != null) Destroy(loot.gameObject);
+
+            carriedLoot.Clear();
             DungeonCore.Instance?.AddReputation(2f);
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
@@ -142,6 +158,26 @@ public class DungeonAdventurer : MonoBehaviour
         }
     }
 
+    // ── Loot Pickup ───────────────────────────────────────────────
+
+    private void ScanForLoot()
+    {
+        var allLoot = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude);
+        foreach (var loot in allLoot)
+        {
+            if (carriedLoot.Contains(loot)) continue;
+            if (Vector2.Distance(transform.position, loot.transform.position) <= pickupRadius)
+                PickUpLoot(loot);
+        }
+    }
+
+    private void PickUpLoot(CarriableLoot loot)
+    {
+        carriedLoot.Add(loot);
+        loot.PickUp(); // removes it from world space
+        Debug.Log($"[Adventurer] Picked up loot worth {loot.GoldValue} gold. Carrying {carriedLoot.Count} item(s).");
+    }
+
     // ── Combat ────────────────────────────────────────────────────
 
     private void ScanForMonsters()
@@ -152,7 +188,6 @@ public class DungeonAdventurer : MonoBehaviour
 
         foreach (var m in all)
         {
-            if (!m.gameObject.activeInHierarchy) continue;
             float d = Vector2.Distance(transform.position, m.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
@@ -185,7 +220,9 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (Time.time - lastAttackTime < attackCooldown) return;
         lastAttackTime = Time.time;
-        DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position, FloatingDamageNumber.DamageType.MonsterHit);
+
+        DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
+            FloatingDamageNumber.DamageType.MonsterHit);
         combatTarget.TakeDamage(attackDamage);
     }
 
@@ -198,10 +235,6 @@ public class DungeonAdventurer : MonoBehaviour
 
     // ── Health ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Returns true if this hit was lethal so the attacker can credit the kill.
-    /// Core XP is awarded here on death, regardless of kill source.
-    /// </summary>
     public bool TakeDamage(float amount)
     {
         currentHP -= amount;
@@ -217,23 +250,42 @@ public class DungeonAdventurer : MonoBehaviour
 
     private void Die()
     {
-        // Core XP always comes from adventurer deaths
         DungeonCore.Instance?.AddXP(xpOnDeath);
         DungeonCore.Instance?.AddNotoriety(5f);
 
-        if (statusBars != null) Destroy(statusBars.gameObject);
+        // Roll own loot table (adventurer's carried items — absorbed by core)
+        lootTable?.Roll(transform.position);
 
-        if (lootPrefab != null)
+        // Drop all carried monster loot — converts to DroppedLoot and absorbs
+        DropCarriedLoot();
+
+        if (statusBars != null) Destroy(statusBars.gameObject);
+        Destroy(gameObject);
+    }
+
+    private void DropCarriedLoot()
+    {
+        if (carriedLoot.Count == 0) return;
+
+        // Spread drops slightly so they don't stack perfectly
+        for (int i = 0; i < carriedLoot.Count; i++)
         {
-            var loot = Instantiate(lootPrefab, transform.position, Quaternion.identity);
-            loot.Initialise(goldDrop);
+            var loot = carriedLoot[i];
+            if (loot == null) continue;
+
+            Vector2 scatter = Random.insideUnitCircle * 0.3f;
+            Vector3 dropPos = transform.position + new Vector3(scatter.x, scatter.y, 0f);
+
+            loot.DropAndAbsorb(dropPos, droppedLootPrefab);
         }
 
-        Destroy(gameObject);
+        carriedLoot.Clear();
+        Debug.Log("[Adventurer] Died — dropped all carried loot for core absorption.");
     }
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
     public AdventurerState State => state;
+    public int CarriedLootCount => carriedLoot.Count;
 }

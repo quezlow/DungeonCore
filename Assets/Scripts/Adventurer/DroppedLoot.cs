@@ -22,6 +22,7 @@ public class DroppedLoot : MonoBehaviour
 
     private void Start()
     {
+        GetComponent<BounceEffect>()?.StartBounce();
         StartCoroutine(AbsorbAfterDelay());
     }
 

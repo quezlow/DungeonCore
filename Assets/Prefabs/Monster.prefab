@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3487674755457769886}
   - component: {fileID: 7613042765915195202}
   - component: {fileID: 6878477358403808343}
+  - component: {fileID: 7006659558031369426}
   m_Layer: 0
   m_Name: Monster
   m_TagString: Untagged
@@ -141,3 +142,19 @@ MonoBehaviour:
   xpPerKill: 20
   xpToVeteran: 100
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
+--- !u!114 &7006659558031369426
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4748993249541918515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0e7cb655e5388444ac81eba330490bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LootTable
+  lootOwner: 0
+  entries: []
+  carriableLootPrefab: {fileID: 2510184261249386949, guid: 8dd25799e128f934e83875d915b29aa8, type: 3}
+  droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}

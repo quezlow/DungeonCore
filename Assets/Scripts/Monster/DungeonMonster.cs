@@ -50,6 +50,7 @@ public class DungeonMonster : MonoBehaviour
     private MonsterSpawner spawner;
     private WaypointMover patrolMover;
     private EntityStatusBars statusBars;
+    private LootTable lootTable;
 
     // ─────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ public class DungeonMonster : MonoBehaviour
         currentHP = maxHP;
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
+        lootTable = GetComponent<LootTable>();
     }
 
     private void Start()
@@ -192,6 +194,10 @@ public class DungeonMonster : MonoBehaviour
     {
         // Do NOT award XP to DungeonCore — core XP comes from adventurers dying.
         if (statusBars != null) Destroy(statusBars.gameObject);
+
+        // Roll loot table and spawn drop at death position
+        lootTable?.Roll(transform.position);
+
         spawner?.OnMonsterDied();
         Destroy(gameObject);
     }

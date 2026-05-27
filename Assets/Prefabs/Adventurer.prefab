@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8367687189470589028}
   - component: {fileID: 2173209403938016358}
   - component: {fileID: 8584647482092882706}
+  - component: {fileID: -9217131695072375135}
   m_Layer: 0
   m_Name: Adventurer
   m_TagString: Untagged
@@ -140,9 +141,9 @@ MonoBehaviour:
   attackCooldown: 1.5
   detectionRange: 2.5
   retreatThreshold: 0.3
-  lootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
-  goldDrop: 1
   xpOnDeath: 15
+  pickupRadius: 0.6
+  droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
 --- !u!95 &8584647482092882706
 Animator:
@@ -166,3 +167,27 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-9217131695072375135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558727629903577335}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0e7cb655e5388444ac81eba330490bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LootTable
+  lootOwner: 1
+  entries:
+  - label: 
+    lootType: 0
+    goldValue: 3
+    weight: 2
+  - label: 
+    lootType: 0
+    goldValue: 8
+    weight: 1
+  carriableLootPrefab: {fileID: 0}
+  droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}

@@ -52,6 +52,30 @@ PrefabInstance:
       propertyPath: m_Name
       value: Monster_Skeleton Variant
       objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: droppedLootPrefab
+      value: 
+      objectReference: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[0].weight
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[1].weight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[0].goldValue
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[1].goldValue
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
       propertyPath: m_Sprite
       value: 
