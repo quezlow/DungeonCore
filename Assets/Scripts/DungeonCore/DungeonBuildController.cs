@@ -13,6 +13,7 @@ public enum BuildMode
     Claim,          // Default — click claimable tiles to expand influence
     PlaceEntrance,  // Click an owned tile to place the dungeon entrance
     PlaceSpawner,   // Click an owned tile to place a monster spawner
+    PlaceChest,     // Click an owned tile to place a treasure chest
     // PlaceTrap, PlaceFurniture, etc. added in later sessions
 }
 
@@ -27,6 +28,7 @@ public class DungeonBuildController : MonoBehaviour
 
     [Header("Prefabs")]
     [SerializeField] private DungeonEntrance entrancePrefab;
+    [SerializeField] private DungeonChest chestPrefab;
     [SerializeField] private MonsterSpawner spawnerShellPrefab; // Shell only — no MonsterDefinition assigned
 
     // ── State ─────────────────────────────────────────────────────
@@ -68,6 +70,9 @@ public class DungeonBuildController : MonoBehaviour
             case BuildMode.PlaceSpawner:
                 HandleSpawnerPlacement();
                 break;
+            case BuildMode.PlaceChest:
+                HandleChestPlacement();
+                break;
         }
     }
 
@@ -85,6 +90,7 @@ public class DungeonBuildController : MonoBehaviour
     public void SetModeToClaim() => SetMode(BuildMode.Claim);
     public void SetModeToPlaceEntrance() => SetMode(BuildMode.PlaceEntrance);
     public void SetModeToPlaceSpawner() => SetMode(BuildMode.PlaceSpawner);
+    public void SetModeToPlaceChest() => SetMode(BuildMode.PlaceChest);
 
     // ── Claim Mode ────────────────────────────────────────────────
 
@@ -147,6 +153,30 @@ public class DungeonBuildController : MonoBehaviour
         }
 
         PlaceSpawner(cell);
+    }
+
+    private void HandleChestPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (TileInfluenceManager.Instance == null) return;
+
+        if (!TileInfluenceManager.Instance.IsTileOwned(cell))
+        {
+            Debug.Log("[BuildController] Chest must be placed on an owned tile.");
+            return;
+        }
+
+        if (chestPrefab == null)
+        {
+            Debug.LogError("[BuildController] chestPrefab is not assigned.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        Instantiate(chestPrefab, worldPos, Quaternion.identity);
+
+        Debug.Log($"[BuildController] Chest placed at cell {cell}.");
+        SetMode(BuildMode.Claim);
     }
 
     private void PlaceSpawner(Vector3Int cell)

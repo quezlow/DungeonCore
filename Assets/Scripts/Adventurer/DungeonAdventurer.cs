@@ -2,15 +2,19 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Prototype adventurer. Pathfinds through owned tiles to the Core Room,
-/// fights monsters, collects CarriableLoot while moving, retreats when
-/// HP is low. If they escape, carried loot is lost. If they die,
-/// carried loot drops as DroppedLoot and auto-absorbs into the core.
+/// Prototype adventurer. Pathfinds to Core Room, detours toward nearby chests,
+/// fights monsters, collects CarriableLoot, retreats when HP is low.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonAdventurer : MonoBehaviour
 {
-    public enum AdventurerState { MovingToCore, Combat, Retreating }
+    public enum AdventurerState
+    {
+        MovingToCore,
+        MovingToChest,  // detouring toward a spotted chest
+        Combat,
+        Retreating
+    }
 
     // ── Inspector ─────────────────────────────────────────────────
     [Header("Stats")]
@@ -22,16 +26,20 @@ public class DungeonAdventurer : MonoBehaviour
     [SerializeField] private float detectionRange = 2.5f;
 
     [Header("Behaviour")]
+    [Tooltip("Retreat when HP falls below this fraction (0.3 = 30%).")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
-    [Header("XP & Notoriety")]
-    [SerializeField] private float xpOnDeath = 15f;
+    [Header("Chest Detection")]
+    [Tooltip("How far the adventurer can 'see' a chest while walking past.")]
+    [SerializeField] private float chestDetectionRange = 3f;
 
     [Header("Loot Pickup")]
     [SerializeField] private float pickupRadius = 0.6f;
 
+    [Header("XP & Notoriety")]
+    [SerializeField] private float xpOnDeath = 15f;
+
     [Header("Dropped Loot Prefab")]
-    [Tooltip("Used to spawn absorbed loot when this adventurer dies carrying items.")]
     [SerializeField] private DroppedLoot droppedLootPrefab;
 
     [Header("UI")]
@@ -46,11 +54,12 @@ public class DungeonAdventurer : MonoBehaviour
 
     private float lastAttackTime;
     private DungeonMonster combatTarget;
+    private DungeonChest chestTarget;
     private EntityStatusBars statusBars;
     private LootTable lootTable;
 
-    // Carried loot — monster drops picked up while exploring
     private readonly List<CarriableLoot> carriedLoot = new();
+    private readonly HashSet<DungeonChest> visitedChests = new();
 
     // ─────────────────────────────────────────────────────────────
 
@@ -83,14 +92,30 @@ public class DungeonAdventurer : MonoBehaviour
         {
             case AdventurerState.MovingToCore:
                 ScanForMonsters();
-                ScanForLoot();
-                FollowPath();
+                if (state != AdventurerState.Combat)
+                {
+                    ScanForChests();
+                    ScanForLoot();
+                    FollowPath();
+                }
                 break;
+
+            case AdventurerState.MovingToChest:
+                ScanForMonsters();
+                if (state != AdventurerState.Combat)
+                {
+                    ScanForLoot();
+                    MoveToChest();
+                }
+                break;
+
             case AdventurerState.Combat:
                 HandleCombat();
                 break;
+
             case AdventurerState.Retreating:
-                ScanForLoot(); // still pick up loot while retreating
+                ScanForLoot();
+                ScanForChests();
                 FollowPath();
                 break;
         }
@@ -139,12 +164,11 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
-            Debug.Log($"[Adventurer] Escaped carrying {carriedLoot.Count} loot item(s) — loot is lost.");
-            // Carried loot leaves with the adventurer — do NOT absorb
+            Debug.Log($"[Adventurer] Escaped carrying {carriedLoot.Count} loot item(s) — loot lost.");
             foreach (var loot in carriedLoot)
                 if (loot != null) Destroy(loot.gameObject);
-
             carriedLoot.Clear();
+
             DungeonCore.Instance?.AddReputation(2f);
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
@@ -156,6 +180,98 @@ public class DungeonAdventurer : MonoBehaviour
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
+    }
+
+    // ── Chest Detection & Detour ──────────────────────────────────
+
+    private void ScanForChests()
+    {
+        var allChests = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
+        DungeonChest nearest = null;
+        float nearestDist = chestDetectionRange;
+
+        foreach (var chest in allChests)
+        {
+            if (chest.IsOpened) continue;
+            if (visitedChests.Contains(chest)) continue;
+
+            float d = Vector2.Distance(transform.position, chest.transform.position);
+            if (d < nearestDist) { nearestDist = d; nearest = chest; }
+        }
+
+        if (nearest != null)
+        {
+            chestTarget = nearest;
+            state = AdventurerState.MovingToChest;
+
+            // Build a path to the chest through owned tiles
+            currentPath = DungeonPathfinder.FindPath(
+                transform.position, chestTarget.transform.position);
+            pathIndex = 0;
+
+            if (currentPath.Count == 0)
+            {
+                // No path to chest — mark as visited and ignore
+                Debug.LogWarning("[Adventurer] No path to chest — skipping.");
+                visitedChests.Add(chestTarget);
+                chestTarget = null;
+                state = AdventurerState.MovingToCore;
+            }
+            else
+            {
+                Debug.Log("[Adventurer] Spotted chest — pathing toward it.");
+            }
+        }
+    }
+
+    private void MoveToChest()
+    {
+        // Chest was opened by someone else or destroyed
+        if (chestTarget == null || chestTarget.IsOpened)
+        {
+            visitedChests.Add(chestTarget);
+            chestTarget = null;
+            ResumeAfterChest();
+            return;
+        }
+
+        // Follow the dungeon path toward the chest
+        if (pathIndex >= currentPath.Count)
+        {
+            // Reached end of path — check if we're close enough to interact
+            float dist = Vector2.Distance(transform.position, chestTarget.transform.position);
+            if (dist <= chestTarget.InteractRadius)
+            {
+                chestTarget.Interact();
+                visitedChests.Add(chestTarget);
+                chestTarget = null;
+                ResumeAfterChest();
+            }
+            else
+            {
+                // Path ran out but not close enough — chest may be unreachable
+                Debug.LogWarning("[Adventurer] Could not reach chest — resuming.");
+                visitedChests.Add(chestTarget);
+                chestTarget = null;
+                ResumeAfterChest();
+            }
+            return;
+        }
+
+        Vector3 waypoint = currentPath[pathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, waypoint, moveSpeed * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, waypoint) < 0.08f)
+            pathIndex++;
+    }
+
+    private void ResumeAfterChest()
+    {
+        // Return to retreating or core pathing, whichever was active before
+        state = AdventurerState.MovingToCore;
+        RefreshPath();
+        Debug.Log("[Adventurer] Chest done — resuming path.");
     }
 
     // ── Loot Pickup ───────────────────────────────────────────────
@@ -174,8 +290,8 @@ public class DungeonAdventurer : MonoBehaviour
     private void PickUpLoot(CarriableLoot loot)
     {
         carriedLoot.Add(loot);
-        loot.PickUp(); // removes it from world space
-        Debug.Log($"[Adventurer] Picked up loot worth {loot.GoldValue} gold. Carrying {carriedLoot.Count} item(s).");
+        loot.PickUp();
+        Debug.Log($"[Adventurer] Picked up loot worth {loot.GoldValue} gold.");
     }
 
     // ── Combat ────────────────────────────────────────────────────
@@ -195,6 +311,7 @@ public class DungeonAdventurer : MonoBehaviour
         if (nearest != null)
         {
             combatTarget = nearest;
+            chestTarget = null; // abandon chest detour if monster spotted
             state = AdventurerState.Combat;
         }
     }
@@ -230,6 +347,7 @@ public class DungeonAdventurer : MonoBehaviour
     {
         state = AdventurerState.Retreating;
         combatTarget = null;
+        chestTarget = null;
         RefreshPath();
     }
 
@@ -252,13 +370,8 @@ public class DungeonAdventurer : MonoBehaviour
     {
         DungeonCore.Instance?.AddXP(xpOnDeath);
         DungeonCore.Instance?.AddNotoriety(5f);
-
-        // Roll own loot table (adventurer's carried items — absorbed by core)
         lootTable?.Roll(transform.position);
-
-        // Drop all carried monster loot — converts to DroppedLoot and absorbs
         DropCarriedLoot();
-
         if (statusBars != null) Destroy(statusBars.gameObject);
         Destroy(gameObject);
     }
@@ -267,20 +380,16 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (carriedLoot.Count == 0) return;
 
-        // Spread drops slightly so they don't stack perfectly
         for (int i = 0; i < carriedLoot.Count; i++)
         {
             var loot = carriedLoot[i];
             if (loot == null) continue;
-
             Vector2 scatter = Random.insideUnitCircle * 0.3f;
             Vector3 dropPos = transform.position + new Vector3(scatter.x, scatter.y, 0f);
-
             loot.DropAndAbsorb(dropPos, droppedLootPrefab);
         }
 
         carriedLoot.Clear();
-        Debug.Log("[Adventurer] Died — dropped all carried loot for core absorption.");
     }
 
     // ── Public Reads ──────────────────────────────────────────────
