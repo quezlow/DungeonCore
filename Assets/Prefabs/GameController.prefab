@@ -1,5 +1,55 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &344716488841368173
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1672435368493027665}
+  - component: {fileID: 3198698492091271852}
+  m_Layer: 0
+  m_Name: TimeScaleController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1672435368493027665
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344716488841368173}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690650735862136}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3198698492091271852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344716488841368173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a741c742958d45c43a14435c1ad88209, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimeScaleController
+  pauseButton: {fileID: 0}
+  normalButton: {fileID: 0}
+  doubleButton: {fileID: 0}
+  quintupleButton: {fileID: 0}
+  activeColour: {r: 1, g: 0.85, b: 0.2, a: 1}
+  inactiveColour: {r: 0.4, g: 0.4, b: 0.4, a: 1}
 --- !u!1 &2046709260214391523
 GameObject:
   m_ObjectHideFlags: 0
@@ -41,6 +91,7 @@ Transform:
   - {fileID: 3104286510838390525}
   - {fileID: 6485789854944131253}
   - {fileID: 150602188482917472}
+  - {fileID: 1672435368493027665}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2890714035007077683
@@ -156,7 +207,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerSpawner
   adventurerPrefab: {fileID: 0}
-  spawnInterval: 30
+  intervalLow: 30
+  intervalMedium: 20
+  intervalHigh: 10
+  notorietyMediumThreshold: 25
+  notorietyHighThreshold: 75
 --- !u!1 &6179279879697576869
 GameObject:
   m_ObjectHideFlags: 0
@@ -579,7 +634,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DungeonBuildController
   claimManaCost: 5
   entrancePrefab: {fileID: 7987491680190548495, guid: 227989ce1b1ac76489a6becddbaa5d23, type: 3}
-  spawnerPrefab: {fileID: 0}
+  chestPrefab: {fileID: 0}
+  spawnerShellPrefab: {fileID: 0}
 --- !u!1 &7775609364282596168
 GameObject:
   m_ObjectHideFlags: 0
@@ -701,7 +757,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DamageNumberSpawner
   prefab: {fileID: 4672789360250072260, guid: c220473d21aab9440bb5c1412ffa6bad, type: 3}
-  scatter: 0.25
+  spawnYOffset: 0.5
 --- !u!1 &8930791801200083984
 GameObject:
   m_ObjectHideFlags: 0
