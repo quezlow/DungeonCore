@@ -2,19 +2,13 @@ using UnityEngine;
 
 /// <summary>
 /// Placed by the player via DungeonBuildController (PlaceSpawner mode).
-/// Reserves capacity on placement and returns it on monster death.
-/// Spawns one monster with a two-point WaypointMover patrol.
+/// The monster type is selected before placement via MonsterSelectionUI.
+/// Spawns the chosen monster type with a two-point WaypointMover patrol.
 /// Respawn stubbed for Phase 2.
 /// </summary>
 public class MonsterSpawner : MonoBehaviour
 {
     // ── Inspector ─────────────────────────────────────────────────
-    [Header("Monster")]
-    [SerializeField] private DungeonMonster monsterPrefab;
-
-    [Header("Capacity")]
-    [SerializeField] private int capacityCost = 5;
-
     [Header("Patrol")]
     [SerializeField] private float patrolRadius = 2f;
     [SerializeField] private float patrolSpeed = 1.2f;
@@ -26,36 +20,52 @@ public class MonsterSpawner : MonoBehaviour
 #pragma warning restore 0414
 
     // ── State ─────────────────────────────────────────────────────
+    private MonsterDefinition definition;
     private DungeonMonster spawnedMonster;
 
     // ── Public ────────────────────────────────────────────────────
-    public int CapacityCost => capacityCost;
+    public int CapacityCost => definition != null ? definition.capacityCost : 0;
+    public MonsterDefinition Definition => definition;
 
     // ─────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Called by DungeonBuildController immediately after Instantiate().
+    /// Must be called before Start() — use in the same frame as instantiation.
+    /// </summary>
+    public void Initialise(MonsterDefinition def)
+    {
+        definition = def;
+    }
+
     private void Start()
     {
+        if (definition == null)
+        {
+            Debug.LogError("MonsterSpawner: No MonsterDefinition set. Call Initialise() before Start().");
+            return;
+        }
+
         SpawnMonster();
     }
 
     private void OnDestroy()
     {
-        // Return capacity if the spawner itself is removed (e.g. Destroyer consequences)
         if (spawnedMonster != null)
-            DungeonCore.Instance?.ReturnCapacity(capacityCost);
+            DungeonCore.Instance?.ReturnCapacity(CapacityCost);
     }
 
     // ── Spawning ──────────────────────────────────────────────────
 
     private void SpawnMonster()
     {
-        if (monsterPrefab == null)
+        if (definition.prefab == null)
         {
-            Debug.LogError("MonsterSpawner: monsterPrefab is not assigned.");
+            Debug.LogError($"MonsterSpawner: MonsterDefinition '{definition.monsterName}' has no prefab assigned.");
             return;
         }
 
-        spawnedMonster = Instantiate(monsterPrefab, transform.position, Quaternion.identity);
+        spawnedMonster = Instantiate(definition.prefab, transform.position, Quaternion.identity);
         spawnedMonster.Initialise(this);
         SetupPatrol(spawnedMonster);
     }
@@ -101,14 +111,13 @@ public class MonsterSpawner : MonoBehaviour
         return transform.position + Vector3.right;
     }
 
-    // ── Called by DungeonMonster on death ─────────────────────────
+    // ── Called by DungeonMonster ──────────────────────────────────
+
     public void OnMonsterDied()
     {
-        // Return capacity when monster dies — spawner slot is now empty
-        DungeonCore.Instance?.ReturnCapacity(capacityCost);
+        DungeonCore.Instance?.ReturnCapacity(CapacityCost);
         spawnedMonster = null;
-        Debug.Log("[MonsterSpawner] Monster died. Capacity returned. Respawn stubbed — Phase 2.");
-        // Phase 2: StartCoroutine(RespawnAfterDelay());
+        Debug.Log($"[MonsterSpawner] {definition?.monsterName} died. Capacity returned. Respawn stubbed — Phase 2.");
     }
 
     public bool HasLiveMonster => spawnedMonster != null;

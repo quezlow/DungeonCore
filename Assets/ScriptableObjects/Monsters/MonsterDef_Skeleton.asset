@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Skeleton
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Skeleton
+  icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
+  capacityCost: 5
+  description: "A reanimated warrior stripped down to bone and instinct. Cheap to
+    summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
+    Don't expect them to win many fights \u2014 expect them to buy time."

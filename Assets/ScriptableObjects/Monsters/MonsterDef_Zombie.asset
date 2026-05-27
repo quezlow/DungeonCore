@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Zombie
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Zombie
+  icon: {fileID: 1880763209359424529, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
+  capacityCost: 7
+  description: Slow, relentless, and difficult to put down. Zombies absorb punishment
+    that would drop a skeleton in seconds, making them ideal for chokepoints and
+    doorways. Just don't ask them to catch anything that runs.

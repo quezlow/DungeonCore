@@ -27,7 +27,7 @@ public class DungeonBuildController : MonoBehaviour
 
     [Header("Prefabs")]
     [SerializeField] private DungeonEntrance entrancePrefab;
-    [SerializeField] private MonsterSpawner spawnerPrefab;
+    [SerializeField] private MonsterSpawner spawnerShellPrefab; // Shell only — no MonsterDefinition assigned
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -73,7 +73,6 @@ public class DungeonBuildController : MonoBehaviour
 
     // ── Mode Switching ────────────────────────────────────────────
 
-    /// <summary>Switch the active build mode.</summary>
     public void SetMode(BuildMode mode)
     {
         if (CurrentMode == mode) return;
@@ -123,7 +122,6 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Remove existing entrance first
         if (DungeonEntrance.Instance != null)
             Destroy(DungeonEntrance.Instance.gameObject);
 
@@ -148,40 +146,48 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        if (spawnerPrefab == null)
+        PlaceSpawner(cell);
+    }
+
+    private void PlaceSpawner(Vector3Int cell)
+    {
+        if (spawnerShellPrefab == null)
         {
-            Debug.LogError("[BuildController] spawnerPrefab is not assigned.");
+            Debug.LogError("[BuildController] spawnerShellPrefab is not assigned.");
             return;
         }
 
-        int cost = spawnerPrefab.CapacityCost;
-        if (!DungeonCore.Instance.TrySpendCapacity(cost))
+        var def = MonsterSelectionUI.Instance?.Selected;
+        if (def == null)
         {
-            Debug.Log($"[BuildController] Not enough capacity (costs {cost}, free: {DungeonCore.Instance.FreeCapacity}).");
+            Debug.LogError("[BuildController] No monster type selected in MonsterSelectionUI.");
+            return;
+        }
+
+        if (!DungeonCore.Instance.TrySpendCapacity(def.capacityCost))
+        {
+            Debug.Log($"[BuildController] Not enough capacity for {def.monsterName} " +
+                      $"(costs {def.capacityCost}, free: {DungeonCore.Instance.FreeCapacity}).");
             return;
         }
 
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
-        Instantiate(spawnerPrefab, worldPos, Quaternion.identity);
+        var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
+        spawner.Initialise(def);
 
-        Debug.Log($"[BuildController] Spawner placed. Capacity used: {DungeonCore.Instance.MaxCapacity} - {DungeonCore.Instance.UsedCapacity}/{DungeonCore.Instance.MaxCapacity}");
+        Debug.Log($"[BuildController] {def.monsterName} spawner placed. " +
+                  $"Capacity: {DungeonCore.Instance.MaxCapacity - DungeonCore.Instance.UsedCapacity}/{DungeonCore.Instance.MaxCapacity}");
         SetMode(BuildMode.Claim);
     }
 
     // ── Shared Input Helper ───────────────────────────────────────
 
-    /// <summary>
-    /// Returns true if a valid left-click happened this frame outside UI,
-    /// and outputs the tilemap cell at the mouse position.
-    /// </summary>
     private bool LeftClickThisFrame(out Vector3Int cell)
     {
         cell = default;
 
         var mouse = Mouse.current;
         if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return false;
-
-        // Don't consume clicks that land on UI elements
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
 
         Vector2 screenPos = mouse.position.ReadValue();
