@@ -12,7 +12,7 @@ public class TileInfluenceManager : MonoBehaviour
     public static TileInfluenceManager Instance { get; private set; }
 
     [Header("Tilemaps")]
-    [SerializeField] private Tilemap claimableTilemap;   // adjacent highlight
+    [SerializeField] private Tilemap claimableTilemap;
 
     [Header("Tile Assets")]
     [SerializeField] private TileBase claimableTile;
@@ -30,7 +30,7 @@ public class TileInfluenceManager : MonoBehaviour
     };
 
     // ── Events ────────────────────────────────────────────────────
-    public event Action<int> OnTileCountChanged; // (newTotalOwned)
+    public event Action<int> OnTileCountChanged;
 
     // ── Internal ──────────────────────────────────────────────────
     private Camera mainCamera;
@@ -104,11 +104,55 @@ public class TileInfluenceManager : MonoBehaviour
         ownedTiles.Remove(pos);
         DungeonTerrain.Instance?.RefogTile(pos);
 
-        // Clean up claimable tiles that are no longer adjacent to any owned tile
         RebuildClaimableSet();
 
         DungeonCore.Instance?.RemoveOwnedTiles(1);
         OnTileCountChanged?.Invoke(ownedTiles.Count);
+    }
+
+    /// <summary>
+    /// Called on first core breach. Removes owned tiles within cellRadius of the
+    /// core cell, simulating influence loss at the breach point.
+    /// The core tile itself is always preserved.
+    /// Rebuilds the claimable set once after all removals for efficiency.
+    /// </summary>
+    public void ShrinkInfluenceAroundCore(float radius)
+    {
+        if (DungeonCore.Instance == null) return;
+
+        Vector3Int coreCell = WorldToCell(DungeonCore.Instance.transform.position);
+        int cellRadius = Mathf.CeilToInt(radius);
+
+        var toRemove = new List<Vector3Int>();
+
+        foreach (var cell in ownedTiles)
+        {
+            // Never remove the core tile itself
+            if (cell == coreCell) continue;
+
+            int dx = Mathf.Abs(cell.x - coreCell.x);
+            int dy = Mathf.Abs(cell.y - coreCell.y);
+
+            if (dx <= cellRadius && dy <= cellRadius)
+                toRemove.Add(cell);
+        }
+
+        if (toRemove.Count == 0) return;
+
+        // Remove tiles and refog them — defer claimable rebuild to the end
+        foreach (var cell in toRemove)
+        {
+            ownedTiles.Remove(cell);
+            DungeonTerrain.Instance?.RefogTile(cell);
+        }
+
+        // Single rebuild pass after all removals
+        RebuildClaimableSet();
+
+        DungeonCore.Instance.RemoveOwnedTiles(toRemove.Count);
+        OnTileCountChanged?.Invoke(ownedTiles.Count);
+
+        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} tiles around core.");
     }
 
     // ── Passive Expansion ─────────────────────────────────────────
@@ -138,11 +182,11 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    // ── Add OnBoundsExpanded() — called by DungeonTerrain on level up ──
+    // ── Add OnBoundsExpanded() ────────────────────────────────────
+
     /// <summary>Rechecks claimable ring against new bounds after expansion.</summary>
     public void OnBoundsExpanded()
     {
-        // Any owned tile that now has a newly in-bounds neighbour should gain a claimable entry
         foreach (Vector3Int owned in ownedTiles)
         {
             foreach (Vector3Int dir in Neighbours)
@@ -173,7 +217,7 @@ public class TileInfluenceManager : MonoBehaviour
                 Vector3Int neighbour = owned + dir;
                 if (ownedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
-                if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue; // ← add this
+                if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 claimableTilemap.SetTile(neighbour, claimableTile);
@@ -210,9 +254,8 @@ public class TileInfluenceManager : MonoBehaviour
         claimableTilemap.ClearAllTiles();
 
         foreach (var tile in data.ownedTiles)
-            ClaimTile(tile.ToVector3Int(), silent: true); // ← DungeonCore count already restored
+            ClaimTile(tile.ToVector3Int(), silent: true);
 
-        // Fire count event once with final total
         OnTileCountChanged?.Invoke(ownedTiles.Count);
     }
 }
@@ -225,7 +268,6 @@ public class TileInfluenceSaveData
     public List<SerializableVector3Int> ownedTiles;
 }
 
-// Vector3Int wrapper — JsonUtility can't serialize Vector3Int directly
 [Serializable]
 public class SerializableVector3Int
 {

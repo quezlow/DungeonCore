@@ -35,6 +35,17 @@ public class DungeonCore : MonoBehaviour
     [Header("Reputation")]
     [SerializeField] private float reputation = 0f;
 
+    // ── Breach Controls ───────────────────────────────────────────────
+    [Header("Two-Strike Breach System")]
+    [SerializeField] private float instabilityDuration = 60f;  // seconds to survive after first breach
+    [SerializeField] private float xpPenaltyOnBreach = 50f;
+    [SerializeField] private float influenceShrinkRadius = 3f;  // tiles lost around breach point
+
+    // breach state
+    private bool isUnstable = false;
+    private float instabilityTimer = 0f;
+    private int breachCount = 0;
+
     // ── Runtime State ────────────────────────────────────────────
     private float currentMana;
     private float currentXP;
@@ -51,6 +62,10 @@ public class DungeonCore : MonoBehaviour
     public event Action<float> OnReputationChanged;  // (total reputation)
     public event Action<int, int> OnCapacityChanged; // (used, max)
     public event Action OnCoreDestroyed;
+    public event Action<float> OnInstabilityTick;   // (seconds remaining)
+    public event Action OnFirstBreach;
+    public event Action OnCoreStabilised;
+    public event Action OnGameOver;
 
     // ── Public Reads ─────────────────────────────────────────────
     public DungeonType DungeonType => dungeonType;
@@ -66,6 +81,9 @@ public class DungeonCore : MonoBehaviour
     public int UsedCapacity => usedCapacity;
     public int FreeCapacity => MaxCapacity - usedCapacity;
     public bool LevelUpAvailable { get; private set; }
+    public bool IsUnstable => isUnstable;
+    public float InstabilityTimer => instabilityTimer;
+    public float InstabilityDuration => instabilityDuration;
 
     // ── Materials ─────────────────────────────────────────────
 
@@ -105,6 +123,7 @@ public class DungeonCore : MonoBehaviour
         if (PauseController.IsGamePaused) return;
         RegenerateMana();
         DecayNotoriety();
+        TickInstability();
     }
 
     // ── Mana ─────────────────────────────────────────────────────
@@ -234,6 +253,23 @@ public class DungeonCore : MonoBehaviour
         OnNotorietyChanged?.Invoke(notoriety);
     }
 
+    private void TickInstability()
+    {
+        if (!isUnstable) return;
+
+        instabilityTimer -= Time.deltaTime;
+        OnInstabilityTick?.Invoke(instabilityTimer);
+
+        if (instabilityTimer <= 0f)
+        {
+            // Survived the timer — stabilise
+            isUnstable = false;
+            breachCount = 0;
+            Debug.Log("[DungeonCore] Instability resolved — core stabilised.");
+            OnCoreStabilised?.Invoke();
+        }
+    }
+
     // ── Tile Influence ───────────────────────────────────────────
 
     /// <summary>Called by the tile system when the dungeon claims new tiles.</summary>
@@ -261,7 +297,32 @@ public class DungeonCore : MonoBehaviour
     /// <summary>Called by a Destroyer adventurer reaching the Core Room.</summary>
     public void DestroyCore()
     {
-        OnCoreDestroyed?.Invoke();
+        breachCount++;
+
+        if (breachCount == 1)
+        {
+            // First breach — start instability
+            isUnstable = true;
+            instabilityTimer = instabilityDuration;
+
+            // XP penalty
+            currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
+            NotifyXPChanged();
+
+            // Shrink influence around core
+            TileInfluenceManager.Instance?.ShrinkInfluenceAroundCore(influenceShrinkRadius);
+
+            Debug.Log("[DungeonCore] FIRST BREACH — instability timer started.");
+            OnFirstBreach?.Invoke();
+            OnCoreDestroyed?.Invoke(); // keep existing event for any other listeners
+        }
+        else
+        {
+            // Second breach before timer cleared — game over
+            Debug.Log("[DungeonCore] SECOND BREACH — game over.");
+            isUnstable = false;
+            OnGameOver?.Invoke();
+        }
     }
 
     // ── Save / Load ──────────────────────────────────────────────
@@ -276,7 +337,10 @@ public class DungeonCore : MonoBehaviour
         currentMana = this.currentMana,
         ownedTileCount = this.ownedTileCount,
         usedCapacity = this.usedCapacity,
-        levelUpAvailable = this.LevelUpAvailable
+        levelUpAvailable = this.LevelUpAvailable,
+        isUnstable = this.isUnstable,
+        instabilityTimer = this.instabilityTimer,
+        breachCount = this.breachCount
     };
 
     public void LoadSaveData(DungeonCoreSaveData data)
@@ -296,6 +360,10 @@ public class DungeonCore : MonoBehaviour
         OnReputationChanged?.Invoke(reputation);
         usedCapacity = data.usedCapacity;
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+        isUnstable = data.isUnstable;
+        instabilityTimer = data.instabilityTimer;
+        breachCount = data.breachCount;
+        if (isUnstable) OnFirstBreach?.Invoke();
 
         if (LevelUpAvailable)
             OnLevelUpAvailable?.Invoke();
@@ -322,4 +390,7 @@ public class DungeonCoreSaveData
     public int ownedTileCount;
     public bool levelUpAvailable;
     public int usedCapacity;
+    public bool isUnstable;
+    public float instabilityTimer;
+    public int breachCount;
 }
