@@ -1,20 +1,16 @@
 using UnityEngine;
 
 /// <summary>
-/// Dungeon monster. Uses WaypointMover for patrol when idle.
-/// Disables the mover and takes direct control during combat.
-/// Re-enables mover when combat ends.
+/// Dungeon monster. Wanders randomly around its spawn point on owned tiles,
+/// then attacks any adventurer that enters detection range.
+///
+/// Patrol via WaypointMover is commented out — re-enable once the player
+/// can create patrol routes in game.
 ///
 /// ANIMATOR NOTE (for when sprites/animations are added):
-/// This script does not call animator methods directly — WaypointMover handles
-/// isWalking, InputX, InputY, LastInputX, LastInputY during patrol.
-/// When you add an Animator to the monster prefab, use the same parameter names
-/// as PlayerMovement and WaypointMover already use:
-///   - isWalking (bool)
-///   - InputX, InputY (float) — current direction
-///   - LastInputX, LastInputY (float) — last facing direction when idle
-/// During combat the monster moves via MoveTowards — you'll need to drive those
-/// animator params from DungeonMonster.AttackTarget() at that point.
+/// Use these parameter names to match WaypointMover and PlayerMovement:
+///   isWalking (bool), InputX/InputY (float), LastInputX/LastInputY (float)
+/// During combat, drive those params from AttackTarget() at that point.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour
@@ -35,12 +31,17 @@ public class DungeonMonster : MonoBehaviour
     [SerializeField] private float xpToVeteran = 100f;
 #pragma warning restore 0414
 
+    [Header("Wander")]
+    [SerializeField] private float wanderRadius = 2.5f;
+    [SerializeField] private float wanderWaitMin = 1f;
+    [SerializeField] private float wanderWaitMax = 3f;
+
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
-    private enum MonsterState { Patrol, Attack }
-    private MonsterState state = MonsterState.Patrol;
+    private enum MonsterState { Wander, Attack }
+    private MonsterState state = MonsterState.Wander;
 
     private float currentHP;
     private float monsterXP;
@@ -48,9 +49,17 @@ public class DungeonMonster : MonoBehaviour
 
     private DungeonAdventurer target;
     private MonsterSpawner spawner;
-    private WaypointMover patrolMover;
     private EntityStatusBars statusBars;
-    private LootTable lootTable;
+
+    // Wander
+    private Vector3 spawnPosition;
+    private Vector3 wanderTarget;
+    private bool wanderWaiting;
+    private float wanderWaitTimer;
+
+    /* ── PATROL (disabled until player-created patrol routes are implemented) ──
+    private WaypointMover patrolMover;
+    */
 
     // ─────────────────────────────────────────────────────────────
 
@@ -59,11 +68,13 @@ public class DungeonMonster : MonoBehaviour
         currentHP = maxHP;
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
-        lootTable = GetComponent<LootTable>();
     }
 
     private void Start()
     {
+        spawnPosition = transform.position;
+        PickWanderTarget();
+
         if (statusBarsPrefab != null)
         {
             statusBars = Instantiate(statusBarsPrefab);
@@ -78,11 +89,13 @@ public class DungeonMonster : MonoBehaviour
         spawner = parentSpawner;
     }
 
+    /* ── PATROL (disabled) ──────────────────────────────────────────
     /// <summary>Called by MonsterSpawner after adding WaypointMover.</summary>
     public void SetPatrolMover(WaypointMover mover)
     {
         patrolMover = mover;
     }
+    */
 
     private void Update()
     {
@@ -93,42 +106,75 @@ public class DungeonMonster : MonoBehaviour
 
         switch (state)
         {
-            case MonsterState.Patrol:
+            case MonsterState.Wander:
                 ScanForAdventurer();
+                Wander();
                 break;
 
             case MonsterState.Attack:
                 if (target == null)
-                    ReturnToPatrol();
+                {
+                    state = MonsterState.Wander;
+                    PickWanderTarget();
+                }
                 else
+                {
                     AttackTarget();
+                }
                 break;
         }
     }
 
-    // ── State Transitions ─────────────────────────────────────────
+    // ── Wander ────────────────────────────────────────────────────
 
-    private void EnterAttack(DungeonAdventurer adventurer)
+    private void Wander()
     {
-        target = adventurer;
-        state = MonsterState.Attack;
+        if (wanderWaiting)
+        {
+            wanderWaitTimer -= Time.deltaTime;
+            if (wanderWaitTimer <= 0f)
+            {
+                wanderWaiting = false;
+                PickWanderTarget();
+            }
+            return;
+        }
 
-        // Hand movement control to this script
-        if (patrolMover != null)
-            patrolMover.enabled = false;
+        transform.position = Vector2.MoveTowards(
+            transform.position, wanderTarget, moveSpeed * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, wanderTarget) < 0.1f)
+        {
+            wanderWaiting = true;
+            wanderWaitTimer = Random.Range(wanderWaitMin, wanderWaitMax);
+        }
     }
 
-    private void ReturnToPatrol()
+    private void PickWanderTarget()
     {
-        target = null;
-        state = MonsterState.Patrol;
+        if (TileInfluenceManager.Instance == null)
+        {
+            wanderTarget = spawnPosition;
+            return;
+        }
 
-        // Return movement control to WaypointMover
-        if (patrolMover != null)
-            patrolMover.enabled = true;
+        for (int i = 0; i < 10; i++)
+        {
+            Vector2 offset = Random.insideUnitCircle * wanderRadius;
+            Vector3 candidate = spawnPosition + new Vector3(offset.x, offset.y, 0f);
+            Vector3Int cell = TileInfluenceManager.Instance.WorldToCell(candidate);
+
+            if (TileInfluenceManager.Instance.IsTileOwned(cell))
+            {
+                wanderTarget = TileInfluenceManager.Instance.CellToWorld(cell);
+                return;
+            }
+        }
+
+        wanderTarget = spawnPosition;
     }
 
-    // ── Detection ─────────────────────────────────────────────────
+    // ── Detection & Combat ────────────────────────────────────────
 
     private void ScanForAdventurer()
     {
@@ -143,10 +189,15 @@ public class DungeonMonster : MonoBehaviour
         }
 
         if (nearest != null)
-            EnterAttack(nearest);
-    }
+        {
+            target = nearest;
+            state = MonsterState.Attack;
 
-    // ── Combat ────────────────────────────────────────────────────
+            /* ── PATROL (disabled) ──────────────────────────────────
+            if (patrolMover != null) patrolMover.enabled = false;
+            */
+        }
+    }
 
     private void AttackTarget()
     {
@@ -154,7 +205,6 @@ public class DungeonMonster : MonoBehaviour
 
         if (dist > attackRange)
         {
-            // Move toward target manually while WaypointMover is disabled
             // ANIMATOR NOTE: drive InputX/InputY here when animator is added
             transform.position = Vector2.MoveTowards(
                 transform.position, target.transform.position, moveSpeed * Time.deltaTime);
@@ -172,6 +222,10 @@ public class DungeonMonster : MonoBehaviour
         {
             GainXP(xpPerKill);
             target = null;
+
+            /* ── PATROL (disabled) ──────────────────────────────────
+            if (patrolMover != null) patrolMover.enabled = true;
+            */
         }
     }
 
@@ -192,12 +246,8 @@ public class DungeonMonster : MonoBehaviour
 
     private void Die()
     {
-        // Do NOT award XP to DungeonCore — core XP comes from adventurers dying.
         if (statusBars != null) Destroy(statusBars.gameObject);
-
-        // Roll loot table and spawn drop at death position
-        lootTable?.Roll(transform.position);
-
+        GetComponent<LootTable>()?.Roll(transform.position);
         spawner?.OnMonsterDied();
         Destroy(gameObject);
     }

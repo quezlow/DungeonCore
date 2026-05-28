@@ -16,6 +16,7 @@ public class DungeonCoreHUD : MonoBehaviour
     [SerializeField] private Image manaOrbFill;
     [SerializeField] private TextMeshProUGUI manaOrbPercent;
     [SerializeField] private TextMeshProUGUI manaOrbNumeric;
+    [SerializeField] private TextMeshProUGUI manaRegenLabel;
 
     [Header("XP Orb")]
     [SerializeField] private Image xpOrbFill;
@@ -53,6 +54,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnReputationChanged += HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged += HandleGoldChanged;
         DungeonCore.Instance.OnCapacityChanged += HandleCapacityChanged;
+        DungeonCore.Instance.OnManaRegenChanged += HandleManaRegenChanged;
 
         RefreshAll();
     }
@@ -69,6 +71,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnReputationChanged -= HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged -= HandleGoldChanged;
         DungeonCore.Instance.OnCapacityChanged -= HandleCapacityChanged;
+        DungeonCore.Instance.OnManaRegenChanged -= HandleManaRegenChanged;
     }
 
     // ── Event Handlers ────────────────────────────────────────────
@@ -79,6 +82,12 @@ public class DungeonCoreHUD : MonoBehaviour
         manaOrbFill.fillAmount = pct;
         manaOrbPercent.text = $"{Mathf.RoundToInt(pct * 100)}%";
         manaOrbNumeric.text = $"{Mathf.FloorToInt(current)} / {Mathf.FloorToInt(max)}";
+    }
+
+    private void HandleManaRegenChanged(float regenPerSecond)
+    {
+        if (manaRegenLabel != null)
+            manaRegenLabel.text = $"+{regenPerSecond:0.0}/s";
     }
 
     private void HandleXPChanged(float current, float toNext)
@@ -183,6 +192,7 @@ public class DungeonCoreHUD : MonoBehaviour
         var core = DungeonCore.Instance;
 
         HandleManaChanged(core.CurrentMana, core.MaxMana);
+        HandleManaRegenChanged(DungeonCore.Instance.CurrentManaRegen);
         HandleXPChanged(core.CurrentXP, core.XPToNextLevel);
         HandleLevelUp(core.DungeonLevel);
         HandleNotorietyChanged(core.Notoriety);

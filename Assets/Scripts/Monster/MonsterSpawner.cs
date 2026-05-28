@@ -2,17 +2,23 @@ using UnityEngine;
 
 /// <summary>
 /// Placed by the player via DungeonBuildController (PlaceSpawner mode).
-/// The monster type is selected before placement via MonsterSelectionUI.
-/// Spawns the chosen monster type with a two-point WaypointMover patrol.
-/// Respawn stubbed for Phase 2.
+/// Monster type is set via Initialise() before Start() runs.
+/// Spawns one monster with random wander behaviour within a set radius.
+/// Patrol via WaypointMover is commented out — re-enable once the player
+/// can create patrol routes in game.
 /// </summary>
 public class MonsterSpawner : MonoBehaviour
 {
     // ── Inspector ─────────────────────────────────────────────────
+    [Header("Capacity")]
+    [SerializeField] private int capacityCost = 5;
+
+    /* ── PATROL (disabled until player-created patrol routes are implemented) ──
     [Header("Patrol")]
     [SerializeField] private float patrolRadius = 2f;
-    [SerializeField] private float patrolSpeed = 1.2f;
-    [SerializeField] private float patrolWait = 2f;
+    [SerializeField] private float patrolSpeed  = 1.2f;
+    [SerializeField] private float patrolWait   = 2f;
+    */
 
     [Header("Respawn (Phase 2)")]
 #pragma warning disable 0414
@@ -24,14 +30,14 @@ public class MonsterSpawner : MonoBehaviour
     private DungeonMonster spawnedMonster;
 
     // ── Public ────────────────────────────────────────────────────
-    public int CapacityCost => definition != null ? definition.capacityCost : 0;
+    public int CapacityCost => definition != null ? definition.capacityCost : capacityCost;
     public MonsterDefinition Definition => definition;
 
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Called by DungeonBuildController immediately after Instantiate().
-    /// Must be called before Start() — use in the same frame as instantiation.
+    /// Must be called before Start().
     /// </summary>
     public void Initialise(MonsterDefinition def)
     {
@@ -67,8 +73,13 @@ public class MonsterSpawner : MonoBehaviour
 
         spawnedMonster = Instantiate(definition.prefab, transform.position, Quaternion.identity);
         spawnedMonster.Initialise(this);
+
+        /* ── PATROL SETUP (disabled) ────────────────────────────────
         SetupPatrol(spawnedMonster);
+        */
     }
+
+    /* ── PATROL METHODS (disabled until player-created patrol routes are implemented) ──
 
     private void SetupPatrol(DungeonMonster monster)
     {
@@ -86,9 +97,9 @@ public class MonsterSpawner : MonoBehaviour
 
         var mover = monster.gameObject.AddComponent<WaypointMover>();
         mover.waypointParent = waypointParent;
-        mover.moveSpeed = patrolSpeed;
-        mover.waitTime = patrolWait;
-        mover.loopWaypoints = true;
+        mover.moveSpeed      = patrolSpeed;
+        mover.waitTime       = patrolWait;
+        mover.loopWaypoints  = true;
 
         monster.SetPatrolMover(mover);
     }
@@ -100,9 +111,9 @@ public class MonsterSpawner : MonoBehaviour
 
         for (int i = 0; i < 20; i++)
         {
-            Vector2 offset = Random.insideUnitCircle * patrolRadius;
+            Vector2 offset    = Random.insideUnitCircle * patrolRadius;
             Vector3 candidate = transform.position + new Vector3(offset.x, offset.y, 0f);
-            Vector3Int cell = influence.WorldToCell(candidate);
+            Vector3Int cell   = influence.WorldToCell(candidate);
 
             if (influence.IsTileOwned(cell))
                 return influence.CellToWorld(cell);
@@ -110,8 +121,9 @@ public class MonsterSpawner : MonoBehaviour
 
         return transform.position + Vector3.right;
     }
+    */
 
-    // ── Called by DungeonMonster ──────────────────────────────────
+    // ── Called by DungeonMonster on death ─────────────────────────
 
     public void OnMonsterDied()
     {

@@ -55,6 +55,7 @@ public class DungeonCore : MonoBehaviour
 
     // ── Events ───────────────────────────────────────────────────
     public event Action<float, float> OnManaChanged;        // (current, max)
+    public event Action<float> OnManaRegenChanged;   // (mana per second)
     public event Action<float, float> OnXPChanged;          // (current, xpToNext)
     public event Action<int> OnLevelUp;            // (newLevel)
     public event Action OnLevelUpAvailable;   // UI prompt
@@ -72,6 +73,7 @@ public class DungeonCore : MonoBehaviour
     public int DungeonLevel => dungeonLevel;
     public float CurrentMana => currentMana;
     public float MaxMana => baseMana + (dungeonLevel - 1) * manaPerLevel;
+    public float CurrentManaRegen => baseRegenPerSecond + ownedTileCount * regenPerTile;
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
@@ -112,6 +114,7 @@ public class DungeonCore : MonoBehaviour
             Debug.LogWarning("DungeonCore: DungeonType is None. Call SetDungeonType() from the tutorial sequence.");
 
         NotifyManaChanged();
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
         NotifyXPChanged();
         OnReputationChanged?.Invoke(reputation);
         OnGoldChanged?.Invoke(currentGold);
@@ -276,12 +279,14 @@ public class DungeonCore : MonoBehaviour
     public void AddOwnedTiles(int count)
     {
         ownedTileCount += count;
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
     /// <summary>Called by the tile system when tiles are lost.</summary>
     public void RemoveOwnedTiles(int count)
     {
         ownedTileCount = Mathf.Max(0, ownedTileCount - count);
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
     // ── Identity ─────────────────────────────────────────────────
@@ -352,6 +357,7 @@ public class DungeonCore : MonoBehaviour
         reputation = data.reputation;
         currentMana = Mathf.Min(data.currentMana, MaxMana);
         ownedTileCount = data.ownedTileCount;
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
         LevelUpAvailable = data.levelUpAvailable;
 
         NotifyManaChanged();
