@@ -131,4 +131,40 @@ public class DayNightCycle : MonoBehaviour
         if (overlayImage != null)
             overlayImage.color = colour;
     }
+
+    public DayNightSaveData GetSaveData() => new DayNightSaveData
+    {
+        phase = CurrentPhase,
+        timer = this.timer
+    };
+
+    public void LoadSaveData(DayNightSaveData data)
+    {
+        CurrentPhase = data.phase;
+        timer = data.timer;
+
+        // Apply the correct overlay colour immediately with no transition.
+        // transitionT = 1 tells Update() the lerp is already complete.
+        Color targetColour = CurrentPhase == Phase.Night ? overlayNight : overlayDay;
+        fromColour = targetColour;
+        toColour = targetColour;
+        transitionT = 1f;
+        ApplyOverlay(targetColour);
+
+        // Sync the HUD to the restored time.
+        float currentDuration = CurrentPhase == Phase.Day ? dayDuration : nightDuration;
+        hud?.Refresh(CurrentPhase, timer, currentDuration);
+
+        // OnDayStarted / OnNightStarted are intentionally NOT fired here.
+        // They already fired during Start() for the default Day phase.
+        // Systems should read IsDay / IsNight directly rather than relying
+        // solely on these events for state that persists across a load.
+    }
+}
+
+[Serializable]
+public class DayNightSaveData
+{
+    public DayNightCycle.Phase phase;
+    public float timer;
 }

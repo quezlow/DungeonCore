@@ -27,7 +27,7 @@ public class MonsterSelectionUI : MonoBehaviour
 
     // ── Inspector ─────────────────────────────────────────────────
     [Header("Available Monster Types")]
-    [SerializeField] private List<MonsterDefinition> availableTypes;
+    [SerializeField] private MonsterDefinitionRegistry registry;
 
     [Header("UI References")]
     [SerializeField] private GameObject     panel;
@@ -43,8 +43,8 @@ public class MonsterSelectionUI : MonoBehaviour
 
     /// <summary>The currently selected monster definition.</summary>
     public MonsterDefinition Selected =>
-        availableTypes != null && availableTypes.Count > 0
-            ? availableTypes[selectedIndex]
+        registry.All != null && registry.All.Count > 0
+            ? registry.All[selectedIndex]
             : null;
 
     // ─────────────────────────────────────────────────────────────
@@ -86,15 +86,15 @@ public class MonsterSelectionUI : MonoBehaviour
 
     public void OnPrevClicked()
     {
-        if (availableTypes == null || availableTypes.Count == 0) return;
-        selectedIndex = (selectedIndex - 1 + availableTypes.Count) % availableTypes.Count;
+        if (registry.All == null || registry.All.Count == 0) return;
+        selectedIndex = (selectedIndex - 1 + registry.All.Count) % registry.All.Count;
         RefreshDisplay();
     }
 
     public void OnNextClicked()
     {
-        if (availableTypes == null || availableTypes.Count == 0) return;
-        selectedIndex = (selectedIndex + 1) % availableTypes.Count;
+        if (registry.All == null || registry.All.Count == 0) return;
+        selectedIndex = (selectedIndex + 1) % registry.All.Count;
         RefreshDisplay();
     }
 

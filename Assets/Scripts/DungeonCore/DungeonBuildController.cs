@@ -210,6 +210,51 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
+    // ── Restore (called by DungeonSaveController on load) ────────────
+
+    public void RestoreEntrance(Vector3Int cell)
+    {
+        if (entrancePrefab == null)
+        {
+            Debug.LogError("[BuildController] entrancePrefab not assigned — cannot restore entrance.");
+            return;
+        }
+
+        if (DungeonEntrance.Instance != null)
+            Destroy(DungeonEntrance.Instance.gameObject);
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var entrance = Instantiate(entrancePrefab, worldPos, Quaternion.identity);
+        entrance.Initialise(cell);
+    }
+
+    public void RestoreSpawner(MonsterDefinition def, Vector3Int cell)
+    {
+        if (spawnerShellPrefab == null)
+        {
+            Debug.LogError("[BuildController] spawnerShellPrefab not assigned — cannot restore spawner.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
+        spawner.Initialise(def);
+        // Capacity is already restored from DungeonCoreSaveData — do not call TrySpendCapacity here.
+    }
+
+    public void RestoreChest(Vector3Int cell, bool isOpened)
+    {
+        if (chestPrefab == null)
+        {
+            Debug.LogError("[BuildController] chestPrefab not assigned — cannot restore chest.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var chest = Instantiate(chestPrefab, worldPos, Quaternion.identity);
+        if (isOpened) chest.SetOpened(true);
+    }
+
     // ── Shared Input Helper ───────────────────────────────────────
 
     private bool LeftClickThisFrame(out Vector3Int cell)

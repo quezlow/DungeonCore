@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 361e7bec978965e449b64c7c795ad85b, type: 3}
+  m_Name: MonsterDefinitionRegistry
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinitionRegistry
+  definitions:
+  - {fileID: 11400000, guid: 5a5166ef10480db4399df78641f7470a, type: 2}
+  - {fileID: 11400000, guid: c73513a64807e1b4c816497f5fabfe52, type: 2}
+  - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}

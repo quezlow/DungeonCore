@@ -342,6 +342,7 @@ public class DungeonCore : MonoBehaviour
         currentMana = this.currentMana,
         ownedTileCount = this.ownedTileCount,
         usedCapacity = this.usedCapacity,
+        gold = this.currentGold,
         levelUpAvailable = this.LevelUpAvailable,
         isUnstable = this.isUnstable,
         instabilityTimer = this.instabilityTimer,
@@ -366,6 +367,8 @@ public class DungeonCore : MonoBehaviour
         OnReputationChanged?.Invoke(reputation);
         usedCapacity = data.usedCapacity;
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+        currentGold = data.gold;
+        OnGoldChanged?.Invoke(currentGold);
         isUnstable = data.isUnstable;
         instabilityTimer = data.instabilityTimer;
         breachCount = data.breachCount;
@@ -399,4 +402,5 @@ public class DungeonCoreSaveData
     public bool isUnstable;
     public float instabilityTimer;
     public int breachCount;
+    public int gold;
 }

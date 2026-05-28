@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -59,6 +60,17 @@ public class DungeonChest : MonoBehaviour
         SoundEffectManager.Play("Chest");
 
         Debug.Log("[DungeonChest] Opened by adventurer.");
+    }
+
+    /// <summary>
+    /// Restores opened state from a save without rolling loot.
+    /// Called by DungeonBuildController.RestoreChest() on load.
+    /// </summary>
+    public void SetOpened(bool opened)
+    {
+        IsOpened = opened;
+        if (opened && openedSprite != null)
+            spriteRenderer.sprite = openedSprite;
     }
 
     public float InteractRadius => interactRadius;
