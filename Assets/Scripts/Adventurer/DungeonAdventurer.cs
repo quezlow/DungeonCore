@@ -2,8 +2,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Prototype adventurer. Pathfinds to Core Room, detours toward nearby chests,
-/// fights monsters, collects CarriableLoot, retreats when HP is low.
+/// Dungeon adventurer. Pathfinds to the Core Room, detours toward chests,
+/// fights monsters, collects CarriableLoot, and retreats based on its trait.
+///
+/// INITIALISE — must be called by AdventurerSpawner in the same frame as
+/// Instantiate(), before Start() runs. Applies definition stats and trait.
+///
+/// BEHAVIOUR TRAITS
+///   Cautious   — retreats at 50% HP
+///   Balanced   — retreats at 30% HP
+///   Aggressive — retreats at 10% HP
+///   Cowardly   — retreats immediately on monster sight; HP threshold unused
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonAdventurer : MonoBehaviour
@@ -11,12 +20,12 @@ public class DungeonAdventurer : MonoBehaviour
     public enum AdventurerState
     {
         MovingToCore,
-        MovingToChest,  // detouring toward a spotted chest
+        MovingToChest,
         Combat,
         Retreating
     }
 
-    // ── Inspector ─────────────────────────────────────────────────
+    // ── Inspector (fallback values if Initialise is not called) ───
     [Header("Stats")]
     [SerializeField] private float maxHP = 50f;
     [SerializeField] private float moveSpeed = 2f;
@@ -26,10 +35,14 @@ public class DungeonAdventurer : MonoBehaviour
     [SerializeField] private float detectionRange = 2.5f;
 
     [Header("Behaviour")]
-    [Tooltip("Retreat when HP falls below this fraction (0.3 = 30%).")]
+    [Tooltip("Retreat when HP falls below this fraction. Overridden by trait at runtime.")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
-    [Header("Chest Detection")]
+    [Header("Separation")]
+    [Tooltip("Radius within which this adventurer steers away from others.")]
+    [SerializeField] private float separationRadius = 0.6f;
+    [Tooltip("Strength of the push away from nearby adventurers.")]
+    [SerializeField] private float separationStrength = 1.5f;
     [Tooltip("How far the adventurer can 'see' a chest while walking past.")]
     [SerializeField] private float chestDetectionRange = 3f;
 
@@ -45,9 +58,10 @@ public class DungeonAdventurer : MonoBehaviour
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
-    // ── State ─────────────────────────────────────────────────────
+    // ── Runtime state ─────────────────────────────────────────────
     private float currentHP;
     private AdventurerState state = AdventurerState.MovingToCore;
+    private BehaviourTrait trait = BehaviourTrait.Balanced;
 
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
@@ -61,11 +75,47 @@ public class DungeonAdventurer : MonoBehaviour
     private readonly List<CarriableLoot> carriedLoot = new();
     private readonly HashSet<DungeonChest> visitedChests = new();
 
-    // ─────────────────────────────────────────────────────────────
+    // ── Initialise ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by AdventurerSpawner immediately after Instantiate(), before Start().
+    /// Applies per-class stats from the definition and configures trait behaviour.
+    /// </summary>
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait)
+    {
+        if (def != null)
+        {
+            maxHP = def.maxHP;
+            moveSpeed = def.moveSpeed;
+            attackDamage = def.attackDamage;
+            attackRange = def.attackRange;
+            attackCooldown = def.attackCooldown;
+            detectionRange = def.detectionRange;
+            chestDetectionRange = def.chestDetectionRange;
+            xpOnDeath = def.xpOnDeath;
+        }
+
+        trait = assignedTrait;
+
+        // Apply HP retreat threshold from trait.
+        // Cowardly's threshold is irrelevant (flees on sight), but set to 1f as
+        // a safety net so they never push forward on low HP regardless.
+        retreatThreshold = trait switch
+        {
+            BehaviourTrait.Cautious => 0.5f,
+            BehaviourTrait.Balanced => 0.3f,
+            BehaviourTrait.Aggressive => 0.1f,
+            BehaviourTrait.Cowardly => 1.0f,
+            _ => 0.3f,
+        };
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Start()
     {
         currentHP = maxHP;
+
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
 
@@ -85,14 +135,19 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
+        // HP-based retreat check — applies to Cautious, Balanced, Aggressive.
+        // Cowardly has retreatThreshold = 1f so this also catches the edge case
+        // where a Cowardly adventurer somehow takes damage before fleeing.
         if (state != AdventurerState.Retreating && currentHP / maxHP < retreatThreshold)
             StartRetreat();
+
+        ApplySeparation();
 
         switch (state)
         {
             case AdventurerState.MovingToCore:
                 ScanForMonsters();
-                if (state != AdventurerState.Combat)
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
                 {
                     ScanForChests();
                     ScanForLoot();
@@ -102,7 +157,7 @@ public class DungeonAdventurer : MonoBehaviour
 
             case AdventurerState.MovingToChest:
                 ScanForMonsters();
-                if (state != AdventurerState.Combat)
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
                 {
                     ScanForLoot();
                     MoveToChest();
@@ -130,23 +185,22 @@ public class DungeonAdventurer : MonoBehaviour
         if (state == AdventurerState.Retreating)
         {
             currentPath = DungeonEntrance.Instance != null
-                ? DungeonPathfinder.FindPath(transform.position, DungeonEntrance.Instance.SpawnPosition)
+                ? DungeonPathfinder.FindPath(transform.position,
+                      DungeonEntrance.Instance.SpawnPosition)
                 : new List<Vector3>();
         }
         else
         {
-            currentPath = DungeonCore.Instance != null
-                ? DungeonPathfinder.FindPath(transform.position, DungeonCore.Instance.transform.position)
-                : new List<Vector3>();
-
-            if (currentPath.Count == 0)
-                Debug.LogWarning("[Adventurer] No path to core.");
+            currentPath = DungeonPathfinder.FindPath(transform.position,
+                DungeonCore.Instance != null
+                    ? DungeonCore.Instance.transform.position
+                    : transform.position);
         }
     }
 
     private void FollowPath()
     {
-        if (pathIndex >= currentPath.Count)
+        if (currentPath == null || pathIndex >= currentPath.Count)
         {
             OnReachedDestination();
             return;
@@ -164,7 +218,7 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
-            Debug.Log($"[Adventurer] Escaped carrying {carriedLoot.Count} loot item(s) — loot lost.");
+            // Adventurer escaped — loot they carried leaves the dungeon with them.
             foreach (var loot in carriedLoot)
                 if (loot != null) Destroy(loot.gameObject);
             carriedLoot.Clear();
@@ -175,6 +229,7 @@ public class DungeonAdventurer : MonoBehaviour
         }
         else
         {
+            // Reached the Core Room — trigger the breach system.
             Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
             if (statusBars != null) Destroy(statusBars.gameObject);
@@ -182,119 +237,36 @@ public class DungeonAdventurer : MonoBehaviour
         }
     }
 
-    // ── Chest Detection & Detour ──────────────────────────────────
+    // ── Separation Steering ───────────────────────────────────────
 
-    private void ScanForChests()
+    /// <summary>
+    /// Nudges this adventurer away from any other adventurers within
+    /// separationRadius. Runs every frame on top of path-following so
+    /// party members spread out naturally without blocking each other.
+    /// Uses a cached array to avoid per-frame allocation.
+    /// </summary>
+    private void ApplySeparation()
     {
-        var allChests = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
-        DungeonChest nearest = null;
-        float nearestDist = chestDetectionRange;
+        var others = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
+        Vector2 push = Vector2.zero;
 
-        foreach (var chest in allChests)
+        foreach (var other in others)
         {
-            if (chest.IsOpened) continue;
-            if (visitedChests.Contains(chest)) continue;
+            if (other == this) continue;
 
-            float d = Vector2.Distance(transform.position, chest.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = chest; }
+            Vector2 delta = (Vector2)transform.position - (Vector2)other.transform.position;
+            float dist = delta.magnitude;
+
+            if (dist < separationRadius && dist > 0.001f)
+                push += delta.normalized * (separationRadius - dist);
         }
 
-        if (nearest != null)
-        {
-            chestTarget = nearest;
-            state = AdventurerState.MovingToChest;
+        if (push == Vector2.zero) return;
 
-            // Build a path to the chest through owned tiles
-            currentPath = DungeonPathfinder.FindPath(
-                transform.position, chestTarget.transform.position);
-            pathIndex = 0;
-
-            if (currentPath.Count == 0)
-            {
-                // No path to chest — mark as visited and ignore
-                Debug.LogWarning("[Adventurer] No path to chest — skipping.");
-                visitedChests.Add(chestTarget);
-                chestTarget = null;
-                state = AdventurerState.MovingToCore;
-            }
-            else
-            {
-                Debug.Log("[Adventurer] Spotted chest — pathing toward it.");
-            }
-        }
+        transform.position += (Vector3)(push * separationStrength * Time.deltaTime);
     }
 
-    private void MoveToChest()
-    {
-        // Chest was opened by someone else or destroyed
-        if (chestTarget == null || chestTarget.IsOpened)
-        {
-            visitedChests.Add(chestTarget);
-            chestTarget = null;
-            ResumeAfterChest();
-            return;
-        }
-
-        // Follow the dungeon path toward the chest
-        if (pathIndex >= currentPath.Count)
-        {
-            // Reached end of path — check if we're close enough to interact
-            float dist = Vector2.Distance(transform.position, chestTarget.transform.position);
-            if (dist <= chestTarget.InteractRadius)
-            {
-                chestTarget.Interact();
-                visitedChests.Add(chestTarget);
-                chestTarget = null;
-                ResumeAfterChest();
-            }
-            else
-            {
-                // Path ran out but not close enough — chest may be unreachable
-                Debug.LogWarning("[Adventurer] Could not reach chest — resuming.");
-                visitedChests.Add(chestTarget);
-                chestTarget = null;
-                ResumeAfterChest();
-            }
-            return;
-        }
-
-        Vector3 waypoint = currentPath[pathIndex];
-        transform.position = Vector2.MoveTowards(
-            transform.position, waypoint, moveSpeed * Time.deltaTime);
-
-        if (Vector2.Distance(transform.position, waypoint) < 0.08f)
-            pathIndex++;
-    }
-
-    private void ResumeAfterChest()
-    {
-        // Return to retreating or core pathing, whichever was active before
-        state = AdventurerState.MovingToCore;
-        RefreshPath();
-        Debug.Log("[Adventurer] Chest done — resuming path.");
-    }
-
-    // ── Loot Pickup ───────────────────────────────────────────────
-
-    private void ScanForLoot()
-    {
-        var allLoot = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude);
-        foreach (var loot in allLoot)
-        {
-            if (carriedLoot.Contains(loot)) continue;
-            if (Vector2.Distance(transform.position, loot.transform.position) <= pickupRadius)
-                PickUpLoot(loot);
-        }
-    }
-
-    private void PickUpLoot(CarriableLoot loot)
-    {
-        carriedLoot.Add(loot);
-        loot.PickUp();
-        Debug.Log($"[Adventurer] Picked up loot worth {loot.GoldValue} gold.");
-    }
-
-    // ── Combat ────────────────────────────────────────────────────
+    // ── Monster Detection ─────────────────────────────────────────
 
     private void ScanForMonsters()
     {
@@ -308,13 +280,107 @@ public class DungeonAdventurer : MonoBehaviour
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
 
-        if (nearest != null)
+        if (nearest == null) return;
+
+        // Cowardly: flee immediately on monster sight — no combat entered.
+        if (trait == BehaviourTrait.Cowardly)
         {
-            combatTarget = nearest;
-            chestTarget = null; // abandon chest detour if monster spotted
-            state = AdventurerState.Combat;
+            StartRetreat();
+            return;
+        }
+
+        combatTarget = nearest;
+        chestTarget = null;
+        state = AdventurerState.Combat;
+    }
+
+    // ── Chest Detection ───────────────────────────────────────────
+
+    private void ScanForChests()
+    {
+        var all = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
+        DungeonChest nearest = null;
+        float nearestDist = chestDetectionRange;
+
+        foreach (var c in all)
+        {
+            if (visitedChests.Contains(c)) continue;
+            if (c.IsOpened) continue;
+            float d = Vector2.Distance(transform.position, c.transform.position);
+            if (d < nearestDist) { nearestDist = d; nearest = c; }
+        }
+
+        if (nearest != null && nearest != chestTarget)
+        {
+            chestTarget = nearest;
+            state = AdventurerState.MovingToChest;
+            RefreshPath();
         }
     }
+
+    private void MoveToChest()
+    {
+        if (chestTarget == null || chestTarget.IsOpened)
+        {
+            if (chestTarget != null) visitedChests.Add(chestTarget);
+            chestTarget = null;
+            state = AdventurerState.MovingToCore;
+            RefreshPath();
+            return;
+        }
+
+        // Follow the dungeon path toward the chest.
+        if (pathIndex < currentPath.Count)
+        {
+            Vector3 waypoint = currentPath[pathIndex];
+            transform.position = Vector2.MoveTowards(
+                transform.position, waypoint, moveSpeed * Time.deltaTime);
+            if (Vector2.Distance(transform.position, waypoint) < 0.08f)
+                pathIndex++;
+            return;
+        }
+
+        // Path exhausted — check interact range.
+        float dist = Vector2.Distance(transform.position, chestTarget.transform.position);
+        if (dist <= chestTarget.InteractRadius)
+        {
+            chestTarget.Interact();
+            visitedChests.Add(chestTarget);
+            chestTarget = null;
+            state = AdventurerState.MovingToCore;
+            RefreshPath();
+        }
+        else
+        {
+            // Chest unreachable — skip it and continue.
+            Debug.LogWarning("[Adventurer] Could not reach chest — resuming.");
+            visitedChests.Add(chestTarget);
+            chestTarget = null;
+            state = AdventurerState.MovingToCore;
+            RefreshPath();
+        }
+    }
+
+    // ── Loot Pickup ───────────────────────────────────────────────
+
+    private void ScanForLoot()
+    {
+        var all = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude);
+        foreach (var loot in all)
+        {
+            if (carriedLoot.Contains(loot)) continue;
+            if (Vector2.Distance(transform.position, loot.transform.position) < pickupRadius)
+                PickUpLoot(loot);
+        }
+    }
+
+    private void PickUpLoot(CarriableLoot loot)
+    {
+        carriedLoot.Add(loot);
+        loot.PickUp();
+    }
+
+    // ── Combat ────────────────────────────────────────────────────
 
     private void HandleCombat()
     {
@@ -396,5 +462,6 @@ public class DungeonAdventurer : MonoBehaviour
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
     public AdventurerState State => state;
+    public BehaviourTrait Trait => trait;
     public int CarriedLootCount => carriedLoot.Count;
 }

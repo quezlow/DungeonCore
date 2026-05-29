@@ -45,6 +45,7 @@ public class DungeonCore : MonoBehaviour
     private bool isUnstable = false;
     private float instabilityTimer = 0f;
     private int breachCount = 0;
+    private float lastBreachTime = -999f;
 
     // ── Runtime State ────────────────────────────────────────────
     private float currentMana;
@@ -302,6 +303,12 @@ public class DungeonCore : MonoBehaviour
     /// <summary>Called by a Destroyer adventurer reaching the Core Room.</summary>
     public void DestroyCore()
     {
+        if (Time.time - lastBreachTime < 5f)
+        {
+            Debug.Log("[DungeonCore] Breach cooldown active — ignoring simultaneous hit.");
+            return;
+        }
+        lastBreachTime = Time.time;
         breachCount++;
 
         if (breachCount == 1)

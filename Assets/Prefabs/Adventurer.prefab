@@ -141,6 +141,8 @@ MonoBehaviour:
   attackCooldown: 1.5
   detectionRange: 2.5
   retreatThreshold: 0.2
+  separationRadius: 1
+  separationStrength: 1.5
   chestDetectionRange: 5
   pickupRadius: 0.6
   xpOnDeath: 15

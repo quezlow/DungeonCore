@@ -2453,9 +2453,37 @@ PrefabInstance:
       value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: weightBalanced
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: weightCautious
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: weightCowardly
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
       propertyPath: adventurerPrefab
       value: 
       objectReference: {fileID: 2173209403938016358, guid: 57302f1fe2f3764489df81c7bbef7890, type: 3}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: weightAggressive
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: adventurerTypes.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: scalePartySizeWithNotoriety
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 688774533995585496, guid: 70566d29958add3439f1976dd92899ea, type: 3}
+      propertyPath: 'adventurerTypes.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 47852613e229f3345aaaf889ba623b7b, type: 2}
     - target: {fileID: 1776847517718625579, guid: 70566d29958add3439f1976dd92899ea, type: 3}
       propertyPath: inventoryPanel
       value: 
