@@ -15440,28 +15440,6 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: farms and forts_657
-      rect:
-        serializedVersion: 2
-        x: 528
-        y: 448
-        width: 16
-        height: 16
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: ed0f784e72f1a664ba76483ed4e7cf64
-      internalID: 1325850435
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
       name: farms and forts_658
       rect:
         serializedVersion: 2
@@ -16106,7 +16084,7 @@ TextureImporter:
         x: 528
         y: 432
         width: 16
-        height: 16
+        height: 32
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}

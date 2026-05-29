@@ -14,12 +14,15 @@ public enum BuildMode
     PlaceEntrance,  // Click an owned tile to place the dungeon entrance
     PlaceSpawner,   // Click an owned tile to place a monster spawner
     PlaceChest,     // Click an owned tile to place a treasure chest
-    // PlaceTrap, PlaceFurniture, etc. added in later sessions
+    PlaceFurniture, // PlaceTrap, PlaceFurniture, etc. added in later sessions
+    PlaceRoomAnchor,
 }
 
 public class DungeonBuildController : MonoBehaviour
 {
     public static DungeonBuildController Instance { get; private set; }
+
+    public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
 
     // ── Inspector ─────────────────────────────────────────────────
 
@@ -30,6 +33,9 @@ public class DungeonBuildController : MonoBehaviour
     [SerializeField] private DungeonEntrance entrancePrefab;
     [SerializeField] private DungeonChest chestPrefab;
     [SerializeField] private MonsterSpawner spawnerShellPrefab; // Shell only — no MonsterDefinition assigned
+    [SerializeField] private RoomAnchor roomAnchorPrefab;
+    [SerializeField] private FurnitureDefinition selectedFurniture; // set by BuildSubmenu
+
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -73,6 +79,13 @@ public class DungeonBuildController : MonoBehaviour
             case BuildMode.PlaceChest:
                 HandleChestPlacement();
                 break;
+            case BuildMode.PlaceFurniture:
+                HandleFurniturePlacement();
+                break;
+            case BuildMode.PlaceRoomAnchor:
+                HandleRoomAnchorPlacement();
+                break;
+
         }
     }
 
@@ -210,6 +223,58 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
+    private void HandleFurniturePlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (!TileInfluenceManager.Instance.IsTileOwned(cell)) return;
+
+        if (selectedFurniture == null)
+        {
+            Debug.LogWarning("[BuildController] No furniture type selected.");
+            return;
+        }
+
+        if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell))
+        {
+            Debug.Log("[BuildController] Placement rejected — would block room path.");
+            return;
+        }
+
+        if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost))
+        {
+            Debug.Log("[BuildController] Not enough mana to place furniture.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var piece = Instantiate(selectedFurniture.prefab, worldPos, Quaternion.identity);
+        piece.Initialise(selectedFurniture, cell);
+
+        RevalidateAllAnchors();
+        SetMode(BuildMode.Claim);
+        Debug.Log($"[BuildController] Placed {selectedFurniture.furnitureName} at {cell}.");
+    }
+
+    private void HandleRoomAnchorPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (!TileInfluenceManager.Instance.IsTileOwned(cell)) return;
+
+        if (roomAnchorPrefab == null)
+        {
+            Debug.LogError("[BuildController] roomAnchorPrefab not assigned.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
+        anchor.Initialise(cell);
+
+        SetMode(BuildMode.Claim);
+        Debug.Log($"[BuildController] Room anchor placed at {cell}. Click it to assign a room type.");
+    }
+
+
     // ── Restore (called by DungeonSaveController on load) ────────────
 
     public void RestoreEntrance(Vector3Int cell)
@@ -254,6 +319,39 @@ public class DungeonBuildController : MonoBehaviour
         var chest = Instantiate(chestPrefab, worldPos, Quaternion.identity);
         if (isOpened) chest.SetOpened(true);
     }
+
+    public void RestoreFurniture(FurnitureDefinition def, Vector3Int cell)
+    {
+        if (def?.prefab == null) return;
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var piece = Instantiate(def.prefab, worldPos, Quaternion.identity);
+        piece.Initialise(def, cell);
+    }
+
+    public void RestoreRoomAnchor(Vector3Int cell, string roomName,
+                                  FurnitureDefinitionRegistry furnitureRegistry,
+                                  RoomDefinitionRegistry roomDefRegistry)
+    {
+        if (roomAnchorPrefab == null) return;
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
+        anchor.Initialise(cell);
+
+        if (!string.IsNullOrEmpty(roomName))
+        {
+            var def = roomDefRegistry?.GetByName(roomName);
+            if (def != null) anchor.SetRoomType(def);
+        }
+    }
+
+
+    private void RevalidateAllAnchors()
+    {
+        var anchors = FindObjectsByType<RoomAnchor>(FindObjectsInactive.Exclude);
+        foreach (var a in anchors)
+            a.Revalidate();
+    }
+
 
     // ── Shared Input Helper ───────────────────────────────────────
 

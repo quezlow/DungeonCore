@@ -28,6 +28,9 @@ public class DungeonSaveData
     public DayNightSaveData dayNightData;
     public List<MonsterSpawnerSaveData> spawners = new();
     public List<DungeonChestSaveData> chests = new();
+    public List<FurnitureSaveData> furniture = new();
+    public List<RoomAnchorSaveData> roomAnchors = new();
+
 }
 
 // ── Per-object save data ──────────────────────────────────────────────────────
@@ -48,4 +51,18 @@ public class DungeonChestSaveData
 {
     public SerializableVector3Int cell;
     public bool isOpened;
+}
+
+[Serializable]
+public class FurnitureSaveData
+{
+    public string furnitureName; // matched via FurnitureDefinitionRegistry
+    public SerializableVector3Int cell;
+}
+
+[Serializable]
+public class RoomAnchorSaveData
+{
+    public SerializableVector3Int cell;
+    public string assignedRoomName; // matched via RoomDefinitionRegistry
 }

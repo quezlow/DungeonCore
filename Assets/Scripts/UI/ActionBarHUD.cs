@@ -66,6 +66,9 @@ public class ActionBarHUD : MonoBehaviour
     {
         new() { label = "Entrance", mode = BuildMode.PlaceEntrance },
         new() { label = "Chest",    mode = BuildMode.PlaceChest    },
+        new() { label = "Furniture", mode = BuildMode.PlaceFurniture },
+        new() { label = "Room",      mode = BuildMode.PlaceRoomAnchor },
+
     };
 
     // ── Colours ───────────────────────────────────────────────────
@@ -223,8 +226,13 @@ public class ActionBarHUD : MonoBehaviour
                 currentTab = ActiveTab.Build;
                 break;
 
-                // Future Build sub-menu modes (PlaceTrap, PlaceFurniture, etc.) should
-                // be added here with the same pattern as PlaceEntrance/PlaceChest.
+            // Future Build sub-menu modes (PlaceTrap, PlaceFurniture, etc.) should
+            // be added here with the same pattern as PlaceEntrance/PlaceChest.
+            case BuildMode.PlaceFurniture:
+            case BuildMode.PlaceRoomAnchor:
+                currentTab = ActiveTab.Build;
+                break;
+
         }
 
         UpdateTabHighlights();

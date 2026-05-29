@@ -37,6 +37,9 @@ public class DungeonSaveController : MonoBehaviour
     [Header("Registry")]
     [Tooltip("Assign the MonsterDefinitionRegistry ScriptableObject asset here.")]
     [SerializeField] private MonsterDefinitionRegistry monsterRegistry;
+    [SerializeField] private FurnitureDefinitionRegistry furnitureRegistry;
+    [SerializeField] private RoomDefinitionRegistry roomDefRegistry;
+
 
     private string savePath;
     private DungeonSaveData currentSave = new();
@@ -128,6 +131,29 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
+        var pieces = FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
+        currentSave.furniture.Clear();
+        foreach (var p in pieces)
+        {
+            if (p.Definition == null) continue;
+            currentSave.furniture.Add(new FurnitureSaveData
+            {
+                furnitureName = p.Definition.furnitureName,
+                cell = SerializableVector3Int.From(p.OccupiedCell)
+            });
+        }
+
+        var anchors = FindObjectsByType<RoomAnchor>(FindObjectsInactive.Exclude);
+        currentSave.roomAnchors.Clear();
+        foreach (var a in anchors)
+        {
+            currentSave.roomAnchors.Add(new RoomAnchorSaveData
+            {
+                cell = SerializableVector3Int.From(a.OccupiedCell),
+                assignedRoomName = a.AssignedRoom?.roomName ?? ""
+            });
+        }
+
         File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
         Debug.Log($"[DungeonSaveController] Saved to {savePath}");
     }
@@ -194,6 +220,20 @@ public class DungeonSaveController : MonoBehaviour
             foreach (var data in currentSave.chests)
                 DungeonBuildController.Instance.RestoreChest(
                     data.cell.ToVector3Int(), data.isOpened);
+        }
+
+        foreach (var data in currentSave.furniture)
+        {
+            var def = furnitureRegistry?.GetByName(data.furnitureName);
+            if (def == null) continue;
+            DungeonBuildController.Instance.RestoreFurniture(def, data.cell.ToVector3Int());
+        }
+
+        foreach (var data in currentSave.roomAnchors)
+        {
+            DungeonBuildController.Instance.RestoreRoomAnchor(
+                data.cell.ToVector3Int(), data.assignedRoomName,
+                furnitureRegistry, roomDefRegistry);
         }
 
         Debug.Log("[DungeonSaveController] Load complete.");
