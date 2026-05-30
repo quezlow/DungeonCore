@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 980df155a2c8d9248b6fd4b5b70e99e8, type: 3}
+  m_Name: TrapDefinitionRegistry
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinitionRegistry
+  definitions:
+  - {fileID: 11400000, guid: 5a256e40c8aec3744a15994c3b633cae, type: 2}
+  - {fileID: 11400000, guid: 02440f489a7ff0046a21e239dd37f781, type: 2}

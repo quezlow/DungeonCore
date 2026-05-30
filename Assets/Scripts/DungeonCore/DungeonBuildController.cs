@@ -16,6 +16,7 @@ public enum BuildMode
     PlaceChest,     // Click an owned tile to place a treasure chest
     PlaceFurniture, // PlaceTrap, PlaceFurniture, etc. added in later sessions
     PlaceRoomAnchor,
+    PlaceTrap,
 }
 
 public class DungeonBuildController : MonoBehaviour
@@ -23,6 +24,7 @@ public class DungeonBuildController : MonoBehaviour
     public static DungeonBuildController Instance { get; private set; }
 
     public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
+    public void SetSelectedTrap(TrapDefinition def) => selectedTrap = def;
 
     // ── Inspector ─────────────────────────────────────────────────
 
@@ -35,6 +37,7 @@ public class DungeonBuildController : MonoBehaviour
     [SerializeField] private MonsterSpawner spawnerShellPrefab; // Shell only — no MonsterDefinition assigned
     [SerializeField] private RoomAnchor roomAnchorPrefab;
     [SerializeField] private FurnitureDefinition selectedFurniture; // set by BuildSubmenu
+    [SerializeField] private TrapDefinition selectedTrap;
 
 
     // ── State ─────────────────────────────────────────────────────
@@ -85,7 +88,9 @@ public class DungeonBuildController : MonoBehaviour
             case BuildMode.PlaceRoomAnchor:
                 HandleRoomAnchorPlacement();
                 break;
-
+            case BuildMode.PlaceTrap:
+                HandleTrapPlacement();
+                break;
         }
     }
 
@@ -274,6 +279,43 @@ public class DungeonBuildController : MonoBehaviour
         Debug.Log($"[BuildController] Room anchor placed at {cell}. Click it to assign a room type.");
     }
 
+    private void HandleTrapPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (TileInfluenceManager.Instance == null) return;
+
+        if (!TileInfluenceManager.Instance.IsTileOwned(cell))
+        {
+            Debug.Log("[BuildController] Trap must be placed on an owned tile.");
+            return;
+        }
+
+        if (selectedTrap == null || selectedTrap.prefab == null)
+        {
+            Debug.LogWarning("[BuildController] No trap type selected.");
+            return;
+        }
+
+        // Reject if another trap is already on this cell.
+        if (TrapRegistry.Instance != null && TrapRegistry.Instance.GetTrapAt(cell) != null)
+        {
+            Debug.Log("[BuildController] A trap already exists on this tile.");
+            return;
+        }
+
+        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost))
+        {
+            Debug.Log("[BuildController] Not enough mana to place trap.");
+            return;
+        }
+
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var trap = Instantiate(selectedTrap.prefab, worldPos, Quaternion.identity);
+        trap.Initialise(selectedTrap, cell);
+
+        SetMode(BuildMode.Claim);
+        Debug.Log($"[BuildController] Placed {selectedTrap.trapName} at {cell}.");
+    }
 
     // ── Restore (called by DungeonSaveController on load) ────────────
 
@@ -344,6 +386,14 @@ public class DungeonBuildController : MonoBehaviour
         }
     }
 
+    public void RestoreTrap(TrapDefinition def, Vector3Int cell, bool isFlagged)
+    {
+        if (def == null || def.prefab == null) return;
+        Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
+        var trap = Instantiate(def.prefab, worldPos, Quaternion.identity);
+        trap.Initialise(def, cell);
+        if (isFlagged) trap.Flag();
+    }
 
     private void RevalidateAllAnchors()
     {

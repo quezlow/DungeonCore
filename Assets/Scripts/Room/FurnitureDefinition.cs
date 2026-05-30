@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -9,7 +10,7 @@ using UnityEngine;
 /// candles) should leave this false. Solid objects (shelves, beds) set it true.
 /// </summary>
 [CreateAssetMenu(fileName = "NewFurnitureDefinition",
-                 menuName  = "Dungeon/Furniture Definition")]
+                 menuName = "Dungeon/Furniture Definition")]
 public class FurnitureDefinition : ScriptableObject
 {
     [Header("Identity")]
@@ -28,6 +29,21 @@ public class FurnitureDefinition : ScriptableObject
     public bool blocksPathfinding = true;
 
     [Header("Visuals")]
-    [Tooltip("Icon shown in the Build submenu button.")]
+    [Tooltip("Icon shown in the Build submenu button and the selection panel.")]
     public Sprite icon;
+
+    [Header("Description")]
+    [TextArea(2, 4)]
+    public string description;
+
+    /// <summary>
+    /// Returns one-line stat strings for display in FurnitureSelectionUI.
+    /// Extend as new mechanical properties are added to furniture.
+    /// </summary>
+    public List<string> GetStatLines()
+    {
+        var lines = new List<string>();
+        lines.Add(blocksPathfinding ? "Blocks Path" : "Does Not Block Path");
+        return lines;
+    }
 }

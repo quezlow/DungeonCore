@@ -39,7 +39,7 @@ public class DungeonSaveController : MonoBehaviour
     [SerializeField] private MonsterDefinitionRegistry monsterRegistry;
     [SerializeField] private FurnitureDefinitionRegistry furnitureRegistry;
     [SerializeField] private RoomDefinitionRegistry roomDefRegistry;
-
+    [SerializeField] private TrapDefinitionRegistry trapRegistry;
 
     private string savePath;
     private DungeonSaveData currentSave = new();
@@ -154,6 +154,20 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
+        var traps = FindObjectsByType<TrapBase>(FindObjectsInactive.Exclude);
+        currentSave.traps.Clear();
+        foreach (var t in traps)
+        {
+            if (t.Definition == null) continue;
+            currentSave.traps.Add(new TrapSaveData
+            {
+                trapName = t.Definition.trapName,
+                cell = SerializableVector3Int.From(t.OccupiedCell),
+                isFlagged = t.IsFlagged
+            });
+        }
+
+
         File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
         Debug.Log($"[DungeonSaveController] Saved to {savePath}");
     }
@@ -190,12 +204,12 @@ public class DungeonSaveController : MonoBehaviour
         if (currentSave.tileData != null)
             TileInfluenceManager.Instance.LoadSaveData(currentSave.tileData);
 
-        // 3 — Entrance
+        // 4 — Entrance
         if (currentSave.hasEntrance)
             DungeonBuildController.Instance.RestoreEntrance(
                 currentSave.entranceCell.ToVector3Int());
 
-        // 4 — Monster spawners
+        // 5 — Monster spawners
         if (currentSave.spawners != null)
         {
             if (monsterRegistry == null)
@@ -214,7 +228,7 @@ public class DungeonSaveController : MonoBehaviour
             }
         }
 
-        // 5 — Chests
+        // 6 — Chests
         if (currentSave.chests != null)
         {
             foreach (var data in currentSave.chests)
@@ -222,6 +236,7 @@ public class DungeonSaveController : MonoBehaviour
                     data.cell.ToVector3Int(), data.isOpened);
         }
 
+        // 7 — Furniture
         foreach (var data in currentSave.furniture)
         {
             var def = furnitureRegistry?.GetByName(data.furnitureName);
@@ -229,11 +244,20 @@ public class DungeonSaveController : MonoBehaviour
             DungeonBuildController.Instance.RestoreFurniture(def, data.cell.ToVector3Int());
         }
 
+        // 8 — Room Anchors
         foreach (var data in currentSave.roomAnchors)
         {
             DungeonBuildController.Instance.RestoreRoomAnchor(
                 data.cell.ToVector3Int(), data.assignedRoomName,
                 furnitureRegistry, roomDefRegistry);
+        }
+
+        // 9 — Traps
+        foreach (var data in currentSave.traps)
+        {
+            var def = trapRegistry?.GetByName(data.trapName);
+            if (def == null) continue;
+            DungeonBuildController.Instance.RestoreTrap(def, data.cell.ToVector3Int(), data.isFlagged);
         }
 
         Debug.Log("[DungeonSaveController] Load complete.");

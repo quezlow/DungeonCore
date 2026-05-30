@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b805a35a68b972044abe7da4d0478692, type: 3}
   m_Name: Furniture_Seating
   m_EditorClassIdentifier: Assembly-CSharp::FurnitureDefinition
-  furnitureName: Furniture
+  furnitureName: Chair
   prefab: {fileID: 4704242168619302786, guid: 50c7f0b140c6b1748b67ce79fd768c42, type: 3}
   manaCost: 3
   blocksPathfinding: 0
   icon: {fileID: 0}
+  description: Wooden benches and cushioned chairs. Required for a Library.

@@ -21,12 +21,17 @@ public static class DungeonPathfinder
         if (influence == null) return new List<Vector3>();
 
         Vector3Int start = influence.WorldToCell(startWorld);
-        Vector3Int goal  = influence.WorldToCell(goalWorld);
+        Vector3Int goal = influence.WorldToCell(goalWorld);
 
         if (start == goal) return new List<Vector3>();
 
-        var frontier  = new Queue<Vector3Int>();
-        var cameFrom  = new Dictionary<Vector3Int, Vector3Int>();
+        // NEW: pull flagged cells once per pathfind call (cheap — cached in TrapRegistry).
+        var blocked = TrapRegistry.Instance != null
+            ? TrapRegistry.Instance.GetFlaggedCells()
+            : null;
+
+        var frontier = new Queue<Vector3Int>();
+        var cameFrom = new Dictionary<Vector3Int, Vector3Int>();
 
         frontier.Enqueue(start);
         cameFrom[start] = start;
@@ -43,8 +48,9 @@ public static class DungeonPathfinder
                 Vector3Int next = current + dir;
                 if (cameFrom.ContainsKey(next)) continue;
 
-                // Walkable if owned, OR if it's the goal cell itself
-                // (goal may be the core or entrance tile which counts as owned)
+                // NEW: skip flagged-trap cells unless the goal IS that cell.
+                if (blocked != null && blocked.Contains(next) && next != goal) continue;
+
                 if (!influence.IsTileOwned(next) && next != goal) continue;
 
                 frontier.Enqueue(next);
@@ -52,8 +58,9 @@ public static class DungeonPathfinder
             }
         }
 
-        return new List<Vector3>(); // no path found
+        return new List<Vector3>();
     }
+
 
     private static List<Vector3> ReconstructPath(
         Dictionary<Vector3Int, Vector3Int> cameFrom,

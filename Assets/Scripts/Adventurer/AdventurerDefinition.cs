@@ -39,6 +39,13 @@ public class AdventurerDefinition : ScriptableObject
     public float chestDetectionRange = 3f;
     public float xpOnDeath        = 15f;
 
+    [Header("Trap Detection (Day 39 — Rogue Class)")]
+    [Tooltip("If true, instances of this class can detect and flag nearby traps.")]
+    public bool canDetectTraps = false;
+    public float trapDetectionRadius = 2.5f;
+    public float trapDetectionChancePerSecond = 0.3f;
+
+
     // ── Day 39 stub ───────────────────────────────────────────────
     // Uncomment when combat class unique behaviours are implemented.
     //

@@ -93,6 +93,7 @@ Transform:
   - {fileID: 150602188482917472}
   - {fileID: 1672435368493027665}
   - {fileID: 2455971752002716847}
+  - {fileID: 7616670303234159370}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2890714035007077683
@@ -207,12 +208,63 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4537bf0e0de8864b8336ee33f5ac51d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerSpawner
-  adventurerPrefab: {fileID: 0}
+  adventurerTypes: []
+  minPartySize: 3
+  maxPartySize: 5
+  scalePartySizeWithNotoriety: 0
   intervalLow: 30
   intervalMedium: 20
   intervalHigh: 10
   notorietyMediumThreshold: 25
   notorietyHighThreshold: 75
+  weightCautious: 2
+  weightBalanced: 4
+  weightAggressive: 2
+  weightCowardly: 1
+--- !u!1 &6100787366089016174
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7616670303234159370}
+  - component: {fileID: 1133935243193611633}
+  m_Layer: 0
+  m_Name: TrapRegistry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7616670303234159370
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6100787366089016174}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690650735862136}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1133935243193611633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6100787366089016174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60c19c94b55b8cf4baffc3b84bf6549a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrapRegistry
 --- !u!1 &6179279879697576869
 GameObject:
   m_ObjectHideFlags: 0
@@ -637,6 +689,9 @@ MonoBehaviour:
   entrancePrefab: {fileID: 7987491680190548495, guid: 227989ce1b1ac76489a6becddbaa5d23, type: 3}
   chestPrefab: {fileID: 0}
   spawnerShellPrefab: {fileID: 0}
+  roomAnchorPrefab: {fileID: 0}
+  selectedFurniture: {fileID: 0}
+  selectedTrap: {fileID: 0}
 --- !u!1 &7775609364282596168
 GameObject:
   m_ObjectHideFlags: 0
@@ -729,6 +784,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonSaveController
   monsterRegistry: {fileID: 11400000, guid: b8bcaf4899d5da64d8e15bf956877f5f, type: 2}
+  furnitureRegistry: {fileID: 0}
+  roomDefRegistry: {fileID: 0}
+  trapRegistry: {fileID: 0}
 --- !u!1 &8233158792243165229
 GameObject:
   m_ObjectHideFlags: 0

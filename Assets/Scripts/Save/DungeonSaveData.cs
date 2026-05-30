@@ -30,6 +30,7 @@ public class DungeonSaveData
     public List<DungeonChestSaveData> chests = new();
     public List<FurnitureSaveData> furniture = new();
     public List<RoomAnchorSaveData> roomAnchors = new();
+    public List<TrapSaveData> traps = new();
 
 }
 
@@ -65,4 +66,12 @@ public class RoomAnchorSaveData
 {
     public SerializableVector3Int cell;
     public string assignedRoomName; // matched via RoomDefinitionRegistry
+}
+
+[Serializable]
+public class TrapSaveData
+{
+    public string trapName;
+    public SerializableVector3Int cell;
+    public bool isFlagged;
 }

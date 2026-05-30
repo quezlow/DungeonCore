@@ -148,6 +148,9 @@ MonoBehaviour:
   xpOnDeath: 15
   droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
+  canDetectTraps: 0
+  trapDetectionRadius: 2.5
+  trapDetectionChancePerSecond: 0.3
 --- !u!95 &8584647482092882706
 Animator:
   serializedVersion: 7

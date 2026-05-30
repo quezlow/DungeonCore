@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b805a35a68b972044abe7da4d0478692, type: 3}
   m_Name: Furniture_Bed
   m_EditorClassIdentifier: Assembly-CSharp::FurnitureDefinition
-  furnitureName: Furniture
+  furnitureName: Bed
   prefab: {fileID: 4704242168619302786, guid: 50c7f0b140c6b1748b67ce79fd768c42, type: 3}
   manaCost: 5
   blocksPathfinding: 1
   icon: {fileID: -1503147283, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+  description: A simple straw pallet. Gather them in numbers to form a Barracks.

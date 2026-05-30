@@ -68,7 +68,7 @@ public class ActionBarHUD : MonoBehaviour
         new() { label = "Chest",    mode = BuildMode.PlaceChest    },
         new() { label = "Furniture", mode = BuildMode.PlaceFurniture },
         new() { label = "Room",      mode = BuildMode.PlaceRoomAnchor },
-
+        new() { label = "Trap", mode = BuildMode.PlaceTrap },
     };
 
     // ── Colours ───────────────────────────────────────────────────
@@ -230,6 +230,7 @@ public class ActionBarHUD : MonoBehaviour
             // be added here with the same pattern as PlaceEntrance/PlaceChest.
             case BuildMode.PlaceFurniture:
             case BuildMode.PlaceRoomAnchor:
+            case BuildMode.PlaceTrap:
                 currentTab = ActiveTab.Build;
                 break;
 

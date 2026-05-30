@@ -58,6 +58,19 @@ public class DungeonAdventurer : MonoBehaviour
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
+    [Header("Trap Detection (Rogue stub — Day 39)")]
+    [Tooltip("If true, this adventurer can detect and flag nearby traps.")]
+    [SerializeField] private bool canDetectTraps = false;
+    [Tooltip("World-space radius within which a trap can be detected.")]
+    [SerializeField] private float trapDetectionRadius = 2.5f;
+    [Tooltip("Per-second probability of successfully detecting any in-range trap.")]
+    [SerializeField] private float trapDetectionChancePerSecond = 0.3f;
+
+    [Header("Slow Effect")]
+    private float slowMultiplier = 1f;
+    private float slowTimer = 0f;
+
+
     // ── Runtime state ─────────────────────────────────────────────
     private float currentHP;
     private AdventurerState state = AdventurerState.MovingToCore;
@@ -93,6 +106,9 @@ public class DungeonAdventurer : MonoBehaviour
             detectionRange = def.detectionRange;
             chestDetectionRange = def.chestDetectionRange;
             xpOnDeath = def.xpOnDeath;
+            canDetectTraps = def.canDetectTraps;
+            trapDetectionRadius = def.trapDetectionRadius;
+            trapDetectionChancePerSecond = def.trapDetectionChancePerSecond;
         }
 
         trait = assignedTrait;
@@ -134,6 +150,14 @@ public class DungeonAdventurer : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
+
+        if (slowTimer > 0f)
+        {
+            slowTimer -= Time.deltaTime;
+            if (slowTimer <= 0f) slowMultiplier = 1f;
+        }
+
+        if (canDetectTraps) ScanForTraps();
 
         // HP-based retreat check — applies to Cautious, Balanced, Aggressive.
         // Cowardly has retreatThreshold = 1f so this also catches the edge case
@@ -207,11 +231,13 @@ public class DungeonAdventurer : MonoBehaviour
         }
 
         Vector3 waypoint = currentPath[pathIndex];
-        transform.position = Vector2.MoveTowards(
-            transform.position, waypoint, moveSpeed * Time.deltaTime);
+        transform.position = Vector2.MoveTowards(transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
 
-        if (Vector2.Distance(transform.position, waypoint) < 0.08f)
+        if(Vector2.Distance(transform.position, waypoint) < 0.08f)
+        {
             pathIndex++;
+            CheckTrapAtCurrentCell();
+        }
     }
 
     private void OnReachedDestination()
@@ -333,8 +359,7 @@ public class DungeonAdventurer : MonoBehaviour
         if (pathIndex < currentPath.Count)
         {
             Vector3 waypoint = currentPath[pathIndex];
-            transform.position = Vector2.MoveTowards(
-                transform.position, waypoint, moveSpeed * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
             if (Vector2.Distance(transform.position, waypoint) < 0.08f)
                 pathIndex++;
             return;
@@ -396,8 +421,7 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (dist > attackRange)
         {
-            transform.position = Vector2.MoveTowards(
-                transform.position, combatTarget.transform.position, moveSpeed * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(transform.position, combatTarget.transform.position, moveSpeed * slowMultiplier * Time.deltaTime);
             return;
         }
 
@@ -457,6 +481,41 @@ public class DungeonAdventurer : MonoBehaviour
 
         carriedLoot.Clear();
     }
+
+    // ── Helpers ──────────────────────────────────────────────
+    private void CheckTrapAtCurrentCell()
+    {
+        if (TrapRegistry.Instance == null || TileInfluenceManager.Instance == null) return;
+        Vector3Int cell = TileInfluenceManager.Instance.WorldToCell(transform.position);
+        var trap = TrapRegistry.Instance.GetTrapAt(cell);
+        if (trap != null) trap.OnAdventurerEntered(this);
+    }
+
+    private void ScanForTraps()
+    {
+        if (TrapRegistry.Instance == null) return;
+
+        // Per-frame roll: chance/second × deltaTime gives per-frame chance.
+        float roll = Random.value;
+        if (roll >= trapDetectionChancePerSecond * Time.deltaTime) return;
+
+        foreach (var trap in TrapRegistry.Instance.GetTrapsWithinRadius(
+                     transform.position, trapDetectionRadius))
+        {
+            if (trap.IsFlagged) continue;
+            trap.Flag();
+            Debug.Log($"[Adventurer] Detected trap at {trap.OccupiedCell}.");
+            break; // only flag one per scan to keep the dramatic beat
+        }
+    }
+
+    public void ApplySlow(float multiplier, float duration)
+    {
+        // Keep the harshest active slow (lowest multiplier) for overlapping triggers.
+        if (multiplier < slowMultiplier) slowMultiplier = multiplier;
+        if (duration > slowTimer) slowTimer = duration;
+    }
+
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;
