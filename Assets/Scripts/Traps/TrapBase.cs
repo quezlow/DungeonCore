@@ -63,6 +63,16 @@ public abstract class TrapBase : MonoBehaviour
     /// <summary>
     /// Subclasses implement the trap's specific effect (damage, slow, etc.).
     /// </summary>
+    /// 
+    public void TriggerExternally(DungeonAdventurer adv)
+    {
+        if (Definition == null || adv == null) return;
+        // Bypasses cooldown AND flagged state — the adventurer stepped on the
+        // PLATE, not on this trap directly, so neither restriction applies.
+        ApplyEffect(adv);
+        Debug.Log($"[Trap] {Definition.trapName} triggered externally at {OccupiedCell}.");
+    }
+
     protected abstract void ApplyEffect(DungeonAdventurer adv);
 
     // ── Flagged State ─────────────────────────────────────────────
@@ -95,7 +105,8 @@ public abstract class TrapBase : MonoBehaviour
         {
             TrapDefinition.TrapBehaviour.SpikeTrap => placedPrefab.AddComponent<SpikeTrap>(),
             TrapDefinition.TrapBehaviour.Pitfall => placedPrefab.AddComponent<PitfallTrap>(),
-            TrapDefinition.TrapBehaviour.Warning => placedPrefab.AddComponent<WarningTrap>(), 
+            TrapDefinition.TrapBehaviour.Warning => placedPrefab.AddComponent<WarningTrap>(),
+            TrapDefinition.TrapBehaviour.PressurePlate => placedPrefab.AddComponent<PressurePlateTrap>(),
             _ => placedPrefab.AddComponent<SpikeTrap>(),
         };
     }

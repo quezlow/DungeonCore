@@ -25,6 +25,7 @@ public class DungeonBuildController : MonoBehaviour
 
     public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
     public void SetSelectedTrap(TrapDefinition def) => selectedTrap = def;
+    public void SetSelectedChest(ChestDefinition def) => selectedChest = def;
 
     // ── Inspector ─────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ public class DungeonBuildController : MonoBehaviour
 
     [Header("Prefabs")]
     [SerializeField] private DungeonEntrance entrancePrefab;
-    [SerializeField] private DungeonChest chestPrefab;
+    [SerializeField] private ChestDefinition selectedChest;   // set by ChestSelectionUI
     [SerializeField] private MonsterSpawner spawnerShellPrefab; // Shell only — no MonsterDefinition assigned
     [SerializeField] private RoomAnchor roomAnchorPrefab;
     [SerializeField] private FurnitureDefinition selectedFurniture; // set by BuildSubmenu
@@ -184,18 +185,26 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        if (chestPrefab == null)
+        if (selectedChest == null || selectedChest.prefab == null)
         {
-            Debug.LogError("[BuildController] chestPrefab is not assigned.");
+            Debug.LogWarning("[BuildController] No chest type selected.");
+            return;
+        }
+
+        if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost))
+        {
+            Debug.Log("[BuildController] Not enough mana to place chest.");
             return;
         }
 
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
-        Instantiate(chestPrefab, worldPos, Quaternion.identity);
+        var chest = Instantiate(selectedChest.prefab, worldPos, Quaternion.identity);
+        chest.Initialise(selectedChest);
 
-        Debug.Log($"[BuildController] Chest placed at cell {cell}.");
+        Debug.Log($"[BuildController] Placed {selectedChest.chestName} at {cell}.");
         SetMode(BuildMode.Claim);
     }
+
 
     private void PlaceSpawner(Vector3Int cell)
     {
@@ -353,19 +362,16 @@ public class DungeonBuildController : MonoBehaviour
         // Capacity is already restored from DungeonCoreSaveData — do not call TrySpendCapacity here.
     }
 
-    public void RestoreChest(Vector3Int cell, bool isOpened, bool isTrapChest = false)
+    public void RestoreChest(ChestDefinition def, Vector3Int cell, bool isOpened)
     {
-        if (chestPrefab == null)
-        {
-            Debug.LogError("[BuildController] chestPrefab not assigned — cannot restore chest.");
-            return;
-        }
+        if (def == null || def.prefab == null) return;
 
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
-        var chest = Instantiate(chestPrefab, worldPos, Quaternion.identity);
-        chest.SetIsTrapChest(isTrapChest);
+        var chest = Instantiate(def.prefab, worldPos, Quaternion.identity);
+        chest.Initialise(def);
         if (isOpened) chest.SetOpened(true);
     }
+
 
 
     public void RestoreFurniture(FurnitureDefinition def, Vector3Int cell)
@@ -393,7 +399,8 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     public void RestoreTrap(TrapDefinition def, Vector3Int cell, bool isFlagged,
-                            string warningLabel = "")
+                        string warningLabel = "", bool hasLink = false,
+                        Vector3Int linkedCell = default)
     {
         if (def == null || def.prefab == null) return;
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
@@ -403,8 +410,12 @@ public class DungeonBuildController : MonoBehaviour
         if (trap is WarningTrap warning && !string.IsNullOrEmpty(warningLabel))
             warning.SetWarningLabel(warningLabel);
 
+        if (trap is PressurePlateTrap plate && hasLink)
+            plate.SetLink(linkedCell);
+
         if (isFlagged) trap.Flag();
     }
+
 
 
     private void RevalidateAllAnchors()

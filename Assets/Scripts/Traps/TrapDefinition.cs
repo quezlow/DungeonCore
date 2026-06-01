@@ -19,8 +19,7 @@ public class TrapDefinition : ScriptableObject
     {
         SpikeTrap,    // damage on step
         Pitfall,      // damage + brief slow
-        // Future:
-        // PressurePlate,
+        PressurePlate,
         Warning,      // Warning,
     }
 

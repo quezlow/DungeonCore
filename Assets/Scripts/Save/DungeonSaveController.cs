@@ -40,6 +40,7 @@ public class DungeonSaveController : MonoBehaviour
     [SerializeField] private FurnitureDefinitionRegistry furnitureRegistry;
     [SerializeField] private RoomDefinitionRegistry roomDefRegistry;
     [SerializeField] private TrapDefinitionRegistry trapRegistry;
+    [SerializeField] private ChestDefinitionRegistry chestRegistry;
 
     private string savePath;
     private DungeonSaveData currentSave = new();
@@ -125,12 +126,13 @@ public class DungeonSaveController : MonoBehaviour
         {
             currentSave.chests.Add(new DungeonChestSaveData
             {
+                chestName = c.Definition != null ? c.Definition.chestName : "",
                 cell = SerializableVector3Int.From(
                     TileInfluenceManager.Instance.WorldToCell(c.transform.position)),
-                isOpened = c.IsOpened,
-                isTrapChest = c.IsTrapChest   // ← NEW
+                isOpened = c.IsOpened
             });
         }
+
 
 
         var pieces = FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
@@ -161,13 +163,18 @@ public class DungeonSaveController : MonoBehaviour
         foreach (var t in traps)
         {
             if (t.Definition == null) continue;
-            currentSave.traps.Add(new TrapSaveData
+            var data = new TrapSaveData
             {
                 trapName = t.Definition.trapName,
                 cell = SerializableVector3Int.From(t.OccupiedCell),
                 isFlagged = t.IsFlagged,
-                warningLabel = (t is WarningTrap w) ? w.WarningLabel : ""   // ← NEW
-            });
+                warningLabel = (t is WarningTrap w) ? w.WarningLabel : "",
+                hasLink = (t is PressurePlateTrap p) && p.HasLink,
+                linkedCell = (t is PressurePlateTrap pp && pp.HasLink)
+                    ? SerializableVector3Int.From(pp.LinkedCell)
+                    : SerializableVector3Int.From(Vector3Int.zero)
+            };
+            currentSave.traps.Add(data);
         }
 
         File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
@@ -234,9 +241,13 @@ public class DungeonSaveController : MonoBehaviour
         if (currentSave.chests != null)
         {
             foreach (var data in currentSave.chests)
-                DungeonBuildController.Instance.RestoreChest(data.cell.ToVector3Int(), data.isOpened, data.isTrapChest);
-
+            {
+                var def = chestRegistry?.GetByName(data.chestName);
+                if (def == null) continue;
+                DungeonBuildController.Instance.RestoreChest(def, data.cell.ToVector3Int(), data.isOpened);
+            }
         }
+
 
         // 7 — Furniture
         foreach (var data in currentSave.furniture)
@@ -260,8 +271,10 @@ public class DungeonSaveController : MonoBehaviour
             var def = trapRegistry?.GetByName(data.trapName);
             if (def == null) continue;
             DungeonBuildController.Instance.RestoreTrap(
-                def, data.cell.ToVector3Int(), data.isFlagged, data.warningLabel);
+                def, data.cell.ToVector3Int(), data.isFlagged,
+                data.warningLabel, data.hasLink, data.linkedCell.ToVector3Int());
         }
+
 
 
         Debug.Log("[DungeonSaveController] Load complete.");

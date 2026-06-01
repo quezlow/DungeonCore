@@ -80,10 +80,10 @@ public class TrapRegistry : MonoBehaviour
                 if (kvp.Value == null) continue;
                 if (!kvp.Value.IsFlagged) continue;
 
-                // Warning traps don't block pathfinding even when flagged —
-                // they only fire alerts, no damage to route around.
+                // Warning traps and pressure plates don't block pathfinding when flagged.
                 if (kvp.Value.Definition != null &&
-                    kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.Warning)
+                    (kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.Warning ||
+                     kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.PressurePlate))
                     continue;
 
                 flaggedCellsCache.Add(kvp.Key);
@@ -92,6 +92,7 @@ public class TrapRegistry : MonoBehaviour
         }
         return flaggedCellsCache;
     }
+
 
 
     /// <summary>

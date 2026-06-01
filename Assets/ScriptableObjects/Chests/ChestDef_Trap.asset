@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e738c199f825bb14f9615acddcd3537f, type: 3}
+  m_Name: ChestDef_Trap
+  m_EditorClassIdentifier: Assembly-CSharp::ChestDefinition
+  chestName: Trapped Chest
+  prefab: {fileID: 5919999369765936167, guid: eb51e522c2bcabc4095afff65ae710cd, type: 3}
+  manaCost: 8
+  isTrapChest: 1
+  trapDamage: 15
+  icon: {fileID: -1292619791190532883, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
+  description: Looks identical to a regular chest. Bites back.
