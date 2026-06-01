@@ -21,7 +21,7 @@ public class TrapDefinition : ScriptableObject
         Pitfall,      // damage + brief slow
         // Future:
         // PressurePlate,
-        // Warning,
+        Warning,      // Warning,
     }
 
     [Header("Identity")]

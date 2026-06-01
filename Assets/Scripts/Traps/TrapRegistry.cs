@@ -76,12 +76,23 @@ public class TrapRegistry : MonoBehaviour
         {
             flaggedCellsCache.Clear();
             foreach (var kvp in trapsByCell)
-                if (kvp.Value != null && kvp.Value.IsFlagged)
-                    flaggedCellsCache.Add(kvp.Key);
+            {
+                if (kvp.Value == null) continue;
+                if (!kvp.Value.IsFlagged) continue;
+
+                // Warning traps don't block pathfinding even when flagged —
+                // they only fire alerts, no damage to route around.
+                if (kvp.Value.Definition != null &&
+                    kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.Warning)
+                    continue;
+
+                flaggedCellsCache.Add(kvp.Key);
+            }
             flaggedCacheDirty = false;
         }
         return flaggedCellsCache;
     }
+
 
     /// <summary>
     /// All trap cells within radius of a world position, regardless of flagged state.

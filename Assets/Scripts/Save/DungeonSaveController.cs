@@ -127,9 +127,11 @@ public class DungeonSaveController : MonoBehaviour
             {
                 cell = SerializableVector3Int.From(
                     TileInfluenceManager.Instance.WorldToCell(c.transform.position)),
-                isOpened = c.IsOpened
+                isOpened = c.IsOpened,
+                isTrapChest = c.IsTrapChest   // ← NEW
             });
         }
+
 
         var pieces = FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
         currentSave.furniture.Clear();
@@ -163,10 +165,10 @@ public class DungeonSaveController : MonoBehaviour
             {
                 trapName = t.Definition.trapName,
                 cell = SerializableVector3Int.From(t.OccupiedCell),
-                isFlagged = t.IsFlagged
+                isFlagged = t.IsFlagged,
+                warningLabel = (t is WarningTrap w) ? w.WarningLabel : ""   // ← NEW
             });
         }
-
 
         File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
         Debug.Log($"[DungeonSaveController] Saved to {savePath}");
@@ -232,8 +234,8 @@ public class DungeonSaveController : MonoBehaviour
         if (currentSave.chests != null)
         {
             foreach (var data in currentSave.chests)
-                DungeonBuildController.Instance.RestoreChest(
-                    data.cell.ToVector3Int(), data.isOpened);
+                DungeonBuildController.Instance.RestoreChest(data.cell.ToVector3Int(), data.isOpened, data.isTrapChest);
+
         }
 
         // 7 — Furniture
@@ -257,8 +259,10 @@ public class DungeonSaveController : MonoBehaviour
         {
             var def = trapRegistry?.GetByName(data.trapName);
             if (def == null) continue;
-            DungeonBuildController.Instance.RestoreTrap(def, data.cell.ToVector3Int(), data.isFlagged);
+            DungeonBuildController.Instance.RestoreTrap(
+                def, data.cell.ToVector3Int(), data.isFlagged, data.warningLabel);
         }
+
 
         Debug.Log("[DungeonSaveController] Load complete.");
     }

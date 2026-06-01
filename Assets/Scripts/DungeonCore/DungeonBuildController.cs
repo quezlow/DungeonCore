@@ -296,7 +296,6 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Reject if another trap is already on this cell.
         if (TrapRegistry.Instance != null && TrapRegistry.Instance.GetTrapAt(cell) != null)
         {
             Debug.Log("[BuildController] A trap already exists on this tile.");
@@ -313,9 +312,14 @@ public class DungeonBuildController : MonoBehaviour
         var trap = Instantiate(selectedTrap.prefab, worldPos, Quaternion.identity);
         trap.Initialise(selectedTrap, cell);
 
+        // Warning trap: prompt the player to name it.
+        if (trap is WarningTrap warning)
+            WarningTrapNameDialog.Instance?.Open(warning);
+
         SetMode(BuildMode.Claim);
         Debug.Log($"[BuildController] Placed {selectedTrap.trapName} at {cell}.");
     }
+
 
     // ── Restore (called by DungeonSaveController on load) ────────────
 
@@ -349,7 +353,7 @@ public class DungeonBuildController : MonoBehaviour
         // Capacity is already restored from DungeonCoreSaveData — do not call TrySpendCapacity here.
     }
 
-    public void RestoreChest(Vector3Int cell, bool isOpened)
+    public void RestoreChest(Vector3Int cell, bool isOpened, bool isTrapChest = false)
     {
         if (chestPrefab == null)
         {
@@ -359,8 +363,10 @@ public class DungeonBuildController : MonoBehaviour
 
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
         var chest = Instantiate(chestPrefab, worldPos, Quaternion.identity);
+        chest.SetIsTrapChest(isTrapChest);
         if (isOpened) chest.SetOpened(true);
     }
+
 
     public void RestoreFurniture(FurnitureDefinition def, Vector3Int cell)
     {
@@ -386,14 +392,20 @@ public class DungeonBuildController : MonoBehaviour
         }
     }
 
-    public void RestoreTrap(TrapDefinition def, Vector3Int cell, bool isFlagged)
+    public void RestoreTrap(TrapDefinition def, Vector3Int cell, bool isFlagged,
+                            string warningLabel = "")
     {
         if (def == null || def.prefab == null) return;
         Vector3 worldPos = TileInfluenceManager.Instance.CellToWorld(cell);
         var trap = Instantiate(def.prefab, worldPos, Quaternion.identity);
         trap.Initialise(def, cell);
+
+        if (trap is WarningTrap warning && !string.IsNullOrEmpty(warningLabel))
+            warning.SetWarningLabel(warningLabel);
+
         if (isFlagged) trap.Flag();
     }
+
 
     private void RevalidateAllAnchors()
     {

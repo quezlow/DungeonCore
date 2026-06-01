@@ -52,6 +52,7 @@ public class DungeonChestSaveData
 {
     public SerializableVector3Int cell;
     public bool isOpened;
+    public bool isTrapChest;
 }
 
 [Serializable]
@@ -74,4 +75,7 @@ public class TrapSaveData
     public string trapName;
     public SerializableVector3Int cell;
     public bool isFlagged;
+    public string warningLabel;
 }
+
+

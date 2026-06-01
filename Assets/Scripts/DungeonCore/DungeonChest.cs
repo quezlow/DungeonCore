@@ -23,8 +23,22 @@ public class DungeonChest : MonoBehaviour
     [Header("Interaction")]
     [SerializeField] private float interactRadius = 0.8f;
 
+    [Header("Trap Chest")]
+    [Tooltip("If true, interacting with this chest triggers a trap effect " +
+         "alongside any loot drop.")]
+    [SerializeField] private bool isTrapChest = false;
+
+    [Tooltip("Damage dealt to the interacting adventurer when this chest is a trap.")]
+    [SerializeField] private float trapDamage = 15f;
+
+    [Tooltip("Optional sprite override for the trap chest variant. " +
+             "If null, uses the regular closedSprite to maintain deception.")]
+    [SerializeField] private Sprite trapChestClosedSprite;
+
+
     // ── State ─────────────────────────────────────────────────────
     public bool IsOpened { get; private set; } = false;
+    public bool IsTrapChest => isTrapChest;
 
     private SpriteRenderer spriteRenderer;
     private LootTable lootTable;
@@ -34,11 +48,16 @@ public class DungeonChest : MonoBehaviour
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        lootTable      = GetComponent<LootTable>();
+        lootTable = GetComponent<LootTable>();
 
-        if (closedSprite != null)
-            spriteRenderer.sprite = closedSprite;
+        Sprite spriteToShow = isTrapChest && trapChestClosedSprite != null
+            ? trapChestClosedSprite
+            : closedSprite;
+
+        if (spriteToShow != null)
+            spriteRenderer.sprite = spriteToShow;
     }
+
 
     // ── Public API ────────────────────────────────────────────────
 
@@ -46,7 +65,7 @@ public class DungeonChest : MonoBehaviour
     /// Called by DungeonAdventurer when they reach interact range.
     /// Rolls the loot table and marks the chest as opened.
     /// </summary>
-    public void Interact()
+    public void Interact(DungeonAdventurer adv = null)
     {
         if (IsOpened) return;
 
@@ -55,12 +74,35 @@ public class DungeonChest : MonoBehaviour
         if (openedSprite != null)
             spriteRenderer.sprite = openedSprite;
 
+        // Roll the loot table — trap chests still give loot, they just bite.
         lootTable?.Roll(transform.position);
 
-        SoundEffectManager.Play("Chest");
+        // Trap chest variant: damage the adventurer who opened it.
+        if (isTrapChest && adv != null)
+        {
+            DamageNumberSpawner.Spawn(trapDamage, adv.transform.position,
+                FloatingDamageNumber.DamageType.AdventurerHit);
+            adv.TakeDamage(trapDamage);
+            Debug.Log($"[DungeonChest] Trap chest sprung! {trapDamage} damage dealt.");
+        }
 
+        SoundEffectManager.Play("Chest");
         Debug.Log("[DungeonChest] Opened by adventurer.");
     }
+
+    public void SetIsTrapChest(bool value)
+    {
+        isTrapChest = value;
+        // Refresh sprite if not yet opened.
+        if (!IsOpened && spriteRenderer != null)
+        {
+            Sprite spriteToShow = value && trapChestClosedSprite != null
+                ? trapChestClosedSprite
+                : closedSprite;
+            if (spriteToShow != null) spriteRenderer.sprite = spriteToShow;
+        }
+    }
+
 
     /// <summary>
     /// Restores opened state from a save without rolling loot.

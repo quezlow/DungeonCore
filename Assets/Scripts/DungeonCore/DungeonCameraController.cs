@@ -5,6 +5,9 @@ using UnityEngine.InputSystem;
 
 public class DungeonCameraController : MonoBehaviour
 {
+    public static DungeonCameraController Instance { get; private set; }
+
+
     [Header("References")]
     [SerializeField] private CinemachineCamera cmCam;
 
@@ -54,6 +57,13 @@ public class DungeonCameraController : MonoBehaviour
 
         targetZoom = cmCam.Lens.OrthographicSize;
     }
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
+
 
     void Update()
     {
@@ -171,4 +181,12 @@ public class DungeonCameraController : MonoBehaviour
     {
         timeSinceLastInput = returnDelay;
     }
+
+    public void PanTo(Vector3 worldPos)
+    {
+        transform.position = new Vector3(worldPos.x, worldPos.y, transform.position.z);
+        timeSinceLastInput = 0f;
+        isReturning = false;
+    }
+
 }

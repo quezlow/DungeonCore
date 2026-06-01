@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c875285fc2fe45545bcf2494c71b59f3, type: 3}
+  m_Name: Trap_Warning
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
+  trapName: Warning Trap
+  behaviour: 2
+  prefab: {fileID: 267815673081233896, guid: d5df713b0cb59b04daf02f7203a82753, type: 3}
+  manaCost: 5
+  damage: 0
+  cooldown: 5
+  slowMultiplier: 0.4
+  slowDuration: 2
+  icon: {fileID: -4855157067726779641, guid: bc40b83db7920304f9b2979a74e643de, type: 3}
+  description: An invisible glyph that alerts you when adventurers cross it. Place
+    at choke points to track party movement.

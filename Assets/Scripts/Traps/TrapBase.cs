@@ -34,6 +34,8 @@ public abstract class TrapBase : MonoBehaviour
         OccupiedCell = cell;
 
         TrapRegistry.Instance?.Register(this);
+        Debug.Log($"[TrapBase] Initialised {def?.trapName} at cell {cell}. " +
+          $"Registry size: {TrapRegistry.Instance != null}");
     }
 
     protected virtual void OnDestroy()
@@ -86,16 +88,16 @@ public abstract class TrapBase : MonoBehaviour
     /// </summary>
     public static TrapBase EnsureBehaviour(GameObject placedPrefab, TrapDefinition def)
     {
-        // If the prefab already has a TrapBase subclass attached, use that.
         var existing = placedPrefab.GetComponent<TrapBase>();
         if (existing != null) return existing;
 
-        // Otherwise add the appropriate component.
         return def.behaviour switch
         {
             TrapDefinition.TrapBehaviour.SpikeTrap => placedPrefab.AddComponent<SpikeTrap>(),
-            TrapDefinition.TrapBehaviour.Pitfall   => placedPrefab.AddComponent<PitfallTrap>(),
-            _                                       => placedPrefab.AddComponent<SpikeTrap>(),
+            TrapDefinition.TrapBehaviour.Pitfall => placedPrefab.AddComponent<PitfallTrap>(),
+            TrapDefinition.TrapBehaviour.Warning => placedPrefab.AddComponent<WarningTrap>(), 
+            _ => placedPrefab.AddComponent<SpikeTrap>(),
         };
     }
+
 }

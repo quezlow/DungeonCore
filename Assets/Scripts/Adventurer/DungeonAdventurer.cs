@@ -194,7 +194,6 @@ public class DungeonAdventurer : MonoBehaviour
 
             case AdventurerState.Retreating:
                 ScanForLoot();
-                ScanForChests();
                 FollowPath();
                 break;
         }
@@ -212,6 +211,11 @@ public class DungeonAdventurer : MonoBehaviour
                 ? DungeonPathfinder.FindPath(transform.position,
                       DungeonEntrance.Instance.SpawnPosition)
                 : new List<Vector3>();
+        }
+        else if (state == AdventurerState.MovingToChest && chestTarget != null)
+        {
+            currentPath = DungeonPathfinder.FindPath(
+                transform.position, chestTarget.transform.position);
         }
         else
         {
@@ -325,6 +329,8 @@ public class DungeonAdventurer : MonoBehaviour
     private void ScanForChests()
     {
         var all = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
+        Debug.Log($"[ScanChests] Found {all.Length} chests. " +
+                  $"Range: {chestDetectionRange}. State: {state}");
         DungeonChest nearest = null;
         float nearestDist = chestDetectionRange;
 
@@ -338,9 +344,12 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (nearest != null && nearest != chestTarget)
         {
+            Debug.Log($"[ScanChests] Detouring to chest at {nearest.transform.position}. " +
+                      $"Distance: {Vector2.Distance(transform.position, nearest.transform.position):F2}");
             chestTarget = nearest;
             state = AdventurerState.MovingToChest;
             RefreshPath();
+            Debug.Log($"[ScanChests] Path length after RefreshPath: {currentPath.Count}");
         }
     }
 
@@ -348,6 +357,7 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (chestTarget == null || chestTarget.IsOpened)
         {
+            Debug.Log($"[MoveToChest] Early exit. target={chestTarget}, opened={chestTarget?.IsOpened}");
             if (chestTarget != null) visitedChests.Add(chestTarget);
             chestTarget = null;
             state = AdventurerState.MovingToCore;
@@ -369,7 +379,7 @@ public class DungeonAdventurer : MonoBehaviour
         float dist = Vector2.Distance(transform.position, chestTarget.transform.position);
         if (dist <= chestTarget.InteractRadius)
         {
-            chestTarget.Interact();
+            chestTarget.Interact(this);
             visitedChests.Add(chestTarget);
             chestTarget = null;
             state = AdventurerState.MovingToCore;
@@ -488,6 +498,7 @@ public class DungeonAdventurer : MonoBehaviour
         if (TrapRegistry.Instance == null || TileInfluenceManager.Instance == null) return;
         Vector3Int cell = TileInfluenceManager.Instance.WorldToCell(transform.position);
         var trap = TrapRegistry.Instance.GetTrapAt(cell);
+        Debug.Log($"[CheckTrap] Adventurer at cell {cell}. Trap here: {trap != null}");
         if (trap != null) trap.OnAdventurerEntered(this);
     }
 
