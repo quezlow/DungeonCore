@@ -283,7 +283,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &8812104093169685752
 Transform:
   m_ObjectHideFlags: 0
@@ -335,7 +335,7 @@ MonoBehaviour:
   floorIndex: 0
   tileInfluence: {fileID: 5413978721857217451}
   trapRegistry: {fileID: 6497510795534213533}
-  starterClaimedTiles:
+  starterClaimedOffsets:
   - {x: -1, y: -1, z: 0}
   - {x: 0, y: -1, z: 0}
   - {x: 1, y: -1, z: 0}
