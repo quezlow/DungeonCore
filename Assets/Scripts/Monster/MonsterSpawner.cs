@@ -72,6 +72,12 @@ public class MonsterSpawner : MonoBehaviour
         }
 
         spawnedMonster = Instantiate(definition.prefab, transform.position, Quaternion.identity);
+
+        // Parent the monster to the same floor hierarchy as this spawner so it
+        // deactivates when the player switches away from this floor.
+        if (transform.parent != null)
+            spawnedMonster.transform.SetParent(transform.parent, true);
+
         spawnedMonster.Initialise(this);
 
         /* ── PATROL SETUP (disabled) ────────────────────────────────

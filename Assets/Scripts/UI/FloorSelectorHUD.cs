@@ -1,104 +1,92 @@
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Right-centre floor selector. DAY 18: functional against the FloorManager stub —
-/// clicking a button selects that floor and highlights it. With only one floor
-/// unlocked it shows a single button, which is the intended placeholder. DAY 25
-/// fills out automatically as floors unlock (no changes needed here).
+/// Right-centre HUD widget that shows the current floor and provides Up/Down
+/// buttons to switch floors. Replaces the Day 18 stub.
 ///
-/// Setup in the scene:
-///   - buttonContainer: a UI object with a VerticalLayoutGroup, anchored right-centre.
-///   - floorButtonPrefab: a Button prefab with a TMP_Text child for its label.
+/// PREFAB / SCENE SETUP
+///   FloorSelectorHUD (this script, on a parent GameObject under UICanvas_Dungeon)
+///   ├── Panel
+///   │   ├── UpButton    (Button — wire OnClick → OnUpClicked)
+///   │   ├── FloorLabel  (TMP_Text — displays e.g. "Floor 1")
+///   │   └── DownButton  (Button — wire OnClick → OnDownClicked)
+///
+/// Buttons auto-disable when no floor exists in that direction.
 /// </summary>
 public class FloorSelectorHUD : MonoBehaviour
 {
-    [Header("Wiring")]
-    [SerializeField] private Transform buttonContainer;
-    [SerializeField] private Button floorButtonPrefab;
-
-    [Header("Highlight Colours")]
-    [SerializeField] private Color selectedColor = new(0.82f, 0.68f, 0.27f, 1f); // gold (matches HUD)
-    [SerializeField] private Color unselectedColor = new(1f, 1f, 1f, 0.55f);
-
-    // floor index -> spawned button
-    private readonly Dictionary<int, Button> floorButtons = new();
+    [Header("UI References")]
+    [SerializeField] private Button upButton;
+    [SerializeField] private Button downButton;
+    [SerializeField] private TMP_Text floorLabel;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
+    private void OnEnable()
+    {
+        if (FloorManager.Instance != null)
+        {
+            FloorManager.Instance.OnActiveFloorChanged += HandleFloorChanged;
+            FloorManager.Instance.OnFloorCreated += HandleFloorCreated;
+            Refresh();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (FloorManager.Instance != null)
+        {
+            FloorManager.Instance.OnActiveFloorChanged -= HandleFloorChanged;
+            FloorManager.Instance.OnFloorCreated -= HandleFloorCreated;
+        }
+    }
+
     private void Start()
     {
-        if (FloorManager.Instance == null)
-        {
-            Debug.LogError("FloorSelectorHUD: FloorManager.Instance is null. Add a FloorManager to the scene.");
-            return;
-        }
-
-        FloorManager.Instance.OnFloorListChanged += Rebuild;
-        FloorManager.Instance.OnFloorChanged += HandleFloorChanged;
-
-        Rebuild();
-        HandleFloorChanged(FloorManager.Instance.CurrentFloor);
+        // Refresh in case OnEnable fired before FloorManager.Instance was set.
+        if (FloorManager.Instance != null && floorLabel != null && floorLabel.text == "")
+            Refresh();
     }
 
-    private void OnDestroy()
+    // ── Event Handlers ────────────────────────────────────────────
+
+    private void HandleFloorChanged(int _) => Refresh();
+    private void HandleFloorCreated(int _) => Refresh();
+
+    // ── Button Handlers (wired via Inspector) ─────────────────────
+
+    public void OnUpClicked()
     {
         if (FloorManager.Instance == null) return;
-        FloorManager.Instance.OnFloorListChanged -= Rebuild;
-        FloorManager.Instance.OnFloorChanged -= HandleFloorChanged;
+        FloorManager.Instance.SwitchToFloor(FloorManager.Instance.ActiveFloorIndex - 1);
     }
 
-    // ── Building ──────────────────────────────────────────────────
-
-    private void Rebuild()
+    public void OnDownClicked()
     {
-        if (buttonContainer == null || floorButtonPrefab == null)
-        {
-            Debug.LogWarning("FloorSelectorHUD: buttonContainer or floorButtonPrefab not assigned.");
-            return;
-        }
-
-        foreach (var btn in floorButtons.Values)
-            if (btn != null) Destroy(btn.gameObject);
-        floorButtons.Clear();
-
-        // List is ascending; reverse so higher floors sit on top, deeper at bottom.
-        var floors = new List<int>(FloorManager.Instance.UnlockedFloors);
-        floors.Reverse();
-
-        foreach (int floor in floors)
-        {
-            Button btn = Instantiate(floorButtonPrefab, buttonContainer);
-            btn.gameObject.SetActive(true);
-
-            var label = btn.GetComponentInChildren<TMP_Text>();
-            if (label != null) label.text = FloorLabel(floor);
-
-            int captured = floor; // avoid the classic closure-capture bug
-            btn.onClick.AddListener(() => FloorManager.Instance.SelectFloor(captured));
-
-            floorButtons[floor] = btn;
-        }
-
-        HandleFloorChanged(FloorManager.Instance.CurrentFloor);
+        if (FloorManager.Instance == null) return;
+        int target = FloorManager.Instance.ActiveFloorIndex + 1;
+        // Only navigate to existing floors; new floors are created via stair placement only.
+        if (!FloorManager.Instance.FloorExists(target)) return;
+        FloorManager.Instance.SetActiveFloor(target);
     }
 
-    private void HandleFloorChanged(int newFloor)
-    {
-        foreach (var kvp in floorButtons)
-        {
-            Image img = kvp.Value != null ? kvp.Value.GetComponent<Image>() : null;
-            if (img != null)
-                img.color = kvp.Key == newFloor ? selectedColor : unselectedColor;
-        }
-    }
+    // ── Display ───────────────────────────────────────────────────
 
-    /// <summary>Day 25 can prettify. For now: ground = "G", deeper = "B1/B2", upper = "+1".</summary>
-    private string FloorLabel(int floor)
+    private void Refresh()
     {
-        if (floor == 0) return "G";
-        return floor > 0 ? $"+{floor}" : $"B{-floor}";
+        if (FloorManager.Instance == null) return;
+
+        int current = FloorManager.Instance.ActiveFloorIndex;
+
+        if (floorLabel != null)
+            floorLabel.text = $"Floor {current + 1}";
+
+        if (upButton != null)
+            upButton.interactable = current > 0;
+
+        if (downButton != null)
+            downButton.interactable = FloorManager.Instance.FloorExists(current + 1);
     }
 }
