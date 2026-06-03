@@ -2,11 +2,20 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
+/// <summary>
+/// Per-floor tile ownership manager. No longer a singleton.
+/// Access via FloorRoot.TileInfluence or FloorManager.Instance.ActiveFloor.TileInfluence.
+///
+/// CHANGES FROM PRE-DAY-27
+///   - Static Instance removed. All external callers go through FloorRoot.
+///   - DungeonTerrain reference fetched from sibling FloorRoot, not via singleton.
+///   - ClaimStarterArea() added for bootstrapping newly created floors.
+/// </summary>
 [DefaultExecutionOrder(0)]
-
 public class TileInfluenceManager : MonoBehaviour
 {
     public static TileInfluenceManager Instance { get; private set; }
@@ -33,35 +42,84 @@ public class TileInfluenceManager : MonoBehaviour
     public event Action<int> OnTileCountChanged;
 
     // ── Internal ──────────────────────────────────────────────────
-    private Camera mainCamera;
+    private DungeonTerrain terrain;
     private Coroutine passiveExpansionCoroutine;
 
-    // ─────────────────────────────────────────────────────────────
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+    { 
         Instance = this;
     }
 
     private void Start()
     {
-        mainCamera = Camera.main;
-
-        if (DungeonCore.Instance == null || DungeonTerrain.Instance == null)
+        // Terrain is injected by FloorRoot.InjectDependencies().
+        // If it's still null here, fall back to GetComponentInParent as a courtesy.
+        if (terrain == null)
         {
-            Debug.LogError("TileInfluenceManager: Missing DungeonCore or DungeonTerrain instance.");
-            return;
+            var floorRoot = GetComponentInParent<FloorRoot>();
+            if (floorRoot != null) terrain = floorRoot.Terrain;
         }
 
-        Vector3Int detectedCore = DungeonTerrain.Instance.CoreCell;
-        ClaimTile(detectedCore);
-        StartPassiveExpansion();
+        if (terrain == null)
+            Debug.LogWarning($"[TileInfluenceManager] No DungeonTerrain assigned on {gameObject.name}. Wire it via FloorRoot.");
+
+        var root = GetComponentInParent<FloorRoot>();
+        if (root != null && root.FloorIndex == 0)
+        {
+            if (DungeonCore.Instance == null || terrain == null) { Debug.LogError("[TileInfluenceManager] Missing DungeonCore or DungeonTerrain (Floor 1)."); return; }
+            ClaimTile(terrain.CoreCell);
+            StartPassiveExpansion();
+        }
     }
 
-    private void Update()
+    public void InjectTerrain(DungeonTerrain t) => terrain = t;
+
+    // ── Bootstrap (Floor 2+) ──────────────────────────────────────
+
+    /// <summary>
+    /// Seeds a small starter area around centerCell.
+    /// Called by FloorRoot.Bootstrap() for newly created floors.
+    /// </summary>
+    public void ClaimStarterArea(Vector3Int centerCell)
     {
-        if (PauseController.IsGamePaused) return;
+        var offsets = new[]
+        {
+        new Vector3Int(-1,-1,0), new Vector3Int(0,-1,0), new Vector3Int(1,-1,0),
+        new Vector3Int(-1, 0,0), new Vector3Int(0, 0,0), new Vector3Int(1, 0,0),
+        new Vector3Int(-1, 1,0), new Vector3Int(0, 1,0), new Vector3Int(1, 1,0),
+    };
+
+        foreach (var offset in offsets)
+        {
+            Vector3Int pos = centerCell + offset;
+            if (ownedTiles.Contains(pos)) continue;
+
+            // Skip bounds check here — terrain was just generated at this centre,
+            // so these cells are guaranteed valid.
+            ownedTiles.Add(pos);
+            claimableTiles.Remove(pos);
+            terrain?.RevealTile(pos);
+            claimableTilemap.SetTile(pos, null);
+        }
+
+        // Build the claimable ring around the starter area.
+        foreach (var offset in offsets)
+        {
+            Vector3Int pos = centerCell + offset;
+            foreach (var dir in new[] { Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right })
+            {
+                Vector3Int neighbour = pos + dir;
+                if (ownedTiles.Contains(neighbour)) continue;
+                if (claimableTiles.Contains(neighbour)) continue;
+                claimableTiles.Add(neighbour);
+                claimableTilemap.SetTile(neighbour, claimableTile);
+            }
+        }
+
+        StartPassiveExpansion();
+        OnTileCountChanged?.Invoke(ownedTiles.Count);
     }
 
     // ── Claiming ──────────────────────────────────────────────────
@@ -70,12 +128,12 @@ public class TileInfluenceManager : MonoBehaviour
     public void ClaimTile(Vector3Int pos, bool silent = false)
     {
         if (ownedTiles.Contains(pos)) return;
-        if (!DungeonTerrain.Instance.IsWithinBounds(pos)) return;
+        if (terrain != null && !terrain.IsWithinBounds(pos)) return;
 
         ownedTiles.Add(pos);
         claimableTiles.Remove(pos);
 
-        DungeonTerrain.Instance.RevealTile(pos);
+        terrain?.RevealTile(pos);
         claimableTilemap.SetTile(pos, null);
 
         foreach (Vector3Int dir in Neighbours)
@@ -83,7 +141,7 @@ public class TileInfluenceManager : MonoBehaviour
             Vector3Int neighbour = pos + dir;
             if (ownedTiles.Contains(neighbour)) continue;
             if (claimableTiles.Contains(neighbour)) continue;
-            if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue;
+            if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
             claimableTiles.Add(neighbour);
             claimableTilemap.SetTile(neighbour, claimableTile);
@@ -102,7 +160,7 @@ public class TileInfluenceManager : MonoBehaviour
         if (!ownedTiles.Contains(pos)) return;
 
         ownedTiles.Remove(pos);
-        DungeonTerrain.Instance?.RefogTile(pos);
+        terrain?.RefogTile(pos);
 
         RebuildClaimableSet();
 
@@ -111,48 +169,36 @@ public class TileInfluenceManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Called on first core breach. Removes owned tiles within cellRadius of the
-    /// core cell, simulating influence loss at the breach point.
-    /// The core tile itself is always preserved.
-    /// Rebuilds the claimable set once after all removals for efficiency.
+    /// Called on first core breach. Removes owned tiles within radius of the
+    /// core cell. The core tile itself is always preserved.
     /// </summary>
-    public void ShrinkInfluenceAroundCore(float radius)
+    public void ShrinkInfluenceAroundCore(Vector3Int coreCell, float radius)
     {
-        if (DungeonCore.Instance == null) return;
-
-        Vector3Int coreCell = WorldToCell(DungeonCore.Instance.transform.position);
         int cellRadius = Mathf.CeilToInt(radius);
-
         var toRemove = new List<Vector3Int>();
 
         foreach (var cell in ownedTiles)
         {
-            // Never remove the core tile itself
             if (cell == coreCell) continue;
-
             int dx = Mathf.Abs(cell.x - coreCell.x);
             int dy = Mathf.Abs(cell.y - coreCell.y);
-
             if (dx <= cellRadius && dy <= cellRadius)
                 toRemove.Add(cell);
         }
 
         if (toRemove.Count == 0) return;
 
-        // Remove tiles and refog them — defer claimable rebuild to the end
         foreach (var cell in toRemove)
         {
             ownedTiles.Remove(cell);
-            DungeonTerrain.Instance?.RefogTile(cell);
+            terrain?.RefogTile(cell);
         }
 
-        // Single rebuild pass after all removals
         RebuildClaimableSet();
-
-        DungeonCore.Instance.RemoveOwnedTiles(toRemove.Count);
+        DungeonCore.Instance?.RemoveOwnedTiles(toRemove.Count);
         OnTileCountChanged?.Invoke(ownedTiles.Count);
 
-        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} tiles around core.");
+        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} tiles.");
     }
 
     // ── Passive Expansion ─────────────────────────────────────────
@@ -182,9 +228,6 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    // ── Add OnBoundsExpanded() ────────────────────────────────────
-
-    /// <summary>Rechecks claimable ring against new bounds after expansion.</summary>
     public void OnBoundsExpanded()
     {
         foreach (Vector3Int owned in ownedTiles)
@@ -194,7 +237,7 @@ public class TileInfluenceManager : MonoBehaviour
                 Vector3Int neighbour = owned + dir;
                 if (ownedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
-                if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue;
+                if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 claimableTilemap.SetTile(neighbour, claimableTile);
@@ -204,7 +247,6 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    /// <summary>Rebuilds claimable set from scratch — used after unclaiming.</summary>
     private void RebuildClaimableSet()
     {
         claimableTiles.Clear();
@@ -217,7 +259,7 @@ public class TileInfluenceManager : MonoBehaviour
                 Vector3Int neighbour = owned + dir;
                 if (ownedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
-                if (!DungeonTerrain.Instance.IsWithinBounds(neighbour)) continue;
+                if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 claimableTilemap.SetTile(neighbour, claimableTile);
@@ -225,14 +267,8 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    /// <summary>Converts a world position to a tilemap cell coordinate.</summary>
-    public Vector3Int WorldToCell(Vector3 worldPos)
-        => claimableTilemap.WorldToCell(worldPos);
-
-    /// <summary>Converts a tilemap cell to the world-space centre of that cell.</summary>
-    public Vector3 CellToWorld(Vector3Int cell)
-        => claimableTilemap.GetCellCenterWorld(cell);
-
+    public Vector3Int WorldToCell(Vector3 worldPos) => claimableTilemap.WorldToCell(worldPos);
+    public Vector3 CellToWorld(Vector3Int cell) => claimableTilemap.GetCellCenterWorld(cell);
     public bool IsTileOwned(Vector3Int pos) => ownedTiles.Contains(pos);
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
     public int OwnedTileCount => ownedTiles.Count;

@@ -2,17 +2,20 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Dungeon adventurer. Pathfinds to the Core Room, detours toward chests,
-/// fights monsters, collects CarriableLoot, and retreats based on its trait.
+/// Dungeon adventurer. Pathfinds to the Core Room (across floors via stairs),
+/// detours toward chests, fights monsters, collects CarriableLoot, and retreats.
 ///
-/// INITIALISE — must be called by AdventurerSpawner in the same frame as
-/// Instantiate(), before Start() runs. Applies definition stats and trait.
+/// MULTI-FLOOR (Day 27)
+///   Each adventurer tracks its own FloorRoot (currentFloor), set from its
+///   parent hierarchy in Start(). All pathfinding and trap queries use the
+///   adventurer's own floor — never the player-viewed floor.
 ///
-/// BEHAVIOUR TRAITS
-///   Cautious   — retreats at 50% HP
-///   Balanced   — retreats at 30% HP
-///   Aggressive — retreats at 10% HP
-///   Cowardly   — retreats immediately on monster sight; HP threshold unused
+///   When the core is on a different floor, RefreshPath() targets the nearest
+///   appropriate stair. On reaching the stair cell, the adventurer enters
+///   UsingStairs state (brief pause), then reparents + teleports to the
+///   matching stair on the destination floor.
+///
+/// INITIALISE must be called by AdventurerSpawner before Start() runs.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonAdventurer : MonoBehaviour
@@ -22,10 +25,11 @@ public class DungeonAdventurer : MonoBehaviour
         MovingToCore,
         MovingToChest,
         Combat,
-        Retreating
+        Retreating,
+        UsingStairs,
     }
 
-    // ── Inspector (fallback values if Initialise is not called) ───
+    // ── Inspector ─────────────────────────────────────────────────
     [Header("Stats")]
     [SerializeField] private float maxHP = 50f;
     [SerializeField] private float moveSpeed = 2f;
@@ -35,15 +39,11 @@ public class DungeonAdventurer : MonoBehaviour
     [SerializeField] private float detectionRange = 2.5f;
 
     [Header("Behaviour")]
-    [Tooltip("Retreat when HP falls below this fraction. Overridden by trait at runtime.")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
     [Header("Separation")]
-    [Tooltip("Radius within which this adventurer steers away from others.")]
     [SerializeField] private float separationRadius = 0.6f;
-    [Tooltip("Strength of the push away from nearby adventurers.")]
     [SerializeField] private float separationStrength = 1.5f;
-    [Tooltip("How far the adventurer can 'see' a chest while walking past.")]
     [SerializeField] private float chestDetectionRange = 3f;
 
     [Header("Loot Pickup")]
@@ -58,18 +58,17 @@ public class DungeonAdventurer : MonoBehaviour
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
-    [Header("Trap Detection (Rogue stub — Day 39)")]
-    [Tooltip("If true, this adventurer can detect and flag nearby traps.")]
+    [Header("Trap Detection")]
     [SerializeField] private bool canDetectTraps = false;
-    [Tooltip("World-space radius within which a trap can be detected.")]
     [SerializeField] private float trapDetectionRadius = 2.5f;
-    [Tooltip("Per-second probability of successfully detecting any in-range trap.")]
     [SerializeField] private float trapDetectionChancePerSecond = 0.3f;
 
-    [Header("Slow Effect")]
+    [Header("Stair Traversal")]
+    [SerializeField] private float stairTraversalDuration = 1.5f;
+
+    // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
-
 
     // ── Runtime state ─────────────────────────────────────────────
     private float currentHP;
@@ -88,12 +87,14 @@ public class DungeonAdventurer : MonoBehaviour
     private readonly List<CarriableLoot> carriedLoot = new();
     private readonly HashSet<DungeonChest> visitedChests = new();
 
+    // Multi-floor state
+    private FloorRoot currentFloor;
+    private DungeonStairs stairTarget;
+    private float stairTimer;
+    private AdventurerState stateBeforeStairs;
+
     // ── Initialise ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Called by AdventurerSpawner immediately after Instantiate(), before Start().
-    /// Applies per-class stats from the definition and configures trait behaviour.
-    /// </summary>
     public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait)
     {
         if (def != null)
@@ -112,10 +113,6 @@ public class DungeonAdventurer : MonoBehaviour
         }
 
         trait = assignedTrait;
-
-        // Apply HP retreat threshold from trait.
-        // Cowardly's threshold is irrelevant (flees on sight), but set to 1f as
-        // a safety net so they never push forward on low HP regardless.
         retreatThreshold = trait switch
         {
             BehaviourTrait.Cautious => 0.5f,
@@ -137,6 +134,10 @@ public class DungeonAdventurer : MonoBehaviour
 
         lootTable = GetComponent<LootTable>();
 
+        currentFloor = GetComponentInParent<FloorRoot>();
+        if (currentFloor == null)
+            Debug.LogWarning("[Adventurer] No FloorRoot in parent — multi-floor traversal will fail.");
+
         if (statusBarsPrefab != null)
         {
             statusBars = Instantiate(statusBarsPrefab);
@@ -157,11 +158,14 @@ public class DungeonAdventurer : MonoBehaviour
             if (slowTimer <= 0f) slowMultiplier = 1f;
         }
 
+        if (state == AdventurerState.UsingStairs)
+        {
+            HandleStairTraversal();
+            return;
+        }
+
         if (canDetectTraps) ScanForTraps();
 
-        // HP-based retreat check — applies to Cautious, Balanced, Aggressive.
-        // Cowardly has retreatThreshold = 1f so this also catches the edge case
-        // where a Cowardly adventurer somehow takes damage before fleeing.
         if (state != AdventurerState.Retreating && currentHP / maxHP < retreatThreshold)
             StartRetreat();
 
@@ -204,40 +208,90 @@ public class DungeonAdventurer : MonoBehaviour
     private void RefreshPath()
     {
         pathIndex = 0;
+        stairTarget = null;
+
+        if (currentFloor == null)
+        {
+            currentPath = new List<Vector3>();
+            return;
+        }
+
+        int myFloor = currentFloor.FloorIndex;
+        int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
+
+        Vector3 goal;
 
         if (state == AdventurerState.Retreating)
         {
-            currentPath = DungeonEntrance.Instance != null
-                ? DungeonPathfinder.FindPath(transform.position,
-                      DungeonEntrance.Instance.SpawnPosition)
-                : new List<Vector3>();
+            if (myFloor == 0)
+            {
+                // On Floor 1 — head for the entrance.
+                goal = DungeonEntrance.Instance != null
+                    ? DungeonEntrance.Instance.SpawnPosition
+                    : transform.position;
+            }
+            else
+            {
+                // On a deeper floor — head for the nearest up-stair.
+                var upStair = FindNearestStair(DungeonStairs.Direction.Up);
+                if (upStair == null) { currentPath = new List<Vector3>(); return; }
+                stairTarget = upStair;
+                goal = upStair.transform.position;
+            }
         }
         else if (state == AdventurerState.MovingToChest && chestTarget != null)
         {
-            currentPath = DungeonPathfinder.FindPath(
-                transform.position, chestTarget.transform.position);
+            goal = chestTarget.transform.position;
         }
-        else
+        else // MovingToCore
         {
-            currentPath = DungeonPathfinder.FindPath(transform.position,
-                DungeonCore.Instance != null
+            if (myFloor == coreFloor)
+            {
+                goal = DungeonCore.Instance != null
                     ? DungeonCore.Instance.transform.position
-                    : transform.position);
+                    : transform.position;
+            }
+            else if (coreFloor > myFloor)
+            {
+                var downStair = FindNearestStair(DungeonStairs.Direction.Down);
+                if (downStair == null) { currentPath = new List<Vector3>(); return; }
+                stairTarget = downStair;
+                goal = downStair.transform.position;
+            }
+            else
+            {
+                var upStair = FindNearestStair(DungeonStairs.Direction.Up);
+                if (upStair == null) { currentPath = new List<Vector3>(); return; }
+                stairTarget = upStair;
+                goal = upStair.transform.position;
+            }
         }
+
+        currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, goal);
     }
 
     private void FollowPath()
     {
         if (currentPath == null || pathIndex >= currentPath.Count)
         {
+            // Path exhausted — check if we're actually at the goal before acting.
+            if (stairTarget != null)
+            {
+                if (Vector2.Distance(transform.position, stairTarget.transform.position) < 0.6f)
+                    BeginStairTraversal();
+                // else: stair unreachable right now, wait for next RefreshPath
+                return;
+            }
+
             OnReachedDestination();
             return;
         }
 
         Vector3 waypoint = currentPath[pathIndex];
-        transform.position = Vector2.MoveTowards(transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
+        transform.position = Vector2.MoveTowards(
+            transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
 
-        if(Vector2.Distance(transform.position, waypoint) < 0.08f)
+        if (Vector2.Distance(transform.position, waypoint) < 0.08f)
         {
             pathIndex++;
             CheckTrapAtCurrentCell();
@@ -248,7 +302,6 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (state == AdventurerState.Retreating)
         {
-            // Adventurer escaped — loot they carried leaves the dungeon with them.
             foreach (var loot in carriedLoot)
                 if (loot != null) Destroy(loot.gameObject);
             carriedLoot.Clear();
@@ -259,7 +312,15 @@ public class DungeonAdventurer : MonoBehaviour
         }
         else
         {
-            // Reached the Core Room — trigger the breach system.
+            // Guard: only breach if genuinely close to the core.
+            if (DungeonCore.Instance != null &&
+                Vector2.Distance(transform.position, DungeonCore.Instance.transform.position) > 1.5f)
+            {
+                Debug.LogWarning("[Adventurer] OnReachedDestination called far from core — refreshing path.");
+                RefreshPath();
+                return;
+            }
+
             Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
             if (statusBars != null) Destroy(statusBars.gameObject);
@@ -267,14 +328,84 @@ public class DungeonAdventurer : MonoBehaviour
         }
     }
 
-    // ── Separation Steering ───────────────────────────────────────
+    // ── Stair Traversal ───────────────────────────────────────────
 
-    /// <summary>
-    /// Nudges this adventurer away from any other adventurers within
-    /// separationRadius. Runs every frame on top of path-following so
-    /// party members spread out naturally without blocking each other.
-    /// Uses a cached array to avoid per-frame allocation.
-    /// </summary>
+    private void BeginStairTraversal()
+    {
+        stateBeforeStairs = state;
+        state = AdventurerState.UsingStairs;
+        stairTimer = stairTraversalDuration;
+        transform.position = stairTarget.transform.position;
+        Debug.Log($"[Adventurer] Using stairs: floor {currentFloor.FloorIndex} → {stairTarget.LinkedFloorIndex}");
+    }
+
+    private void HandleStairTraversal()
+    {
+        if (stairTarget == null) { state = stateBeforeStairs; RefreshPath(); return; }
+
+        stairTimer -= Time.deltaTime;
+        if (stairTimer > 0f) return;
+
+        int destIdx = stairTarget.LinkedFloorIndex;
+        var destFloor = FloorManager.Instance?.GetFloor(destIdx);
+
+        if (destFloor == null)
+        {
+            Debug.LogWarning($"[Adventurer] Destination floor {destIdx} doesn't exist.");
+            state = stateBeforeStairs;
+            stairTarget = null;
+            RefreshPath();
+            return;
+        }
+
+        var matchingStair = FindStairOnFloor(destIdx, stairTarget.OccupiedCell);
+        if (matchingStair == null)
+        {
+            Debug.LogWarning($"[Adventurer] No matching stair on floor {destIdx} at {stairTarget.OccupiedCell}.");
+            state = stateBeforeStairs;
+            stairTarget = null;
+            RefreshPath();
+            return;
+        }
+
+        // Reparent under the destination floor, teleport to the matching stair.
+        transform.SetParent(destFloor.transform, true);
+        transform.position = matchingStair.transform.position;
+        currentFloor = destFloor;
+
+        Debug.Log($"[Adventurer] Arrived on floor {destIdx}.");
+        state = stateBeforeStairs;
+        stairTarget = null;
+        RefreshPath();
+    }
+
+    private DungeonStairs FindNearestStair(DungeonStairs.Direction dir)
+    {
+        if (currentFloor == null) return null;
+        var all = FindObjectsByType<DungeonStairs>(FindObjectsInactive.Include);
+        DungeonStairs nearest = null;
+        float nearestDist = float.MaxValue;
+
+        foreach (var s in all)
+        {
+            if (s.FloorIndex != currentFloor.FloorIndex) continue;
+            if (s.Dir != dir) continue;
+            float d = Vector2.Distance(transform.position, s.transform.position);
+            if (d < nearestDist) { nearestDist = d; nearest = s; }
+        }
+        return nearest;
+    }
+
+    private DungeonStairs FindStairOnFloor(int floorIndex, Vector3Int cell)
+    {
+        var all = FindObjectsByType<DungeonStairs>(FindObjectsInactive.Include);
+        foreach (var s in all)
+            if (s.FloorIndex == floorIndex && s.OccupiedCell == cell) return s;
+        return null;
+    }
+
+    // ── Separation ────────────────────────────────────────────────
+
     private void ApplySeparation()
     {
         var others = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
@@ -283,17 +414,16 @@ public class DungeonAdventurer : MonoBehaviour
         foreach (var other in others)
         {
             if (other == this) continue;
+            if (other.currentFloor != currentFloor) continue; // only push same-floor adventurers
 
             Vector2 delta = (Vector2)transform.position - (Vector2)other.transform.position;
             float dist = delta.magnitude;
-
             if (dist < separationRadius && dist > 0.001f)
                 push += delta.normalized * (separationRadius - dist);
         }
 
-        if (push == Vector2.zero) return;
-
-        transform.position += (Vector3)(push * separationStrength * Time.deltaTime);
+        if (push != Vector2.zero)
+            transform.position += (Vector3)(push * separationStrength * Time.deltaTime);
     }
 
     // ── Monster Detection ─────────────────────────────────────────
@@ -306,18 +436,14 @@ public class DungeonAdventurer : MonoBehaviour
 
         foreach (var m in all)
         {
+            if (m.CurrentFloor != currentFloor) continue; // same floor only
             float d = Vector2.Distance(transform.position, m.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
 
         if (nearest == null) return;
 
-        // Cowardly: flee immediately on monster sight — no combat entered.
-        if (trait == BehaviourTrait.Cowardly)
-        {
-            StartRetreat();
-            return;
-        }
+        if (trait == BehaviourTrait.Cowardly) { StartRetreat(); return; }
 
         combatTarget = nearest;
         chestTarget = null;
@@ -329,8 +455,6 @@ public class DungeonAdventurer : MonoBehaviour
     private void ScanForChests()
     {
         var all = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
-        Debug.Log($"[ScanChests] Found {all.Length} chests. " +
-                  $"Range: {chestDetectionRange}. State: {state}");
         DungeonChest nearest = null;
         float nearestDist = chestDetectionRange;
 
@@ -344,12 +468,9 @@ public class DungeonAdventurer : MonoBehaviour
 
         if (nearest != null && nearest != chestTarget)
         {
-            Debug.Log($"[ScanChests] Detouring to chest at {nearest.transform.position}. " +
-                      $"Distance: {Vector2.Distance(transform.position, nearest.transform.position):F2}");
             chestTarget = nearest;
             state = AdventurerState.MovingToChest;
             RefreshPath();
-            Debug.Log($"[ScanChests] Path length after RefreshPath: {currentPath.Count}");
         }
     }
 
@@ -357,7 +478,6 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (chestTarget == null || chestTarget.IsOpened)
         {
-            Debug.Log($"[MoveToChest] Early exit. target={chestTarget}, opened={chestTarget?.IsOpened}");
             if (chestTarget != null) visitedChests.Add(chestTarget);
             chestTarget = null;
             state = AdventurerState.MovingToCore;
@@ -365,17 +485,16 @@ public class DungeonAdventurer : MonoBehaviour
             return;
         }
 
-        // Follow the dungeon path toward the chest.
         if (pathIndex < currentPath.Count)
         {
             Vector3 waypoint = currentPath[pathIndex];
-            transform.position = Vector2.MoveTowards(transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(
+                transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
             if (Vector2.Distance(transform.position, waypoint) < 0.08f)
                 pathIndex++;
             return;
         }
 
-        // Path exhausted — check interact range.
         float dist = Vector2.Distance(transform.position, chestTarget.transform.position);
         if (dist <= chestTarget.InteractRadius)
         {
@@ -387,7 +506,6 @@ public class DungeonAdventurer : MonoBehaviour
         }
         else
         {
-            // Chest unreachable — skip it and continue.
             Debug.LogWarning("[Adventurer] Could not reach chest — resuming.");
             visitedChests.Add(chestTarget);
             chestTarget = null;
@@ -396,7 +514,7 @@ public class DungeonAdventurer : MonoBehaviour
         }
     }
 
-    // ── Loot Pickup ───────────────────────────────────────────────
+    // ── Loot ─────────────────────────────────────────────────────
 
     private void ScanForLoot()
     {
@@ -428,10 +546,11 @@ public class DungeonAdventurer : MonoBehaviour
         }
 
         float dist = Vector2.Distance(transform.position, combatTarget.transform.position);
-
         if (dist > attackRange)
         {
-            transform.position = Vector2.MoveTowards(transform.position, combatTarget.transform.position, moveSpeed * slowMultiplier * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(
+                transform.position, combatTarget.transform.position,
+                moveSpeed * slowMultiplier * Time.deltaTime);
             return;
         }
 
@@ -457,12 +576,7 @@ public class DungeonAdventurer : MonoBehaviour
     {
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
-
-        if (currentHP <= 0f)
-        {
-            Die();
-            return true;
-        }
+        if (currentHP <= 0f) { Die(); return true; }
         return false;
     }
 
@@ -478,55 +592,55 @@ public class DungeonAdventurer : MonoBehaviour
 
     private void DropCarriedLoot()
     {
-        if (carriedLoot.Count == 0) return;
-
         for (int i = 0; i < carriedLoot.Count; i++)
         {
             var loot = carriedLoot[i];
             if (loot == null) continue;
             Vector2 scatter = Random.insideUnitCircle * 0.3f;
-            Vector3 dropPos = transform.position + new Vector3(scatter.x, scatter.y, 0f);
-            loot.DropAndAbsorb(dropPos, droppedLootPrefab);
+            loot.DropAndAbsorb(transform.position + new Vector3(scatter.x, scatter.y), droppedLootPrefab);
         }
-
         carriedLoot.Clear();
     }
 
-    // ── Helpers ──────────────────────────────────────────────
+    // ── Trap Helpers ──────────────────────────────────────────────
+
     private void CheckTrapAtCurrentCell()
     {
-        if (TrapRegistry.Instance == null || TileInfluenceManager.Instance == null) return;
-        Vector3Int cell = TileInfluenceManager.Instance.WorldToCell(transform.position);
-        var trap = TrapRegistry.Instance.GetTrapAt(cell);
-        Debug.Log($"[CheckTrap] Adventurer at cell {cell}. Trap here: {trap != null}");
+        if (currentFloor == null) return;
+        var influence = currentFloor.TileInfluence;
+        var trapReg = currentFloor.TrapRegistry;
+        if (influence == null || trapReg == null) return;
+
+        Vector3Int cell = influence.WorldToCell(transform.position);
+        var trap = trapReg.GetTrapAt(cell);
         if (trap != null) trap.OnAdventurerEntered(this);
     }
 
     private void ScanForTraps()
     {
-        if (TrapRegistry.Instance == null) return;
+        if (currentFloor == null) return;
+        var trapReg = currentFloor.TrapRegistry;
+        var influence = currentFloor.TileInfluence;
+        if (trapReg == null || influence == null) return;
 
-        // Per-frame roll: chance/second × deltaTime gives per-frame chance.
         float roll = Random.value;
         if (roll >= trapDetectionChancePerSecond * Time.deltaTime) return;
 
-        foreach (var trap in TrapRegistry.Instance.GetTrapsWithinRadius(
-                     transform.position, trapDetectionRadius))
+        foreach (var trap in trapReg.GetTrapsWithinRadius(
+                     transform.position, trapDetectionRadius, influence))
         {
             if (trap.IsFlagged) continue;
             trap.Flag();
             Debug.Log($"[Adventurer] Detected trap at {trap.OccupiedCell}.");
-            break; // only flag one per scan to keep the dramatic beat
+            break;
         }
     }
 
     public void ApplySlow(float multiplier, float duration)
     {
-        // Keep the harshest active slow (lowest multiplier) for overlapping triggers.
         if (multiplier < slowMultiplier) slowMultiplier = multiplier;
         if (duration > slowTimer) slowTimer = duration;
     }
-
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;
@@ -534,4 +648,5 @@ public class DungeonAdventurer : MonoBehaviour
     public AdventurerState State => state;
     public BehaviourTrait Trait => trait;
     public int CarriedLootCount => carriedLoot.Count;
+    public FloorRoot CurrentFloor => currentFloor;
 }

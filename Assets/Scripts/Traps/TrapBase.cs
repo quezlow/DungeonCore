@@ -33,14 +33,14 @@ public abstract class TrapBase : MonoBehaviour
         Definition   = def;
         OccupiedCell = cell;
 
-        TrapRegistry.Instance?.Register(this);
+        GetComponentInParent<FloorRoot>()?.TrapRegistry?.Register(this);
         Debug.Log($"[TrapBase] Initialised {def?.trapName} at cell {cell}. " +
           $"Registry size: {TrapRegistry.Instance != null}");
     }
 
     protected virtual void OnDestroy()
     {
-        TrapRegistry.Instance?.Unregister(this);
+        GetComponentInParent<FloorRoot>()?.TrapRegistry?.Unregister(this);
     }
 
     // ── Trigger Logic ─────────────────────────────────────────────

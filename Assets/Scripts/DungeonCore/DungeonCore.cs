@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 
 [DefaultExecutionOrder(-20)]
-
 public class DungeonCore : MonoBehaviour
 {
     public static DungeonCore Instance { get; private set; }
@@ -18,7 +17,7 @@ public class DungeonCore : MonoBehaviour
     [SerializeField] private float baseRegenPerSecond = 1f;
     [SerializeField] private float regenPerTile = 0.1f;
 
-    // ── Monster Capacity ────────────────────────────────────────────────
+    // ── Monster Capacity ──────────────────────────────────────────
     [Header("Monster Capacity")]
     [SerializeField] private int baseCapacity = 100;
     [SerializeField] private int capacityPerLevel = 50;
@@ -28,48 +27,54 @@ public class DungeonCore : MonoBehaviour
     [SerializeField] private float baseXPToLevel = 100f;
     [SerializeField] private float xpScalingExponent = 1.5f;
 
-    // ── Notoriety / Reputation ────────────────────────────────────────────────
+    // ── Notoriety / Reputation ────────────────────────────────────
     [Header("Notoriety")]
     [SerializeField] private float notoriety = 0f;
     [SerializeField] private float notorietyDecayPerSecond = 0.1f;
     [Header("Reputation")]
     [SerializeField] private float reputation = 0f;
 
-    // ── Breach Controls ───────────────────────────────────────────────
+    // ── Breach ───────────────────────────────────────────────────
     [Header("Two-Strike Breach System")]
-    [SerializeField] private float instabilityDuration = 60f;  // seconds to survive after first breach
+    [SerializeField] private float instabilityDuration = 60f;
     [SerializeField] private float xpPenaltyOnBreach = 50f;
-    [SerializeField] private float influenceShrinkRadius = 3f;  // tiles lost around breach point
+    [SerializeField] private float influenceShrinkRadius = 3f;
 
-    // breach state
+    [Header("Notoriety Decay")]
+    [SerializeField] private float notorietyDecayCooldown = 10f;
+
+    // ── Breach state ──────────────────────────────────────────────
     private bool isUnstable = false;
     private float instabilityTimer = 0f;
     private int breachCount = 0;
     private float lastBreachTime = -999f;
+    private float timeSinceLastKill = 0f;
 
-    // ── Runtime State ────────────────────────────────────────────
+    // ── Runtime State ─────────────────────────────────────────────
     private float currentMana;
     private float currentXP;
     private int dungeonLevel = 1;
     private int ownedTileCount = 0;
     private int usedCapacity = 0;
+    private int currentGold = 0;
 
     // ── Events ───────────────────────────────────────────────────
-    public event Action<float, float> OnManaChanged;        // (current, max)
-    public event Action<float> OnManaRegenChanged;   // (mana per second)
-    public event Action<float, float> OnXPChanged;          // (current, xpToNext)
-    public event Action<int> OnLevelUp;            // (newLevel)
-    public event Action OnLevelUpAvailable;   // UI prompt
-    public event Action<float> OnNotorietyChanged;   // (total notoriety)
-    public event Action<float> OnReputationChanged;  // (total reputation)
-    public event Action<int, int> OnCapacityChanged; // (used, max)
+    public event Action<float, float> OnManaChanged;
+    public event Action<float> OnManaRegenChanged;
+    public event Action<float, float> OnXPChanged;
+    public event Action<int> OnLevelUp;
+    public event Action OnLevelUpAvailable;
+    public event Action<float> OnNotorietyChanged;
+    public event Action<float> OnReputationChanged;
+    public event Action<int, int> OnCapacityChanged;
     public event Action OnCoreDestroyed;
-    public event Action<float> OnInstabilityTick;   // (seconds remaining)
+    public event Action<float> OnInstabilityTick;
     public event Action OnFirstBreach;
     public event Action OnCoreStabilised;
     public event Action OnGameOver;
+    public event Action<int> OnGoldChanged;
 
-    // ── Public Reads ─────────────────────────────────────────────
+    // ── Public Reads ──────────────────────────────────────────────
     public DungeonType DungeonType => dungeonType;
     public int DungeonLevel => dungeonLevel;
     public float CurrentMana => currentMana;
@@ -87,23 +92,13 @@ public class DungeonCore : MonoBehaviour
     public bool IsUnstable => isUnstable;
     public float InstabilityTimer => instabilityTimer;
     public float InstabilityDuration => instabilityDuration;
-
-    // ── Materials ─────────────────────────────────────────────
-
-    // ── Gold ──────────────────────────────────────────────────────
-    private int currentGold = 0;
     public int Gold => currentGold;
-    public event Action<int> OnGoldChanged;
 
-
+    // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
     }
 
@@ -112,7 +107,7 @@ public class DungeonCore : MonoBehaviour
         currentMana = MaxMana;
 
         if (dungeonType == DungeonType.None)
-            Debug.LogWarning("DungeonCore: DungeonType is None. Call SetDungeonType() from the tutorial sequence.");
+            Debug.LogWarning("DungeonCore: DungeonType is None.");
 
         NotifyManaChanged();
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
@@ -135,13 +130,11 @@ public class DungeonCore : MonoBehaviour
     private void RegenerateMana()
     {
         if (currentMana >= MaxMana) return;
-
         float regen = (baseRegenPerSecond + ownedTileCount * regenPerTile) * Time.deltaTime;
         currentMana = Mathf.Min(currentMana + regen, MaxMana);
         NotifyManaChanged();
     }
 
-    /// <summary>Returns true and deducts mana if enough is available.</summary>
     public bool SpendMana(float amount)
     {
         if (currentMana < amount) return false;
@@ -150,7 +143,6 @@ public class DungeonCore : MonoBehaviour
         return true;
     }
 
-    /// <summary>Adds mana directly (e.g. GiftGiver adventurer reward).</summary>
     public void AddMana(float amount)
     {
         currentMana = Mathf.Min(currentMana + amount, MaxMana);
@@ -159,7 +151,6 @@ public class DungeonCore : MonoBehaviour
 
     // ── XP & Level ───────────────────────────────────────────────
 
-    /// <summary>Called by any NPC death handler within dungeon influence.</summary>
     public void AddXP(float amount)
     {
         currentXP += amount;
@@ -167,15 +158,12 @@ public class DungeonCore : MonoBehaviour
         CheckLevelUp();
     }
 
-    /// <summary>Called by DroppedLoot on auto-absorption, and GiftGiver adventurers.</summary>
     public void AddGold(int amount)
     {
         currentGold += amount;
         OnGoldChanged?.Invoke(currentGold);
-        Debug.Log($"[DungeonCore] Gold +{amount}. Total: {currentGold}");
     }
 
-    /// <summary>Returns true if the capacity cost can be met and reserves it.</summary>
     public bool TrySpendCapacity(int cost)
     {
         if (usedCapacity + cost > MaxCapacity) return false;
@@ -184,7 +172,6 @@ public class DungeonCore : MonoBehaviour
         return true;
     }
 
-    /// <summary>Returns capacity when a spawner or monster is removed.</summary>
     public void ReturnCapacity(int cost)
     {
         usedCapacity = Mathf.Max(0, usedCapacity - cost);
@@ -200,59 +187,42 @@ public class DungeonCore : MonoBehaviour
         }
     }
 
-    /// <summary>Called by the player confirming the level-up from UI.</summary>
     public void ConfirmLevelUp()
     {
         if (!LevelUpAvailable) return;
-
         currentXP -= CalculateXPThreshold(dungeonLevel);
         dungeonLevel++;
         LevelUpAvailable = false;
-
         OnLevelUp?.Invoke(dungeonLevel);
-        NotifyManaChanged(); // max mana went up
+        NotifyManaChanged();
         NotifyXPChanged();
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
-
-        // In case banked XP already meets the next threshold
         CheckLevelUp();
     }
 
     private float CalculateXPThreshold(int level)
-    {
-        return baseXPToLevel * Mathf.Pow(level, xpScalingExponent);
-    }
+        => baseXPToLevel * Mathf.Pow(level, xpScalingExponent);
 
-    // ── Notoriety / Reputation ────────────────────────────────────────────────
+    // ── Notoriety / Reputation ────────────────────────────────────
 
-    /// <summary>Called by Pilgrim visits, dungeon milestones, etc.</summary>
     public void AddNotoriety(float amount)
     {
         notoriety += amount;
-        timeSinceLastKill = 0f;   // reset decay cooldown
+        timeSinceLastKill = 0f;
         OnNotorietyChanged?.Invoke(notoriety);
     }
 
-    /// <summary>Called when an adventurer exits alive, Pilgrim visits, etc.</summary>
     public void AddReputation(float amount)
     {
         reputation += amount;
         OnReputationChanged?.Invoke(reputation);
     }
 
-    [Header("Notoriety Decay")]
-    [SerializeField] private float notorietyDecayCooldown = 10f; // seconds after last kill before decay starts
-
-    private float timeSinceLastKill = 0f;
-
     private void DecayNotoriety()
     {
         if (notoriety <= 0f) return;
-
         timeSinceLastKill += Time.deltaTime;
-
         if (timeSinceLastKill < notorietyDecayCooldown) return;
-
         notoriety = Mathf.Max(0f, notoriety - notorietyDecayPerSecond * Time.deltaTime);
         OnNotorietyChanged?.Invoke(notoriety);
     }
@@ -260,84 +230,72 @@ public class DungeonCore : MonoBehaviour
     private void TickInstability()
     {
         if (!isUnstable) return;
-
         instabilityTimer -= Time.deltaTime;
         OnInstabilityTick?.Invoke(instabilityTimer);
-
         if (instabilityTimer <= 0f)
         {
-            // Survived the timer — stabilise
             isUnstable = false;
             breachCount = 0;
-            Debug.Log("[DungeonCore] Instability resolved — core stabilised.");
+            Debug.Log("[DungeonCore] Instability resolved.");
             OnCoreStabilised?.Invoke();
         }
     }
 
-    // ── Tile Influence ───────────────────────────────────────────
+    // ── Tile Influence ────────────────────────────────────────────
 
-    /// <summary>Called by the tile system when the dungeon claims new tiles.</summary>
     public void AddOwnedTiles(int count)
     {
         ownedTileCount += count;
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
-    /// <summary>Called by the tile system when tiles are lost.</summary>
     public void RemoveOwnedTiles(int count)
     {
         ownedTileCount = Mathf.Max(0, ownedTileCount - count);
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
-    // ── Identity ─────────────────────────────────────────────────
+    // ── Identity ──────────────────────────────────────────────────
 
-    /// <summary>Called once during the tutorial death → dungeon type selection sequence.</summary>
-    public void SetDungeonType(DungeonType type)
-    {
-        dungeonType = type;
-    }
+    public void SetDungeonType(DungeonType type) => dungeonType = type;
 
-    // ── Core Destruction ─────────────────────────────────────────
+    // ── Core Destruction ──────────────────────────────────────────
 
-    /// <summary>Called by a Destroyer adventurer reaching the Core Room.</summary>
     public void DestroyCore()
     {
-        if (Time.time - lastBreachTime < 5f)
-        {
-            Debug.Log("[DungeonCore] Breach cooldown active — ignoring simultaneous hit.");
-            return;
-        }
+        if (Time.time - lastBreachTime < 5f) return;
         lastBreachTime = Time.time;
         breachCount++;
 
         if (breachCount == 1)
         {
-            // First breach — start instability
             isUnstable = true;
             instabilityTimer = instabilityDuration;
-
-            // XP penalty
             currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
             NotifyXPChanged();
 
-            // Shrink influence around core
-            TileInfluenceManager.Instance?.ShrinkInfluenceAroundCore(influenceShrinkRadius);
+            // Shrink influence on whichever floor the core currently lives on.
+            int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
+            var floor = FloorManager.Instance?.GetFloor(coreFloor);
+            if (floor?.TileInfluence != null)
+            {
+                Vector3Int coreCell = floor.TileInfluence.WorldToCell(transform.position);
+                floor.TileInfluence.ShrinkInfluenceAroundCore(coreCell, influenceShrinkRadius);
+            }
 
-            Debug.Log("[DungeonCore] FIRST BREACH — instability timer started.");
+            Debug.Log("[DungeonCore] FIRST BREACH.");
             OnFirstBreach?.Invoke();
-            OnCoreDestroyed?.Invoke(); // keep existing event for any other listeners
+            OnCoreDestroyed?.Invoke();
         }
         else
         {
-            // Second breach before timer cleared — game over
             Debug.Log("[DungeonCore] SECOND BREACH — game over.");
             isUnstable = false;
             OnGameOver?.Invoke();
         }
     }
 
-    // ── Save / Load ──────────────────────────────────────────────
+    // ── Save / Load ───────────────────────────────────────────────
 
     public DungeonCoreSaveData GetSaveData() => new DungeonCoreSaveData
     {
@@ -353,7 +311,7 @@ public class DungeonCore : MonoBehaviour
         levelUpAvailable = this.LevelUpAvailable,
         isUnstable = this.isUnstable,
         instabilityTimer = this.instabilityTimer,
-        breachCount = this.breachCount
+        breachCount = this.breachCount,
     };
 
     public void LoadSaveData(DungeonCoreSaveData data)
@@ -365,33 +323,28 @@ public class DungeonCore : MonoBehaviour
         reputation = data.reputation;
         currentMana = Mathf.Min(data.currentMana, MaxMana);
         ownedTileCount = data.ownedTileCount;
-        OnManaRegenChanged?.Invoke(CurrentManaRegen);
         LevelUpAvailable = data.levelUpAvailable;
+        usedCapacity = data.usedCapacity;
+        currentGold = data.gold;
+        isUnstable = data.isUnstable;
+        instabilityTimer = data.instabilityTimer;
+        breachCount = data.breachCount;
 
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
         NotifyManaChanged();
         NotifyXPChanged();
         OnNotorietyChanged?.Invoke(notoriety);
         OnReputationChanged?.Invoke(reputation);
-        usedCapacity = data.usedCapacity;
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
-        currentGold = data.gold;
         OnGoldChanged?.Invoke(currentGold);
-        isUnstable = data.isUnstable;
-        instabilityTimer = data.instabilityTimer;
-        breachCount = data.breachCount;
         if (isUnstable) OnFirstBreach?.Invoke();
-
-        if (LevelUpAvailable)
-            OnLevelUpAvailable?.Invoke();
+        if (LevelUpAvailable) OnLevelUpAvailable?.Invoke();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────
 
-    private void NotifyManaChanged() =>
-        OnManaChanged?.Invoke(currentMana, MaxMana);
-
-    private void NotifyXPChanged() =>
-        OnXPChanged?.Invoke(currentXP, XPToNextLevel);
+    private void NotifyManaChanged() => OnManaChanged?.Invoke(currentMana, MaxMana);
+    private void NotifyXPChanged() => OnXPChanged?.Invoke(currentXP, XPToNextLevel);
 }
 
 [Serializable]

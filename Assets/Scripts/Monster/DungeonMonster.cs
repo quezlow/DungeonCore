@@ -1,16 +1,13 @@
 using UnityEngine;
 
 /// <summary>
-/// Dungeon monster. Wanders randomly around its spawn point on owned tiles,
-/// then attacks any adventurer that enters detection range.
+/// Dungeon monster. Wanders on owned tiles of its own floor, attacks adventurers.
 ///
-/// Patrol via WaypointMover is commented out — re-enable once the player
-/// can create patrol routes in game.
-///
-/// ANIMATOR NOTE (for when sprites/animations are added):
-/// Use these parameter names to match WaypointMover and PlayerMovement:
-///   isWalking (bool), InputX/InputY (float), LastInputX/LastInputY (float)
-/// During combat, drive those params from AttackTarget() at that point.
+/// CHANGES FROM PRE-DAY-27
+///   - Caches FloorRoot in Start() via GetComponentInParent.
+///   - PickWanderTarget() uses cached floor's TileInfluenceManager instead
+///     of a singleton.
+///   - ScanForAdventurer() filters to adventurers on the same floor.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour
@@ -50,16 +47,13 @@ public class DungeonMonster : MonoBehaviour
     private DungeonAdventurer target;
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
+    private FloorRoot currentFloor;
 
     // Wander
     private Vector3 spawnPosition;
     private Vector3 wanderTarget;
     private bool wanderWaiting;
     private float wanderWaitTimer;
-
-    /* ── PATROL (disabled until player-created patrol routes are implemented) ──
-    private WaypointMover patrolMover;
-    */
 
     // ─────────────────────────────────────────────────────────────
 
@@ -73,6 +67,11 @@ public class DungeonMonster : MonoBehaviour
     private void Start()
     {
         spawnPosition = transform.position;
+
+        currentFloor = GetComponentInParent<FloorRoot>();
+        if (currentFloor == null)
+            Debug.LogWarning("[DungeonMonster] No FloorRoot in parent — wander will use spawn position.");
+
         PickWanderTarget();
 
         if (statusBarsPrefab != null)
@@ -88,14 +87,6 @@ public class DungeonMonster : MonoBehaviour
     {
         spawner = parentSpawner;
     }
-
-    /* ── PATROL (disabled) ──────────────────────────────────────────
-    /// <summary>Called by MonsterSpawner after adding WaypointMover.</summary>
-    public void SetPatrolMover(WaypointMover mover)
-    {
-        patrolMover = mover;
-    }
-    */
 
     private void Update()
     {
@@ -152,7 +143,8 @@ public class DungeonMonster : MonoBehaviour
 
     private void PickWanderTarget()
     {
-        if (TileInfluenceManager.Instance == null)
+        var influence = currentFloor?.TileInfluence;
+        if (influence == null)
         {
             wanderTarget = spawnPosition;
             return;
@@ -162,11 +154,11 @@ public class DungeonMonster : MonoBehaviour
         {
             Vector2 offset = Random.insideUnitCircle * wanderRadius;
             Vector3 candidate = spawnPosition + new Vector3(offset.x, offset.y, 0f);
-            Vector3Int cell = TileInfluenceManager.Instance.WorldToCell(candidate);
+            Vector3Int cell = influence.WorldToCell(candidate);
 
-            if (TileInfluenceManager.Instance.IsTileOwned(cell))
+            if (influence.IsTileOwned(cell))
             {
-                wanderTarget = TileInfluenceManager.Instance.CellToWorld(cell);
+                wanderTarget = influence.CellToWorld(cell);
                 return;
             }
         }
@@ -184,6 +176,9 @@ public class DungeonMonster : MonoBehaviour
 
         foreach (var adv in all)
         {
+            // Only detect adventurers on the same floor.
+            if (adv.CurrentFloor != currentFloor) continue;
+
             float d = Vector2.Distance(transform.position, adv.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = adv; }
         }
@@ -192,10 +187,6 @@ public class DungeonMonster : MonoBehaviour
         {
             target = nearest;
             state = MonsterState.Attack;
-
-            /* ── PATROL (disabled) ──────────────────────────────────
-            if (patrolMover != null) patrolMover.enabled = false;
-            */
         }
     }
 
@@ -205,7 +196,6 @@ public class DungeonMonster : MonoBehaviour
 
         if (dist > attackRange)
         {
-            // ANIMATOR NOTE: drive InputX/InputY here when animator is added
             transform.position = Vector2.MoveTowards(
                 transform.position, target.transform.position, moveSpeed * Time.deltaTime);
             return;
@@ -222,17 +212,12 @@ public class DungeonMonster : MonoBehaviour
         {
             GainXP(xpPerKill);
             target = null;
-
-            /* ── PATROL (disabled) ──────────────────────────────────
-            if (patrolMover != null) patrolMover.enabled = true;
-            */
         }
     }
 
     private void GainXP(float amount)
     {
         monsterXP += amount;
-        // Phase 2: if (monsterXP >= xpToVeteran) BecomeVeteran();
     }
 
     // ── Health ────────────────────────────────────────────────────
@@ -256,4 +241,5 @@ public class DungeonMonster : MonoBehaviour
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
     public float MonsterXP => monsterXP;
+    public FloorRoot CurrentFloor => currentFloor;
 }

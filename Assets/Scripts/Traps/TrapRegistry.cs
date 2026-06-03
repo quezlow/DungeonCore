@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Global registry of placed traps. Queried by:
-///   - DungeonAdventurer.FollowPath() to detect when an adventurer enters a trap cell
-///   - DungeonPathfinder.FindPath() to route around flagged trap cells
-///   - Rogue detection logic to enumerate nearby traps
+/// Per-floor trap registry. No longer a singleton.
+/// Access via FloorRoot.TrapRegistry.
 ///
-/// EXECUTION ORDER
-///   -10 — initialises before TrapBase.Awake/Initialise calls in the same frame.
-///   Day-23 lesson: singletons must be active in the scene for Awake to fire.
+/// CHANGES FROM PRE-DAY-27
+///   - Static Instance removed.
+///   - GetTrapsWithinRadius now takes a TileInfluenceManager parameter
+///     instead of using TileInfluenceManager.Instance.
 /// </summary>
 [DefaultExecutionOrder(-10)]
 public class TrapRegistry : MonoBehaviour
@@ -18,21 +17,10 @@ public class TrapRegistry : MonoBehaviour
     public static TrapRegistry Instance { get; private set; }
 
     private readonly Dictionary<Vector3Int, TrapBase> trapsByCell = new();
-
-    /// <summary>Cached set of flagged cells, rebuilt only when flagged state changes.</summary>
     private readonly HashSet<Vector3Int> flaggedCellsCache = new();
     private bool flaggedCacheDirty = true;
 
-    /// <summary>Fires when the set of flagged traps changes — listeners (e.g. pathfinders) can rebuild.</summary>
     public event Action OnFlaggedTrapsChanged;
-
-    // ── Lifecycle ─────────────────────────────────────────────────
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-    }
 
     // ── Registration ──────────────────────────────────────────────
 
@@ -66,10 +54,6 @@ public class TrapRegistry : MonoBehaviour
         return trap;
     }
 
-    /// <summary>
-    /// All currently-flagged trap cells. Used by DungeonPathfinder to route
-    /// adventurers around known dangers. Cached internally — cheap to call.
-    /// </summary>
     public HashSet<Vector3Int> GetFlaggedCells()
     {
         if (flaggedCacheDirty)
@@ -79,13 +63,10 @@ public class TrapRegistry : MonoBehaviour
             {
                 if (kvp.Value == null) continue;
                 if (!kvp.Value.IsFlagged) continue;
-
-                // Warning traps and pressure plates don't block pathfinding when flagged.
                 if (kvp.Value.Definition != null &&
                     (kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.Warning ||
                      kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.PressurePlate))
                     continue;
-
                 flaggedCellsCache.Add(kvp.Key);
             }
             flaggedCacheDirty = false;
@@ -93,21 +74,20 @@ public class TrapRegistry : MonoBehaviour
         return flaggedCellsCache;
     }
 
-
-
     /// <summary>
-    /// All trap cells within radius of a world position, regardless of flagged state.
-    /// Used by Rogue detection scans.
+    /// All traps within world-space radius. Requires the floor's
+    /// TileInfluenceManager for cell→world conversion.
     /// </summary>
-    public IEnumerable<TrapBase> GetTrapsWithinRadius(Vector3 worldPos, float radius)
+    public IEnumerable<TrapBase> GetTrapsWithinRadius(
+        Vector3 worldPos, float radius, TileInfluenceManager influence)
     {
-        if (TileInfluenceManager.Instance == null) yield break;
+        if (influence == null) yield break;
 
         float radiusSq = radius * radius;
         foreach (var kvp in trapsByCell)
         {
             if (kvp.Value == null) continue;
-            Vector3 trapWorld = TileInfluenceManager.Instance.CellToWorld(kvp.Key);
+            Vector3 trapWorld = influence.CellToWorld(kvp.Key);
             float dx = trapWorld.x - worldPos.x;
             float dy = trapWorld.y - worldPos.y;
             if (dx * dx + dy * dy <= radiusSq) yield return kvp.Value;
