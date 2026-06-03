@@ -23,16 +23,10 @@ public class DungeonTerrain : MonoBehaviour
 
     // ─────────────────────────────────────────────────────────────
 
-    // OnEnable/OnDisable handle singleton registration so it swaps correctly
-    // when floors toggle active state (Day 27 multi-floor support).
-    private void OnEnable()
+    private void Awake()
     {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
-
-    private void OnDisable()
-    {
-        if (Instance == this) Instance = null;
     }
 
     private void Start()

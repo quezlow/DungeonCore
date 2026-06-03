@@ -38,16 +38,10 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ─────────────────────────────────────────────────────────────
 
-    // OnEnable/OnDisable handle singleton registration so it swaps correctly
-    // when floors toggle active state (Day 27 multi-floor support).
-    private void OnEnable()
+    private void Awake()
     {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
-
-    private void OnDisable()
-    {
-        if (Instance == this) Instance = null;
     }
 
     private void Start()
@@ -100,36 +94,6 @@ public class TileInfluenceManager : MonoBehaviour
             DungeonCore.Instance?.AddOwnedTiles(1);
             OnTileCountChanged?.Invoke(ownedTiles.Count);
         }
-    }
-
-    /// <summary>
-    /// Claims a tile without spending mana, notifying DungeonCore, or checking
-    /// terrain bounds. Used by FloorManager's starter-area population and stair
-    /// placement on newly-created floors that may not yet have a DungeonTerrain
-    /// or active DungeonCore connection.
-    /// </summary>
-    public void ForceClaimTile(Vector3Int cell)
-    {
-        if (ownedTiles.Contains(cell)) return;
-
-        ownedTiles.Add(cell);
-        claimableTiles.Remove(cell);
-
-        if (claimableTilemap != null)
-            claimableTilemap.SetTile(cell, null);
-
-        foreach (Vector3Int dir in Neighbours)
-        {
-            Vector3Int neighbour = cell + dir;
-            if (ownedTiles.Contains(neighbour)) continue;
-            if (claimableTiles.Contains(neighbour)) continue;
-
-            claimableTiles.Add(neighbour);
-            if (claimableTilemap != null)
-                claimableTilemap.SetTile(neighbour, claimableTile);
-        }
-
-        OnTileCountChanged?.Invoke(ownedTiles.Count);
     }
 
     /// <summary>Removes a tile from ownership (e.g. Destroyer consequence).</summary>

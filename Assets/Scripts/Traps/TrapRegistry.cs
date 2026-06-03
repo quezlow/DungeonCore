@@ -3,18 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Per-floor registry of placed traps. Queried by:
+/// Global registry of placed traps. Queried by:
 ///   - DungeonAdventurer.FollowPath() to detect when an adventurer enters a trap cell
 ///   - DungeonPathfinder.FindPath() to route around flagged trap cells
 ///   - Rogue detection logic to enumerate nearby traps
 ///
 /// EXECUTION ORDER
 ///   -10 — initialises before TrapBase.Awake/Initialise calls in the same frame.
-///
-/// MULTI-FLOOR
-///   Each floor has its own TrapRegistry instance. The static Instance points
-///   to whichever floor is currently active; singleton swap is handled via
-///   OnEnable/OnDisable when floors toggle active.
+///   Day-23 lesson: singletons must be active in the scene for Awake to fire.
 /// </summary>
 [DefaultExecutionOrder(-10)]
 public class TrapRegistry : MonoBehaviour
@@ -32,16 +28,10 @@ public class TrapRegistry : MonoBehaviour
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
-    // OnEnable/OnDisable handle singleton registration so it swaps correctly
-    // when floors toggle active state (Day 27 multi-floor support).
-    private void OnEnable()
+    private void Awake()
     {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
-
-    private void OnDisable()
-    {
-        if (Instance == this) Instance = null;
     }
 
     // ── Registration ──────────────────────────────────────────────
@@ -102,6 +92,8 @@ public class TrapRegistry : MonoBehaviour
         }
         return flaggedCellsCache;
     }
+
+
 
     /// <summary>
     /// All trap cells within radius of a world position, regardless of flagged state.

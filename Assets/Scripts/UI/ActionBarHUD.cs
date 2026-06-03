@@ -65,7 +65,6 @@ public class ActionBarHUD : MonoBehaviour
     private List<BuildSubmenuEntry> buildEntries = new()
     {
         new() { label = "Entrance", mode = BuildMode.PlaceEntrance },
-        new() { label = "Stairs", mode = BuildMode.PlaceStairs },
         new() { label = "Chest",    mode = BuildMode.PlaceChest    },
         new() { label = "Furniture", mode = BuildMode.PlaceFurniture },
         new() { label = "Room",      mode = BuildMode.PlaceRoomAnchor },
@@ -232,7 +231,6 @@ public class ActionBarHUD : MonoBehaviour
             case BuildMode.PlaceFurniture:
             case BuildMode.PlaceRoomAnchor:
             case BuildMode.PlaceTrap:
-            case BuildMode.PlaceStairs:
                 currentTab = ActiveTab.Build;
                 break;
 
