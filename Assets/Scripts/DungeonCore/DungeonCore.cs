@@ -10,20 +10,16 @@ public class DungeonCore : MonoBehaviour
     [Header("Identity")]
     [SerializeField] private DungeonType dungeonType = DungeonType.None;
 
-    // ── Mana ─────────────────────────────────────────────────────
-    [Header("Mana")]
-    [SerializeField] private float baseMana = 100f;
-    [SerializeField] private float manaPerLevel = 25f;
+    // ── Progression Table (tier-based) ────────────────────────────
+    [Header("Tier Progression")]
+    [SerializeField] private DungeonCoreProgressionTable progression = new DungeonCoreProgressionTable();
+
+    [Header("Mana Regen")]
     [SerializeField] private float baseRegenPerSecond = 1f;
     [SerializeField] private float regenPerTile = 0.1f;
 
-    // ── Monster Capacity ──────────────────────────────────────────
-    [Header("Monster Capacity")]
-    [SerializeField] private int baseCapacity = 100;
-    [SerializeField] private int capacityPerLevel = 50;
-
-    // ── XP / Level ───────────────────────────────────────────────
-    [Header("XP & Level")]
+    // ── XP ───────────────────────────────────────────────────────
+    [Header("XP")]
     [SerializeField] private float baseXPToLevel = 100f;
     [SerializeField] private float xpScalingExponent = 1.5f;
 
@@ -43,7 +39,6 @@ public class DungeonCore : MonoBehaviour
     [Header("Notoriety Decay")]
     [SerializeField] private float notorietyDecayCooldown = 10f;
 
-    // ── Breach state ──────────────────────────────────────────────
     private bool isUnstable = false;
     private float instabilityTimer = 0f;
     private int breachCount = 0;
@@ -53,10 +48,17 @@ public class DungeonCore : MonoBehaviour
     // ── Runtime State ─────────────────────────────────────────────
     private float currentMana;
     private float currentXP;
-    private int dungeonLevel = 1;
+    private int dungeonLevel = 1; // flat 1..26 across all tiers
     private int ownedTileCount = 0;
     private int usedCapacity = 0;
     private int currentGold = 0;
+
+    /// <summary>
+    /// Number of stair-build credits the player has accumulated.
+    /// Granted by qualifying tier-up transitions (Bronze 10 → Silver 1, etc.)
+    /// Consumed by successfully placing a Down stair.
+    /// </summary>
+    private int stairCredits = 0;
 
     // ── Events ───────────────────────────────────────────────────
     public event Action<float, float> OnManaChanged;
@@ -73,19 +75,23 @@ public class DungeonCore : MonoBehaviour
     public event Action OnCoreStabilised;
     public event Action OnGameOver;
     public event Action<int> OnGoldChanged;
+    public event Action<int> OnStairCreditsChanged;
 
     // ── Public Reads ──────────────────────────────────────────────
     public DungeonType DungeonType => dungeonType;
     public int DungeonLevel => dungeonLevel;
+    public LevelTier CurrentTier => LevelTierUtil.FromFlatLevel(dungeonLevel).tier;
+    public int CurrentRank => LevelTierUtil.FromFlatLevel(dungeonLevel).rank;
+    public string LevelDisplayName => LevelTierUtil.DisplayName(dungeonLevel);
     public float CurrentMana => currentMana;
-    public float MaxMana => baseMana + (dungeonLevel - 1) * manaPerLevel;
+    public float MaxMana => progression.ManaAt(dungeonLevel);
     public float CurrentManaRegen => baseRegenPerSecond + ownedTileCount * regenPerTile;
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
     public float Reputation => reputation;
     public int OwnedTileCount => ownedTileCount;
-    public int MaxCapacity => baseCapacity + (dungeonLevel - 1) * capacityPerLevel;
+    public int MaxCapacity => progression.CapacityAt(dungeonLevel);
     public int UsedCapacity => usedCapacity;
     public int FreeCapacity => MaxCapacity - usedCapacity;
     public bool LevelUpAvailable { get; private set; }
@@ -93,10 +99,24 @@ public class DungeonCore : MonoBehaviour
     public float InstabilityTimer => instabilityTimer;
     public float InstabilityDuration => instabilityDuration;
     public int Gold => currentGold;
+    public int StairCredits => stairCredits;
+    public DungeonCoreProgressionTable Progression => progression;
 
-    /// <summary>True while a DungeonCoreTransit is running on this GameObject.</summary>
     public bool IsInTransit => GetComponent<DungeonCoreTransit>() != null
                             && GetComponent<DungeonCoreTransit>().IsActive;
+
+    /// <summary>Floor index this tier unlocks as a Down-stair destination.</summary>
+    public static int FloorUnlockedByTier(LevelTier tier)
+    {
+        switch (tier)
+        {
+            case LevelTier.Silver: return 1;
+            case LevelTier.Gold: return 2;
+            case LevelTier.Diamond: return 3;
+            case LevelTier.God: return 4;
+            default: return 0; // Bronze unlocks no new floor
+        }
+    }
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -113,12 +133,20 @@ public class DungeonCore : MonoBehaviour
         if (dungeonType == DungeonType.None)
             Debug.LogWarning("DungeonCore: DungeonType is None.");
 
-        NotifyManaChanged();
+        NotifyAll();
+    }
+
+    private void NotifyAll()
+    {
+        OnManaChanged?.Invoke(currentMana, MaxMana);
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
-        NotifyXPChanged();
+        OnXPChanged?.Invoke(currentXP, XPToNextLevel);
+        OnLevelUp?.Invoke(dungeonLevel);        
+        OnNotorietyChanged?.Invoke(notoriety);
         OnReputationChanged?.Invoke(reputation);
         OnGoldChanged?.Invoke(currentGold);
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+        OnStairCreditsChanged?.Invoke(stairCredits);
     }
 
     private void Update()
@@ -131,25 +159,10 @@ public class DungeonCore : MonoBehaviour
 
     // ── Relocation ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Begins a 30-second relocation transit to the given floor and cell.
-    /// Adds a DungeonCoreTransit component that drives the sequence and
-    /// removes itself on completion. Refuses if a transit is already running.
-    /// </summary>
     public void Relocate(FloorRoot destination, Vector3Int destCell)
     {
-        if (destination == null)
-        {
-            Debug.LogError("[DungeonCore] Relocate: destination floor is null.");
-            return;
-        }
-
-        if (IsInTransit)
-        {
-            Debug.LogWarning("[DungeonCore] Relocate: already in transit.");
-            return;
-        }
-
+        if (destination == null) { Debug.LogError("[DungeonCore] Relocate: null destination."); return; }
+        if (IsInTransit) { Debug.LogWarning("[DungeonCore] Already in transit."); return; }
         var transit = gameObject.AddComponent<DungeonCoreTransit>();
         transit.Begin(destination, destCell);
     }
@@ -161,21 +174,21 @@ public class DungeonCore : MonoBehaviour
         if (currentMana >= MaxMana) return;
         float regen = (baseRegenPerSecond + ownedTileCount * regenPerTile) * Time.deltaTime;
         currentMana = Mathf.Min(currentMana + regen, MaxMana);
-        NotifyManaChanged();
+        OnManaChanged?.Invoke(currentMana, MaxMana);
     }
 
     public bool SpendMana(float amount)
     {
         if (currentMana < amount) return false;
         currentMana -= amount;
-        NotifyManaChanged();
+        OnManaChanged?.Invoke(currentMana, MaxMana);
         return true;
     }
 
     public void AddMana(float amount)
     {
         currentMana = Mathf.Min(currentMana + amount, MaxMana);
-        NotifyManaChanged();
+        OnManaChanged?.Invoke(currentMana, MaxMana);
     }
 
     // ── XP & Level ───────────────────────────────────────────────
@@ -183,7 +196,7 @@ public class DungeonCore : MonoBehaviour
     public void AddXP(float amount)
     {
         currentXP += amount;
-        NotifyXPChanged();
+        OnXPChanged?.Invoke(currentXP, XPToNextLevel);
         CheckLevelUp();
     }
 
@@ -209,7 +222,12 @@ public class DungeonCore : MonoBehaviour
 
     private void CheckLevelUp()
     {
-        if (!LevelUpAvailable && currentXP >= CalculateXPThreshold(dungeonLevel))
+        if (LevelUpAvailable) return;
+
+        // Diamond 3 → God 1 transition is gated by a TBD special requirement.
+        if (LevelTierUtil.IsDiamondCap(dungeonLevel)) return;
+
+        if (currentXP >= CalculateXPThreshold(dungeonLevel))
         {
             LevelUpAvailable = true;
             OnLevelUpAvailable?.Invoke();
@@ -219,18 +237,55 @@ public class DungeonCore : MonoBehaviour
     public void ConfirmLevelUp()
     {
         if (!LevelUpAvailable) return;
+
+        // Block the Diamond 3 → God 1 transition until special requirement is defined.
+        if (LevelTierUtil.IsDiamondCap(dungeonLevel))
+        {
+            Debug.Log("[DungeonCore] God 1 requires special unlock (TBD).");
+            return;
+        }
+
+        // Apply the level-up.
+        bool isTierBoundary = LevelTierUtil.IsTierBoundary(dungeonLevel);
+
         currentXP -= CalculateXPThreshold(dungeonLevel);
-        dungeonLevel++;
+        dungeonLevel = Mathf.Min(dungeonLevel + 1, LevelTierUtil.MaxFlatLevel);
         LevelUpAvailable = false;
+
+        // Tier-up grants a stair credit (Bronze 10 → Silver 1, etc.).
+        if (isTierBoundary)
+        {
+            stairCredits++;
+            OnStairCreditsChanged?.Invoke(stairCredits);
+            Debug.Log($"[DungeonCore] Tier up to {LevelDisplayName} — stair credit granted (now {stairCredits}).");
+        }
+
         OnLevelUp?.Invoke(dungeonLevel);
-        NotifyManaChanged();
-        NotifyXPChanged();
+        OnManaChanged?.Invoke(currentMana, MaxMana);
+        OnXPChanged?.Invoke(currentXP, XPToNextLevel);
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
+
         CheckLevelUp();
     }
 
     private float CalculateXPThreshold(int level)
         => baseXPToLevel * Mathf.Pow(level, xpScalingExponent);
+
+    /// <summary>Consumes one stair credit. Returns true if a credit was available.</summary>
+    public bool TryConsumeStairCredit()
+    {
+        if (stairCredits <= 0) return false;
+        stairCredits--;
+        OnStairCreditsChanged?.Invoke(stairCredits);
+        return true;
+    }
+
+    /// <summary>Returns a credit (e.g. if stair placement failed downstream).</summary>
+    public void RefundStairCredit()
+    {
+        stairCredits++;
+        OnStairCreditsChanged?.Invoke(stairCredits);
+    }
 
     // ── Notoriety / Reputation ────────────────────────────────────
 
@@ -265,7 +320,6 @@ public class DungeonCore : MonoBehaviour
         {
             isUnstable = false;
             breachCount = 0;
-            Debug.Log("[DungeonCore] Instability resolved.");
             OnCoreStabilised?.Invoke();
         }
     }
@@ -284,15 +338,12 @@ public class DungeonCore : MonoBehaviour
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
-    // ── Identity ──────────────────────────────────────────────────
-
     public void SetDungeonType(DungeonType type) => dungeonType = type;
 
     // ── Core Destruction ──────────────────────────────────────────
 
     public void DestroyCore()
     {
-        // During transit, any breach is instant game over.
         if (IsInTransit)
         {
             Debug.Log("[DungeonCore] BREACH DURING TRANSIT — instant game over.");
@@ -309,7 +360,7 @@ public class DungeonCore : MonoBehaviour
             isUnstable = true;
             instabilityTimer = instabilityDuration;
             currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
-            NotifyXPChanged();
+            OnXPChanged?.Invoke(currentXP, XPToNextLevel);
 
             int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
             var floor = FloorManager.Instance?.GetFloor(coreFloor);
@@ -319,13 +370,11 @@ public class DungeonCore : MonoBehaviour
                 floor.TileInfluence.ShrinkInfluenceAroundCore(coreCell, influenceShrinkRadius);
             }
 
-            Debug.Log("[DungeonCore] FIRST BREACH.");
             OnFirstBreach?.Invoke();
             OnCoreDestroyed?.Invoke();
         }
         else
         {
-            Debug.Log("[DungeonCore] SECOND BREACH — game over.");
             isUnstable = false;
             OnGameOver?.Invoke();
         }
@@ -333,29 +382,33 @@ public class DungeonCore : MonoBehaviour
 
     // ── Save / Load ───────────────────────────────────────────────
 
-    public DungeonCoreSaveData GetSaveData() => new DungeonCoreSaveData
+    public DungeonCoreSaveData GetSaveData()
     {
-        dungeonType = this.dungeonType,
-        dungeonLevel = this.dungeonLevel,
-        currentXP = this.currentXP,
-        notoriety = this.notoriety,
-        reputation = this.reputation,
-        currentMana = this.currentMana,
-        ownedTileCount = this.ownedTileCount,
-        usedCapacity = this.usedCapacity,
-        gold = this.currentGold,
-        levelUpAvailable = this.LevelUpAvailable,
-        isUnstable = this.isUnstable,
-        instabilityTimer = this.instabilityTimer,
-        breachCount = this.breachCount,
-        corePosX = transform.position.x,
-        corePosY = transform.position.y,
-    };
+        Debug.Log($"[DungeonCore] GetSaveData: dungeonLevel={dungeonLevel}, display={LevelDisplayName}");
+        return new DungeonCoreSaveData
+        {
+            dungeonType = this.dungeonType,
+            dungeonLevel = this.dungeonLevel,
+            currentXP = this.currentXP,
+            notoriety = this.notoriety,
+            reputation = this.reputation,
+            currentMana = this.currentMana,
+            ownedTileCount = this.ownedTileCount,
+            usedCapacity = this.usedCapacity,
+            gold = this.currentGold,
+            levelUpAvailable = this.LevelUpAvailable,
+            isUnstable = this.isUnstable,
+            instabilityTimer = this.instabilityTimer,
+            breachCount = this.breachCount,
+            stairCredits = this.stairCredits,
+        };
+    }
 
     public void LoadSaveData(DungeonCoreSaveData data)
     {
         dungeonType = data.dungeonType;
-        dungeonLevel = data.dungeonLevel;
+        dungeonLevel = Mathf.Clamp(data.dungeonLevel, 1, LevelTierUtil.MaxFlatLevel);
+        Debug.Log($"[DungeonCore] LoadSaveData: dungeonLevel raw={data.dungeonLevel}, clamped={dungeonLevel}, display={LevelDisplayName}");
         currentXP = data.currentXP;
         notoriety = data.notoriety;
         reputation = data.reputation;
@@ -367,23 +420,12 @@ public class DungeonCore : MonoBehaviour
         isUnstable = data.isUnstable;
         instabilityTimer = data.instabilityTimer;
         breachCount = data.breachCount;
-        transform.position = new Vector3(data.corePosX, data.corePosY, transform.position.z);
+        stairCredits = data.stairCredits;
 
-        OnManaRegenChanged?.Invoke(CurrentManaRegen);
-        NotifyManaChanged();
-        NotifyXPChanged();
-        OnNotorietyChanged?.Invoke(notoriety);
-        OnReputationChanged?.Invoke(reputation);
-        OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
-        OnGoldChanged?.Invoke(currentGold);
+        NotifyAll();
         if (isUnstable) OnFirstBreach?.Invoke();
         if (LevelUpAvailable) OnLevelUpAvailable?.Invoke();
     }
-
-    // ── Helpers ───────────────────────────────────────────────────
-
-    private void NotifyManaChanged() => OnManaChanged?.Invoke(currentMana, MaxMana);
-    private void NotifyXPChanged() => OnXPChanged?.Invoke(currentXP, XPToNextLevel);
 }
 
 [Serializable]
@@ -402,6 +444,5 @@ public class DungeonCoreSaveData
     public float instabilityTimer;
     public int breachCount;
     public int gold;
-    public float corePosX;
-    public float corePosY;
+    public int stairCredits;
 }

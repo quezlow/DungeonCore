@@ -4,13 +4,14 @@ using Unity.Cinemachine;
 using UnityEngine;
 
 /// <summary>
-/// Manages all dungeon floors. Floors are ALWAYS active — never deactivated.
-/// Each floor is offset by floorIndex * -2000 on Y so they never overlap.
+/// Manages all dungeon floors. Floors are ALWAYS active.
 ///
-/// DAY 27 SECTION 2B + SAVE
-///   - Tracks PendingCoreRelocationFloor, visited floors, gates for stairs/core placement.
-///   - MarkCoreRelocationComplete() called by DungeonCoreTransit on finish.
-///   - Save/load helpers: RecreateFloorFromSave(), RestoreState().
+/// STAIR PLACEMENT GATING (tier-based)
+///   Stair placement is gated by THREE conditions:
+///     1. CanPlaceStairs — false while a core relocation is pending
+///     2. DungeonCore.StairCredits > 0 — must have a tier-up credit
+///     3. CurrentFloorAllowsNewDownStair() — current floor doesn't already
+///        have a Down stair, and isn't the deepest unlocked floor
 /// </summary>
 public class FloorManager : MonoBehaviour
 {
@@ -23,7 +24,9 @@ public class FloorManager : MonoBehaviour
     [SerializeField] private CinemachineCamera cmCamera;
     [SerializeField] private Transform cameraAnchor;
 
-    // ── State ─────────────────────────────────────────────────────
+    [Header("Limits")]
+    [Tooltip("Deepest floor index that can ever exist (Floor 5 = index 4).")]
+    [SerializeField] private int maxFloorIndex = 4;
 
     private readonly Dictionary<int, FloorRoot> floors = new();
     private readonly HashSet<int> visitedFloors = new();
@@ -35,7 +38,24 @@ public class FloorManager : MonoBehaviour
 
     public int PendingCoreRelocationFloor { get; private set; } = -1;
     public bool IsCoreRelocationPending => PendingCoreRelocationFloor >= 0;
-    public bool CanPlaceStairs => !IsCoreRelocationPending;
+
+    /// <summary>Hard cap from the inspector (Floor 5 → index 4 by default).</summary>
+    public int MaxAllowedFloorIndex => maxFloorIndex;
+
+    /// <summary>True when the player CAN place a new Down stair on the active floor.</summary>
+    public bool CanPlaceStairs
+    {
+        get
+        {
+            if (IsCoreRelocationPending) return false;
+            if (ActiveFloor == null) return false;
+            if (ActiveFloor.FloorIndex >= maxFloorIndex) return false; // bottom floor
+            if (FloorHasDownStair(ActiveFloor.FloorIndex)) return false;
+            if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) return false;
+            return true;
+        }
+    }
+
     public bool CanPlaceCore
         => IsCoreRelocationPending && visitedFloors.Contains(PendingCoreRelocationFloor);
 
@@ -44,6 +64,7 @@ public class FloorManager : MonoBehaviour
     public event Action<int> OnActiveFloorChanged;
     public event Action<int> OnFloorCreated;
     public event Action OnPlaceCoreAvailabilityChanged;
+    public event Action OnStairPlacementGateChanged;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -56,10 +77,9 @@ public class FloorManager : MonoBehaviour
     private void Start()
     {
         var allRoots = FindObjectsByType<FloorRoot>(FindObjectsInactive.Include);
-        foreach (var root in allRoots)
-            RegisterFloor(root);
+        foreach (var root in allRoots) RegisterFloor(root);
 
-        if (floors.TryGetValue(0, out var floor1))
+        if (floors.TryGetValue(0, out var _))
         {
             visitedFloors.Add(0);
             SetActiveFloor(0, snapCamera: true);
@@ -68,6 +88,10 @@ public class FloorManager : MonoBehaviour
         {
             Debug.LogError("[FloorManager] Floor 1 (index 0) not found.");
         }
+
+        // Re-fire stair-gate notifications when stair credits change.
+        if (DungeonCore.Instance != null)
+            DungeonCore.Instance.OnStairCreditsChanged += _ => OnStairPlacementGateChanged?.Invoke();
     }
 
     // ── Registration ──────────────────────────────────────────────
@@ -75,8 +99,7 @@ public class FloorManager : MonoBehaviour
     public void RegisterFloor(FloorRoot floor)
     {
         if (floor == null) return;
-        if (floors.TryGetValue(floor.FloorIndex, out var existing) && existing != null && existing != floor)
-            return;
+        if (floors.TryGetValue(floor.FloorIndex, out var existing) && existing != null && existing != floor) return;
         floors[floor.FloorIndex] = floor;
     }
 
@@ -87,8 +110,6 @@ public class FloorManager : MonoBehaviour
             floors.Remove(floor.FloorIndex);
     }
 
-    // ── Public API ────────────────────────────────────────────────
-
     public FloorRoot GetFloor(int index)
     {
         floors.TryGetValue(index, out var floor);
@@ -97,13 +118,12 @@ public class FloorManager : MonoBehaviour
 
     public bool FloorExists(int index) => floors.ContainsKey(index);
 
-    public int MaxFloorIndex
+    public int MaxFloorIndexCreated
     {
         get
         {
             int max = 0;
-            foreach (var kvp in floors)
-                if (kvp.Key > max) max = kvp.Key;
+            foreach (var kvp in floors) if (kvp.Key > max) max = kvp.Key;
             return max;
         }
     }
@@ -112,7 +132,7 @@ public class FloorManager : MonoBehaviour
 
     public void SwitchToFloor(int targetIndex)
     {
-        if (targetIndex < 0) { Debug.LogWarning($"[FloorManager] Negative floor index {targetIndex}."); return; }
+        if (targetIndex < 0) { Debug.LogWarning($"[FloorManager] Negative index {targetIndex}."); return; }
         if (!FloorExists(targetIndex)) { Debug.LogWarning($"[FloorManager] Floor {targetIndex} doesn't exist."); return; }
         SetActiveFloor(targetIndex, snapCamera: false);
     }
@@ -120,7 +140,8 @@ public class FloorManager : MonoBehaviour
     public void EnsureFloorExists(int targetIndex, Vector3Int centerCell = default)
     {
         if (FloorExists(targetIndex)) return;
-        if (targetIndex != MaxFloorIndex + 1) { Debug.LogWarning($"[FloorManager] Cannot skip floors to {targetIndex}."); return; }
+        if (targetIndex > maxFloorIndex) { Debug.LogWarning($"[FloorManager] Floor {targetIndex} exceeds max."); return; }
+        if (targetIndex != MaxFloorIndexCreated + 1) { Debug.LogWarning($"[FloorManager] Cannot skip floors to {targetIndex}."); return; }
         CreateFloor(targetIndex, centerCell);
     }
 
@@ -134,20 +155,28 @@ public class FloorManager : MonoBehaviour
     {
         PendingCoreRelocationFloor = -1;
         OnPlaceCoreAvailabilityChanged?.Invoke();
+        OnStairPlacementGateChanged?.Invoke();
         Debug.Log("[FloorManager] Core relocation complete.");
     }
 
+    /// <summary>Counts Down stairs on the given floor.</summary>
+    public int CountDownStairsOnFloor(int floorIndex)
+    {
+        var floor = GetFloor(floorIndex);
+        if (floor == null) return 0;
+        var stairs = floor.GetComponentsInChildren<DungeonStairs>(true);
+        int count = 0;
+        foreach (var s in stairs)
+            if (s.FloorIndex == floorIndex && s.Dir == DungeonStairs.Direction.Down) count++;
+        return count;
+    }
+
+    public bool FloorHasDownStair(int floorIndex) => CountDownStairsOnFloor(floorIndex) >= 1;
+
     // ── Save / Load support ───────────────────────────────────────
 
-    /// <summary>
-    /// Returns the visited floors set for serialisation.
-    /// </summary>
     public IEnumerable<int> VisitedFloorsForSave => visitedFloors;
 
-    /// <summary>
-    /// Creates a floor for load without running Bootstrap. The caller is
-    /// responsible for restoring tile/trap/object state afterwards.
-    /// </summary>
     public FloorRoot RecreateFloorFromSave(int floorIndex, Vector3Int centerCell)
     {
         if (FloorExists(floorIndex)) return GetFloor(floorIndex);
@@ -156,32 +185,25 @@ public class FloorManager : MonoBehaviour
         var instance = Instantiate(floorTemplatePrefab);
         instance.name = $"Floor{floorIndex + 1}Root";
         instance.Initialise(floorIndex);
-        // Generate terrain at the saved center cell. Skip ClaimStarterArea —
-        // tile state is restored from save afterwards.
         instance.Terrain?.GenerateAt(centerCell);
 
         OnFloorCreated?.Invoke(floorIndex);
+        OnStairPlacementGateChanged?.Invoke();
         return instance;
     }
 
-    /// <summary>
-    /// Restores multi-floor manager state (core floor, pending relocation, visited).
-    /// Called by DungeonSaveController after all floors are recreated.
-    /// </summary>
     public void RestoreState(int coreFloorIdx, int pendingRelocationFloor, IEnumerable<int> visited)
     {
         CoreFloorIndex = coreFloorIdx;
         PendingCoreRelocationFloor = pendingRelocationFloor;
 
         visitedFloors.Clear();
-        visitedFloors.Add(0); // Floor 0 is always visited
+        visitedFloors.Add(0);
         if (visited != null)
-        {
-            foreach (var v in visited)
-                visitedFloors.Add(v);
-        }
+            foreach (var v in visited) visitedFloors.Add(v);
 
         OnPlaceCoreAvailabilityChanged?.Invoke();
+        OnStairPlacementGateChanged?.Invoke();
     }
 
     // ── Internal ──────────────────────────────────────────────────
@@ -196,8 +218,8 @@ public class FloorManager : MonoBehaviour
 
         MoveCameraToFloor(newFloor, snapCamera);
 
-        Debug.Log($"[FloorManager] Active floor → {targetIndex}.");
         OnActiveFloorChanged?.Invoke(targetIndex);
+        OnStairPlacementGateChanged?.Invoke();
 
         if (firstVisit && IsCoreRelocationPending && PendingCoreRelocationFloor == targetIndex)
             OnPlaceCoreAvailabilityChanged?.Invoke();
@@ -206,7 +228,6 @@ public class FloorManager : MonoBehaviour
     private void MoveCameraToFloor(FloorRoot floor, bool snap)
     {
         if (cameraAnchor == null || cmCamera == null) return;
-
         Vector3 pos = cameraAnchor.position;
         pos.y = floor.WorldOriginY;
         cameraAnchor.position = pos;
@@ -236,6 +257,7 @@ public class FloorManager : MonoBehaviour
 
         PendingCoreRelocationFloor = newIndex;
         OnPlaceCoreAvailabilityChanged?.Invoke();
+        OnStairPlacementGateChanged?.Invoke();
 
         Debug.Log($"[FloorManager] Created Floor {newIndex + 1} centered on {centerCell}.");
         OnFloorCreated?.Invoke(newIndex);

@@ -100,7 +100,7 @@ public class DungeonCoreHUD : MonoBehaviour
 
     private void HandleLevelUp(int newLevel)
     {
-        levelValueLabel.text = newLevel.ToString();
+        levelValueLabel.text = DungeonCore.Instance.LevelDisplayName;
         StopLevelUpPulse();
     }
 

@@ -239,21 +239,66 @@ public class DungeonBuildController : MonoBehaviour
 
     // ── Stairs ────────────────────────────────────────────────────
 
+    // REPLACE the existing HandleStairsPlacement() in DungeonBuildController.cs
+    // with this version. No other methods in DungeonBuildController need to change.
+
     private void HandleStairsPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
 
-        if (FloorManager.Instance != null && !FloorManager.Instance.CanPlaceStairs)
+        if (FloorManager.Instance == null) { Debug.LogError("[BuildController] FloorManager not found."); return; }
+
+        // Gate 1: core relocation pending.
+        if (FloorManager.Instance.IsCoreRelocationPending)
         {
-            Debug.Log("[BuildController] Cannot place new stairs — relocate the core first.");
+            Debug.Log("[BuildController] Cannot place stairs — relocate the core first.");
             SetMode(BuildMode.Claim);
             return;
         }
 
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Stairs must be on owned tile."); return; }
+        // Gate 2: already at max floor depth.
+        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex)
+        {
+            Debug.Log("[BuildController] Cannot place stairs — this is the deepest floor.");
+            SetMode(BuildMode.Claim);
+            return;
+        }
+
+        // Gate 3: this floor already has a Down stair.
+        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex))
+        {
+            Debug.Log("[BuildController] Cannot place stairs — this floor already has a Down stair.");
+            SetMode(BuildMode.Claim);
+            return;
+        }
+
+        // Gate 4: need a stair credit (granted by tier-up).
+        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0)
+        {
+            Debug.Log("[BuildController] Cannot place stairs — no stair credit available (tier up first).");
+            SetMode(BuildMode.Claim);
+            return;
+        }
+
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell))
+        {
+            Debug.Log("[BuildController] Stairs must be on owned tile.");
+            return;
+        }
         if (stairsDefinition == null || stairsDefinition.prefab == null) { Debug.LogError("[BuildController] stairsDefinition not assigned."); return; }
-        if (FloorManager.Instance == null) { Debug.LogError("[BuildController] FloorManager not found."); return; }
-        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
+        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost))
+        {
+            Debug.Log("[BuildController] Not enough mana for stairs.");
+            return;
+        }
+
+        // All gates passed — consume the credit and place.
+        if (!DungeonCore.Instance.TryConsumeStairCredit())
+        {
+            // Shouldn't happen given the gate check above, but defensive.
+            Debug.LogWarning("[BuildController] Stair credit vanished between check and consume.");
+            return;
+        }
 
         int currentFloorIndex = FloorManager.Instance.ActiveFloorIndex;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
@@ -275,7 +320,7 @@ public class DungeonBuildController : MonoBehaviour
         }
 
         SetMode(BuildMode.Claim);
-        Debug.Log($"[BuildController] Stairs placed: floor {currentFloorIndex} ↔ {nextFloorIndex}.");
+        Debug.Log($"[BuildController] Stairs placed: floor {currentFloorIndex} ↔ {nextFloorIndex}. Credits remaining: {DungeonCore.Instance.StairCredits}.");
     }
 
     // ── Place Core ────────────────────────────────────────────────

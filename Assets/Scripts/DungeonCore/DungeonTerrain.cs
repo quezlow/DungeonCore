@@ -4,11 +4,11 @@ using UnityEngine.Tilemaps;
 /// <summary>
 /// Per-floor terrain manager.
 ///
-/// DAY 27 SECTION 2B CHANGE
-///   - HandleLevelUp now guards against expanding any floor that isn't the
-///     core's current floor. Only the floor hosting the core gets terrain
-///     expansion when the dungeon levels up; older floors stay at their
-///     current size.
+/// TIER PROGRESSION
+///   Each floor's radius is set ONCE from DungeonCore.Progression.FloorRadius(N)
+///   when the floor is first generated. Per-level terrain expansion is removed.
+///   Floors do not grow within a tier — only the initial radius set at floor
+///   creation defines the floor's size.
 /// </summary>
 [DefaultExecutionOrder(-10)]
 public class DungeonTerrain : MonoBehaviour
@@ -21,9 +21,9 @@ public class DungeonTerrain : MonoBehaviour
     [SerializeField] private TileBase floorTile;
     [SerializeField] private TileBase fogTile;
 
-    [Header("Boundary Settings")]
-    [SerializeField] private int initialRadius = 10;
-    [SerializeField] private int tilesPerLevel = 5;
+    [Header("Fallback Radius")]
+    [Tooltip("Used only if DungeonCore is missing or has no progression table.")]
+    [SerializeField] private int fallbackRadius = 100;
 
     private int currentRadius;
     private Vector3Int coreCell;
@@ -36,20 +36,17 @@ public class DungeonTerrain : MonoBehaviour
 
         if (myFloor != null && myFloor.FloorIndex == 0)
         {
-            if (DungeonCore.Instance == null) { Debug.LogError("[DungeonTerrain] DungeonCore.Instance is null (Floor 1)."); return; }
+            if (DungeonCore.Instance == null) { Debug.LogError("[DungeonTerrain] DungeonCore.Instance is null (Floor 0)."); return; }
             GenerateAt(floorTilemap.WorldToCell(DungeonCore.Instance.transform.position));
         }
-
-        // Every floor's terrain listens to level-ups, but only expands if it
-        // currently hosts the core (see HandleLevelUp).
-        if (DungeonCore.Instance != null)
-            DungeonCore.Instance.OnLevelUp += HandleLevelUp;
     }
 
-    private void OnDestroy()
+    /// <summary>Pulls radius from DungeonCore's progression table based on this floor's index.</summary>
+    private int RadiusForThisFloor()
     {
-        if (DungeonCore.Instance != null)
-            DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
+        if (myFloor == null || DungeonCore.Instance == null || DungeonCore.Instance.Progression == null)
+            return fallbackRadius;
+        return DungeonCore.Instance.Progression.FloorRadius(myFloor.FloorIndex);
     }
 
     public void GenerateAt(Vector3Int centre)
@@ -57,34 +54,8 @@ public class DungeonTerrain : MonoBehaviour
         if (initialised) return;
         initialised = true;
         coreCell = centre;
-        currentRadius = initialRadius;
+        currentRadius = RadiusForThisFloor();
         PaintTerrain(coreCell, currentRadius);
-    }
-
-    private void HandleLevelUp(int newLevel)
-    {
-        // Only the floor currently hosting the core expands.
-        if (myFloor == null || FloorManager.Instance == null) return;
-        if (myFloor.FloorIndex != FloorManager.Instance.CoreFloorIndex) return;
-
-        int newRadius = initialRadius + (newLevel - 1) * tilesPerLevel;
-        ExpandTo(newRadius);
-    }
-
-    private void ExpandTo(int newRadius)
-    {
-        for (int x = -newRadius; x <= newRadius; x++)
-            for (int y = -newRadius; y <= newRadius; y++)
-            {
-                Vector3Int pos = coreCell + new Vector3Int(x, y, 0);
-                if (!IsWithinRadius(pos, newRadius)) continue;
-                if (IsWithinRadius(pos, currentRadius)) continue;
-                floorTilemap.SetTile(pos, floorTile);
-                fogTilemap.SetTile(pos, fogTile);
-            }
-
-        currentRadius = newRadius;
-        myFloor?.TileInfluence?.OnBoundsExpanded();
     }
 
     private void PaintTerrain(Vector3Int centre, int radius)
@@ -108,6 +79,7 @@ public class DungeonTerrain : MonoBehaviour
 
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;
+    public int CurrentRadius => currentRadius;
 
     private bool IsWithinRadius(Vector3Int pos, int radius)
     {

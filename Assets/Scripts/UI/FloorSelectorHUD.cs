@@ -81,7 +81,7 @@ public class FloorSelectorHUD : MonoBehaviour
 
         // Build descending list so higher floors sit on top visually.
         var floors = new List<int>();
-        for (int i = FloorManager.Instance.MaxFloorIndex; i >= 0; i--)
+        for (int i = FloorManager.Instance.MaxFloorIndexCreated; i >= 0; i--)
             if (FloorManager.Instance.FloorExists(i))
                 floors.Add(i);
 

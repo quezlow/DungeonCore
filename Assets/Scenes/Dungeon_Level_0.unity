@@ -1841,7 +1841,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 24, y: -24}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 230, y: 132}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &124772691
 MonoBehaviour:
@@ -1855,8 +1855,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3245ec927659c4140ac4f8d17403cc18, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ContentSizeFitter
-  m_HorizontalFit: 2
-  m_VerticalFit: 2
+  m_HorizontalFit: 0
+  m_VerticalFit: 0
 --- !u!114 &124772692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2225,18 +2225,18 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 166756750}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 452710918}
-  m_Father: {fileID: 178191742}
+  m_Father: {fileID: 1293583738}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 130, y: 30}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 355.8, y: -53}
+  m_SizeDelta: {x: 194, y: 34}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &166756752
 MonoBehaviour:
@@ -2422,7 +2422,6 @@ RectTransform:
   m_Children:
   - {fileID: 1311860037}
   - {fileID: 528118576}
-  - {fileID: 166756751}
   m_Father: {fileID: 124772690}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -4563,12 +4562,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonCore
   dungeonType: 1
-  baseMana: 100
-  manaPerLevel: 25
+  progression:
+    tiers:
+    - tier: 0
+      startMana: 100
+      perRankMana: 20
+      startCapacity: 100
+      perRankCapacity: 10
+      floorRadius: 100
+    - tier: 1
+      startMana: 560
+      perRankMana: 40
+      startCapacity: 380
+      perRankCapacity: 20
+      floorRadius: 150
+    - tier: 2
+      startMana: 1600
+      perRankMana: 80
+      startCapacity: 1040
+      perRankCapacity: 40
+      floorRadius: 250
+    - tier: 3
+      startMana: 3840
+      perRankMana: 160
+      startCapacity: 2400
+      perRankCapacity: 80
+      floorRadius: 400
+    - tier: 4
+      startMana: 8320
+      perRankMana: 0
+      startCapacity: 4960
+      perRankCapacity: 0
+      floorRadius: 600
   baseRegenPerSecond: 1
   regenPerTile: 0.1
-  baseCapacity: 50
-  capacityPerLevel: 25
   baseXPToLevel: 100
   xpScalingExponent: 1.5
   notoriety: 0
@@ -5327,13 +5354,13 @@ MonoBehaviour:
   m_text: "\u25B2  LEVEL UP"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 387749889392614070, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4285640142
   m_fontColor: {r: 0.8078432, g: 0.6784314, b: 0.4431373, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -5346,7 +5373,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -6295,12 +6322,15 @@ PrefabInstance:
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: 0
-      addedObject: {fileID: 25130119}
+      addedObject: {fileID: 166756751}
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: 1
-      addedObject: {fileID: 528681698}
+      addedObject: {fileID: 25130119}
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: 2
+      addedObject: {fileID: 528681698}
+    - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
+      insertIndex: 3
       addedObject: {fileID: 261399467}
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: -1
@@ -6641,7 +6671,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: Bronze 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
   m_sharedMaterial: {fileID: 387749889392614070, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
@@ -6707,7 +6737,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: 0, z: -105.12573, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -13450,7 +13480,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: LEVEL
+  m_text: RANK
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
   m_sharedMaterial: {fileID: 387749889392614070, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
@@ -13516,7 +13546,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: 0, z: 0.046066284, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -13667,6 +13697,7 @@ MonoBehaviour:
   floorTemplatePrefab: {fileID: 562836618838593223, guid: 4d12d446fa084114e857835fa33b8679, type: 3}
   cmCamera: {fileID: 1438045299}
   cameraAnchor: {fileID: 491703573}
+  maxFloorIndex: 4
 --- !u!1 &1323739350
 GameObject:
   m_ObjectHideFlags: 0
@@ -17969,8 +18000,7 @@ MonoBehaviour:
   fogTilemap: {fileID: 2133985157}
   floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
   fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
-  initialRadius: 25
-  tilesPerLevel: 5
+  fallbackRadius: 100
 --- !u!1 &1640345983
 GameObject:
   m_ObjectHideFlags: 0
