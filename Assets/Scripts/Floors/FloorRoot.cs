@@ -28,10 +28,10 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TrapRegistry trapRegistry;
 
     [Header("Starter Content (Floor 2+ only)")]
-    [Tooltip("Tile OFFSETS (relative to a center cell) claimed automatically when this " +
-             "floor is first created. Used to give newly-created floors a small starter area.")]
+    [Tooltip("Tiles to claim automatically when this floor is first created. " +
+             "Used to give newly-created floors a small starter area for orientation.")]
     [SerializeField]
-    private Vector3Int[] starterClaimedOffsets = new[]
+    private Vector3Int[] starterClaimedTiles = new[]
     {
         new Vector3Int(-1, -1, 0), new Vector3Int(0, -1, 0), new Vector3Int(1, -1, 0),
         new Vector3Int(-1,  0, 0), new Vector3Int(0,  0, 0), new Vector3Int(1,  0, 0),
@@ -67,17 +67,16 @@ public class FloorRoot : MonoBehaviour
     public void SetFloorIndex(int index) => floorIndex = index;
 
     /// <summary>
-    /// Claims the starter offsets defined in starterClaimedOffsets, centered on
-    /// the given cell. Called once when a new floor is created to give it a
-    /// small visible area around where the player descended.
+    /// Claims the starter tiles defined in starterClaimedTiles. Called once
+    /// when a new floor is created to give it a small visible area.
     /// </summary>
-    public void PopulateStarterArea(Vector3Int center)
+    public void PopulateStarterArea()
     {
         if (HasBeenPopulated) return;
         if (tileInfluence == null) return;
 
-        foreach (var offset in starterClaimedOffsets)
-            tileInfluence.ForceClaimTile(center + offset);
+        foreach (var cell in starterClaimedTiles)
+            tileInfluence.ForceClaimTile(cell);
 
         HasBeenPopulated = true;
     }

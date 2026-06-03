@@ -107,8 +107,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 3295236706101327806, guid: 9c405fb3923e9144a880f70b93e1ab8b, type: 3}
@@ -141,9 +141,6 @@ MonoBehaviour:
   detectionRange: 3
   xpPerKill: 20
   xpToVeteran: 100
-  wanderRadius: 2.5
-  wanderWaitMin: 1
-  wanderWaitMax: 3
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
 --- !u!114 &7006659558031369426
 MonoBehaviour:

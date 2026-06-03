@@ -35,43 +35,32 @@ public class EntityStatusBars : MonoBehaviour
 
     [Header("Stubs — enable when stats are implemented")]
     [SerializeField] private bool showStamina = false;
-    [SerializeField] private bool showMana = false;
+    [SerializeField] private bool showMana    = false;
 
     // ── State ─────────────────────────────────────────────────────
 
     private Transform trackedEntity;
-    private Canvas canvas;
 
     // ─────────────────────────────────────────────────────────────
 
     private void Awake()
     {
         // Make sure the canvas doesn't receive raycasts or interfere with input
-        canvas = GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        canvas.sortingOrder = 10;
+        var canvas = GetComponent<Canvas>();
+        canvas.renderMode    = RenderMode.WorldSpace;
+        canvas.sortingOrder  = 10;
 
         if (TryGetComponent<GraphicRaycaster>(out var raycaster))
             Destroy(raycaster);
 
         // Apply stub visibility
         if (staminaBar != null) staminaBar.gameObject.SetActive(showStamina);
-        if (manaBar != null) manaBar.gameObject.SetActive(showMana);
+        if (manaBar    != null) manaBar.gameObject.SetActive(showMana);
     }
 
     private void LateUpdate()
     {
         if (trackedEntity == null) return;
-
-        // Hide rendering when the tracked entity is inactive (its floor is hidden).
-        // Use Canvas.enabled instead of GameObject.SetActive so this script keeps
-        // running and can re-enable when the entity returns to view.
-        bool entityActive = trackedEntity.gameObject.activeInHierarchy;
-        if (canvas.enabled != entityActive)
-            canvas.enabled = entityActive;
-
-        if (!entityActive) return;
-
         transform.position = trackedEntity.position + worldOffset;
     }
 

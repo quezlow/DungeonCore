@@ -387,10 +387,9 @@ public class DungeonBuildController : MonoBehaviour
         downStairs.Initialise(cell, currentFloorIndex, DungeonStairs.Direction.Down,
                                stairsDefinition.upVariantSprite);
 
-        // 2. Ensure the next floor exists without switching to it. Pass the
-        //    stair cell so the starter area is centered on the stair location.
+        // 2. Ensure the next floor exists without switching to it.
         int nextFloorIndex = currentFloorIndex + 1;
-        FloorManager.Instance.EnsureFloorExists(nextFloorIndex, cell);
+        FloorManager.Instance.EnsureFloorExists(nextFloorIndex);
 
         // 3. Place matching Up stairs on next floor (at same cell coordinates).
         var nextFloor = FloorManager.Instance.GetFloor(nextFloorIndex);
@@ -399,12 +398,8 @@ public class DungeonBuildController : MonoBehaviour
             // Force-claim the destination cell so the Up stair sits on owned tile.
             nextFloor.TileInfluence.ForceClaimTile(cell);
 
-            // Workaround: Floor 2's CellToWorld currently returns (0,0,0) for any
-            // input cell despite identical Grid settings. Since both floors share
-            // a coordinate grid (same cells map to same world positions), use the
-            // Down stair's worldPos directly for the Up stair as well.
-            Vector3 upPos = worldPos;
-
+            Vector3 upPos = nextFloor.TileInfluence.CellToWorld(cell);
+            Debug.Log($"[Stairs] cell={cell} | Down world={worldPos} | Up world={upPos}");
             var upStairs = Instantiate(stairsDefinition.prefab, upPos, Quaternion.identity);
             upStairs.transform.SetParent(nextFloor.transform, true);
             upStairs.Initialise(cell, nextFloorIndex, DungeonStairs.Direction.Up,

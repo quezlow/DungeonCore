@@ -124,10 +124,9 @@ public class FloorManager : MonoBehaviour
     /// <summary>
     /// Creates the given floor if it doesn't exist yet, WITHOUT switching to it.
     /// Used by stair placement to ensure the destination floor exists without
-    /// disrupting the player's current view. centerCell is where the starter
-    /// area will be populated.
+    /// disrupting the player's current view.
     /// </summary>
-    public void EnsureFloorExists(int targetIndex, Vector3Int centerCell = default)
+    public void EnsureFloorExists(int targetIndex)
     {
         if (floors.ContainsKey(targetIndex)) return;
 
@@ -137,7 +136,7 @@ public class FloorManager : MonoBehaviour
             return;
         }
 
-        CreateFloor(targetIndex, centerCell);
+        CreateFloor(targetIndex);
     }
 
     public void SetActiveFloor(int targetIndex)
@@ -160,7 +159,7 @@ public class FloorManager : MonoBehaviour
         OnActiveFloorChanged?.Invoke(targetIndex);
     }
 
-    private void CreateFloor(int newIndex, Vector3Int centerCell = default)
+    private void CreateFloor(int newIndex)
     {
         if (floorTemplatePrefab == null)
         {
@@ -181,11 +180,10 @@ public class FloorManager : MonoBehaviour
         RegisterFloor(instance);
 
         // Populate starter area while inactive — Inspector-assigned tilemap reference
-        // is reachable without Awake having run. Center on the stair cell so the
-        // starter area surrounds the place the player descended.
-        instance.PopulateStarterArea(centerCell);
+        // is reachable without Awake having run.
+        instance.PopulateStarterArea();
 
-        Debug.Log($"[FloorManager] Created Floor {newIndex + 1} (index {newIndex}) centered on {centerCell}.");
+        Debug.Log($"[FloorManager] Created Floor {newIndex + 1} (index {newIndex}).");
         OnFloorCreated?.Invoke(newIndex);
     }
 }
