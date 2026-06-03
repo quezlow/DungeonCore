@@ -1,41 +1,36 @@
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 /// <summary>
-/// Dungeon-specific save/load system. Completely separate from the overworld
-/// SaveController — writes to DungeonSaveData.json and has no dependency on
-/// InventoryController, QuestController, or any other overworld system.
+/// Dungeon-specific save/load system.
 ///
-/// SAVE TRIGGERS
-///   Manual  — DungeonSaveController.Instance.SaveGame() (pause menu Save button)
-///   Auto    — on DungeonCore.OnLevelUp
-///
-/// LOAD TRIGGER
-///   Automatic on Start() if a save file exists.
+/// DAY 27 MULTI-FLOOR SAVE
+///   Save format now stores per-floor data (tiles, spawners, chests, furniture,
+///   anchors, traps, stairs) plus FloorManager state (coreFloor, pendingRelocation,
+///   visitedFloors). Floor 1 (index 0) is always Floor 0 (the scene-placed root).
 ///
 /// LOAD ORDER (matters — do not reorder)
-///   1. DungeonCore stats  (sets mana cap, level, capacity before anything uses them)
-///   2. TileInfluenceManager  (must exist before spawners look for valid tiles)
-///   3. DungeonEntrance  (via DungeonBuildController.RestoreEntrance)
-///   4. MonsterSpawners  (instantiated via DungeonBuildController.RestoreSpawner)
-///   5. DungeonChests    (instantiated via DungeonBuildController.RestoreChest)
+///   1. DungeonCore stats
+///   2. Day/Night cycle
+///   3. FloorManager state (visited, core floor, pending relocation)
+///   4. Recreate Floor 1+ via FloorManager.RecreateFloorFromSave
+///   5. Per-floor tile data (so spawners can find owned tiles)
+///   6. Entrance (Floor 0 only)
+///   7. Per-floor objects (spawners, chests, furniture, anchors, traps, stairs)
+///   8. Snap camera to core's current floor
 ///
-/// EXECUTION ORDER
-///   100 — runs after DungeonCore (-20) and TileInfluenceManager (default 0)
-///   so both systems are fully initialised before LoadGame() is called.
-///
-/// GAME OVER
-///   Save is deleted on GameOver so a fresh restart begins clean.
-///   DAY 82 — replace DeleteSave with a reload-autosave flow for standard mode,
-///   and keep delete only for permadeath mode.
+/// MID-TRANSIT SAVE
+///   If the player saves while a core transit is running, the transit is treated
+///   as completed on load: core position is wherever it was when saved, and the
+///   relocation gate stays in whatever state was saved.
 /// </summary>
 [DefaultExecutionOrder(100)]
 public class DungeonSaveController : MonoBehaviour
 {
     public static DungeonSaveController Instance { get; private set; }
 
-    [Header("Registry")]
-    [Tooltip("Assign the MonsterDefinitionRegistry ScriptableObject asset here.")]
+    [Header("Registries")]
     [SerializeField] private MonsterDefinitionRegistry monsterRegistry;
     [SerializeField] private FurnitureDefinitionRegistry furnitureRegistry;
     [SerializeField] private RoomDefinitionRegistry roomDefRegistry;
@@ -44,8 +39,6 @@ public class DungeonSaveController : MonoBehaviour
 
     private string savePath;
     private DungeonSaveData currentSave = new();
-
-    // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
     {
@@ -61,7 +54,6 @@ public class DungeonSaveController : MonoBehaviour
             DungeonCore.Instance.OnLevelUp += HandleLevelUp;
             DungeonCore.Instance.OnGameOver += HandleGameOver;
         }
-
         LoadGame();
     }
 
@@ -72,217 +64,255 @@ public class DungeonSaveController : MonoBehaviour
         DungeonCore.Instance.OnGameOver -= HandleGameOver;
     }
 
-    // ── Event handlers ────────────────────────────────────────────
-
     private void HandleLevelUp(int _) => SaveGame();
     private void HandleGameOver() => DeleteSave();
 
     // ── Save ──────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Writes the full dungeon state to disk.
-    /// Called by the pause menu Save button and automatically on level-up.
-    /// </summary>
     public void SaveGame()
     {
-        if (DungeonCore.Instance == null || TileInfluenceManager.Instance == null)
+        if (DungeonCore.Instance == null || FloorManager.Instance == null)
         {
             Debug.LogWarning("[DungeonSaveController] Cannot save — core systems not ready.");
             return;
         }
 
-        currentSave.hasSave = true;
-        currentSave.coreData = DungeonCore.Instance.GetSaveData();
-        currentSave.tileData = TileInfluenceManager.Instance.GetSaveData();
+        currentSave = new DungeonSaveData
+        {
+            hasSave = true,
+            coreData = DungeonCore.Instance.GetSaveData(),
+            coreFloorIndex = FloorManager.Instance.CoreFloorIndex,
+            pendingCoreRelocationFloor = FloorManager.Instance.PendingCoreRelocationFloor,
+            visitedFloors = new List<int>(FloorManager.Instance.VisitedFloorsForSave),
+        };
 
-        // Day / night cycle
         if (DayNightCycle.Instance != null)
             currentSave.dayNightData = DayNightCycle.Instance.GetSaveData();
 
-        // Entrance
+        // Entrance (Floor 0).
         currentSave.hasEntrance = DungeonEntrance.Instance != null;
         if (currentSave.hasEntrance)
-            currentSave.entranceCell = SerializableVector3Int.From(
-                DungeonEntrance.Instance.OccupiedCell);
+            currentSave.entranceCell = SerializableVector3Int.From(DungeonEntrance.Instance.OccupiedCell);
 
-        // Monster spawners
-        var spawners = FindObjectsByType<MonsterSpawner>(FindObjectsInactive.Exclude);
-        currentSave.spawners.Clear();
-        foreach (var s in spawners)
+        // Iterate floors and gather per-floor data.
+        foreach (var floor in FloorManager.Instance.AllFloors)
+        {
+            if (floor == null) continue;
+            currentSave.floors.Add(BuildFloorSaveData(floor));
+        }
+
+        File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
+        Debug.Log($"[DungeonSaveController] Saved to {savePath} ({currentSave.floors.Count} floors).");
+    }
+
+    private FloorSaveData BuildFloorSaveData(FloorRoot floor)
+    {
+        var data = new FloorSaveData
+        {
+            floorIndex = floor.FloorIndex,
+            centerCell = SerializableVector3Int.From(
+                floor.Terrain != null ? floor.Terrain.CoreCell : Vector3Int.zero),
+            tileData = floor.TileInfluence != null ? floor.TileInfluence.GetSaveData() : null,
+        };
+
+        // Spawners on this floor
+        foreach (var s in floor.GetComponentsInChildren<MonsterSpawner>(true))
         {
             if (s.Definition == null) continue;
-            currentSave.spawners.Add(new MonsterSpawnerSaveData
+            data.spawners.Add(new MonsterSpawnerSaveData
             {
                 monsterName = s.Definition.monsterName,
-                cell = SerializableVector3Int.From(
-                    TileInfluenceManager.Instance.WorldToCell(s.transform.position))
+                cell = SerializableVector3Int.From(floor.TileInfluence.WorldToCell(s.transform.position))
             });
         }
 
-        // Dungeon chests
-        var chests = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
-        currentSave.chests.Clear();
-        foreach (var c in chests)
+        // Chests
+        foreach (var c in floor.GetComponentsInChildren<DungeonChest>(true))
         {
-            currentSave.chests.Add(new DungeonChestSaveData
+            data.chests.Add(new DungeonChestSaveData
             {
                 chestName = c.Definition != null ? c.Definition.chestName : "",
-                cell = SerializableVector3Int.From(
-                    TileInfluenceManager.Instance.WorldToCell(c.transform.position)),
+                cell = SerializableVector3Int.From(floor.TileInfluence.WorldToCell(c.transform.position)),
                 isOpened = c.IsOpened
             });
         }
 
-
-
-        var pieces = FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
-        currentSave.furniture.Clear();
-        foreach (var p in pieces)
+        // Furniture
+        foreach (var p in floor.GetComponentsInChildren<FurniturePiece>(true))
         {
             if (p.Definition == null) continue;
-            currentSave.furniture.Add(new FurnitureSaveData
+            data.furniture.Add(new FurnitureSaveData
             {
                 furnitureName = p.Definition.furnitureName,
                 cell = SerializableVector3Int.From(p.OccupiedCell)
             });
         }
 
-        var anchors = FindObjectsByType<RoomAnchor>(FindObjectsInactive.Exclude);
-        currentSave.roomAnchors.Clear();
-        foreach (var a in anchors)
+        // Room anchors
+        foreach (var a in floor.GetComponentsInChildren<RoomAnchor>(true))
         {
-            currentSave.roomAnchors.Add(new RoomAnchorSaveData
+            data.roomAnchors.Add(new RoomAnchorSaveData
             {
                 cell = SerializableVector3Int.From(a.OccupiedCell),
                 assignedRoomName = a.AssignedRoom?.roomName ?? ""
             });
         }
 
-        var traps = FindObjectsByType<TrapBase>(FindObjectsInactive.Exclude);
-        currentSave.traps.Clear();
-        foreach (var t in traps)
+        // Traps
+        foreach (var t in floor.GetComponentsInChildren<TrapBase>(true))
         {
             if (t.Definition == null) continue;
-            var data = new TrapSaveData
+            data.traps.Add(new TrapSaveData
             {
                 trapName = t.Definition.trapName,
                 cell = SerializableVector3Int.From(t.OccupiedCell),
                 isFlagged = t.IsFlagged,
                 warningLabel = (t is WarningTrap w) ? w.WarningLabel : "",
-                hasLink = (t is PressurePlateTrap p) && p.HasLink,
-                linkedCell = (t is PressurePlateTrap pp && pp.HasLink)
-                    ? SerializableVector3Int.From(pp.LinkedCell)
+                hasLink = (t is PressurePlateTrap pp) && pp.HasLink,
+                linkedCell = (t is PressurePlateTrap pp2 && pp2.HasLink)
+                    ? SerializableVector3Int.From(pp2.LinkedCell)
                     : SerializableVector3Int.From(Vector3Int.zero)
-            };
-            currentSave.traps.Add(data);
+            });
         }
 
-        File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
-        Debug.Log($"[DungeonSaveController] Saved to {savePath}");
+        // Stairs
+        foreach (var st in floor.GetComponentsInChildren<DungeonStairs>(true))
+        {
+            data.stairs.Add(new StairsSaveData
+            {
+                cell = SerializableVector3Int.From(st.OccupiedCell),
+                direction = (int)st.Dir
+            });
+        }
+
+        return data;
     }
 
     // ── Load ──────────────────────────────────────────────────────
 
     private void LoadGame()
     {
-        if (!File.Exists(savePath))
+        if (!File.Exists(savePath)) { Debug.Log("[DungeonSaveController] No save file — fresh start."); return; }
+
+        currentSave = JsonUtility.FromJson<DungeonSaveData>(File.ReadAllText(savePath));
+        if (currentSave == null || !currentSave.hasSave)
         {
-            Debug.Log("[DungeonSaveController] No save file found — fresh start.");
+            Debug.Log("[DungeonSaveController] Save file empty or invalid — skipping load.");
             return;
         }
 
-        currentSave = JsonUtility.FromJson<DungeonSaveData>(
-            File.ReadAllText(savePath));
-
-        if (!currentSave.hasSave)
-        {
-            Debug.Log("[DungeonSaveController] Save file present but hasSave = false — skipping load.");
-            return;
-        }
-
-        // 1 — Core stats first so mana cap and capacity are set
-        //     before tiles or spawners read them.
+        // 1 — Core stats
         if (currentSave.coreData != null)
             DungeonCore.Instance.LoadSaveData(currentSave.coreData);
 
-        // 2 — Day / night cycle (independent of other systems, load early)
-        if (DayNightCycle.Instance != null)
+        // 2 — Day/Night
+        if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
             DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);
 
-        // 3 — Tile grid (owned tiles must exist before spawners are placed)
-        if (currentSave.tileData != null)
-            TileInfluenceManager.Instance.LoadSaveData(currentSave.tileData);
+        // 3 — Recreate Floor 1+ before applying FloorManager state.
+        foreach (var floorData in currentSave.floors)
+        {
+            if (floorData.floorIndex == 0) continue; // Floor 0 already exists
+            FloorManager.Instance.RecreateFloorFromSave(
+                floorData.floorIndex, floorData.centerCell.ToVector3Int());
+        }
 
-        // 4 — Entrance
+        // 4 — FloorManager state (after floors exist)
+        FloorManager.Instance.RestoreState(
+            currentSave.coreFloorIndex,
+            currentSave.pendingCoreRelocationFloor,
+            currentSave.visitedFloors);
+
+        // 5 — Per-floor tile data
+        foreach (var floorData in currentSave.floors)
+        {
+            var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
+            if (floor?.TileInfluence != null && floorData.tileData != null)
+                floor.TileInfluence.LoadSaveData(floorData.tileData);
+        }
+
+        // 6 — Entrance (Floor 0 only)
         if (currentSave.hasEntrance)
-            DungeonBuildController.Instance.RestoreEntrance(
-                currentSave.entranceCell.ToVector3Int());
-
-        // 5 — Monster spawners
-        if (currentSave.spawners != null)
         {
-            if (monsterRegistry == null)
-            {
-                Debug.LogError("[DungeonSaveController] monsterRegistry is not assigned — spawners cannot be restored.");
-            }
-            else
-            {
-                foreach (var data in currentSave.spawners)
-                {
-                    var def = monsterRegistry.GetByName(data.monsterName);
-                    if (def == null) continue; // warning already logged by registry
-                    DungeonBuildController.Instance.RestoreSpawner(
-                        def, data.cell.ToVector3Int());
-                }
-            }
+            var floor0 = FloorManager.Instance.GetFloor(0);
+            DungeonBuildController.Instance.RestoreEntrance(floor0, currentSave.entranceCell.ToVector3Int());
         }
 
-        // 6 — Chests
-        if (currentSave.chests != null)
+        // 7 — Per-floor objects
+        foreach (var floorData in currentSave.floors)
         {
-            foreach (var data in currentSave.chests)
+            var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
+            if (floor == null) continue;
+            RestoreFloorObjects(floor, floorData);
+        }
+
+        // 8 — Snap camera to the core's current floor
+        FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
+
+        Debug.Log($"[DungeonSaveController] Load complete ({currentSave.floors.Count} floors).");
+    }
+
+    private void RestoreFloorObjects(FloorRoot floor, FloorSaveData data)
+    {
+        if (data.spawners != null && monsterRegistry != null)
+        {
+            foreach (var s in data.spawners)
             {
-                var def = chestRegistry?.GetByName(data.chestName);
+                var def = monsterRegistry.GetByName(s.monsterName);
                 if (def == null) continue;
-                DungeonBuildController.Instance.RestoreChest(def, data.cell.ToVector3Int(), data.isOpened);
+                DungeonBuildController.Instance.RestoreSpawner(floor, def, s.cell.ToVector3Int());
             }
         }
 
-
-        // 7 — Furniture
-        foreach (var data in currentSave.furniture)
+        if (data.chests != null)
         {
-            var def = furnitureRegistry?.GetByName(data.furnitureName);
-            if (def == null) continue;
-            DungeonBuildController.Instance.RestoreFurniture(def, data.cell.ToVector3Int());
+            foreach (var c in data.chests)
+            {
+                var def = chestRegistry?.GetByName(c.chestName);
+                if (def == null) continue;
+                DungeonBuildController.Instance.RestoreChest(floor, def, c.cell.ToVector3Int(), c.isOpened);
+            }
         }
 
-        // 8 — Room Anchors
-        foreach (var data in currentSave.roomAnchors)
+        if (data.furniture != null)
         {
-            DungeonBuildController.Instance.RestoreRoomAnchor(
-                data.cell.ToVector3Int(), data.assignedRoomName,
-                furnitureRegistry, roomDefRegistry);
+            foreach (var f in data.furniture)
+            {
+                var def = furnitureRegistry?.GetByName(f.furnitureName);
+                if (def == null) continue;
+                DungeonBuildController.Instance.RestoreFurniture(floor, def, f.cell.ToVector3Int());
+            }
         }
 
-        // 9 — Traps
-        foreach (var data in currentSave.traps)
+        if (data.roomAnchors != null)
         {
-            var def = trapRegistry?.GetByName(data.trapName);
-            if (def == null) continue;
-            DungeonBuildController.Instance.RestoreTrap(
-                def, data.cell.ToVector3Int(), data.isFlagged,
-                data.warningLabel, data.hasLink, data.linkedCell.ToVector3Int());
+            foreach (var a in data.roomAnchors)
+                DungeonBuildController.Instance.RestoreRoomAnchor(
+                    floor, a.cell.ToVector3Int(), a.assignedRoomName, furnitureRegistry, roomDefRegistry);
         }
 
+        if (data.traps != null)
+        {
+            foreach (var t in data.traps)
+            {
+                var def = trapRegistry?.GetByName(t.trapName);
+                if (def == null) continue;
+                DungeonBuildController.Instance.RestoreTrap(
+                    floor, def, t.cell.ToVector3Int(), t.isFlagged,
+                    t.warningLabel, t.hasLink, t.linkedCell.ToVector3Int());
+            }
+        }
 
-
-        Debug.Log("[DungeonSaveController] Load complete.");
+        if (data.stairs != null)
+        {
+            foreach (var st in data.stairs)
+                DungeonBuildController.Instance.RestoreStairs(
+                    floor, st.cell.ToVector3Int(), (DungeonStairs.Direction)st.direction);
+        }
     }
 
     // ── Utilities ─────────────────────────────────────────────────
 
-    /// <summary>Deletes the save file and resets in-memory state.</summary>
     public void DeleteSave()
     {
         if (File.Exists(savePath)) File.Delete(savePath);

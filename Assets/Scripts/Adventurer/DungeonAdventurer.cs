@@ -270,6 +270,19 @@ public class DungeonAdventurer : MonoBehaviour
         currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, goal);
     }
 
+    /// <summary>
+    /// Called by DungeonCoreTransit when the core's floor changes, so all
+    /// adventurers re-target the new core location.
+    /// </summary>
+    public void ForceRefreshPath()
+    {
+        // Reset to MovingToCore unless we're already retreating or using stairs.
+        if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs)
+            state = AdventurerState.MovingToCore;
+
+        RefreshPath();
+    }
+
     private void FollowPath()
     {
         if (currentPath == null || pathIndex >= currentPath.Count)

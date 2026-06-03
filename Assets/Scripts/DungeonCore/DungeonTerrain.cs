@@ -2,15 +2,13 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// Per-floor terrain manager. No longer a singleton.
-/// Access via FloorRoot.Terrain.
+/// Per-floor terrain manager.
 ///
-/// CHANGES FROM PRE-DAY-27
-///   - Static Instance removed.
-///   - GenerateAt(Vector3Int) added so Floor 2+ can seed terrain around
-///     the stair cell rather than around DungeonCore's position.
-///   - OnLevelUp terrain expansion only fires on Floor 1 for now
-///     (deeper floors expand via stair unlock — deferred).
+/// DAY 27 SECTION 2B CHANGE
+///   - HandleLevelUp now guards against expanding any floor that isn't the
+///     core's current floor. Only the floor hosting the core gets terrain
+///     expansion when the dungeon levels up; older floors stay at their
+///     current size.
 /// </summary>
 [DefaultExecutionOrder(-10)]
 public class DungeonTerrain : MonoBehaviour
@@ -30,26 +28,22 @@ public class DungeonTerrain : MonoBehaviour
     private int currentRadius;
     private Vector3Int coreCell;
     private bool initialised = false;
-
-    // ── Lifecycle ─────────────────────────────────────────────────
+    private FloorRoot myFloor;
 
     private void Start()
     {
-        // Floor 1: generate terrain around DungeonCore position.
-        // Floor 2+: GenerateAt() is called by FloorRoot.Bootstrap() instead.
-        var floorRoot = GetComponentInParent<FloorRoot>();
-        if (floorRoot != null && floorRoot.FloorIndex == 0)
-        {
-            if (DungeonCore.Instance == null)
-            {
-                Debug.LogError("[DungeonTerrain] DungeonCore.Instance is null (Floor 1).");
-                return;
-            }
+        myFloor = GetComponentInParent<FloorRoot>();
 
+        if (myFloor != null && myFloor.FloorIndex == 0)
+        {
+            if (DungeonCore.Instance == null) { Debug.LogError("[DungeonTerrain] DungeonCore.Instance is null (Floor 1)."); return; }
             GenerateAt(floorTilemap.WorldToCell(DungeonCore.Instance.transform.position));
-            DungeonCore.Instance.OnLevelUp += HandleLevelUp;
         }
-        // Floor 2+: Bootstrap() will call GenerateAt() directly.
+
+        // Every floor's terrain listens to level-ups, but only expands if it
+        // currently hosts the core (see HandleLevelUp).
+        if (DungeonCore.Instance != null)
+            DungeonCore.Instance.OnLevelUp += HandleLevelUp;
     }
 
     private void OnDestroy()
@@ -58,18 +52,10 @@ public class DungeonTerrain : MonoBehaviour
             DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
     }
 
-    // ── Terrain Generation ────────────────────────────────────────
-
-    /// <summary>
-    /// Generates terrain centred on the given cell.
-    /// Safe to call multiple times — only generates once (guarded by initialised flag).
-    /// Called by Start() for Floor 1, by FloorRoot.Bootstrap() for Floor 2+.
-    /// </summary>
     public void GenerateAt(Vector3Int centre)
     {
         if (initialised) return;
         initialised = true;
-
         coreCell = centre;
         currentRadius = initialRadius;
         PaintTerrain(coreCell, currentRadius);
@@ -77,6 +63,10 @@ public class DungeonTerrain : MonoBehaviour
 
     private void HandleLevelUp(int newLevel)
     {
+        // Only the floor currently hosting the core expands.
+        if (myFloor == null || FloorManager.Instance == null) return;
+        if (myFloor.FloorIndex != FloorManager.Instance.CoreFloorIndex) return;
+
         int newRadius = initialRadius + (newLevel - 1) * tilesPerLevel;
         ExpandTo(newRadius);
     }
@@ -89,16 +79,12 @@ public class DungeonTerrain : MonoBehaviour
                 Vector3Int pos = coreCell + new Vector3Int(x, y, 0);
                 if (!IsWithinRadius(pos, newRadius)) continue;
                 if (IsWithinRadius(pos, currentRadius)) continue;
-
                 floorTilemap.SetTile(pos, floorTile);
                 fogTilemap.SetTile(pos, fogTile);
             }
 
         currentRadius = newRadius;
-
-        // Notify sibling TileInfluenceManager that bounds changed.
-        var floorRoot = GetComponentInParent<FloorRoot>();
-        floorRoot?.TileInfluence?.OnBoundsExpanded();
+        myFloor?.TileInfluence?.OnBoundsExpanded();
     }
 
     private void PaintTerrain(Vector3Int centre, int radius)
@@ -108,29 +94,20 @@ public class DungeonTerrain : MonoBehaviour
             {
                 Vector3Int pos = centre + new Vector3Int(x, y, 0);
                 if (!IsWithinRadius(pos, radius)) continue;
-
                 floorTilemap.SetTile(pos, floorTile);
                 fogTilemap.SetTile(pos, fogTile);
             }
     }
 
-    // ── Public API ────────────────────────────────────────────────
-
-    public void RevealTile(Vector3Int pos)
-    {
-        fogTilemap.SetTile(pos, null);
-    }
+    public void RevealTile(Vector3Int pos) => fogTilemap.SetTile(pos, null);
 
     public void RefogTile(Vector3Int pos)
     {
-        if (IsWithinBounds(pos))
-            fogTilemap.SetTile(pos, fogTile);
+        if (IsWithinBounds(pos)) fogTilemap.SetTile(pos, fogTile);
     }
 
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;
-
-    // ── Helpers ───────────────────────────────────────────────────
 
     private bool IsWithinRadius(Vector3Int pos, int radius)
     {

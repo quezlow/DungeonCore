@@ -2874,6 +2874,9 @@ MonoBehaviour:
   - label: Stairs
     icon: {fileID: 0}
     mode: 7
+  - label: Relocate Core
+    icon: {fileID: 0}
+    mode: 8
   selectedColor: {r: 0.8134237, g: 0.81960785, b: 0.27058825, a: 0.5882353}
   unselectedColor: {r: 1, g: 1, b: 1, a: 0}
 --- !u!1 &217789958

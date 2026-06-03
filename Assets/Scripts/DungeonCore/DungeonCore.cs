@@ -94,6 +94,10 @@ public class DungeonCore : MonoBehaviour
     public float InstabilityDuration => instabilityDuration;
     public int Gold => currentGold;
 
+    /// <summary>True while a DungeonCoreTransit is running on this GameObject.</summary>
+    public bool IsInTransit => GetComponent<DungeonCoreTransit>() != null
+                            && GetComponent<DungeonCoreTransit>().IsActive;
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -123,6 +127,31 @@ public class DungeonCore : MonoBehaviour
         RegenerateMana();
         DecayNotoriety();
         TickInstability();
+    }
+
+    // ── Relocation ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Begins a 30-second relocation transit to the given floor and cell.
+    /// Adds a DungeonCoreTransit component that drives the sequence and
+    /// removes itself on completion. Refuses if a transit is already running.
+    /// </summary>
+    public void Relocate(FloorRoot destination, Vector3Int destCell)
+    {
+        if (destination == null)
+        {
+            Debug.LogError("[DungeonCore] Relocate: destination floor is null.");
+            return;
+        }
+
+        if (IsInTransit)
+        {
+            Debug.LogWarning("[DungeonCore] Relocate: already in transit.");
+            return;
+        }
+
+        var transit = gameObject.AddComponent<DungeonCoreTransit>();
+        transit.Begin(destination, destCell);
     }
 
     // ── Mana ─────────────────────────────────────────────────────
@@ -263,6 +292,14 @@ public class DungeonCore : MonoBehaviour
 
     public void DestroyCore()
     {
+        // During transit, any breach is instant game over.
+        if (IsInTransit)
+        {
+            Debug.Log("[DungeonCore] BREACH DURING TRANSIT — instant game over.");
+            OnGameOver?.Invoke();
+            return;
+        }
+
         if (Time.time - lastBreachTime < 5f) return;
         lastBreachTime = Time.time;
         breachCount++;
@@ -274,7 +311,6 @@ public class DungeonCore : MonoBehaviour
             currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
             NotifyXPChanged();
 
-            // Shrink influence on whichever floor the core currently lives on.
             int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
             var floor = FloorManager.Instance?.GetFloor(coreFloor);
             if (floor?.TileInfluence != null)
@@ -312,6 +348,8 @@ public class DungeonCore : MonoBehaviour
         isUnstable = this.isUnstable,
         instabilityTimer = this.instabilityTimer,
         breachCount = this.breachCount,
+        corePosX = transform.position.x,
+        corePosY = transform.position.y,
     };
 
     public void LoadSaveData(DungeonCoreSaveData data)
@@ -329,6 +367,7 @@ public class DungeonCore : MonoBehaviour
         isUnstable = data.isUnstable;
         instabilityTimer = data.instabilityTimer;
         breachCount = data.breachCount;
+        transform.position = new Vector3(data.corePosX, data.corePosY, transform.position.z);
 
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
         NotifyManaChanged();
@@ -363,4 +402,6 @@ public class DungeonCoreSaveData
     public float instabilityTimer;
     public int breachCount;
     public int gold;
+    public float corePosX;
+    public float corePosY;
 }

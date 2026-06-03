@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Spawns adventurer parties at the dungeon entrance on a Notoriety-scaled timer.
+/// Spawns adventurer parties at the dungeon entrance.
 ///
-/// CHANGES FROM PRE-DAY-27
-///   - SpawnMember() parents each adventurer under FloorManager.ActiveFloor so
-///     GetComponentInParent<FloorRoot>() resolves correctly in DungeonAdventurer.Start().
+/// DAY 27 SECTION 2B CHANGE
+///   - Spawning pauses while the core is in transit (subscribes to
+///     DungeonCoreTransit.OnTransitStarted / OnTransitCompleted).
 /// </summary>
 public class AdventurerSpawner : MonoBehaviour
 {
@@ -32,8 +32,7 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightCowardly = 1f;
 
     private float timer = 0f;
-
-    // ── Lifecycle ─────────────────────────────────────────────────
+    private bool transitPaused = false;
 
     private void OnEnable()
     {
@@ -42,6 +41,9 @@ public class AdventurerSpawner : MonoBehaviour
             DayNightCycle.Instance.OnNightStarted += HandleNightStarted;
             DayNightCycle.Instance.OnDayStarted += HandleDayStarted;
         }
+
+        DungeonCoreTransit.OnTransitStarted += HandleTransitStarted;
+        DungeonCoreTransit.OnTransitCompleted += HandleTransitCompleted;
     }
 
     private void OnDisable()
@@ -51,11 +53,15 @@ public class AdventurerSpawner : MonoBehaviour
             DayNightCycle.Instance.OnNightStarted -= HandleNightStarted;
             DayNightCycle.Instance.OnDayStarted -= HandleDayStarted;
         }
+
+        DungeonCoreTransit.OnTransitStarted -= HandleTransitStarted;
+        DungeonCoreTransit.OnTransitCompleted -= HandleTransitCompleted;
     }
 
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
+        if (transitPaused) return;
         if (DungeonEntrance.Instance == null) return;
         if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
 
@@ -67,12 +73,11 @@ public class AdventurerSpawner : MonoBehaviour
         }
     }
 
-    // ── Phase Events ──────────────────────────────────────────────
+    private void HandleNightStarted() { timer = 0f; }
+    private void HandleDayStarted() { }
 
-    private void HandleNightStarted() { timer = 0f; Debug.Log("[AdventurerSpawner] Night — paused."); }
-    private void HandleDayStarted() { Debug.Log("[AdventurerSpawner] Day — resumed."); }
-
-    // ── Interval ──────────────────────────────────────────────────
+    private void HandleTransitStarted() { transitPaused = true; Debug.Log("[AdventurerSpawner] Paused for core transit."); }
+    private void HandleTransitCompleted() { transitPaused = false; timer = 0f; Debug.Log("[AdventurerSpawner] Resumed after core transit."); }
 
     private float CurrentInterval()
     {
@@ -83,13 +88,11 @@ public class AdventurerSpawner : MonoBehaviour
         return intervalLow;
     }
 
-    // ── Spawning ──────────────────────────────────────────────────
-
     private void SpawnParty()
     {
         if (adventurerTypes == null || adventurerTypes.Count == 0)
         {
-            Debug.LogError("[AdventurerSpawner] adventurerTypes list is empty.");
+            Debug.LogError("[AdventurerSpawner] adventurerTypes is empty.");
             return;
         }
 
@@ -102,33 +105,23 @@ public class AdventurerSpawner : MonoBehaviour
             var trait = RollTrait();
             SpawnMember(def, trait, spawnPos);
         }
-
-        Debug.Log($"[AdventurerSpawner] Party of {size} spawned. Next in {CurrentInterval()}s.");
     }
 
     private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos)
     {
-        if (def.prefab == null)
-        {
-            Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab.");
-            return;
-        }
+        if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
         Vector2 scatter = Random.insideUnitCircle * 1.5f;
         Vector3 pos = spawnPos + new Vector3(scatter.x, scatter.y, 0f);
 
         var adventurer = Instantiate(def.prefab, pos, Quaternion.identity);
 
-        // Parent under Floor 1 (entrance is always Floor 1) so that
-        // DungeonAdventurer.Start() resolves its FloorRoot correctly.
-        var floor = FloorManager.Instance?.GetFloor(0); // Floor 1 is always index 0
+        var floor = FloorManager.Instance?.GetFloor(0);
         if (floor != null)
             adventurer.transform.SetParent(floor.transform, true);
 
         adventurer.Initialise(def, trait);
     }
-
-    // ── Rolls ─────────────────────────────────────────────────────
 
     private int RollPartySize()
     {
