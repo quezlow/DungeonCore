@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e7535315057aa84aabc63ec46b891b6, type: 3}
+  m_Name: BossDef_ArmoredSkeleton
+  m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
+  monsterName: Armored Skeleton Boss
+  icon: {fileID: 0}
+  prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
+  capacityCost: 10
+  description: 
+  bossTitle: Jimbo
+  hpMultiplier: 5
+  damageMultiplier: 3
+  xpRewardMultiplier: 5
+  capacityCostMultiplier: 4
+  scaleMultiplier: 1.5
+  tint: {r: 1, g: 1, b: 1, a: 1}

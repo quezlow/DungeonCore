@@ -57,6 +57,8 @@ public class EntityStatusBars : MonoBehaviour
     {
         var canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
+        canvas.overrideSorting = true;       // ← unlock per-canvas sorting
+        canvas.sortingLayerName = "WorldUI"; // ← needs to exist in Project Settings
         canvas.sortingOrder = 10;
 
         if (TryGetComponent<GraphicRaycaster>(out var raycaster))
