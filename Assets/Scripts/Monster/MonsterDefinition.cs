@@ -6,6 +6,11 @@ using UnityEngine;
 ///
 /// Create one asset per monster type (Skeleton, Zombie, Armoured Skeleton, etc.)
 /// and assign them to the MonsterSpawner's available types list.
+///
+/// SUBCLASSING
+///   BossVariantDefinition : MonsterDefinition overrides CapacityCost to apply
+///   a multiplier. If you add more cost-related fields here, expose them as
+///   virtual properties so boss variants can scale them too.
 /// </summary>
 [CreateAssetMenu(fileName = "MonsterDef_New", menuName = "Dungeon/Monster Definition")]
 public class MonsterDefinition : ScriptableObject
@@ -18,9 +23,15 @@ public class MonsterDefinition : ScriptableObject
     public DungeonMonster prefab;
 
     [Header("Cost")]
-    public int capacityCost = 5;
+    [SerializeField] private int capacityCost = 5;
 
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;
+
+    /// <summary>
+    /// Mana/capacity cost to keep this monster active.
+    /// Virtual so BossVariantDefinition can scale it.
+    /// </summary>
+    public virtual int CapacityCost => capacityCost;
 }

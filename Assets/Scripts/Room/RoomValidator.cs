@@ -10,8 +10,9 @@ using UnityEngine;
 ///   1. Flood-fill from the anchor cell through owned tiles to find the room boundary.
 ///   2. Check tile count meets RoomDefinition.minTileCount.
 ///   3. Count FurniturePiece instances within the boundary, match against requirements.
-///   4. (Optional, called separately) Walkability check after furniture placement —
-///      verify DungeonPathfinder can still route through the room.
+///   4. (Day 28) If requiresBossSpawner, check that a MonsterSpawner with a
+///      BossVariantDefinition exists within the room tiles on the active floor.
+///   5. (Optional, called separately) Walkability check after furniture placement.
 ///
 /// FLOOD-FILL BOUNDARY
 ///   The fill stops at undug (not owned) tiles. Owned tiles separated by a wall are
@@ -20,8 +21,6 @@ using UnityEngine;
 /// </summary>
 public static class RoomValidator
 {
-    // Safety cap — prevents a pathological open dungeon from flooding the entire grid.
-    // Set high enough that a generous Boss Room never hits it.
     private const int MaxFloodFillTiles = 200;
 
     private static readonly Vector3Int[] Directions =
@@ -31,10 +30,6 @@ public static class RoomValidator
 
     // ── Public API ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Validates the room anchored at anchorCell against roomDef.
-    /// Returns a ValidationResult containing whether it passed and diagnostic info.
-    /// </summary>
     public static ValidationResult Validate(Vector3Int anchorCell, RoomDefinition roomDef)
     {
         if (roomDef == null)
@@ -71,17 +66,17 @@ public static class RoomValidator
             }
         }
 
+        // Step 4 — boss spawner check (Day 28).
+        if (roomDef.requiresBossSpawner)
+        {
+            if (!HasBossSpawnerInRoom(roomTiles))
+                return ValidationResult.Fail(
+                    $"{roomDef.roomName} requires a boss-variant monster spawner.");
+        }
+
         return ValidationResult.Pass(roomTiles);
     }
 
-    /// <summary>
-    /// Walkability check. Returns false if placing a blocking object at blockedCell
-    /// would disconnect the room — i.e. no path exists from the anchor cell to any
-    /// room tile via owned, non-blocked tiles.
-    ///
-    /// Called by DungeonBuildController before placing furniture with
-    /// FurnitureDefinition.blocksPathfinding = true.
-    /// </summary>
     public static bool WouldBlockRoom(Vector3Int anchorCell, Vector3Int blockedCell)
     {
         if (TileInfluenceManager.Instance == null) return false;
@@ -99,12 +94,6 @@ public static class RoomValidator
         return false;
     }
 
-    /// <summary>
-    /// Global walkability check. Returns true if placing a blocking object at
-    /// blockedCell would disconnect any owned tiles from the dungeon core.
-    /// This is the correct check for furniture placement — it ensures the entire
-    /// dungeon remains navigable, not just a single room.
-    /// </summary>
     public static bool WouldBlockDungeon(Vector3Int blockedCell)
     {
         if (TileInfluenceManager.Instance == null) return false;
@@ -115,18 +104,12 @@ public static class RoomValidator
 
         if (blockedCell == coreCell) return true;
 
-        // All cells currently blocked by placed furniture.
         var alreadyBlocked = GetBlockedFurnitureCells();
-
-        // Reachable now (treating all existing blocking furniture as impassable).
         var originalReachable = FloodFill(coreCell, alreadyBlocked);
 
-        // Reachable if we also block the proposed cell.
         var proposedBlocked = new HashSet<Vector3Int>(alreadyBlocked) { blockedCell };
         var afterReachable = FloodFill(coreCell, proposedBlocked);
 
-        // If any tile reachable now (other than the proposed cell itself) becomes
-        // unreachable after placement, the dungeon would be split.
         foreach (var tile in originalReachable)
         {
             if (tile == blockedCell) continue;
@@ -150,10 +133,6 @@ public static class RoomValidator
 
     // ── Internal ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// BFS flood-fill through owned tiles starting from origin.
-    /// Stops at unowned tiles, cells in excludeCells, and at MaxFloodFillTiles.
-    /// </summary>
     private static HashSet<Vector3Int> FloodFill(
         Vector3Int origin, HashSet<Vector3Int> excludeCells = null)
     {
@@ -187,7 +166,7 @@ public static class RoomValidator
 
     private static List<FurniturePiece> FindFurnitureInRoom(HashSet<Vector3Int> roomTiles)
     {
-        var result  = new List<FurniturePiece>();
+        var result = new List<FurniturePiece>();
         var allPieces = Object.FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
 
         foreach (var piece in allPieces)
@@ -196,9 +175,38 @@ public static class RoomValidator
 
         return result;
     }
-}
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Day 28. Returns true if any MonsterSpawner with a BossVariantDefinition
+    /// sits within the room tiles. Spawners are filtered to the active floor to
+    /// match the flood-fill's scope (TileInfluenceManager.Instance is per-floor).
+    /// </summary>
+    private static bool HasBossSpawnerInRoom(HashSet<Vector3Int> roomTiles)
+    {
+        var influence = TileInfluenceManager.Instance;
+        if (influence == null) return false;
+
+        var activeFloor = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloor : null;
+        var spawners = Object.FindObjectsByType<MonsterSpawner>(FindObjectsInactive.Exclude);
+
+        foreach (var s in spawners)
+        {
+            if (!(s.Definition is BossVariantDefinition)) continue;
+
+            // Restrict to spawners on the same floor as the flood-fill.
+            if (activeFloor != null)
+            {
+                var sFloor = s.GetComponentInParent<FloorRoot>();
+                if (sFloor != activeFloor) continue;
+            }
+
+            var cell = influence.WorldToCell(s.transform.position);
+            if (roomTiles.Contains(cell)) return true;
+        }
+
+        return false;
+    }
+}
 
 internal static class RoomValidatorExtensions
 {
@@ -210,12 +218,10 @@ internal static class RoomValidatorExtensions
     }
 }
 
-// ── Result ────────────────────────────────────────────────────────────────────
-
 public class ValidationResult
 {
-    public bool              IsValid;
-    public string            FailReason;
+    public bool IsValid;
+    public string FailReason;
     public HashSet<Vector3Int> RoomTiles;
 
     public static ValidationResult Pass(HashSet<Vector3Int> tiles) =>

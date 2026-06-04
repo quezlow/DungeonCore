@@ -8,6 +8,12 @@ using UnityEngine;
 ///   - PickWanderTarget() uses cached floor's TileInfluenceManager instead
 ///     of a singleton.
 ///   - ScanForAdventurer() filters to adventurers on the same floor.
+///
+/// DAY 28 — BOSS SUPPORT
+///   - bossDefinition is set via ApplyBossModifiers() by the spawner
+///     right after Initialise().
+///   - Stats (maxHP, attackDamage, xpPerKill) are multiplied; transform
+///     scaled; sprite tinted. Status bars get a boss label in Start().
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour
@@ -48,12 +54,15 @@ public class DungeonMonster : MonoBehaviour
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
+    private BossVariantDefinition bossDefinition;
 
     // Wander
     private Vector3 spawnPosition;
     private Vector3 wanderTarget;
     private bool wanderWaiting;
     private float wanderWaitTimer;
+
+    public bool IsBoss => bossDefinition != null;
 
     // ─────────────────────────────────────────────────────────────
 
@@ -79,6 +88,10 @@ public class DungeonMonster : MonoBehaviour
             statusBars = Instantiate(statusBarsPrefab);
             statusBars.Initialise(transform);
             statusBars.SetHP(currentHP, maxHP);
+
+            // If we're a boss, label the bars.
+            if (bossDefinition != null)
+                statusBars.SetBossLabel(bossDefinition.GetBossTitle());
         }
     }
 
@@ -86,6 +99,30 @@ public class DungeonMonster : MonoBehaviour
     public void Initialise(MonsterSpawner parentSpawner)
     {
         spawner = parentSpawner;
+    }
+
+    /// <summary>
+    /// Called by MonsterSpawner right after Initialise() when the spawner's
+    /// definition is a BossVariantDefinition. Scales stats, transform, and tint.
+    /// Safe to call before Start() — status bar labelling is deferred to Start().
+    /// </summary>
+    public void ApplyBossModifiers(BossVariantDefinition def)
+    {
+        if (def == null) return;
+        bossDefinition = def;
+
+        // Stat scaling — Awake() has already set currentHP = maxHP.
+        maxHP *= def.hpMultiplier;
+        currentHP = maxHP;
+        attackDamage *= def.damageMultiplier;
+        xpPerKill *= def.xpRewardMultiplier;
+
+        // Visual scaling.
+        transform.localScale *= def.scaleMultiplier;
+
+        // Sprite tint.
+        var sr = GetComponentInChildren<SpriteRenderer>();
+        if (sr != null) sr.color = def.tint;
     }
 
     private void Update()
@@ -242,4 +279,5 @@ public class DungeonMonster : MonoBehaviour
     public float MaxHP => maxHP;
     public float MonsterXP => monsterXP;
     public FloorRoot CurrentFloor => currentFloor;
+    public BossVariantDefinition BossDefinition => bossDefinition;
 }

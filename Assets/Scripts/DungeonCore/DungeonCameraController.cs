@@ -44,12 +44,6 @@ public class DungeonCameraController : MonoBehaviour
         Instance = this;
     }
 
-    private void OnEnable()
-    {
-        // Use a delayed subscribe via Start instead — FloorManager.Instance
-        // may not exist yet at OnEnable during scene load. See Start().
-    }
-
     private void Start()
     {
         mainCamera = Camera.main;
@@ -70,12 +64,9 @@ public class DungeonCameraController : MonoBehaviour
 
         targetZoom = cmCam.Lens.OrthographicSize;
 
-        // Subscribe — FloorManager.Instance is guaranteed to exist by Start()
-        // as long as FloorManager has a lower or equal execution order.
         if (FloorManager.Instance != null)
         {
             FloorManager.Instance.OnActiveFloorChanged += HandleFloorChanged;
-            // Sync to whatever floor is already active.
             HandleFloorChanged(FloorManager.Instance.ActiveFloorIndex);
         }
         else
@@ -139,7 +130,6 @@ public class DungeonCameraController : MonoBehaviour
             confiner.InvalidateBoundingShapeCache();
         }
 
-        // Force Cinemachine to the new position immediately — no lerp lag.
         cmCam?.ForceCameraPosition(
             new Vector3(transform.position.x, currentFloorOriginY, -10f),
             Quaternion.identity);
@@ -242,5 +232,21 @@ public class DungeonCameraController : MonoBehaviour
         transform.position = new Vector3(worldPos.x, worldPos.y, transform.position.z);
         timeSinceLastInput = 0f;
         isReturning = false;
+    }
+
+    /// <summary>
+    /// Day 28. Cross-floor pan. If floorIndex differs from the active floor,
+    /// switches floor first (which moves the camera anchor to the new floor's
+    /// origin Y), then pans XY to worldPos. Safe to call from UI click handlers.
+    /// </summary>
+    public void PanTo(Vector3 worldPos, int floorIndex)
+    {
+        if (FloorManager.Instance != null
+            && floorIndex >= 0
+            && floorIndex != FloorManager.Instance.ActiveFloorIndex)
+        {
+            FloorManager.Instance.SwitchToFloor(floorIndex);
+        }
+        PanTo(worldPos);
     }
 }

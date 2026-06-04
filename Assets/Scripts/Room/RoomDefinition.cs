@@ -11,13 +11,13 @@ using UnityEngine;
 ///   Barracks      — beds                    (min  9 tiles)
 ///   Shrine        — altar + open space      (min  9 tiles)
 ///   Oracle Chamber — TechNode room          (min 12 tiles)
-///   Boss Room     — boss spawner present    (min 16 tiles)
+///   Boss Room     — boss spawner present    (min 16 tiles, requiresBossSpawner = true)
 ///
 /// Full room list is TBD per the design doc. Add new RoomDefinition assets
 /// as room types are decided — no code changes required here.
 /// </summary>
 [CreateAssetMenu(fileName = "NewRoomDefinition",
-                 menuName  = "Dungeon/Room Definition")]
+                 menuName = "Dungeon/Room Definition")]
 public class RoomDefinition : ScriptableObject
 {
     [Header("Identity")]
@@ -34,6 +34,11 @@ public class RoomDefinition : ScriptableObject
     [Header("Required Furniture")]
     [Tooltip("Each entry specifies a furniture type and the minimum count required.")]
     public List<FurnitureRequirement> requiredFurniture = new();
+
+    [Header("Boss Requirement")]
+    [Tooltip("If true, the room must contain a MonsterSpawner whose definition " +
+             "is a BossVariantDefinition. Used by the Boss Room type.")]
+    public bool requiresBossSpawner = false;
 
     [Header("TechNode Unlock")]
     [Tooltip("Optional. If set, this room unlocks a capability when validated. " +

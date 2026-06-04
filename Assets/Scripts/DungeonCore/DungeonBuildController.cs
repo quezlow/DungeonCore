@@ -157,7 +157,7 @@ public class DungeonBuildController : MonoBehaviour
         if (spawnerShellPrefab == null) { Debug.LogError("[BuildController] spawnerShellPrefab not assigned."); return; }
         var def = MonsterSelectionUI.Instance?.Selected;
         if (def == null) { Debug.LogError("[BuildController] No monster selected."); return; }
-        if (!DungeonCore.Instance.TrySpendCapacity(def.capacityCost)) { Debug.Log($"[BuildController] Not enough capacity."); return; }
+        if (!DungeonCore.Instance.TrySpendCapacity(def.CapacityCost)) { Debug.Log($"[BuildController] Not enough capacity."); return; }
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);

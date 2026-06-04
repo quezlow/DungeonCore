@@ -4,10 +4,17 @@ using UnityEngine;
 /// Placed by the player via DungeonBuildController (PlaceSpawner mode).
 /// Monster type is set via Initialise() before Start() runs.
 /// Spawns one monster with random wander behaviour within a set radius.
+///
+/// BOSS SUPPORT
+///   If the assigned MonsterDefinition is actually a BossVariantDefinition,
+///   stat multipliers are applied to the spawned DungeonMonster immediately
+///   after instantiation. Death notifications are routed to BossAlertService.
 /// </summary>
 public class MonsterSpawner : MonoBehaviour
 {
     [Header("Capacity")]
+    [Tooltip("Fallback used only if no MonsterDefinition is assigned. " +
+             "When a definition is set, definition.CapacityCost takes priority.")]
     [SerializeField] private int capacityCost = 5;
 
     [Header("Respawn (Phase 2)")]
@@ -18,8 +25,9 @@ public class MonsterSpawner : MonoBehaviour
     private MonsterDefinition definition;
     private DungeonMonster spawnedMonster;
 
-    public int CapacityCost => definition != null ? definition.capacityCost : capacityCost;
+    public int CapacityCost => definition != null ? definition.CapacityCost : capacityCost;
     public MonsterDefinition Definition => definition;
+    public bool IsBossSpawner => definition is BossVariantDefinition;
 
     public void Initialise(MonsterDefinition def)
     {
@@ -60,13 +68,28 @@ public class MonsterSpawner : MonoBehaviour
             spawnedMonster.transform.SetParent(floorRoot.transform, true);
 
         spawnedMonster.Initialise(this);
+
+        // Apply boss multipliers if this is a boss-variant spawner.
+        if (definition is BossVariantDefinition bossDef)
+            spawnedMonster.ApplyBossModifiers(bossDef);
     }
 
     public void OnMonsterDied()
     {
+        // Capture the dead monster's position/floor BEFORE we null the reference.
+        Vector3 deathPos = spawnedMonster != null ? spawnedMonster.transform.position : transform.position;
+        FloorRoot floor = spawnedMonster != null ? spawnedMonster.CurrentFloor : GetComponentInParent<FloorRoot>();
+
         DungeonCore.Instance?.ReturnCapacity(CapacityCost);
         spawnedMonster = null;
         Debug.Log($"[MonsterSpawner] {definition?.monsterName} died. Capacity returned.");
+
+        // Boss death alert.
+        if (definition is BossVariantDefinition bossDef)
+        {
+            int floorIndex = floor != null ? floor.FloorIndex : 0;
+            BossAlertService.Instance?.NotifyBossDeath(this, bossDef, floorIndex, deathPos);
+        }
     }
 
     public bool HasLiveMonster => spawnedMonster != null;
