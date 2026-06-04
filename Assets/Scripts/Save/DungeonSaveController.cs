@@ -40,6 +40,12 @@ public class DungeonSaveController : MonoBehaviour
     private string savePath;
     private DungeonSaveData currentSave = new();
 
+    /// <summary>True while LoadGame is running. Guards SaveGame from being
+    /// triggered mid-load by event side-effects (e.g. DungeonCore.NotifyAll
+    /// firing OnLevelUp during LoadSaveData, which would otherwise cause
+    /// SaveGame to overwrite the file with the partially-loaded state).</summary>
+    private bool isLoading;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -71,6 +77,12 @@ public class DungeonSaveController : MonoBehaviour
 
     public void SaveGame()
     {
+        if (isLoading)
+        {
+            Debug.Log("[DungeonSaveController] SaveGame ignored — load in progress.");
+            return;
+        }
+
         if (DungeonCore.Instance == null || FloorManager.Instance == null)
         {
             Debug.LogWarning("[DungeonSaveController] Cannot save — core systems not ready.");
@@ -194,62 +206,70 @@ public class DungeonSaveController : MonoBehaviour
     {
         if (!File.Exists(savePath)) { Debug.Log("[DungeonSaveController] No save file — fresh start."); return; }
 
-        currentSave = JsonUtility.FromJson<DungeonSaveData>(File.ReadAllText(savePath));
-        if (currentSave == null || !currentSave.hasSave)
+        isLoading = true;
+        try
         {
-            Debug.Log("[DungeonSaveController] Save file empty or invalid — skipping load.");
-            return;
+            currentSave = JsonUtility.FromJson<DungeonSaveData>(File.ReadAllText(savePath));
+            if (currentSave == null || !currentSave.hasSave)
+            {
+                Debug.Log("[DungeonSaveController] Save file empty or invalid — skipping load.");
+                return;
+            }
+
+            // 1 — Core stats
+            if (currentSave.coreData != null)
+                DungeonCore.Instance.LoadSaveData(currentSave.coreData);
+
+            // 2 — Day/Night
+            if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
+                DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);
+
+            // 3 — Recreate Floor 1+ before applying FloorManager state.
+            foreach (var floorData in currentSave.floors)
+            {
+                if (floorData.floorIndex == 0) continue; // Floor 0 already exists
+                FloorManager.Instance.RecreateFloorFromSave(
+                    floorData.floorIndex, floorData.centerCell.ToVector3Int());
+            }
+
+            // 4 — FloorManager state (after floors exist)
+            FloorManager.Instance.RestoreState(
+                currentSave.coreFloorIndex,
+                currentSave.pendingCoreRelocationFloor,
+                currentSave.visitedFloors);
+
+            // 5 — Per-floor tile data
+            foreach (var floorData in currentSave.floors)
+            {
+                var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
+                if (floor?.TileInfluence != null && floorData.tileData != null)
+                    floor.TileInfluence.LoadSaveData(floorData.tileData);
+            }
+
+            // 6 — Entrance (Floor 0 only)
+            if (currentSave.hasEntrance)
+            {
+                var floor0 = FloorManager.Instance.GetFloor(0);
+                DungeonBuildController.Instance.RestoreEntrance(floor0, currentSave.entranceCell.ToVector3Int());
+            }
+
+            // 7 — Per-floor objects
+            foreach (var floorData in currentSave.floors)
+            {
+                var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
+                if (floor == null) continue;
+                RestoreFloorObjects(floor, floorData);
+            }
+
+            // 8 — Snap camera to the core's current floor
+            FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
+
+            Debug.Log($"[DungeonSaveController] Load complete ({currentSave.floors.Count} floors).");
         }
-
-        // 1 — Core stats
-        if (currentSave.coreData != null)
-            DungeonCore.Instance.LoadSaveData(currentSave.coreData);
-
-        // 2 — Day/Night
-        if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
-            DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);
-
-        // 3 — Recreate Floor 1+ before applying FloorManager state.
-        foreach (var floorData in currentSave.floors)
+        finally
         {
-            if (floorData.floorIndex == 0) continue; // Floor 0 already exists
-            FloorManager.Instance.RecreateFloorFromSave(
-                floorData.floorIndex, floorData.centerCell.ToVector3Int());
+            isLoading = false;
         }
-
-        // 4 — FloorManager state (after floors exist)
-        FloorManager.Instance.RestoreState(
-            currentSave.coreFloorIndex,
-            currentSave.pendingCoreRelocationFloor,
-            currentSave.visitedFloors);
-
-        // 5 — Per-floor tile data
-        foreach (var floorData in currentSave.floors)
-        {
-            var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
-            if (floor?.TileInfluence != null && floorData.tileData != null)
-                floor.TileInfluence.LoadSaveData(floorData.tileData);
-        }
-
-        // 6 — Entrance (Floor 0 only)
-        if (currentSave.hasEntrance)
-        {
-            var floor0 = FloorManager.Instance.GetFloor(0);
-            DungeonBuildController.Instance.RestoreEntrance(floor0, currentSave.entranceCell.ToVector3Int());
-        }
-
-        // 7 — Per-floor objects
-        foreach (var floorData in currentSave.floors)
-        {
-            var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
-            if (floor == null) continue;
-            RestoreFloorObjects(floor, floorData);
-        }
-
-        // 8 — Snap camera to the core's current floor
-        FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
-
-        Debug.Log($"[DungeonSaveController] Load complete ({currentSave.floors.Count} floors).");
     }
 
     private void RestoreFloorObjects(FloorRoot floor, FloorSaveData data)

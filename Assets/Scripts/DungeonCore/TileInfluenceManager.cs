@@ -271,6 +271,9 @@ public class TileInfluenceManager : MonoBehaviour
     public Vector3 CellToWorld(Vector3Int cell) => claimableTilemap.GetCellCenterWorld(cell);
     public bool IsTileOwned(Vector3Int pos) => ownedTiles.Contains(pos);
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
+
+    /// <summary>Read-only view of owned tiles for external consumers (e.g., DungeonBoundsUpdater).</summary>
+    public IReadOnlyCollection<Vector3Int> OwnedTiles => ownedTiles;
     public int OwnedTileCount => ownedTiles.Count;
 
     // ── Save / Load ───────────────────────────────────────────────

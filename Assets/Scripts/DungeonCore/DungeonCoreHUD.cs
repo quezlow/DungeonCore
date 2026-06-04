@@ -48,7 +48,7 @@ public class DungeonCoreHUD : MonoBehaviour
 
         DungeonCore.Instance.OnManaChanged += HandleManaChanged;
         DungeonCore.Instance.OnXPChanged += HandleXPChanged;
-        DungeonCore.Instance.OnLevelUp += HandleLevelUp;
+        DungeonCore.Instance.OnLevelChanged += HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable += HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged += HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged += HandleReputationChanged;
@@ -65,7 +65,7 @@ public class DungeonCoreHUD : MonoBehaviour
 
         DungeonCore.Instance.OnManaChanged -= HandleManaChanged;
         DungeonCore.Instance.OnXPChanged -= HandleXPChanged;
-        DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
+        DungeonCore.Instance.OnLevelChanged -= HandleLevelUp;
         DungeonCore.Instance.OnLevelUpAvailable -= HandleLevelUpAvailable;
         DungeonCore.Instance.OnNotorietyChanged -= HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged -= HandleReputationChanged;

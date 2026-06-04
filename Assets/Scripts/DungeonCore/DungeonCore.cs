@@ -65,6 +65,11 @@ public class DungeonCore : MonoBehaviour
     public event Action<float> OnManaRegenChanged;
     public event Action<float, float> OnXPChanged;
     public event Action<int> OnLevelUp;
+    /// <summary>Fires whenever the level value changes — both on real level-up
+    /// (ConfirmLevelUp) and when broadcasting loaded state (NotifyAll/LoadSaveData).
+    /// Use this for UI that needs to refresh the displayed level. Use OnLevelUp
+    /// only when responding to an actual level increment.</summary>
+    public event Action<int> OnLevelChanged;
     public event Action OnLevelUpAvailable;
     public event Action<float> OnNotorietyChanged;
     public event Action<float> OnReputationChanged;
@@ -141,7 +146,7 @@ public class DungeonCore : MonoBehaviour
         OnManaChanged?.Invoke(currentMana, MaxMana);
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
         OnXPChanged?.Invoke(currentXP, XPToNextLevel);
-        OnLevelUp?.Invoke(dungeonLevel);        
+        OnLevelChanged?.Invoke(dungeonLevel);
         OnNotorietyChanged?.Invoke(notoriety);
         OnReputationChanged?.Invoke(reputation);
         OnGoldChanged?.Invoke(currentGold);
@@ -261,6 +266,7 @@ public class DungeonCore : MonoBehaviour
         }
 
         OnLevelUp?.Invoke(dungeonLevel);
+        OnLevelChanged?.Invoke(dungeonLevel);
         OnManaChanged?.Invoke(currentMana, MaxMana);
         OnXPChanged?.Invoke(currentXP, XPToNextLevel);
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);

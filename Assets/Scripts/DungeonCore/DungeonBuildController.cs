@@ -51,6 +51,12 @@ public class DungeonBuildController : MonoBehaviour
 
     private Camera mainCamera;
 
+// Drag-claim state — tracks the last cell visited during a held-drag claim
+// so we don't re-attempt the same cell every frame, and so we only fire
+// once per new cell as the mouse moves.
+private Vector3Int dragClaimLastCell;
+private bool dragClaimActive;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -117,7 +123,7 @@ public class DungeonBuildController : MonoBehaviour
 
     private void HandleClaimClick()
     {
-        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (!ClaimInputThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
         if (!ActiveInfluence.IsTileClaimable(cell)) return;
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
@@ -490,6 +496,55 @@ public class DungeonBuildController : MonoBehaviour
         if (influence == null) return false;
         cell = influence.WorldToCell(worldPos);
         return true;
+    }
+
+    /// <summary>
+    /// Drag-aware claim input. Returns true on the initial click AND on every
+    /// frame the mouse moves to a new cell while left-button is held. Used only
+    /// by Claim mode — placement modes still use single-click LeftClickThisFrame.
+    /// </summary>
+    private bool ClaimInputThisFrame(out Vector3Int cell)
+    {
+        cell = default;
+        var mouse = Mouse.current;
+        if (mouse == null) return false;
+
+        // Reset on button release so the next press starts a new drag.
+        if (mouse.leftButton.wasReleasedThisFrame)
+            dragClaimActive = false;
+
+        bool pressed = mouse.leftButton.wasPressedThisFrame;
+        bool held = mouse.leftButton.isPressed;
+        if (!pressed && !held) return false;
+
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
+        if (mainCamera == null) return false;
+
+        var influence = ActiveInfluence;
+        if (influence == null) return false;
+
+        Vector2 screenPos = mouse.position.ReadValue();
+        Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+        Vector3Int newCell = influence.WorldToCell(worldPos);
+
+        // Initial press: always counts.
+        if (pressed)
+        {
+            cell = newCell;
+            dragClaimLastCell = newCell;
+            dragClaimActive = true;
+            return true;
+        }
+
+        // Hold-drag: only fire when the mouse has moved to a different cell.
+        if (held && dragClaimActive && newCell != dragClaimLastCell)
+        {
+            cell = newCell;
+            dragClaimLastCell = newCell;
+            return true;
+        }
+
+        return false;
     }
 
     private void RevalidateAllAnchors()

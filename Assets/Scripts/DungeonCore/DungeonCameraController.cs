@@ -226,12 +226,28 @@ public class DungeonCameraController : MonoBehaviour
     // ── Public API ────────────────────────────────────────────────
 
     public void ForceReturnToCore() { timeSinceLastInput = returnDelay; }
+    /// <summary>Max orthographic size — used by DungeonBoundsUpdater to size minimum bounds.</summary>
+    public float MaxZoom => maxZoom;
 
     public void PanTo(Vector3 worldPos)
     {
         transform.position = new Vector3(worldPos.x, worldPos.y, transform.position.z);
         timeSinceLastInput = 0f;
         isReturning = false;
+    }
+
+    /// <summary>
+    /// Invalidates the Cinemachine confiner cache, but only if the supplied
+    /// floor matches the active floor. Called by DungeonBoundsUpdater when a
+    /// floor's PolygonCollider2D geometry changes — off-floor updates are
+    /// silent, because FloorManager.MoveCameraToFloor() invalidates on switch.
+    /// </summary>
+    public void InvalidateBoundsForFloor(int floorIndex)
+    {
+        if (FloorManager.Instance == null) return;
+        if (FloorManager.Instance.ActiveFloorIndex != floorIndex) return;
+        if (confiner == null) return;
+        confiner.InvalidateBoundingShapeCache();
     }
 
     /// <summary>
