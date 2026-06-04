@@ -159,6 +159,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4338416515584568356}
+  - {fileID: 9085189099472808940}
   - {fileID: 9097648968972800489}
   - {fileID: 2731928025978922143}
   - {fileID: 5414076739047742338}
@@ -219,6 +220,133 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
   fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
   fallbackRadius: 100
+--- !u!1 &3490327773314396623
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9085189099472808940}
+  - component: {fileID: 1010576848703588748}
+  - component: {fileID: 8317965618410406050}
+  m_Layer: 0
+  m_Name: FeatureDebugOverlay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9085189099472808940
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3490327773314396623}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7151647544815882859}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1839735485 &1010576848703588748
+Tilemap:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3490327773314396623}
+  m_Enabled: 1
+  m_Tiles: {}
+  m_AnimatedTiles: {}
+  m_TileAssetArray: []
+  m_TileSpriteArray: []
+  m_TileMatrixArray: []
+  m_TileColorArray: []
+  m_TileObjectToInstantiateArray: []
+  m_AnimationFrameRate: 1
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Origin: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0, y: 0, z: 1}
+  m_TileAnchor: {x: 0.5, y: 0.5, z: 0}
+  m_TileOrientation: 0
+  m_TileOrientationMatrix:
+    e00: 1
+    e01: 0
+    e02: 0
+    e03: 0
+    e10: 0
+    e11: 1
+    e12: 0
+    e13: 0
+    e20: 0
+    e21: 0
+    e22: 1
+    e23: 0
+    e30: 0
+    e31: 0
+    e32: 0
+    e33: 1
+--- !u!483693784 &8317965618410406050
+TilemapRenderer:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3490327773314396623}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 0
+  m_ReflectionProbeUsage: 0
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_ChunkSize: {x: 32, y: 32, z: 32}
+  m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
+  m_MaxChunkCount: 16
+  m_MaxFrameAge: 16
+  m_SortOrder: 0
+  m_Mode: 0
+  m_DetectChunkCullingBounds: 0
 --- !u!1 &3743349659581284065
 GameObject:
   m_ObjectHideFlags: 0
@@ -728,6 +856,7 @@ Transform:
   - {fileID: 8176146845479958794}
   - {fileID: 7151647544815882859}
   - {fileID: 3666402661027572923}
+  - {fileID: 8582899845837371000}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!156049354 &7072512162781259412
@@ -775,6 +904,7 @@ MonoBehaviour:
   tileInfluence: {fileID: 2894437004907475980}
   trapRegistry: {fileID: 5316089791698207634}
   terrain: {fileID: 917423282464261291}
+  featureGenerator: {fileID: 2292102316443211690}
   cameraBounds: {fileID: 8372535031249889356}
 --- !u!60 &8282947727654970810
 PolygonCollider2D:
@@ -827,6 +957,71 @@ PolygonCollider2D:
       - {x: -50, y: -50}
       - {x: 50, y: -50}
   m_UseDelaunayMesh: 1
+--- !u!1 &8000299455552086567
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8582899845837371000}
+  - component: {fileID: 2292102316443211690}
+  m_Layer: 0
+  m_Name: TerrainFeatureGenerator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8582899845837371000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8000299455552086567}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6151173212404640898}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2292102316443211690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8000299455552086567}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 030151d7fc2f52c4894c90aca09f3f0b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainFeatureGenerator
+  minChambers: 3
+  maxChambers: 6
+  minChamberBoxSize: 8
+  maxChamberBoxSize: 14
+  caInitialWallChance: 0.45
+  caSmoothingIterations: 4
+  minChamberCellCount: 6
+  chamberSpacing: 10
+  minRivers: 1
+  maxRivers: 3
+  minRiverControlPoints: 12
+  maxRiverControlPoints: 20
+  riverSegmentLength: 5
+  riverMeanderDegrees: 35
+  minRiverWidth: 3
+  maxRiverWidth: 7
+  exclusionRadiusFromCenter: 4
+  autoPaintDebugOverlay: 1
+  debugOverlayTilemap: {fileID: 1010576848703588748}
+  debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
+  debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
 --- !u!1 &8415351630352997601
 GameObject:
   m_ObjectHideFlags: 0
@@ -925,5 +1120,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonBoundsUpdater
   paddingCells: 6
-  minWorldWidth: 32
-  minWorldHeight: 24
+  viewportSafetyMultiplier: 1.5
+  fallbackMinWidth: 64
+  fallbackMinHeight: 36

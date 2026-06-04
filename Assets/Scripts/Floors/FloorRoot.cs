@@ -12,10 +12,12 @@ using UnityEngine;
 ///     their existing scene GameObjects (they can stay wherever they are
 ///     in the hierarchy as long as references are wired here).
 ///   - Assign the PolygonCollider2D used as the Cinemachine confiner bounds.
+///   - DAY 30: Assign TerrainFeatureGenerator (sibling on the floor hierarchy).
 ///
 /// FLOOR TEMPLATE PREFAB (Floor 2+)
 ///   - Self-contained prefab: Grid → Tilemaps + DungeonTerrain,
-///     TileInfluenceManager, TrapRegistry all as children.
+///     TileInfluenceManager, TrapRegistry, TerrainFeatureGenerator
+///     all as children.
 ///   - Wire all references internally in the prefab.
 ///   - FloorManager sets floorIndex and world position at runtime.
 ///   - Each floor is offset by floorIndex * -2000 on Y so floors never overlap.
@@ -30,6 +32,7 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TileInfluenceManager tileInfluence;
     [SerializeField] private TrapRegistry trapRegistry;
     [SerializeField] private DungeonTerrain terrain;
+    [SerializeField] private TerrainFeatureGenerator featureGenerator;
 
     [Header("Camera Bounds")]
     [Tooltip("PolygonCollider2D used as the Cinemachine confiner for this floor.")]
@@ -41,6 +44,7 @@ public class FloorRoot : MonoBehaviour
     public TileInfluenceManager TileInfluence => tileInfluence;
     public TrapRegistry TrapRegistry => trapRegistry;
     public DungeonTerrain Terrain => terrain;
+    public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
     public PolygonCollider2D CameraBounds => cameraBounds;
 
     /// <summary>World-space Y origin of this floor (floorIndex * -2000).</summary>
@@ -68,20 +72,27 @@ public class FloorRoot : MonoBehaviour
     }
 
     /// <summary>
-    /// Seeds the floor's terrain and influence from a stair cell on the
-    /// floor above. The cell coordinates are in the floor above's space;
+    /// Seeds the floor's terrain, features, and influence from a stair cell on
+    /// the floor above. The cell coordinates are in the floor above's space;
     /// since all floors share the same local coordinate system (just offset
     /// in world Y), the same cell coords are valid here.
     /// Called by FloorManager after Initialise().
+    ///
+    /// DAY 30 — also runs feature generation (rivers + chambers) deterministically
+    /// from floorSeed BEFORE claiming the starter area, so the starter claim
+    /// could (in future) avoid stamping on top of revealed features.
     /// </summary>
-    public void Bootstrap(Vector3Int centerCell)
+    public void Bootstrap(Vector3Int centerCell, int floorSeed)
     {
         if (terrain != null)
             terrain.GenerateAt(centerCell);
 
+        if (featureGenerator != null && terrain != null)
+            featureGenerator.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
+
         if (tileInfluence != null)
         {
-            tileInfluence.InjectTerrain(terrain); // ensure terrain is set before claiming
+            tileInfluence.InjectTerrain(terrain);
             tileInfluence.ClaimStarterArea(centerCell);
         }
     }

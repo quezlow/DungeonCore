@@ -8,11 +8,20 @@ using System.Collections.Generic;
 ///   Per-object save data now lives PER FLOOR (FloorSaveData below).
 ///   Each per-object record additionally records its floor index for
 ///   defensive cross-checks during load.
+///
+/// DAY 30 PROCEDURAL FEATURES
+///   worldSeed: random 32-bit int generated once at new-game time. Persisted.
+///   FloorSaveData now carries floorSeed (the per-floor RNG seed) and
+///   featureData (rivers + chambers).
 /// </summary>
 [Serializable]
 public class DungeonSaveData
 {
     public bool hasSave;
+
+    // ── World-wide procgen ────────────────────────────────────────
+    /// <summary>Random seed for this run. Set once on new game and never changed.</summary>
+    public int worldSeed;
 
     // ── Core systems ──────────────────────────────────────────────
     public DungeonCoreSaveData coreData;
@@ -41,6 +50,12 @@ public class FloorSaveData
     public int floorIndex;
     /// <summary>Cell used to seed terrain for Floor 1+. Unused for Floor 0.</summary>
     public SerializableVector3Int centerCell;
+
+    /// <summary>DAY 30 — Per-floor RNG seed used for feature generation. Persisted.</summary>
+    public int floorSeed;
+
+    /// <summary>DAY 30 — Rivers + chambers generated for this floor.</summary>
+    public FloorFeatureSaveData featureData;
 
     public TileInfluenceSaveData tileData;
 
