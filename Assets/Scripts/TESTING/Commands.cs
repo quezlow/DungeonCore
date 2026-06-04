@@ -14,6 +14,9 @@ public class Commaands : MonoBehaviour
     [ContextMenu("Test Add Mana")]
     void TestAddMana() => DungeonCore.Instance.AddMana(20f);
 
+    [ContextMenu("Test Refill Mana")]
+    void TestRefillMana() => DungeonCore.Instance.AddMana(20000f);
+
     [ContextMenu("Test Remove Mana")]
     void TestRemoveMana() => DungeonCore.Instance.AddMana(-20f);
 

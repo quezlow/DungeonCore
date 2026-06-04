@@ -15,12 +15,22 @@ using System.Collections.Generic;
 /// River cells that overlap chamber cells are removed from the chamber's
 /// cells list at generation time (rivers overwrite). The serialized state
 /// reflects the post-overwrite truth.
+///
+/// DAY 31 PART 1 — Reveal state
+///   Per-feature reveal state is persisted in the revealedRiverIds and
+///   revealedChamberIds lists. A feature is "revealed" the first time any
+///   of its cells becomes claimable (i.e. enters the 4-neighbour ring of
+///   an owned tile). Reveal is whole-feature: one cell touched reveals all.
 /// </summary>
 [Serializable]
 public class FloorFeatureSaveData
 {
     public List<RiverData> rivers = new();
     public List<ChamberData> chambers = new();
+
+    // DAY 31 — Per-feature reveal state.
+    public List<int> revealedRiverIds = new();
+    public List<int> revealedChamberIds = new();
 }
 
 [Serializable]
@@ -39,7 +49,7 @@ public class ChamberData
 {
     public int id;
     public SerializableVector3Int centerCell;
-    /// <summary>Chamber floor cells, post-river-overwrite. Wild monster spawning (Day 31) uses these.</summary>
+    /// <summary>Chamber floor cells, post-river-overwrite. Wild monster spawning (Day 31 Part 2) uses these.</summary>
     public List<SerializableVector3Int> cells = new();
 }
 

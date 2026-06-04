@@ -11,6 +11,10 @@ using UnityEngine;
 ///   BossVariantDefinition : MonsterDefinition overrides CapacityCost to apply
 ///   a multiplier. If you add more cost-related fields here, expose them as
 ///   virtual properties so boss variants can scale them too.
+///
+/// DAY 31 PART 1
+///   - Added isAquatic flag. DungeonMonster reads spawner.Definition.isAquatic
+///     to decide whether to ignore river fording slowdown. Default false.
 /// </summary>
 [CreateAssetMenu(fileName = "MonsterDef_New", menuName = "Dungeon/Monster Definition")]
 public class MonsterDefinition : ScriptableObject
@@ -28,6 +32,11 @@ public class MonsterDefinition : ScriptableObject
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;
+
+    [Header("Terrain")]
+    [Tooltip("DAY 31 — If true, this monster ignores river fording slowdown. " +
+             "Reserved for future aquatic creature designs.")]
+    public bool isAquatic = false;
 
     /// <summary>
     /// Mana/capacity cost to keep this monster active.

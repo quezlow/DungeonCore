@@ -2,13 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// BFS pathfinding through owned dungeon tiles.
+/// Weighted pathfinding through owned dungeon tiles, with river fording.
 ///
-/// CHANGES FROM PRE-DAY-27
-///   - Primary overload now takes a FloorRoot so pathfinding always uses
-///     the correct floor's TileInfluenceManager and TrapRegistry.
-///   - Legacy parameterless overload kept but logs an error — callers
-///     should be updated to pass a FloorRoot.
+/// DAY 27
+///   Primary overload takes a FloorRoot so pathfinding always uses the correct
+///   floor's TileInfluenceManager and TrapRegistry.
+///
+/// DAY 31 PART 1 — UPGRADED
+///   BFS replaced with Dijkstra (weighted uniform-cost search). Default cell
+///   cost is 1; river cells cost TerrainFeatureGenerator.RiverPathCost (default
+///   5 — equivalent to "going around 4 normal tiles is preferred to crossing
+///   1 river tile"). River cells are TRAVERSABLE EVEN WHEN NOT OWNED — that's
+///   the fording mechanic. Chamber cells follow the normal owned/unowned rule;
+///   Part 2 will add the wild-monster claim gate on chambers.
+///
+///   .NET 6's PriorityQueue is unavailable in Unity's .NET Standard 2.1
+///   runtime, so we ship a minimal binary min-heap inline.
 /// </summary>
 public static class DungeonPathfinder
 {
@@ -32,6 +41,7 @@ public static class DungeonPathfinder
 
         var influence = floor.TileInfluence;
         var trapReg = floor.TrapRegistry;
+        var features = floor.FeatureGenerator;
 
         if (influence == null)
         {
@@ -39,7 +49,8 @@ public static class DungeonPathfinder
             return new List<Vector3>();
         }
 
-        return RunBFS(influence, trapReg, startWorld, goalWorld);
+        int riverCost = features != null ? features.RiverPathCost : 1;
+        return RunDijkstra(influence, trapReg, features, riverCost, startWorld, goalWorld);
     }
 
     // ── Legacy overload (Floor 1 / non-floor-aware callers) ───────
@@ -59,11 +70,13 @@ public static class DungeonPathfinder
         return FindPath(activeFloor, startWorld, goalWorld);
     }
 
-    // ── BFS core ─────────────────────────────────────────────────
+    // ── Dijkstra core ────────────────────────────────────────────
 
-    private static List<Vector3> RunBFS(
+    private static List<Vector3> RunDijkstra(
         TileInfluenceManager influence,
         TrapRegistry trapReg,
+        TerrainFeatureGenerator features,
+        int riverCost,
         Vector3 startWorld,
         Vector3 goalWorld)
     {
@@ -74,15 +87,17 @@ public static class DungeonPathfinder
 
         var blocked = trapReg?.GetFlaggedCells();
 
-        var frontier = new Queue<Vector3Int>();
+        var heap = new MinHeap();
+        var costSoFar = new Dictionary<Vector3Int, int>();
         var cameFrom = new Dictionary<Vector3Int, Vector3Int>();
 
-        frontier.Enqueue(start);
+        heap.Push(0, start);
+        costSoFar[start] = 0;
         cameFrom[start] = start;
 
-        while (frontier.Count > 0)
+        while (heap.Count > 0)
         {
-            Vector3Int current = frontier.Dequeue();
+            Vector3Int current = heap.Pop();
 
             if (current == goal)
                 return ReconstructPath(cameFrom, start, goal, influence);
@@ -90,12 +105,24 @@ public static class DungeonPathfinder
             foreach (var dir in Directions)
             {
                 Vector3Int next = current + dir;
-                if (cameFrom.ContainsKey(next)) continue;
-                if (blocked != null && blocked.Contains(next) && next != goal) continue;
-                if (!influence.IsTileOwned(next) && next != goal) continue;
 
-                frontier.Enqueue(next);
-                cameFrom[next] = current;
+                if (blocked != null && blocked.Contains(next) && next != goal) continue;
+
+                bool owned = influence.IsTileOwned(next);
+                bool isRiver = features != null && features.IsRiver(next);
+                bool passable = owned || isRiver;
+
+                if (!passable && next != goal) continue;
+
+                int stepCost = isRiver ? riverCost : 1;
+                int newCost = costSoFar[current] + stepCost;
+
+                if (!costSoFar.TryGetValue(next, out int existingCost) || newCost < existingCost)
+                {
+                    costSoFar[next] = newCost;
+                    cameFrom[next] = current;
+                    heap.Push(newCost, next);
+                }
             }
         }
 
@@ -123,5 +150,52 @@ public static class DungeonPathfinder
             worldPath.Add(influence.CellToWorld(cell));
 
         return worldPath;
+    }
+
+    // ── Binary Min-Heap (priority queue) ──────────────────────────
+    //
+    // .NET 6's System.Collections.Generic.PriorityQueue<TElement, TPriority>
+    // is unavailable in Unity's .NET Standard 2.1 runtime, so we ship a minimal
+    // implementation here. Stable for our use case (paths under a few thousand
+    // nodes per call).
+
+    private class MinHeap
+    {
+        private readonly List<(int priority, Vector3Int cell)> data = new();
+
+        public int Count => data.Count;
+
+        public void Push(int priority, Vector3Int cell)
+        {
+            data.Add((priority, cell));
+            int i = data.Count - 1;
+            while (i > 0)
+            {
+                int parent = (i - 1) / 2;
+                if (data[parent].priority <= data[i].priority) break;
+                (data[parent], data[i]) = (data[i], data[parent]);
+                i = parent;
+            }
+        }
+
+        public Vector3Int Pop()
+        {
+            var top = data[0].cell;
+            int last = data.Count - 1;
+            data[0] = data[last];
+            data.RemoveAt(last);
+            last--;
+            int i = 0;
+            while (true)
+            {
+                int left = 2 * i + 1, right = 2 * i + 2, smallest = i;
+                if (left <= last && data[left].priority < data[smallest].priority) smallest = left;
+                if (right <= last && data[right].priority < data[smallest].priority) smallest = right;
+                if (smallest == i) break;
+                (data[smallest], data[i]) = (data[i], data[smallest]);
+                i = smallest;
+            }
+            return top;
+        }
     }
 }

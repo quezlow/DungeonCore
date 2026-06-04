@@ -5,19 +5,20 @@ using UnityEngine.Tilemaps;
 
 /// <summary>
 /// DAY 30 — Per-floor procedural feature generator.
+/// DAY 31 PART 1 — Reveal API, conditional debug paint, pathfinding/fording knobs.
 ///
 /// Lives as a sibling component on every floor's hierarchy (alongside
 /// DungeonTerrain, TileInfluenceManager). Holds the floor's
 /// FloorFeatureSaveData and a runtime cell→feature lookup.
 ///
-/// Day 30 SCOPE
+/// SCOPE
 ///   - Generate chambers (CA in bounded box, flood-fill extracts connected region)
 ///   - Generate rivers (meander polyline + Chebyshev-dilation for width)
 ///   - Rivers overwrite chamber cells they overlap
 ///   - Exclude features within exclusionRadiusFromCenter of centerCell
 ///   - Persist per-feature records; runtime lookup rebuilt on load
-///   - No visual rendering (Day 31 handles reveal + tile painting); optional
-///     debug overlay via [ContextMenu] paints onto a wired debug Tilemap
+///   - Per-feature reveal state with whole-feature painting on the debug overlay
+///   - Inspector knobs for river path cost (Dijkstra) and fording speed multiplier
 ///
 /// DETERMINISM
 ///   All generation uses System.Random seeded with floorSeed. UnityEngine.Random
@@ -66,10 +67,23 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Tooltip("Features cannot generate within this many tiles of the floor's centerCell (eventual Core Room).")]
     [SerializeField] private int exclusionRadiusFromCenter = 8;
 
+    // ── Inspector — Pathfinding & Fording (DAY 31) ────────────────
+
+    [Header("Pathfinding")]
+    [Tooltip("Movement cost for crossing a river cell during pathfinding. Default cells cost 1. " +
+             "5 ≈ ‘going around 4 normal tiles is preferred to crossing 1 river tile’.")]
+    [SerializeField, Min(1)] private int riverPathCost = 5;
+
+    [Header("Fording")]
+    [Tooltip("Movement speed multiplier when an entity is standing on a river cell. 0.5 = half speed.")]
+    [Range(0.05f, 1f)]
+    [SerializeField] private float fordingSpeedMultiplier = 0.5f;
+
     // ── Inspector — Debug ─────────────────────────────────────────
 
     [Header("Debug Visualization")]
-    [Tooltip("If true, automatically paints to debugOverlayTilemap whenever GenerateNew or LoadFromSave runs.")]
+    [Tooltip("If true, automatically paints to debugOverlayTilemap whenever GenerateNew or LoadFromSave runs. " +
+             "Only REVEALED features will be painted.")]
     [SerializeField] private bool autoPaintDebugOverlay = false;
     [SerializeField] private Tilemap debugOverlayTilemap;
     [SerializeField] private TileBase debugRiverTile;
@@ -83,6 +97,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     public FloorFeatureSaveData FeatureData => featureData;
     public bool HasGenerated => featureData != null;
+    public int RiverPathCost => riverPathCost;
+    public float FordingSpeedMultiplier => fordingSpeedMultiplier;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -129,7 +145,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
-            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers.");
+            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
+            $"{featureData.revealedRiverIds.Count} rivers revealed, " +
+            $"{featureData.revealedChamberIds.Count} chambers revealed.");
 
         if (autoPaintDebugOverlay) PaintDebugOverlay();
     }
@@ -157,6 +175,77 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         if (!cellLookup.TryGetValue(cell, out var fref)) return -1;
         return fref.type == FeatureType.River ? fref.featureId : -1;
+    }
+
+    /// <summary>Returns (type, id) for the cell, or (None, -1) if no feature there.</summary>
+    public bool TryGetFeatureRef(Vector3Int cell, out FeatureRef fref)
+    {
+        return cellLookup.TryGetValue(cell, out fref);
+    }
+
+    // ── Reveal API (DAY 31) ──────────────────────────────────────
+
+    public bool IsRiverRevealed(int riverId)
+        => featureData != null && featureData.revealedRiverIds.Contains(riverId);
+
+    public bool IsChamberRevealed(int chamberId)
+        => featureData != null && featureData.revealedChamberIds.Contains(chamberId);
+
+    /// <summary>Convenience: returns true if the feature owning this cell (if any) is revealed.</summary>
+    public bool IsFeatureRevealedAt(Vector3Int cell)
+    {
+        if (!cellLookup.TryGetValue(cell, out var fref)) return false;
+        return fref.type switch
+        {
+            FeatureType.River => IsRiverRevealed(fref.featureId),
+            FeatureType.Chamber => IsChamberRevealed(fref.featureId),
+            _ => false,
+        };
+    }
+
+    /// <summary>Marks a river as revealed and paints its overlay. Idempotent.</summary>
+    public void RevealRiver(int riverId)
+    {
+        if (featureData == null) return;
+        if (featureData.revealedRiverIds.Contains(riverId)) return;
+        featureData.revealedRiverIds.Add(riverId);
+        PaintRiverOverlay(riverId);
+    }
+
+    /// <summary>Marks a chamber as revealed and paints its overlay. Idempotent.</summary>
+    public void RevealChamber(int chamberId)
+    {
+        if (featureData == null) return;
+        if (featureData.revealedChamberIds.Contains(chamberId)) return;
+        featureData.revealedChamberIds.Add(chamberId);
+        PaintChamberOverlay(chamberId);
+    }
+
+    /// <summary>
+    /// Returns a representative world position for the feature, for alert click-jump.
+    /// Chambers: centre cell. Rivers: midpoint of polyline.
+    /// </summary>
+    public Vector3 GetFeatureCenterWorld(FeatureType type, int featureId)
+    {
+        if (featureData == null || floor == null || floor.TileInfluence == null)
+            return transform.position;
+
+        if (type == FeatureType.Chamber)
+        {
+            foreach (var ch in featureData.chambers)
+                if (ch.id == featureId)
+                    return floor.TileInfluence.CellToWorld(ch.centerCell.ToVector3Int());
+        }
+        else if (type == FeatureType.River)
+        {
+            foreach (var r in featureData.rivers)
+                if (r.id == featureId && r.polyline.Count > 0)
+                {
+                    var mid = r.polyline[r.polyline.Count / 2].ToVector3Int();
+                    return floor.TileInfluence.CellToWorld(mid);
+                }
+        }
+        return transform.position;
     }
 
     // ── Chamber Generation ────────────────────────────────────────
@@ -501,17 +590,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         debugOverlayTilemap.ClearAllTiles();
 
+        // DAY 31 — only paint REVEALED features.
         if (debugChamberTile != null)
         {
             foreach (var ch in featureData.chambers)
+            {
+                if (!IsChamberRevealed(ch.id)) continue;
                 foreach (var sv in ch.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugChamberTile);
+            }
         }
         if (debugRiverTile != null)
         {
             foreach (var r in featureData.rivers)
+            {
+                if (!IsRiverRevealed(r.id)) continue;
                 foreach (var sv in r.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
+            }
+        }
+    }
+
+    private void PaintRiverOverlay(int riverId)
+    {
+        if (debugOverlayTilemap == null || debugRiverTile == null) return;
+        foreach (var r in featureData.rivers)
+        {
+            if (r.id != riverId) continue;
+            foreach (var sv in r.cells)
+                debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
+            return;
+        }
+    }
+
+    private void PaintChamberOverlay(int chamberId)
+    {
+        if (debugOverlayTilemap == null || debugChamberTile == null) return;
+        foreach (var ch in featureData.chambers)
+        {
+            if (ch.id != chamberId) continue;
+            foreach (var sv in ch.cells)
+                debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugChamberTile);
+            return;
         }
     }
 
@@ -519,6 +639,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public void ClearDebugOverlay()
     {
         if (debugOverlayTilemap != null) debugOverlayTilemap.ClearAllTiles();
+    }
+
+    [ContextMenu("Reveal All Features (debug)")]
+    public void DebugRevealAll()
+    {
+        if (featureData == null) { Debug.LogWarning("[TerrainFeatureGenerator] No feature data."); return; }
+        foreach (var ch in featureData.chambers) RevealChamber(ch.id);
+        foreach (var r in featureData.rivers) RevealRiver(r.id);
+        Debug.Log("[TerrainFeatureGenerator] All features revealed (debug).");
     }
 
     [ContextMenu("Log Feature Stats")]
@@ -529,8 +658,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int chamberCells = 0; foreach (var c in featureData.chambers) chamberCells += c.cells.Count;
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex}: " +
-            $"{featureData.chambers.Count} chambers ({chamberCells} cells), " +
-            $"{featureData.rivers.Count} rivers ({riverCells} cells). " +
+            $"{featureData.chambers.Count} chambers ({chamberCells} cells, {featureData.revealedChamberIds.Count} revealed), " +
+            $"{featureData.rivers.Count} rivers ({riverCells} cells, {featureData.revealedRiverIds.Count} revealed). " +
             $"Lookup size {cellLookup.Count}.");
     }
 }

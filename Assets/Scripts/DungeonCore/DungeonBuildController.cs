@@ -10,6 +10,10 @@ using UnityEngine.InputSystem;
 ///   - All Restore* methods now take an explicit FloorRoot so save/load
 ///     places objects on the correct floor regardless of current ActiveFloor.
 ///   - Live placement methods still use ActiveFloor.
+///
+/// DAY 31 PART 1
+///   - HandleClaimClick rejects clicks on river cells (with log feedback).
+///     Day 33 will add mana-cost absorption to repurpose this gate.
 /// </summary>
 public enum BuildMode
 {
@@ -51,11 +55,11 @@ public class DungeonBuildController : MonoBehaviour
 
     private Camera mainCamera;
 
-// Drag-claim state — tracks the last cell visited during a held-drag claim
-// so we don't re-attempt the same cell every frame, and so we only fire
-// once per new cell as the mouse moves.
-private Vector3Int dragClaimLastCell;
-private bool dragClaimActive;
+    // Drag-claim state — tracks the last cell visited during a held-drag claim
+    // so we don't re-attempt the same cell every frame, and so we only fire
+    // once per new cell as the mouse moves.
+    private Vector3Int dragClaimLastCell;
+    private bool dragClaimActive;
 
     private void Awake()
     {
@@ -126,6 +130,17 @@ private bool dragClaimActive;
         if (!ClaimInputThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
         if (!ActiveInfluence.IsTileClaimable(cell)) return;
+
+        // DAY 31 — Rivers cannot be mined directly. Day 33 adds mana-cost absorption.
+        // Drag-claim only fires this branch on NEW cells (ClaimInputThisFrame's
+        // dragClaimLastCell guard), so log frequency is naturally throttled.
+        var features = ActiveFloor?.FeatureGenerator;
+        if (features != null && features.IsRiver(cell))
+        {
+            Debug.Log("[BuildController] Cannot mine river tile — absorption requires mana cost (Day 33).");
+            return;
+        }
+
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
         ActiveInfluence.ClaimTile(cell);
     }
@@ -244,9 +259,6 @@ private bool dragClaimActive;
     }
 
     // ── Stairs ────────────────────────────────────────────────────
-
-    // REPLACE the existing HandleStairsPlacement() in DungeonBuildController.cs
-    // with this version. No other methods in DungeonBuildController need to change.
 
     private void HandleStairsPlacement()
     {

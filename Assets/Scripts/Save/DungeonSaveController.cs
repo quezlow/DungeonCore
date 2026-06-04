@@ -15,13 +15,19 @@ using UnityEngine;
 ///     Floor 0's features, force-saves so the seed persists across an early
 ///     quit (otherwise re-rolling the seed would shift features on next launch).
 ///
+/// DAY 31 PART 1
+///   - InitializeNewGame() also runs a silent reveal catch-up on Floor 0 so
+///     any features touching the starter claimable ring get marked as
+///     revealed without firing the "discovery" banner/SFX. (Default tuning
+///     keeps features outside this radius; the catch-up is defensive.)
+///
 /// LOAD ORDER (matters — do not reorder)
 ///   1. DungeonCore stats
 ///   2. Day/Night
 ///   3. Recreate Floor 1+ via FloorManager.RecreateFloorFromSave
 ///      (each floor's terrain regenerates here; feature + tile data restored next)
 ///   4. FloorManager state (visited, core floor, pending relocation)
-///   5. Per-floor FEATURE data (rivers/chambers) — DAY 30, before tile data
+///   5. Per-floor FEATURE data (rivers/chambers + reveal state) — DAY 30/31
 ///   6. Per-floor tile data (so spawners can find owned tiles)
 ///   7. Entrance (Floor 0 only)
 ///   8. Per-floor objects (spawners, chests, furniture, anchors, traps, stairs)
@@ -85,9 +91,10 @@ public class DungeonSaveController : MonoBehaviour
 
     /// <summary>
     /// Fresh start with no save file. Assigns the world seed and generates
-    /// Floor 0's features, then writes an initial save so quitting before
-    /// the first level-up doesn't lose the seed (which would re-roll all
-    /// features on next launch).
+    /// Floor 0's features, runs a silent reveal catch-up against the starter
+    /// claimable ring, then writes an initial save so quitting before the
+    /// first level-up doesn't lose the seed (which would re-roll all features
+    /// on next launch).
     /// </summary>
     private void InitializeNewGame()
     {
@@ -103,6 +110,12 @@ public class DungeonSaveController : MonoBehaviour
                 floor0Seed,
                 floor0.Terrain.CoreCell,
                 floor0.Terrain.CurrentRadius);
+
+            // DAY 31 — silent catch-up. ClaimStarterArea has already run by now,
+            // so any features that happen to touch the starter ring need to be
+            // marked revealed here. Silent = no banner, no SFX (the player just
+            // started the game; a discovery alert at t=0 is jarring).
+            floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
         else
         {
@@ -295,8 +308,10 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.pendingCoreRelocationFloor,
                 currentSave.visitedFloors);
 
-            // 5 — Per-floor feature data (Day 30). Must precede tile data only for cleanliness —
+            // 5 — Per-floor feature data (Day 30/31). Must precede tile data only for cleanliness —
             //     no hard ordering requirement between features and tiles, but earlier is tidier.
+            //     LoadFromSave restores reveal lists; FeatureRevealController will be idempotent
+            //     when ClaimTile fires OnTileBecameClaimable events for cells touching already-revealed features.
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);

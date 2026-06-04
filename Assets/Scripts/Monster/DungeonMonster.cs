@@ -14,6 +14,13 @@ using UnityEngine;
 ///     right after Initialise().
 ///   - Stats (maxHP, attackDamage, xpPerKill) are multiplied; transform
 ///     scaled; sprite tinted. Status bars get a boss label in Start().
+///
+/// DAY 31 PART 1 — RIVER FORDING
+///   - UpdateTerrainSpeedMultiplier() polls the cell each frame; on a river
+///     cell, terrainSpeedMultiplier becomes FordingSpeedMultiplier (default 0.5).
+///   - Multiplier is folded into every MoveTowards call (Wander + AttackTarget chase).
+///   - Aquatic bypass: if the spawner's MonsterDefinition.isAquatic is true,
+///     the river slowdown is skipped. (Reserved for future water creatures.)
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour
@@ -61,6 +68,9 @@ public class DungeonMonster : MonoBehaviour
     private Vector3 wanderTarget;
     private bool wanderWaiting;
     private float wanderWaitTimer;
+
+    // DAY 31 — Terrain speed multiplier. Recalculated every frame in Update.
+    private float terrainSpeedMultiplier = 1f;
 
     public bool IsBoss => bossDefinition != null;
 
@@ -129,6 +139,8 @@ public class DungeonMonster : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
+        UpdateTerrainSpeedMultiplier();
+
         if (target != null && !target.gameObject.activeInHierarchy)
             target = null;
 
@@ -153,6 +165,31 @@ public class DungeonMonster : MonoBehaviour
         }
     }
 
+    // ── Terrain Speed (DAY 31) ────────────────────────────────────
+
+    /// <summary>
+    /// Polls the cell under the monster's feet and applies the river fording
+    /// slowdown when relevant. Aquatic monsters (spawner.Definition.isAquatic)
+    /// bypass the slowdown.
+    /// </summary>
+    private void UpdateTerrainSpeedMultiplier()
+    {
+        terrainSpeedMultiplier = 1f;
+
+        // Aquatic bypass — water creatures are unaffected by river fording.
+        if (spawner != null && spawner.Definition != null && spawner.Definition.isAquatic) return;
+
+        if (currentFloor == null) return;
+
+        var features = currentFloor.FeatureGenerator;
+        var influence = currentFloor.TileInfluence;
+        if (features == null || influence == null) return;
+
+        Vector3Int cell = influence.WorldToCell(transform.position);
+        if (features.IsRiver(cell))
+            terrainSpeedMultiplier = features.FordingSpeedMultiplier;
+    }
+
     // ── Wander ────────────────────────────────────────────────────
 
     private void Wander()
@@ -169,7 +206,7 @@ public class DungeonMonster : MonoBehaviour
         }
 
         transform.position = Vector2.MoveTowards(
-            transform.position, wanderTarget, moveSpeed * Time.deltaTime);
+            transform.position, wanderTarget, moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
 
         if (Vector2.Distance(transform.position, wanderTarget) < 0.1f)
         {
@@ -234,7 +271,8 @@ public class DungeonMonster : MonoBehaviour
         if (dist > attackRange)
         {
             transform.position = Vector2.MoveTowards(
-                transform.position, target.transform.position, moveSpeed * Time.deltaTime);
+                transform.position, target.transform.position,
+                moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
             return;
         }
 

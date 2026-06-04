@@ -13,11 +13,12 @@ using UnityEngine;
 ///     in the hierarchy as long as references are wired here).
 ///   - Assign the PolygonCollider2D used as the Cinemachine confiner bounds.
 ///   - DAY 30: Assign TerrainFeatureGenerator (sibling on the floor hierarchy).
+///   - DAY 31: Assign FeatureRevealController (sibling on the floor hierarchy).
 ///
 /// FLOOR TEMPLATE PREFAB (Floor 2+)
 ///   - Self-contained prefab: Grid → Tilemaps + DungeonTerrain,
-///     TileInfluenceManager, TrapRegistry, TerrainFeatureGenerator
-///     all as children.
+///     TileInfluenceManager, TrapRegistry, TerrainFeatureGenerator,
+///     FeatureRevealController all as children.
 ///   - Wire all references internally in the prefab.
 ///   - FloorManager sets floorIndex and world position at runtime.
 ///   - Each floor is offset by floorIndex * -2000 on Y so floors never overlap.
@@ -33,6 +34,7 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TrapRegistry trapRegistry;
     [SerializeField] private DungeonTerrain terrain;
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
+    [SerializeField] private FeatureRevealController featureRevealController;
 
     [Header("Camera Bounds")]
     [Tooltip("PolygonCollider2D used as the Cinemachine confiner for this floor.")]
@@ -45,6 +47,7 @@ public class FloorRoot : MonoBehaviour
     public TrapRegistry TrapRegistry => trapRegistry;
     public DungeonTerrain Terrain => terrain;
     public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
+    public FeatureRevealController FeatureRevealController => featureRevealController;
     public PolygonCollider2D CameraBounds => cameraBounds;
 
     /// <summary>World-space Y origin of this floor (floorIndex * -2000).</summary>
@@ -80,7 +83,9 @@ public class FloorRoot : MonoBehaviour
     ///
     /// DAY 30 — also runs feature generation (rivers + chambers) deterministically
     /// from floorSeed BEFORE claiming the starter area, so the starter claim
-    /// could (in future) avoid stamping on top of revealed features.
+    /// fires OnTileBecameClaimable events with features already in place. The
+    /// FeatureRevealController catches those events and reveals any features
+    /// the starter ring touches (with alerts — this is a discovery moment).
     /// </summary>
     public void Bootstrap(Vector3Int centerCell, int floorSeed)
     {

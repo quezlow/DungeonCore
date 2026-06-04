@@ -15,6 +15,13 @@ using UnityEngine;
 ///   UsingStairs state (brief pause), then reparents + teleports to the
 ///   matching stair on the destination floor.
 ///
+/// DAY 31 PART 1 — RIVER FORDING
+///   - UpdateTerrainSpeedMultiplier() polls the cell each frame; on a river,
+///     terrainSpeedMultiplier becomes FordingSpeedMultiplier (default 0.5).
+///   - Multiplier is folded into every MoveTowards call:
+///       FollowPath, MoveToChest, HandleCombat (chase toward target).
+///   - Adventurers have no aquatic bypass (no swim flag on AdventurerDefinition).
+///
 /// INITIALISE must be called by AdventurerSpawner before Start() runs.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
@@ -69,6 +76,10 @@ public class DungeonAdventurer : MonoBehaviour
     // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
+
+    // ── Terrain speed (DAY 31) ───────────────────────────────────
+    // Recalculated every frame in Update from the cell the adventurer is on.
+    private float terrainSpeedMultiplier = 1f;
 
     // ── Runtime state ─────────────────────────────────────────────
     private float currentHP;
@@ -152,6 +163,8 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
+        UpdateTerrainSpeedMultiplier();
+
         if (slowTimer > 0f)
         {
             slowTimer -= Time.deltaTime;
@@ -201,6 +214,25 @@ public class DungeonAdventurer : MonoBehaviour
                 FollowPath();
                 break;
         }
+    }
+
+    // ── Terrain Speed (DAY 31) ────────────────────────────────────
+
+    /// <summary>
+    /// Polls the cell under the adventurer's feet and applies river fording.
+    /// </summary>
+    private void UpdateTerrainSpeedMultiplier()
+    {
+        terrainSpeedMultiplier = 1f;
+        if (currentFloor == null) return;
+
+        var features = currentFloor.FeatureGenerator;
+        var influence = currentFloor.TileInfluence;
+        if (features == null || influence == null) return;
+
+        Vector3Int cell = influence.WorldToCell(transform.position);
+        if (features.IsRiver(cell))
+            terrainSpeedMultiplier = features.FordingSpeedMultiplier;
     }
 
     // ── Pathfinding ───────────────────────────────────────────────
@@ -302,7 +334,7 @@ public class DungeonAdventurer : MonoBehaviour
 
         Vector3 waypoint = currentPath[pathIndex];
         transform.position = Vector2.MoveTowards(
-            transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
+            transform.position, waypoint, moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
 
         if (Vector2.Distance(transform.position, waypoint) < 0.08f)
         {
@@ -502,7 +534,7 @@ public class DungeonAdventurer : MonoBehaviour
         {
             Vector3 waypoint = currentPath[pathIndex];
             transform.position = Vector2.MoveTowards(
-                transform.position, waypoint, moveSpeed * slowMultiplier * Time.deltaTime);
+                transform.position, waypoint, moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
             if (Vector2.Distance(transform.position, waypoint) < 0.08f)
                 pathIndex++;
             return;
@@ -563,7 +595,7 @@ public class DungeonAdventurer : MonoBehaviour
         {
             transform.position = Vector2.MoveTowards(
                 transform.position, combatTarget.transform.position,
-                moveSpeed * slowMultiplier * Time.deltaTime);
+                moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
             return;
         }
 
