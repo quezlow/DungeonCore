@@ -143,6 +143,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData = data ?? new FloorFeatureSaveData();
         RebuildLookup();
 
+        // DAY 31 — Re-apply fog removal for features already revealed in a
+        // prior session. Terrain has just been (re)generated for this floor,
+        // so all cells start fogged; we clear the revealed ones here. Tile
+        // loading later in DungeonSaveController will additionally unfog
+        // owned cells (including chamber cells that may have been claimed).
+        UnfogAllRevealedFeatures();
+
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
             $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
@@ -203,22 +210,24 @@ public class TerrainFeatureGenerator : MonoBehaviour
         };
     }
 
-    /// <summary>Marks a river as revealed and paints its overlay. Idempotent.</summary>
+    /// <summary>Marks a river as revealed, paints its overlay, and removes fog from its cells. Idempotent.</summary>
     public void RevealRiver(int riverId)
     {
         if (featureData == null) return;
         if (featureData.revealedRiverIds.Contains(riverId)) return;
         featureData.revealedRiverIds.Add(riverId);
         PaintRiverOverlay(riverId);
+        UnfogRiver(riverId);
     }
 
-    /// <summary>Marks a chamber as revealed and paints its overlay. Idempotent.</summary>
+    /// <summary>Marks a chamber as revealed, paints its overlay, and removes fog from its cells. Idempotent.</summary>
     public void RevealChamber(int chamberId)
     {
         if (featureData == null) return;
         if (featureData.revealedChamberIds.Contains(chamberId)) return;
         featureData.revealedChamberIds.Add(chamberId);
         PaintChamberOverlay(chamberId);
+        UnfogChamber(chamberId);
     }
 
     /// <summary>
@@ -633,6 +642,46 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugChamberTile);
             return;
         }
+    }
+
+    // ── Fog removal (DAY 31) ──────────────────────────────────────
+
+    private void UnfogRiver(int riverId)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null) return;
+        foreach (var r in featureData.rivers)
+        {
+            if (r.id != riverId) continue;
+            foreach (var sv in r.cells)
+                terrain.RevealTile(sv.ToVector3Int());
+            return;
+        }
+    }
+
+    private void UnfogChamber(int chamberId)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null) return;
+        foreach (var ch in featureData.chambers)
+        {
+            if (ch.id != chamberId) continue;
+            foreach (var sv in ch.cells)
+                terrain.RevealTile(sv.ToVector3Int());
+            return;
+        }
+    }
+
+    /// <summary>
+    /// Re-applies fog removal for every already-revealed feature. Called from
+    /// LoadFromSave so a loaded game's terrain shows cleared fog over rivers
+    /// and chambers that were revealed in a previous session.
+    /// </summary>
+    private void UnfogAllRevealedFeatures()
+    {
+        if (featureData == null) return;
+        foreach (var rid in featureData.revealedRiverIds) UnfogRiver(rid);
+        foreach (var cid in featureData.revealedChamberIds) UnfogChamber(cid);
     }
 
     [ContextMenu("Clear Debug Overlay")]

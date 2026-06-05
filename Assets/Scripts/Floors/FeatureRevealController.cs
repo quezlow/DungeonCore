@@ -25,18 +25,24 @@ using UnityEngine;
 ///   For loaded saves, reveal state is restored from FloorFeatureSaveData
 ///   directly inside TerrainFeatureGenerator.LoadFromSave().
 ///
+/// BANNER
+///   Uses FeatureAlertBanner (a separate script from BossAlertBanner). The
+///   feature banner is purpose-built to stay active in the hierarchy so we
+///   can call Show() without the activation/Awake quirks that crashed
+///   BossAlertBanner.Show() when called from outside its expected flow.
+///
 /// ALERT ROUTING
 ///   - AlertsLog.AddAlert(...) is called for every reveal (silent or not) so
 ///     the player can click-jump back to discoveries. The 'silent' parameter
-///     gates the BossAlertBanner pop and the SFX so initial catch-ups are
-///     quiet.
+///     gates the FeatureAlertBanner pop and the SFX so initial catch-ups
+///     are quiet.
 /// </summary>
 public class FeatureRevealController : MonoBehaviour
 {
-    [Header("Alert (optional — auto-found if left blank)")]
-    [Tooltip("If assigned, the banner will be reused for feature-discovery messages. " +
-             "If null, the controller falls back to AlertsLog only.")]
-    [SerializeField] private BossAlertBanner discoveryBanner;
+    [Header("Alert (optional)")]
+    [Tooltip("If assigned, the banner pops on each non-silent reveal. " +
+             "Leave null to skip banner; AlertsLog entries still fire.")]
+    [SerializeField] private FeatureAlertBanner discoveryBanner;
 
     [Header("SFX")]
     [Tooltip("SoundEffectLibrary key to play on a non-silent reveal. " +
@@ -95,7 +101,7 @@ public class FeatureRevealController : MonoBehaviour
     /// <summary>
     /// Scans the current claimable set and reveals any features touching it.
     /// Called by DungeonSaveController.InitializeNewGame() after Floor 0
-    /// feature generation. Use silent: true to suppress alerts and SFX so
+    /// feature generation. Use silent: true to suppress banner and SFX so
     /// pre-existing claimable cells don't all fire discovery banners at once.
     /// </summary>
     public void RunInitialCatchup(bool silent)
@@ -103,8 +109,6 @@ public class FeatureRevealController : MonoBehaviour
         if (influence == null || features == null) return;
         if (!features.HasGenerated) return;
 
-        // Snapshot to a fresh list — RevealRiver/Chamber may mutate save data
-        // but doesn't mutate the claimable set, so this is just a safe-iterate.
         foreach (var cell in influence.GetClaimableTilesSnapshot())
             TryRevealFeatureAtCell(cell, silent: silent);
     }
@@ -145,16 +149,11 @@ public class FeatureRevealController : MonoBehaviour
 
         if (silent) return;
 
-        // One-shot banner. BossAlertBanner.Show uses StartCoroutine, which
-        // requires an active GameObject — banners usually sit inactive in the
-        // scene until shown, so we activate before calling Show.
-        var banner = discoveryBanner;
-        if (banner != null)
-        {
-            if (!banner.gameObject.activeSelf)
-                banner.gameObject.SetActive(true);
-            banner.Show(message, worldPos, floorIdx);
-        }
+        // Feature banner stays active in the hierarchy by design (see
+        // FeatureAlertBanner), so Show() never hits the activation issue
+        // that BossAlertBanner suffered when called from here.
+        if (discoveryBanner != null)
+            discoveryBanner.Show(message, worldPos, floorIdx);
 
         SoundEffectManager.Play(revealSfxKey);
     }

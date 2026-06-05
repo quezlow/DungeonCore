@@ -8762,7 +8762,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bafd286e46e0e0346bd145988a329219, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeatureRevealController
-  discoveryBanner: {fileID: 1836445313358229442, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+  discoveryBanner: {fileID: 1937292235}
   revealSfxKey: FeatureReveal
 --- !u!4 &652070176
 Transform:
@@ -21031,6 +21031,10 @@ PrefabInstance:
       propertyPath: hiddenY
       value: 600
       objectReference: {fileID: 0}
+    - target: {fileID: 5074255061095212669, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+      propertyPath: hiddenY
+      value: 600
+      objectReference: {fileID: 0}
     - target: {fileID: 5387318605209844758, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
       propertyPath: m_VerticalAlignment
       value: 512
@@ -21084,6 +21088,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+--- !u!114 &1937292235 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5074255061095212669, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+  m_PrefabInstance: {fileID: 1937292234}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de7d4971ce1223b4eaf73fa485092c77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FeatureAlertBanner
 --- !u!1 &1942535656
 GameObject:
   m_ObjectHideFlags: 0

@@ -30,7 +30,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 7078662517783659314}
+  m_Father: {fileID: 7767346012672725327}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -169,7 +169,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3937218414882753379}
-  m_Father: {fileID: 7078662517783659314}
+  m_Father: {fileID: 7767346012672725327}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
@@ -424,7 +424,9 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 6109512713835543752}
+  - {fileID: 6018173618334752111}
   m_Father: {fileID: 7078662517783659314}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -479,7 +481,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7078662517783659314}
-  - component: {fileID: 1836445313358229442}
+  - component: {fileID: 5074255061095212669}
   m_Layer: 0
   m_Name: FeatureAlertBanner
   m_TagString: Untagged
@@ -501,11 +503,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7767346012672725327}
-  - {fileID: 6109512713835543752}
-  - {fileID: 6018173618334752111}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1836445313358229442
+--- !u!114 &5074255061095212669
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -514,9 +514,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 8095795421073426700}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 366532b8ece2550439d6f2133a3447fd, type: 3}
+  m_Script: {fileID: 11500000, guid: de7d4971ce1223b4eaf73fa485092c77, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BossAlertBanner
+  m_EditorClassIdentifier: Assembly-CSharp::FeatureAlertBanner
   rect: {fileID: 7767346012672725327}
   label: {fileID: 5387318605209844758}
   clickArea: {fileID: 8249643358895753009}
