@@ -6,14 +6,12 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Central controller for dungeon build modes.
 ///
-/// DAY 27 + SAVE
-///   - All Restore* methods now take an explicit FloorRoot so save/load
-///     places objects on the correct floor regardless of current ActiveFloor.
-///   - Live placement methods still use ActiveFloor.
-///
 /// DAY 31 PART 1
 ///   - HandleClaimClick rejects clicks on river cells (with log feedback).
-///     Day 33 will add mana-cost absorption to repurpose this gate.
+///
+/// DAY 31 PART 2
+///   - HandleClaimClick also rejects clicks on cells inside an uncleared
+///     chamber. Player must kill the wild monsters first.
 /// </summary>
 public enum BuildMode
 {
@@ -55,9 +53,6 @@ public class DungeonBuildController : MonoBehaviour
 
     private Camera mainCamera;
 
-    // Drag-claim state — tracks the last cell visited during a held-drag claim
-    // so we don't re-attempt the same cell every frame, and so we only fire
-    // once per new cell as the mouse moves.
     private Vector3Int dragClaimLastCell;
     private bool dragClaimActive;
 
@@ -91,8 +86,6 @@ public class DungeonBuildController : MonoBehaviour
         }
     }
 
-    // ── Mode Switching ────────────────────────────────────────────
-
     public void SetMode(BuildMode mode)
     {
         if (CurrentMode == mode) return;
@@ -117,8 +110,6 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.PlaceCore);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
-
     private TileInfluenceManager ActiveInfluence => FloorManager.Instance?.ActiveFloor?.TileInfluence;
     private TrapRegistry ActiveTrapRegistry => FloorManager.Instance?.ActiveFloor?.TrapRegistry;
     private FloorRoot ActiveFloor => FloorManager.Instance?.ActiveFloor;
@@ -131,14 +122,23 @@ public class DungeonBuildController : MonoBehaviour
         if (ActiveInfluence == null) return;
         if (!ActiveInfluence.IsTileClaimable(cell)) return;
 
-        // DAY 31 — Rivers cannot be mined directly. Day 33 adds mana-cost absorption.
+        // DAY 31 PART 1 — Rivers cannot be mined directly. Day 33 adds mana-cost absorption.
+        // DAY 31 PART 2 — Uncleared chambers gated until wild monsters die.
         // Drag-claim only fires this branch on NEW cells (ClaimInputThisFrame's
         // dragClaimLastCell guard), so log frequency is naturally throttled.
         var features = ActiveFloor?.FeatureGenerator;
-        if (features != null && features.IsRiver(cell))
+        if (features != null)
         {
-            Debug.Log("[BuildController] Cannot mine river tile — absorption requires mana cost (Day 33).");
-            return;
+            if (features.IsRiver(cell))
+            {
+                Debug.Log("[BuildController] Cannot mine river tile — absorption requires mana cost (Day 33).");
+                return;
+            }
+            if (features.IsCellInUnclearedChamber(cell))
+            {
+                Debug.Log("[BuildController] Cannot mine cavern tile — wild monsters must be cleared first.");
+                return;
+            }
         }
 
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
@@ -266,7 +266,6 @@ public class DungeonBuildController : MonoBehaviour
 
         if (FloorManager.Instance == null) { Debug.LogError("[BuildController] FloorManager not found."); return; }
 
-        // Gate 1: core relocation pending.
         if (FloorManager.Instance.IsCoreRelocationPending)
         {
             Debug.Log("[BuildController] Cannot place stairs — relocate the core first.");
@@ -274,7 +273,6 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Gate 2: already at max floor depth.
         if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex)
         {
             Debug.Log("[BuildController] Cannot place stairs — this is the deepest floor.");
@@ -282,7 +280,6 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Gate 3: this floor already has a Down stair.
         if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex))
         {
             Debug.Log("[BuildController] Cannot place stairs — this floor already has a Down stair.");
@@ -290,7 +287,6 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Gate 4: need a stair credit (granted by tier-up).
         if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0)
         {
             Debug.Log("[BuildController] Cannot place stairs — no stair credit available (tier up first).");
@@ -310,10 +306,8 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // All gates passed — consume the credit and place.
         if (!DungeonCore.Instance.TryConsumeStairCredit())
         {
-            // Shouldn't happen given the gate check above, but defensive.
             Debug.LogWarning("[BuildController] Stair credit vanished between check and consume.");
             return;
         }
@@ -370,12 +364,9 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     // ── Restore (Save/Load) ───────────────────────────────────────
-    // All restore methods now take an explicit FloorRoot. The legacy single-arg
-    // signatures still exist as compatibility shims that route through ActiveFloor.
 
     public void RestoreEntrance(Vector3Int cell)
     {
-        // Entrance is Floor 0 only.
         var floor = FloorManager.Instance?.GetFloor(0);
         RestoreEntrance(floor, cell);
     }
@@ -510,18 +501,12 @@ public class DungeonBuildController : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Drag-aware claim input. Returns true on the initial click AND on every
-    /// frame the mouse moves to a new cell while left-button is held. Used only
-    /// by Claim mode — placement modes still use single-click LeftClickThisFrame.
-    /// </summary>
     private bool ClaimInputThisFrame(out Vector3Int cell)
     {
         cell = default;
         var mouse = Mouse.current;
         if (mouse == null) return false;
 
-        // Reset on button release so the next press starts a new drag.
         if (mouse.leftButton.wasReleasedThisFrame)
             dragClaimActive = false;
 
@@ -539,7 +524,6 @@ public class DungeonBuildController : MonoBehaviour
         Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
         Vector3Int newCell = influence.WorldToCell(worldPos);
 
-        // Initial press: always counts.
         if (pressed)
         {
             cell = newCell;
@@ -548,7 +532,6 @@ public class DungeonBuildController : MonoBehaviour
             return true;
         }
 
-        // Hold-drag: only fire when the mouse has moved to a different cell.
         if (held && dragClaimActive && newCell != dragClaimLastCell)
         {
             cell = newCell;

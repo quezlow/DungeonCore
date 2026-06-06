@@ -5,36 +5,23 @@ using UnityEngine;
 /// <summary>
 /// Dungeon-specific save/load system.
 ///
-/// DAY 27 MULTI-FLOOR SAVE
-///   Save format stores per-floor data plus FloorManager state.
-///
-/// DAY 30 PROCEDURAL FEATURES
-///   - worldSeed on DungeonSaveData, generated once at new-game time.
-///   - Per-floor floorSeed + featureData (rivers + chambers).
-///   - InitializeNewGame() runs on fresh start: assigns worldSeed, generates
-///     Floor 0's features, force-saves so the seed persists across an early
-///     quit (otherwise re-rolling the seed would shift features on next launch).
-///
-/// DAY 31 PART 1
-///   - InitializeNewGame() also runs a silent reveal catch-up on Floor 0 so
-///     any features touching the starter claimable ring get marked as
-///     revealed without firing the "discovery" banner/SFX. (Default tuning
-///     keeps features outside this radius; the catch-up is defensive.)
+/// DAY 31 PART 2 — Wild monsters
+///   After per-floor feature data is restored (step 5), the per-floor
+///   WildMonsterController.RestoreFromSave() respawns wild monsters for any
+///   revealed-but-uncleared chambers (using ChamberData.aliveWildCount).
+///   Exact pre-save positions/HPs are not preserved — only the count.
 ///
 /// LOAD ORDER (matters — do not reorder)
 ///   1. DungeonCore stats
 ///   2. Day/Night
 ///   3. Recreate Floor 1+ via FloorManager.RecreateFloorFromSave
-///      (each floor's terrain regenerates here; feature + tile data restored next)
 ///   4. FloorManager state (visited, core floor, pending relocation)
-///   5. Per-floor FEATURE data (rivers/chambers + reveal state) — DAY 30/31
-///   6. Per-floor tile data (so spawners can find owned tiles)
+///   5. Per-floor FEATURE data (rivers/chambers + reveal + cleared/aliveWildCount)
+///   5a. Per-floor WILD MONSTER respawn (DAY 31 PART 2)
+///   6. Per-floor tile data
 ///   7. Entrance (Floor 0 only)
 ///   8. Per-floor objects (spawners, chests, furniture, anchors, traps, stairs)
 ///   9. Snap camera to core's current floor
-///
-/// MID-TRANSIT SAVE
-///   Treated as completed on load: core position is wherever it was when saved.
 /// </summary>
 [DefaultExecutionOrder(100)]
 public class DungeonSaveController : MonoBehaviour
@@ -51,11 +38,8 @@ public class DungeonSaveController : MonoBehaviour
     private string savePath;
     private DungeonSaveData currentSave = new();
 
-    /// <summary>True while LoadGame is running. Guards SaveGame from being
-    /// triggered mid-load by event side-effects.</summary>
     private bool isLoading;
 
-    /// <summary>World-wide RNG seed for this run. Set on new game, persisted across reloads.</summary>
     public int WorldSeed { get; private set; }
 
     private void Awake()
@@ -89,13 +73,6 @@ public class DungeonSaveController : MonoBehaviour
 
     // ── New game ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// Fresh start with no save file. Assigns the world seed and generates
-    /// Floor 0's features, runs a silent reveal catch-up against the starter
-    /// claimable ring, then writes an initial save so quitting before the
-    /// first level-up doesn't lose the seed (which would re-roll all features
-    /// on next launch).
-    /// </summary>
     private void InitializeNewGame()
     {
         WorldSeed = new System.Random().Next();
@@ -111,10 +88,8 @@ public class DungeonSaveController : MonoBehaviour
                 floor0.Terrain.CoreCell,
                 floor0.Terrain.CurrentRadius);
 
-            // DAY 31 — silent catch-up. ClaimStarterArea has already run by now,
-            // so any features that happen to touch the starter ring need to be
-            // marked revealed here. Silent = no banner, no SFX (the player just
-            // started the game; a discovery alert at t=0 is jarring).
+            // DAY 31 PART 1 — silent reveal catch-up for features touching starter ring.
+            // (This may also fire OnChamberRevealed → WildMonsterController spawns wild monsters.)
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
         else
@@ -154,12 +129,10 @@ public class DungeonSaveController : MonoBehaviour
         if (DayNightCycle.Instance != null)
             currentSave.dayNightData = DayNightCycle.Instance.GetSaveData();
 
-        // Entrance (Floor 0).
         currentSave.hasEntrance = DungeonEntrance.Instance != null;
         if (currentSave.hasEntrance)
             currentSave.entranceCell = SerializableVector3Int.From(DungeonEntrance.Instance.OccupiedCell);
 
-        // Iterate floors and gather per-floor data.
         foreach (var floor in FloorManager.Instance.AllFloors)
         {
             if (floor == null) continue;
@@ -182,7 +155,6 @@ public class DungeonSaveController : MonoBehaviour
             tileData = floor.TileInfluence != null ? floor.TileInfluence.GetSaveData() : null,
         };
 
-        // Spawners on this floor
         foreach (var s in floor.GetComponentsInChildren<MonsterSpawner>(true))
         {
             if (s.Definition == null) continue;
@@ -193,7 +165,6 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
-        // Chests
         foreach (var c in floor.GetComponentsInChildren<DungeonChest>(true))
         {
             data.chests.Add(new DungeonChestSaveData
@@ -204,7 +175,6 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
-        // Furniture
         foreach (var p in floor.GetComponentsInChildren<FurniturePiece>(true))
         {
             if (p.Definition == null) continue;
@@ -215,7 +185,6 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
-        // Room anchors
         foreach (var a in floor.GetComponentsInChildren<RoomAnchor>(true))
         {
             data.roomAnchors.Add(new RoomAnchorSaveData
@@ -225,7 +194,6 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
-        // Traps
         foreach (var t in floor.GetComponentsInChildren<TrapBase>(true))
         {
             if (t.Definition == null) continue;
@@ -242,7 +210,6 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
-        // Stairs
         foreach (var st in floor.GetComponentsInChildren<DungeonStairs>(true))
         {
             data.stairs.Add(new StairsSaveData
@@ -257,7 +224,6 @@ public class DungeonSaveController : MonoBehaviour
 
     // ── Load ──────────────────────────────────────────────────────
 
-    /// <summary>Loads from disk. Returns true on successful load, false on no-save or invalid.</summary>
     private bool LoadGame()
     {
         if (!File.Exists(savePath))
@@ -276,7 +242,6 @@ public class DungeonSaveController : MonoBehaviour
                 return false;
             }
 
-            // Restore world seed first — anything else that might consult it now sees the correct value.
             WorldSeed = currentSave.worldSeed;
 
             // 1 — Core stats
@@ -287,12 +252,11 @@ public class DungeonSaveController : MonoBehaviour
             if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
                 DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);
 
-            // 3 — Recreate Floor 1+ before applying FloorManager state.
+            // 3 — Recreate Floor 1+
             foreach (var floorData in currentSave.floors)
             {
                 if (floorData.floorIndex == 0)
                 {
-                    // Floor 0 already exists in the scene; just record its seed.
                     FloorManager.Instance.SetFloorSeed(0, floorData.floorSeed);
                     continue;
                 }
@@ -302,21 +266,27 @@ public class DungeonSaveController : MonoBehaviour
                     floorData.floorSeed);
             }
 
-            // 4 — FloorManager state (after floors exist)
+            // 4 — FloorManager state
             FloorManager.Instance.RestoreState(
                 currentSave.coreFloorIndex,
                 currentSave.pendingCoreRelocationFloor,
                 currentSave.visitedFloors);
 
-            // 5 — Per-floor feature data (Day 30/31). Must precede tile data only for cleanliness —
-            //     no hard ordering requirement between features and tiles, but earlier is tidier.
-            //     LoadFromSave restores reveal lists; FeatureRevealController will be idempotent
-            //     when ClaimTile fires OnTileBecameClaimable events for cells touching already-revealed features.
+            // 5 — Feature data (rivers/chambers + reveal + cleared/aliveWildCount).
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
                 if (floor?.FeatureGenerator != null)
                     floor.FeatureGenerator.LoadFromSave(floorData.featureData);
+            }
+
+            // 5a — DAY 31 PART 2: respawn wild monsters in revealed-uncleared chambers.
+            //      Done before tile load so spawned wild monsters and tile claims
+            //      settle in a consistent order.
+            foreach (var floorData in currentSave.floors)
+            {
+                var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
+                floor?.WildMonsterController?.RestoreFromSave();
             }
 
             // 6 — Per-floor tile data
@@ -327,7 +297,7 @@ public class DungeonSaveController : MonoBehaviour
                     floor.TileInfluence.LoadSaveData(floorData.tileData);
             }
 
-            // 7 — Entrance (Floor 0 only)
+            // 7 — Entrance
             if (currentSave.hasEntrance)
             {
                 var floor0 = FloorManager.Instance.GetFloor(0);
@@ -342,7 +312,7 @@ public class DungeonSaveController : MonoBehaviour
                 RestoreFloorObjects(floor, floorData);
             }
 
-            // 9 — Snap camera to the core's current floor
+            // 9 — Snap camera
             FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
 
             Debug.Log($"[DungeonSaveController] Load complete ({currentSave.floors.Count} floors, worldSeed {WorldSeed}).");
@@ -412,8 +382,6 @@ public class DungeonSaveController : MonoBehaviour
                     floor, st.cell.ToVector3Int(), (DungeonStairs.Direction)st.direction);
         }
     }
-
-    // ── Utilities ─────────────────────────────────────────────────
 
     public void DeleteSave()
     {

@@ -8,25 +8,20 @@ using UnityEngine;
 /// FLOOR 1 SETUP (existing scene objects)
 ///   - Create an empty GameObject "Floor1Root" at scene root, Y = 0.
 ///   - Add this component, set floorIndex = 0.
-///   - Assign TileInfluenceManager, TrapRegistry, DungeonTerrain from
-///     their existing scene GameObjects (they can stay wherever they are
-///     in the hierarchy as long as references are wired here).
+///   - Assign TileInfluenceManager, TrapRegistry, DungeonTerrain.
 ///   - Assign the PolygonCollider2D used as the Cinemachine confiner bounds.
-///   - DAY 30: Assign TerrainFeatureGenerator (sibling on the floor hierarchy).
-///   - DAY 31: Assign FeatureRevealController (sibling on the floor hierarchy).
+///   - DAY 30: Assign TerrainFeatureGenerator.
+///   - DAY 31 PART 1: Assign FeatureRevealController.
+///   - DAY 31 PART 2: Assign WildMonsterController.
 ///
 /// FLOOR TEMPLATE PREFAB (Floor 2+)
-///   - Self-contained prefab: Grid → Tilemaps + DungeonTerrain,
-///     TileInfluenceManager, TrapRegistry, TerrainFeatureGenerator,
-///     FeatureRevealController all as children.
-///   - Wire all references internally in the prefab.
+///   - Self-contained prefab with all the above components wired internally.
 ///   - FloorManager sets floorIndex and world position at runtime.
 ///   - Each floor is offset by floorIndex * -2000 on Y so floors never overlap.
 /// </summary>
 public class FloorRoot : MonoBehaviour
 {
     [Header("Identity")]
-    [Tooltip("0 = Floor 1. Set automatically by FloorManager for Floor 2+.")]
     [SerializeField] private int floorIndex = 0;
 
     [Header("Per-Floor Managers")]
@@ -35,9 +30,9 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private DungeonTerrain terrain;
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
     [SerializeField] private FeatureRevealController featureRevealController;
+    [SerializeField] private WildMonsterController wildMonsterController;
 
     [Header("Camera Bounds")]
-    [Tooltip("PolygonCollider2D used as the Cinemachine confiner for this floor.")]
     [SerializeField] private PolygonCollider2D cameraBounds;
 
     // ── Properties ────────────────────────────────────────────────
@@ -48,9 +43,9 @@ public class FloorRoot : MonoBehaviour
     public DungeonTerrain Terrain => terrain;
     public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
     public FeatureRevealController FeatureRevealController => featureRevealController;
+    public WildMonsterController WildMonsterController => wildMonsterController;
     public PolygonCollider2D CameraBounds => cameraBounds;
 
-    /// <summary>World-space Y origin of this floor (floorIndex * -2000).</summary>
     public float WorldOriginY => floorIndex * -2000f;
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -74,19 +69,6 @@ public class FloorRoot : MonoBehaviour
         FloorManager.Instance?.RegisterFloor(this);
     }
 
-    /// <summary>
-    /// Seeds the floor's terrain, features, and influence from a stair cell on
-    /// the floor above. The cell coordinates are in the floor above's space;
-    /// since all floors share the same local coordinate system (just offset
-    /// in world Y), the same cell coords are valid here.
-    /// Called by FloorManager after Initialise().
-    ///
-    /// DAY 30 — also runs feature generation (rivers + chambers) deterministically
-    /// from floorSeed BEFORE claiming the starter area, so the starter claim
-    /// fires OnTileBecameClaimable events with features already in place. The
-    /// FeatureRevealController catches those events and reveals any features
-    /// the starter ring touches (with alerts — this is a discovery moment).
-    /// </summary>
     public void Bootstrap(Vector3Int centerCell, int floorSeed)
     {
         if (terrain != null)

@@ -3903,7 +3903,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 629551820}
+  m_Father: {fileID: 1321636149}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &328756363
 MonoBehaviour:
@@ -5731,6 +5731,11 @@ MonoBehaviour:
   exclusionRadiusFromCenter: 4
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
+  wildMonsterPool:
+  - {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
+  wildMonsterMin: 2
+  wildMonsterMax: 6
+  wildMonsterCellDivisor: 6
   autoPaintDebugOverlay: 1
   debugOverlayTilemap: {fileID: 1163852729}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
@@ -5743,12 +5748,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 468668984}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 629551820}
+  m_Father: {fileID: 1321636149}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &474160595
 GameObject:
@@ -8572,6 +8577,7 @@ MonoBehaviour:
   terrain: {fileID: 1639800173}
   featureGenerator: {fileID: 468668985}
   featureRevealController: {fileID: 652070175}
+  wildMonsterController: {fileID: 1848019895}
   cameraBounds: {fileID: 2117633017}
 --- !u!4 &629551820
 Transform:
@@ -8586,12 +8592,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 328756362}
   - {fileID: 7616670302947396056}
   - {fileID: 1639800171}
   - {fileID: 2117633016}
-  - {fileID: 468668986}
-  - {fileID: 652070176}
+  - {fileID: 1321636149}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &637941247
@@ -8772,12 +8776,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 652070174}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 629551820}
+  m_Father: {fileID: 1321636149}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &666918668
 GameObject:
@@ -14353,6 +14357,41 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1318745287}
   m_CullTransparentMesh: 1
+--- !u!1 &1321636148
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1321636149}
+  m_Layer: 0
+  m_Name: Managers/Controllers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1321636149
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1321636148}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 468668986}
+  - {fileID: 652070176}
+  - {fileID: 328756362}
+  - {fileID: 1848019896}
+  m_Father: {fileID: 629551820}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1323356320
 GameObject:
   m_ObjectHideFlags: 0
@@ -20126,6 +20165,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1845158538}
   m_CullTransparentMesh: 1
+--- !u!1 &1848019894
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1848019896}
+  - component: {fileID: 1848019895}
+  m_Layer: 0
+  m_Name: WildMonsterController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1848019895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1848019894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29319c2715acc174ba70e12de226a86f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WildMonsterController
+  clearedBanner: {fileID: 1937292235}
+  clearedSfxKey: ChamberCleared
+--- !u!4 &1848019896
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1848019894}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1321636149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1862298752
 GameObject:
   m_ObjectHideFlags: 0

@@ -7,25 +7,19 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// Per-floor tile ownership manager. No longer a singleton.
-/// Access via FloorRoot.TileInfluence or FloorManager.Instance.ActiveFloor.TileInfluence.
-///
-/// CHANGES FROM PRE-DAY-27
-///   - Static Instance removed conceptually (still assigned for legacy callers).
-///   - DungeonTerrain reference fetched from sibling FloorRoot, not via singleton.
-///   - ClaimStarterArea() added for bootstrapping newly created floors.
+/// Per-floor tile ownership manager.
 ///
 /// DAY 31 PART 1
-///   - New event OnTileBecameClaimable fires for every cell that enters the
+///   - OnTileBecameClaimable event fires for every cell newly added to the
 ///     claimable ring (player claim, passive expansion, starter area, save load).
-///     Listeners (FeatureRevealController) should be idempotent.
-///   - ClaimTile rejects river cells when called non-silently (player + passive
-///     expansion paths). silent: true bypasses so save-restore can re-apply any
-///     legitimately-claimed river cells from a future Day 33 absorption.
-///   - PassiveExpansionRoutine never picks river cells (the random sample skips
-///     them — the player must use mana-cost absorption in Day 33).
-///   - GetClaimableTilesSnapshot() exposes a defensive copy for the
-///     FeatureRevealController catch-up pass.
+///   - ClaimTile rejects river cells when called non-silently.
+///   - Passive expansion skips river cells.
+///   - GetClaimableTilesSnapshot exposes a defensive copy for catch-up scans.
+///
+/// DAY 31 PART 2
+///   - ClaimTile also rejects cells in an uncleared chamber. silent: true
+///     bypasses for save-restore.
+///   - Passive expansion skips uncleared-chamber cells too.
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -53,9 +47,7 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Events ────────────────────────────────────────────────────
     public event Action<int> OnTileCountChanged;
 
-    /// <summary>DAY 31 — Fires whenever a cell enters the claimable ring. FeatureRevealController
-    /// subscribes to this. Fires for all paths (player claim, passive expansion, starter area,
-    /// save load) — listeners should be idempotent.</summary>
+    /// <summary>DAY 31 — Fires whenever a cell enters the claimable ring.</summary>
     public event Action<Vector3Int> OnTileBecameClaimable;
 
     // ── Internal ──────────────────────────────────────────────────
@@ -86,8 +78,6 @@ public class TileInfluenceManager : MonoBehaviour
 
     private void Start()
     {
-        // Terrain is injected by FloorRoot.InjectDependencies().
-        // If it's still null here, fall back to GetComponentInParent as a courtesy.
         if (terrain == null)
         {
             var floorRoot = GetComponentInParent<FloorRoot>();
@@ -110,10 +100,6 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Bootstrap (Floor 2+) ──────────────────────────────────────
 
-    /// <summary>
-    /// Seeds a small starter area around centerCell.
-    /// Called by FloorRoot.Bootstrap() for newly created floors.
-    /// </summary>
     public void ClaimStarterArea(Vector3Int centerCell)
     {
         var offsets = new[]
@@ -128,15 +114,12 @@ public class TileInfluenceManager : MonoBehaviour
             Vector3Int pos = centerCell + offset;
             if (ownedTiles.Contains(pos)) continue;
 
-            // Skip bounds check here — terrain was just generated at this centre,
-            // so these cells are guaranteed valid.
             ownedTiles.Add(pos);
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
             claimableTilemap.SetTile(pos, null);
         }
 
-        // Build the claimable ring around the starter area.
         foreach (var offset in offsets)
         {
             Vector3Int pos = centerCell + offset;
@@ -157,17 +140,20 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Claiming ──────────────────────────────────────────────────
 
-    /// <summary>Claims a tile, updates neighbours, notifies DungeonCore.</summary>
     public void ClaimTile(Vector3Int pos, bool silent = false)
     {
         if (ownedTiles.Contains(pos)) return;
         if (terrain != null && !terrain.IsWithinBounds(pos)) return;
 
-        // DAY 31 — Rivers cannot be claimed via normal mining. Day 33 adds
-        // mana-cost absorption. silent: true bypasses the check so save-
-        // restore can re-apply any river cells that legitimately ended up
-        // claimed (e.g. via future Day 33 absorption persisted in a save).
-        if (!silent && Features != null && Features.IsRiver(pos)) return;
+        // DAY 31 PART 1 — rivers cannot be claimed via normal mining.
+        // DAY 31 PART 2 — uncleared chamber cells likewise blocked.
+        // silent: true bypasses both gates so save-restore can re-apply
+        // any cells that legitimately ended up claimed in a prior session.
+        if (!silent && Features != null)
+        {
+            if (Features.IsRiver(pos)) return;
+            if (Features.IsCellInUnclearedChamber(pos)) return;
+        }
 
         ownedTiles.Add(pos);
         claimableTiles.Remove(pos);
@@ -194,7 +180,6 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    /// <summary>Removes a tile from ownership (e.g. Destroyer consequence).</summary>
     public void UnclaimTile(Vector3Int pos)
     {
         if (!ownedTiles.Contains(pos)) return;
@@ -208,10 +193,6 @@ public class TileInfluenceManager : MonoBehaviour
         OnTileCountChanged?.Invoke(ownedTiles.Count);
     }
 
-    /// <summary>
-    /// Called on first core breach. Removes owned tiles within radius of the
-    /// core cell. The core tile itself is always preserved.
-    /// </summary>
     public void ShrinkInfluenceAroundCore(Vector3Int coreCell, float radius)
     {
         int cellRadius = Mathf.CeilToInt(radius);
@@ -263,12 +244,14 @@ public class TileInfluenceManager : MonoBehaviour
 
             if (claimableTiles.Count == 0) continue;
 
-            // DAY 31 — passive expansion never absorbs rivers (that requires
-            // explicit player mana spend, Day 33). Skip if the random pick
-            // lands on a river cell — next tick will try a different cell.
+            // DAY 31 — passive expansion never absorbs rivers or uncleared chambers.
             int index = UnityEngine.Random.Range(0, claimableTiles.Count);
             Vector3Int target = claimableTiles.ElementAt(index);
-            if (Features != null && Features.IsRiver(target)) continue;
+            if (Features != null)
+            {
+                if (Features.IsRiver(target)) continue;
+                if (Features.IsCellInUnclearedChamber(target)) continue;
+            }
             ClaimTile(target);
         }
     }
@@ -319,13 +302,9 @@ public class TileInfluenceManager : MonoBehaviour
     public bool IsTileOwned(Vector3Int pos) => ownedTiles.Contains(pos);
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
 
-    /// <summary>Read-only view of owned tiles for external consumers (e.g., DungeonBoundsUpdater).</summary>
     public IReadOnlyCollection<Vector3Int> OwnedTiles => ownedTiles;
     public int OwnedTileCount => ownedTiles.Count;
 
-    /// <summary>DAY 31 — Returns a defensive copy of the current claimable set,
-    /// safe to iterate while reveal logic mutates feature state. Used by
-    /// FeatureRevealController.RunInitialCatchup().</summary>
     public List<Vector3Int> GetClaimableTilesSnapshot() => new List<Vector3Int>(claimableTiles);
 
     // ── Save / Load ───────────────────────────────────────────────

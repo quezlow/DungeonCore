@@ -127,6 +127,52 @@ TilemapRenderer:
   m_SortOrder: 0
   m_Mode: 0
   m_DetectChunkCullingBounds: 0
+--- !u!1 &2364275263178899414
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8373826761656577404}
+  - component: {fileID: 7821470843430572059}
+  m_Layer: 0
+  m_Name: WildMonsterController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8373826761656577404
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2364275263178899414}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4528806149538725221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7821470843430572059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2364275263178899414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29319c2715acc174ba70e12de226a86f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WildMonsterController
+  clearedBanner: {fileID: 5074255061095212669, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+  clearedSfxKey: ChamberCleared
 --- !u!1 &2444216842292509786
 GameObject:
   m_ObjectHideFlags: 0
@@ -245,12 +291,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3216912429020762657}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1.8769, y: -17.41687, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 6151173212404640898}
+  m_Father: {fileID: 4528806149538725221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1175181438670990947
 MonoBehaviour:
@@ -264,7 +310,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bafd286e46e0e0346bd145988a329219, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeatureRevealController
-  discoveryBanner: {fileID: 1836445313358229442, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+  discoveryBanner: {fileID: 5074255061095212669, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
   revealSfxKey: FeatureReveal
 --- !u!1 &3490327773314396623
 GameObject:
@@ -419,11 +465,11 @@ Transform:
   m_GameObject: {fileID: 3743349659581284065}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.82742, y: 0.39039, z: 0}
+  m_LocalPosition: {x: -1.04948, y: -17.02648, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 6151173212404640898}
+  m_Father: {fileID: 4528806149538725221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2894437004907475980
 MonoBehaviour:
@@ -898,12 +944,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 5545321746528657838}
   - {fileID: 8176146845479958794}
   - {fileID: 7151647544815882859}
   - {fileID: 3666402661027572923}
-  - {fileID: 8582899845837371000}
-  - {fileID: 4462958601434109777}
+  - {fileID: 4528806149538725221}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!156049354 &7072512162781259412
@@ -953,6 +997,7 @@ MonoBehaviour:
   terrain: {fileID: 917423282464261291}
   featureGenerator: {fileID: 2292102316443211690}
   featureRevealController: {fileID: 1175181438670990947}
+  wildMonsterController: {fileID: 7821470843430572059}
   cameraBounds: {fileID: 8372535031249889356}
 --- !u!60 &8282947727654970810
 PolygonCollider2D:
@@ -1005,6 +1050,41 @@ PolygonCollider2D:
       - {x: -50, y: -50}
       - {x: 50, y: -50}
   m_UseDelaunayMesh: 1
+--- !u!1 &7750912231888544329
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4528806149538725221}
+  m_Layer: 0
+  m_Name: Managers/Controllers
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4528806149538725221
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7750912231888544329}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1.8769, y: 17.41687, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4462958601434109777}
+  - {fileID: 8582899845837371000}
+  - {fileID: 5545321746528657838}
+  - {fileID: 8373826761656577404}
+  m_Father: {fileID: 6151173212404640898}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8000299455552086567
 GameObject:
   m_ObjectHideFlags: 0
@@ -1030,12 +1110,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8000299455552086567}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1.8769, y: -17.41687, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 6151173212404640898}
+  m_Father: {fileID: 4528806149538725221}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2292102316443211690
 MonoBehaviour:
@@ -1068,6 +1148,11 @@ MonoBehaviour:
   exclusionRadiusFromCenter: 4
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
+  wildMonsterPool:
+  - {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
+  wildMonsterMin: 2
+  wildMonsterMax: 6
+  wildMonsterCellDivisor: 6
   autoPaintDebugOverlay: 1
   debugOverlayTilemap: {fileID: 1010576848703588748}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}

@@ -19,8 +19,13 @@ using System.Collections.Generic;
 /// DAY 31 PART 1 — Reveal state
 ///   Per-feature reveal state is persisted in the revealedRiverIds and
 ///   revealedChamberIds lists. A feature is "revealed" the first time any
-///   of its cells becomes claimable (i.e. enters the 4-neighbour ring of
-///   an owned tile). Reveal is whole-feature: one cell touched reveals all.
+///   of its cells becomes claimable.
+///
+/// DAY 31 PART 2 — Chamber wild-monster state
+///   ChamberData gains aliveWildCount (number of wild monsters still alive)
+///   and cleared (true once the gate is cleared). aliveWildCount = -1 means
+///   "never spawned" — used so the controller can distinguish a brand-new
+///   reveal from a fully-cleared chamber.
 /// </summary>
 [Serializable]
 public class FloorFeatureSaveData
@@ -49,8 +54,26 @@ public class ChamberData
 {
     public int id;
     public SerializableVector3Int centerCell;
-    /// <summary>Chamber floor cells, post-river-overwrite. Wild monster spawning (Day 31 Part 2) uses these.</summary>
+    /// <summary>Chamber floor cells, post-river-overwrite. Wild monster spawning uses these.</summary>
     public List<SerializableVector3Int> cells = new();
+
+    // ── Wild monster state (DAY 31 PART 2) ────────────────────────
+
+    /// <summary>
+    /// Number of wild monsters currently alive in this chamber.
+    /// -1 = never spawned (chamber not yet revealed, or never visited in this run).
+    /// 0  = all dead (chamber cleared).
+    /// >0 = that many alive.
+    /// On load, the controller respawns aliveWildCount monsters in revealed-uncleared chambers.
+    /// </summary>
+    public int aliveWildCount = -1;
+
+    /// <summary>
+    /// True once all wild monsters have been killed and the claim gate is open.
+    /// Once true, this stays true forever (claimed-then-unclaimed chambers do
+    /// not respawn wild monsters in v1).
+    /// </summary>
+    public bool cleared = false;
 }
 
 /// <summary>Cell-level reference into the feature map. Not serialized.</summary>

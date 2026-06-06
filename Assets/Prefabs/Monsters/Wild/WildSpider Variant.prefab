@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &2356439044959626340
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 1015.31714
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 649.1406
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3331975611705956923, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4748993249541918515, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Name
+      value: WildSpider Variant
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: maxHP
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: moveSpeed
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 3744249878153681198, guid: 3595ba2fbd5594048afc3102bbe2f851, type: 3}
+    m_RemovedComponents:
+    - {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e083488e7fe47604d88a254661a31bdf, type: 3}

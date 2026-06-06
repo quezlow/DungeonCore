@@ -10,22 +10,21 @@ using UnityEngine;
 ///   parent hierarchy in Start(). All pathfinding and trap queries use the
 ///   adventurer's own floor — never the player-viewed floor.
 ///
-///   When the core is on a different floor, RefreshPath() targets the nearest
-///   appropriate stair. On reaching the stair cell, the adventurer enters
-///   UsingStairs state (brief pause), then reparents + teleports to the
-///   matching stair on the destination floor.
-///
 /// DAY 31 PART 1 — RIVER FORDING
-///   - UpdateTerrainSpeedMultiplier() polls the cell each frame; on a river,
-///     terrainSpeedMultiplier becomes FordingSpeedMultiplier (default 0.5).
-///   - Multiplier is folded into every MoveTowards call:
-///       FollowPath, MoveToChest, HandleCombat (chase toward target).
-///   - Adventurers have no aquatic bypass (no swim flag on AdventurerDefinition).
+///   terrainSpeedMultiplier drops to features.FordingSpeedMultiplier on
+///   river cells, folded into every MoveTowards call.
+///
+/// DAY 31 PART 2 — IMonsterTarget
+///   Adventurers now implement IMonsterTarget so they can be the polymorphic
+///   target of a DungeonMonster's scan/combat (alongside hostile monsters
+///   like wild cave dwellers). The existing public bool TakeDamage(float)
+///   API is unchanged — other callers keep using it. The interface impl is
+///   explicit and forwards to that method, discarding the bool return.
 ///
 /// INITIALISE must be called by AdventurerSpawner before Start() runs.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
-public class DungeonAdventurer : MonoBehaviour
+public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 {
     public enum AdventurerState
     {
@@ -78,7 +77,6 @@ public class DungeonAdventurer : MonoBehaviour
     private float slowTimer = 0f;
 
     // ── Terrain speed (DAY 31) ───────────────────────────────────
-    // Recalculated every frame in Update from the cell the adventurer is on.
     private float terrainSpeedMultiplier = 1f;
 
     // ── Runtime state ─────────────────────────────────────────────
@@ -218,9 +216,6 @@ public class DungeonAdventurer : MonoBehaviour
 
     // ── Terrain Speed (DAY 31) ────────────────────────────────────
 
-    /// <summary>
-    /// Polls the cell under the adventurer's feet and applies river fording.
-    /// </summary>
     private void UpdateTerrainSpeedMultiplier()
     {
         terrainSpeedMultiplier = 1f;
@@ -242,11 +237,7 @@ public class DungeonAdventurer : MonoBehaviour
         pathIndex = 0;
         stairTarget = null;
 
-        if (currentFloor == null)
-        {
-            currentPath = new List<Vector3>();
-            return;
-        }
+        if (currentFloor == null) { currentPath = new List<Vector3>(); return; }
 
         int myFloor = currentFloor.FloorIndex;
         int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
@@ -257,14 +248,12 @@ public class DungeonAdventurer : MonoBehaviour
         {
             if (myFloor == 0)
             {
-                // On Floor 1 — head for the entrance.
                 goal = DungeonEntrance.Instance != null
                     ? DungeonEntrance.Instance.SpawnPosition
                     : transform.position;
             }
             else
             {
-                // On a deeper floor — head for the nearest up-stair.
                 var upStair = FindNearestStair(DungeonStairs.Direction.Up);
                 if (upStair == null) { currentPath = new List<Vector3>(); return; }
                 stairTarget = upStair;
@@ -275,14 +264,10 @@ public class DungeonAdventurer : MonoBehaviour
         {
             goal = chestTarget.transform.position;
         }
-        else // MovingToCore
+        else
         {
             if (myFloor == coreFloor)
-            {
-                goal = DungeonCore.Instance != null
-                    ? DungeonCore.Instance.transform.position
-                    : transform.position;
-            }
+                goal = DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : transform.position;
             else if (coreFloor > myFloor)
             {
                 var downStair = FindNearestStair(DungeonStairs.Direction.Down);
@@ -302,16 +287,10 @@ public class DungeonAdventurer : MonoBehaviour
         currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, goal);
     }
 
-    /// <summary>
-    /// Called by DungeonCoreTransit when the core's floor changes, so all
-    /// adventurers re-target the new core location.
-    /// </summary>
     public void ForceRefreshPath()
     {
-        // Reset to MovingToCore unless we're already retreating or using stairs.
         if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs)
             state = AdventurerState.MovingToCore;
-
         RefreshPath();
     }
 
@@ -319,15 +298,12 @@ public class DungeonAdventurer : MonoBehaviour
     {
         if (currentPath == null || pathIndex >= currentPath.Count)
         {
-            // Path exhausted — check if we're actually at the goal before acting.
             if (stairTarget != null)
             {
                 if (Vector2.Distance(transform.position, stairTarget.transform.position) < 0.6f)
                     BeginStairTraversal();
-                // else: stair unreachable right now, wait for next RefreshPath
                 return;
             }
-
             OnReachedDestination();
             return;
         }
@@ -357,7 +333,6 @@ public class DungeonAdventurer : MonoBehaviour
         }
         else
         {
-            // Guard: only breach if genuinely close to the core.
             if (DungeonCore.Instance != null &&
                 Vector2.Distance(transform.position, DungeonCore.Instance.transform.position) > 1.5f)
             {
@@ -397,9 +372,7 @@ public class DungeonAdventurer : MonoBehaviour
         if (destFloor == null)
         {
             Debug.LogWarning($"[Adventurer] Destination floor {destIdx} doesn't exist.");
-            state = stateBeforeStairs;
-            stairTarget = null;
-            RefreshPath();
+            state = stateBeforeStairs; stairTarget = null; RefreshPath();
             return;
         }
 
@@ -407,21 +380,16 @@ public class DungeonAdventurer : MonoBehaviour
         if (matchingStair == null)
         {
             Debug.LogWarning($"[Adventurer] No matching stair on floor {destIdx} at {stairTarget.OccupiedCell}.");
-            state = stateBeforeStairs;
-            stairTarget = null;
-            RefreshPath();
+            state = stateBeforeStairs; stairTarget = null; RefreshPath();
             return;
         }
 
-        // Reparent under the destination floor, teleport to the matching stair.
         transform.SetParent(destFloor.transform, true);
         transform.position = matchingStair.transform.position;
         currentFloor = destFloor;
 
         Debug.Log($"[Adventurer] Arrived on floor {destIdx}.");
-        state = stateBeforeStairs;
-        stairTarget = null;
-        RefreshPath();
+        state = stateBeforeStairs; stairTarget = null; RefreshPath();
     }
 
     private DungeonStairs FindNearestStair(DungeonStairs.Direction dir)
@@ -459,7 +427,7 @@ public class DungeonAdventurer : MonoBehaviour
         foreach (var other in others)
         {
             if (other == this) continue;
-            if (other.currentFloor != currentFloor) continue; // only push same-floor adventurers
+            if (other.currentFloor != currentFloor) continue;
 
             Vector2 delta = (Vector2)transform.position - (Vector2)other.transform.position;
             float dist = delta.magnitude;
@@ -481,7 +449,7 @@ public class DungeonAdventurer : MonoBehaviour
 
         foreach (var m in all)
         {
-            if (m.CurrentFloor != currentFloor) continue; // same floor only
+            if (m.CurrentFloor != currentFloor) continue;
             float d = Vector2.Distance(transform.position, m.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
@@ -686,6 +654,22 @@ public class DungeonAdventurer : MonoBehaviour
         if (multiplier < slowMultiplier) slowMultiplier = multiplier;
         if (duration > slowTimer) slowTimer = duration;
     }
+
+    // ── IMonsterTarget (DAY 31 PART 2) ────────────────────────────
+
+    Transform IMonsterTarget.Transform => transform;
+
+    bool IMonsterTarget.IsAlive
+    {
+        get
+        {
+            if (this == null) return false;
+            if (gameObject == null) return false;
+            return gameObject.activeInHierarchy && currentHP > 0f;
+        }
+    }
+
+    void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;

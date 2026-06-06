@@ -6,25 +6,9 @@ using UnityEngine.Tilemaps;
 /// <summary>
 /// DAY 30 — Per-floor procedural feature generator.
 /// DAY 31 PART 1 — Reveal API, conditional debug paint, pathfinding/fording knobs.
-///
-/// Lives as a sibling component on every floor's hierarchy (alongside
-/// DungeonTerrain, TileInfluenceManager). Holds the floor's
-/// FloorFeatureSaveData and a runtime cell→feature lookup.
-///
-/// SCOPE
-///   - Generate chambers (CA in bounded box, flood-fill extracts connected region)
-///   - Generate rivers (meander polyline + Chebyshev-dilation for width)
-///   - Rivers overwrite chamber cells they overlap
-///   - Exclude features within exclusionRadiusFromCenter of centerCell
-///   - Persist per-feature records; runtime lookup rebuilt on load
-///   - Per-feature reveal state with whole-feature painting on the debug overlay
-///   - Inspector knobs for river path cost (Dijkstra) and fording speed multiplier
-///
-/// DETERMINISM
-///   All generation uses System.Random seeded with floorSeed. UnityEngine.Random
-///   is NEVER touched here.
+/// DAY 31 PART 2 — Wild monster pool, OnChamberRevealed event, chamber helpers + cleared API.
 /// </summary>
-[DefaultExecutionOrder(50)] // After DungeonTerrain (-10) and TileInfluenceManager (0).
+[DefaultExecutionOrder(50)]
 public class TerrainFeatureGenerator : MonoBehaviour
 {
     // ── Inspector — Chambers ──────────────────────────────────────
@@ -49,41 +33,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Header("Rivers")]
     [SerializeField] private int minRivers = 1;
     [SerializeField] private int maxRivers = 3;
-    [Tooltip("Number of polyline control points per river. Total tile coverage ≈ controlPoints * segmentLength.")]
     [SerializeField] private int minRiverControlPoints = 8;
     [SerializeField] private int maxRiverControlPoints = 20;
-    [Tooltip("Cells between consecutive polyline control points.")]
     [SerializeField] private int riverSegmentLength = 3;
-    [Tooltip("Maximum heading change (degrees) between consecutive river segments.")]
     [SerializeField] private float riverMeanderDegrees = 35f;
-    [Tooltip("Minimum river width in tiles. Roadmap minimum is 2.")]
     [SerializeField] private int minRiverWidth = 2;
-    [Tooltip("Maximum river width in tiles. Roadmap prefers 3–5.")]
     [SerializeField] private int maxRiverWidth = 5;
 
     // ── Inspector — Exclusion ─────────────────────────────────────
 
     [Header("Exclusion Zone")]
-    [Tooltip("Features cannot generate within this many tiles of the floor's centerCell (eventual Core Room).")]
     [SerializeField] private int exclusionRadiusFromCenter = 8;
 
-    // ── Inspector — Pathfinding & Fording (DAY 31) ────────────────
+    // ── Inspector — Pathfinding & Fording ─────────────────────────
 
     [Header("Pathfinding")]
-    [Tooltip("Movement cost for crossing a river cell during pathfinding. Default cells cost 1. " +
-             "5 ≈ ‘going around 4 normal tiles is preferred to crossing 1 river tile’.")]
     [SerializeField, Min(1)] private int riverPathCost = 5;
 
     [Header("Fording")]
-    [Tooltip("Movement speed multiplier when an entity is standing on a river cell. 0.5 = half speed.")]
     [Range(0.05f, 1f)]
     [SerializeField] private float fordingSpeedMultiplier = 0.5f;
+
+    // ── Inspector — Wild Monsters (DAY 31 PART 2) ─────────────────
+
+    [Header("Wild Monsters")]
+    [Tooltip("MonsterDefinitions eligible to spawn as wild cave monsters in chambers " +
+             "on this floor. Empty or null = chambers auto-clear (no gate). " +
+             "Picked from at random per spawn slot, deterministic from floorSeed + chamberId.")]
+    [SerializeField] private List<MonsterDefinition> wildMonsterPool = new();
+
+    [Tooltip("Minimum wild monsters per chamber. Used by the WildMonsterController formula.")]
+    [SerializeField, Min(0)] private int wildMonsterMin = 2;
+
+    [Tooltip("Maximum wild monsters per chamber.")]
+    [SerializeField, Min(1)] private int wildMonsterMax = 6;
+
+    [Tooltip("Divisor on chamber cell count to scale wild monster spawn target. " +
+             "Final count = clamp(cellCount / divisor, min, max).")]
+    [SerializeField, Min(1)] private int wildMonsterCellDivisor = 6;
 
     // ── Inspector — Debug ─────────────────────────────────────────
 
     [Header("Debug Visualization")]
-    [Tooltip("If true, automatically paints to debugOverlayTilemap whenever GenerateNew or LoadFromSave runs. " +
-             "Only REVEALED features will be painted.")]
     [SerializeField] private bool autoPaintDebugOverlay = false;
     [SerializeField] private Tilemap debugOverlayTilemap;
     [SerializeField] private TileBase debugRiverTile;
@@ -100,6 +91,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public int RiverPathCost => riverPathCost;
     public float FordingSpeedMultiplier => fordingSpeedMultiplier;
 
+    // DAY 31 PART 2 — Wild monster pool access for WildMonsterController.
+    public IReadOnlyList<MonsterDefinition> WildMonsterPool => wildMonsterPool;
+    public int WildMonsterMin => wildMonsterMin;
+    public int WildMonsterMax => wildMonsterMax;
+    public int WildMonsterCellDivisor => wildMonsterCellDivisor;
+
+    // ── Events ────────────────────────────────────────────────────
+
+    /// <summary>DAY 31 PART 2 — Fires whenever a chamber transitions from un-revealed
+    /// to revealed. WildMonsterController subscribes to this to spawn wild monsters.
+    /// Fires for both noisy and silent reveals (the controller spawns regardless).</summary>
+    public event Action<int> OnChamberRevealed;
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -111,20 +115,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     // ── Public API ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Run procgen for this floor. Called by:
-    ///   - FloorRoot.Bootstrap() for newly created Floor 1+
-    ///   - DungeonSaveController.InitializeNewGame() for Floor 0 on a fresh start
-    /// </summary>
     public void GenerateNew(int floorSeed, Vector3Int centerCell, int floorRadius)
     {
         var rng = new System.Random(floorSeed);
         featureData = new FloorFeatureSaveData();
 
-        // Pass 1 — Chambers.
         GenerateChambers(rng, centerCell, floorRadius);
-
-        // Pass 2 — Rivers, overwriting chamber cells where they overlap.
         GenerateRivers(rng, centerCell, floorRadius);
 
         RebuildLookup();
@@ -137,17 +133,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (autoPaintDebugOverlay) PaintDebugOverlay();
     }
 
-    /// <summary>Called by DungeonSaveController during load to restore persisted feature data.</summary>
     public void LoadFromSave(FloorFeatureSaveData data)
     {
         featureData = data ?? new FloorFeatureSaveData();
         RebuildLookup();
 
-        // DAY 31 — Re-apply fog removal for features already revealed in a
-        // prior session. Terrain has just been (re)generated for this floor,
-        // so all cells start fogged; we clear the revealed ones here. Tile
-        // loading later in DungeonSaveController will additionally unfog
-        // owned cells (including chamber cells that may have been claimed).
         UnfogAllRevealedFeatures();
 
         Debug.Log(
@@ -159,38 +149,39 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (autoPaintDebugOverlay) PaintDebugOverlay();
     }
 
-    /// <summary>Returns the persisted feature data for inclusion in FloorSaveData.</summary>
     public FloorFeatureSaveData GetSaveData() => featureData;
 
     public FeatureType GetFeatureAt(Vector3Int cell)
-    {
-        return cellLookup.TryGetValue(cell, out var fref) ? fref.type : FeatureType.None;
-    }
+        => cellLookup.TryGetValue(cell, out var fref) ? fref.type : FeatureType.None;
 
     public bool IsRiver(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.River;
     public bool IsChamber(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.Chamber;
 
-    /// <summary>Returns the chamber id at cell, or -1 if cell isn't a chamber cell.</summary>
     public int GetChamberId(Vector3Int cell)
     {
         if (!cellLookup.TryGetValue(cell, out var fref)) return -1;
         return fref.type == FeatureType.Chamber ? fref.featureId : -1;
     }
 
-    /// <summary>Returns the river id at cell, or -1 if cell isn't a river cell.</summary>
     public int GetRiverId(Vector3Int cell)
     {
         if (!cellLookup.TryGetValue(cell, out var fref)) return -1;
         return fref.type == FeatureType.River ? fref.featureId : -1;
     }
 
-    /// <summary>Returns (type, id) for the cell, or (None, -1) if no feature there.</summary>
     public bool TryGetFeatureRef(Vector3Int cell, out FeatureRef fref)
+        => cellLookup.TryGetValue(cell, out fref);
+
+    /// <summary>DAY 31 PART 2 — Lookup chamber record by id, or null if not found.</summary>
+    public ChamberData GetChamberById(int chamberId)
     {
-        return cellLookup.TryGetValue(cell, out fref);
+        if (featureData == null) return null;
+        foreach (var ch in featureData.chambers)
+            if (ch.id == chamberId) return ch;
+        return null;
     }
 
-    // ── Reveal API (DAY 31) ──────────────────────────────────────
+    // ── Reveal API ────────────────────────────────────────────────
 
     public bool IsRiverRevealed(int riverId)
         => featureData != null && featureData.revealedRiverIds.Contains(riverId);
@@ -198,7 +189,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsChamberRevealed(int chamberId)
         => featureData != null && featureData.revealedChamberIds.Contains(chamberId);
 
-    /// <summary>Convenience: returns true if the feature owning this cell (if any) is revealed.</summary>
     public bool IsFeatureRevealedAt(Vector3Int cell)
     {
         if (!cellLookup.TryGetValue(cell, out var fref)) return false;
@@ -210,7 +200,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         };
     }
 
-    /// <summary>Marks a river as revealed, paints its overlay, and removes fog from its cells. Idempotent.</summary>
     public void RevealRiver(int riverId)
     {
         if (featureData == null) return;
@@ -220,7 +209,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         UnfogRiver(riverId);
     }
 
-    /// <summary>Marks a chamber as revealed, paints its overlay, and removes fog from its cells. Idempotent.</summary>
     public void RevealChamber(int chamberId)
     {
         if (featureData == null) return;
@@ -228,12 +216,40 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData.revealedChamberIds.Add(chamberId);
         PaintChamberOverlay(chamberId);
         UnfogChamber(chamberId);
+
+        // DAY 31 PART 2 — Notify the per-floor WildMonsterController so it can
+        // spawn wild cave monsters in this chamber. Subscriber is expected to
+        // be idempotent (it may already have spawned for this chamber if this
+        // reveal came in via load).
+        OnChamberRevealed?.Invoke(chamberId);
     }
 
-    /// <summary>
-    /// Returns a representative world position for the feature, for alert click-jump.
-    /// Chambers: centre cell. Rivers: midpoint of polyline.
-    /// </summary>
+    // ── Chamber Clear API (DAY 31 PART 2) ─────────────────────────
+
+    public bool IsChamberCleared(int chamberId)
+    {
+        var ch = GetChamberById(chamberId);
+        return ch != null && ch.cleared;
+    }
+
+    public void MarkChamberCleared(int chamberId)
+    {
+        var ch = GetChamberById(chamberId);
+        if (ch == null || ch.cleared) return;
+        ch.cleared = true;
+        ch.aliveWildCount = 0;
+    }
+
+    /// <summary>True if the cell sits inside a chamber whose claim gate is still closed.</summary>
+    public bool IsCellInUnclearedChamber(Vector3Int cell)
+    {
+        int chamberId = GetChamberId(cell);
+        if (chamberId < 0) return false;
+        var ch = GetChamberById(chamberId);
+        if (ch == null) return false;
+        return !ch.cleared;
+    }
+
     public Vector3 GetFeatureCenterWorld(FeatureType type, int featureId)
     {
         if (featureData == null || floor == null || floor.TileInfluence == null)
@@ -269,7 +285,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             attempts++;
 
-            // Pick a candidate centre uniformly within the floor disc, outside the exclusion zone.
             if (!PickRandomCellInDisc(rng, centerCell, floorRadius, exclusionRadiusFromCenter, out var chamberCentre))
                 continue;
 
@@ -285,6 +300,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 id = featureData.chambers.Count,
                 centerCell = SerializableVector3Int.From(chamberCentre),
                 cells = ToSerializable(cells),
+                // aliveWildCount defaults to -1, cleared defaults to false — see ChamberData.
             });
         }
     }
@@ -302,29 +318,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
     }
 
     private List<Vector3Int> RunChamberCA(
-        System.Random rng,
-        Vector3Int chamberCentre,
-        int boxSize,
-        Vector3Int floorCentre,
-        int floorRadius)
+        System.Random rng, Vector3Int chamberCentre, int boxSize,
+        Vector3Int floorCentre, int floorRadius)
     {
         int size = boxSize;
         int half = size / 2;
         bool[,] walls = new bool[size, size];
 
-        // Init — edges always walls; interior random.
         for (int x = 0; x < size; x++)
-        {
             for (int y = 0; y < size; y++)
             {
-                if (x == 0 || y == 0 || x == size - 1 || y == size - 1)
-                    walls[x, y] = true;
-                else
-                    walls[x, y] = rng.NextDouble() < caInitialWallChance;
+                if (x == 0 || y == 0 || x == size - 1 || y == size - 1) walls[x, y] = true;
+                else walls[x, y] = rng.NextDouble() < caInitialWallChance;
             }
-        }
 
-        // Smooth — standard 4/5 rule.
         for (int iter = 0; iter < caSmoothingIterations; iter++)
         {
             bool[,] next = new bool[size, size];
@@ -334,7 +341,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
             walls = next;
         }
 
-        // Flood-fill from box centre — if centre is wall after smoothing, abandon.
         int cx = half, cy = half;
         if (walls[cx, cy]) return new List<Vector3Int>();
 
@@ -350,20 +356,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (visited[x, y] || walls[x, y]) continue;
             visited[x, y] = true;
             localCells.Add((x, y));
-            stack.Push((x + 1, y));
-            stack.Push((x - 1, y));
-            stack.Push((x, y + 1));
-            stack.Push((x, y - 1));
+            stack.Push((x + 1, y)); stack.Push((x - 1, y));
+            stack.Push((x, y + 1)); stack.Push((x, y - 1));
         }
 
-        // Convert local → world cells, filter to floor radius and exclusion zone.
         var result = new List<Vector3Int>(localCells.Count);
         foreach (var (lx, ly) in localCells)
         {
             var worldCell = new Vector3Int(
                 chamberCentre.x + (lx - half),
-                chamberCentre.y + (ly - half),
-                0);
+                chamberCentre.y + (ly - half), 0);
 
             if (!IsInFloorRadius(worldCell, floorCentre, floorRadius)) continue;
             if (IsInExclusion(worldCell, floorCentre)) continue;
@@ -379,16 +381,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int w = walls.GetLength(0);
         int h = walls.GetLength(1);
         for (int dx = -1; dx <= 1; dx++)
-        {
             for (int dy = -1; dy <= 1; dy++)
             {
                 if (dx == 0 && dy == 0) continue;
-                int nx = x + dx;
-                int ny = y + dy;
-                if (nx < 0 || ny < 0 || nx >= w || ny >= h) { count++; continue; } // out-of-bounds counts as wall
+                int nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) { count++; continue; }
                 if (walls[nx, ny]) count++;
             }
-        }
         return count;
     }
 
@@ -409,7 +408,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var cells = PaintRiver(polyline, width, floorCentre, floorRadius);
             if (cells.Count == 0) continue;
 
-            // Rivers overwrite chamber cells. Each chamber loses any cells now claimed by this river.
             foreach (var chamber in featureData.chambers)
                 chamber.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
 
@@ -422,21 +420,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             });
         }
 
-        // Strip empty chambers (entirely consumed by rivers — unlikely but possible).
         featureData.chambers.RemoveAll(c => c.cells.Count == 0);
     }
 
     private List<Vector3Int> BuildRiverPolyline(
-        System.Random rng,
-        Vector3Int floorCentre,
-        int floorRadius,
-        int controlPointCount)
+        System.Random rng, Vector3Int floorCentre, int floorRadius, int controlPointCount)
     {
-        // Start on the perimeter; initial heading aims through the disc.
         double startAngle = rng.NextDouble() * 2.0 * Math.PI;
         double startX = floorCentre.x + floorRadius * Math.Cos(startAngle);
         double startY = floorCentre.y + floorRadius * Math.Sin(startAngle);
-        double direction = startAngle + Math.PI; // walk inward across the disc
+        double direction = startAngle + Math.PI;
 
         double meanderRad = riverMeanderDegrees * Math.PI / 180.0;
 
@@ -455,37 +448,28 @@ public class TerrainFeatureGenerator : MonoBehaviour
             cy += Math.Sin(direction) * riverSegmentLength;
 
             var next = new Vector3Int((int)Math.Round(cx), (int)Math.Round(cy), 0);
-
-            // Polyline ends when it leaves the disc; rivers can be truncated.
             if (!IsInFloorRadius(next, floorCentre, floorRadius)) break;
-
             polyline.Add(next);
         }
         return polyline;
     }
 
     private HashSet<Vector3Int> PaintRiver(
-        List<Vector3Int> polyline,
-        int width,
-        Vector3Int floorCentre,
-        int floorRadius)
+        List<Vector3Int> polyline, int width,
+        Vector3Int floorCentre, int floorRadius)
     {
-        // Bresenham centreline.
         var centreline = new HashSet<Vector3Int>();
         for (int i = 0; i < polyline.Count - 1; i++)
             foreach (var p in BresenhamLine(polyline[i], polyline[i + 1]))
                 centreline.Add(p);
 
-        // Dilate to achieve width.
-        // width=2 → 2×2 block per cell. width=3 → 3×3. width=4 → 4×4. width=5 → 5×5.
         int half = (width - 1) / 2;
-        int extra = (width - 1) - 2 * half; // 1 for even widths, 0 for odd
+        int extra = (width - 1) - 2 * half;
 
         var dilated = new HashSet<Vector3Int>();
         foreach (var c in centreline)
         {
             for (int dx = -half; dx <= half + extra; dx++)
-            {
                 for (int dy = -half; dy <= half + extra; dy++)
                 {
                     var p = new Vector3Int(c.x + dx, c.y + dy, 0);
@@ -493,7 +477,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     if (IsInExclusion(p, floorCentre)) continue;
                     dilated.Add(p);
                 }
-            }
         }
         return dilated;
     }
@@ -503,8 +486,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int x0 = a.x, y0 = a.y;
         int x1 = b.x, y1 = b.y;
         int dx = Mathf.Abs(x1 - x0), dy = Mathf.Abs(y1 - y0);
-        int sx = x0 < x1 ? 1 : -1;
-        int sy = y0 < y1 ? 1 : -1;
+        int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
         int err = dx - dy;
         while (true)
         {
@@ -519,13 +501,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // ── Helpers ───────────────────────────────────────────────────
 
     private bool PickRandomCellInDisc(
-        System.Random rng,
-        Vector3Int floorCentre,
-        int floorRadius,
-        int excludeRadius,
-        out Vector3Int result)
+        System.Random rng, Vector3Int floorCentre, int floorRadius,
+        int excludeRadius, out Vector3Int result)
     {
-        // Uniform rejection sample in the annulus [excludeRadius, floorRadius].
         for (int tries = 0; tries < 32; tries++)
         {
             double r = Math.Sqrt(rng.NextDouble()) * floorRadius;
@@ -533,8 +511,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
             double a = rng.NextDouble() * 2.0 * Math.PI;
             var cell = new Vector3Int(
                 floorCentre.x + (int)Math.Round(r * Math.Cos(a)),
-                floorCentre.y + (int)Math.Round(r * Math.Sin(a)),
-                0);
+                floorCentre.y + (int)Math.Round(r * Math.Sin(a)), 0);
             result = cell;
             return true;
         }
@@ -544,15 +521,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     private static bool IsInFloorRadius(Vector3Int cell, Vector3Int floorCentre, int floorRadius)
     {
-        int dx = cell.x - floorCentre.x;
-        int dy = cell.y - floorCentre.y;
+        int dx = cell.x - floorCentre.x, dy = cell.y - floorCentre.y;
         return dx * dx + dy * dy <= floorRadius * floorRadius;
     }
 
     private bool IsInExclusion(Vector3Int cell, Vector3Int floorCentre)
     {
-        int dx = cell.x - floorCentre.x;
-        int dy = cell.y - floorCentre.y;
+        int dx = cell.x - floorCentre.x, dy = cell.y - floorCentre.y;
         return dx * dx + dy * dy < exclusionRadiusFromCenter * exclusionRadiusFromCenter;
     }
 
@@ -568,17 +543,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         cellLookup.Clear();
         if (featureData == null) return;
 
-        // Chambers first; rivers overwrite (matches generation pass ordering).
         foreach (var ch in featureData.chambers)
-        {
             foreach (var sv in ch.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
-        }
+
         foreach (var r in featureData.rivers)
-        {
             foreach (var sv in r.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.River, featureId = r.id };
-        }
     }
 
     // ── Debug Overlay ─────────────────────────────────────────────
@@ -586,38 +557,26 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [ContextMenu("Paint Debug Overlay")]
     public void PaintDebugOverlay()
     {
-        if (debugOverlayTilemap == null)
-        {
-            Debug.LogWarning("[TerrainFeatureGenerator] debugOverlayTilemap not assigned.");
-            return;
-        }
-        if (featureData == null)
-        {
-            Debug.LogWarning("[TerrainFeatureGenerator] No feature data — generate or load first.");
-            return;
-        }
+        if (debugOverlayTilemap == null) { Debug.LogWarning("[TerrainFeatureGenerator] debugOverlayTilemap not assigned."); return; }
+        if (featureData == null) { Debug.LogWarning("[TerrainFeatureGenerator] No feature data — generate or load first."); return; }
 
         debugOverlayTilemap.ClearAllTiles();
 
-        // DAY 31 — only paint REVEALED features.
         if (debugChamberTile != null)
-        {
             foreach (var ch in featureData.chambers)
             {
                 if (!IsChamberRevealed(ch.id)) continue;
                 foreach (var sv in ch.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugChamberTile);
             }
-        }
+
         if (debugRiverTile != null)
-        {
             foreach (var r in featureData.rivers)
             {
                 if (!IsRiverRevealed(r.id)) continue;
                 foreach (var sv in r.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
             }
-        }
     }
 
     private void PaintRiverOverlay(int riverId)
@@ -644,7 +603,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
-    // ── Fog removal (DAY 31) ──────────────────────────────────────
+    // ── Fog removal (DAY 31 PART 1) ──────────────────────────────
 
     private void UnfogRiver(int riverId)
     {
@@ -672,11 +631,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Re-applies fog removal for every already-revealed feature. Called from
-    /// LoadFromSave so a loaded game's terrain shows cleared fog over rivers
-    /// and chambers that were revealed in a previous session.
-    /// </summary>
     private void UnfogAllRevealedFeatures()
     {
         if (featureData == null) return;
@@ -705,10 +659,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData == null) { Debug.Log("[TerrainFeatureGenerator] No feature data."); return; }
         int riverCells = 0; foreach (var r in featureData.rivers) riverCells += r.cells.Count;
         int chamberCells = 0; foreach (var c in featureData.chambers) chamberCells += c.cells.Count;
+        int clearedChambers = 0;
+        foreach (var c in featureData.chambers) if (c.cleared) clearedChambers++;
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex}: " +
-            $"{featureData.chambers.Count} chambers ({chamberCells} cells, {featureData.revealedChamberIds.Count} revealed), " +
-            $"{featureData.rivers.Count} rivers ({riverCells} cells, {featureData.revealedRiverIds.Count} revealed). " +
+            $"{featureData.chambers.Count} chambers ({chamberCells} cells, " +
+            $"{featureData.revealedChamberIds.Count} revealed, {clearedChambers} cleared), " +
+            $"{featureData.rivers.Count} rivers ({riverCells} cells, " +
+            $"{featureData.revealedRiverIds.Count} revealed). " +
             $"Lookup size {cellLookup.Count}.");
     }
 }

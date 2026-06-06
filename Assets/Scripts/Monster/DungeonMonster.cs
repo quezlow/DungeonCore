@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -10,20 +11,28 @@ using UnityEngine;
 ///   - ScanForAdventurer() filters to adventurers on the same floor.
 ///
 /// DAY 28 — BOSS SUPPORT
-///   - bossDefinition is set via ApplyBossModifiers() by the spawner
-///     right after Initialise().
+///   - bossDefinition is set via ApplyBossModifiers() by the spawner.
 ///   - Stats (maxHP, attackDamage, xpPerKill) are multiplied; transform
 ///     scaled; sprite tinted. Status bars get a boss label in Start().
 ///
 /// DAY 31 PART 1 — RIVER FORDING
-///   - UpdateTerrainSpeedMultiplier() polls the cell each frame; on a river
-///     cell, terrainSpeedMultiplier becomes FordingSpeedMultiplier (default 0.5).
-///   - Multiplier is folded into every MoveTowards call (Wander + AttackTarget chase).
-///   - Aquatic bypass: if the spawner's MonsterDefinition.isAquatic is true,
-///     the river slowdown is skipped. (Reserved for future water creatures.)
+///   - terrainSpeedMultiplier drops to FordingSpeedMultiplier on river cells.
+///   - Aquatic bypass via spawner.Definition.isAquatic.
+///
+/// DAY 31 PART 2 — WILD CAVE MONSTERS
+///   - InitialiseWild(chamberId, chamberCells) spawns the monster as wild.
+///     IsWild becomes true; PickWanderTarget uses chamber cells (plus an
+///     "aggro outward" chance to walk to adjacent owned cells).
+///   - ScanForHostiles replaces ScanForAdventurer. Wild monsters target
+///     player monsters and adventurers; player monsters target wild
+///     monsters and adventurers. Faction comparison: IsWild bool.
+///   - Implements IMonsterTarget so the same scan can engage adventurers
+///     and opposite-faction monsters uniformly.
+///   - OnDied event fires before destruction so WildMonsterController
+///     can decrement its alive count.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
-public class DungeonMonster : MonoBehaviour
+public class DungeonMonster : MonoBehaviour, IMonsterTarget
 {
     // ── Inspector ─────────────────────────────────────────────────
     [Header("Stats")]
@@ -46,6 +55,12 @@ public class DungeonMonster : MonoBehaviour
     [SerializeField] private float wanderWaitMin = 1f;
     [SerializeField] private float wanderWaitMax = 3f;
 
+    [Header("Wild Wander (DAY 31 PART 2)")]
+    [Tooltip("Chance per wander pick that a wild monster targets an adjacent owned cell " +
+             "instead of staying inside the chamber. 0 = stays in chamber, 1 = always pokes outward.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float wildAggroOutwardChance = 0.3f;
+
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
@@ -57,7 +72,7 @@ public class DungeonMonster : MonoBehaviour
     private float monsterXP;
     private float lastAttackTime;
 
-    private DungeonAdventurer target;
+    private IMonsterTarget target;        // polymorphic combat target (adventurer or hostile monster)
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
@@ -69,10 +84,20 @@ public class DungeonMonster : MonoBehaviour
     private bool wanderWaiting;
     private float wanderWaitTimer;
 
-    // DAY 31 — Terrain speed multiplier. Recalculated every frame in Update.
+    // Terrain speed (DAY 31 PART 1)
     private float terrainSpeedMultiplier = 1f;
 
+    // Wild monster state (DAY 31 PART 2)
+    private int wildChamberId = -1;          // < 0 = player-spawned; >= 0 = wild, this is the chamber id
+    private List<Vector3Int> wildChamberCells;
+
     public bool IsBoss => bossDefinition != null;
+    public bool IsWild => wildChamberId >= 0;
+    public int WildChamberId => wildChamberId;
+
+    /// <summary>DAY 31 PART 2 — Fires when this monster dies, just before Destroy().
+    /// WildMonsterController subscribes per spawned wild monster to track clear progress.</summary>
+    public event System.Action<DungeonMonster> OnDied;
 
     // ─────────────────────────────────────────────────────────────
 
@@ -87,7 +112,9 @@ public class DungeonMonster : MonoBehaviour
     {
         spawnPosition = transform.position;
 
-        currentFloor = GetComponentInParent<FloorRoot>();
+        if (currentFloor == null) // wild path sets this in InitialiseWild before Start
+            currentFloor = GetComponentInParent<FloorRoot>();
+
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent — wander will use spawn position.");
 
@@ -99,7 +126,6 @@ public class DungeonMonster : MonoBehaviour
             statusBars.Initialise(transform);
             statusBars.SetHP(currentHP, maxHP);
 
-            // If we're a boss, label the bars.
             if (bossDefinition != null)
                 statusBars.SetBossLabel(bossDefinition.GetBossTitle());
         }
@@ -112,25 +138,31 @@ public class DungeonMonster : MonoBehaviour
     }
 
     /// <summary>
-    /// Called by MonsterSpawner right after Initialise() when the spawner's
-    /// definition is a BossVariantDefinition. Scales stats, transform, and tint.
-    /// Safe to call before Start() — status bar labelling is deferred to Start().
+    /// DAY 31 PART 2 — Called by WildMonsterController for chamber-dwelling wild monsters.
+    /// Sets the monster's faction (IsWild = true), caches its chamber cells for wander,
+    /// and wires its floor reference up front so Start() doesn't have to.
     /// </summary>
+    public void InitialiseWild(int chamberId, FloorRoot floor, List<Vector3Int> chamberCells)
+    {
+        wildChamberId = chamberId;
+        currentFloor = floor;
+        wildChamberCells = chamberCells != null
+            ? new List<Vector3Int>(chamberCells)
+            : new List<Vector3Int>();
+    }
+
     public void ApplyBossModifiers(BossVariantDefinition def)
     {
         if (def == null) return;
         bossDefinition = def;
 
-        // Stat scaling — Awake() has already set currentHP = maxHP.
         maxHP *= def.hpMultiplier;
         currentHP = maxHP;
         attackDamage *= def.damageMultiplier;
         xpPerKill *= def.xpRewardMultiplier;
 
-        // Visual scaling.
         transform.localScale *= def.scaleMultiplier;
 
-        // Sprite tint.
         var sr = GetComponentInChildren<SpriteRenderer>();
         if (sr != null) sr.color = def.tint;
     }
@@ -141,13 +173,13 @@ public class DungeonMonster : MonoBehaviour
 
         UpdateTerrainSpeedMultiplier();
 
-        if (target != null && !target.gameObject.activeInHierarchy)
+        if (target != null && !target.IsAlive)
             target = null;
 
         switch (state)
         {
             case MonsterState.Wander:
-                ScanForAdventurer();
+                ScanForHostiles();
                 Wander();
                 break;
 
@@ -165,18 +197,13 @@ public class DungeonMonster : MonoBehaviour
         }
     }
 
-    // ── Terrain Speed (DAY 31) ────────────────────────────────────
+    // ── Terrain Speed (DAY 31 PART 1) ─────────────────────────────
 
-    /// <summary>
-    /// Polls the cell under the monster's feet and applies the river fording
-    /// slowdown when relevant. Aquatic monsters (spawner.Definition.isAquatic)
-    /// bypass the slowdown.
-    /// </summary>
     private void UpdateTerrainSpeedMultiplier()
     {
         terrainSpeedMultiplier = 1f;
 
-        // Aquatic bypass — water creatures are unaffected by river fording.
+        // Aquatic bypass — only meaningful for player-spawned monsters.
         if (spawner != null && spawner.Definition != null && spawner.Definition.isAquatic) return;
 
         if (currentFloor == null) return;
@@ -217,12 +244,15 @@ public class DungeonMonster : MonoBehaviour
 
     private void PickWanderTarget()
     {
-        var influence = currentFloor?.TileInfluence;
-        if (influence == null)
+        if (IsWild)
         {
-            wanderTarget = spawnPosition;
+            PickWildWanderTarget();
             return;
         }
+
+        // Player-spawned monster — wander on owned cells within wanderRadius of spawn.
+        var influence = currentFloor?.TileInfluence;
+        if (influence == null) { wanderTarget = spawnPosition; return; }
 
         for (int i = 0; i < 10; i++)
         {
@@ -236,25 +266,91 @@ public class DungeonMonster : MonoBehaviour
                 return;
             }
         }
-
         wanderTarget = spawnPosition;
+    }
+
+    /// <summary>
+    /// DAY 31 PART 2 — Wild monster wander logic.
+    /// 70% of picks stay inside the chamber. The other 30% (configurable via
+    /// wildAggroOutwardChance) target an adjacent owned cell so the wild
+    /// monster pokes outward into player territory and can be engaged.
+    /// </summary>
+    private void PickWildWanderTarget()
+    {
+        var influence = currentFloor?.TileInfluence;
+        if (influence == null || wildChamberCells == null || wildChamberCells.Count == 0)
+        {
+            wanderTarget = spawnPosition;
+            return;
+        }
+
+        bool tryOutward = Random.value < wildAggroOutwardChance;
+
+        if (tryOutward)
+        {
+            // Build the set of owned cells adjacent to ANY chamber cell. Each call
+            // rebuilds — as the player claims closer, the ring grows organically.
+            var adjacentOwned = new List<Vector3Int>();
+            var seen = new HashSet<Vector3Int>();
+            foreach (var cell in wildChamberCells)
+            {
+                TryAddAdjacentOwned(cell + Vector3Int.up, influence, seen, adjacentOwned);
+                TryAddAdjacentOwned(cell + Vector3Int.down, influence, seen, adjacentOwned);
+                TryAddAdjacentOwned(cell + Vector3Int.left, influence, seen, adjacentOwned);
+                TryAddAdjacentOwned(cell + Vector3Int.right, influence, seen, adjacentOwned);
+            }
+
+            if (adjacentOwned.Count > 0)
+            {
+                var pick = adjacentOwned[Random.Range(0, adjacentOwned.Count)];
+                wanderTarget = influence.CellToWorld(pick);
+                return;
+            }
+            // No owned cells adjacent yet — fall through to a chamber cell pick.
+        }
+
+        var chamberPick = wildChamberCells[Random.Range(0, wildChamberCells.Count)];
+        wanderTarget = influence.CellToWorld(chamberPick);
+    }
+
+    private static void TryAddAdjacentOwned(
+        Vector3Int candidate, TileInfluenceManager influence,
+        HashSet<Vector3Int> seen, List<Vector3Int> list)
+    {
+        if (!seen.Add(candidate)) return;
+        if (influence.IsTileOwned(candidate)) list.Add(candidate);
     }
 
     // ── Detection & Combat ────────────────────────────────────────
 
-    private void ScanForAdventurer()
+    /// <summary>
+    /// DAY 31 PART 2 — Unified scan for hostile targets within detectionRange.
+    /// Adventurers are always hostile to both factions. Opposite-faction monsters
+    /// are hostile (wild ↔ player). Same-faction monsters and the self are skipped.
+    /// </summary>
+    private void ScanForHostiles()
     {
-        var all = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        DungeonAdventurer nearest = null;
+        IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
 
-        foreach (var adv in all)
+        // Adventurers — hostile to everything.
+        var adventurers = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
+        foreach (var adv in adventurers)
         {
-            // Only detect adventurers on the same floor.
             if (adv.CurrentFloor != currentFloor) continue;
-
             float d = Vector2.Distance(transform.position, adv.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = adv; }
+        }
+
+        // Opposite-faction monsters.
+        var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
+        foreach (var m in monsters)
+        {
+            if (m == this) continue;
+            if (m.currentFloor != currentFloor) continue;
+            if (m.IsWild == this.IsWild) continue; // same side
+            float d = Vector2.Distance(transform.position, m.transform.position);
+            if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
 
         if (nearest != null)
@@ -266,24 +362,33 @@ public class DungeonMonster : MonoBehaviour
 
     private void AttackTarget()
     {
-        float dist = Vector2.Distance(transform.position, target.transform.position);
+        if (target == null || !target.IsAlive)
+        {
+            target = null;
+            state = MonsterState.Wander;
+            PickWanderTarget();
+            return;
+        }
+
+        Vector3 targetPos = target.Transform.position;
+        float dist = Vector2.Distance(transform.position, targetPos);
 
         if (dist > attackRange)
         {
             transform.position = Vector2.MoveTowards(
-                transform.position, target.transform.position,
-                moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
+                transform.position, targetPos, moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
             return;
         }
 
         if (Time.time - lastAttackTime < attackCooldown) return;
 
         lastAttackTime = Time.time;
-        DamageNumberSpawner.Spawn(attackDamage, target.transform.position,
+        DamageNumberSpawner.Spawn(attackDamage, targetPos,
             FloatingDamageNumber.DamageType.AdventurerHit);
 
-        bool killed = target.TakeDamage(attackDamage);
-        if (killed)
+        target.TakeDamage(attackDamage);
+
+        if (!target.IsAlive)
         {
             GainXP(xpPerKill);
             target = null;
@@ -309,8 +414,28 @@ public class DungeonMonster : MonoBehaviour
         if (statusBars != null) Destroy(statusBars.gameObject);
         GetComponent<LootTable>()?.Roll(transform.position);
         spawner?.OnMonsterDied();
+
+        // DAY 31 PART 2 — Notify subscribers (WildMonsterController for wild ones).
+        OnDied?.Invoke(this);
+
         Destroy(gameObject);
     }
+
+    // ── IMonsterTarget (DAY 31 PART 2) ────────────────────────────
+
+    Transform IMonsterTarget.Transform => transform;
+
+    bool IMonsterTarget.IsAlive
+    {
+        get
+        {
+            if (this == null) return false;
+            if (gameObject == null) return false;
+            return gameObject.activeInHierarchy && currentHP > 0f;
+        }
+    }
+
+    void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;
