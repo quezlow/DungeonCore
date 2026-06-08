@@ -30,7 +30,7 @@ public class DungeonCameraController : MonoBehaviour
     private Camera mainCamera;
     private Transform coreTransform;
     private float timeSinceLastInput;
-    private bool isReturning;
+    // private bool isReturning;
     private float targetZoom;
     private Vector3 dragOrigin;
     private bool isDragging;
@@ -84,29 +84,30 @@ public class DungeonCameraController : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
-
+        // DAY 31 — Camera operates during pause (active-pause pattern).
         HandleZoom();
+        HandlePan();
 
-        bool hadInput = HandlePan();
-
-        if (hadInput)
-        {
-            timeSinceLastInput = 0f;
-            isReturning = false;
-        }
-        else
-        {
-            timeSinceLastInput += Time.deltaTime;
-            if (timeSinceLastInput >= returnDelay && coreTransform != null)
-                isReturning = true;
-        }
-
-        if (isReturning) ReturnToCore();
+        // DAY 31 — Return-to-core auto-pan disabled per design change.
+        // Re-enable by uncommenting if/when desired; ForceReturnToCore() still works
+        // as an explicit trigger and PanTo() / cross-floor PanTo are unaffected.
+        //
+        // if (hadInput)
+        // {
+        //     timeSinceLastInput = 0f;
+        //     isReturning = false;
+        // }
+        // else
+        // {
+        //     timeSinceLastInput += Time.deltaTime;
+        //     if (timeSinceLastInput >= returnDelay && coreTransform != null)
+        //         isReturning = true;
+        // }
+        // if (isReturning) ReturnToCore();
 
         var lens = cmCam.Lens;
         lens.OrthographicSize = Mathf.Lerp(lens.OrthographicSize, targetZoom,
-            Time.deltaTime * zoomSmoothSpeed);
+            Time.unscaledDeltaTime * zoomSmoothSpeed);
         cmCam.Lens = lens;
     }
 
@@ -135,7 +136,7 @@ public class DungeonCameraController : MonoBehaviour
             Quaternion.identity);
 
         timeSinceLastInput = 0f;
-        isReturning = false;
+        // isReturning = false;
     }
 
     // ── Pan ───────────────────────────────────────────────────────
@@ -154,17 +155,17 @@ public class DungeonCameraController : MonoBehaviour
             if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) v += 1f;
             if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) v -= 1f;
             if (Mathf.Abs(h) > 0f || Mathf.Abs(v) > 0f)
-                move += new Vector3(h, v, 0f).normalized * keyboardPanSpeed * Time.deltaTime;
+                move += new Vector3(h, v, 0f).normalized * keyboardPanSpeed * Time.unscaledDeltaTime;
         }
 
         if (enableEdgeScroll && mouse != null
             && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
         {
             Vector2 mp = mouse.position.ReadValue();
-            if (mp.x < edgeScrollThreshold) move.x -= edgeScrollSpeed * Time.deltaTime;
-            if (mp.x > Screen.width - edgeScrollThreshold) move.x += edgeScrollSpeed * Time.deltaTime;
-            if (mp.y < edgeScrollThreshold) move.y -= edgeScrollSpeed * Time.deltaTime;
-            if (mp.y > Screen.height - edgeScrollThreshold) move.y += edgeScrollSpeed * Time.deltaTime;
+            if (mp.x < edgeScrollThreshold) move.x -= edgeScrollSpeed * Time.unscaledDeltaTime;
+            if (mp.x > Screen.width - edgeScrollThreshold) move.x += edgeScrollSpeed * Time.unscaledDeltaTime;
+            if (mp.y < edgeScrollThreshold) move.y -= edgeScrollSpeed * Time.unscaledDeltaTime;
+            if (mp.y > Screen.height - edgeScrollThreshold) move.y += edgeScrollSpeed * Time.unscaledDeltaTime;
         }
 
         if (mouse != null)
@@ -219,7 +220,7 @@ public class DungeonCameraController : MonoBehaviour
         if (Vector3.Distance(transform.position, target) < 0.05f)
         {
             transform.position = target;
-            isReturning = false;
+            // isReturning = false;
         }
     }
 
@@ -233,7 +234,7 @@ public class DungeonCameraController : MonoBehaviour
     {
         transform.position = new Vector3(worldPos.x, worldPos.y, transform.position.z);
         timeSinceLastInput = 0f;
-        isReturning = false;
+        // isReturning = false;
     }
 
     /// <summary>

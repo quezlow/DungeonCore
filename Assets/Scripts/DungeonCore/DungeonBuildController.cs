@@ -1,18 +1,9 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Central controller for dungeon build modes.
-///
-/// DAY 31 PART 1
-///   - HandleClaimClick rejects clicks on river cells (with log feedback).
-///
-/// DAY 31 PART 2
-///   - HandleClaimClick also rejects clicks on cells inside an uncleared
-///     chamber. Player must kill the wild monsters first.
-/// </summary>
 public enum BuildMode
 {
     Claim,
@@ -24,6 +15,8 @@ public enum BuildMode
     PlaceTrap,
     PlaceStairs,
     PlaceCore,
+    PlaceMonsterPatrol,        // DAY 31 PART 3D
+    PlaceMonsterAttackTarget,  // DAY 31 PART 3D / 3E
 }
 
 public class DungeonBuildController : MonoBehaviour
@@ -52,9 +45,11 @@ public class DungeonBuildController : MonoBehaviour
     public event Action<BuildMode> OnModeChanged;
 
     private Camera mainCamera;
-
     private Vector3Int dragClaimLastCell;
     private bool dragClaimActive;
+
+    // DAY 31 PART 3D — Spawner being edited during patrol/attack placement.
+    private MonsterSpawner placementSpawner;
 
     private void Awake()
     {
@@ -69,8 +64,51 @@ public class DungeonBuildController : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // DAY 31 — Master pause-gate removed. Specific actions choose whether to honor
+        // pause (active-pause pattern). Navigation, spawner selection, and command-UI
+        // placement modes run during pause; gameplay-changing build modes do not.
+
         if (TryHandleStairClick()) return;
+
+        if (CurrentMode == BuildMode.Claim)
+        {
+            if (TryHandleSpawnerClick()) return;
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame
+                && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                && SpawnerSelectionController.Instance != null
+                && SpawnerSelectionController.Instance.CurrentSelected != null)
+            {
+                SpawnerSelectionController.Instance.Deselect();
+            }
+        }
+
+        if (CurrentMode == BuildMode.PlaceMonsterPatrol)
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame) { CommitPatrolPlacement(); return; }
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                placementSpawner?.RemoveLastPatrolWaypoint();
+                return;
+            }
+            HandlePatrolPlacement();
+            return;
+        }
+        if (CurrentMode == BuildMode.PlaceMonsterAttackTarget)
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame) { CancelAttackTargetPlacement(); return; }
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                CancelAttackTargetPlacement();
+                return;
+            }
+            HandleAttackTargetPlacement();
+            return;
+        }
+
+        // Everything below is gameplay-changing and respects pause.
+        if (PauseController.IsGamePaused) return;
 
         switch (CurrentMode)
         {
@@ -101,18 +139,75 @@ public class DungeonBuildController : MonoBehaviour
 
     public void SetModeToPlaceCore()
     {
-        if (FloorManager.Instance == null) { Debug.LogError("[BuildController] No FloorManager."); return; }
-        if (!FloorManager.Instance.CanPlaceCore) { Debug.Log("[BuildController] Place Core not available."); return; }
-        if (DungeonCore.Instance != null && DungeonCore.Instance.IsInTransit) { Debug.Log("[BuildController] Core already in transit."); return; }
+        if (FloorManager.Instance == null) return;
+        if (!FloorManager.Instance.CanPlaceCore) return;
+        if (DungeonCore.Instance != null && DungeonCore.Instance.IsInTransit) return;
 
         int destIdx = FloorManager.Instance.PendingCoreRelocationFloor;
         FloorManager.Instance.SwitchToFloor(destIdx);
         SetMode(BuildMode.PlaceCore);
     }
 
+    // ── DAY 31 PART 3D — Patrol / Attack Placement Entry ──────────
+
+    public void BeginPatrolPlacement(MonsterSpawner spawner)
+    {
+        if (spawner == null) return;
+        placementSpawner = spawner;
+        SetMode(BuildMode.PlaceMonsterPatrol);
+    }
+
+    public void BeginAttackTargetPlacement(MonsterSpawner spawner)
+    {
+        if (spawner == null) return;
+        placementSpawner = spawner;
+        SetMode(BuildMode.PlaceMonsterAttackTarget);
+    }
+
+    private void CommitPatrolPlacement()
+    {
+        placementSpawner = null;
+        SetMode(BuildMode.Claim);
+        FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
+    }
+
+    private void CancelAttackTargetPlacement()
+    {
+        placementSpawner = null;
+        SetMode(BuildMode.Claim);
+        FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
+    }
+
+    private static T FindObjectByType<T>() where T : UnityEngine.Object
+    {
+        return UnityEngine.Object.FindAnyObjectByType<T>(FindObjectsInactive.Include);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
+
     private TileInfluenceManager ActiveInfluence => FloorManager.Instance?.ActiveFloor?.TileInfluence;
     private TrapRegistry ActiveTrapRegistry => FloorManager.Instance?.ActiveFloor?.TrapRegistry;
     private FloorRoot ActiveFloor => FloorManager.Instance?.ActiveFloor;
+
+    private bool IsCellValidForWaypoint(Vector3Int cell)
+    {
+        var influence = ActiveInfluence;
+        if (influence == null) return false;
+        if (influence.IsTileOwned(cell)) return true;
+
+        var features = ActiveFloor?.FeatureGenerator;
+        if (features == null) return false;
+
+        // Revealed chambers are valid (chamber assault use case for Attack-Here).
+        var ftype = features.GetFeatureAt(cell);
+        if (ftype == FeatureType.Chamber)
+        {
+            int chamberId = features.GetChamberId(cell);
+            if (chamberId >= 0 && features.IsChamberRevealed(chamberId)) return true;
+        }
+        // Rivers excluded — fording mid-route is awkward.
+        return false;
+    }
 
     // ── Claim ─────────────────────────────────────────────────────
 
@@ -122,27 +217,49 @@ public class DungeonBuildController : MonoBehaviour
         if (ActiveInfluence == null) return;
         if (!ActiveInfluence.IsTileClaimable(cell)) return;
 
-        // DAY 31 PART 1 — Rivers cannot be mined directly. Day 33 adds mana-cost absorption.
-        // DAY 31 PART 2 — Uncleared chambers gated until wild monsters die.
-        // Drag-claim only fires this branch on NEW cells (ClaimInputThisFrame's
-        // dragClaimLastCell guard), so log frequency is naturally throttled.
         var features = ActiveFloor?.FeatureGenerator;
         if (features != null)
         {
-            if (features.IsRiver(cell))
-            {
-                Debug.Log("[BuildController] Cannot mine river tile — absorption requires mana cost (Day 33).");
-                return;
-            }
-            if (features.IsCellInUnclearedChamber(cell))
-            {
-                Debug.Log("[BuildController] Cannot mine cavern tile — wild monsters must be cleared first.");
-                return;
-            }
+            if (features.IsRiver(cell)) { Debug.Log("[BuildController] Cannot mine river tile."); return; }
+            if (features.IsCellInUnclearedChamber(cell)) { Debug.Log("[BuildController] Cannot mine cavern — clear wild monsters first."); return; }
         }
 
-        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
+        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) return;
         ActiveInfluence.ClaimTile(cell);
+    }
+
+    // ── Patrol placement (DAY 31 PART 3D) ─────────────────────────
+
+    private void HandlePatrolPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (placementSpawner == null) { SetMode(BuildMode.Claim); return; }
+        if (!IsCellValidForWaypoint(cell))
+        {
+            Debug.Log("[BuildController] Waypoint cell must be owned or in a revealed chamber.");
+            return;
+        }
+        if (!placementSpawner.AddPatrolWaypoint(cell))
+        {
+            Debug.Log($"[BuildController] Cannot add waypoint (max {MonsterSpawner.MaxPatrolWaypoints} reached, or duplicate).");
+        }
+    }
+
+    // ── Attack target placement (DAY 31 PART 3D / 3E) ─────────────
+
+    private void HandleAttackTargetPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (placementSpawner == null) { SetMode(BuildMode.Claim); return; }
+        if (!IsCellValidForWaypoint(cell))
+        {
+            Debug.Log("[BuildController] Attack target must be owned or in a revealed chamber.");
+            return;
+        }
+        placementSpawner.SetAttackTarget(cell);
+        placementSpawner = null;
+        SetMode(BuildMode.Claim);
+        FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
     }
 
     // ── Entrance ──────────────────────────────────────────────────
@@ -151,11 +268,10 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Entrance must be on owned tile."); return; }
-        if (entrancePrefab == null) { Debug.LogError("[BuildController] entrancePrefab not assigned."); return; }
+        if (!ActiveInfluence.IsTileOwned(cell)) return;
+        if (entrancePrefab == null) return;
 
         if (DungeonEntrance.Instance != null) Destroy(DungeonEntrance.Instance.gameObject);
-
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var entrance = Instantiate(entrancePrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) entrance.transform.SetParent(ActiveFloor.transform, true);
@@ -163,22 +279,19 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
-    // ── Spawner ───────────────────────────────────────────────────
-
     private void HandleSpawnerPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Spawner must be on owned tile."); return; }
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
         PlaceSpawner(cell);
     }
 
     private void PlaceSpawner(Vector3Int cell)
     {
-        if (spawnerShellPrefab == null) { Debug.LogError("[BuildController] spawnerShellPrefab not assigned."); return; }
+        if (spawnerShellPrefab == null) return;
         var def = MonsterSelectionUI.Instance?.Selected;
-        if (def == null) { Debug.LogError("[BuildController] No monster selected."); return; }
-        if (!DungeonCore.Instance.TrySpendCapacity(def.CapacityCost)) { Debug.Log($"[BuildController] Not enough capacity."); return; }
+        if (def == null) return;
+        if (!DungeonCore.Instance.TrySpendCapacity(def.CapacityCost)) return;
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
@@ -187,16 +300,12 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
-    // ── Chest ─────────────────────────────────────────────────────
-
     private void HandleChestPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Chest must be on owned tile."); return; }
-        if (selectedChest == null || selectedChest.prefab == null) { Debug.LogWarning("[BuildController] No chest selected."); return; }
-        if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
-
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (selectedChest == null || selectedChest.prefab == null) return;
+        if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) return;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var chest = Instantiate(selectedChest.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) chest.transform.SetParent(ActiveFloor.transform, true);
@@ -204,16 +313,13 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
-    // ── Furniture ─────────────────────────────────────────────────
-
     private void HandleFurniturePlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
-        if (selectedFurniture == null) { Debug.LogWarning("[BuildController] No furniture selected."); return; }
-        if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell)) { Debug.Log("[BuildController] Would block path."); return; }
-        if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
-
+        if (selectedFurniture == null) return;
+        if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell)) return;
+        if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost)) return;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var piece = Instantiate(selectedFurniture.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) piece.transform.SetParent(ActiveFloor.transform, true);
@@ -222,14 +328,11 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
-    // ── Room Anchor ───────────────────────────────────────────────
-
     private void HandleRoomAnchorPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
-        if (roomAnchorPrefab == null) { Debug.LogError("[BuildController] roomAnchorPrefab not assigned."); return; }
-
+        if (roomAnchorPrefab == null) return;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) anchor.transform.SetParent(ActiveFloor.transform, true);
@@ -237,84 +340,37 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
-    // ── Trap ──────────────────────────────────────────────────────
-
     private void HandleTrapPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Trap must be on owned tile."); return; }
-        if (selectedTrap == null || selectedTrap.prefab == null) { Debug.LogWarning("[BuildController] No trap selected."); return; }
-        if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) { Debug.Log("[BuildController] Trap already here."); return; }
-        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) { Debug.Log("[BuildController] Not enough mana."); return; }
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (selectedTrap == null || selectedTrap.prefab == null) return;
+        if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) return;
+        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) return;
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var trap = Instantiate(selectedTrap.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) trap.transform.SetParent(ActiveFloor.transform, true);
         trap.Initialise(selectedTrap, cell);
-
-        if (trap is WarningTrap warning)
-            WarningTrapNameDialog.Instance?.Open(warning);
-
+        if (trap is WarningTrap warning) WarningTrapNameDialog.Instance?.Open(warning);
         SetMode(BuildMode.Claim);
     }
-
-    // ── Stairs ────────────────────────────────────────────────────
 
     private void HandleStairsPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-
-        if (FloorManager.Instance == null) { Debug.LogError("[BuildController] FloorManager not found."); return; }
-
-        if (FloorManager.Instance.IsCoreRelocationPending)
-        {
-            Debug.Log("[BuildController] Cannot place stairs — relocate the core first.");
-            SetMode(BuildMode.Claim);
-            return;
-        }
-
-        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex)
-        {
-            Debug.Log("[BuildController] Cannot place stairs — this is the deepest floor.");
-            SetMode(BuildMode.Claim);
-            return;
-        }
-
-        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex))
-        {
-            Debug.Log("[BuildController] Cannot place stairs — this floor already has a Down stair.");
-            SetMode(BuildMode.Claim);
-            return;
-        }
-
-        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0)
-        {
-            Debug.Log("[BuildController] Cannot place stairs — no stair credit available (tier up first).");
-            SetMode(BuildMode.Claim);
-            return;
-        }
-
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell))
-        {
-            Debug.Log("[BuildController] Stairs must be on owned tile.");
-            return;
-        }
-        if (stairsDefinition == null || stairsDefinition.prefab == null) { Debug.LogError("[BuildController] stairsDefinition not assigned."); return; }
-        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost))
-        {
-            Debug.Log("[BuildController] Not enough mana for stairs.");
-            return;
-        }
-
-        if (!DungeonCore.Instance.TryConsumeStairCredit())
-        {
-            Debug.LogWarning("[BuildController] Stair credit vanished between check and consume.");
-            return;
-        }
+        if (FloorManager.Instance == null) return;
+        if (FloorManager.Instance.IsCoreRelocationPending) { SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { SetMode(BuildMode.Claim); return; }
+        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { SetMode(BuildMode.Claim); return; }
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (stairsDefinition == null || stairsDefinition.prefab == null) return;
+        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) return;
+        if (!DungeonCore.Instance.TryConsumeStairCredit()) return;
 
         int currentFloorIndex = FloorManager.Instance.ActiveFloorIndex;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
-
         var downStairs = Instantiate(stairsDefinition.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) downStairs.transform.SetParent(ActiveFloor.transform, true);
         downStairs.Initialise(cell, currentFloorIndex, DungeonStairs.Direction.Down, stairsDefinition.upVariantSprite);
@@ -332,32 +388,19 @@ public class DungeonBuildController : MonoBehaviour
         }
 
         SetMode(BuildMode.Claim);
-        Debug.Log($"[BuildController] Stairs placed: floor {currentFloorIndex} ↔ {nextFloorIndex}. Credits remaining: {DungeonCore.Instance.StairCredits}.");
     }
-
-    // ── Place Core ────────────────────────────────────────────────
 
     private void HandlePlaceCoreMode()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) { Debug.Log("[BuildController] Core must be on owned tile."); return; }
-        if (FloorManager.Instance == null || !FloorManager.Instance.CanPlaceCore)
-        {
-            Debug.Log("[BuildController] Place Core not available.");
-            SetMode(BuildMode.Claim);
-            return;
-        }
+        if (!ActiveInfluence.IsTileOwned(cell)) return;
+        if (FloorManager.Instance == null || !FloorManager.Instance.CanPlaceCore) { SetMode(BuildMode.Claim); return; }
 
         int destIdx = FloorManager.Instance.PendingCoreRelocationFloor;
         var destFloor = FloorManager.Instance.GetFloor(destIdx);
-        if (destFloor == null) { Debug.LogError($"[BuildController] Pending floor {destIdx} not found."); SetMode(BuildMode.Claim); return; }
-
-        if (FloorManager.Instance.ActiveFloorIndex != destIdx)
-        {
-            FloorManager.Instance.SwitchToFloor(destIdx);
-            return;
-        }
+        if (destFloor == null) { SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.ActiveFloorIndex != destIdx) { FloorManager.Instance.SwitchToFloor(destIdx); return; }
 
         DungeonCore.Instance.Relocate(destFloor, cell);
         SetMode(BuildMode.Claim);
@@ -373,7 +416,7 @@ public class DungeonBuildController : MonoBehaviour
 
     public void RestoreEntrance(FloorRoot floor, Vector3Int cell)
     {
-        if (entrancePrefab == null) { Debug.LogError("[BuildController] entrancePrefab not assigned."); return; }
+        if (entrancePrefab == null) return;
         if (DungeonEntrance.Instance != null) Destroy(DungeonEntrance.Instance.gameObject);
         if (floor?.TileInfluence == null) return;
         Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
@@ -383,13 +426,20 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     public void RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell)
+        => RestoreSpawner(floor, def, cell, SpawnerOrderMode.Wander, null, true, false, default);
+
+    /// <summary>DAY 31 PART 3D — Full restore including patrol orders and attack target.</summary>
+    public void RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell,
+        SpawnerOrderMode orderMode, List<Vector3Int> patrolWaypoints, bool patrolLoop,
+        bool hasAttackTarget, Vector3Int attackTargetCell)
     {
-        if (spawnerShellPrefab == null) { Debug.LogError("[BuildController] spawnerShellPrefab not assigned."); return; }
+        if (spawnerShellPrefab == null) return;
         if (floor?.TileInfluence == null) return;
         Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
         spawner.transform.SetParent(floor.transform, true);
         spawner.Initialise(def);
+        spawner.RestoreOrders(orderMode, patrolWaypoints, patrolLoop, hasAttackTarget, attackTargetCell);
     }
 
     public void RestoreChest(FloorRoot floor, ChestDefinition def, Vector3Int cell, bool isOpened)
@@ -425,8 +475,8 @@ public class DungeonBuildController : MonoBehaviour
         anchor.Initialise(cell);
         if (!string.IsNullOrEmpty(roomName))
         {
-            var def = roomDefRegistry?.GetByName(roomName);
-            if (def != null) anchor.SetRoomType(def);
+            var defRes = roomDefRegistry?.GetByName(roomName);
+            if (defRes != null) anchor.SetRoomType(defRes);
         }
     }
 
@@ -449,7 +499,7 @@ public class DungeonBuildController : MonoBehaviour
 
     public void RestoreStairs(FloorRoot floor, Vector3Int cell, DungeonStairs.Direction dir)
     {
-        if (stairsDefinition == null || stairsDefinition.prefab == null) { Debug.LogError("[BuildController] stairsDefinition not assigned."); return; }
+        if (stairsDefinition == null || stairsDefinition.prefab == null) return;
         if (floor?.TileInfluence == null) return;
         Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
         var stairs = Instantiate(stairsDefinition.prefab, worldPos, Quaternion.identity);
@@ -457,7 +507,7 @@ public class DungeonBuildController : MonoBehaviour
         stairs.Initialise(cell, floor.FloorIndex, dir, stairsDefinition.upVariantSprite);
     }
 
-    // ── Stair Click ───────────────────────────────────────────────
+    // ── Clicks ────────────────────────────────────────────────────
 
     private bool TryHandleStairClick()
     {
@@ -485,6 +535,37 @@ public class DungeonBuildController : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// DAY 31 PART 3D — Detects left-clicks on a placed MonsterSpawner on the active
+    /// floor. Returns true (consuming the click) if a spawner was hit.
+    /// </summary>
+    private bool TryHandleSpawnerClick()
+    {
+        var mouse = Mouse.current;
+        if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return false;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
+        if (mainCamera == null) return false;
+
+        Vector2 screenPos = mouse.position.ReadValue();
+        Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
+        worldPos.z = 0f;
+
+        var hits = Physics2D.OverlapPointAll(worldPos);
+        foreach (var col in hits)
+        {
+            if (col == null) continue;
+            var spawner = col.GetComponentInParent<MonsterSpawner>();
+            if (spawner == null) continue;
+
+            var spawnerFloor = spawner.GetComponentInParent<FloorRoot>();
+            if (FloorManager.Instance != null && spawnerFloor != FloorManager.Instance.ActiveFloor) continue;
+
+            SpawnerSelectionController.Instance?.Select(spawner);
+            return true;
+        }
+        return false;
+    }
+
     private bool LeftClickThisFrame(out Vector3Int cell)
     {
         cell = default;
@@ -494,7 +575,6 @@ public class DungeonBuildController : MonoBehaviour
 
         Vector2 screenPos = mouse.position.ReadValue();
         Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
-
         var influence = ActiveInfluence;
         if (influence == null) return false;
         cell = influence.WorldToCell(worldPos);
@@ -506,14 +586,11 @@ public class DungeonBuildController : MonoBehaviour
         cell = default;
         var mouse = Mouse.current;
         if (mouse == null) return false;
-
-        if (mouse.leftButton.wasReleasedThisFrame)
-            dragClaimActive = false;
+        if (mouse.leftButton.wasReleasedThisFrame) dragClaimActive = false;
 
         bool pressed = mouse.leftButton.wasPressedThisFrame;
         bool held = mouse.leftButton.isPressed;
         if (!pressed && !held) return false;
-
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
         if (mainCamera == null) return false;
 
@@ -524,21 +601,8 @@ public class DungeonBuildController : MonoBehaviour
         Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
         Vector3Int newCell = influence.WorldToCell(worldPos);
 
-        if (pressed)
-        {
-            cell = newCell;
-            dragClaimLastCell = newCell;
-            dragClaimActive = true;
-            return true;
-        }
-
-        if (held && dragClaimActive && newCell != dragClaimLastCell)
-        {
-            cell = newCell;
-            dragClaimLastCell = newCell;
-            return true;
-        }
-
+        if (pressed) { cell = newCell; dragClaimLastCell = newCell; dragClaimActive = true; return true; }
+        if (held && dragClaimActive && newCell != dragClaimLastCell) { cell = newCell; dragClaimLastCell = newCell; return true; }
         return false;
     }
 
