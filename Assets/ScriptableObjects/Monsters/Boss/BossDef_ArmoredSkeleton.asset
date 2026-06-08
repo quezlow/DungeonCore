@@ -17,6 +17,10 @@ MonoBehaviour:
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 10
   description: 
+  isAquatic: 0
+  passiveRegenPerSecond: 5
+  regenCooldown: 5
+  wildRegenMultiplier: 0
   bossTitle: Jimbo
   hpMultiplier: 5
   damageMultiplier: 3

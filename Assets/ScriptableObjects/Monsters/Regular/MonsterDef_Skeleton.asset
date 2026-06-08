@@ -19,3 +19,7 @@ MonoBehaviour:
   description: "A reanimated warrior stripped down to bone and instinct. Cheap to
     summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
     Don't expect them to win many fights \u2014 expect them to buy time."
+  isAquatic: 0
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0

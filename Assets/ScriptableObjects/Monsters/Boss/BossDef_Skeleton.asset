@@ -17,6 +17,10 @@ MonoBehaviour:
   prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
   capacityCost: 5
   description: 
+  isAquatic: 0
+  passiveRegenPerSecond: 5
+  regenCooldown: 5
+  wildRegenMultiplier: 0
   bossTitle: Bonelord
   hpMultiplier: 5
   damageMultiplier: 3

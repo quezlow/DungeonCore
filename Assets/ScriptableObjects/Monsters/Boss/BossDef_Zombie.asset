@@ -17,6 +17,10 @@ MonoBehaviour:
   prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
   capacityCost: 7
   description: 
+  isAquatic: 0
+  passiveRegenPerSecond: 5
+  regenCooldown: 5
+  wildRegenMultiplier: 0
   bossTitle: Carl
   hpMultiplier: 5
   damageMultiplier: 3

@@ -21,15 +21,20 @@ using UnityEngine;
 ///
 /// DAY 31 PART 2 — WILD CAVE MONSTERS
 ///   - InitialiseWild(chamberId, chamberCells) spawns the monster as wild.
-///     IsWild becomes true; PickWanderTarget uses chamber cells (plus an
-///     "aggro outward" chance to walk to adjacent owned cells).
-///   - ScanForHostiles replaces ScanForAdventurer. Wild monsters target
-///     player monsters and adventurers; player monsters target wild
-///     monsters and adventurers. Faction comparison: IsWild bool.
-///   - Implements IMonsterTarget so the same scan can engage adventurers
-///     and opposite-faction monsters uniformly.
-///   - OnDied event fires before destruction so WildMonsterController
-///     can decrement its alive count.
+///   - ScanForHostiles replaces ScanForAdventurer; uses IMonsterTarget.
+///   - OnDied event fires for WildMonsterController bookkeeping.
+///
+/// DAY 31 PART 3A — STATE ENUM + PASSIVE REGEN
+///   - State enum expanded: Wander, Patrol, Idle, Attack, DefendCore.
+///     Patrol and Idle are reserved stubs for Part 3D (waypoints) and
+///     just stand-and-scan for now. DefendCore is a reserved stub.
+///   - passiveRegenPerSecond from MonsterDefinition restores HP in
+///     Wander/Patrol/Idle states, but only after regenCooldown seconds
+///     since the last damage taken. Wild monsters scale by
+///     wildRegenMultiplier (default 0 — no wild regen).
+///   - Boss variants scale regen by hpMultiplier.
+///   - Heal floating numbers spawn periodically when accumulated heal
+///     crosses HEAL_DISPLAY_THRESHOLD (silent for tiny ticks).
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour, IMonsterTarget
@@ -65,14 +70,24 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
-    private enum MonsterState { Wander, Attack }
+
+    /// <summary>
+    /// DAY 31 PART 3A — Expanded state enum.
+    ///   Wander      — random pick within wanderRadius (or chamber cells for wild).
+    ///   Patrol      — STUB for Part 3D. Currently stand-and-scan.
+    ///   Idle        — STUB for Part 3D (hold-at-final-waypoint). Stand-and-scan.
+    ///   Attack      — full combat loop against current target.
+    ///   DefendCore  — STUB for future. Stand-and-scan.
+    /// Regen is allowed in Wander/Patrol/Idle, blocked in Attack/DefendCore.
+    /// </summary>
+    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore }
     private MonsterState state = MonsterState.Wander;
 
     private float currentHP;
     private float monsterXP;
     private float lastAttackTime;
 
-    private IMonsterTarget target;        // polymorphic combat target (adventurer or hostile monster)
+    private IMonsterTarget target;        // polymorphic combat target
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
@@ -88,15 +103,21 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float terrainSpeedMultiplier = 1f;
 
     // Wild monster state (DAY 31 PART 2)
-    private int wildChamberId = -1;          // < 0 = player-spawned; >= 0 = wild, this is the chamber id
+    private int wildChamberId = -1;
     private List<Vector3Int> wildChamberCells;
+
+    // Regen (DAY 31 PART 3A)
+    private float lastDamageTime = -9999f;
+    private float pendingHealDisplay = 0f;
+    private float effectiveRegenPerSecond = 0f;
+    private float effectiveRegenCooldown = 5f;
+    private const float HEAL_DISPLAY_THRESHOLD = 1f;
 
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0;
     public int WildChamberId => wildChamberId;
 
-    /// <summary>DAY 31 PART 2 — Fires when this monster dies, just before Destroy().
-    /// WildMonsterController subscribes per spawned wild monster to track clear progress.</summary>
+    /// <summary>DAY 31 PART 2 — Fires when this monster dies, just before Destroy().</summary>
     public event System.Action<DungeonMonster> OnDied;
 
     // ─────────────────────────────────────────────────────────────
@@ -118,6 +139,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent — wander will use spawn position.");
 
+        // DAY 31 PART 3A — Resolve effective regen now that spawner/wild state is set.
+        ResolveEffectiveRegen();
+
         PickWanderTarget();
 
         if (statusBarsPrefab != null)
@@ -131,17 +155,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
     }
 
-    /// <summary>Called by MonsterSpawner immediately after instantiation.</summary>
     public void Initialise(MonsterSpawner parentSpawner)
     {
         spawner = parentSpawner;
     }
 
-    /// <summary>
-    /// DAY 31 PART 2 — Called by WildMonsterController for chamber-dwelling wild monsters.
-    /// Sets the monster's faction (IsWild = true), caches its chamber cells for wander,
-    /// and wires its floor reference up front so Start() doesn't have to.
-    /// </summary>
     public void InitialiseWild(int chamberId, FloorRoot floor, List<Vector3Int> chamberCells)
     {
         wildChamberId = chamberId;
@@ -165,6 +183,45 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         var sr = GetComponentInChildren<SpriteRenderer>();
         if (sr != null) sr.color = def.tint;
+
+        // Regen will be re-resolved in Start() (which runs after this) and
+        // pick up the boss scaling automatically.
+    }
+
+    /// <summary>
+    /// DAY 31 PART 3A — Computes the per-instance regen values from the
+    /// MonsterDefinition, applying wild and boss multipliers.
+    /// </summary>
+    private void ResolveEffectiveRegen()
+    {
+        var def = spawner != null ? spawner.Definition : null;
+
+        // For wild monsters, MonsterDefinition is looked up via the prefab.
+        // WildMonsterController instantiates def.prefab directly, so the prefab
+        // itself doesn't know which definition spawned it. We don't have a back-
+        // reference, so wild regen uses base stats unless the prefab has its own
+        // serialized values. To keep wild regen tunable, definitions used in the
+        // wild pool should set passiveRegenPerSecond = desired-base and
+        // wildRegenMultiplier accordingly — but a wild monster's spawner is null,
+        // so we cannot read those fields here. As a fallback, wild monsters use
+        // a regen of zero by default (matching the user spec of "wild monsters
+        // do not regen by default").
+        if (def == null)
+        {
+            effectiveRegenPerSecond = 0f;
+            effectiveRegenCooldown = 5f;
+            return;
+        }
+
+        float baseRegen = def.passiveRegenPerSecond;
+        float cooldown = def.regenCooldown;
+
+        if (IsWild) baseRegen *= def.wildRegenMultiplier;
+
+        if (bossDefinition != null) baseRegen *= bossDefinition.hpMultiplier;
+
+        effectiveRegenPerSecond = baseRegen;
+        effectiveRegenCooldown = cooldown;
     }
 
     private void Update()
@@ -176,11 +233,26 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (target != null && !target.IsAlive)
             target = null;
 
+        // DAY 31 PART 3A — Regen runs only in non-combat states.
+        if (IsRegenState(state))
+            TickRegen();
+
         switch (state)
         {
             case MonsterState.Wander:
                 ScanForHostiles();
                 Wander();
+                break;
+
+            case MonsterState.Patrol:
+                // STUB — Part 3D will implement waypoint following.
+                // For now, monsters in Patrol stand and scan for hostiles.
+                ScanForHostiles();
+                break;
+
+            case MonsterState.Idle:
+                // STUB — Part 3D (hold-at-final-waypoint). Stand and scan.
+                ScanForHostiles();
                 break;
 
             case MonsterState.Attack:
@@ -194,6 +266,38 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                     AttackTarget();
                 }
                 break;
+
+            case MonsterState.DefendCore:
+                // STUB — future state. Stand and scan.
+                ScanForHostiles();
+                break;
+        }
+    }
+
+    private static bool IsRegenState(MonsterState s)
+        => s == MonsterState.Wander || s == MonsterState.Patrol || s == MonsterState.Idle;
+
+    // ── Regen (DAY 31 PART 3A) ────────────────────────────────────
+
+    private void TickRegen()
+    {
+        if (effectiveRegenPerSecond <= 0f) return;
+        if (currentHP >= maxHP) return;
+        if (Time.time - lastDamageTime < effectiveRegenCooldown) return;
+
+        float healThisFrame = effectiveRegenPerSecond * Time.deltaTime;
+        float newHP = Mathf.Min(maxHP, currentHP + healThisFrame);
+        float actuallyHealed = newHP - currentHP;
+        currentHP = newHP;
+        statusBars?.SetHP(currentHP, maxHP);
+
+        pendingHealDisplay += actuallyHealed;
+        if (pendingHealDisplay >= HEAL_DISPLAY_THRESHOLD)
+        {
+            DamageNumberSpawner.Spawn(
+                pendingHealDisplay, transform.position,
+                FloatingDamageNumber.DamageType.Heal);
+            pendingHealDisplay = 0f;
         }
     }
 
@@ -203,7 +307,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         terrainSpeedMultiplier = 1f;
 
-        // Aquatic bypass — only meaningful for player-spawned monsters.
         if (spawner != null && spawner.Definition != null && spawner.Definition.isAquatic) return;
 
         if (currentFloor == null) return;
@@ -250,7 +353,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             return;
         }
 
-        // Player-spawned monster — wander on owned cells within wanderRadius of spawn.
         var influence = currentFloor?.TileInfluence;
         if (influence == null) { wanderTarget = spawnPosition; return; }
 
@@ -269,12 +371,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         wanderTarget = spawnPosition;
     }
 
-    /// <summary>
-    /// DAY 31 PART 2 — Wild monster wander logic.
-    /// 70% of picks stay inside the chamber. The other 30% (configurable via
-    /// wildAggroOutwardChance) target an adjacent owned cell so the wild
-    /// monster pokes outward into player territory and can be engaged.
-    /// </summary>
     private void PickWildWanderTarget()
     {
         var influence = currentFloor?.TileInfluence;
@@ -288,8 +384,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (tryOutward)
         {
-            // Build the set of owned cells adjacent to ANY chamber cell. Each call
-            // rebuilds — as the player claims closer, the ring grows organically.
             var adjacentOwned = new List<Vector3Int>();
             var seen = new HashSet<Vector3Int>();
             foreach (var cell in wildChamberCells)
@@ -306,7 +400,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 wanderTarget = influence.CellToWorld(pick);
                 return;
             }
-            // No owned cells adjacent yet — fall through to a chamber cell pick.
         }
 
         var chamberPick = wildChamberCells[Random.Range(0, wildChamberCells.Count)];
@@ -323,17 +416,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // ── Detection & Combat ────────────────────────────────────────
 
-    /// <summary>
-    /// DAY 31 PART 2 — Unified scan for hostile targets within detectionRange.
-    /// Adventurers are always hostile to both factions. Opposite-faction monsters
-    /// are hostile (wild ↔ player). Same-faction monsters and the self are skipped.
-    /// </summary>
     private void ScanForHostiles()
     {
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
 
-        // Adventurers — hostile to everything.
         var adventurers = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
         foreach (var adv in adventurers)
         {
@@ -342,13 +429,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             if (d < nearestDist) { nearestDist = d; nearest = adv; }
         }
 
-        // Opposite-faction monsters.
         var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
         foreach (var m in monsters)
         {
             if (m == this) continue;
             if (m.currentFloor != currentFloor) continue;
-            if (m.IsWild == this.IsWild) continue; // same side
+            if (m.IsWild == this.IsWild) continue;
             float d = Vector2.Distance(transform.position, m.transform.position);
             if (d < nearestDist) { nearestDist = d; nearest = m; }
         }
@@ -404,6 +490,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public void TakeDamage(float amount)
     {
+        // DAY 31 PART 3A — record damage timestamp for regen cooldown gating;
+        // discard any partially-accumulated heal display.
+        lastDamageTime = Time.time;
+        pendingHealDisplay = 0f;
+
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
         if (currentHP <= 0f) Die();
@@ -415,13 +506,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         GetComponent<LootTable>()?.Roll(transform.position);
         spawner?.OnMonsterDied();
 
-        // DAY 31 PART 2 — Notify subscribers (WildMonsterController for wild ones).
         OnDied?.Invoke(this);
 
         Destroy(gameObject);
     }
 
-    // ── IMonsterTarget (DAY 31 PART 2) ────────────────────────────
+    // ── IMonsterTarget ────────────────────────────────────────────
 
     Transform IMonsterTarget.Transform => transform;
 
