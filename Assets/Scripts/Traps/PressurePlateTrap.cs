@@ -2,8 +2,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Pressure plate. Scans for adventurers within a configurable radius each frame.
-/// When triggered, fires the linked trap (stored by cell) once.
+/// Pressure plate. Scans for adventurers and wild monsters within a
+/// configurable radius each frame. When triggered, fires the linked trap
+/// (stored by cell) once.
 ///
 /// LINKING
 ///   The link is set by the player via TrapLinkPickerUI, which opens when the
@@ -12,10 +13,15 @@ using UnityEngine.InputSystem;
 ///   the linked trap is looked up via TrapRegistry.GetTrapAt(linkedCell).
 ///
 /// EXTERNAL TRIGGER SEMANTICS
-///   The linked trap fires via TrapBase.TriggerExternally(adv), which BYPASSES
-///   both the linked trap's own cooldown AND its flagged state. Rationale: the
-///   adventurer is stepping on the plate (which they don't know about), not on
-///   the linked trap directly. The plate's cooldown governs the cadence.
+///   The linked trap fires via TrapBase.TriggerExternally(adv) for adventurers
+///   or TrapBase.TriggerExternallyMonster(m) for monsters. Both BYPASS the
+///   linked trap's own cooldown AND its flagged state — the adventurer/monster
+///   stepped on the PLATE, not on the linked trap directly. The plate's own
+///   cooldown governs the cadence.
+///
+/// DAY 31 PART 3C — Wild monsters now trigger pressure plates (T5).
+///   Adventurer scan runs first; if no adventurer is in range, the wild-monster
+///   scan runs. Player monsters are excluded — only IsWild monsters trigger.
 ///
 /// PREFAB SETUP
 ///   PressurePlateTrap (this script + SpriteRenderer)
@@ -25,7 +31,7 @@ using UnityEngine.InputSystem;
 public class PressurePlateTrap : TrapBase
 {
     [Header("Pressure Plate")]
-    [Tooltip("World-space radius within which adventurers trigger the plate.")]
+    [Tooltip("World-space radius within which adventurers or wild monsters trigger the plate.")]
     [SerializeField] private float triggerRadius = 1.5f;
 
     [Tooltip("Cell of the linked trap. Set via TrapLinkPickerUI.")]
@@ -52,16 +58,15 @@ public class PressurePlateTrap : TrapBase
         if (PauseController.IsGamePaused) return;
 
         HandleLinkClick();
-        ScanForAdventurersInRadius();
+        ScanForTargetsInRadius();
     }
 
     // ── Linking ───────────────────────────────────────────────────
 
-    /// <summary>Called by TrapLinkPickerUI when the player selects a target trap.</summary>
     public void SetLink(Vector3Int cell)
     {
         linkedCell = cell;
-        hasLink    = true;
+        hasLink = true;
         Debug.Log($"[PressurePlate] Linked plate at {OccupiedCell} to trap at {cell}.");
     }
 
@@ -78,7 +83,7 @@ public class PressurePlateTrap : TrapBase
         if (Camera.main == null) return;
 
         Vector3 screen = Mouse.current.position.ReadValue();
-        Vector3 world  = Camera.main.ScreenToWorldPoint(screen);
+        Vector3 world = Camera.main.ScreenToWorldPoint(screen);
         world.z = 0f;
 
         if (myCollider.OverlapPoint(world))
@@ -87,24 +92,41 @@ public class PressurePlateTrap : TrapBase
 
     // ── Trigger Scan ──────────────────────────────────────────────
 
-    private void ScanForAdventurersInRadius()
+    private void ScanForTargetsInRadius()
     {
         if (Definition == null) return;
         if (IsFlagged) return;
         if (Time.time - lastTriggerTimePublic < Definition.cooldown) return;
 
-        var all = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
         float radiusSq = triggerRadius * triggerRadius;
+        Vector3 myPos = transform.position;
 
-        foreach (var adv in all)
+        // Adventurers (priority — original behavior preserved).
+        var advs = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
+        foreach (var adv in advs)
         {
-            float dx = adv.transform.position.x - transform.position.x;
-            float dy = adv.transform.position.y - transform.position.y;
+            float dx = adv.transform.position.x - myPos.x;
+            float dy = adv.transform.position.y - myPos.y;
             if (dx * dx + dy * dy <= radiusSq)
             {
-                FireLinkedTrap(adv);
+                FireLinkedTrapForAdventurer(adv);
                 lastTriggerTimePublic = Time.time;
-                return; // one-shot per cooldown
+                return;
+            }
+        }
+
+        // DAY 31 PART 3C — Wild monsters.
+        var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
+        foreach (var m in monsters)
+        {
+            if (!m.IsWild) continue; // player monsters bypass (T2)
+            float dx = m.transform.position.x - myPos.x;
+            float dy = m.transform.position.y - myPos.y;
+            if (dx * dx + dy * dy <= radiusSq)
+            {
+                FireLinkedTrapForMonster(m);
+                lastTriggerTimePublic = Time.time;
+                return;
             }
         }
     }
@@ -115,7 +137,7 @@ public class PressurePlateTrap : TrapBase
     /// </summary>
     private float lastTriggerTimePublic = -999f;
 
-    private void FireLinkedTrap(DungeonAdventurer adv)
+    private void FireLinkedTrapForAdventurer(DungeonAdventurer adv)
     {
         if (!hasLink || TrapRegistry.Instance == null) return;
 
@@ -126,20 +148,38 @@ public class PressurePlateTrap : TrapBase
             return;
         }
 
-        Debug.Log($"[PressurePlate] Plate at {OccupiedCell} fired linked trap at {linkedCell}.");
+        Debug.Log($"[PressurePlate] Plate at {OccupiedCell} fired linked trap at {linkedCell} (adventurer).");
         linked.TriggerExternally(adv);
     }
 
-    // ── Trap Effect Override ──────────────────────────────────────
+    private void FireLinkedTrapForMonster(DungeonMonster m)
+    {
+        if (!hasLink || TrapRegistry.Instance == null) return;
+
+        var linked = TrapRegistry.Instance.GetTrapAt(linkedCell);
+        if (linked == null)
+        {
+            Debug.LogWarning($"[PressurePlate] Link broken at {OccupiedCell} — no trap at {linkedCell}.");
+            return;
+        }
+
+        Debug.Log($"[PressurePlate] Plate at {OccupiedCell} fired linked trap at {linkedCell} (wild monster).");
+        linked.TriggerExternallyMonster(m);
+    }
+
+    // ── Trap Effect Overrides ─────────────────────────────────────
 
     /// <summary>
     /// The plate itself has no direct effect — its effect is firing the linked trap.
-    /// Cell-based triggers via TrapBase.OnAdventurerEntered are ignored (radius scan handles it).
+    /// Cell-based triggers via TrapBase.OnAdventurerEntered are ignored.
     /// </summary>
-    protected override void ApplyEffect(DungeonAdventurer adv)
-    {
-        // Intentionally empty. Trigger goes through ScanForAdventurersInRadius → FireLinkedTrap.
-    }
+    protected override void ApplyEffect(DungeonAdventurer adv) { /* intentionally empty */ }
+
+    /// <summary>
+    /// DAY 31 PART 3C — Symmetric no-op for monsters. The plate fires its
+    /// linked trap externally; it never directly damages anyone.
+    /// </summary>
+    protected override void ApplyEffect(DungeonMonster m) { /* intentionally empty */ }
 
     // ── Gizmos ────────────────────────────────────────────────────
 

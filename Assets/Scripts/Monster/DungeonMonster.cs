@@ -6,14 +6,13 @@ using UnityEngine;
 ///
 /// CHANGES FROM PRE-DAY-27
 ///   - Caches FloorRoot in Start() via GetComponentInParent.
-///   - PickWanderTarget() uses cached floor's TileInfluenceManager instead
-///     of a singleton.
+///   - PickWanderTarget() uses cached floor's TileInfluenceManager.
 ///   - ScanForAdventurer() filters to adventurers on the same floor.
 ///
 /// DAY 28 — BOSS SUPPORT
 ///   - bossDefinition is set via ApplyBossModifiers() by the spawner.
 ///   - Stats (maxHP, attackDamage, xpPerKill) are multiplied; transform
-///     scaled; sprite tinted. Status bars get a boss label in Start().
+///     scaled; sprite tinted.
 ///
 /// DAY 31 PART 1 — RIVER FORDING
 ///   - terrainSpeedMultiplier drops to FordingSpeedMultiplier on river cells.
@@ -21,20 +20,19 @@ using UnityEngine;
 ///
 /// DAY 31 PART 2 — WILD CAVE MONSTERS
 ///   - InitialiseWild(chamberId, chamberCells) spawns the monster as wild.
-///   - ScanForHostiles replaces ScanForAdventurer; uses IMonsterTarget.
-///   - OnDied event fires for WildMonsterController bookkeeping.
+///   - ScanForHostiles uses IMonsterTarget for adventurer or opposite-faction monster.
+///   - OnDied event for WildMonsterController bookkeeping.
 ///
 /// DAY 31 PART 3A — STATE ENUM + PASSIVE REGEN
-///   - State enum expanded: Wander, Patrol, Idle, Attack, DefendCore.
-///     Patrol and Idle are reserved stubs for Part 3D (waypoints) and
-///     just stand-and-scan for now. DefendCore is a reserved stub.
-///   - passiveRegenPerSecond from MonsterDefinition restores HP in
-///     Wander/Patrol/Idle states, but only after regenCooldown seconds
-///     since the last damage taken. Wild monsters scale by
-///     wildRegenMultiplier (default 0 — no wild regen).
-///   - Boss variants scale regen by hpMultiplier.
-///   - Heal floating numbers spawn periodically when accumulated heal
-///     crosses HEAL_DISPLAY_THRESHOLD (silent for tiny ticks).
+///   - State enum: Wander, Patrol, Idle, Attack, DefendCore.
+///   - Regen ticks in Wander/Patrol/Idle after regenCooldown seconds since last damage.
+///
+/// DAY 31 PART 3C — TRAPS + SLOW
+///   - ApplySlow(multiplier, duration) mirrors the adventurer pattern.
+///     slowMultiplier folds into movement math alongside terrainSpeedMultiplier.
+///   - CheckTrapStep() runs in Update for WILD monsters only — wild fauna
+///     trigger traps placed by the player; player monsters bypass their
+///     own traps (T2). Last-cell tracking ensures one fire per cell entry.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class DungeonMonster : MonoBehaviour, IMonsterTarget
@@ -61,8 +59,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private float wanderWaitMax = 3f;
 
     [Header("Wild Wander (DAY 31 PART 2)")]
-    [Tooltip("Chance per wander pick that a wild monster targets an adjacent owned cell " +
-             "instead of staying inside the chamber. 0 = stays in chamber, 1 = always pokes outward.")]
     [Range(0f, 1f)]
     [SerializeField] private float wildAggroOutwardChance = 0.3f;
 
@@ -71,15 +67,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // ── State ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// DAY 31 PART 3A — Expanded state enum.
-    ///   Wander      — random pick within wanderRadius (or chamber cells for wild).
-    ///   Patrol      — STUB for Part 3D. Currently stand-and-scan.
-    ///   Idle        — STUB for Part 3D (hold-at-final-waypoint). Stand-and-scan.
-    ///   Attack      — full combat loop against current target.
-    ///   DefendCore  — STUB for future. Stand-and-scan.
-    /// Regen is allowed in Wander/Patrol/Idle, blocked in Attack/DefendCore.
-    /// </summary>
     private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore }
     private MonsterState state = MonsterState.Wander;
 
@@ -87,7 +74,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float monsterXP;
     private float lastAttackTime;
 
-    private IMonsterTarget target;        // polymorphic combat target
+    private IMonsterTarget target;
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
@@ -99,8 +86,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private bool wanderWaiting;
     private float wanderWaitTimer;
 
-    // Terrain speed (DAY 31 PART 1)
+    // Terrain & slow (DAY 31 PART 1 / 3C)
     private float terrainSpeedMultiplier = 1f;
+    private float slowMultiplier = 1f;
+    private float slowTimer = 0f;
+
+    // Trap step tracking (DAY 31 PART 3C)
+    private Vector3Int lastTrapCheckCell = new Vector3Int(int.MinValue, int.MinValue, int.MinValue);
 
     // Wild monster state (DAY 31 PART 2)
     private int wildChamberId = -1;
@@ -117,7 +109,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public bool IsWild => wildChamberId >= 0;
     public int WildChamberId => wildChamberId;
 
-    /// <summary>DAY 31 PART 2 — Fires when this monster dies, just before Destroy().</summary>
     public event System.Action<DungeonMonster> OnDied;
 
     // ─────────────────────────────────────────────────────────────
@@ -133,13 +124,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         spawnPosition = transform.position;
 
-        if (currentFloor == null) // wild path sets this in InitialiseWild before Start
+        if (currentFloor == null)
             currentFloor = GetComponentInParent<FloorRoot>();
 
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent — wander will use spawn position.");
 
-        // DAY 31 PART 3A — Resolve effective regen now that spawner/wild state is set.
         ResolveEffectiveRegen();
 
         PickWanderTarget();
@@ -183,29 +173,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         var sr = GetComponentInChildren<SpriteRenderer>();
         if (sr != null) sr.color = def.tint;
-
-        // Regen will be re-resolved in Start() (which runs after this) and
-        // pick up the boss scaling automatically.
     }
 
-    /// <summary>
-    /// DAY 31 PART 3A — Computes the per-instance regen values from the
-    /// MonsterDefinition, applying wild and boss multipliers.
-    /// </summary>
     private void ResolveEffectiveRegen()
     {
         var def = spawner != null ? spawner.Definition : null;
-
-        // For wild monsters, MonsterDefinition is looked up via the prefab.
-        // WildMonsterController instantiates def.prefab directly, so the prefab
-        // itself doesn't know which definition spawned it. We don't have a back-
-        // reference, so wild regen uses base stats unless the prefab has its own
-        // serialized values. To keep wild regen tunable, definitions used in the
-        // wild pool should set passiveRegenPerSecond = desired-base and
-        // wildRegenMultiplier accordingly — but a wild monster's spawner is null,
-        // so we cannot read those fields here. As a fallback, wild monsters use
-        // a regen of zero by default (matching the user spec of "wild monsters
-        // do not regen by default").
         if (def == null)
         {
             effectiveRegenPerSecond = 0f;
@@ -217,7 +189,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         float cooldown = def.regenCooldown;
 
         if (IsWild) baseRegen *= def.wildRegenMultiplier;
-
         if (bossDefinition != null) baseRegen *= bossDefinition.hpMultiplier;
 
         effectiveRegenPerSecond = baseRegen;
@@ -229,11 +200,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (PauseController.IsGamePaused) return;
 
         UpdateTerrainSpeedMultiplier();
+        TickSlow();
+        CheckTrapStep();
 
         if (target != null && !target.IsAlive)
             target = null;
 
-        // DAY 31 PART 3A — Regen runs only in non-combat states.
         if (IsRegenState(state))
             TickRegen();
 
@@ -246,12 +218,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
             case MonsterState.Patrol:
                 // STUB — Part 3D will implement waypoint following.
-                // For now, monsters in Patrol stand and scan for hostiles.
                 ScanForHostiles();
                 break;
 
             case MonsterState.Idle:
-                // STUB — Part 3D (hold-at-final-waypoint). Stand and scan.
+                // STUB — Part 3D (hold-at-final-waypoint).
                 ScanForHostiles();
                 break;
 
@@ -268,7 +239,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 break;
 
             case MonsterState.DefendCore:
-                // STUB — future state. Stand and scan.
+                // STUB — future state.
                 ScanForHostiles();
                 break;
         }
@@ -301,6 +272,57 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
     }
 
+    // ── Slow (DAY 31 PART 3C) ─────────────────────────────────────
+
+    /// <summary>
+    /// Apply a movement slow. multiplier is in [0,1] — values closer to 0 are
+    /// more severe. If already slowed, the more severe multiplier wins; the
+    /// timer is always set to the new duration.
+    /// </summary>
+    public void ApplySlow(float multiplier, float duration)
+    {
+        if (duration <= 0f) return;
+        multiplier = Mathf.Clamp01(multiplier);
+        slowMultiplier = Mathf.Min(slowMultiplier, multiplier);
+        slowTimer = duration;
+    }
+
+    private void TickSlow()
+    {
+        if (slowTimer <= 0f) return;
+        slowTimer -= Time.deltaTime;
+        if (slowTimer <= 0f)
+        {
+            slowTimer = 0f;
+            slowMultiplier = 1f;
+        }
+    }
+
+    // ── Trap step (DAY 31 PART 3C) ────────────────────────────────
+
+    /// <summary>
+    /// Wild monsters fire trap effects when they enter a trap cell. Player
+    /// monsters bypass their own traps (T2). Last-cell tracking prevents
+    /// repeated checks while standing on the same cell — the trap's own
+    /// cooldown still gates re-triggers if the monster leaves and returns.
+    /// </summary>
+    private void CheckTrapStep()
+    {
+        if (!IsWild) return;
+        if (currentFloor == null) return;
+
+        var influence = currentFloor.TileInfluence;
+        var trapReg = currentFloor.TrapRegistry;
+        if (influence == null || trapReg == null) return;
+
+        Vector3Int cell = influence.WorldToCell(transform.position);
+        if (cell == lastTrapCheckCell) return;
+        lastTrapCheckCell = cell;
+
+        var trap = trapReg.GetTrapAt(cell);
+        if (trap != null) trap.OnMonsterEntered(this);
+    }
+
     // ── Terrain Speed (DAY 31 PART 1) ─────────────────────────────
 
     private void UpdateTerrainSpeedMultiplier()
@@ -320,6 +342,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             terrainSpeedMultiplier = features.FordingSpeedMultiplier;
     }
 
+    private float EffectiveMoveSpeed
+        => moveSpeed * terrainSpeedMultiplier * slowMultiplier;
+
     // ── Wander ────────────────────────────────────────────────────
 
     private void Wander()
@@ -336,7 +361,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
 
         transform.position = Vector2.MoveTowards(
-            transform.position, wanderTarget, moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
+            transform.position, wanderTarget, EffectiveMoveSpeed * Time.deltaTime);
 
         if (Vector2.Distance(transform.position, wanderTarget) < 0.1f)
         {
@@ -462,7 +487,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (dist > attackRange)
         {
             transform.position = Vector2.MoveTowards(
-                transform.position, targetPos, moveSpeed * terrainSpeedMultiplier * Time.deltaTime);
+                transform.position, targetPos, EffectiveMoveSpeed * Time.deltaTime);
             return;
         }
 
@@ -490,8 +515,6 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public void TakeDamage(float amount)
     {
-        // DAY 31 PART 3A — record damage timestamp for regen cooldown gating;
-        // discard any partially-accumulated heal display.
         lastDamageTime = Time.time;
         pendingHealDisplay = 0f;
 
