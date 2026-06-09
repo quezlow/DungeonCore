@@ -63,10 +63,13 @@ public class MonsterSpawnerSaveData
 
     // DAY 31 — Alive monster state. Captured when this spawner has a live monster
     // at save time; consumed by the spawner's first SpawnMonster() on load.
+    // PART 3 CLOSE-OUT — XP + isVeteran added so veteran progress survives reload.
     public bool hasAliveMonster;
     public float aliveMonsterHP;
     public SerializableVector3Int aliveMonsterCell;
     public int alivePatrolIndex;
+    public float aliveMonsterXP;
+    public bool aliveMonsterIsVeteran;
 }
 
 [Serializable]

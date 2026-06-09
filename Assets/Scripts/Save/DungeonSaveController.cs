@@ -151,6 +151,8 @@ public class DungeonSaveController : MonoBehaviour
                     floor.TileInfluence.WorldToCell(s.SpawnedMonster.transform.position));
                 spawnerData.aliveMonsterHP = s.SpawnedMonster.CurrentHP;
                 spawnerData.alivePatrolIndex = s.SpawnedMonster.PatrolIndex;
+                spawnerData.aliveMonsterXP = s.SpawnedMonster.MonsterXP;
+                spawnerData.aliveMonsterIsVeteran = s.SpawnedMonster.IsVeteran;
             }
 
             data.spawners.Add(spawnerData);
@@ -315,7 +317,9 @@ public class DungeonSaveController : MonoBehaviour
                     restoredSpawner.SetPendingAliveState(
                         s.aliveMonsterCell.ToVector3Int(),
                         s.aliveMonsterHP,
-                        s.alivePatrolIndex);
+                        s.alivePatrolIndex,
+                        s.aliveMonsterXP,
+                        s.aliveMonsterIsVeteran);
                 }
             }
         }

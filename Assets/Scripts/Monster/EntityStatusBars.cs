@@ -119,4 +119,24 @@ public class EntityStatusBars : MonoBehaviour
             bossLabel.gameObject.SetActive(true);
         }
     }
+
+    /// <summary>
+    /// DAY 31 PART 3 CLOSE-OUT — Show or hide the veteran star above the bars.
+    /// Reuses the bossLabel TMP_Text slot since boss and veteran are mutually
+    /// exclusive (boss monsters cannot be promoted to veteran).
+    /// </summary>
+    public void SetVeteranLabel(bool show)
+    {
+        if (bossLabel == null) return;
+        if (show)
+        {
+            bossLabel.text = "★";
+            bossLabel.color = new Color(1f, 0.83f, 0.4f, 1f);  // veteran gold
+            bossLabel.gameObject.SetActive(true);
+        }
+        else
+        {
+            bossLabel.gameObject.SetActive(false);
+        }
+    }
 }

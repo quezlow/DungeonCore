@@ -27,11 +27,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private float attackCooldown = 1.5f;
     [SerializeField] private float detectionRange = 3f;
 
-    [Header("Monster XP (Veteran System — Phase 2)")]
+    [Header("Monster XP (Veteran System)")]
     [SerializeField] private float xpPerKill = 20f;
-#pragma warning disable 0414
     [SerializeField] private float xpToVeteran = 100f;
-#pragma warning restore 0414
+
+    [Tooltip("maxHP multiplied by this when the monster ascends to veteran. " +
+             "currentHP scales proportionally (no free heal).")]
+    [Min(1f)][SerializeField] private float veteranHpMultiplier = 1.5f;
+
+    [Tooltip("attackDamage multiplied by this on veteran promotion.")]
+    [Min(1f)][SerializeField] private float veteranDamageMultiplier = 1.3f;
+
+    [Tooltip("xpPerKill multiplied by this on veteran promotion — " +
+             "veterans yield more XP to whoever fights them.")]
+    [Min(1f)][SerializeField] private float veteranXpRewardMultiplier = 1.5f;
+
+    [Tooltip("Sprite tint applied on veteran promotion. Gold by default.")]
+    [SerializeField] private Color veteranTint = new Color(1f, 0.84f, 0.36f, 1f);
 
     [Header("Wander")]
     [SerializeField] private float wanderRadius = 2.5f;
@@ -55,6 +67,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private float currentHP;
     private float monsterXP;
+    private bool isVeteran;
     private float lastAttackTime;
 
     private IMonsterTarget target;
@@ -99,6 +112,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0;
+    public bool IsVeteran => isVeteran;
     public int PatrolIndex => patrolIndex;
     public int WildChamberId => wildChamberId;
     public event System.Action<DungeonMonster> OnDied;
@@ -157,6 +171,31 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public void SetPatrolIndex(int index)
     {
         patrolIndex = Mathf.Max(0, index);
+    }
+
+    public void SetMonsterXP(float xp)
+    {
+        monsterXP = Mathf.Max(0f, xp);
+    }
+
+    /// <summary>
+    /// DAY 31 PART 3 CLOSE-OUT — Re-apply veteran buffs after save load.
+    /// Bypasses the threshold check (the monster was already veteran when saved)
+    /// and skips the proportional-HP scaling because the loaded currentHP is
+    /// already in veteran-space.
+    /// </summary>
+    public void SetVeteran(bool veteran)
+    {
+        if (!veteran) return;
+        if (isVeteran) return;
+        if (IsBoss) return;
+        if (IsWild) return;
+
+        isVeteran = true;
+        maxHP *= veteranHpMultiplier;
+        attackDamage *= veteranDamageMultiplier;
+        xpPerKill *= veteranXpRewardMultiplier;
+        ApplyVeteranVisuals();
     }
 
     public void ApplyBossModifiers(BossVariantDefinition def)
@@ -527,7 +566,56 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (!target.IsAlive) { GainXP(xpPerKill); target = null; }
     }
 
-    private void GainXP(float amount) { monsterXP += amount; }
+    private void GainXP(float amount)
+    {
+        monsterXP += amount;
+        TryPromoteToVeteran();
+    }
+
+    /// <summary>
+    /// DAY 31 PART 3 CLOSE-OUT — single-flip veteran promotion.
+    /// Gates:
+    ///   - already veteran  → skip
+    ///   - boss monster     → skip (boss stack does not stack with veteran)
+    ///   - wild monster     → skip (player monsters only; see Passive Backlog)
+    /// </summary>
+    private void TryPromoteToVeteran()
+    {
+        if (isVeteran) return;
+        if (IsBoss) return;
+        if (IsWild) return;
+        if (monsterXP < xpToVeteran) return;
+
+        ApplyVeteranPromotion();
+    }
+
+    private void ApplyVeteranPromotion()
+    {
+        isVeteran = true;
+
+        // Scale currentHP proportionally so a 20/30 monster becomes 30/45,
+        // not 20/45. No free heal, no anticlimactic mid-health veteran.
+        float hpRatio = maxHP > 0f ? currentHP / maxHP : 1f;
+        maxHP *= veteranHpMultiplier;
+        currentHP = maxHP * hpRatio;
+
+        attackDamage *= veteranDamageMultiplier;
+        xpPerKill *= veteranXpRewardMultiplier;
+
+        ApplyVeteranVisuals();
+    }
+
+    private void ApplyVeteranVisuals()
+    {
+        var sr = GetComponentInChildren<SpriteRenderer>();
+        if (sr != null) sr.color = veteranTint;
+
+        if (statusBars != null)
+        {
+            statusBars.SetHP(currentHP, maxHP);
+            statusBars.SetVeteranLabel(true);
+        }
+    }
 
     public void TakeDamage(float amount)
     {

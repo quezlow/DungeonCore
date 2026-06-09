@@ -56,6 +56,8 @@ public class MonsterSpawner : MonoBehaviour
     private Vector3Int pendingAliveCell;
     private float pendingAliveHP;
     private int pendingAlivePatrolIndex;
+    private float pendingAliveXP;
+    private bool pendingAliveIsVeteran;
 
     // ── Public reads ──────────────────────────────────────────────
     public int CapacityCost => definition != null ? definition.CapacityCost : capacityCost;
@@ -227,12 +229,15 @@ public class MonsterSpawner : MonoBehaviour
         OnOrdersChanged?.Invoke();
     }
 
-    public void SetPendingAliveState(Vector3Int cell, float hp, int patrolIndex)
+    public void SetPendingAliveState(Vector3Int cell, float hp, int patrolIndex,
+                                     float xp, bool isVeteran)
     {
         hasPendingAliveState = true;
         pendingAliveCell = cell;
         pendingAliveHP = hp;
         pendingAlivePatrolIndex = patrolIndex;
+        pendingAliveXP = xp;
+        pendingAliveIsVeteran = isVeteran;
     }
 
     // ── Spawning ──────────────────────────────────────────────────
@@ -268,11 +273,17 @@ public class MonsterSpawner : MonoBehaviour
 
         // DAY 31 — Apply pending alive state from save load and clear so future
         // respawns (after death) revert to default full-HP/spawner-cell behavior.
+        // PART 3 CLOSE-OUT — Veteran must be applied BEFORE SetCurrentHP so the
+        // loaded HP is clamped against the post-promotion maxHP, not the base.
         if (hasPendingAliveState)
         {
+            spawnedMonster.SetMonsterXP(pendingAliveXP);
+            spawnedMonster.SetVeteran(pendingAliveIsVeteran);
             spawnedMonster.SetCurrentHP(pendingAliveHP);
             spawnedMonster.SetPatrolIndex(pendingAlivePatrolIndex);
             hasPendingAliveState = false;
+            pendingAliveXP = 0f;
+            pendingAliveIsVeteran = false;
         }
     }
 
