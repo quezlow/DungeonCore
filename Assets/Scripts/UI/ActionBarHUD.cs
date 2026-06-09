@@ -134,6 +134,7 @@ public class ActionBarHUD : MonoBehaviour
     /// <summary>Mine tab: immediate Claim mode, close any open sub-menu.</summary>
     private void OnMineTabClicked()
     {
+        SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
         DungeonBuildController.Instance.SetMode(BuildMode.Claim);
 
@@ -147,6 +148,7 @@ public class ActionBarHUD : MonoBehaviour
     /// active placement mode (e.g. PlaceSpawner) so mode state stays clean.</summary>
     private void OnBuildTabClicked()
     {
+        SpawnerSelectionController.Instance?.Deselect();
         bool wasOpen = currentTab == ActiveTab.Build;
 
         // Step 1 — clear any placement mode. If already Claim this is a no-op and
@@ -175,6 +177,7 @@ public class ActionBarHUD : MonoBehaviour
     /// <summary>Summon tab: toggle PlaceSpawner. MonsterSelectionUI reacts automatically.</summary>
     private void OnSummonTabClicked()
     {
+        SpawnerSelectionController.Instance?.Deselect();
         bool wasOpen = currentTab == ActiveTab.Summon;
 
         HideBuildPanel(); // close Build panel if it happened to be open
@@ -191,6 +194,7 @@ public class ActionBarHUD : MonoBehaviour
     /// <summary>Esc: cancel any active mode and return to idle (nothing highlighted).</summary>
     private void CancelToIdle()
     {
+        SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
         DungeonBuildController.Instance.SetMode(BuildMode.Claim);
         currentTab = ActiveTab.None;
@@ -276,6 +280,8 @@ public class ActionBarHUD : MonoBehaviour
 
     private void OnSubmenuEntryClicked(BuildMode mode)
     {
+        SpawnerSelectionController.Instance?.Deselect();
+
         // Close the panel immediately — the player's next click is a placement click,
         // not a further sub-menu interaction.
         HideBuildPanel();
