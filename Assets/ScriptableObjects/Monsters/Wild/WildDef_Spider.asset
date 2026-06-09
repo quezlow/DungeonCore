@@ -18,6 +18,6 @@ MonoBehaviour:
   capacityCost: 0
   description: 
   isAquatic: 0
-  passiveRegenPerSecond: 0
+  passiveRegenPerSecond: 1
   regenCooldown: 5
-  wildRegenMultiplier: 0
+  wildRegenMultiplier: 2

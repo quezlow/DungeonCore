@@ -19,3 +19,7 @@ MonoBehaviour:
   description: Slow, relentless, and difficult to put down. Zombies absorb punishment
     that would drop a skeleton in seconds, making them ideal for chokepoints and
     doorways. Just don't ask them to catch anything that runs.
+  isAquatic: 0
+  passiveRegenPerSecond: 3
+  regenCooldown: 5
+  wildRegenMultiplier: 0

@@ -18,7 +18,7 @@ MonoBehaviour:
   capacityCost: 10
   description: 
   isAquatic: 0
-  passiveRegenPerSecond: 5
+  passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 0
   bossTitle: Jimbo
