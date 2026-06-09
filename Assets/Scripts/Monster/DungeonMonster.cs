@@ -99,6 +99,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0;
+    public int PatrolIndex => patrolIndex;
     public int WildChamberId => wildChamberId;
     public event System.Action<DungeonMonster> OnDied;
 
@@ -151,6 +152,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         currentHP = Mathf.Clamp(hp, 0f, maxHP);
         statusBars?.SetHP(currentHP, maxHP);
+    }
+
+    public void SetPatrolIndex(int index)
+    {
+        patrolIndex = Mathf.Max(0, index);
     }
 
     public void ApplyBossModifiers(BossVariantDefinition def)

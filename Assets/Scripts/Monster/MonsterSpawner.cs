@@ -52,6 +52,11 @@ public class MonsterSpawner : MonoBehaviour
     private float blockCheckTimer;
     private const float BLOCK_CHECK_INTERVAL = 0.25f;
 
+    private bool hasPendingAliveState;
+    private Vector3Int pendingAliveCell;
+    private float pendingAliveHP;
+    private int pendingAlivePatrolIndex;
+
     // ── Public reads ──────────────────────────────────────────────
     public int CapacityCost => definition != null ? definition.CapacityCost : capacityCost;
     public MonsterDefinition Definition => definition;
@@ -222,6 +227,14 @@ public class MonsterSpawner : MonoBehaviour
         OnOrdersChanged?.Invoke();
     }
 
+    public void SetPendingAliveState(Vector3Int cell, float hp, int patrolIndex)
+    {
+        hasPendingAliveState = true;
+        pendingAliveCell = cell;
+        pendingAliveHP = hp;
+        pendingAlivePatrolIndex = patrolIndex;
+    }
+
     // ── Spawning ──────────────────────────────────────────────────
 
     private void SpawnMonster()
@@ -232,7 +245,17 @@ public class MonsterSpawner : MonoBehaviour
             return;
         }
 
-        spawnedMonster = Instantiate(definition.prefab, transform.position, Quaternion.identity);
+        // DAY 31 — Resolve spawn position. Pending alive state from save overrides
+        // the default (spawner cell), so the monster reloads where it was standing.
+        Vector3 spawnPos = transform.position;
+        if (hasPendingAliveState)
+        {
+            var floorRootForPos = GetComponentInParent<FloorRoot>();
+            if (floorRootForPos?.TileInfluence != null)
+                spawnPos = floorRootForPos.TileInfluence.CellToWorld(pendingAliveCell);
+        }
+
+        spawnedMonster = Instantiate(definition.prefab, spawnPos, Quaternion.identity);
 
         var floorRoot = GetComponentInParent<FloorRoot>();
         if (floorRoot != null)
@@ -242,6 +265,15 @@ public class MonsterSpawner : MonoBehaviour
 
         if (definition is BossVariantDefinition bossDef)
             spawnedMonster.ApplyBossModifiers(bossDef);
+
+        // DAY 31 — Apply pending alive state from save load and clear so future
+        // respawns (after death) revert to default full-HP/spawner-cell behavior.
+        if (hasPendingAliveState)
+        {
+            spawnedMonster.SetCurrentHP(pendingAliveHP);
+            spawnedMonster.SetPatrolIndex(pendingAlivePatrolIndex);
+            hasPendingAliveState = false;
+        }
     }
 
     public void OnMonsterDied()

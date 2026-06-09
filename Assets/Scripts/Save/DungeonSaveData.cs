@@ -25,6 +25,11 @@ public class DungeonSaveData
 
     public bool hasEntrance;
     public SerializableVector3Int entranceCell;
+
+    // DAY 31 — Camera position + active floor for restoring the view on load.
+    public bool hasCameraState;
+    public SerializableVector3 cameraWorldPos;  // world space, includes floor Y offset
+    public int cameraFloorIndex;
 }
 
 [Serializable]
@@ -55,6 +60,13 @@ public class MonsterSpawnerSaveData
     public bool patrolLoop = true;
     public bool hasAttackTarget = false;
     public SerializableVector3Int attackTargetCell;
+
+    // DAY 31 — Alive monster state. Captured when this spawner has a live monster
+    // at save time; consumed by the spawner's first SpawnMonster() on load.
+    public bool hasAliveMonster;
+    public float aliveMonsterHP;
+    public SerializableVector3Int aliveMonsterCell;
+    public int alivePatrolIndex;
 }
 
 [Serializable]

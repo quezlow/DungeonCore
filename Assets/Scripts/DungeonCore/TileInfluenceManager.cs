@@ -345,3 +345,11 @@ public class SerializableVector3Int
     public Vector3Int ToVector3Int() => new Vector3Int(x, y, z);
     public static SerializableVector3Int From(Vector3Int v) => new() { x = v.x, y = v.y, z = v.z };
 }
+
+[Serializable]
+public struct SerializableVector3
+{
+    public float x, y, z;
+    public static SerializableVector3 From(Vector3 v) => new() { x = v.x, y = v.y, z = v.z };
+    public Vector3 ToVector3() => new(x, y, z);
+}

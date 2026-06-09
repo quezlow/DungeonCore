@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 [DefaultExecutionOrder(100)]
 public class DungeonSaveController : MonoBehaviour
@@ -86,6 +87,14 @@ public class DungeonSaveController : MonoBehaviour
         if (currentSave.hasEntrance)
             currentSave.entranceCell = SerializableVector3Int.From(DungeonEntrance.Instance.OccupiedCell);
 
+        // DAY 31 — Camera state.
+        if (DungeonCameraController.Instance != null && FloorManager.Instance != null)
+        {
+            currentSave.hasCameraState = true;
+            currentSave.cameraWorldPos = SerializableVector3.From(DungeonCameraController.Instance.transform.position);
+            currentSave.cameraFloorIndex = FloorManager.Instance.ActiveFloorIndex;
+        }
+
         foreach (var floor in FloorManager.Instance.AllFloors)
         {
             if (floor == null) continue;
@@ -93,6 +102,7 @@ public class DungeonSaveController : MonoBehaviour
         }
 
         File.WriteAllText(savePath, JsonUtility.ToJson(currentSave));
+        Debug.Log($"[DungeonSaveController] Saved to {savePath} ({currentSave.floors.Count} floors, worldSeed {WorldSeed}).");
     }
 
     private FloorSaveData BuildFloorSaveData(FloorRoot floor)
@@ -120,7 +130,7 @@ public class DungeonSaveController : MonoBehaviour
             var waypoints = new List<SerializableVector3Int>(s.PatrolWaypoints.Count);
             foreach (var wp in s.PatrolWaypoints) waypoints.Add(SerializableVector3Int.From(wp));
 
-            data.spawners.Add(new MonsterSpawnerSaveData
+            var spawnerData = new MonsterSpawnerSaveData
             {
                 monsterName = s.Definition.monsterName,
                 cell = SerializableVector3Int.From(floor.TileInfluence.WorldToCell(s.transform.position)),
@@ -129,7 +139,21 @@ public class DungeonSaveController : MonoBehaviour
                 patrolLoop = s.PatrolLoop,
                 hasAttackTarget = s.HasAttackTarget,
                 attackTargetCell = SerializableVector3Int.From(s.AttackTargetCell),
-            });
+            };
+
+            // DAY 31 — Capture alive monster state. If the spawner has a live monster
+            // at save time, persist its cell + HP + patrol index so reload spawns the
+            // monster at exactly the saved state instead of fresh at the spawner cell.
+            if (s.SpawnedMonster != null && floor.TileInfluence != null)
+            {
+                spawnerData.hasAliveMonster = true;
+                spawnerData.aliveMonsterCell = SerializableVector3Int.From(
+                    floor.TileInfluence.WorldToCell(s.SpawnedMonster.transform.position));
+                spawnerData.aliveMonsterHP = s.SpawnedMonster.CurrentHP;
+                spawnerData.alivePatrolIndex = s.SpawnedMonster.PatrolIndex;
+            }
+
+            data.spawners.Add(spawnerData);
         }
 
         foreach (var c in floor.GetComponentsInChildren<DungeonChest>(true))
@@ -248,6 +272,15 @@ public class DungeonSaveController : MonoBehaviour
             }
 
             FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
+
+            // DAY 31 — Defer camera restore one frame so it runs after all initial
+            // Start() methods have completed. Without the deferral, DungeonCameraController.
+            // Start() can overwrite the loaded position by snapping back to the core anchor.
+            if (currentSave.hasCameraState)
+                StartCoroutine(RestoreCameraDeferred(
+                    currentSave.cameraWorldPos.ToVector3(),
+                    currentSave.cameraFloorIndex));
+
             return true;
         }
         finally { isLoading = false; }
@@ -267,13 +300,23 @@ public class DungeonSaveController : MonoBehaviour
                 if (s.patrolWaypoints != null)
                     foreach (var wp in s.patrolWaypoints) waypoints.Add(wp.ToVector3Int());
 
-                DungeonBuildController.Instance.RestoreSpawner(
+                var restoredSpawner = DungeonBuildController.Instance.RestoreSpawner(
                     floor, def, s.cell.ToVector3Int(),
                     (SpawnerOrderMode)s.orderMode,
                     waypoints,
                     s.patrolLoop,
                     s.hasAttackTarget,
                     s.attackTargetCell.ToVector3Int());
+
+                // DAY 31 — Seed pending alive monster state. Must run before the spawner's
+                // Start() (deferred to next frame), so SpawnMonster() picks it up.
+                if (restoredSpawner != null && s.hasAliveMonster)
+                {
+                    restoredSpawner.SetPendingAliveState(
+                        s.aliveMonsterCell.ToVector3Int(),
+                        s.aliveMonsterHP,
+                        s.alivePatrolIndex);
+                }
             }
         }
 
@@ -336,4 +379,11 @@ public class DungeonSaveController : MonoBehaviour
     }
 
     public bool HasSave => File.Exists(savePath);
+
+    private IEnumerator RestoreCameraDeferred(Vector3 worldPos, int floorIndex)
+    {
+        yield return null;  // wait one frame for all initial Start()s
+        if (DungeonCameraController.Instance != null)
+            DungeonCameraController.Instance.PanTo(worldPos, floorIndex);
+    }
 }

@@ -48,6 +48,15 @@ public class DungeonCameraController : MonoBehaviour
     {
         mainCamera = Camera.main;
 
+        // DAY 31 — Make Cinemachine update during pause (timeScale=0).
+        // The transform anchor moves via unscaledDeltaTime; without this, the
+        // Brain's blend toward the anchor uses scaled time and stays frozen.
+        if (mainCamera != null)
+        {
+            var brain = mainCamera.GetComponent<CinemachineBrain>();
+            if (brain != null) brain.IgnoreTimeScale = true;
+        }
+
         var core = GameObject.FindGameObjectWithTag("DungeonCore");
         if (core != null) coreTransform = core.transform;
 

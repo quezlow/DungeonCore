@@ -17102,6 +17102,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Main Camera
       objectReference: {fileID: 0}
+    - target: {fileID: 5308780177129978514, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: IgnoreTimeScale
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

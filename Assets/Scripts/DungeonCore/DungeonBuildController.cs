@@ -425,21 +425,22 @@ public class DungeonBuildController : MonoBehaviour
         entrance.Initialise(cell);
     }
 
-    public void RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell)
+    public MonsterSpawner RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell)
         => RestoreSpawner(floor, def, cell, SpawnerOrderMode.Wander, null, true, false, default);
 
     /// <summary>DAY 31 PART 3D — Full restore including patrol orders and attack target.</summary>
-    public void RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell,
+    public MonsterSpawner RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell,
         SpawnerOrderMode orderMode, List<Vector3Int> patrolWaypoints, bool patrolLoop,
         bool hasAttackTarget, Vector3Int attackTargetCell)
     {
-        if (spawnerShellPrefab == null) return;
-        if (floor?.TileInfluence == null) return;
+        if (spawnerShellPrefab == null) return null;
+        if (floor?.TileInfluence == null) return null;
         Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
         spawner.transform.SetParent(floor.transform, true);
         spawner.Initialise(def);
         spawner.RestoreOrders(orderMode, patrolWaypoints, patrolLoop, hasAttackTarget, attackTargetCell);
+        return spawner;
     }
 
     public void RestoreChest(FloorRoot floor, ChestDefinition def, Vector3Int cell, bool isOpened)
