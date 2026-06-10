@@ -11,6 +11,21 @@ using System.Collections.Generic;
 [Serializable]
 public class DungeonSaveData
 {
+    /// <summary>
+    /// Schema version of this save data. Bump when making a non-additive change
+    /// (renamed/removed/semantically-changed field) and register a migration in
+    /// SaveMigrationRegistry. Additive changes (new fields) do not require a
+    /// version bump — JsonUtility's default-tolerant deserialization handles them.
+    /// </summary>
+    public const int CURRENT_VERSION = 1;
+
+    /// <summary>
+    /// Version stamped at save time. Compared against CURRENT_VERSION on load
+    /// to decide whether migration is needed. Saves predating this field
+    /// deserialize with saveVersion == 0, which is treated as an implicit v1.
+    /// </summary>
+    public int saveVersion = 0;
+
     public bool hasSave;
     public int worldSeed;
 
