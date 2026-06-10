@@ -117,6 +117,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float defendCorePathRefreshTimer = 0f;
     private const float DefendCorePathRefreshInterval = 0.5f;
 
+    // Patrol/Wander pathfinding (DAY 31 PART 3 CLOSE-OUT)
+    private List<Vector3> patrolPath = new();
+    private int patrolPathIndex = 0;
+    private Vector3Int patrolPathTargetCell;
+    private List<Vector3> wanderPath = new();
+    private int wanderPathIndex = 0;
+    private Vector3Int wanderPathTargetCell;
+
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0;
     public bool IsVeteran => isVeteran;
@@ -333,8 +341,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
 
         state = newState;
-        if (newState == MonsterState.Wander) PickWanderTarget();
-        if (newState == MonsterState.Patrol) UpdatePatrolTarget();
+        if (newState == MonsterState.Wander) { wanderPath.Clear(); PickWanderTarget(); }
+        if (newState == MonsterState.Patrol) { patrolPath.Clear(); UpdatePatrolTarget(); }
     }
 
     // ── Patrol (DAY 31 PART 3D) ───────────────────────────────────
@@ -373,11 +381,35 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         UpdatePatrolTarget();
 
-        transform.position = Vector2.MoveTowards(
-            transform.position, patrolMoveTarget, EffectiveMoveSpeed * Time.deltaTime);
+        var influence = currentFloor?.TileInfluence;
+        if (influence == null) return;
 
+        // Arrival check first — if we're at the waypoint, fire arrival and clear path.
         if (Vector2.Distance(transform.position, patrolMoveTarget) < waypointArrivalDistance)
+        {
+            patrolPath.Clear();
             OnWaypointReached();
+            return;
+        }
+
+        // Recompute path when target cell changed or path is empty.
+        Vector3Int targetCell = influence.WorldToCell(patrolMoveTarget);
+        if (patrolPath.Count == 0 || targetCell != patrolPathTargetCell)
+        {
+            patrolPath = DungeonPathfinder.FindPath(currentFloor, transform.position, patrolMoveTarget);
+            patrolPathIndex = 0;
+            patrolPathTargetCell = targetCell;
+        }
+
+        // Follow path. If pathfinder found nothing, monster sits — player's waypoint is unreachable.
+        if (patrolPathIndex >= patrolPath.Count) return;
+
+        Vector3 stepTarget = patrolPath[patrolPathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            patrolPathIndex++;
     }
 
     /// <summary>
@@ -521,15 +553,51 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (wanderWaiting)
         {
             wanderWaitTimer -= Time.deltaTime;
-            if (wanderWaitTimer <= 0f) { wanderWaiting = false; PickWanderTarget(); }
+            if (wanderWaitTimer <= 0f)
+            {
+                wanderWaiting = false;
+                PickWanderTarget();
+                wanderPath.Clear();  // force re-path on next tick
+            }
             return;
         }
-        transform.position = Vector2.MoveTowards(transform.position, wanderTarget, EffectiveMoveSpeed * Time.deltaTime);
+
+        var influence = currentFloor?.TileInfluence;
+        if (influence == null) return;
+
+        // Arrival check — set the wait timer and clear the path.
         if (Vector2.Distance(transform.position, wanderTarget) < 0.1f)
         {
+            wanderPath.Clear();
             wanderWaiting = true;
             wanderWaitTimer = Random.Range(wanderWaitMin, wanderWaitMax);
+            return;
         }
+
+        // Recompute path when target cell changed or path is empty.
+        Vector3Int targetCell = influence.WorldToCell(wanderTarget);
+        if (wanderPath.Count == 0 || targetCell != wanderPathTargetCell)
+        {
+            wanderPath = DungeonPathfinder.FindPath(currentFloor, transform.position, wanderTarget);
+            wanderPathIndex = 0;
+            wanderPathTargetCell = targetCell;
+        }
+
+        // If pathfinder found nothing, the target is unreachable — pick a new one.
+        if (wanderPath.Count == 0)
+        {
+            PickWanderTarget();
+            return;
+        }
+
+        if (wanderPathIndex >= wanderPath.Count) return;
+
+        Vector3 stepTarget = wanderPath[wanderPathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            wanderPathIndex++;
     }
 
     private void PickWanderTarget()
