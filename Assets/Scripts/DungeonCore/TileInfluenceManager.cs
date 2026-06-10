@@ -12,14 +12,27 @@ using UnityEngine.Tilemaps;
 /// DAY 31 PART 1
 ///   - OnTileBecameClaimable event fires for every cell newly added to the
 ///     claimable ring (player claim, passive expansion, starter area, save load).
-///   - ClaimTile rejects river cells when called non-silently.
-///   - Passive expansion skips river cells.
 ///   - GetClaimableTilesSnapshot exposes a defensive copy for catch-up scans.
 ///
 /// DAY 31 PART 2
-///   - ClaimTile also rejects cells in an uncleared chamber. silent: true
+///   - ClaimTile rejects cells in an uncleared chamber. silent: true
 ///     bypasses for save-restore.
-///   - Passive expansion skips uncleared-chamber cells too.
+///   - Passive expansion skips uncleared-chamber cells.
+///
+/// DAY 32 — TERRAIN RESISTANCE
+///   - River gate removed from ClaimTile: rivers are now claimable. Cost
+///     gating happens upstream in DungeonBuildController where the player
+///     pays mana before calling ClaimTile.
+///   - Passive expansion still skips rivers (deliberately expensive, player-
+///     decision territory). Passive expansion is now probabilistic based on
+///     terrain resistance: each tick a random claimable cell is selected,
+///     then claimed with probability 1/resistance. Granite (4×) thus takes
+///     ~4× longer in expectation.
+///   - Each newly-painted claimable tile is tinted via
+///     FloorRoot.GetClaimableRingTint so terrain resistance reads visually.
+///   - RepaintClaimableTiles() re-applies tints to all claimable cells;
+///     called by TerrainTypeMap.GenerateNew so Floor 0's early-painted
+///     starter ring picks up the correct colours once terrain exists.
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -46,7 +59,6 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Events ────────────────────────────────────────────────────
     public event Action<int> OnTileCountChanged;
-
     /// <summary>DAY 31 — Fires whenever a cell enters the claimable ring.</summary>
     public event Action<Vector3Int> OnTileBecameClaimable;
 
@@ -66,6 +78,18 @@ public class TileInfluenceManager : MonoBehaviour
                 featureGenerator = root != null ? root.FeatureGenerator : null;
             }
             return featureGenerator;
+        }
+    }
+
+    // DAY 32 — Floor lookup for terrain queries; cached.
+    private FloorRoot myFloor;
+    private FloorRoot MyFloor
+    {
+        get
+        {
+            if (myFloor == null)
+                myFloor = GetComponentInParent<FloorRoot>();
+            return myFloor;
         }
     }
 
@@ -129,7 +153,7 @@ public class TileInfluenceManager : MonoBehaviour
                 if (ownedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
                 claimableTiles.Add(neighbour);
-                claimableTilemap.SetTile(neighbour, claimableTile);
+                PaintClaimableTile(neighbour);                      // DAY 32
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }
@@ -145,13 +169,12 @@ public class TileInfluenceManager : MonoBehaviour
         if (ownedTiles.Contains(pos)) return;
         if (terrain != null && !terrain.IsWithinBounds(pos)) return;
 
-        // DAY 31 PART 1 — rivers cannot be claimed via normal mining.
-        // DAY 31 PART 2 — uncleared chamber cells likewise blocked.
-        // silent: true bypasses both gates so save-restore can re-apply
-        // any cells that legitimately ended up claimed in a prior session.
+        // DAY 31 PART 2 — uncleared chamber cells blocked.
+        // DAY 32 — river gate removed; rivers are claimable at high cost paid
+        //          upstream by DungeonBuildController. Chamber gate stays.
+        // silent: true bypasses for save-restore.
         if (!silent && Features != null)
         {
-            if (Features.IsRiver(pos)) return;
             if (Features.IsCellInUnclearedChamber(pos)) return;
         }
 
@@ -169,7 +192,7 @@ public class TileInfluenceManager : MonoBehaviour
             if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
             claimableTiles.Add(neighbour);
-            claimableTilemap.SetTile(neighbour, claimableTile);
+            PaintClaimableTile(neighbour);                          // DAY 32
             OnTileBecameClaimable?.Invoke(neighbour);
         }
 
@@ -252,6 +275,15 @@ public class TileInfluenceManager : MonoBehaviour
                 if (Features.IsRiver(target)) continue;
                 if (Features.IsCellInUnclearedChamber(target)) continue;
             }
+
+            // DAY 32 — probabilistic claim based on terrain resistance.
+            //          Dirt (1×) always claims when picked.
+            //          Granite (4×) claims with ~25% probability per pick.
+            float resistance = 1f;
+            var floor = MyFloor;
+            if (floor != null) resistance = floor.GetClaimCostMultiplier(target);
+            if (resistance > 1f && UnityEngine.Random.value > 1f / resistance) continue;
+
             ClaimTile(target);
         }
     }
@@ -268,13 +300,35 @@ public class TileInfluenceManager : MonoBehaviour
                 if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
-                claimableTilemap.SetTile(neighbour, claimableTile);
+                PaintClaimableTile(neighbour);                       // DAY 32
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }
     }
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    /// <summary>DAY 32 — Paints a claimable tile with terrain-aware tint.</summary>
+    private void PaintClaimableTile(Vector3Int cell)
+    {
+        claimableTilemap.SetTile(cell, claimableTile);
+
+        var floor = MyFloor;
+        if (floor == null) return;
+
+        Color tint = floor.GetClaimableRingTint(cell);
+        claimableTilemap.SetTileFlags(cell, TileFlags.None);
+        claimableTilemap.SetColor(cell, tint);
+    }
+
+    /// <summary>DAY 32 — Re-applies tints to every current claimable cell.
+    ///         Called by TerrainTypeMap.GenerateNew so Floor 0's first-painted
+    ///         ring picks up its colours once terrain generation completes.</summary>
+    public void RepaintClaimableTiles()
+    {
+        foreach (var cell in claimableTiles)
+            PaintClaimableTile(cell);
+    }
 
     private void RebuildClaimableSet()
     {
@@ -291,7 +345,7 @@ public class TileInfluenceManager : MonoBehaviour
                 if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
-                claimableTilemap.SetTile(neighbour, claimableTile);
+                PaintClaimableTile(neighbour);                       // DAY 32
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }

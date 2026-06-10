@@ -223,6 +223,10 @@ public class FloorManager : MonoBehaviour
         instance.Initialise(floorIndex);
         instance.Terrain?.GenerateAt(centerCell);
 
+        // DAY 32 — regenerate terrain type map from seed on load.
+        if (instance.TerrainTypeMap != null && instance.Terrain != null)
+            instance.TerrainTypeMap.GenerateNew(floorSeed, centerCell, instance.Terrain.CurrentRadius);
+
         SetFloorSeed(floorIndex, floorSeed);
 
         OnFloorCreated?.Invoke(floorIndex);

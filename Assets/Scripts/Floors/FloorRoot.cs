@@ -1,18 +1,15 @@
 using UnityEngine;
 
 /// <summary>
-/// Component on the root GameObject of each floor's hierarchy.
-/// Acts as the per-floor service locator — holds references to all
-/// managers that used to be scene-level singletons.
+/// Per-floor container that bundles all the systems a single floor needs.
 ///
-/// FLOOR 1 SETUP (existing scene objects)
-///   - Create an empty GameObject "Floor1Root" at scene root, Y = 0.
-///   - Add this component, set floorIndex = 0.
+/// FLOOR ROOT GAMEOBJECT (Floor 1)
 ///   - Assign TileInfluenceManager, TrapRegistry, DungeonTerrain.
 ///   - Assign the PolygonCollider2D used as the Cinemachine confiner bounds.
 ///   - DAY 30: Assign TerrainFeatureGenerator.
 ///   - DAY 31 PART 1: Assign FeatureRevealController.
 ///   - DAY 31 PART 2: Assign WildMonsterController.
+///   - DAY 32: Assign TerrainTypeMap.
 ///
 /// FLOOR TEMPLATE PREFAB (Floor 2+)
 ///   - Self-contained prefab with all the above components wired internally.
@@ -31,6 +28,7 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
     [SerializeField] private FeatureRevealController featureRevealController;
     [SerializeField] private WildMonsterController wildMonsterController;
+    [SerializeField] private TerrainTypeMap terrainTypeMap;   // DAY 32
 
     [Header("Camera Bounds")]
     [SerializeField] private PolygonCollider2D cameraBounds;
@@ -44,6 +42,7 @@ public class FloorRoot : MonoBehaviour
     public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
     public FeatureRevealController FeatureRevealController => featureRevealController;
     public WildMonsterController WildMonsterController => wildMonsterController;
+    public TerrainTypeMap TerrainTypeMap => terrainTypeMap;   // DAY 32
     public PolygonCollider2D CameraBounds => cameraBounds;
 
     public float WorldOriginY => floorIndex * -2000f;
@@ -77,10 +76,52 @@ public class FloorRoot : MonoBehaviour
         if (featureGenerator != null && terrain != null)
             featureGenerator.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
 
+        // DAY 32 — terrain type map after feature gen so radial+patches can
+        //          be queried by anything else that needs them.
+        if (terrainTypeMap != null && terrain != null)
+            terrainTypeMap.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
+
         if (tileInfluence != null)
         {
             tileInfluence.InjectTerrain(terrain);
             tileInfluence.ClaimStarterArea(centerCell);
         }
+    }
+
+    // ── DAY 32 — Centralised claim cost & tint helpers ────────────
+
+    /// <summary>
+    /// Effective claim cost multiplier for a cell.
+    /// River cells use TerrainResistanceTable.riverClaimResistance.
+    /// Cleared chamber cells use chamberClaimResistance (1× by default).
+    /// Otherwise terrain type lookup.
+    /// </summary>
+    public float GetClaimCostMultiplier(Vector3Int cell)
+    {
+        if (featureGenerator != null)
+        {
+            if (featureGenerator.IsRiver(cell))
+                return terrainTypeMap?.ResistanceTable?.riverClaimResistance ?? 1f;
+            if (featureGenerator.IsChamber(cell))
+                return terrainTypeMap?.ResistanceTable?.chamberClaimResistance ?? 1f;
+        }
+        return terrainTypeMap != null ? terrainTypeMap.GetResistance(cell) : 1f;
+    }
+
+    /// <summary>
+    /// Claimable-ring tint for a cell.
+    /// River and (cleared) chamber cells use feature-specific tints;
+    /// otherwise terrain band tint.
+    /// </summary>
+    public Color GetClaimableRingTint(Vector3Int cell)
+    {
+        if (featureGenerator != null && terrainTypeMap != null && terrainTypeMap.ResistanceTable != null)
+        {
+            if (featureGenerator.IsRiver(cell))
+                return terrainTypeMap.ResistanceTable.riverClaimableTint;
+            if (featureGenerator.IsChamber(cell))
+                return terrainTypeMap.ResistanceTable.chamberClaimableTint;
+        }
+        return terrainTypeMap != null ? terrainTypeMap.GetTint(cell) : Color.white;
     }
 }

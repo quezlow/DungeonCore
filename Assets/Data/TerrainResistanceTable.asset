@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f030ed9459d72ad4f9c7f3ef30559b5e, type: 3}
+  m_Name: TerrainResistanceTable
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainResistanceTable
+  entries:
+  - type: 0
+    resistance: 1
+    claimableRingTint: {r: 1, g: 1, b: 1, a: 1}
+    displayName: Dirt
+  - type: 1
+    resistance: 1.2
+    claimableRingTint: {r: 0.95, g: 0.85, b: 0.65, a: 1}
+    displayName: Sand
+  - type: 2
+    resistance: 2
+    claimableRingTint: {r: 0.7, g: 0.72, b: 0.78, a: 1}
+    displayName: Stone
+  - type: 3
+    resistance: 4
+    claimableRingTint: {r: 0.5, g: 0.55, b: 0.65, a: 1}
+    displayName: Granite
+  - type: 4
+    resistance: 6
+    claimableRingTint: {r: 0.65, g: 0.55, b: 0.7, a: 1}
+    displayName: Ruins
+  - type: 5
+    resistance: 10
+    claimableRingTint: {r: 1, g: 0.9, b: 0.7, a: 1}
+    displayName: Holy Ground
+  riverClaimResistance: 15
+  chamberClaimResistance: 1
+  riverClaimableTint: {r: 0.45, g: 0.75, b: 0.95, a: 1}
+  chamberClaimableTint: {r: 0.85, g: 0.85, b: 0.85, a: 1}

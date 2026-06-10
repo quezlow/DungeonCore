@@ -60,6 +60,11 @@ public class DungeonSaveController : MonoBehaviour
             int floor0Seed = FloorManager.DeriveFloorSeed(WorldSeed, 0);
             FloorManager.Instance.SetFloorSeed(0, floor0Seed);
             floor0.FeatureGenerator.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
+
+            // DAY 32 — generate terrain type map for Floor 0 on new game.
+            if (floor0.TerrainTypeMap != null)
+                floor0.TerrainTypeMap.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
+
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
         SaveGame();
@@ -235,6 +240,12 @@ public class DungeonSaveController : MonoBehaviour
                 if (floorData.floorIndex == 0)
                 {
                     FloorManager.Instance.SetFloorSeed(0, floorData.floorSeed);
+
+                    // DAY 32 — regenerate terrain type map for Floor 0 from seed.
+                    var floor0 = FloorManager.Instance.GetFloor(0);
+                    if (floor0?.TerrainTypeMap != null && floor0.Terrain != null)
+                        floor0.TerrainTypeMap.GenerateNew(floorData.floorSeed, floorData.centerCell.ToVector3Int(), floor0.Terrain.CurrentRadius);
+
                     continue;
                 }
                 FloorManager.Instance.RecreateFloorFromSave(floorData.floorIndex, floorData.centerCell.ToVector3Int(), floorData.floorSeed);

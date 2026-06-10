@@ -220,11 +220,20 @@ public class DungeonBuildController : MonoBehaviour
         var features = ActiveFloor?.FeatureGenerator;
         if (features != null)
         {
-            if (features.IsRiver(cell)) { Debug.Log("[BuildController] Cannot mine river tile."); return; }
+            // DAY 32 — river gate removed (now claimable at high cost).
             if (features.IsCellInUnclearedChamber(cell)) { Debug.Log("[BuildController] Cannot mine cavern — clear wild monsters first."); return; }
         }
 
-        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(claimManaCost)) return;
+        // DAY 32 — terrain-aware claim cost.
+        float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
+        float cost = claimManaCost * multiplier;
+
+        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
+        {
+            // DAY 32 — drag-claim stops on first unaffordable tile.
+            dragClaimActive = false;
+            return;
+        }
         ActiveInfluence.ClaimTile(cell);
     }
 
