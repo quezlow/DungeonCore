@@ -37,6 +37,11 @@ public class MonsterSpawner : MonoBehaviour
     [SerializeField] private bool hasAttackTarget = false;
     [SerializeField] private Vector3Int attackTargetCell;
 
+    [Tooltip("DAY 31 PART 3 CLOSE-OUT — When true (default), this spawner's monster " +
+             "will leave its orders to intercept threats near the dungeon core. " +
+             "Disable for roving patrols that should hold their route regardless.")]
+    [SerializeField] private bool allowDefendCore = true;
+
     [Header("Selection Visual (DAY 31 PART 3D)")]
     [Tooltip("Optional child GameObject (e.g. a ring sprite) toggled on when this spawner is selected.")]
     [SerializeField] private GameObject selectionRing;
@@ -78,6 +83,7 @@ public class MonsterSpawner : MonoBehaviour
     public bool PatrolLoop => patrolLoop;
     public bool HasAttackTarget => hasAttackTarget;
     public Vector3Int AttackTargetCell => attackTargetCell;
+    public bool AllowDefendCore => allowDefendCore;
 
     public event System.Action OnOrdersChanged;
 
@@ -217,15 +223,24 @@ public class MonsterSpawner : MonoBehaviour
         OnOrdersChanged?.Invoke();
     }
 
+    public void SetAllowDefendCore(bool allow)
+    {
+        if (allowDefendCore == allow) return;
+        allowDefendCore = allow;
+        OnOrdersChanged?.Invoke();
+    }
+
     /// <summary>Used by save/load restore.</summary>
     public void RestoreOrders(SpawnerOrderMode mode, List<Vector3Int> waypoints, bool loop,
-                              bool hasAttack, Vector3Int attackCell)
+                              bool hasAttack, Vector3Int attackCell, bool allowDefend)
     {
         orderMode = mode;
-        patrolWaypoints = waypoints != null ? new List<Vector3Int>(waypoints) : new List<Vector3Int>();
+        patrolWaypoints = waypoints != null ?
+            new List<Vector3Int>(waypoints) : new List<Vector3Int>();
         patrolLoop = loop;
         hasAttackTarget = hasAttack;
         attackTargetCell = attackCell;
+        allowDefendCore = allowDefend;
         OnOrdersChanged?.Invoke();
     }
 

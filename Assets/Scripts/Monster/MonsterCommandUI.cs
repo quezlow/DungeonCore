@@ -102,17 +102,28 @@ public class MonsterCommandUI : MonoBehaviour
             statusLabel.text = BuildStatusText(current);
 
         if (loopToggle != null)
-        {
             loopToggle.SetIsOnWithoutNotify(current.PatrolLoop);
+
+        // DAY 31 PART 3 CLOSE-OUT — defend button label reflects current permission.
+        if (defendButton != null)
+        {
+            var defendLabel = defendButton.GetComponentInChildren<TMP_Text>();
+            if (defendLabel != null)
+                defendLabel.text = current.AllowDefendCore ? "Defend: ON" : "Defend: OFF";
         }
     }
 
     private static string BuildStatusText(MonsterSpawner s)
     {
-        if (s.HasAttackTarget) return $"Attack-Here at {s.AttackTargetCell.x},{s.AttackTargetCell.y}";
-        if (s.OrderMode == SpawnerOrderMode.Patrol && s.PatrolWaypoints.Count > 0)
-            return $"Patrol · {(s.PatrolLoop ? "Loop" : "Hold-at-Final")} · {s.PatrolWaypoints.Count}/{MonsterSpawner.MaxPatrolWaypoints} waypoints";
-        return "Wander";
+        string baseText;
+        if (s.HasAttackTarget)
+            baseText = $"Attack-Here at {s.AttackTargetCell.x},{s.AttackTargetCell.y}";
+        else if (s.OrderMode == SpawnerOrderMode.Patrol && s.PatrolWaypoints.Count > 0)
+            baseText = $"Patrol · {(s.PatrolLoop ? "Loop" : "Hold-at-Final")} · {s.PatrolWaypoints.Count}/{MonsterSpawner.MaxPatrolWaypoints} waypoints";
+        else
+            baseText = "Wander";
+
+        return s.AllowDefendCore ? baseText : baseText + " · Defend OFF";
     }
 
     // ── Button hooks (wire in Inspector) ──────────────────────────
@@ -143,7 +154,8 @@ public class MonsterCommandUI : MonoBehaviour
 
     public void OnDefendClicked()
     {
-        Debug.Log("[MonsterCommandUI] Defend — not implemented yet (Day 31 stub).");
+        if (current == null) return;
+        current.SetAllowDefendCore(!current.AllowDefendCore);
     }
 
     public void OnLoopToggleChanged(bool isLoop)

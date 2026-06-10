@@ -72,7 +72,7 @@ public class DungeonBuildController : MonoBehaviour
 
         if (CurrentMode == BuildMode.Claim)
         {
-            if (TryHandleSpawnerClick()) return;
+            if (TryHandleSpawnerOrMonsterClick()) return;
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame
                 && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
                 && SpawnerSelectionController.Instance != null
@@ -426,12 +426,13 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     public MonsterSpawner RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell)
-        => RestoreSpawner(floor, def, cell, SpawnerOrderMode.Wander, null, true, false, default);
+        => RestoreSpawner(floor, def, cell, SpawnerOrderMode.Wander, null, true, false, default, true);
 
-    /// <summary>DAY 31 PART 3D — Full restore including patrol orders and attack target.</summary>
+    /// <summary>DAY 31 PART 3D — Full restore including patrol orders and attack target.
+    /// PART 3 CLOSE-OUT — allowDefendCore added as a final parameter.</summary>
     public MonsterSpawner RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell,
         SpawnerOrderMode orderMode, List<Vector3Int> patrolWaypoints, bool patrolLoop,
-        bool hasAttackTarget, Vector3Int attackTargetCell)
+        bool hasAttackTarget, Vector3Int attackTargetCell, bool allowDefendCore)
     {
         if (spawnerShellPrefab == null) return null;
         if (floor?.TileInfluence == null) return null;
@@ -439,7 +440,7 @@ public class DungeonBuildController : MonoBehaviour
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
         spawner.transform.SetParent(floor.transform, true);
         spawner.Initialise(def);
-        spawner.RestoreOrders(orderMode, patrolWaypoints, patrolLoop, hasAttackTarget, attackTargetCell);
+        spawner.RestoreOrders(orderMode, patrolWaypoints, patrolLoop, hasAttackTarget, attackTargetCell, allowDefendCore);
         return spawner;
     }
 
@@ -536,11 +537,14 @@ public class DungeonBuildController : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// DAY 31 PART 3D — Detects left-clicks on a placed MonsterSpawner on the active
-    /// floor. Returns true (consuming the click) if a spawner was hit.
+    /// DAY 31 PART 3 CLOSE-OUT — Renamed from TryHandleSpawnerClick because it
+    /// now also routes monster clicks through to their owning spawner. Either
+    /// surface yields the same selection target (the MonsterSpawner).
+    /// Monster route is checked first so an overlapping monster wins over the
+    /// spawner cell beneath it; spawner route still works for dead/respawning
+    /// monsters where no monster collider is present.
     /// </summary>
-    private bool TryHandleSpawnerClick()
+    private bool TryHandleSpawnerOrMonsterClick()
     {
         var mouse = Mouse.current;
         if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return false;
@@ -552,6 +556,24 @@ public class DungeonBuildController : MonoBehaviour
         worldPos.z = 0f;
 
         var hits = Physics2D.OverlapPointAll(worldPos);
+
+        // Pass 1 — monster route. Prefer this because the monster is what the
+        // player can actually see; the spawner cell is often hidden beneath it.
+        foreach (var col in hits)
+        {
+            if (col == null) continue;
+            var monster = col.GetComponentInParent<DungeonMonster>();
+            if (monster == null) continue;
+            if (monster.Spawner == null) continue;  // wild monsters have no spawner
+
+            var monsterFloor = monster.CurrentFloor;
+            if (FloorManager.Instance != null && monsterFloor != FloorManager.Instance.ActiveFloor) continue;
+
+            SpawnerSelectionController.Instance?.Select(monster.Spawner);
+            return true;
+        }
+
+        // Pass 2 — spawner route. Catches the dead/respawning case.
         foreach (var col in hits)
         {
             if (col == null) continue;

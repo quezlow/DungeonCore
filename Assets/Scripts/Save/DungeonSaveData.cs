@@ -60,6 +60,7 @@ public class MonsterSpawnerSaveData
     public bool patrolLoop = true;
     public bool hasAttackTarget = false;
     public SerializableVector3Int attackTargetCell;
+    public bool allowDefendCore = true;
 
     // DAY 31 — Alive monster state. Captured when this spawner has a live monster
     // at save time; consumed by the spawner's first SpawnMonster() on load.

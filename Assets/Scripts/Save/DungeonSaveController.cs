@@ -139,6 +139,7 @@ public class DungeonSaveController : MonoBehaviour
                 patrolLoop = s.PatrolLoop,
                 hasAttackTarget = s.HasAttackTarget,
                 attackTargetCell = SerializableVector3Int.From(s.AttackTargetCell),
+                allowDefendCore = s.AllowDefendCore,
             };
 
             // DAY 31 — Capture alive monster state. If the spawner has a live monster
@@ -308,7 +309,8 @@ public class DungeonSaveController : MonoBehaviour
                     waypoints,
                     s.patrolLoop,
                     s.hasAttackTarget,
-                    s.attackTargetCell.ToVector3Int());
+                    s.attackTargetCell.ToVector3Int(),
+                    s.allowDefendCore);
 
                 // DAY 31 — Seed pending alive monster state. Must run before the spawner's
                 // Start() (deferred to next frame), so SpawnMonster() picks it up.

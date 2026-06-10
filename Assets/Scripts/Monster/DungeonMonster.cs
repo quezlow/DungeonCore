@@ -68,6 +68,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float currentHP;
     private float monsterXP;
     private bool isVeteran;
+    public MonsterSpawner Spawner => spawner;
     private float lastAttackTime;
 
     private IMonsterTarget target;
@@ -109,6 +110,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // Patrol (DAY 31 PART 3D)
     private int patrolIndex = 0;
     private Vector3 patrolMoveTarget;
+
+    // DefendCore pathing (DAY 31 PART 3 CLOSE-OUT)
+    private List<Vector3> defendCorePath = new();
+    private int defendCorePathIndex = 0;
+    private float defendCorePathRefreshTimer = 0f;
+    private const float DefendCorePathRefreshInterval = 0.5f;
 
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0;
@@ -271,7 +278,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 }
                 break;
             case MonsterState.DefendCore:
-                ScanForHostiles();
+                TickDefendCore();
                 break;
         }
     }
@@ -287,8 +294,17 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (IsWild) return MonsterState.Wander;
         if (spawner == null) return MonsterState.Wander;
 
-        // Attack-Here takes precedence: route the monster via Patrol toward the target cell.
+        // Attack-Here takes precedence: it's the player's explicit will and outranks
+        // even DefendCore.
         if (spawner.HasAttackTarget) return MonsterState.Patrol;
+
+        if (spawner.AllowDefendCore
+                    && CoreThreatMonitor.Instance != null
+                    && CoreThreatMonitor.Instance.IsCoreThreatened
+                    && IsOnCoreFloor())
+        {
+            return MonsterState.DefendCore;
+        }
 
         if (spawner.OrderMode == SpawnerOrderMode.Patrol)
         {
@@ -298,6 +314,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             return MonsterState.Patrol;
         }
         return MonsterState.Wander;
+    }
+
+    private bool IsOnCoreFloor()
+    {
+        if (currentFloor == null || FloorManager.Instance == null) return false;
+        return currentFloor.FloorIndex == FloorManager.Instance.CoreFloorIndex;
     }
 
     private void EnterState(MonsterState newState)
@@ -356,6 +378,48 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (Vector2.Distance(transform.position, patrolMoveTarget) < waypointArrivalDistance)
             OnWaypointReached();
+    }
+
+    /// <summary>
+    /// DAY 31 PART 3 CLOSE-OUT — Behavior while DefendCore is active.
+    /// Uses DungeonPathfinder to route around walls; recomputes the path every
+    /// DefendCorePathRefreshInterval seconds (or sooner if exhausted) so the
+    /// monster tracks a moving threat without per-frame pathfinding cost.
+    /// </summary>
+    private void TickDefendCore()
+    {
+        ScanForHostiles();
+        if (state == MonsterState.Attack) { defendCorePath.Clear(); return; }
+
+        Vector3 destination;
+        var monitorThreat = CoreThreatMonitor.Instance?.NearestThreat;
+        if (monitorThreat != null)
+            destination = monitorThreat.transform.position;
+        else if (DungeonCore.Instance != null)
+            destination = DungeonCore.Instance.transform.position;
+        else
+            return;
+
+        defendCorePathRefreshTimer -= Time.deltaTime;
+        bool needsRefresh = defendCorePath.Count == 0
+                         || defendCorePathIndex >= defendCorePath.Count
+                         || defendCorePathRefreshTimer <= 0f;
+        if (needsRefresh)
+        {
+            defendCorePath = DungeonPathfinder.FindPath(currentFloor, transform.position, destination);
+            defendCorePathIndex = 0;
+            defendCorePathRefreshTimer = DefendCorePathRefreshInterval;
+        }
+
+        if (defendCorePath.Count == 0) return;
+        if (defendCorePathIndex >= defendCorePath.Count) return;
+
+        Vector3 stepTarget = defendCorePath[defendCorePathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            defendCorePathIndex++;
     }
 
     private void OnWaypointReached()
