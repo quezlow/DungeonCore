@@ -9143,6 +9143,7 @@ MonoBehaviour:
   featureGenerator: {fileID: 468668985}
   featureRevealController: {fileID: 652070175}
   wildMonsterController: {fileID: 1848019895}
+  terrainTypeMap: {fileID: 1894963497}
   cameraBounds: {fileID: 2117633017}
 --- !u!4 &629551820
 Transform:
@@ -16214,6 +16215,7 @@ Transform:
   - {fileID: 652070176}
   - {fileID: 328756362}
   - {fileID: 1848019896}
+  - {fileID: 1894963498}
   m_Father: {fileID: 629551820}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1323356320
@@ -23168,6 +23170,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1889497032}
   m_CullTransparentMesh: 1
+--- !u!1 &1894963496
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1894963498}
+  - component: {fileID: 1894963497}
+  m_Layer: 0
+  m_Name: TerrainTypeMap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1894963497
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894963496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e824f13129a573c4894649c73ffc44af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainTypeMap
+  resistanceTable: {fileID: 11400000, guid: ae9e55df14d2d0245b299ea2dc8f7275, type: 2}
+  minPatches: 3
+  maxPatches: 6
+  minPatchCells: 5
+  maxPatchCells: 12
+  patchExclusionFromCenter: 4
+--- !u!4 &1894963498
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1894963496}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1321636149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1914577732
 GameObject:
   m_ObjectHideFlags: 0
@@ -25475,10 +25527,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24571123860c9db4f8ab9600ff8c26f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonBoundsUpdater
-  paddingCells: 6
-  viewportSafetyMultiplier: 1.5
-  fallbackMinWidth: 64
-  fallbackMinHeight: 36
+  paddingCells: 12
+  viewportSafetyMultiplier: 2
+  fallbackMinWidth: 96
+  fallbackMinHeight: 72
 --- !u!1 &2122122343
 GameObject:
   m_ObjectHideFlags: 0
