@@ -45,6 +45,32 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Header("Exclusion Zone")]
     [SerializeField] private int exclusionRadiusFromCenter = 8;
 
+    // ── Inspector — Core Cavern ───────────────────────
+
+    [Header("Core Cavern")]
+    [Tooltip("Inner disc radius (cells). Every cell within this radius is part of the cavern.")]
+    [SerializeField, Min(1)] private int cavernInnerRadius = 2;
+    [Tooltip("Outer disc radius (cells). Cells between inner and outer are noisy — included with falloff probability.")]
+    [SerializeField, Min(1)] private int cavernOuterRadius = 3;
+    [Tooltip("Minimum total cavern cells. Topped up by adjacent expansion if the noisy disc undershoots.")]
+    [SerializeField, Min(4)] private int cavernMinCells = 10;
+    [Tooltip("Maximum total cavern cells. Trimmed from outside in if overshooting.")]
+    [SerializeField, Min(4)] private int cavernMaxCells = 16;
+
+    [Header("Core Cavern — Tunnels")]
+    [Tooltip("Weights for tunnel count 1 / 2 / 3 respectively. Must sum to > 0; ratios are what matter.")]
+    [SerializeField] private int tunnelWeight1 = 20;
+    [SerializeField] private int tunnelWeight2 = 50;
+    [SerializeField] private int tunnelWeight3 = 30;
+    [Tooltip("Minimum angular separation between tunnels, in degrees.")]
+    [SerializeField, Range(45f, 180f)] private float tunnelMinAngleSeparation = 90f;
+    [SerializeField, Min(1)] private int tunnelMinLength = 4;
+    [SerializeField, Min(1)] private int tunnelMaxLength = 8;
+    [Tooltip("Fraction of tunnel length (0..1) over which it remains 2-cells wide. Beyond this, it narrows to 1 cell.")]
+    [SerializeField, Range(0f, 1f)] private float tunnelWideFraction = 0.6f;
+    [Tooltip("Probability per step that the tunnel drifts one cell perpendicular to its direction.")]
+    [SerializeField, Range(0f, 1f)] private float tunnelWobbleChance = 0.3f;
+
     // ── Inspector — Pathfinding & Fording ─────────────────────────
 
     [Header("Pathfinding")]
@@ -85,6 +111,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private FloorRoot floor;
     private FloorFeatureSaveData featureData;
     private readonly Dictionary<Vector3Int, FeatureRef> cellLookup = new();
+    private readonly HashSet<Vector3Int> reservedCoreCells = new();
 
     public FloorFeatureSaveData FeatureData => featureData;
     public bool HasGenerated => featureData != null;
@@ -120,6 +147,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var rng = new System.Random(floorSeed);
         featureData = new FloorFeatureSaveData();
 
+        if (floor != null && floor.FloorIndex == 0)
+        {
+            GenerateCoreCavernAndTunnels(rng, centerCell, floorRadius);
+        }
+
         GenerateChambers(rng, centerCell, floorRadius);
         GenerateRivers(rng, centerCell, floorRadius);
 
@@ -127,8 +159,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated: " +
-            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers " +
-            $"(seed {floorSeed}).");
+            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers " + 
+            (featureData.coreCavern != null ? $", core cavern ({featureData.coreCavern.cells.Count} cells, {featureData.coreCavern.tunnels.Count} tunnels)" : "") +
+            $" (seed {floorSeed}).");
 
         if (autoPaintDebugOverlay) PaintDebugOverlay();
     }
@@ -144,7 +177,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
             $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
             $"{featureData.revealedRiverIds.Count} rivers revealed, " +
-            $"{featureData.revealedChamberIds.Count} chambers revealed.");
+            $"{featureData.revealedChamberIds.Count} chambers revealed" +
+            (featureData.coreCavern != null ? $", core cavern present ({featureData.coreCavern.cells.Count} cells, {featureData.coreCavern.tunnels.Count} tunnels)" : "") + ".");
+
 
         if (autoPaintDebugOverlay) PaintDebugOverlay();
     }
@@ -156,6 +191,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     public bool IsRiver(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.River;
     public bool IsChamber(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.Chamber;
+    public bool IsCoreCavern(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.CoreCavern;
+    public bool IsReservedCoreFeature(Vector3Int cell) => reservedCoreCells.Contains(cell);
+    public CoreCavernData CoreCavern => featureData?.coreCavern;
 
     public int GetChamberId(Vector3Int cell)
     {
@@ -369,6 +407,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
             if (!IsInFloorRadius(worldCell, floorCentre, floorRadius)) continue;
             if (IsInExclusion(worldCell, floorCentre)) continue;
+            if (reservedCoreCells.Contains(worldCell)) continue;
 
             result.Add(worldCell);
         }
@@ -423,6 +462,259 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData.chambers.RemoveAll(c => c.cells.Count == 0);
     }
 
+    // ── Core Cavern Generation (DAY 34/35) ────────────────────────
+
+    /// <summary>
+    /// Generates a noisy-disc cavern around the core cell plus 1–3 outward
+    /// tunnels. Populates featureData.coreCavern. Also seeds reservedCoreCells
+    /// so chamber + river generation can avoid the cavern + tunnel footprint.
+    ///
+    /// Cavern cells are pre-revealed (no influence-touch reveal needed).
+    /// </summary>
+    private void GenerateCoreCavernAndTunnels(
+        System.Random rng, Vector3Int centerCell, int floorRadius)
+    {
+        var cavern = new CoreCavernData
+        {
+            centerCell = SerializableVector3Int.From(centerCell),
+        };
+
+        // ── Cavern shape: noisy disc ──────────────────────────────
+        var cavernSet = new HashSet<Vector3Int> { centerCell };
+
+        int innerSq = cavernInnerRadius * cavernInnerRadius;
+        int outerSq = cavernOuterRadius * cavernOuterRadius;
+        float innerR = cavernInnerRadius;
+        float outerR = Mathf.Max(cavernInnerRadius + 0.001f, cavernOuterRadius);
+
+        for (int dx = -cavernOuterRadius; dx <= cavernOuterRadius; dx++)
+            for (int dy = -cavernOuterRadius; dy <= cavernOuterRadius; dy++)
+            {
+                int sq = dx * dx + dy * dy;
+                if (sq > outerSq) continue;
+
+                var c = new Vector3Int(centerCell.x + dx, centerCell.y + dy, 0);
+
+                if (sq <= innerSq)
+                {
+                    cavernSet.Add(c);
+                }
+                else
+                {
+                    // Falloff: closer to inner radius -> more likely included.
+                    float dist = Mathf.Sqrt(sq);
+                    float t = (dist - innerR) / (outerR - innerR);   // 0 at inner, 1 at outer
+                    double keepChance = 1.0 - t * 0.7;               // 1.0 -> 0.3
+                    if (rng.NextDouble() < keepChance) cavernSet.Add(c);
+                }
+            }
+
+        // Top up to min size by walking outward to adjacent cells.
+        int safetyTopUp = 0;
+        while (cavernSet.Count < cavernMinCells && safetyTopUp++ < 200)
+        {
+            var candidates = new List<Vector3Int>();
+            foreach (var c in cavernSet)
+            {
+                TryAddCandidate(c + Vector3Int.up, cavernSet, candidates);
+                TryAddCandidate(c + Vector3Int.down, cavernSet, candidates);
+                TryAddCandidate(c + Vector3Int.left, cavernSet, candidates);
+                TryAddCandidate(c + Vector3Int.right, cavernSet, candidates);
+            }
+            if (candidates.Count == 0) break;
+            cavernSet.Add(candidates[rng.Next(candidates.Count)]);
+        }
+
+        // Trim to max size by removing farthest-from-core cells (never the core).
+        while (cavernSet.Count > cavernMaxCells)
+        {
+            Vector3Int farthest = centerCell;
+            int maxSq = -1;
+            foreach (var c in cavernSet)
+            {
+                if (c == centerCell) continue;
+                int sq = (c.x - centerCell.x) * (c.x - centerCell.x)
+                       + (c.y - centerCell.y) * (c.y - centerCell.y);
+                if (sq > maxSq) { maxSq = sq; farthest = c; }
+            }
+            if (farthest == centerCell) break;
+            cavernSet.Remove(farthest);
+        }
+
+        cavern.cells = ToSerializable(new List<Vector3Int>(cavernSet));
+
+        // Mirror into reserved set for chamber + river exclusion.
+        reservedCoreCells.Clear();
+        foreach (var c in cavernSet) reservedCoreCells.Add(c);
+
+        // ── Tunnels ──────────────────────────────────────────────
+        int tunnelCount = PickWeightedTunnelCount(rng);
+        double baseAngle = rng.NextDouble() * 2.0 * Math.PI;
+        var tunnelAngles = PickTunnelAngles(rng, tunnelCount, baseAngle);
+
+        for (int i = 0; i < tunnelAngles.Count; i++)
+        {
+            var tunnel = BuildTunnel(
+                rng, centerCell, cavernSet, tunnelAngles[i], floorRadius, i);
+            if (tunnel == null || tunnel.cells.Count == 0) continue;
+
+            cavern.tunnels.Add(tunnel);
+            foreach (var sv in tunnel.cells)
+                reservedCoreCells.Add(sv.ToVector3Int());
+        }
+
+        featureData.coreCavern = cavern;
+
+        // Pre-reveal: cavern + tunnels are visible from start.
+        UnfogCoreCavern();
+    }
+
+    private static void TryAddCandidate(
+        Vector3Int cell, HashSet<Vector3Int> existing, List<Vector3Int> candidates)
+    {
+        if (!existing.Contains(cell)) candidates.Add(cell);
+    }
+
+    /// <summary>Picks 1, 2, or 3 from the configured weights.</summary>
+    private int PickWeightedTunnelCount(System.Random rng)
+    {
+        int w1 = Mathf.Max(0, tunnelWeight1);
+        int w2 = Mathf.Max(0, tunnelWeight2);
+        int w3 = Mathf.Max(0, tunnelWeight3);
+        int total = w1 + w2 + w3;
+        if (total <= 0) return 2; // safety default
+        int roll = rng.Next(total);
+        if (roll < w1) return 1;
+        if (roll < w1 + w2) return 2;
+        return 3;
+    }
+
+    /// <summary>
+    /// Picks angles from the 8-way set (rotated by baseAngle), ensuring no two
+    /// picks are closer than tunnelMinAngleSeparation degrees apart.
+    /// </summary>
+    private List<double> PickTunnelAngles(System.Random rng, int count, double baseAngle)
+    {
+        var picks = new List<double>();
+        var candidates = new List<double>();
+        for (int i = 0; i < 8; i++)
+            candidates.Add(baseAngle + i * Math.PI / 4.0);
+
+        // Shuffle candidates (Fisher-Yates).
+        for (int i = candidates.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
+        }
+
+        double minSep = tunnelMinAngleSeparation * Math.PI / 180.0;
+
+        foreach (var a in candidates)
+        {
+            bool tooClose = false;
+            foreach (var p in picks)
+            {
+                if (AngularDistance(a, p) < minSep) { tooClose = true; break; }
+            }
+            if (!tooClose) picks.Add(a);
+            if (picks.Count >= count) break;
+        }
+        return picks;
+    }
+
+    private static double AngularDistance(double a, double b)
+    {
+        double d = Math.Abs(a - b) % (2.0 * Math.PI);
+        if (d > Math.PI) d = 2.0 * Math.PI - d;
+        return d;
+    }
+
+    /// <summary>
+    /// Builds one tunnel from the cavern edge outward along the given angle,
+    /// with 2→1 width taper, perpendicular wobble, and floor-radius clamping.
+    /// </summary>
+    private TunnelData BuildTunnel(
+        System.Random rng, Vector3Int coreCell, HashSet<Vector3Int> cavernCells,
+        double angle, int floorRadius, int tunnelIndex)
+    {
+        var added = new HashSet<Vector3Int>();
+
+        int length = rng.Next(tunnelMinLength, tunnelMaxLength + 1);
+        int wideUntil = Mathf.RoundToInt(length * tunnelWideFraction);
+
+        double dx = Math.Cos(angle);
+        double dy = Math.Sin(angle);
+        double perpDx = -dy;
+        double perpDy = dx;
+
+        // Width-side choice: alternating per tunnel for visual variety, but
+        // deterministic (no RNG consumption needed for this).
+        int widthSide = (tunnelIndex % 2 == 0) ? 1 : -1;
+
+        // Find tunnel start: farthest cavern cell along the angle, capped at
+        // a few cells (cavern is small).
+        Vector3Int startCell = coreCell;
+        for (int r = 1; r <= cavernOuterRadius + 2; r++)
+        {
+            var test = new Vector3Int(
+                coreCell.x + (int)Math.Round(r * dx),
+                coreCell.y + (int)Math.Round(r * dy), 0);
+            if (cavernCells.Contains(test)) startCell = test;
+            else break;
+        }
+
+        // Walk outward from one step past the start cell.
+        double curX = startCell.x + dx;
+        double curY = startCell.y + dy;
+        int driftSteps = 0;
+
+        for (int step = 0; step < length; step++)
+        {
+            if (rng.NextDouble() < tunnelWobbleChance)
+                driftSteps += (rng.Next(2) == 0) ? -1 : 1;
+
+            double pxOff = driftSteps * perpDx;
+            double pyOff = driftSteps * perpDy;
+
+            var primary = new Vector3Int(
+                (int)Math.Round(curX + pxOff),
+                (int)Math.Round(curY + pyOff), 0);
+
+            // Stop if outside floor radius.
+            int rdx = primary.x - coreCell.x;
+            int rdy = primary.y - coreCell.y;
+            if (rdx * rdx + rdy * rdy > floorRadius * floorRadius) break;
+
+            // Skip cells already inside the cavern (overlap at the mouth).
+            if (!cavernCells.Contains(primary)) added.Add(primary);
+
+            // Width-2 perpendicular companion while in the wide section.
+            if (step < wideUntil)
+            {
+                var secondary = new Vector3Int(
+                    primary.x + (int)Math.Round(perpDx * widthSide),
+                    primary.y + (int)Math.Round(perpDy * widthSide), 0);
+                int sdx = secondary.x - coreCell.x;
+                int sdy = secondary.y - coreCell.y;
+                if (sdx * sdx + sdy * sdy <= floorRadius * floorRadius
+                    && !cavernCells.Contains(secondary))
+                {
+                    added.Add(secondary);
+                }
+            }
+
+            // Advance one step along primary direction.
+            curX += dx;
+            curY += dy;
+        }
+
+        return new TunnelData
+        {
+            angleDegrees = (float)(angle * 180.0 / Math.PI),
+            cells = ToSerializable(new List<Vector3Int>(added)),
+        };
+    }
+
     private List<Vector3Int> BuildRiverPolyline(
         System.Random rng, Vector3Int floorCentre, int floorRadius, int controlPointCount)
     {
@@ -475,6 +767,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     var p = new Vector3Int(c.x + dx, c.y + dy, 0);
                     if (!IsInFloorRadius(p, floorCentre, floorRadius)) continue;
                     if (IsInExclusion(p, floorCentre)) continue;
+                    if (reservedCoreCells.Contains(p)) continue;
                     dilated.Add(p);
                 }
         }
@@ -541,7 +834,28 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private void RebuildLookup()
     {
         cellLookup.Clear();
+        reservedCoreCells.Clear();
         if (featureData == null) return;
+
+        // DAY 34/35 — Cavern + tunnels share a single FeatureType.CoreCavern.
+        if (featureData.coreCavern != null)
+        {
+            foreach (var sv in featureData.coreCavern.cells)
+            {
+                var c = sv.ToVector3Int();
+                cellLookup[c] = new FeatureRef { type = FeatureType.CoreCavern, featureId = 0 };
+                reservedCoreCells.Add(c);
+            }
+            foreach (var t in featureData.coreCavern.tunnels)
+            {
+                foreach (var sv in t.cells)
+                {
+                    var c = sv.ToVector3Int();
+                    cellLookup[c] = new FeatureRef { type = FeatureType.CoreCavern, featureId = 0 };
+                    reservedCoreCells.Add(c);
+                }
+            }
+        }
 
         foreach (var ch in featureData.chambers)
             foreach (var sv in ch.cells)
@@ -631,9 +945,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
+    private void UnfogCoreCavern()
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null || featureData.coreCavern == null) return;
+
+        foreach (var sv in featureData.coreCavern.cells)
+            terrain.RevealTile(sv.ToVector3Int());
+        foreach (var t in featureData.coreCavern.tunnels)
+            foreach (var sv in t.cells)
+                terrain.RevealTile(sv.ToVector3Int());
+    }
+
     private void UnfogAllRevealedFeatures()
     {
         if (featureData == null) return;
+        UnfogCoreCavern();
         foreach (var rid in featureData.revealedRiverIds) UnfogRiver(rid);
         foreach (var cid in featureData.revealedChamberIds) UnfogChamber(cid);
     }
@@ -661,8 +988,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int chamberCells = 0; foreach (var c in featureData.chambers) chamberCells += c.cells.Count;
         int clearedChambers = 0;
         foreach (var c in featureData.chambers) if (c.cleared) clearedChambers++;
+        int cavernCells = featureData.coreCavern != null ? featureData.coreCavern.cells.Count : 0;
+        int tunnelCount = featureData.coreCavern != null ? featureData.coreCavern.tunnels.Count : 0;
+        int tunnelCells = 0;
+        if (featureData.coreCavern != null)
+            foreach (var t in featureData.coreCavern.tunnels) tunnelCells += t.cells.Count;
+
         Debug.Log(
-            $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex}: " +
+            $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex}: " + 
+            (featureData.coreCavern != null ? $"core cavern ({cavernCells} cells, {tunnelCount} tunnels, {tunnelCells} tunnel cells), " : "") +
             $"{featureData.chambers.Count} chambers ({chamberCells} cells, " +
             $"{featureData.revealedChamberIds.Count} revealed, {clearedChambers} cleared), " +
             $"{featureData.rivers.Count} rivers ({riverCells} cells, " +

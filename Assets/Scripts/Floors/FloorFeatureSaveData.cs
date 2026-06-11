@@ -18,6 +18,8 @@ public class FloorFeatureSaveData
     public List<ChamberData> chambers = new();
     public List<int> revealedRiverIds = new();
     public List<int> revealedChamberIds = new();
+
+    public CoreCavernData coreCavern;
 }
 
 [Serializable]
@@ -58,4 +60,20 @@ public struct FeatureRef
     public int featureId;
 }
 
-public enum FeatureType { None, River, Chamber }
+public enum FeatureType { None, River, Chamber, CoreCavern }
+
+[Serializable]
+public class CoreCavernData
+{
+    public SerializableVector3Int centerCell;
+    public List<SerializableVector3Int> cells = new();
+    public List<TunnelData> tunnels = new();
+}
+
+[Serializable]
+public class TunnelData
+{
+    /// <summary>Outward bearing from the cavern, in degrees (debug / tuning only).</summary>
+    public float angleDegrees;
+    public List<SerializableVector3Int> cells = new();
+}
