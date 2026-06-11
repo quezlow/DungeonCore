@@ -4,7 +4,12 @@ using TMPro;
 
 /// <summary>
 /// Shown on second core breach (game over).
-/// Provides options to restart or quit.
+/// Provides options to restart or exit to the title screen.
+///
+/// DAY 34 — Updated for the slot system. "Restart" reloads the active scene,
+/// which causes DungeonSaveController to read the still-active slot from
+/// SaveSlotManager and restore from save. "Exit" goes to the title screen,
+/// preserving the active slot ID so Continue still works.
 ///
 /// SETUP (add to UICanvas_Dungeon — full screen panel, hidden by default):
 ///   GameOverScreen (this script)
@@ -18,10 +23,11 @@ public class GameOverScreen : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private GameObject panel;
-    [SerializeField] private TMP_Text   subtitleLabel;
+    [SerializeField] private TMP_Text subtitleLabel;
 
     [Header("Scene")]
-    [SerializeField] private string dungeonSceneName = "Dungeon_Floor0";
+    [Tooltip("Scene to load when the player picks Exit. Defaults to the title screen.")]
+    [SerializeField] private string titleSceneName = "TitleScreen";
 
     // ─────────────────────────────────────────────────────────────
 
@@ -51,7 +57,7 @@ public class GameOverScreen : MonoBehaviour
         if (subtitleLabel != null)
             subtitleLabel.text = GetFlavourText();
 
-        // Pause the game while the screen is shown
+        // Pause the game while the screen is shown.
         Time.timeScale = 0f;
 
         Debug.Log("[GameOverScreen] Game over screen shown.");
@@ -59,20 +65,26 @@ public class GameOverScreen : MonoBehaviour
 
     // ── Buttons ───────────────────────────────────────────────────
 
+    /// <summary>
+    /// Try Again. Reloads the currently active scene; the still-active
+    /// slot (preserved by SaveSlotManager.DontDestroyOnLoad) causes
+    /// DungeonSaveController to restore from save on the fresh scene.
+    /// </summary>
     public void OnRestartClicked()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(dungeonSceneName);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    /// <summary>
+    /// Exit. Returns to the title screen so the player can pick a
+    /// different slot, start a new game, or quit from there. The active
+    /// slot ID is preserved.
+    /// </summary>
     public void OnQuitClicked()
     {
         Time.timeScale = 1f;
-        Application.Quit();
-        // In editor: stops play mode
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#endif
+        SceneManager.LoadScene(titleSceneName);
     }
 
     // ── Flavour ───────────────────────────────────────────────────

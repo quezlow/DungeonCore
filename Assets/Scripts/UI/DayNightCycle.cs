@@ -43,9 +43,11 @@ public class DayNightCycle : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     public enum Phase { Day, Night }
     public Phase CurrentPhase { get; private set; } = Phase.Day;
+    public int CurrentDay { get; private set; } = 1;
 
     private float timer       = 0f;
     private float transitionT = 1f;
+
     private Color fromColour;
     private Color toColour;
 
@@ -113,9 +115,10 @@ public class DayNightCycle : MonoBehaviour
         else
         {
             CurrentPhase = Phase.Day;
+            CurrentDay++;
             StartTransition(overlayDay);
             OnDayStarted?.Invoke();
-            Debug.Log("[DayNightCycle] Dawn has broken.");
+            Debug.Log($"[DayNightCycle] Dawn has broken — Day {CurrentDay}.");
         }
     }
 
@@ -135,13 +138,15 @@ public class DayNightCycle : MonoBehaviour
     public DayNightSaveData GetSaveData() => new DayNightSaveData
     {
         phase = CurrentPhase,
-        timer = this.timer
+        timer = this.timer,
+        currentDay = this.CurrentDay,
     };
 
     public void LoadSaveData(DayNightSaveData data)
     {
         CurrentPhase = data.phase;
         timer = data.timer;
+        CurrentDay = Mathf.Max(1, data.currentDay);
 
         // Apply the correct overlay colour immediately with no transition.
         // transitionT = 1 tells Update() the lerp is already complete.
@@ -167,4 +172,5 @@ public class DayNightSaveData
 {
     public DayNightCycle.Phase phase;
     public float timer;
+    public int currentDay = 1;
 }

@@ -1,9 +1,14 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class MenuController : MonoBehaviour
 {
     public GameObject menuCanvas;
+
+    // DAY 34 — Title-bar text at the top of the pause menu showing the
+    // active slot's dungeon name. Refreshed each time the menu opens.
+    [SerializeField] private TMP_Text dungeonNameLabel;
 
     // DAY 31 — Tracks whether THIS menu's open action is what paused the game.
     // Prevents accidentally un-pausing when something else (e.g. an in-game
@@ -25,6 +30,8 @@ public class MenuController : MonoBehaviour
 
         if (opening)
         {
+            RefreshDungeonName();  // DAY 34
+
             // Only pause if nothing else is already pausing.
             if (!PauseController.IsGamePaused)
             {
@@ -42,5 +49,15 @@ public class MenuController : MonoBehaviour
                 menuPausedTheGame = false;
             }
         }
+    }
+
+    // DAY 34 — Populates the title-bar label from the active slot's save data.
+    private void RefreshDungeonName()
+    {
+        if (dungeonNameLabel == null) return;
+        string name = DungeonSaveController.Instance != null
+            ? DungeonSaveController.Instance.CurrentDungeonName
+            : null;
+        dungeonNameLabel.text = string.IsNullOrWhiteSpace(name) ? "Unnamed Dungeon" : name;
     }
 }

@@ -17,14 +17,13 @@ public class DungeonSaveController : MonoBehaviour
     [SerializeField] private TrapDefinitionRegistry trapRegistry;
     [SerializeField] private ChestDefinitionRegistry chestRegistry;
 
-    // ── Save paths ────────────────────────────────────────────────
-    //   savePath → primary save file
-    //   tmpPath  → write target; renamed onto savePath atomically on success
-    //   bakPath  → previous successful save, written automatically by File.Replace
-    //              (DAY 33 — atomic writes + .bak fallback recovery)
+    // ── Save paths (DAY 34 — slot-scoped) ─────────────────────────
+    private int activeSlotId;
     private string savePath;
     private string tmpPath;
     private string bakPath;
+    private string metaPath;
+    private string metaTmpPath;
 
     private DungeonSaveData currentSave = new();
     private bool isLoading;
@@ -32,13 +31,31 @@ public class DungeonSaveController : MonoBehaviour
 
     public MonsterDefinitionRegistry GetMonsterRegistry() => monsterRegistry;
 
+    /// <summary>DAY 34 — Current dungeon name. Read by pause menu, etc.</summary>
+    public string CurrentDungeonName => currentSave?.dungeonName;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        savePath = Path.Combine(Application.persistentDataPath, "DungeonSaveData.json");
-        tmpPath = savePath + ".tmp";
-        bakPath = savePath + ".bak";
+
+        // DAY 34 — One-time legacy save migration before slot resolution.
+        ExistingSaveMigrator.RunIfNeeded();
+
+        activeSlotId = SaveSlotManager.Instance != null ? SaveSlotManager.Instance.ActiveSlotId : 0;
+        if (activeSlotId < SlotPaths.MIN_SLOT_ID || activeSlotId > SlotPaths.MAX_SLOT_ID)
+        {
+            Debug.LogError($"[DungeonSaveController] No valid active slot ({activeSlotId}). Routing to TitleScreen.");
+            SceneManager.LoadScene("TitleScreen");
+            return;
+        }
+
+        SlotPaths.EnsureSlotFolder(activeSlotId);
+        savePath = SlotPaths.SavePath(activeSlotId);
+        tmpPath = SlotPaths.TmpPath(activeSlotId);
+        bakPath = SlotPaths.BakPath(activeSlotId);
+        metaPath = SlotPaths.MetaPath(activeSlotId);
+        metaTmpPath = SlotPaths.MetaTmpPath(activeSlotId);
     }
 
     private void Start()
@@ -49,7 +66,6 @@ public class DungeonSaveController : MonoBehaviour
             DungeonCore.Instance.OnGameOver += HandleGameOver;
         }
 
-        // DAY 33 — Stale .tmp at startup means a previous write crashed.
         CleanupStaleTempFile();
 
         bool loaded = LoadGame();
@@ -64,21 +80,72 @@ public class DungeonSaveController : MonoBehaviour
     }
 
     private void HandleLevelUp(int _) => SaveGame();
-    private void HandleGameOver() => DeleteSave();
 
-    // ── DAY 33 — Stale tmp cleanup ────────────────────────────────
+    /// DAY 34 — Game-over event handler.
+    ///
+    /// Intentionally does NOT load any scene here — the game-over UI owns
+    /// the player's choice. Wire its Try Again button to ReloadActiveSlot()
+    /// and its Exit button to ExitToTitleScreen() below.
+    ///
+    /// (The permadeath toggle will later replace this with DeleteSave()
+    /// followed by ExitToTitleScreen().)
+    /// </summary>
+    private void HandleGameOver()
+    {
+        Debug.Log("[DungeonSaveController] Game over — waiting for player input from the game-over UI.");
+    }
+
+    /// <summary>
+    /// DAY 34 — Try Again handler. Reloads the gameplay scene so DungeonSaveController
+    /// boots fresh, reads the active slot, and restores from save.
+    /// Wire your game-over UI's "Try Again" button to this.
+    /// </summary>
+    public void ReloadActiveSlot()
+    {
+        if (!File.Exists(savePath) && !File.Exists(bakPath))
+        {
+            Debug.LogWarning("[DungeonSaveController] ReloadActiveSlot called but no save exists — routing to TitleScreen instead.");
+            ExitToTitleScreen();
+            return;
+        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    /// <summary>
+    /// DAY 34 — Exit handler. Returns to the title screen so the player can
+    /// pick a different slot, start a new game, or quit.
+    /// Wire your game-over UI's "Exit" button to this.
+    /// </summary>
+    public void ExitToTitleScreen()
+    {
+        SceneManager.LoadScene("TitleScreen");
+    }
 
     private void CleanupStaleTempFile()
     {
-        if (!File.Exists(tmpPath)) return;
-        Debug.LogWarning($"[DungeonSaveController] Stale temp save detected at '{tmpPath}' — previous write crashed. Deleting.");
-        try { File.Delete(tmpPath); }
-        catch (Exception e) { Debug.LogError($"[DungeonSaveController] Could not delete stale temp save: {e.Message}"); }
+        if (File.Exists(tmpPath))
+        {
+            Debug.LogWarning($"[DungeonSaveController] Stale temp save detected at '{tmpPath}'. Deleting.");
+            try { File.Delete(tmpPath); }
+            catch (Exception e) { Debug.LogError($"[DungeonSaveController] Could not delete stale temp save: {e.Message}"); }
+        }
+        if (File.Exists(metaTmpPath))
+        {
+            try { File.Delete(metaTmpPath); }
+            catch (Exception e) { Debug.LogError($"[DungeonSaveController] Could not delete stale meta tmp: {e.Message}"); }
+        }
     }
 
     private void InitializeNewGame()
     {
         WorldSeed = new System.Random().Next();
+
+        // DAY 34 — Apply pending new-game name (type applied in DungeonCore.Awake).
+        string dungeonName = "Unnamed Dungeon";
+        var pending = SaveSlotManager.Instance?.PendingNewGame;
+        if (pending != null) dungeonName = pending.dungeonName;
+        currentSave.dungeonName = dungeonName;
+
         var floor0 = FloorManager.Instance?.GetFloor(0);
         if (floor0 != null && floor0.FeatureGenerator != null && floor0.Terrain != null)
         {
@@ -88,6 +155,8 @@ public class DungeonSaveController : MonoBehaviour
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
         SaveGame();
+
+        SaveSlotManager.Instance?.ClearPendingNewGame();
     }
 
     // ── Save ──────────────────────────────────────────────────────
@@ -97,11 +166,15 @@ public class DungeonSaveController : MonoBehaviour
         if (isLoading) return;
         if (DungeonCore.Instance == null || FloorManager.Instance == null) return;
 
+        // DAY 34 — Preserve dungeon name across the rebuild.
+        string preservedName = currentSave?.dungeonName;
+
         currentSave = new DungeonSaveData
         {
-            saveVersion = DungeonSaveData.CURRENT_VERSION, // DAY 33 — stamp schema version
+            saveVersion = DungeonSaveData.CURRENT_VERSION,
             hasSave = true,
             worldSeed = WorldSeed,
+            dungeonName = string.IsNullOrWhiteSpace(preservedName) ? "Unnamed Dungeon" : preservedName,
             coreData = DungeonCore.Instance.GetSaveData(),
             coreFloorIndex = FloorManager.Instance.CoreFloorIndex,
             pendingCoreRelocationFloor = FloorManager.Instance.PendingCoreRelocationFloor,
@@ -115,7 +188,6 @@ public class DungeonSaveController : MonoBehaviour
         if (currentSave.hasEntrance)
             currentSave.entranceCell = SerializableVector3Int.From(DungeonEntrance.Instance.OccupiedCell);
 
-        // DAY 31 — Camera state.
         if (DungeonCameraController.Instance != null && FloorManager.Instance != null)
         {
             currentSave.hasCameraState = true;
@@ -135,20 +207,12 @@ public class DungeonSaveController : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[DungeonSaveController] Saved to {savePath} (v{currentSave.saveVersion}, {currentSave.floors.Count} floors, worldSeed {WorldSeed}).");
+        // DAY 34 — Sidecar metadata written after a successful main save.
+        WriteMetadataAtomically(BuildMetadata(currentSave));
+
+        Debug.Log($"[DungeonSaveController] Saved slot {activeSlotId} (v{currentSave.saveVersion}, {currentSave.floors.Count} floors).");
     }
 
-    /// <summary>
-    /// DAY 33 — Atomic save write.
-    ///
-    /// Writes JSON to tmpPath first, then atomically swaps it onto savePath via
-    /// File.Replace, which also moves the previous savePath contents into
-    /// bakPath. If savePath does not exist yet (first-ever save), falls back to
-    /// File.Move since File.Replace requires the destination to exist.
-    ///
-    /// On any I/O failure the partial tmp is cleaned up so the next save can
-    /// proceed cleanly; the existing savePath is left untouched.
-    /// </summary>
     private bool WriteSaveAtomically(DungeonSaveData data)
     {
         try
@@ -157,22 +221,49 @@ public class DungeonSaveController : MonoBehaviour
             File.WriteAllText(tmpPath, json);
 
             if (File.Exists(savePath))
-            {
-                // Atomic swap + automatic backup of the previous save.
                 File.Replace(tmpPath, savePath, bakPath);
-            }
             else
-            {
-                // First-ever save — no destination to replace.
                 File.Move(tmpPath, savePath);
-            }
             return true;
         }
         catch (Exception e)
         {
             Debug.LogError($"[DungeonSaveController] Save write failed: {e}");
-            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* best effort */ }
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
             return false;
+        }
+    }
+
+    private SlotMetadata BuildMetadata(DungeonSaveData data)
+    {
+        return new SlotMetadata
+        {
+            slotId = activeSlotId,
+            dungeonName = string.IsNullOrWhiteSpace(data.dungeonName) ? "Unnamed Dungeon" : data.dungeonName,
+            dungeonType = data.coreData != null ? data.coreData.dungeonType : DungeonType.None,
+            dungeonLevel = data.coreData != null ? data.coreData.dungeonLevel : 1,
+            currentDay = data.dayNightData != null ? Mathf.Max(1, data.dayNightData.currentDay) : 1,
+            lastPlayedIsoUtc = DateTime.UtcNow.ToString("o"),
+            saveVersion = data.saveVersion,
+        };
+    }
+
+    private void WriteMetadataAtomically(SlotMetadata meta)
+    {
+        try
+        {
+            string json = JsonUtility.ToJson(meta, prettyPrint: true);
+            File.WriteAllText(metaTmpPath, json);
+
+            if (File.Exists(metaPath))
+                File.Replace(metaTmpPath, metaPath, null);
+            else
+                File.Move(metaTmpPath, metaPath);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[DungeonSaveController] Meta write failed: {e.Message}");
+            try { if (File.Exists(metaTmpPath)) File.Delete(metaTmpPath); } catch { }
         }
     }
 
@@ -187,7 +278,6 @@ public class DungeonSaveController : MonoBehaviour
             tileData = floor.TileInfluence != null ? floor.TileInfluence.GetSaveData() : null,
         };
 
-        // DAY 31 PART 3F — Snapshot wild monsters per chamber.
         if (floor.WildMonsterController != null && data.featureData != null)
         {
             foreach (var ch in data.featureData.chambers)
@@ -197,6 +287,7 @@ public class DungeonSaveController : MonoBehaviour
         foreach (var s in floor.GetComponentsInChildren<MonsterSpawner>(true))
         {
             if (s.Definition == null) continue;
+
             // DAY 31 PART 3D — Persist orders.
             var waypoints = new List<SerializableVector3Int>(s.PatrolWaypoints.Count);
             foreach (var wp in s.PatrolWaypoints) waypoints.Add(SerializableVector3Int.From(wp));
@@ -213,9 +304,8 @@ public class DungeonSaveController : MonoBehaviour
                 allowDefendCore = s.AllowDefendCore,
             };
 
-            // DAY 31 — Capture alive monster state. If the spawner has a live monster
-            // at save time, persist its cell + HP + patrol index so reload spawns the
-            // monster at exactly the saved state instead of fresh at the spawner cell.
+            // DAY 31 — Capture alive monster state if the spawner has a live monster.
+            // PART 3 CLOSE-OUT — XP + isVeteran round-tripped.
             if (s.SpawnedMonster != null && floor.TileInfluence != null)
             {
                 spawnerData.hasAliveMonster = true;
@@ -232,6 +322,7 @@ public class DungeonSaveController : MonoBehaviour
 
         foreach (var c in floor.GetComponentsInChildren<DungeonChest>(true))
         {
+            if (c.Definition == null || floor.TileInfluence == null) continue;
             data.chests.Add(new DungeonChestSaveData
             {
                 chestName = c.Definition != null ? c.Definition.chestName : "",
@@ -287,25 +378,8 @@ public class DungeonSaveController : MonoBehaviour
         return data;
     }
 
-    // ── Load ──────────────────────────────────────────────────────
+    // ── Load (DAY 33 logic — unchanged) ───────────────────────────
 
-    /// <summary>
-    /// DAY 33 — Load with .bak fallback, version validation, and migration.
-    ///
-    /// Flow:
-    ///   1. If neither main nor .bak exists → return false (new game).
-    ///   2. Try to deserialize main. On failure: quarantine main to
-    ///      "{savePath}.corrupt-yyyyMMdd-HHmmss", then fall through to .bak.
-    ///   3. If main failed and .bak exists, try .bak. On success, promote
-    ///      .bak to main (copy) so subsequent File.Replace writes maintain a
-    ///      correct backup chain.
-    ///   4. If both fail → return false (new game).
-    ///   5. If saveVersion > CURRENT_VERSION → refuse, log, leave file
-    ///      untouched, return false.
-    ///   6. Run SaveMigrationRegistry.MigrateToCurrent to bring older saves
-    ///      up to the current schema version.
-    ///   7. Proceed with full restoration (unchanged from Day 31).
-    /// </summary>
     private bool LoadGame()
     {
         if (!File.Exists(savePath) && !File.Exists(bakPath)) return false;
@@ -315,13 +389,9 @@ public class DungeonSaveController : MonoBehaviour
         {
             DungeonSaveData data = null;
 
-            // Stage 1: try main.
             if (File.Exists(savePath))
             {
-                if (TryDeserialize(savePath, out data))
-                {
-                    // OK
-                }
+                if (TryDeserialize(savePath, out data)) { }
                 else
                 {
                     Debug.LogWarning("[DungeonSaveController] Main save unreadable. Quarantining and attempting .bak recovery.");
@@ -330,7 +400,6 @@ public class DungeonSaveController : MonoBehaviour
                 }
             }
 
-            // Stage 2: fall back to .bak.
             if (data == null && File.Exists(bakPath))
             {
                 if (TryDeserialize(bakPath, out data))
@@ -349,7 +418,6 @@ public class DungeonSaveController : MonoBehaviour
             if (data == null) return false;
             if (!data.hasSave) return false;
 
-            // Stage 3: version check.
             if (data.saveVersion > DungeonSaveData.CURRENT_VERSION)
             {
                 Debug.LogError(
@@ -372,6 +440,8 @@ public class DungeonSaveController : MonoBehaviour
             if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
                 DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);
 
+            // Recreate floors. Floor 0 already exists in the scene; just set its seed.
+            // Floors 1+ get recreated from the floor template.
             foreach (var floorData in currentSave.floors)
             {
                 if (floorData.floorIndex == 0)
@@ -379,23 +449,33 @@ public class DungeonSaveController : MonoBehaviour
                     FloorManager.Instance.SetFloorSeed(0, floorData.floorSeed);
                     continue;
                 }
-                FloorManager.Instance.RecreateFloorFromSave(floorData.floorIndex, floorData.centerCell.ToVector3Int(), floorData.floorSeed);
+                FloorManager.Instance.RecreateFloorFromSave(
+                    floorData.floorIndex,
+                    floorData.centerCell.ToVector3Int(),
+                    floorData.floorSeed);
             }
 
-            FloorManager.Instance.RestoreState(currentSave.coreFloorIndex, currentSave.pendingCoreRelocationFloor, currentSave.visitedFloors);
+            FloorManager.Instance.RestoreState(
+                currentSave.coreFloorIndex,
+                currentSave.pendingCoreRelocationFloor,
+                currentSave.visitedFloors);
 
+            // Pass 1: feature data per floor.
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
-                if (floor?.FeatureGenerator != null) floor.FeatureGenerator.LoadFromSave(floorData.featureData);
+                if (floor?.FeatureGenerator != null)
+                    floor.FeatureGenerator.LoadFromSave(floorData.featureData);
             }
 
+            // Pass 2: wild monsters per floor (controller pulls from feature data).
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
                 floor?.WildMonsterController?.RestoreFromSave();
             }
 
+            // Pass 3: tile influence per floor.
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
@@ -403,12 +483,14 @@ public class DungeonSaveController : MonoBehaviour
                     floor.TileInfluence.LoadSaveData(floorData.tileData);
             }
 
+            // Restore entrance via the build controller.
             if (currentSave.hasEntrance)
             {
                 var floor0 = FloorManager.Instance.GetFloor(0);
                 DungeonBuildController.Instance.RestoreEntrance(floor0, currentSave.entranceCell.ToVector3Int());
             }
 
+            // Pass 4: spawners, chests, furniture, anchors, traps, stairs.
             foreach (var floorData in currentSave.floors)
             {
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
@@ -431,10 +513,6 @@ public class DungeonSaveController : MonoBehaviour
         finally { isLoading = false; }
     }
 
-    /// <summary>
-    /// DAY 33 — Reads and JSON-parses a save file. Returns false on any I/O or
-    /// parse failure, or if the deserialised object is null.
-    /// </summary>
     private bool TryDeserialize(string path, out DungeonSaveData data)
     {
         data = null;
@@ -451,10 +529,6 @@ public class DungeonSaveController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// DAY 33 — Renames a corrupt save file to a timestamped sidecar so it's
-    /// preserved for inspection but won't be picked up on next launch.
-    /// </summary>
     private void QuarantineCorruptSave(string path)
     {
         if (!File.Exists(path)) return;
@@ -480,7 +554,6 @@ public class DungeonSaveController : MonoBehaviour
                 var def = monsterRegistry.GetByName(s.monsterName);
                 if (def == null) continue;
 
-                // DAY 31 PART 3D — Restore order state.
                 var waypoints = new List<Vector3Int>(s.patrolWaypoints?.Count ?? 0);
                 if (s.patrolWaypoints != null)
                     foreach (var wp in s.patrolWaypoints) waypoints.Add(wp.ToVector3Int());
@@ -494,9 +567,6 @@ public class DungeonSaveController : MonoBehaviour
                     s.attackTargetCell.ToVector3Int(),
                     s.allowDefendCore);
 
-                // DAY 31 — Seed pending alive monster state. Must run before the spawner's
-                // Start() (deferred to next frame), so SpawnMonster() picks it up.
-                // PART 3 CLOSE-OUT — Veteran/XP now round-tripped.
                 if (restoredSpawner != null && s.hasAliveMonster)
                 {
                     restoredSpawner.SetPendingAliveState(
@@ -548,28 +618,10 @@ public class DungeonSaveController : MonoBehaviour
                 DungeonBuildController.Instance.RestoreStairs(floor, st.cell.ToVector3Int(), (DungeonStairs.Direction)st.direction);
     }
 
-    /// <summary>
-    /// DAY 31 — Wipes the save and reloads the active scene to start fresh.
-    /// Bind the settings "New Game" button to this instead of DeleteSave so the
-    /// game-over path keeps the delete-only behaviour for its own flow.
-    /// </summary>
-    public void NewGame()
-    {
-        DeleteSave();
-        var sceneName = SceneManager.GetActiveScene().name;
-        Debug.Log($"[DungeonSaveController] New game — reloading scene '{sceneName}'.");
-        SceneManager.LoadScene(sceneName);
-    }
-
-    /// <summary>
-    /// DAY 33 — Also removes .tmp and .bak so a future load can't surface
-    /// state from before the delete.
-    /// </summary>
+    /// <summary>DAY 34 — Wipes the active slot's folder entirely.</summary>
     public void DeleteSave()
     {
-        try { if (File.Exists(savePath)) File.Delete(savePath); } catch (Exception e) { Debug.LogError($"[DungeonSaveController] Delete savePath failed: {e.Message}"); }
-        try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch (Exception e) { Debug.LogError($"[DungeonSaveController] Delete tmpPath failed: {e.Message}"); }
-        try { if (File.Exists(bakPath)) File.Delete(bakPath); } catch (Exception e) { Debug.LogError($"[DungeonSaveController] Delete bakPath failed: {e.Message}"); }
+        SlotPaths.DeleteSlot(activeSlotId);
         currentSave = new DungeonSaveData();
     }
 
@@ -577,7 +629,7 @@ public class DungeonSaveController : MonoBehaviour
 
     private IEnumerator RestoreCameraDeferred(Vector3 worldPos, int floorIndex)
     {
-        yield return null;  // wait one frame for all initial Start()s
+        yield return null;
         if (DungeonCameraController.Instance != null)
             DungeonCameraController.Instance.PanTo(worldPos, floorIndex);
     }

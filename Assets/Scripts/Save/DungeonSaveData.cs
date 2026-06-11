@@ -26,6 +26,8 @@ public class DungeonSaveData
     /// </summary>
     public int saveVersion = 0;
 
+    public string dungeonName = "Unnamed Dungeon";
+
     public bool hasSave;
     public int worldSeed;
 

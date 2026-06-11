@@ -19,7 +19,34 @@ MonoBehaviour:
   m_PlatformBuildProfile:
     rid: 130489031439679597
   m_OverrideGlobalSceneList: 1
-  m_Scenes: []
+  m_Scenes:
+  - m_enabled: 1
+    m_path: Assets/Scenes/TitleScreen.unity
+    m_guid: ccd63ff908ae9bb4a8272d8c27bd585e
+  - m_enabled: 1
+    m_path: Assets/Scenes/Dungeon_Level_0.unity
+    m_guid: 58d96381e46046c4c9827974274d07e8
+  - m_enabled: 1
+    m_path: Assets/Scenes/CaveEntrance.unity
+    m_guid: 4074a770f5c729e4a9ef2272b4b2bbaf
+  - m_enabled: 1
+    m_path: Assets/Scenes/City.unity
+    m_guid: 33571d2ebf979de43a47db5bc3dd0dc6
+  - m_enabled: 1
+    m_path: Assets/Scenes/Forest.unity
+    m_guid: 0875810b3b8494b4f8ae55b40c1348d8
+  - m_enabled: 1
+    m_path: Assets/Scenes/Interiors.unity
+    m_guid: 5cdfba89434eac7428079a7dfc515e84
+  - m_enabled: 1
+    m_path: Assets/Scenes/Plains.unity
+    m_guid: ad0b0cbaae85a20498ed5a2f96fa249a
+  - m_enabled: 1
+    m_path: Assets/Scenes/TutorialForest.unity
+    m_guid: dd517720aada62543a5f8f57fcb3ca6c
+  - m_enabled: 1
+    m_path: Assets/Scenes/TutorialTown.unity
+    m_guid: 2cda990e2423bbf4892e6590ba056729
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:

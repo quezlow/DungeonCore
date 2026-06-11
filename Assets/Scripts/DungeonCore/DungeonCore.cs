@@ -129,6 +129,17 @@ public class DungeonCore : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        // DAY 34 — If a new-game flow set a pending type on SaveSlotManager,
+        // apply it here BEFORE Start() so initial mana progression uses the
+        // chosen type. Do NOT consume — DungeonSaveController still needs to
+        // read the name from PendingNewGame in InitializeNewGame.
+        var pending = SaveSlotManager.Instance?.PendingNewGame;
+        if (pending != null)
+        {
+            dungeonType = pending.dungeonType;
+            Debug.Log($"[DungeonCore] Applied pending new-game type: {dungeonType}");
+        }
     }
 
     private void Start()
