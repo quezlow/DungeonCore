@@ -69,6 +69,14 @@ public class TileInfluenceManager : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private float passiveExpansionInterval = 30f;
 
+    [Header("Starter Area")]
+    [Tooltip("PHASE 4 — Per-cell probability that each of the 8 surrounding " +
+         "starter cells starts as mined floor (vs claimed stone). Core " +
+         "cell is always mined regardless. At least 1 of the 8 is guaranteed " +
+         "mined for connectivity, even if the roll says otherwise.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float starterMinedChance = 0.7f;
+
     // ── State ─────────────────────────────────────────────────────
 
     // Cells inside dungeon influence (visible, can interact, contributes to mana, mineable).
@@ -155,12 +163,11 @@ public class TileInfluenceManager : MonoBehaviour
                 Debug.LogError("[TileInfluenceManager] Missing DungeonCore or DungeonTerrain (Floor 1).");
                 return;
             }
-            // PHASE 2 — Core cell needs to be both claimed AND mined. Without
-            // this MineTile call, the player would start on a non-walkable cell.
-            // Phase 4 will replace this with the proper 3x3 starter (random
-            // stone/floor for the 8 surrounding cells).
-            ClaimAndMineTile(terrain.CoreCell);
-            StartPassiveExpansion();
+            // PHASE 4 — Floor 0 uses the unified ClaimStarterArea path so the
+            // starter pattern (3×3 with random mining on the 8 surrounding cells)
+            // is consistent with Floor 2+. ClaimStarterArea calls StartPassiveExpansion
+            // internally.
+            ClaimStarterArea(terrain.CoreCell);
         }
     }
 
@@ -169,39 +176,87 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Bootstrap (Floor 2+) ──────────────────────────────────────
 
     /// <summary>
-    /// PHASE 2 — Unchanged from Phase 1: claims AND mines all 9 cells.
-    /// Phase 4 will introduce random stone/floor assignment in the 8 surrounding
-    /// cells; core cell remains always mined.
+    /// PHASE 4 — Bootstraps a floor's starter area: a 3×3 around centerCell.
+    ///
+    /// All 9 cells become claimed. The core cell is always mined. Each of the 8
+    /// surrounding cells is independently mined with probability
+    /// starterMinedChance. If the random roll produces zero mined surrounding
+    /// cells, one is forced mined for connectivity.
+    ///
+    /// Cells that end up claimed-but-not-mined start the game as "claimed stone"
+    /// — visible to the player, contributing to mana regen, mineable later.
     /// </summary>
     public void ClaimStarterArea(Vector3Int centerCell)
     {
-        var offsets = new[]
-        {
-            new Vector3Int(-1,-1,0), new Vector3Int(0,-1,0), new Vector3Int(1,-1,0),
-            new Vector3Int(-1, 0,0), new Vector3Int(0, 0,0), new Vector3Int(1, 0,0),
-            new Vector3Int(-1, 1,0), new Vector3Int(0, 1,0), new Vector3Int(1, 1,0),
-        };
+        Vector3Int corePos = centerCell;
 
-        foreach (var offset in offsets)
+        var surroundingOffsets = new[]
+        {
+        new Vector3Int(-1,-1,0), new Vector3Int(0,-1,0), new Vector3Int(1,-1,0),
+        new Vector3Int(-1, 0,0),                          new Vector3Int(1, 0,0),
+        new Vector3Int(-1, 1,0), new Vector3Int(0, 1,0), new Vector3Int(1, 1,0),
+    };
+
+        // Step 1 — Claim the core cell. Always mined.
+        if (!claimedTiles.Contains(corePos))
+        {
+            claimedTiles.Add(corePos);
+            claimableTiles.Remove(corePos);
+            terrain?.RevealTile(corePos);
+            claimableTilemap.SetTile(corePos, null);
+        }
+        minedTiles.Add(corePos);
+
+        // Step 2 — Claim all 8 surrounding cells. Mining decided in Step 3.
+        foreach (var offset in surroundingOffsets)
         {
             Vector3Int pos = centerCell + offset;
             if (claimedTiles.Contains(pos)) continue;
 
             claimedTiles.Add(pos);
-            minedTiles.Add(pos);                                    // Phase 2 — kept conflated for Phase 4 refactor
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
             claimableTilemap.SetTile(pos, null);
         }
 
-        foreach (var offset in offsets)
+        // Step 3 — Random mining of surrounding cells.
+        int surroundingMinedCount = 0;
+        foreach (var offset in surroundingOffsets)
         {
             Vector3Int pos = centerCell + offset;
+            if (UnityEngine.Random.value < starterMinedChance)
+            {
+                minedTiles.Add(pos);
+                surroundingMinedCount++;
+            }
+        }
+
+        // Step 4 — Connectivity guarantee. If zero surrounding cells were mined,
+        // force one at random.
+        if (surroundingMinedCount == 0)
+        {
+            int forcedIndex = UnityEngine.Random.Range(0, surroundingOffsets.Length);
+            Vector3Int forcedPos = centerCell + surroundingOffsets[forcedIndex];
+            minedTiles.Add(forcedPos);
+            Debug.Log($"[TileInfluenceManager] Starter area: 0/8 surrounding rolled " +
+                      $"mined — forcing {forcedPos} for connectivity.");
+        }
+
+        // Step 5 — Expand the claimable ring around all 9 claimed cells.
+        var allCells = new List<Vector3Int>(surroundingOffsets.Length + 1);
+        allCells.Add(corePos);
+        foreach (var offset in surroundingOffsets)
+            allCells.Add(centerCell + offset);
+
+        foreach (var pos in allCells)
+        {
             foreach (var dir in Neighbours)
             {
                 Vector3Int neighbour = pos + dir;
                 if (claimedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
+                if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
+
                 claimableTiles.Add(neighbour);
                 PaintClaimableTile(neighbour);
                 OnTileBecameClaimable?.Invoke(neighbour);
@@ -252,7 +307,7 @@ public class TileInfluenceManager : MonoBehaviour
             // DungeonCore.ownedTileCount tracks CLAIMED count after Phase 2.
             // Mana regen formula (baseRegen + ownedTileCount * perTile) scales
             // with claimed, per P3-Q1.
-            DungeonCore.Instance?.AddOwnedTiles(1);
+            DungeonCore.Instance?.AddClaimedTiles(1);
             OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         }
     }
@@ -319,7 +374,7 @@ public class TileInfluenceManager : MonoBehaviour
 
         RebuildClaimableSet();
 
-        DungeonCore.Instance?.RemoveOwnedTiles(1);
+        DungeonCore.Instance?.RemoveClaimedTiles(1);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         if (wasMined) OnTileCountChanged?.Invoke(minedTiles.Count);
     }
@@ -349,7 +404,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         RebuildClaimableSet();
-        DungeonCore.Instance?.RemoveOwnedTiles(toRemove.Count);
+        DungeonCore.Instance?.RemoveClaimedTiles(toRemove.Count);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         if (minedRemoved > 0) OnTileCountChanged?.Invoke(minedTiles.Count);
 

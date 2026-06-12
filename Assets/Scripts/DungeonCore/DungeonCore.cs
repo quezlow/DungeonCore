@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
+
 
 [DefaultExecutionOrder(-20)]
 public class DungeonCore : MonoBehaviour
@@ -49,7 +51,7 @@ public class DungeonCore : MonoBehaviour
     private float currentMana;
     private float currentXP;
     private int dungeonLevel = 1; // flat 1..26 across all tiers
-    private int ownedTileCount = 0;
+    private int claimedTileCount = 0;
     private int usedCapacity = 0;
     private int currentGold = 0;
 
@@ -90,12 +92,16 @@ public class DungeonCore : MonoBehaviour
     public string LevelDisplayName => LevelTierUtil.DisplayName(dungeonLevel);
     public float CurrentMana => currentMana;
     public float MaxMana => progression.ManaAt(dungeonLevel);
-    public float CurrentManaRegen => baseRegenPerSecond + ownedTileCount * regenPerTile;
+    public float CurrentManaRegen => baseRegenPerSecond + claimedTileCount * regenPerTile;
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
     public float Reputation => reputation;
-    public int OwnedTileCount => ownedTileCount;
+    public int ClaimedTileCount => claimedTileCount;
+
+    [Obsolete("Phase 3 — Use ClaimedTileCount. Old name retained as safety net.")]
+    public int OwnedTileCount => claimedTileCount;
+
     public int MaxCapacity => progression.CapacityAt(dungeonLevel);
     public int UsedCapacity => usedCapacity;
     public int FreeCapacity => MaxCapacity - usedCapacity;
@@ -188,7 +194,7 @@ public class DungeonCore : MonoBehaviour
     private void RegenerateMana()
     {
         if (currentMana >= MaxMana) return;
-        float regen = (baseRegenPerSecond + ownedTileCount * regenPerTile) * Time.deltaTime;
+        float regen = (baseRegenPerSecond + claimedTileCount * regenPerTile) * Time.deltaTime;
         currentMana = Mathf.Min(currentMana + regen, MaxMana);
         OnManaChanged?.Invoke(currentMana, MaxMana);
     }
@@ -343,17 +349,24 @@ public class DungeonCore : MonoBehaviour
 
     // ── Tile Influence ────────────────────────────────────────────
 
-    public void AddOwnedTiles(int count)
+    public void AddClaimedTiles(int count)
     {
-        ownedTileCount += count;
+        claimedTileCount += count;
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
 
-    public void RemoveOwnedTiles(int count)
+    /// <summary>PHASE 3 — Decrements the count of claimed tiles. Reduces mana regen.</summary>
+    public void RemoveClaimedTiles(int count)
     {
-        ownedTileCount = Mathf.Max(0, ownedTileCount - count);
+        claimedTileCount = Mathf.Max(0, claimedTileCount - count);
         OnManaRegenChanged?.Invoke(CurrentManaRegen);
     }
+
+    [Obsolete("Phase 3 — Use AddClaimedTiles. Old name retained as safety net.")]
+    public void AddOwnedTiles(int count) => AddClaimedTiles(count);
+
+    [Obsolete("Phase 3 — Use RemoveClaimedTiles. Old name retained as safety net.")]
+    public void RemoveOwnedTiles(int count) => RemoveClaimedTiles(count);
 
     public void SetDungeonType(DungeonType type) => dungeonType = type;
 
@@ -410,7 +423,8 @@ public class DungeonCore : MonoBehaviour
             notoriety = this.notoriety,
             reputation = this.reputation,
             currentMana = this.currentMana,
-            ownedTileCount = this.ownedTileCount,
+            claimedTileCount = this.claimedTileCount,
+            ownedTileCount = 0,
             usedCapacity = this.usedCapacity,
             gold = this.currentGold,
             levelUpAvailable = this.LevelUpAvailable,
@@ -430,7 +444,7 @@ public class DungeonCore : MonoBehaviour
         notoriety = data.notoriety;
         reputation = data.reputation;
         currentMana = Mathf.Min(data.currentMana, MaxMana);
-        ownedTileCount = data.ownedTileCount;
+        claimedTileCount = data.claimedTileCount;
         LevelUpAvailable = data.levelUpAvailable;
         usedCapacity = data.usedCapacity;
         currentGold = data.gold;
@@ -454,7 +468,8 @@ public class DungeonCoreSaveData
     public float notoriety;
     public float reputation;
     public float currentMana;
-    public int ownedTileCount;
+    public int claimedTileCount;
+    public int ownedTileCount; //obsolete
     public bool levelUpAvailable;
     public int usedCapacity;
     public bool isUnstable;

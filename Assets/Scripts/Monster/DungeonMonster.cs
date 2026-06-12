@@ -566,7 +566,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (influence == null) return;
 
         // Arrival check — set the wait timer and clear the path.
-        if (Vector2.Distance(transform.position, wanderTarget) < 0.1f)
+        // Use waypointArrivalDistance (same threshold as the per-waypoint
+        // increment below) to close the precision wedge between the two
+        // checks. Previously this was a hard-coded 0.1f, which created a
+        // dead-zone (position in 0.1–0.25 range from wanderTarget after the
+        // final waypoint increment) where neither arrival nor movement
+        // triggered — the monster froze.
+        if (Vector2.Distance(transform.position, wanderTarget) < waypointArrivalDistance)
         {
             wanderPath.Clear();
             wanderWaiting = true;
@@ -583,14 +589,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             wanderPathTargetCell = targetCell;
         }
 
-        // If pathfinder found nothing, the target is unreachable — pick a new one.
+        // Pathfinder returned nothing — target unreachable, pick a new one.
         if (wanderPath.Count == 0)
         {
             PickWanderTarget();
             return;
         }
 
-        if (wanderPathIndex >= wanderPath.Count) return;
+        // Path exhausted (walked every waypoint) but arrival didn't fire above.
+        // Treat as arrival — drives the state into wait so the next pick happens
+        // on schedule rather than freezing.
+        if (wanderPathIndex >= wanderPath.Count)
+        {
+            wanderPath.Clear();
+            wanderWaiting = true;
+            wanderWaitTimer = Random.Range(wanderWaitMin, wanderWaitMax);
+            return;
+        }
 
         Vector3 stepTarget = wanderPath[wanderPathIndex];
         transform.position = Vector2.MoveTowards(
@@ -605,14 +620,43 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (IsWild) { PickWildWanderTarget(); return; }
         var influence = currentFloor?.TileInfluence;
         if (influence == null) { wanderTarget = spawnPosition; return; }
-        for (int i = 0; i < 10; i++)
+
+        // Enumerate mined cells within wanderRadius of spawn. Builds a complete
+        // candidate list, then picks one. Robust against sparse mined areas where
+        // random-sample-and-reject would fail (e.g. monster placed near the
+        // claimed-not-mined edge of influence, or in the Phase 4 random starter
+        // where 30% of nearby cells start as claimed-stone).
+        Vector3Int spawnCell = influence.WorldToCell(spawnPosition);
+        int cellRadius = Mathf.CeilToInt(wanderRadius);
+        float radiusSqr = wanderRadius * wanderRadius;
+
+        var candidates = new List<Vector3Int>();
+        for (int dx = -cellRadius; dx <= cellRadius; dx++)
         {
-            Vector2 offset = Random.insideUnitCircle * wanderRadius;
-            Vector3 candidate = spawnPosition + new Vector3(offset.x, offset.y, 0f);
-            Vector3Int cell = influence.WorldToCell(candidate);
-            if (influence.IsTileOwned(cell)) { wanderTarget = influence.CellToWorld(cell); return; }
+            for (int dy = -cellRadius; dy <= cellRadius; dy++)
+            {
+                Vector3Int cell = spawnCell + new Vector3Int(dx, dy, 0);
+                if (!influence.IsTileMined(cell)) continue;
+
+                // Circular not square — use squared distance for cheap check.
+                Vector3 cellWorld = influence.CellToWorld(cell);
+                float sx = cellWorld.x - spawnPosition.x;
+                float sy = cellWorld.y - spawnPosition.y;
+                if (sx * sx + sy * sy > radiusSqr) continue;
+
+                candidates.Add(cell);
+            }
         }
-        wanderTarget = spawnPosition;
+
+        if (candidates.Count == 0)
+        {
+            // Isolated monster — nothing reachable. Hold at spawn.
+            wanderTarget = spawnPosition;
+            return;
+        }
+
+        var pick = candidates[Random.Range(0, candidates.Count)];
+        wanderTarget = influence.CellToWorld(pick);
     }
 
     private void PickWildWanderTarget()
@@ -648,7 +692,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         HashSet<Vector3Int> seen, List<Vector3Int> list)
     {
         if (!seen.Add(candidate)) return;
-        if (influence.IsTileOwned(candidate)) list.Add(candidate);
+        if (influence.IsTileMined(candidate)) list.Add(candidate);
     }
 
     // ── Combat ────────────────────────────────────────────────────

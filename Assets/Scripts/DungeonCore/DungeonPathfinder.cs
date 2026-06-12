@@ -108,7 +108,7 @@ public static class DungeonPathfinder
 
                 if (blocked != null && blocked.Contains(next) && next != goal) continue;
 
-                bool owned = influence.IsTileOwned(next);
+                bool owned = influence.IsTileMined(next);
                 bool isRiver = features != null && features.IsRiver(next);
                 bool passable = owned || isRiver;
 

@@ -65,6 +65,26 @@ public static class SaveMigrationRegistry
                 }
             }
         };
+
+        // v2 → v3 (Influence/Mining Decoupling Phase 3).
+        //
+        // v2 stored the count of claimed tiles in DungeonCoreSaveData.ownedTileCount
+        // (the field name was a Phase 2 semantic-drift artifact — the value tracked
+        // claimed tiles, just under the old name). v3 renames the field to
+        // claimedTileCount. Copy the legacy field into the new one and zero the
+        // old. JsonUtility doesn't honor [FormerlySerializedAs] so we do this by
+        // hand.
+        migrations[2] = data =>
+        {
+            if (data?.coreData == null) return;
+
+            if (data.coreData.ownedTileCount > 0 && data.coreData.claimedTileCount == 0)
+            {
+                data.coreData.claimedTileCount = data.coreData.ownedTileCount;
+                data.coreData.ownedTileCount = 0;
+                Debug.Log($"[SaveMigrationRegistry] v2→v3 core: migrated {data.coreData.claimedTileCount} into claimedTileCount.");
+            }
+        };
     }
 
     /// <summary>

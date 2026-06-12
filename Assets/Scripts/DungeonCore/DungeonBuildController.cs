@@ -196,7 +196,7 @@ public class DungeonBuildController : MonoBehaviour
     {
         var influence = ActiveInfluence;
         if (influence == null) return false;
-        if (influence.IsTileOwned(cell)) return true;
+        if (influence.IsTileMined(cell)) return true;
 
         var features = ActiveFloor?.FeatureGenerator;
         if (features == null) return false;
@@ -344,7 +344,7 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) return;
+        if (!ActiveInfluence.IsTileMined(cell)) return;
         if (entrancePrefab == null) return;
 
         if (DungeonEntrance.Instance != null) Destroy(DungeonEntrance.Instance.gameObject);
@@ -358,7 +358,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleSpawnerPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         PlaceSpawner(cell);
     }
 
@@ -379,7 +379,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleChestPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedChest == null || selectedChest.prefab == null) return;
         if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) return;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
@@ -392,7 +392,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleFurniturePlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedFurniture == null) return;
         if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell)) return;
         if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost)) return;
@@ -407,7 +407,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleRoomAnchorPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (roomAnchorPrefab == null) return;
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
@@ -419,7 +419,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleTrapPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedTrap == null || selectedTrap.prefab == null) return;
         if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) return;
         if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) return;
@@ -440,7 +440,7 @@ public class DungeonBuildController : MonoBehaviour
         if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { SetMode(BuildMode.Claim); return; }
         if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { SetMode(BuildMode.Claim); return; }
         if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { SetMode(BuildMode.Claim); return; }
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileOwned(cell)) return;
+        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (stairsDefinition == null || stairsDefinition.prefab == null) return;
         if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) return;
         if (!DungeonCore.Instance.TryConsumeStairCredit()) return;
@@ -470,7 +470,7 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileOwned(cell)) return;
+        if (!ActiveInfluence.IsTileMined(cell)) return;
         if (FloorManager.Instance == null || !FloorManager.Instance.CanPlaceCore) { SetMode(BuildMode.Claim); return; }
 
         int destIdx = FloorManager.Instance.PendingCoreRelocationFloor;

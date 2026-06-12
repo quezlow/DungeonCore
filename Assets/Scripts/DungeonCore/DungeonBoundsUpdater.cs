@@ -88,13 +88,13 @@ public class DungeonBoundsUpdater : MonoBehaviour
     private void OnEnable()
     {
         if (influence != null)
-            influence.OnTileCountChanged += HandleTileCountChanged;
+            influence.OnClaimedTileCountChanged += HandleTileCountChanged;
     }
 
     private void OnDisable()
     {
         if (influence != null)
-            influence.OnTileCountChanged -= HandleTileCountChanged;
+            influence.OnClaimedTileCountChanged -= HandleTileCountChanged;
     }
 
     private void Start()
@@ -121,7 +121,7 @@ public class DungeonBoundsUpdater : MonoBehaviour
     {
         if (poly == null || influence == null) return;
 
-        IReadOnlyCollection<Vector3Int> owned = influence.OwnedTiles;
+        IReadOnlyCollection<Vector3Int> owned = influence.ClaimedTiles;
 
         float minWorldX, maxWorldX, minWorldY, maxWorldY;
 
@@ -263,6 +263,6 @@ public class DungeonBoundsUpdater : MonoBehaviour
         Debug.Log($"[DungeonBoundsUpdater] Floor {myFloor?.FloorIndex} bounds (local): " +
                   $"{maxX - minX:F1} × {maxY - minY:F1} | " +
                   $"min size: {mw:F1} × {mh:F1} | " +
-                  $"owned tiles: {influence?.OwnedTiles?.Count ?? 0}");
+                  $"owned tiles: {influence? .ClaimedTiles?.Count ?? 0}");
     }
 }

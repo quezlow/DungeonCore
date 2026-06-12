@@ -17,7 +17,7 @@ public class DungeonSaveData
     /// SaveMigrationRegistry. Additive changes (new fields) do not require a
     /// version bump — JsonUtility's default-tolerant deserialization handles them.
     /// </summary>
-    public const int CURRENT_VERSION = 2;
+    public const int CURRENT_VERSION = 3;
 
     /// <summary>
     /// Version stamped at save time. Compared against CURRENT_VERSION on load

@@ -139,7 +139,7 @@ public static class RoomValidator
         var visited = new HashSet<Vector3Int>();
         var queue = new Queue<Vector3Int>();
 
-        if (!TileInfluenceManager.Instance.IsTileOwned(origin)) return visited;
+        if (!TileInfluenceManager.Instance.IsTileMined(origin)) return visited;
         if (excludeCells != null && excludeCells.Contains(origin)) return visited;
 
         visited.Add(origin);
@@ -154,7 +154,7 @@ public static class RoomValidator
                 var next = current + dir;
                 if (visited.Contains(next)) continue;
                 if (excludeCells != null && excludeCells.Contains(next)) continue;
-                if (!TileInfluenceManager.Instance.IsTileOwned(next)) continue;
+                if (!TileInfluenceManager.Instance.IsTileMined(next)) continue;
 
                 visited.Add(next);
                 queue.Enqueue(next);
