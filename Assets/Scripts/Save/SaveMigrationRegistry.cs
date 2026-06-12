@@ -25,12 +25,46 @@ public static class SaveMigrationRegistry
 
     static SaveMigrationRegistry()
     {
-        // Future migrations go here, e.g.:
-        //   migrations[1] = data => { /* convert v1 → v2 */ };
-        //   migrations[2] = data => { /* convert v2 → v3 */ };
+        // v1 → v2 (Influence/Mining Decoupling Phase 1).
         //
-        // Each delegate is responsible ONLY for the field-level transformations
-        // needed for its step. The runner below handles incrementing saveVersion.
+        // v1 stored a single TileInfluenceSaveData.ownedTiles list per floor —
+        // semantically "what the player owns and has dug out". v2 introduces
+        // separate claimedTiles (cells inside influence) and minedTiles (cells
+        // dug out). In Phase 1 these are identical, so we copy the legacy list
+        // into both. The legacy field is cleared to keep the file clean.
+        migrations[1] = data =>
+        {
+            if (data?.floors == null) return;
+
+            foreach (var floor in data.floors)
+            {
+                var t = floor?.tileData;
+                if (t == null) continue;
+
+                // Defensive copy in case both lists somehow exist (shouldn't, but
+                // belt-and-braces — prefer the legacy list if claimedTiles is empty,
+                // otherwise leave any existing v2-shaped data alone).
+                bool needsMigration = t.ownedTiles != null
+                                  && t.ownedTiles.Count > 0
+                                  && (t.claimedTiles == null || t.claimedTiles.Count == 0);
+
+                if (needsMigration)
+                {
+                    t.claimedTiles = new List<SerializableVector3Int>(t.ownedTiles);
+                    t.minedTiles = new List<SerializableVector3Int>(t.ownedTiles);
+                    t.ownedTiles.Clear();
+                    Debug.Log($"[SaveMigrationRegistry] v1→v2 floor {floor.floorIndex}: " +
+                              $"migrated {t.claimedTiles.Count} tiles into both claimed and mined.");
+                }
+                else
+                {
+                    // Ensure non-null lists so the loader can iterate safely.
+                    if (t.claimedTiles == null) t.claimedTiles = new List<SerializableVector3Int>();
+                    if (t.minedTiles == null) t.minedTiles = new List<SerializableVector3Int>();
+                    if (t.ownedTiles == null) t.ownedTiles = new List<SerializableVector3Int>();
+                }
+            }
+        };
     }
 
     /// <summary>

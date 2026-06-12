@@ -6222,6 +6222,18 @@ MonoBehaviour:
   minRiverWidth: 3
   maxRiverWidth: 7
   exclusionRadiusFromCenter: 4
+  cavernInnerRadius: 2
+  cavernOuterRadius: 3
+  cavernMinCells: 10
+  cavernMaxCells: 16
+  tunnelWeight1: 20
+  tunnelWeight2: 50
+  tunnelWeight3: 30
+  tunnelMinAngleSeparation: 90
+  tunnelMinLength: 4
+  tunnelMaxLength: 8
+  tunnelWideFraction: 0.6
+  tunnelWobbleChance: 0.3
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
@@ -15889,7 +15901,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameOverScreen
   panel: {fileID: 1020046674}
   subtitleLabel: {fileID: 62349000}
-  dungeonSceneName: Dungeon_Level_0
+  titleSceneName: TitleScreen
 --- !u!114 &1293583751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20063,7 +20075,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 3727682333400676003}
         m_TargetAssemblyTypeName: DungeonSaveController, Assembly-CSharp
-        m_MethodName: NewGame
+        m_MethodName: ExitToTitleScreen
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -26428,7 +26440,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 732b6c6ffdc898945898bc0f19009bab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonBuildController
-  claimManaCost: 5
+  influenceClaimManaCost: 1
+  mineManaCost: 5
   entrancePrefab: {fileID: 7987491680190548495, guid: 227989ce1b1ac76489a6becddbaa5d23, type: 3}
   selectedChest: {fileID: 0}
   spawnerShellPrefab: {fileID: 7077633476431754211, guid: feafc535a160c454a8707fe6b9621ce4, type: 3}

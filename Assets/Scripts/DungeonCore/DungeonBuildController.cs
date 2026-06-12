@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public enum BuildMode
 {
@@ -28,7 +29,9 @@ public class DungeonBuildController : MonoBehaviour
     public void SetSelectedChest(ChestDefinition def) => selectedChest = def;
 
     [Header("Mana Costs")]
-    [SerializeField] private float claimManaCost = 5f;
+    [SerializeField] private float influenceClaimManaCost = 1f;
+    [FormerlySerializedAs("claimManaCost")]
+    [SerializeField] private float mineManaCost = 5f;
 
     [Header("Prefabs")]
     [SerializeField] private DungeonEntrance entrancePrefab;
@@ -215,26 +218,90 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (!ClaimInputThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
-        if (!ActiveInfluence.IsTileClaimable(cell)) return;
 
-        var features = ActiveFloor?.FeatureGenerator;
-        if (features != null)
+        // PHASE 2 — Auto-mode. Decide action based on cell state.
+
+        if (ActiveInfluence.IsTileMined(cell))
         {
-            // DAY 32 — river gate removed (now claimable at high cost).
-            if (features.IsCellInUnclearedChamber(cell)) { Debug.Log("[BuildController] Cannot mine cavern — clear wild monsters first."); return; }
-        }
-
-        // DAY 32 — terrain-aware claim cost.
-        float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
-        float cost = claimManaCost * multiplier;
-
-        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
-        {
-            // DAY 32 — drag-claim stops on first unaffordable tile.
-            dragClaimActive = false;
+            // Already mined — nothing to do here.
             return;
         }
-        ActiveInfluence.ClaimTile(cell);
+
+        if (ActiveInfluence.IsTileClaimable(cell))
+        {
+            // CLAIM mode — extend influence to this cell.
+            var features = ActiveFloor?.FeatureGenerator;
+            if (features != null && features.IsCellInUnclearedChamber(cell))
+            {
+                Debug.Log("[BuildController] Cannot claim cavern — clear wild monsters first.");
+                dragClaimActive = false;
+                return;
+            }
+
+            // PHASE 2 — Influence cost is flat (not terrain-multiplied).
+            // Terrain resistance applies only to mining.
+            float cost = influenceClaimManaCost;
+
+            if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
+            {
+                dragClaimActive = false;
+                return;
+            }
+            ActiveInfluence.ClaimTile(cell);
+            return;
+        }
+
+        if (ActiveInfluence.IsTileClaimed(cell))
+        {
+            // MINE mode — dig a claimed cell into walkable floor.
+            // Adjacency requirement is enforced inside MineTile (with a core-cell
+            // bypass), so we don't need to pre-check here. But we DO need to give
+            // the player feedback if the click won't do anything.
+            if (!CanMineCell(cell))
+            {
+                Debug.Log("[BuildController] Cannot mine here — must be adjacent to existing mined area.");
+                // No drag-stop — they may drag onto a valid cell next.
+                return;
+            }
+
+            float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
+            float cost = mineManaCost * multiplier;
+
+            if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
+            {
+                dragClaimActive = false;
+                return;
+            }
+            ActiveInfluence.MineTile(cell);
+            return;
+        }
+
+        // Cell is neither claimable nor claimed — outside influence reach. Ignore.
+    }
+
+    /// <summary>
+    /// PHASE 2 — Mirror of TileInfluenceManager.MineTile's adjacency check, used by
+    /// HandleClaimClick to decide whether the click would succeed before charging
+    /// mana. Keeping the logic mirrored here means we don't pay (spend mana) and
+    /// then fail silently.
+    /// </summary>
+    private bool CanMineCell(Vector3Int cell)
+    {
+        var influence = ActiveInfluence;
+        if (influence == null) return false;
+        if (!influence.IsTileClaimed(cell)) return false;
+        if (influence.IsTileMined(cell)) return false;
+
+        // Core cell bypass — first mine has no neighbors.
+        var terrain = ActiveFloor?.Terrain;
+        if (terrain != null && cell == terrain.CoreCell) return true;
+
+        var dirs = new[] { Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right };
+        foreach (var d in dirs)
+        {
+            if (influence.IsTileMined(cell + d)) return true;
+        }
+        return false;
     }
 
     // ── Patrol placement (DAY 31 PART 3D) ─────────────────────────
