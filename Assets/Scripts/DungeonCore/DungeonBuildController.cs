@@ -134,6 +134,8 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (CurrentMode == mode) return;
         CurrentMode = mode;
+        dragClaimActive = false;
+        dragMineActive = false;
         Debug.Log($"[BuildController] Mode → {mode}");
         OnModeChanged?.Invoke(mode);
     }

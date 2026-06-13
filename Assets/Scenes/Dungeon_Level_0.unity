@@ -2990,7 +2990,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9199ce81bdf4c841ba08ff03cedd1b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActionBarHUD
-  mineTabButton: {fileID: 97226182}
+  claimTabButton: {fileID: 97226182}
+  mineTabButton: {fileID: 245645598}
   buildTabButton: {fileID: 119784869}
   summonTabButton: {fileID: 1754523867}
   buildSubmenuPanel: {fileID: 1023079007}

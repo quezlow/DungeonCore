@@ -41,6 +41,7 @@ public class ActionBarHUD : MonoBehaviour
     // ── Tab buttons (pre-placed in scene, assigned in Inspector) ──
 
     [Header("Tab Buttons")]
+    [SerializeField] private Button claimTabButton;
     [SerializeField] private Button mineTabButton;
     [SerializeField] private Button buildTabButton;
     [SerializeField] private Button summonTabButton;
@@ -98,6 +99,7 @@ public class ActionBarHUD : MonoBehaviour
         BuildSubmenuEntries();
         HideBuildPanel();
 
+        claimTabButton?.onClick.AddListener(OnClaimTabClicked);
         mineTabButton?.onClick.AddListener(OnMineTabClicked);
         buildTabButton?.onClick.AddListener(OnBuildTabClicked);
         summonTabButton?.onClick.AddListener(OnSummonTabClicked);
@@ -139,7 +141,7 @@ public class ActionBarHUD : MonoBehaviour
         HideBuildPanel();
         DungeonBuildController.Instance.SetMode(BuildMode.Mine);
 
-        // SetMode is a no-op if already Claim (HandleModeChanged won't fire),
+        // SetMode is a no-op if already Mine (HandleModeChanged won't fire),
         // so force the visual state explicitly as a fallback.
         currentTab = ActiveTab.Mine;
         UpdateTabHighlights();
@@ -181,8 +183,7 @@ public class ActionBarHUD : MonoBehaviour
         }
         else
         {
-            // Toggle OFF — nothing selected.
-            currentTab = ActiveTab.None;
+            currentTab = ActiveTab.Claim;
             UpdateTabHighlights();
         }
     }
@@ -210,7 +211,10 @@ public class ActionBarHUD : MonoBehaviour
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
         DungeonBuildController.Instance.SetMode(BuildMode.Claim);
-        currentTab = ActiveTab.None;
+        // PHASE 5 — Claim is the new "idle" active state; SetMode above triggers
+        // HandleModeChanged which sets currentTab = ActiveTab.Claim. No fallback
+        // override needed here, but kept for symmetry with the tab-click handlers.
+        currentTab = ActiveTab.Claim;
         UpdateTabHighlights();
     }
 
@@ -225,9 +229,14 @@ public class ActionBarHUD : MonoBehaviour
         switch (mode)
         {
             case BuildMode.Claim:
-                // Post-placement revert, MonsterSelectionUI closed, or Build/Summon toggled off.
-                // Nothing is highlighted — player must actively press M or click Mine to dig.
-                currentTab = ActiveTab.None;
+                // PHASE 5 — Claim is now its own active mode (formerly the idle default).
+                // Post-placement revert lands here; Claim tab gets highlighted.
+                currentTab = ActiveTab.Claim;
+                HideBuildPanel();
+                break;
+
+            case BuildMode.Mine:                                    
+                currentTab = ActiveTab.Mine;
                 HideBuildPanel();
                 break;
 
@@ -319,6 +328,7 @@ public class ActionBarHUD : MonoBehaviour
 
     private void UpdateTabHighlights()
     {
+        SetButtonColor(claimTabButton, currentTab == ActiveTab.Claim);
         SetButtonColor(mineTabButton, currentTab == ActiveTab.Mine);
         SetButtonColor(buildTabButton, currentTab == ActiveTab.Build);
         SetButtonColor(summonTabButton, currentTab == ActiveTab.Summon);
