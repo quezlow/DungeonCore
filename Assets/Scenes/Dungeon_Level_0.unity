@@ -9279,7 +9279,7 @@ MonoBehaviour:
   featureRevealController: {fileID: 652070175}
   wildMonsterController: {fileID: 1848019895}
   terrainTypeMap: {fileID: 1894963497}
-  entities: {fileID: 0}
+  entities: {fileID: 907113554}
   cameraBounds: {fileID: 2117633017}
 --- !u!4 &629551820
 Transform:

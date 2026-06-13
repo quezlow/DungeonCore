@@ -44,9 +44,9 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         OccupiedCell = cell;
 
         var floor = GetComponentInParent<FloorRoot>();
+
         floor?.TrapRegistry?.Register(this);
         floor?.Entities?.Register(this);
-        Debug.Log($"[TrapBase] Initialised {def?.trapName} at cell {cell}.");
     }
 
     protected virtual void OnDestroy()
@@ -124,7 +124,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         if (IsFlagged) return;
         IsFlagged = true;
         Debug.Log($"[Trap] {Definition.trapName} at {OccupiedCell} flagged.");
-        TrapRegistry.Instance?.NotifyFlaggedChanged();
+        GetComponentInParent<FloorRoot>()?.TrapRegistry?.NotifyFlaggedChanged();
     }
 
     // ── Factory ───────────────────────────────────────────────────

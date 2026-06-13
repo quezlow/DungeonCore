@@ -1044,6 +1044,7 @@ MonoBehaviour:
   featureRevealController: {fileID: 1175181438670990947}
   wildMonsterController: {fileID: 7821470843430572059}
   terrainTypeMap: {fileID: 3174382948389561711}
+  entities: {fileID: 4785951510266918238}
   cameraBounds: {fileID: 8372535031249889356}
 --- !u!60 &8282947727654970810
 PolygonCollider2D:

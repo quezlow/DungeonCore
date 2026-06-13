@@ -129,9 +129,11 @@ public class PressurePlateTrap : TrapBase
 
     private void FireLinkedTrapForAdventurer(DungeonAdventurer adv)
     {
-        if (!hasLink || TrapRegistry.Instance == null) return;
+        if (!hasLink) return;
+        var registry = GetComponentInParent<FloorRoot>()?.TrapRegistry;
+        if (registry == null) return;
 
-        var linked = TrapRegistry.Instance.GetTrapAt(linkedCell);
+        var linked = registry.GetTrapAt(linkedCell);
         if (linked == null)
         {
             Debug.LogWarning($"[PressurePlate] Link broken at {OccupiedCell} — no trap at {linkedCell}.");

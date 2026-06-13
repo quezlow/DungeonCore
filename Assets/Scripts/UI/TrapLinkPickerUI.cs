@@ -71,6 +71,7 @@ public class TrapLinkPickerUI : MonoBehaviour
 
     private void BuildEntries()
     {
+        Debug.Log($"[TrapLinkPicker DIAG] BuildEntries called, targetPlate={targetPlate?.name}");
         if (entryContainer == null || entryPrefab == null)
         {
             Debug.LogWarning("[TrapLinkPicker] entryContainer or entryPrefab not assigned.");
@@ -80,8 +81,6 @@ public class TrapLinkPickerUI : MonoBehaviour
         foreach (var b in spawnedEntries)
             if (b != null) Destroy(b.gameObject);
         spawnedEntries.Clear();
-
-        if (TrapRegistry.Instance == null) return;
 
         // Gather link candidates: damaging traps on the plate's floor only.
         var plateFloor = targetPlate != null ? targetPlate.GetComponentInParent<FloorRoot>() : null;

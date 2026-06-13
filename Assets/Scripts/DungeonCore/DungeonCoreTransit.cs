@@ -182,7 +182,13 @@ public class DungeonCoreTransit : MonoBehaviour
 
     private static void ForceAllAdventurersRefresh()
     {
-        var all = UnityEngine.Object.FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        foreach (var adv in all) adv.ForceRefreshPath();
+        if (FloorManager.Instance == null) return;
+        var buf = new System.Collections.Generic.List<DungeonAdventurer>();
+        foreach (var floor in FloorManager.Instance.AllFloors)
+        {
+            if (floor?.Entities == null) continue;
+            floor.Entities.FillAll(buf);
+            for (int i = 0; i < buf.Count; i++) buf[i].ForceRefreshPath();
+        }
     }
 }

@@ -732,7 +732,12 @@ public class DungeonBuildController : MonoBehaviour
 
     private void RevalidateAllAnchors()
     {
-        var anchors = FindObjectsByType<RoomAnchor>(FindObjectsInactive.Exclude);
-        foreach (var a in anchors) a.Revalidate();
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null) return;
+
+        var buf = _anchorRevalidateBuf ??= new System.Collections.Generic.List<RoomAnchor>();
+        floor.Entities.FillAll(buf);
+        for (int i = 0; i < buf.Count; i++) buf[i].Revalidate();
     }
+    private System.Collections.Generic.List<RoomAnchor> _anchorRevalidateBuf;
 }
