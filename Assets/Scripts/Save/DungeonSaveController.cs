@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using static Unity.Burst.Intrinsics.X86.Avx;
 
 [DefaultExecutionOrder(100)]
 public class DungeonSaveController : MonoBehaviour
@@ -459,6 +460,25 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.coreFloorIndex,
                 currentSave.pendingCoreRelocationFloor,
                 currentSave.visitedFloors);
+
+            if (DungeonCore.Instance != null)
+            {
+                var coreFloor = FloorManager.Instance.GetFloor(currentSave.coreFloorIndex);
+                if (coreFloor != null
+                    && coreFloor.Terrain != null
+                    && coreFloor.TileInfluence != null)
+    {
+                    Vector3 corePos = coreFloor.TileInfluence.CellToWorld(coreFloor.Terrain.CoreCell);
+                    DungeonCore.Instance.transform.position = corePos;
+                    Debug.Log($"[DungeonSaveController] Core position restored to {corePos} " +
+                              $"(floor {currentSave.coreFloorIndex}, cell {coreFloor.Terrain.CoreCell}).");
+                }
+    else
+                {
+                    Debug.LogWarning($"[DungeonSaveController] Could not restore core position — " +
+                                     $"floor {currentSave.coreFloorIndex} missing or not initialized.");
+                }
+            }
 
             // Pass 1: feature data per floor.
             foreach (var floorData in currentSave.floors)

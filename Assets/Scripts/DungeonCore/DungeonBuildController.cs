@@ -8,6 +8,7 @@ using UnityEngine.Serialization;
 public enum BuildMode
 {
     Claim,
+    Mine,
     PlaceEntrance,
     PlaceSpawner,
     PlaceChest,
@@ -50,6 +51,7 @@ public class DungeonBuildController : MonoBehaviour
     private Camera mainCamera;
     private Vector3Int dragClaimLastCell;
     private bool dragClaimActive;
+    private bool dragMineActive;
 
     // DAY 31 PART 3D — Spawner being edited during patrol/attack placement.
     private MonsterSpawner placementSpawner;
@@ -116,6 +118,7 @@ public class DungeonBuildController : MonoBehaviour
         switch (CurrentMode)
         {
             case BuildMode.Claim: HandleClaimClick(); break;
+            case BuildMode.Mine: HandleMineClick(); break;
             case BuildMode.PlaceEntrance: HandleEntrancePlacement(); break;
             case BuildMode.PlaceSpawner: HandleSpawnerPlacement(); break;
             case BuildMode.PlaceChest: HandleChestPlacement(); break;
@@ -219,64 +222,52 @@ public class DungeonBuildController : MonoBehaviour
         if (!ClaimInputThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
 
-        // PHASE 2 — Auto-mode. Decide action based on cell state.
+        // PHASE 5 — Strict claim-only. Mining moved to HandleMineClick (Mine mode).
+        // Click on anything other than a claimable cell is silently ignored.
+        if (!ActiveInfluence.IsTileClaimable(cell)) return;
 
-        if (ActiveInfluence.IsTileMined(cell))
+        var features = ActiveFloor?.FeatureGenerator;
+        if (features != null && features.IsCellInUnclearedChamber(cell))
         {
-            // Already mined — nothing to do here.
+            Debug.Log("[BuildController] Cannot claim cavern — clear wild monsters first.");
+            dragClaimActive = false;
             return;
         }
 
-        if (ActiveInfluence.IsTileClaimable(cell))
+        float cost = influenceClaimManaCost;
+
+        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
         {
-            // CLAIM mode — extend influence to this cell.
-            var features = ActiveFloor?.FeatureGenerator;
-            if (features != null && features.IsCellInUnclearedChamber(cell))
-            {
-                Debug.Log("[BuildController] Cannot claim cavern — clear wild monsters first.");
-                dragClaimActive = false;
-                return;
-            }
+            dragClaimActive = false;
+            return;
+        }
+        ActiveInfluence.ClaimTile(cell);
+    }
 
-            // PHASE 2 — Influence cost is flat (not terrain-multiplied).
-            // Terrain resistance applies only to mining.
-            float cost = influenceClaimManaCost;
+    private void HandleMineClick()
+    {
+        if (!MineInputThisFrame(out Vector3Int cell)) return;
+        if (ActiveInfluence == null) return;
 
-            if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
-            {
-                dragClaimActive = false;
-                return;
-            }
-            ActiveInfluence.ClaimTile(cell);
+        // Strict mine-only. Only claimed-not-mined cells with valid adjacency proceed.
+        if (ActiveInfluence.IsTileMined(cell)) return;
+        if (!ActiveInfluence.IsTileClaimed(cell)) return;
+
+        if (!CanMineCell(cell))
+        {
+            Debug.Log("[BuildController] Cannot mine here — must be adjacent to existing mined area.");
             return;
         }
 
-        if (ActiveInfluence.IsTileClaimed(cell))
+        float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
+        float cost = mineManaCost * multiplier;
+
+        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
         {
-            // MINE mode — dig a claimed cell into walkable floor.
-            // Adjacency requirement is enforced inside MineTile (with a core-cell
-            // bypass), so we don't need to pre-check here. But we DO need to give
-            // the player feedback if the click won't do anything.
-            if (!CanMineCell(cell))
-            {
-                Debug.Log("[BuildController] Cannot mine here — must be adjacent to existing mined area.");
-                // No drag-stop — they may drag onto a valid cell next.
-                return;
-            }
-
-            float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
-            float cost = mineManaCost * multiplier;
-
-            if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
-            {
-                dragClaimActive = false;
-                return;
-            }
-            ActiveInfluence.MineTile(cell);
+            dragMineActive = false;
             return;
         }
-
-        // Cell is neither claimable nor claimed — outside influence reach. Ignore.
+        ActiveInfluence.MineTile(cell);
     }
 
     /// <summary>
@@ -702,6 +693,31 @@ public class DungeonBuildController : MonoBehaviour
 
         if (pressed) { cell = newCell; dragClaimLastCell = newCell; dragClaimActive = true; return true; }
         if (held && dragClaimActive && newCell != dragClaimLastCell) { cell = newCell; dragClaimLastCell = newCell; return true; }
+        return false;
+    }
+
+    private bool MineInputThisFrame(out Vector3Int cell)
+    {
+        cell = default;
+
+        if (Mouse.current == null) return false;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
+
+        bool pressed = Mouse.current.leftButton.isPressed;
+        if (!pressed) { dragMineActive = false; return false; }
+
+        // Worldspace click → cell. Mirrors what ClaimInputThisFrame does.
+        if (ActiveInfluence == null || ActiveFloor == null) return false;
+        Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+        mouseWorld.z = 0f;
+        cell = ActiveInfluence.WorldToCell(mouseWorld);
+
+        bool firstPress = Mouse.current.leftButton.wasPressedThisFrame;
+        if (firstPress || dragMineActive)
+        {
+            dragMineActive = true;
+            return true;
+        }
         return false;
     }
 

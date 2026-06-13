@@ -79,7 +79,7 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Internal state ────────────────────────────────────────────
 
-    private enum ActiveTab { None, Mine, Build, Summon }
+    private enum ActiveTab { None, Mine, Build, Summon, Claim }
     private ActiveTab currentTab = ActiveTab.None;
 
     // Spawned entry buttons cached for re-highlighting.
@@ -126,6 +126,7 @@ public class ActionBarHUD : MonoBehaviour
         if (kb.mKey.wasPressedThisFrame) OnMineTabClicked();
         if (kb.bKey.wasPressedThisFrame) OnBuildTabClicked();
         if (kb.vKey.wasPressedThisFrame) OnSummonTabClicked();
+        if (kb.cKey.wasPressedThisFrame) OnClaimTabClicked();
         if (kb.escapeKey.wasPressedThisFrame) CancelToIdle();
     }
 
@@ -136,11 +137,23 @@ public class ActionBarHUD : MonoBehaviour
     {
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
-        DungeonBuildController.Instance.SetMode(BuildMode.Claim);
+        DungeonBuildController.Instance.SetMode(BuildMode.Mine);
 
         // SetMode is a no-op if already Claim (HandleModeChanged won't fire),
         // so force the visual state explicitly as a fallback.
         currentTab = ActiveTab.Mine;
+        UpdateTabHighlights();
+    }
+
+    private void OnClaimTabClicked()
+    {
+        SpawnerSelectionController.Instance?.Deselect();
+        HideBuildPanel();
+        DungeonBuildController.Instance.SetMode(BuildMode.Claim);
+
+        // SetMode is a no-op if already Claim (HandleModeChanged won't fire),
+        // so force the visual state explicitly as a fallback.
+        currentTab = ActiveTab.Claim;
         UpdateTabHighlights();
     }
 
