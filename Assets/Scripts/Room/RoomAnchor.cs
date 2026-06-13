@@ -13,7 +13,7 @@ using UnityEngine.InputSystem;
 ///   Add a CircleCollider2D (Is Trigger) — used by Physics2D.OverlapPoint for click detection.
 ///   Assign a distinctive sprite (flag, sign, etc.).
 /// </summary>
-public class RoomAnchor : MonoBehaviour
+public class RoomAnchor : MonoBehaviour, IFloorEntity
 {
     // ── State ─────────────────────────────────────────────────────
 
@@ -42,6 +42,12 @@ public class RoomAnchor : MonoBehaviour
     public void Initialise(Vector3Int cell)
     {
         OccupiedCell = cell;
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
     }
 
     // ── Click Detection (new Input System) ────────────────────────

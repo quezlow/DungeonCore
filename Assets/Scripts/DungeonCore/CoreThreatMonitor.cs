@@ -71,16 +71,12 @@ public class CoreThreatMonitor : MonoBehaviour
         if (coreFloor == null) { Clear(); return; }
 
         DungeonAdventurer nearest = null;
-        float nearestSqr = coreThreatRadius * coreThreatRadius;
-        var advs = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        foreach (var adv in advs)
+        if (coreFloor.Entities != null)
         {
-            if (adv.CurrentFloor != coreFloor) continue;
-            if (adv.State == AdventurerState.Retreating) continue;
-            if (adv.State == AdventurerState.UsingStairs) continue;
-
-            float sqr = ((Vector2)(adv.transform.position - corePos)).sqrMagnitude;
-            if (sqr < nearestSqr) { nearestSqr = sqr; nearest = adv; }
+            nearest = coreFloor.Entities.Nearest<DungeonAdventurer>(
+                corePos, coreThreatRadius,
+                adv => adv.State != AdventurerState.Retreating &&
+                       adv.State != AdventurerState.UsingStairs);
         }
 
         bool wasThreatened = IsCoreThreatened;

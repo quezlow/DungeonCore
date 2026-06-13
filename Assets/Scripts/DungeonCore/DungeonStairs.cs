@@ -6,7 +6,7 @@ using UnityEngine;
 /// Click handling is performed by DungeonBuildController.TryHandleStairClick
 /// so behaviour is consistent regardless of collider trigger state.
 /// </summary>
-public class DungeonStairs : MonoBehaviour
+public class DungeonStairs : MonoBehaviour, IFloorEntity
 {
     public enum Direction { Down, Up }
 
@@ -47,5 +47,12 @@ public class DungeonStairs : MonoBehaviour
                 ? upVariantSprite
                 : defaultSprite;
         }
+
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
     }
 }

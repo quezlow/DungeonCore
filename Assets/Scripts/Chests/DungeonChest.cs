@@ -38,15 +38,21 @@ public class DungeonChest : MonoBehaviour
         lootTable      = GetComponent<LootTable>();
         if (closedSprite != null) spriteRenderer.sprite = closedSprite;
     }
- 
+
     /// <summary>
     /// Called by DungeonBuildController on placement AND by RestoreChest on load.
     /// </summary>
     public void Initialise(ChestDefinition def)
     {
         Definition = def;
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
     }
- 
+
+    private void OnDestroy()
+    {
+        GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
+    }
+
     public void Interact(DungeonAdventurer adv = null)
     {
         if (IsOpened) return;

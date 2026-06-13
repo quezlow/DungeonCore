@@ -24,18 +24,12 @@ public class RespawnTicker : MonoBehaviour
 {
     public static RespawnTicker Instance { get; private set; }
 
-    [Tooltip("How often (seconds) to refresh the cached spawner list via FindObjectsByType. " +
-             "Lower = newer spawners picked up faster; higher = less overhead.")]
-    [SerializeField] private float refreshInterval = 1f;
-
-    private MonsterSpawner[] cached;
-    private float refreshTimer;
+    private readonly System.Collections.Generic.List<MonsterSpawner> tickBuf = new();
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        Refresh();
     }
 
     private void OnDestroy()
@@ -43,28 +37,25 @@ public class RespawnTicker : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    /// <summary>Force an immediate cache refresh. Call after bulk spawner creation (e.g. save load).</summary>
-    public void RefreshNow() => Refresh();
-
-    private void Refresh()
-    {
-        cached = FindObjectsByType<MonsterSpawner>(FindObjectsInactive.Include);
-        refreshTimer = refreshInterval;
-    }
+    /// <summary>No-op. Retained for API compatibility — registry is always current.</summary>
+    public void RefreshNow() { /* nothing to do — registry tracks live state */ }
 
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-
-        refreshTimer -= Time.deltaTime;
-        if (refreshTimer <= 0f || cached == null) Refresh();
+        if (FloorManager.Instance == null) return;
 
         float dt = Time.deltaTime;
-        for (int i = 0; i < cached.Length; i++)
+        foreach (var floor in FloorManager.Instance.AllFloors)
         {
-            var s = cached[i];
-            if (s == null) continue;
-            s.TickRespawn(dt);
+            if (floor?.Entities == null) continue;
+            floor.Entities.FillAll(tickBuf);
+            for (int i = 0; i < tickBuf.Count; i++)
+            {
+                var s = tickBuf[i];
+                if (s == null) continue;
+                s.TickRespawn(dt);
+            }
         }
     }
 }

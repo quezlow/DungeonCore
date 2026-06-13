@@ -28,7 +28,8 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
     [SerializeField] private FeatureRevealController featureRevealController;
     [SerializeField] private WildMonsterController wildMonsterController;
-    [SerializeField] private TerrainTypeMap terrainTypeMap;   // DAY 32
+    [SerializeField] private TerrainTypeMap terrainTypeMap;  
+    [SerializeField] private FloorEntityRegistry entities;
 
     [Header("Camera Bounds")]
     [SerializeField] private PolygonCollider2D cameraBounds;
@@ -42,7 +43,8 @@ public class FloorRoot : MonoBehaviour
     public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
     public FeatureRevealController FeatureRevealController => featureRevealController;
     public WildMonsterController WildMonsterController => wildMonsterController;
-    public TerrainTypeMap TerrainTypeMap => terrainTypeMap;   // DAY 32
+    public TerrainTypeMap TerrainTypeMap => terrainTypeMap;  
+    public FloorEntityRegistry Entities => entities;
     public PolygonCollider2D CameraBounds => cameraBounds;
 
     public float WorldOriginY => floorIndex * -2000f;

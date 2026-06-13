@@ -147,6 +147,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (currentFloor == null) currentFloor = GetComponentInParent<FloorRoot>();
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent.");
+        else
+            currentFloor.Entities?.Register(this);
 
         ResolveEffectiveRegen();
         PickWanderTarget();
@@ -699,24 +701,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void ScanForHostiles()
     {
+        if (currentFloor?.Entities == null) return;
+
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
-        var adventurers = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        foreach (var adv in adventurers)
+
+        var adv = currentFloor.Entities.Nearest<DungeonAdventurer>(transform.position, nearestDist);
+        if (adv != null)
         {
-            if (adv.CurrentFloor != currentFloor) continue;
-            float d = Vector2.Distance(transform.position, adv.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = adv; }
+            nearest = adv;
+            nearestDist = Vector2.Distance(transform.position, adv.transform.position);
         }
-        var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
-        foreach (var m in monsters)
-        {
-            if (m == this) continue;
-            if (m.currentFloor != currentFloor) continue;
-            if (m.IsWild == this.IsWild) continue;
-            float d = Vector2.Distance(transform.position, m.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = m; }
-        }
+
+        var m = currentFloor.Entities.Nearest<DungeonMonster>(
+            transform.position, nearestDist,
+            candidate => candidate != this && candidate.IsWild != this.IsWild);
+        if (m != null) { nearest = m; }
+
         if (nearest != null) { target = nearest; state = MonsterState.Attack; }
     }
 
@@ -804,11 +805,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void Die()
     {
+        currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);
         GetComponent<LootTable>()?.Roll(transform.position);
         spawner?.OnMonsterDied();
         OnDied?.Invoke(this);
         Destroy(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        // Safety net for any teardown path that skips Die() (e.g. scene unload).
+        currentFloor?.Entities?.Unregister(this);
     }
 
     // ── IMonsterTarget ────────────────────────────────────────────

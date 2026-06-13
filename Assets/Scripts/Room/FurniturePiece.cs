@@ -9,7 +9,7 @@ using UnityEngine;
 ///   FurniturePiece (this script + SpriteRenderer)
 ///   Optionally add a BoxCollider2D (Is Trigger) for future interaction support.
 /// </summary>
-public class FurniturePiece : MonoBehaviour
+public class FurniturePiece : MonoBehaviour, IFloorEntity
 {
     // Set by DungeonBuildController immediately after Instantiate().
     public FurnitureDefinition Definition { get; private set; }
@@ -23,8 +23,11 @@ public class FurniturePiece : MonoBehaviour
         Definition = def;
         OccupiedCell = cell;
 
-        // Sprite comes from the prefab itself, not the definition.
-        // FurnitureDefinition.icon is used for the Build submenu button icon
-        // — a separate concern from the in-world visual.
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
     }
 }

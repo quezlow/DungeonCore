@@ -85,7 +85,18 @@ public class TrapPanel : MonoBehaviour
             if (b != null) Destroy(b.gameObject);
         spawnedEntries.Clear();
 
-        var all = FindObjectsByType<TrapBase>(FindObjectsInactive.Exclude);
+        // Aggregate traps across all floors — panel is multi-floor by design.
+        var all = new System.Collections.Generic.List<TrapBase>();
+        if (FloorManager.Instance != null)
+        {
+            var buf = new System.Collections.Generic.List<TrapBase>();
+            foreach (var floor in FloorManager.Instance.AllFloors)
+            {
+                if (floor?.Entities == null) continue;
+                floor.Entities.FillAll(buf);
+                all.AddRange(buf);
+            }
+        }
 
         foreach (var trap in all)
         {

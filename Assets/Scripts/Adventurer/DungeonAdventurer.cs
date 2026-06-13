@@ -146,6 +146,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentFloor = GetComponentInParent<FloorRoot>();
         if (currentFloor == null)
             Debug.LogWarning("[Adventurer] No FloorRoot in parent — multi-floor traversal will fail.");
+        else
+            currentFloor.Entities?.Register(this);
 
         if (statusBarsPrefab != null)
         {
@@ -383,10 +385,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             state = stateBeforeStairs; stairTarget = null; RefreshPath();
             return;
         }
-
+        currentFloor?.Entities?.Unregister(this);
         transform.SetParent(destFloor.transform, true);
         transform.position = matchingStair.transform.position;
         currentFloor = destFloor;
+        currentFloor.Entities?.Register(this);
 
         Debug.Log($"[Adventurer] Arrived on floor {destIdx}.");
         state = stateBeforeStairs; stairTarget = null; RefreshPath();
@@ -394,40 +397,33 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private DungeonStairs FindNearestStair(DungeonStairs.Direction dir)
     {
-        if (currentFloor == null) return null;
-        var all = FindObjectsByType<DungeonStairs>(FindObjectsInactive.Include);
-        DungeonStairs nearest = null;
-        float nearestDist = float.MaxValue;
-
-        foreach (var s in all)
-        {
-            if (s.FloorIndex != currentFloor.FloorIndex) continue;
-            if (s.Dir != dir) continue;
-            float d = Vector2.Distance(transform.position, s.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = s; }
-        }
-        return nearest;
+        if (currentFloor?.Entities == null) return null;
+        return currentFloor.Entities.Nearest<DungeonStairs>(
+            transform.position, float.MaxValue,
+            s => s.Dir == dir);
     }
 
     private DungeonStairs FindStairOnFloor(int floorIndex, Vector3Int cell)
     {
-        var all = FindObjectsByType<DungeonStairs>(FindObjectsInactive.Include);
-        foreach (var s in all)
-            if (s.FloorIndex == floorIndex && s.OccupiedCell == cell) return s;
-        return null;
+        var floor = FloorManager.Instance?.GetFloor(floorIndex);
+        return floor?.Entities?.GetAtCell<DungeonStairs>(cell);
     }
 
     // ── Separation ────────────────────────────────────────────────
 
+    // Reused buffer — avoids per-frame allocations for the separation scan.
+    private static readonly List<DungeonAdventurer> _separationBuf = new();
+
     private void ApplySeparation()
     {
-        var others = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        Vector2 push = Vector2.zero;
+        if (currentFloor?.Entities == null) return;
+        currentFloor.Entities.FillAll(_separationBuf);
 
-        foreach (var other in others)
+        Vector2 push = Vector2.zero;
+        for (int i = 0; i < _separationBuf.Count; i++)
         {
+            var other = _separationBuf[i];
             if (other == this) continue;
-            if (other.currentFloor != currentFloor) continue;
 
             Vector2 delta = (Vector2)transform.position - (Vector2)other.transform.position;
             float dist = delta.magnitude;
@@ -443,16 +439,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void ScanForMonsters()
     {
-        var all = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
-        DungeonMonster nearest = null;
-        float nearestDist = detectionRange;
-
-        foreach (var m in all)
-        {
-            if (m.CurrentFloor != currentFloor) continue;
-            float d = Vector2.Distance(transform.position, m.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = m; }
-        }
+        if (currentFloor?.Entities == null) return;
+        var nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
 
         if (nearest == null) return;
 
@@ -467,17 +455,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void ScanForChests()
     {
-        var all = FindObjectsByType<DungeonChest>(FindObjectsInactive.Exclude);
-        DungeonChest nearest = null;
-        float nearestDist = chestDetectionRange;
-
-        foreach (var c in all)
-        {
-            if (visitedChests.Contains(c)) continue;
-            if (c.IsOpened) continue;
-            float d = Vector2.Distance(transform.position, c.transform.position);
-            if (d < nearestDist) { nearestDist = d; nearest = c; }
-        }
+        if (currentFloor?.Entities == null) return;
+        var nearest = currentFloor.Entities.Nearest<DungeonChest>(
+            transform.position, chestDetectionRange,
+            c => !c.IsOpened && !visitedChests.Contains(c));
 
         if (nearest != null && nearest != chestTarget)
         {
@@ -595,12 +576,19 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void Die()
     {
+        currentFloor?.Entities?.Unregister(this);
         DungeonCore.Instance?.AddXP(xpOnDeath);
         DungeonCore.Instance?.AddNotoriety(5f);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
         if (statusBars != null) Destroy(statusBars.gameObject);
         Destroy(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        // Safety net for retreat/exit paths and scene unloads.
+        currentFloor?.Entities?.Unregister(this);
     }
 
     private void DropCarriedLoot()

@@ -53,6 +53,8 @@ public class DungeonBuildController : MonoBehaviour
     private bool dragClaimActive;
     private bool dragMineActive;
 
+    private System.Collections.Generic.List<DungeonStairs> _stairClickBuf;
+
     // DAY 31 PART 3D — Spawner being edited during patrol/attack placement.
     private MonsterSpawner placementSpawner;
 
@@ -591,12 +593,17 @@ public class DungeonBuildController : MonoBehaviour
         Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
         worldPos.z = 0f;
 
-        var allStairs = FindObjectsByType<DungeonStairs>(FindObjectsInactive.Include);
-        foreach (var stair in allStairs)
+        var activeFloor = FloorManager.Instance?.ActiveFloor;
+        if (activeFloor?.Entities == null) return false;
+
+        var stairBuf = _stairClickBuf ??= new System.Collections.Generic.List<DungeonStairs>();
+        activeFloor.Entities.FillAll(stairBuf);
+
+        for (int i = 0; i < stairBuf.Count; i++)
         {
+            var stair = stairBuf[i];
             var col = stair.GetComponent<Collider2D>();
             if (col == null) continue;
-            if (FloorManager.Instance != null && stair.FloorIndex != FloorManager.Instance.ActiveFloorIndex) continue;
             if (col.OverlapPoint(worldPos))
             {
                 FloorManager.Instance?.SwitchToFloor(stair.LinkedFloorIndex);

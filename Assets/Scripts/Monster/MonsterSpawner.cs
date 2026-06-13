@@ -93,6 +93,7 @@ public class MonsterSpawner : MonoBehaviour
     {
         definition = def;
         capacityHeld = true;
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
     }
 
     private void Start()
@@ -154,6 +155,7 @@ public class MonsterSpawner : MonoBehaviour
         if (SpawnerSelectionController.Instance != null
             && SpawnerSelectionController.Instance.CurrentSelected == this)
             SpawnerSelectionController.Instance.Deselect();
+        GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
     }
 
     // ── Selection visual ──────────────────────────────────────────
@@ -327,27 +329,14 @@ public class MonsterSpawner : MonoBehaviour
     private bool AnyHostileInBlockRadius()
     {
         var myFloor = GetComponentInParent<FloorRoot>();
-        if (myFloor == null) return false;
+        if (myFloor?.Entities == null) return false;
 
         float r = EffectiveBlockRadius;
         if (r <= 0f) return false;
-        float r2 = r * r;
         Vector3 myPos = transform.position;
 
-        var adventurers = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        foreach (var adv in adventurers)
-        {
-            if (adv.CurrentFloor != myFloor) continue;
-            if ((adv.transform.position - myPos).sqrMagnitude <= r2) return true;
-        }
-
-        var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
-        foreach (var m in monsters)
-        {
-            if (!m.IsWild) continue;
-            if (m.CurrentFloor != myFloor) continue;
-            if ((m.transform.position - myPos).sqrMagnitude <= r2) return true;
-        }
+        if (myFloor.Entities.AnyWithinRadius<DungeonAdventurer>(myPos, r)) return true;
+        if (myFloor.Entities.AnyWithinRadius<DungeonMonster>(myPos, r, m => m.IsWild)) return true;
         return false;
     }
 }

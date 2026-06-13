@@ -27,7 +27,7 @@ using UnityEngine;
 ///   an empty default so warning traps and pressure plates do nothing for
 ///   monsters by default; only damage traps override.
 /// </summary>
-public abstract class TrapBase : MonoBehaviour
+public abstract class TrapBase : MonoBehaviour, IFloorEntity
 {
     // Set by DungeonBuildController immediately after Instantiate().
     public TrapDefinition Definition { get; protected set; }
@@ -43,14 +43,17 @@ public abstract class TrapBase : MonoBehaviour
         Definition = def;
         OccupiedCell = cell;
 
-        GetComponentInParent<FloorRoot>()?.TrapRegistry?.Register(this);
-        Debug.Log($"[TrapBase] Initialised {def?.trapName} at cell {cell}. " +
-          $"Registry size: {TrapRegistry.Instance != null}");
+        var floor = GetComponentInParent<FloorRoot>();
+        floor?.TrapRegistry?.Register(this);
+        floor?.Entities?.Register(this);
+        Debug.Log($"[TrapBase] Initialised {def?.trapName} at cell {cell}.");
     }
 
     protected virtual void OnDestroy()
     {
-        GetComponentInParent<FloorRoot>()?.TrapRegistry?.Unregister(this);
+        var floor = GetComponentInParent<FloorRoot>();
+        floor?.TrapRegistry?.Unregister(this);
+        floor?.Entities?.Unregister(this);
     }
 
     // ── Adventurer Trigger ────────────────────────────────────────

@@ -83,9 +83,11 @@ public class TrapLinkPickerUI : MonoBehaviour
 
         if (TrapRegistry.Instance == null) return;
 
-        // Gather link candidates: damaging traps that aren't the plate itself,
-        // aren't pressure plates, and aren't warning traps.
-        var all = FindObjectsByType<TrapBase>(FindObjectsInactive.Exclude);
+        // Gather link candidates: damaging traps on the plate's floor only.
+        var plateFloor = targetPlate != null ? targetPlate.GetComponentInParent<FloorRoot>() : null;
+        var all = new System.Collections.Generic.List<TrapBase>();
+        if (plateFloor?.Entities != null) plateFloor.Entities.FillAll(all);
+
         foreach (var trap in all)
         {
             if (trap == targetPlate)            continue;

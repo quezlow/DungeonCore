@@ -98,36 +98,26 @@ public class PressurePlateTrap : TrapBase
         if (IsFlagged) return;
         if (Time.time - lastTriggerTimePublic < Definition.cooldown) return;
 
-        float radiusSq = triggerRadius * triggerRadius;
+        var floor = GetComponentInParent<FloorRoot>();
+        if (floor?.Entities == null) return;
         Vector3 myPos = transform.position;
 
-        // Adventurers (priority — original behavior preserved).
-        var advs = FindObjectsByType<DungeonAdventurer>(FindObjectsInactive.Exclude);
-        foreach (var adv in advs)
+        // Adventurers — only on THIS floor (bug fix: previous code had no floor filter).
+        var adv = floor.Entities.Nearest<DungeonAdventurer>(myPos, triggerRadius);
+        if (adv != null)
         {
-            float dx = adv.transform.position.x - myPos.x;
-            float dy = adv.transform.position.y - myPos.y;
-            if (dx * dx + dy * dy <= radiusSq)
-            {
-                FireLinkedTrapForAdventurer(adv);
-                lastTriggerTimePublic = Time.time;
-                return;
-            }
+            FireLinkedTrapForAdventurer(adv);
+            lastTriggerTimePublic = Time.time;
+            return;
         }
 
-        // DAY 31 PART 3C — Wild monsters.
-        var monsters = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
-        foreach (var m in monsters)
+        // Wild monsters — same floor only.
+        var m = floor.Entities.Nearest<DungeonMonster>(myPos, triggerRadius, x => x.IsWild);
+        if (m != null)
         {
-            if (!m.IsWild) continue; // player monsters bypass (T2)
-            float dx = m.transform.position.x - myPos.x;
-            float dy = m.transform.position.y - myPos.y;
-            if (dx * dx + dy * dy <= radiusSq)
-            {
-                FireLinkedTrapForMonster(m);
-                lastTriggerTimePublic = Time.time;
-                return;
-            }
+            FireLinkedTrapForMonster(m);
+            lastTriggerTimePublic = Time.time;
+            return;
         }
     }
 

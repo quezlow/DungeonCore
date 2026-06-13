@@ -1,5 +1,49 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1960433443929979091
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 894289310546062468}
+  - component: {fileID: 4785951510266918238}
+  m_Layer: 0
+  m_Name: EntityRegistry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &894289310546062468
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1960433443929979091}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4528806149538725221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4785951510266918238
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1960433443929979091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0db1a7832bc65f14eb8ccf2a02bb9ca8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FloorEntityRegistry
 --- !u!1 &2167833856731148287
 GameObject:
   m_ObjectHideFlags: 0
@@ -486,6 +530,7 @@ MonoBehaviour:
   claimableTilemap: {fileID: 523857414609269515}
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
   passiveExpansionInterval: 30
+  starterMinedChance: 0.7
 --- !u!1 &3860405893054784038
 GameObject:
   m_ObjectHideFlags: 0
@@ -1085,6 +1130,7 @@ Transform:
   - {fileID: 5545321746528657838}
   - {fileID: 8373826761656577404}
   - {fileID: 6868929771460349194}
+  - {fileID: 894289310546062468}
   m_Father: {fileID: 6151173212404640898}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8000299455552086567
@@ -1148,6 +1194,18 @@ MonoBehaviour:
   minRiverWidth: 3
   maxRiverWidth: 7
   exclusionRadiusFromCenter: 4
+  cavernInnerRadius: 2
+  cavernOuterRadius: 3
+  cavernMinCells: 10
+  cavernMaxCells: 16
+  tunnelWeight1: 20
+  tunnelWeight2: 50
+  tunnelWeight3: 30
+  tunnelMinAngleSeparation: 90
+  tunnelMinLength: 4
+  tunnelMaxLength: 8
+  tunnelWideFraction: 0.6
+  tunnelWobbleChance: 0.3
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:

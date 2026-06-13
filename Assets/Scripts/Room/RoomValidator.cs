@@ -122,9 +122,14 @@ public static class RoomValidator
     private static HashSet<Vector3Int> GetBlockedFurnitureCells()
     {
         var set = new HashSet<Vector3Int>();
-        var pieces = Object.FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
-        foreach (var piece in pieces)
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null) return set;
+
+        var buf = _furnitureBuf ??= new List<FurniturePiece>();
+        floor.Entities.FillAll(buf);
+        for (int i = 0; i < buf.Count; i++)
         {
+            var piece = buf[i];
             if (piece.Definition != null && piece.Definition.blocksPathfinding)
                 set.Add(piece.OccupiedCell);
         }
@@ -167,14 +172,19 @@ public static class RoomValidator
     private static List<FurniturePiece> FindFurnitureInRoom(HashSet<Vector3Int> roomTiles)
     {
         var result = new List<FurniturePiece>();
-        var allPieces = Object.FindObjectsByType<FurniturePiece>(FindObjectsInactive.Exclude);
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null) return result;
 
-        foreach (var piece in allPieces)
-            if (roomTiles.Contains(piece.OccupiedCell))
-                result.Add(piece);
-
+        var buf = _furnitureBuf ??= new List<FurniturePiece>();
+        floor.Entities.FillAll(buf);
+        for (int i = 0; i < buf.Count; i++)
+        {
+            var piece = buf[i];
+            if (roomTiles.Contains(piece.OccupiedCell)) result.Add(piece);
+        }
         return result;
     }
+    private static List<FurniturePiece> _furnitureBuf;
 
     /// <summary>
     /// Day 28. Returns true if any MonsterSpawner with a BossVariantDefinition
@@ -186,26 +196,21 @@ public static class RoomValidator
         var influence = TileInfluenceManager.Instance;
         if (influence == null) return false;
 
-        var activeFloor = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloor : null;
-        var spawners = Object.FindObjectsByType<MonsterSpawner>(FindObjectsInactive.Exclude);
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null) return false;
 
-        foreach (var s in spawners)
+        var buf = _spawnerBuf ??= new List<MonsterSpawner>();
+        floor.Entities.FillAll(buf);
+        for (int i = 0; i < buf.Count; i++)
         {
+            var s = buf[i];
             if (!(s.Definition is BossVariantDefinition)) continue;
-
-            // Restrict to spawners on the same floor as the flood-fill.
-            if (activeFloor != null)
-            {
-                var sFloor = s.GetComponentInParent<FloorRoot>();
-                if (sFloor != activeFloor) continue;
-            }
-
             var cell = influence.WorldToCell(s.transform.position);
             if (roomTiles.Contains(cell)) return true;
         }
-
         return false;
     }
+    private static List<MonsterSpawner> _spawnerBuf;
 }
 
 internal static class RoomValidatorExtensions
