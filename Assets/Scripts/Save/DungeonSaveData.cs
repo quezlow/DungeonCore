@@ -35,6 +35,8 @@ public class DungeonSaveData
     public DayNightSaveData dayNightData;
 
     public int coreFloorIndex;
+    public bool hasCoreCell;                          
+    public SerializableVector3Int coreCell;
     public int pendingCoreRelocationFloor = -1;
     public List<int> visitedFloors = new();
 

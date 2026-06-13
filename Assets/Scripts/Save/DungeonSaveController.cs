@@ -185,6 +185,15 @@ public class DungeonSaveController : MonoBehaviour
         if (DayNightCycle.Instance != null)
             currentSave.dayNightData = DayNightCycle.Instance.GetSaveData();
 
+        var coreFloorForSave = FloorManager.Instance.GetFloor(FloorManager.Instance.CoreFloorIndex);
+        if (coreFloorForSave != null && coreFloorForSave.TileInfluence != null && DungeonCore.Instance != null)
+        {
+            Vector3Int coreCell = coreFloorForSave.TileInfluence.WorldToCell(
+                DungeonCore.Instance.transform.position);
+            currentSave.hasCoreCell = true;
+            currentSave.coreCell = SerializableVector3Int.From(coreCell);
+        }
+
         currentSave.hasEntrance = DungeonEntrance.Instance != null;
         if (currentSave.hasEntrance)
             currentSave.entranceCell = SerializableVector3Int.From(DungeonEntrance.Instance.OccupiedCell);
@@ -467,13 +476,20 @@ public class DungeonSaveController : MonoBehaviour
                 if (coreFloor != null
                     && coreFloor.Terrain != null
                     && coreFloor.TileInfluence != null)
-    {
-                    Vector3 corePos = coreFloor.TileInfluence.CellToWorld(coreFloor.Terrain.CoreCell);
+                {
+                    // PHASE 5 — Prefer the saved core cell. Fall back to floor's CoreCell
+                    // for old saves predating hasCoreCell (i.e. saves made before this fix).
+                    Vector3Int targetCell = currentSave.hasCoreCell
+                        ? currentSave.coreCell.ToVector3Int()
+                        : coreFloor.Terrain.CoreCell;
+
+                    Vector3 corePos = coreFloor.TileInfluence.CellToWorld(targetCell);
                     DungeonCore.Instance.transform.position = corePos;
                     Debug.Log($"[DungeonSaveController] Core position restored to {corePos} " +
-                              $"(floor {currentSave.coreFloorIndex}, cell {coreFloor.Terrain.CoreCell}).");
+                              $"(floor {currentSave.coreFloorIndex}, cell {targetCell}, " +
+                              $"source: {(currentSave.hasCoreCell ? "saved" : "fallback-centerCell")}).");
                 }
-    else
+                else
                 {
                     Debug.LogWarning($"[DungeonSaveController] Could not restore core position — " +
                                      $"floor {currentSave.coreFloorIndex} missing or not initialized.");
