@@ -153,15 +153,6 @@ public class DungeonSaveController : MonoBehaviour
             int floor0Seed = FloorManager.DeriveFloorSeed(WorldSeed, 0);
             FloorManager.Instance.SetFloorSeed(0, floor0Seed);
             floor0.FeatureGenerator.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
-
-            // PHASE 8 — Pre-reveal the core cavern + tunnels as mined-but-unclaimed
-            // floor (dark via TileInfluenceManager.revealedDarkMinedColor). Player
-            // still starts with influence on the 9-cell starter area only — these
-            // cells give visual context for where they woke up.
-            if (floor0.TileInfluence != null)
-                floor0.TileInfluence.PreRevealMinedCells(
-                    floor0.FeatureGenerator.GetCoreCavernAndTunnelCells());
-
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
 

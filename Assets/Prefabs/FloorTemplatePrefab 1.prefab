@@ -44,133 +44,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0db1a7832bc65f14eb8ccf2a02bb9ca8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FloorEntityRegistry
---- !u!1 &2002772075303651629
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8031028104673036463}
-  - component: {fileID: 1227534089561010797}
-  - component: {fileID: 6735249448263377088}
-  m_Layer: 0
-  m_Name: NorthWallLayer
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8031028104673036463
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2002772075303651629}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7151647544815882859}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1839735485 &1227534089561010797
-Tilemap:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2002772075303651629}
-  m_Enabled: 1
-  m_Tiles: {}
-  m_AnimatedTiles: {}
-  m_TileAssetArray: []
-  m_TileSpriteArray: []
-  m_TileMatrixArray: []
-  m_TileColorArray: []
-  m_TileObjectToInstantiateArray: []
-  m_AnimationFrameRate: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Origin: {x: 0, y: 0, z: 0}
-  m_Size: {x: 0, y: 0, z: 1}
-  m_TileAnchor: {x: 0.5, y: 0.5, z: 0}
-  m_TileOrientation: 0
-  m_TileOrientationMatrix:
-    e00: 1
-    e01: 0
-    e02: 0
-    e03: 0
-    e10: 0
-    e11: 1
-    e12: 0
-    e13: 0
-    e20: 0
-    e21: 0
-    e22: 1
-    e23: 0
-    e30: 0
-    e31: 0
-    e32: 0
-    e33: 1
---- !u!483693784 &6735249448263377088
-TilemapRenderer:
-  serializedVersion: 2
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2002772075303651629}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 0
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 35
-  m_MaskInteraction: 0
-  m_ChunkSize: {x: 32, y: 32, z: 32}
-  m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
-  m_MaxChunkCount: 16
-  m_MaxFrameAge: 16
-  m_SortOrder: 0
-  m_Mode: 0
-  m_DetectChunkCullingBounds: 0
 --- !u!1 &2167833856731148287
 GameObject:
   m_ObjectHideFlags: 0
@@ -380,7 +253,6 @@ Transform:
   - {fileID: 9097648968972800489}
   - {fileID: 3789442665923668448}
   - {fileID: 6035050888603341595}
-  - {fileID: 8031028104673036463}
   - {fileID: 2731928025978922143}
   - {fileID: 5414076739047742338}
   m_Father: {fileID: 6151173212404640898}
@@ -660,13 +532,9 @@ MonoBehaviour:
   claimableTilemap: {fileID: 523857414609269515}
   claimedStoneTilemap: {fileID: 8093662972253144895}
   minedFloorTilemap: {fileID: 6475963838589923953}
-  northWallTilemap: {fileID: 1227534089561010797}
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
-  claimedStoneTile: {fileID: 11400000, guid: b2866e44c8622da4a889ab1d785c17b9, type: 2}
-  minedFloorTile: {fileID: 11400000, guid: c262af2dcc4636a4f856a0934033654c, type: 2}
-  northWallTile: {fileID: 11400000, guid: 34e0d8f1b7ed56341af9440c4f67ef5d, type: 2}
-  darkStoneColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  revealedDarkMinedColor: {r: 0.38039216, g: 0.38039216, b: 0.42352942, a: 1}
+  claimedStoneTile: {fileID: 11400000, guid: c262af2dcc4636a4f856a0934033654c, type: 2}
+  minedFloorTile: {fileID: 11400000, guid: b2866e44c8622da4a889ab1d785c17b9, type: 2}
   passiveExpansionInterval: 30
   starterMinedChance: 0.7
 --- !u!1 &3860405893054784038
