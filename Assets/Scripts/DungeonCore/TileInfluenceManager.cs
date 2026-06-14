@@ -47,15 +47,38 @@ using UnityEngine.Tilemaps;
 ///     blue when claimed; mining is explicitly rejected on rivers (they're
 ///     not stone-to-be-dug). Bridges / drainage are a future-phase concern.
 ///
+/// INFLUENCE/MINING DECOUPLING — PHASE 8 (pre-revealed core cavern)
+///   - The core cavern + tunnels (Floor 0 only) are pre-revealed at game
+///     start as MINED-BUT-UNCLAIMED floor — a valid post-Phase-6 data state
+///     elevated to a starting state. Player still begins with influence on
+///     the 9-cell starter area only; the dark cavern gives visual context
+///     for where they woke up.
+///   - New SerializeField: revealedDarkMinedColor. Mined-floor cells render
+///     with this tint when NOT in claimedTiles; with Color.white when claimed.
+///     PaintMinedFloor and RepaintAllStateLayers apply the rule.
+///   - New helper: RefreshMinedFloorTintAt. Hooked into ClaimTile (flip dark
+///     → bright on claim), UnclaimTile (flip bright → dark on unclaim), and
+///     ShrinkInfluenceAroundCore (same as Unclaim, per affected cell).
+///   - New public API: PreRevealMinedCells(IEnumerable&lt;Vector3Int&gt;).
+///     Adds cells to minedTiles, paints them, refreshes adjacent stone tints
+///     and north walls. Idempotent. Defensive river skip (cavern construction
+///     reserves cavern cells from river overlap, but PaintMinedFloor mirrors
+///     PaintClaimedStone's river skip for future-proofing).
+///   - Q7 FIX: UnclaimTile and ShrinkInfluenceAroundCore now skip
+///     terrain.RefogTile for cells that belong to FeatureType.CoreCavern.
+///     The cavern is permanently visible by design — losing influence over a
+///     cavern cell shouldn't re-hide it.
+///
 ///   - Visual stack (Default sorting layer, current spacing):
 ///        0 FloorLayer        — base brown / river floor, painted by DungeonTerrain
 ///       10 FogLayer
 ///       20 ClaimedStoneLayer
-///       30 MinedFloorLayer
-///       35 NorthWallLayer    — NEW (Phase 7)
+///       30 MinedFloorLayer   — Phase 8: tint = white if claimed, revealedDarkMinedColor otherwise
+///       35 NorthWallLayer    — Phase 7
 ///       40 ClaimableLayer    — gold ring
 ///       50 RoomHighlightTilemap
-///   - Save format unchanged from Phase 2 (still v2).
+///   - Save format unchanged from Phase 2 (still v2). Phase 8 state is fully
+///     derived from claimedTiles + minedTiles, both already persisted.
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -106,6 +129,15 @@ public class TileInfluenceManager : MonoBehaviour
              "Default ~(0.55, 0.55, 0.55, 1) = mid gray.")]
     [SerializeField] private Color darkStoneColor = new Color(0.55f, 0.55f, 0.55f, 1f);
 
+    [Header("Mined Floor Tinting (PHASE 8)")]
+    [Tooltip("PHASE 8 — Tint applied to mined-floor cells that are NOT in " +
+             "claimedTiles (pre-revealed cavern, breached-then-unclaimed, etc). " +
+             "Cells in claimedTiles render with Color.white (the RuleTile's " +
+             "natural color). Default ~(0.45, 0.45, 0.5, 1) = cool dark grey. " +
+             "Pick a value that reads distinctly from darkStoneColor so the " +
+             "player can tell unclaimed mined floor from unclaimed stone.")]
+    [SerializeField] private Color revealedDarkMinedColor = new Color(0.45f, 0.45f, 0.5f, 1f);
+
     [Header("Settings")]
     [SerializeField] private float passiveExpansionInterval = 30f;
 
@@ -126,6 +158,7 @@ public class TileInfluenceManager : MonoBehaviour
     // PHASE 6 — No longer guaranteed to be a strict subset of claimedTiles.
     // A cell can be in minedTiles but not claimedTiles (was mined, then later
     // unclaimed via breach shrink or other influence loss).
+    // PHASE 8 — Also includes pre-revealed cavern + tunnel cells at game start.
     private readonly HashSet<Vector3Int> minedTiles = new();
 
     // The 1-cell ring around claimedTiles — next candidates for claim.
@@ -242,7 +275,7 @@ public class TileInfluenceManager : MonoBehaviour
             PaintClaimedStone(corePos);                              // PHASE 5
         }
         minedTiles.Add(corePos);
-        PaintMinedFloor(corePos);                                    // PHASE 5
+        PaintMinedFloor(corePos);                                    // PHASE 5 (+ Phase 8 tint = white, cell is claimed)
 
         // Step 2 — Claim all 8 surrounding cells. Mining decided in Step 3.
         foreach (var offset in surroundingOffsets)
@@ -265,7 +298,7 @@ public class TileInfluenceManager : MonoBehaviour
             if (UnityEngine.Random.value < starterMinedChance)
             {
                 minedTiles.Add(pos);
-                PaintMinedFloor(pos);                                // PHASE 5
+                PaintMinedFloor(pos);                                // PHASE 5 (+ Phase 8 tint = white, cell is claimed)
                 surroundingMinedCount++;
             }
         }
@@ -334,6 +367,10 @@ public class TileInfluenceManager : MonoBehaviour
         claimableTilemap.SetTile(pos, null);
         PaintClaimedStone(pos);                                      // PHASE 5 (+ Phase 6 tint, Phase 7 river skip)
 
+        // PHASE 8 — If this cell was pre-revealed (or previously mined and
+        // since unclaimed), flip its mined-floor tint from dark to bright.
+        RefreshMinedFloorTintAt(pos);
+
         // Expand the claimable ring.
         foreach (Vector3Int dir in Neighbours)
         {
@@ -385,7 +422,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         minedTiles.Add(pos);
-        PaintMinedFloor(pos);                                        // PHASE 5
+        PaintMinedFloor(pos);                                        // PHASE 5 (+ Phase 8 tint = white, cell is claimed)
 
         // PHASE 6 — Brighten any adjacent claimed-stone cells.
         foreach (var dir in Neighbours)
@@ -405,20 +442,94 @@ public class TileInfluenceManager : MonoBehaviour
         MineTile(pos);
     }
 
+    // ── PHASE 8 — Pre-Reveal API ──────────────────────────────────
+
+    /// <summary>
+    /// PHASE 8 — Adds the given cells to minedTiles WITHOUT claiming them.
+    /// Used to seed the core cavern + tunnels as mined-but-unclaimed at game
+    /// start. Cells receive the dark mined-floor tint (revealedDarkMinedColor)
+    /// because they're not in claimedTiles. Adjacent claimed-stone tints and
+    /// north walls are refreshed at the end of the batch so cavern boundaries
+    /// render correctly.
+    ///
+    /// Idempotent: cells already in minedTiles are skipped. Cells outside the
+    /// floor bounds or that are rivers are skipped defensively.
+    ///
+    /// Does NOT fire OnTileMined per cell (those cells weren't "mined" by
+    /// player action). Fires OnTileCountChanged once at the end if anything
+    /// changed.
+    /// </summary>
+    public void PreRevealMinedCells(IEnumerable<Vector3Int> cells)
+    {
+        if (cells == null) return;
+
+        // Materialise so we can iterate twice (paint pass + wall refresh).
+        var toReveal = new List<Vector3Int>();
+        foreach (var cell in cells)
+        {
+            if (terrain != null && !terrain.IsWithinBounds(cell)) continue;
+            if (Features != null && Features.IsRiver(cell)) continue;   // defensive
+            if (minedTiles.Add(cell))
+                toReveal.Add(cell);
+        }
+
+        if (toReveal.Count == 0)
+        {
+            Debug.Log("[TileInfluenceManager] PreRevealMinedCells: nothing new to add.");
+            return;
+        }
+
+        // Paint pass — PaintMinedFloor applies dark tint since cells aren't claimed.
+        foreach (var cell in toReveal)
+            PaintMinedFloor(cell);
+
+        // Stone tint refresh — adjacent claimed-stone cells may have gained
+        // a mined neighbour and should brighten. The cavern is centred on the
+        // starter 3×3, so this covers starter cells flanking newly-mined
+        // cavern cells.
+        foreach (var cell in toReveal)
+            foreach (var dir in Neighbours)
+                RefreshStoneTintAt(cell + dir);
+
+        // Wall refresh — refresh each revealed cell (may have just gained a
+        // north wall) AND its south neighbour (its north wall may have just
+        // disappeared because the cell to its north is now mined).
+        foreach (var cell in toReveal)
+        {
+            RefreshNorthWallAt(cell);
+            RefreshNorthWallAt(cell + Vector3Int.down);
+        }
+
+        OnTileCountChanged?.Invoke(minedTiles.Count);
+        Debug.Log($"[TileInfluenceManager] PreRevealMinedCells: added {toReveal.Count} " +
+                  $"mined-but-unclaimed cells (cavern/tunnel pre-reveal).");
+    }
+
     // ── Unclaim / Shrink ──────────────────────────────────────────
 
     /// <summary>
     /// PHASE 6 — Removes only the claim. Mined state and any painted wall
     /// are preserved. Wall configuration is fully determined by minedTiles,
     /// which doesn't change here, so no wall refresh is needed either.
+    /// PHASE 8 — Mined-floor tint flips bright → dark on unclaim. Core cavern
+    /// cells are NOT refogged (the cavern stays permanently visible).
     /// </summary>
     public void UnclaimTile(Vector3Int pos)
     {
         if (!claimedTiles.Contains(pos)) return;
 
         claimedTiles.Remove(pos);
-        terrain?.RefogTile(pos);
+
+        // PHASE 8 — Skip refog for pre-revealed cavern cells. The player
+        // should retain visual knowledge of the cavern even after losing
+        // influence over it.
+        if (Features == null || !Features.IsCoreCavern(pos))
+            terrain?.RefogTile(pos);
+
         ClearClaimedStoneAt(pos);
+
+        // PHASE 8 — Flip mined-floor tint back to dark if this cell is still mined.
+        RefreshMinedFloorTintAt(pos);
 
         RebuildClaimableSet();
 
@@ -445,8 +556,15 @@ public class TileInfluenceManager : MonoBehaviour
         foreach (var cell in toRemove)
         {
             claimedTiles.Remove(cell);
-            terrain?.RefogTile(cell);
+
+            // PHASE 8 — Skip refog for pre-revealed cavern cells.
+            if (Features == null || !Features.IsCoreCavern(cell))
+                terrain?.RefogTile(cell);
+
             ClearClaimedStoneAt(cell);
+
+            // PHASE 8 — Flip mined-floor tint back to dark if still mined.
+            RefreshMinedFloorTintAt(cell);
         }
 
         RebuildClaimableSet();
@@ -555,7 +673,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    // ── PHASE 5 / 6 / 7 — Visual State Layer Helpers ──────────────
+    // ── PHASE 5 / 6 / 7 / 8 — Visual State Layer Helpers ──────────
 
     /// <summary>
     /// PHASE 5 — Paints the claimed-stone tile.
@@ -576,11 +694,23 @@ public class TileInfluenceManager : MonoBehaviour
         claimedStoneTilemap.SetColor(cell, tint);
     }
 
+    /// <summary>
+    /// PHASE 5 — Paints the mined-floor tile.
+    /// PHASE 8 — Applies bright (Color.white) tint if claimed, dark
+    /// (revealedDarkMinedColor) tint otherwise. Defensive river skip
+    /// (rivers stay visually blue regardless of claim/mined state).
+    /// </summary>
     private void PaintMinedFloor(Vector3Int cell)
     {
         if (isLoading) return;
         if (minedFloorTilemap == null || minedFloorTile == null) return;
+        if (Features != null && Features.IsRiver(cell)) return;     // PHASE 8 (defensive)
+
         minedFloorTilemap.SetTile(cell, minedFloorTile);
+
+        Color tint = claimedTiles.Contains(cell) ? Color.white : revealedDarkMinedColor;
+        minedFloorTilemap.SetTileFlags(cell, TileFlags.None);
+        minedFloorTilemap.SetColor(cell, tint);
     }
 
     /// <summary>
@@ -608,6 +738,24 @@ public class TileInfluenceManager : MonoBehaviour
         Color tint = IsAdjacentToMined(cell) ? Color.white : darkStoneColor;
         claimedStoneTilemap.SetTileFlags(cell, TileFlags.None);
         claimedStoneTilemap.SetColor(cell, tint);
+    }
+
+    /// <summary>
+    /// PHASE 8 — Re-applies the mined-floor tint based on current claim state.
+    /// Bails if the cell isn't mined or has no painted tile. Safe to call on
+    /// any cell — handles the no-op cases.
+    /// </summary>
+    private void RefreshMinedFloorTintAt(Vector3Int cell)
+    {
+        if (isLoading) return;
+        if (minedFloorTilemap == null || minedFloorTile == null) return;
+        if (!minedTiles.Contains(cell)) return;
+        if (!minedFloorTilemap.HasTile(cell)) return;
+        if (Features != null && Features.IsRiver(cell)) return;     // defensive
+
+        Color tint = claimedTiles.Contains(cell) ? Color.white : revealedDarkMinedColor;
+        minedFloorTilemap.SetTileFlags(cell, TileFlags.None);
+        minedFloorTilemap.SetColor(cell, tint);
     }
 
     /// <summary>
@@ -644,6 +792,8 @@ public class TileInfluenceManager : MonoBehaviour
     ///           River cells are skipped (stays blue).
     /// PHASE 7 — Wall layer cleared and rebuilt via a single iteration over
     /// minedTiles, painting where ShouldHaveNorthWall is true.
+    /// PHASE 8 — Mined-floor iteration applies bright/dark tint based on
+    /// claimedTiles membership; rivers skipped defensively.
     /// </summary>
     public void RepaintAllStateLayers()
     {
@@ -669,7 +819,17 @@ public class TileInfluenceManager : MonoBehaviour
         if (minedFloorTilemap != null && minedFloorTile != null)
         {
             foreach (var cell in minedTiles)
+            {
+                // PHASE 8 — Defensive river skip.
+                if (Features != null && Features.IsRiver(cell)) continue;
+
                 minedFloorTilemap.SetTile(cell, minedFloorTile);
+
+                // PHASE 8 — Bright if claimed, dark (revealedDarkMinedColor) otherwise.
+                Color tint = claimedTiles.Contains(cell) ? Color.white : revealedDarkMinedColor;
+                minedFloorTilemap.SetTileFlags(cell, TileFlags.None);
+                minedFloorTilemap.SetColor(cell, tint);
+            }
         }
 
         // PHASE 7 — Walls. One pass over minedTiles.
@@ -771,6 +931,7 @@ public class TileInfluenceSaveData
     /// <summary>
     /// Cells dug out / walkable / buildable.
     /// PHASE 6 — No longer a strict subset of claimedTiles.
+    /// PHASE 8 — Also includes pre-revealed cavern + tunnel cells.
     /// </summary>
     public List<SerializableVector3Int> minedTiles;
 }

@@ -195,6 +195,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsReservedCoreFeature(Vector3Int cell) => reservedCoreCells.Contains(cell);
     public CoreCavernData CoreCavern => featureData?.coreCavern;
 
+    /// <summary>
+    /// PHASE 8 — Yields all core cavern + tunnel cells for pre-reveal seeding.
+    /// Returns nothing on floors with no core cavern (Floor 2+).
+    /// Consumed by DungeonSaveController.InitializeNewGame → TileInfluenceManager.PreRevealMinedCells.
+    /// </summary>
+    public IEnumerable<Vector3Int> GetCoreCavernAndTunnelCells()
+    {
+        if (featureData?.coreCavern == null) yield break;
+        foreach (var sv in featureData.coreCavern.cells)
+            yield return sv.ToVector3Int();
+        foreach (var t in featureData.coreCavern.tunnels)
+            foreach (var sv in t.cells)
+                yield return sv.ToVector3Int();
+    }
+
     public int GetChamberId(Vector3Int cell)
     {
         if (!cellLookup.TryGetValue(cell, out var fref)) return -1;
