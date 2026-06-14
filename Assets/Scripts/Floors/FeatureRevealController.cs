@@ -145,7 +145,7 @@ public class FeatureRevealController : MonoBehaviour
 
         // Log entry — fires for both silent and noisy reveals so click-jump
         // history is complete.
-        AlertsLog.Instance?.AddAlert(message, worldPos, floorIdx);
+        AlertsLog.Instance?.AddAlert(message, worldPos, floorIdx, AlertCategory.Discovery);
 
         if (silent) return;
 
