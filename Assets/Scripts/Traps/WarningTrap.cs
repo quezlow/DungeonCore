@@ -30,9 +30,8 @@ public class WarningTrap : TrapBase
     {
         if (adv == null) return;
 
-        AlertsLog.Instance?.AddAlert(
-            $"Adventurer detected at {warningLabel}",
-            transform.position);
+        int floorIdx = GetComponentInParent<FloorRoot>()?.FloorIndex ?? -1;
+        AlertsLog.Instance?.AddAlert( $"Adventurer detected at {warningLabel}", transform.position, floorIdx, AlertCategory.Trap);
 
         Debug.Log($"[WarningTrap] Alert fired: '{warningLabel}' at {OccupiedCell}.");
     }

@@ -58,7 +58,7 @@ public class BossAlertService : MonoBehaviour
         string message = $"{title} on Floor {floorIndex + 1} has been defeated";
 
         // Always log — log entries include floor index so click jumps floors.
-        AlertsLog.Instance?.AddAlert(message, worldPos, floorIndex);
+        AlertsLog.Instance?.AddAlert(message, worldPos, floorIndex, AlertCategory.Boss);
 
         // Only show banner/toast for the FIRST death of this spawner instance.
         bool first = spawner != null && firstDeathShown.Add(spawner.GetEntityId());

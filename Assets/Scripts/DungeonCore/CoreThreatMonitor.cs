@@ -107,6 +107,6 @@ public class CoreThreatMonitor : MonoBehaviour
         string msg = $"The core is under threat on Floor {floorIdx + 1}";
 
         Debug.LogWarning($"[CoreThreatMonitor] {msg}");
-        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx);
+        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat);
     }
 }
