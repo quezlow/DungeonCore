@@ -232,7 +232,7 @@ public class WildMonsterController : MonoBehaviour
         int floorIdx = floor.FloorIndex;
         Vector3 worldPos = features.GetFeatureCenterWorld(FeatureType.Chamber, chamberId);
         string message = $"A cavern has been cleared on Floor {floorIdx + 1}";
-        AlertsLog.Instance?.AddAlert(message, worldPos, floorIdx);
+        AlertsLog.Instance?.AddAlert(message, worldPos, floorIdx, AlertCategory.Discovery);
         if (clearedBanner != null) clearedBanner.Show(message, worldPos, floorIdx);
         SoundEffectManager.Play(clearedSfxKey);
     }

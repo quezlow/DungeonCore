@@ -155,6 +155,9 @@ public class DungeonSaveController : MonoBehaviour
             floor0.FeatureGenerator.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
+
+        AlertsLog.Instance?.ClearHistory();
+
         SaveGame();
 
         SaveSlotManager.Instance?.ClearPendingNewGame();
@@ -209,6 +212,12 @@ public class DungeonSaveController : MonoBehaviour
         {
             if (floor == null) continue;
             currentSave.floors.Add(BuildFloorSaveData(floor));
+        }
+
+        if (AlertsLog.Instance != null)
+        {
+            currentSave.alertHistory = AlertsLog.Instance.GetSaveData();
+            currentSave.alertUnreadCount = AlertsLog.Instance.GetUnreadCountForSave();
         }
 
         if (!WriteSaveAtomically(currentSave))
@@ -535,6 +544,13 @@ public class DungeonSaveController : MonoBehaviour
             }
 
             FloorManager.Instance.SwitchToFloor(currentSave.coreFloorIndex);
+
+            if (AlertsLog.Instance != null)
+            {
+                AlertsLog.Instance.RestoreFromSave(
+                currentSave.alertHistory ?? new System.Collections.Generic.List<AlertEntrySaveData>(),
+                currentSave.alertUnreadCount);
+            }
 
             // DAY 31 — Defer camera restore one frame so it runs after all initial
             // Start() methods have completed. Without the deferral, DungeonCameraController.

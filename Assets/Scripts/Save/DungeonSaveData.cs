@@ -49,6 +49,9 @@ public class DungeonSaveData
     public bool hasCameraState;
     public SerializableVector3 cameraWorldPos;  // world space, includes floor Y offset
     public int cameraFloorIndex;
+
+    public List<AlertEntrySaveData> alertHistory = new();
+    public int alertUnreadCount = 0;
 }
 
 [Serializable]
