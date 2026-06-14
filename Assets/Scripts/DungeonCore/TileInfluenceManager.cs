@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -53,25 +54,6 @@ using UnityEngine.Tilemaps;
 ///     cell that isn't claimed makes no sense) and fire both events as needed.
 ///   - Save format unchanged from Phase 1 (still v2). Loading a Phase 1 save
 ///     where claimed == mined works correctly because both lists are present.
-///
-/// INFLUENCE/MINING DECOUPLING — PHASE 5 (visual state layers)
-///   - Two new tilemaps painted by this manager:
-///       claimedStoneTilemap → claimedStoneTile (RT_ClaimedStone), painted on
-///       every cell in claimedTiles. Stays painted when the cell is also mined.
-///       minedFloorTilemap   → minedFloorTile   (RT_MinedFloor),  painted on
-///       every cell in minedTiles. Sort order is set so it occludes the stone
-///       layer beneath.
-///   - Paint hooks live in: ClaimStarterArea, ClaimTile, MineTile, UnclaimTile,
-///     ShrinkInfluenceAroundCore.
-///   - LoadSaveData wraps in isLoading=true, suppresses per-cell paints, and
-///     does a single RepaintAllStateLayers at the end.
-///   - Visual stack (Default sorting layer):
-///        0 FloorLayer        — base brown, painted by DungeonTerrain (unchanged)
-///       10 FogLayer          — unchanged
-///       12 ClaimedStoneLayer — NEW
-///       14 MinedFloorLayer   — NEW
-///       20 ClaimableLayer    — gold ring, stays on top (unchanged)
-///   - Save format unchanged from Phase 2 (still v2).
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -81,26 +63,8 @@ public class TileInfluenceManager : MonoBehaviour
     [Header("Tilemaps")]
     [SerializeField] private Tilemap claimableTilemap;
 
-    [Header("Visual State Layers (PHASE 5)")]
-    [Tooltip("Lower-sort layer. Painted with claimedStoneTile on every cell " +
-             "in claimedTiles. Stays painted even when the cell is also mined " +
-             "(the mined layer occludes it).")]
-    [SerializeField] private Tilemap claimedStoneTilemap;
-
-    [Tooltip("Higher-sort layer. Painted with minedFloorTile on every cell in " +
-             "minedTiles.")]
-    [SerializeField] private Tilemap minedFloorTilemap;
-
     [Header("Tile Assets")]
     [SerializeField] private TileBase claimableTile;
-
-    [Tooltip("PHASE 5 — RuleTile asset for claimed-not-mined stone. Painted " +
-             "into claimedStoneTilemap.")]
-    [SerializeField] private TileBase claimedStoneTile;
-
-    [Tooltip("PHASE 5 — RuleTile asset for mined floor. Painted into " +
-             "minedFloorTilemap.")]
-    [SerializeField] private TileBase minedFloorTile;
 
     [Header("Settings")]
     [SerializeField] private float passiveExpansionInterval = 30f;
@@ -128,13 +92,6 @@ public class TileInfluenceManager : MonoBehaviour
     {
         Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right
     };
-
-    /// <summary>
-    /// PHASE 5 — When true, per-cell paint helpers bail out so LoadSaveData can
-    /// do a single bulk RepaintAllStateLayers at the end instead of paying for
-    /// per-cell paints during restore.
-    /// </summary>
-    private bool isLoading;
 
     // ── Events ────────────────────────────────────────────────────
 
@@ -228,9 +185,6 @@ public class TileInfluenceManager : MonoBehaviour
     ///
     /// Cells that end up claimed-but-not-mined start the game as "claimed stone"
     /// — visible to the player, contributing to mana regen, mineable later.
-    ///
-    /// PHASE 5 — Paints stone layer for every newly claimed cell and the mined
-    /// layer for every newly mined cell.
     /// </summary>
     public void ClaimStarterArea(Vector3Int centerCell)
     {
@@ -250,10 +204,8 @@ public class TileInfluenceManager : MonoBehaviour
             claimableTiles.Remove(corePos);
             terrain?.RevealTile(corePos);
             claimableTilemap.SetTile(corePos, null);
-            PaintClaimedStone(corePos);                              // PHASE 5
         }
         minedTiles.Add(corePos);
-        PaintMinedFloor(corePos);                                    // PHASE 5
 
         // Step 2 — Claim all 8 surrounding cells. Mining decided in Step 3.
         foreach (var offset in surroundingOffsets)
@@ -265,7 +217,6 @@ public class TileInfluenceManager : MonoBehaviour
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
             claimableTilemap.SetTile(pos, null);
-            PaintClaimedStone(pos);                                  // PHASE 5
         }
 
         // Step 3 — Random mining of surrounding cells.
@@ -276,7 +227,6 @@ public class TileInfluenceManager : MonoBehaviour
             if (UnityEngine.Random.value < starterMinedChance)
             {
                 minedTiles.Add(pos);
-                PaintMinedFloor(pos);                                // PHASE 5
                 surroundingMinedCount++;
             }
         }
@@ -288,7 +238,6 @@ public class TileInfluenceManager : MonoBehaviour
             int forcedIndex = UnityEngine.Random.Range(0, surroundingOffsets.Length);
             Vector3Int forcedPos = centerCell + surroundingOffsets[forcedIndex];
             minedTiles.Add(forcedPos);
-            PaintMinedFloor(forcedPos);                              // PHASE 5
             Debug.Log($"[TileInfluenceManager] Starter area: 0/8 surrounding rolled " +
                       $"mined — forcing {forcedPos} for connectivity.");
         }
@@ -339,7 +288,6 @@ public class TileInfluenceManager : MonoBehaviour
         claimableTiles.Remove(pos);
         terrain?.RevealTile(pos);                                   // claimed cells are visible
         claimableTilemap.SetTile(pos, null);
-        PaintClaimedStone(pos);                                      // PHASE 5
 
         // Expand the claimable ring.
         foreach (Vector3Int dir in Neighbours)
@@ -373,8 +321,6 @@ public class TileInfluenceManager : MonoBehaviour
     ///   - The cell to be 4-adjacent to an existing mined cell, OR the floor's
     ///     core cell (so the very first mine has somewhere to start).
     /// Does NOT call DungeonCore.AddOwnedTiles — that's tracked at claim time.
-    ///
-    /// PHASE 5 — Paints the mined-floor layer (occludes stone beneath).
     /// </summary>
     public void MineTile(Vector3Int pos)
     {
@@ -396,7 +342,6 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         minedTiles.Add(pos);
-        PaintMinedFloor(pos);                                        // PHASE 5
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
 
@@ -426,7 +371,6 @@ public class TileInfluenceManager : MonoBehaviour
         claimedTiles.Remove(pos);
         if (wasMined) minedTiles.Remove(pos);
         terrain?.RefogTile(pos);
-        ClearStateLayers(pos);                                       // PHASE 5
 
         RebuildClaimableSet();
 
@@ -457,7 +401,6 @@ public class TileInfluenceManager : MonoBehaviour
             claimedTiles.Remove(cell);
             if (minedTiles.Remove(cell)) minedRemoved++;
             terrain?.RefogTile(cell);
-            ClearStateLayers(cell);                                  // PHASE 5
         }
 
         RebuildClaimableSet();
@@ -568,64 +511,6 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-    // ── PHASE 5 — Visual State Layer Helpers ──────────────────────
-
-    /// <summary>
-    /// Paints the claimed-stone tile on the lower state layer. Bails when
-    /// isLoading is true (LoadSaveData does a single bulk repaint instead).
-    /// </summary>
-    private void PaintClaimedStone(Vector3Int cell)
-    {
-        if (isLoading) return;
-        if (claimedStoneTilemap == null || claimedStoneTile == null) return;
-        claimedStoneTilemap.SetTile(cell, claimedStoneTile);
-    }
-
-    /// <summary>
-    /// Paints the mined-floor tile on the upper state layer. Bails when
-    /// isLoading is true (LoadSaveData does a single bulk repaint instead).
-    /// </summary>
-    private void PaintMinedFloor(Vector3Int cell)
-    {
-        if (isLoading) return;
-        if (minedFloorTilemap == null || minedFloorTile == null) return;
-        minedFloorTilemap.SetTile(cell, minedFloorTile);
-    }
-
-    /// <summary>
-    /// Clears both state layers for the given cell. Used by UnclaimTile and
-    /// ShrinkInfluenceAroundCore. Safe to call regardless of which layers were
-    /// painted; SetTile(null) on an empty cell is a no-op.
-    /// </summary>
-    private void ClearStateLayers(Vector3Int cell)
-    {
-        if (claimedStoneTilemap != null) claimedStoneTilemap.SetTile(cell, null);
-        if (minedFloorTilemap != null) minedFloorTilemap.SetTile(cell, null);
-    }
-
-    /// <summary>
-    /// Bulk repaint of both state layers from current claimedTiles / minedTiles.
-    /// Called once at the end of LoadSaveData. Public so a debug hotkey can
-    /// re-sync visuals if data and visuals ever drift.
-    /// </summary>
-    public void RepaintAllStateLayers()
-    {
-        if (claimedStoneTilemap != null) claimedStoneTilemap.ClearAllTiles();
-        if (minedFloorTilemap != null) minedFloorTilemap.ClearAllTiles();
-
-        if (claimedStoneTilemap != null && claimedStoneTile != null)
-        {
-            foreach (var cell in claimedTiles)
-                claimedStoneTilemap.SetTile(cell, claimedStoneTile);
-        }
-
-        if (minedFloorTilemap != null && minedFloorTile != null)
-        {
-            foreach (var cell in minedTiles)
-                minedFloorTilemap.SetTile(cell, minedFloorTile);
-        }
-    }
-
     // ── Public Reads ──────────────────────────────────────────────
 
     public Vector3Int WorldToCell(Vector3 worldPos) => claimableTilemap.WorldToCell(worldPos);
@@ -663,47 +548,28 @@ public class TileInfluenceManager : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// PHASE 5 — Wraps the restore loop in isLoading=true so per-cell paint
-    /// helpers bail out. After the data is restored, RepaintAllStateLayers
-    /// does a single bulk paint of both state layers.
-    /// </summary>
     public void LoadSaveData(TileInfluenceSaveData data)
     {
-        isLoading = true;
-        try
-        {
-            claimedTiles.Clear();
-            minedTiles.Clear();
-            claimableTiles.Clear();
-            claimableTilemap.ClearAllTiles();
-            if (claimedStoneTilemap != null) claimedStoneTilemap.ClearAllTiles();
-            if (minedFloorTilemap != null) minedFloorTilemap.ClearAllTiles();
+        claimedTiles.Clear();
+        minedTiles.Clear();
+        claimableTiles.Clear();
+        claimableTilemap.ClearAllTiles();
 
-            // Restore claimed cells via silent ClaimTile (sets fog, ring, etc.).
-            // ClaimTile is claim-only in Phase 2, so this populates claimedTiles only.
-            // PHASE 5 — Stone paint inside ClaimTile is suppressed by isLoading.
-            if (data?.claimedTiles != null)
-            {
-                foreach (var tile in data.claimedTiles)
-                    ClaimTile(tile.ToVector3Int(), silent: true);
-            }
-
-            // PHASE 2 — Restore mined cells directly. No event firing needed; the
-            // OnTileCountChanged below is the bulk update.
-            if (data?.minedTiles != null)
-            {
-                foreach (var tile in data.minedTiles)
-                    minedTiles.Add(tile.ToVector3Int());
-            }
-        }
-        finally
+        // Restore claimed cells via silent ClaimTile (sets fog, ring, etc.).
+        // ClaimTile is claim-only in Phase 2, so this populates claimedTiles only.
+        if (data?.claimedTiles != null)
         {
-            isLoading = false;
+            foreach (var tile in data.claimedTiles)
+                ClaimTile(tile.ToVector3Int(), silent: true);
         }
 
-        // PHASE 5 — Single bulk repaint of both state layers from restored data.
-        RepaintAllStateLayers();
+        // PHASE 2 — Restore mined cells directly. No event firing needed; the
+        // OnTileCountChanged below is the bulk update.
+        if (data?.minedTiles != null)
+        {
+            foreach (var tile in data.minedTiles)
+                minedTiles.Add(tile.ToVector3Int());
+        }
 
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         OnTileCountChanged?.Invoke(minedTiles.Count);
