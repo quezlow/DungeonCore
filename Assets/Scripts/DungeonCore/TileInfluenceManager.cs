@@ -49,8 +49,6 @@ using UnityEngine.Tilemaps;
 ///   - NEW events: OnTileMined(Vector3Int), OnClaimedTileCountChanged(int).
 ///     The existing OnTileCountChanged event continues to report MINED count
 ///     for HUD compatibility.
-///   - UnclaimTile and ShrinkInfluenceAroundCore remove from BOTH sets (a mined
-///     cell that isn't claimed makes no sense) and fire both events as needed.
 ///   - Save format unchanged from Phase 1 (still v2). Loading a Phase 1 save
 ///     where claimed == mined works correctly because both lists are present.
 ///
@@ -65,13 +63,41 @@ using UnityEngine.Tilemaps;
 ///     ShrinkInfluenceAroundCore.
 ///   - LoadSaveData wraps in isLoading=true, suppresses per-cell paints, and
 ///     does a single RepaintAllStateLayers at the end.
-///   - Visual stack (Default sorting layer):
-///        0 FloorLayer        — base brown, painted by DungeonTerrain (unchanged)
-///       10 FogLayer          — unchanged
-///       12 ClaimedStoneLayer — NEW
-///       14 MinedFloorLayer   — NEW
-///       20 ClaimableLayer    — gold ring, stays on top (unchanged)
+///   - Visual stack (Default sorting layer, current spacing):
+///        0 FloorLayer        — base brown, painted by DungeonTerrain
+///       10 FogLayer
+///       20 ClaimedStoneLayer
+///       30 MinedFloorLayer
+///       40 ClaimableLayer    — gold ring, stays on top of state layers
+///       50 RoomHighlightTilemap
 ///   - Save format unchanged from Phase 2 (still v2).
+///
+/// INFLUENCE/MINING DECOUPLING — PHASE 6 (unclaim-preserves-mined + two-zone tint)
+///   - BUG FIX: UnclaimTile and ShrinkInfluenceAroundCore no longer strip
+///     entries from minedTiles. Mining is a physical act; losing influence
+///     shouldn't unmake the hole. Both methods now only remove from
+///     claimedTiles and clear the claimed-stone layer. The mined-floor tile
+///     stays painted and is occluded by the returned fog. On re-claim, fog
+///     lifts and the pre-existing mined-floor tile becomes visible again
+///     with no re-paint needed in ClaimTile.
+///   - Consequence: OnTileCountChanged (mined count) no longer fires from
+///     unclaim/shrink — minedTiles.Count doesn't change. Only
+///     OnClaimedTileCountChanged + DungeonCore.RemoveClaimedTiles still fire.
+///   - RENAMED: ClearStateLayers → ClearClaimedStoneAt. Only touches the
+///     stone layer now; honest name.
+///   - TWO-ZONE STONE TINTING: claimed-stone cells with any mined cardinal
+///     neighbour render bright (un-tinted = the RuleTile's natural color).
+///     Stone cells with no mined cardinal neighbour render with the
+///     configurable darkStoneColor. New helpers IsAdjacentToMined +
+///     RefreshStoneTintAt. PaintClaimedStone applies the correct tint at
+///     paint time. MineTile refreshes the tint on its 4 cardinal neighbours
+///     after mining (they may have just gained mined-adjacent status).
+///     RepaintAllStateLayers applies tints during bulk load. ClaimStarterArea
+///     does one end-of-method refresh pass over the 9 starter cells so
+///     diagonal stone cells get correct tints after Steps 3/4 finalise the
+///     mining pattern. Unclaim/shrink do NOT refresh neighbours — since
+///     minedTiles never shrinks, no cell's mined-adjacent status ever
+///     decreases.
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -102,6 +128,14 @@ public class TileInfluenceManager : MonoBehaviour
              "minedFloorTilemap.")]
     [SerializeField] private TileBase minedFloorTile;
 
+    [Header("Stone Tinting (PHASE 6)")]
+    [Tooltip("PHASE 6 — Tint applied to claimed-stone cells with NO mined " +
+             "cardinal neighbour (the outer 'visible-but-untouched' zone). " +
+             "Stone cells WITH a mined cardinal neighbour render bright " +
+             "(untinted white = the RuleTile's natural color). Tune in the " +
+             "Inspector. Default ~(0.55, 0.55, 0.55, 1) = mid gray.")]
+    [SerializeField] private Color darkStoneColor = new Color(0.55f, 0.55f, 0.55f, 1f);
+
     [Header("Settings")]
     [SerializeField] private float passiveExpansionInterval = 30f;
 
@@ -118,7 +152,11 @@ public class TileInfluenceManager : MonoBehaviour
     // Cells inside dungeon influence (visible, can interact, contributes to mana, mineable).
     private readonly HashSet<Vector3Int> claimedTiles = new();
 
-    // Cells dug out (walkable, buildable, pathable). Strict subset of claimedTiles in Phase 2+.
+    // Cells dug out (walkable, buildable, pathable).
+    // PHASE 6 — No longer guaranteed to be a strict subset of claimedTiles.
+    // A cell can be in minedTiles but not claimedTiles (was mined, then later
+    // unclaimed via breach shrink or other influence loss). The mined-floor
+    // tile stays painted and is occluded by fog while unclaimed.
     private readonly HashSet<Vector3Int> minedTiles = new();
 
     // The 1-cell ring around claimedTiles — next candidates for claim.
@@ -231,6 +269,16 @@ public class TileInfluenceManager : MonoBehaviour
     ///
     /// PHASE 5 — Paints stone layer for every newly claimed cell and the mined
     /// layer for every newly mined cell.
+    ///
+    /// PHASE 6 — End-of-method tint refresh over all 9 starter cells. PaintClaimedStone
+    /// applies a tint at paint time using IsAdjacentToMined, but Steps 3 and 4
+    /// add cells to minedTiles AFTER the surrounding stone has been painted in
+    /// Step 2. Without the refresh, diagonal stone cells whose cardinal
+    /// neighbours mine in Step 3/4 would incorrectly stay dark until the player
+    /// mined something nearby. RefreshStoneTintAt is a no-op on cells without
+    /// stone painted (e.g. the mined-floor cells whose stone is occluded — the
+    /// underlying stone tile IS still present and gets its tint correctly
+    /// computed, just visually occluded).
     /// </summary>
     public void ClaimStarterArea(Vector3Int centerCell)
     {
@@ -314,6 +362,12 @@ public class TileInfluenceManager : MonoBehaviour
             }
         }
 
+        // PHASE 6 — Refresh tint on every starter cell now that all mining
+        // decisions are final. Required for diagonal stone cells whose
+        // cardinal-neighbour mined status was decided after Step 2 painted them.
+        foreach (var pos in allCells)
+            RefreshStoneTintAt(pos);
+
         StartPassiveExpansion();
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         OnTileCountChanged?.Invoke(minedTiles.Count);
@@ -335,11 +389,16 @@ public class TileInfluenceManager : MonoBehaviour
 
         claimedTiles.Add(pos);
         // PHASE 2 — no longer adds to minedTiles. Mining is a separate action.
+        // PHASE 6 — Re-claiming a cell that still has minedTiles entry (because
+        // unclaim no longer scrubs that set) is fine: the mined-floor tile is
+        // still painted on minedFloorTilemap and becomes visible again as soon
+        // as RevealTile lifts the fog below. No re-paint of the mined layer
+        // is needed here.
 
         claimableTiles.Remove(pos);
         terrain?.RevealTile(pos);                                   // claimed cells are visible
         claimableTilemap.SetTile(pos, null);
-        PaintClaimedStone(pos);                                      // PHASE 5
+        PaintClaimedStone(pos);                                      // PHASE 5 (+ Phase 6 tint applied inside)
 
         // Expand the claimable ring.
         foreach (Vector3Int dir in Neighbours)
@@ -375,6 +434,9 @@ public class TileInfluenceManager : MonoBehaviour
     /// Does NOT call DungeonCore.AddOwnedTiles — that's tracked at claim time.
     ///
     /// PHASE 5 — Paints the mined-floor layer (occludes stone beneath).
+    ///
+    /// PHASE 6 — Refreshes stone tint on the 4 cardinal neighbours, since they
+    /// may have just gained mined-adjacent status and should flip bright.
     /// </summary>
     public void MineTile(Vector3Int pos)
     {
@@ -400,6 +462,12 @@ public class TileInfluenceManager : MonoBehaviour
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
 
+        // PHASE 6 — Brighten any adjacent claimed-stone cells that just
+        // gained a mined cardinal neighbour. RefreshStoneTintAt bails on
+        // cells that aren't claimed-stone, so it's safe to fire on all 4.
+        foreach (var dir in Neighbours)
+            RefreshStoneTintAt(pos + dir);
+
         OnTileMined?.Invoke(pos);
         OnTileCountChanged?.Invoke(minedTiles.Count);
     }
@@ -417,24 +485,36 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Unclaim / Shrink ──────────────────────────────────────────
 
+    /// <summary>
+    /// PHASE 6 — Removes only the claim. The cell's minedTiles entry (if any)
+    /// is preserved: mining is a physical act and shouldn't be undone by an
+    /// influence change. The mined-floor tile stays painted on
+    /// minedFloorTilemap and is occluded by fog (added back via RefogTile).
+    /// On future re-claim, RevealTile lifts the fog and the mined-floor tile
+    /// becomes visible again with no re-paint required.
+    /// </summary>
     public void UnclaimTile(Vector3Int pos)
     {
         if (!claimedTiles.Contains(pos)) return;
 
-        bool wasMined = minedTiles.Contains(pos);
-
         claimedTiles.Remove(pos);
-        if (wasMined) minedTiles.Remove(pos);
         terrain?.RefogTile(pos);
-        ClearStateLayers(pos);                                       // PHASE 5
+        ClearClaimedStoneAt(pos);                                    // PHASE 6 (renamed)
 
         RebuildClaimableSet();
 
         DungeonCore.Instance?.RemoveClaimedTiles(1);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
-        if (wasMined) OnTileCountChanged?.Invoke(minedTiles.Count);
+        // PHASE 6 — OnTileCountChanged intentionally NOT fired: minedTiles
+        // unchanged. No mined-adjacency status decreases, so no neighbour
+        // tint refresh either.
     }
 
+    /// <summary>
+    /// PHASE 6 — As with UnclaimTile, minedTiles entries are preserved.
+    /// Removed cells re-fog and their stone clears, but the mined-floor
+    /// tile stays painted underneath.
+    /// </summary>
     public void ShrinkInfluenceAroundCore(Vector3Int coreCell, float radius)
     {
         int cellRadius = Mathf.CeilToInt(radius);
@@ -451,21 +531,21 @@ public class TileInfluenceManager : MonoBehaviour
 
         if (toRemove.Count == 0) return;
 
-        int minedRemoved = 0;
         foreach (var cell in toRemove)
         {
             claimedTiles.Remove(cell);
-            if (minedTiles.Remove(cell)) minedRemoved++;
             terrain?.RefogTile(cell);
-            ClearStateLayers(cell);                                  // PHASE 5
+            ClearClaimedStoneAt(cell);                               // PHASE 6 (renamed)
         }
 
         RebuildClaimableSet();
         DungeonCore.Instance?.RemoveClaimedTiles(toRemove.Count);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
-        if (minedRemoved > 0) OnTileCountChanged?.Invoke(minedTiles.Count);
+        // PHASE 6 — OnTileCountChanged intentionally NOT fired: minedTiles
+        // unchanged. No mined-adjacency status decreases.
 
-        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} claimed ({minedRemoved} mined).");
+        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} claimed " +
+                  $"(minedTiles preserved per Phase 6).");
     }
 
     // ── Passive Expansion ─────────────────────────────────────────
@@ -573,12 +653,21 @@ public class TileInfluenceManager : MonoBehaviour
     /// <summary>
     /// Paints the claimed-stone tile on the lower state layer. Bails when
     /// isLoading is true (LoadSaveData does a single bulk repaint instead).
+    ///
+    /// PHASE 6 — After SetTile, applies the bright-or-dark tint based on
+    /// IsAdjacentToMined. Uses the same SetTileFlags(None) + SetColor pattern
+    /// PaintClaimableTile uses.
     /// </summary>
     private void PaintClaimedStone(Vector3Int cell)
     {
         if (isLoading) return;
         if (claimedStoneTilemap == null || claimedStoneTile == null) return;
+
         claimedStoneTilemap.SetTile(cell, claimedStoneTile);
+
+        Color tint = IsAdjacentToMined(cell) ? Color.white : darkStoneColor;
+        claimedStoneTilemap.SetTileFlags(cell, TileFlags.None);
+        claimedStoneTilemap.SetColor(cell, tint);
     }
 
     /// <summary>
@@ -593,20 +682,52 @@ public class TileInfluenceManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears both state layers for the given cell. Used by UnclaimTile and
-    /// ShrinkInfluenceAroundCore. Safe to call regardless of which layers were
-    /// painted; SetTile(null) on an empty cell is a no-op.
+    /// PHASE 6 — Clears ONLY the claimed-stone layer for the given cell. The
+    /// mined-floor layer is left alone: see UnclaimTile / ShrinkInfluenceAroundCore
+    /// docstrings for rationale. SetTile(null) on an empty cell is a no-op.
+    /// Previously named ClearStateLayers (which touched both layers).
     /// </summary>
-    private void ClearStateLayers(Vector3Int cell)
+    private void ClearClaimedStoneAt(Vector3Int cell)
     {
         if (claimedStoneTilemap != null) claimedStoneTilemap.SetTile(cell, null);
-        if (minedFloorTilemap != null) minedFloorTilemap.SetTile(cell, null);
+    }
+
+    /// <summary>
+    /// PHASE 6 — True if any of the 4 cardinal neighbours of <paramref name="cell"/>
+    /// is in minedTiles. Cardinal only — no diagonals.
+    /// </summary>
+    private bool IsAdjacentToMined(Vector3Int cell)
+    {
+        foreach (var dir in Neighbours)
+            if (minedTiles.Contains(cell + dir)) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// PHASE 6 — Re-applies the bright-or-dark stone tint on <paramref name="cell"/>
+    /// based on its current mined-adjacency. Safe to call on any cell: bails
+    /// if the cell isn't claimed or doesn't have a stone tile painted (e.g.
+    /// claimable-ring cells, out-of-bounds, cells whose stone has been cleared).
+    /// </summary>
+    private void RefreshStoneTintAt(Vector3Int cell)
+    {
+        if (claimedStoneTilemap == null) return;
+        if (!claimedTiles.Contains(cell)) return;
+        if (!claimedStoneTilemap.HasTile(cell)) return;
+
+        Color tint = IsAdjacentToMined(cell) ? Color.white : darkStoneColor;
+        claimedStoneTilemap.SetTileFlags(cell, TileFlags.None);
+        claimedStoneTilemap.SetColor(cell, tint);
     }
 
     /// <summary>
     /// Bulk repaint of both state layers from current claimedTiles / minedTiles.
     /// Called once at the end of LoadSaveData. Public so a debug hotkey can
     /// re-sync visuals if data and visuals ever drift.
+    ///
+    /// PHASE 6 — Applies the correct two-zone tint to each stone tile based on
+    /// IsAdjacentToMined. minedTiles is fully populated by the time this runs,
+    /// so the computation is accurate.
     /// </summary>
     public void RepaintAllStateLayers()
     {
@@ -616,7 +737,14 @@ public class TileInfluenceManager : MonoBehaviour
         if (claimedStoneTilemap != null && claimedStoneTile != null)
         {
             foreach (var cell in claimedTiles)
+            {
                 claimedStoneTilemap.SetTile(cell, claimedStoneTile);
+
+                // PHASE 6 — Tint each painted stone tile.
+                Color tint = IsAdjacentToMined(cell) ? Color.white : darkStoneColor;
+                claimedStoneTilemap.SetTileFlags(cell, TileFlags.None);
+                claimedStoneTilemap.SetColor(cell, tint);
+            }
         }
 
         if (minedFloorTilemap != null && minedFloorTile != null)
@@ -667,6 +795,9 @@ public class TileInfluenceManager : MonoBehaviour
     /// PHASE 5 — Wraps the restore loop in isLoading=true so per-cell paint
     /// helpers bail out. After the data is restored, RepaintAllStateLayers
     /// does a single bulk paint of both state layers.
+    ///
+    /// PHASE 6 — RepaintAllStateLayers now also applies the two-zone stone
+    /// tint per cell, so loaded games reproduce the visual state correctly.
     /// </summary>
     public void LoadSaveData(TileInfluenceSaveData data)
     {
@@ -703,6 +834,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         // PHASE 5 — Single bulk repaint of both state layers from restored data.
+        // PHASE 6 — Applies two-zone tinting in the same pass.
         RepaintAllStateLayers();
 
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
@@ -721,7 +853,11 @@ public class TileInfluenceSaveData
     /// <summary>Cells inside dungeon influence.</summary>
     public List<SerializableVector3Int> claimedTiles;
 
-    /// <summary>Cells dug out / walkable / buildable. Subset of claimedTiles.</summary>
+    /// <summary>
+    /// Cells dug out / walkable / buildable.
+    /// PHASE 6 — No longer a strict subset of claimedTiles. May contain cells
+    /// that were mined then later unclaimed.
+    /// </summary>
     public List<SerializableVector3Int> minedTiles;
 }
 

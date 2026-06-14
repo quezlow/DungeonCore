@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b08ceb78e3b2495b8d808a5860e66794, type: 3}
   m_Name: FogTile
   m_EditorClassIdentifier: Unity.2D.Tilemap.Extras::UnityEngine.Tilemaps.AutoTile
-  m_DefaultSprite: {fileID: 21300000, guid: 3bfe078e1e130a84ba47c39faf702fc9, type: 3}
+  m_DefaultSprite: {fileID: 2102444371, guid: 6f5459a9ac69c0e4b84f6df0f8292f93, type: 3}
   m_DefaultGameObject: {fileID: 0}
   m_DefaultColliderType: 1
   m_MaskType: 0
