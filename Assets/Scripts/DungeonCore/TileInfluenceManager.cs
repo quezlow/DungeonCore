@@ -54,7 +54,6 @@ using UnityEngine.Tilemaps;
 ///   - Save format unchanged from Phase 1 (still v2). Loading a Phase 1 save
 ///     where claimed == mined works correctly because both lists are present.
 ///
-<<<<<<< HEAD
 /// INFLUENCE/MINING DECOUPLING — PHASE 5 (visual state layers)
 ///   - Two new tilemaps painted by this manager:
 ///       claimedStoneTilemap → claimedStoneTile (RT_ClaimedStone), painted on
@@ -72,23 +71,6 @@ using UnityEngine.Tilemaps;
 ///       12 ClaimedStoneLayer — NEW
 ///       14 MinedFloorLayer   — NEW
 ///       20 ClaimableLayer    — gold ring, stays on top (unchanged)
-=======
-///   - BONUS RIVER FIX (found while testing Phase 6): when a river cell is
-///     claimed, PaintClaimedStone was painting stone over the river's blue
-///     floor. Now PaintClaimedStone, RepaintAllStateLayers, and MineTile all
-///     skip cells where Features.IsRiver returns true. Rivers stay visually
-///     blue when claimed; mining is explicitly rejected on rivers (they're
-///     not stone-to-be-dug). Bridges / drainage are a future-phase concern.
-///
-///   - Visual stack (Default sorting layer, current spacing):
-///        0 FloorLayer        — base brown / river floor, painted by DungeonTerrain
-///       10 FogLayer
-///       20 ClaimedStoneLayer
-///       30 MinedFloorLayer
-///       35 NorthWallLayer    — NEW (Phase 7)
-///       40 ClaimableLayer    — gold ring
-///       50 RoomHighlightTilemap
->>>>>>> parent of f86128fd (sprite work)
 ///   - Save format unchanged from Phase 2 (still v2).
 /// </summary>
 [DefaultExecutionOrder(0)]
@@ -120,22 +102,6 @@ public class TileInfluenceManager : MonoBehaviour
              "minedFloorTilemap.")]
     [SerializeField] private TileBase minedFloorTile;
 
-<<<<<<< HEAD
-=======
-    [Tooltip("PHASE 7 — RuleTile asset for the north wall (RT_NorthWall). " +
-             "Rotation disabled. Connection rules check east/west neighbours " +
-             "only against other RT_NorthWall tiles. Four cases: isolated, " +
-             "left-end, right-end, middle-of-run.")]
-    [SerializeField] private TileBase northWallTile;
-
-    [Header("Stone Tinting (PHASE 6)")]
-    [Tooltip("PHASE 6 — Tint applied to claimed-stone cells with NO mined " +
-             "cardinal neighbour. Stone cells WITH a mined cardinal neighbour " +
-             "render bright (untinted white = the RuleTile's natural color). " +
-             "Default ~(0.55, 0.55, 0.55, 1) = mid gray.")]
-    [SerializeField] private Color darkStoneColor = new Color(0.55f, 0.55f, 0.55f, 1f);
-
->>>>>>> parent of f86128fd (sprite work)
     [Header("Settings")]
     [SerializeField] private float passiveExpansionInterval = 30f;
 
@@ -152,14 +118,7 @@ public class TileInfluenceManager : MonoBehaviour
     // Cells inside dungeon influence (visible, can interact, contributes to mana, mineable).
     private readonly HashSet<Vector3Int> claimedTiles = new();
 
-<<<<<<< HEAD
     // Cells dug out (walkable, buildable, pathable). Strict subset of claimedTiles in Phase 2+.
-=======
-    // Cells dug out (walkable, buildable, pathable).
-    // PHASE 6 — No longer guaranteed to be a strict subset of claimedTiles.
-    // A cell can be in minedTiles but not claimedTiles (was mined, then later
-    // unclaimed via breach shrink or other influence loss).
->>>>>>> parent of f86128fd (sprite work)
     private readonly HashSet<Vector3Int> minedTiles = new();
 
     // The 1-cell ring around claimedTiles — next candidates for claim.
@@ -380,11 +339,7 @@ public class TileInfluenceManager : MonoBehaviour
         claimableTiles.Remove(pos);
         terrain?.RevealTile(pos);                                   // claimed cells are visible
         claimableTilemap.SetTile(pos, null);
-<<<<<<< HEAD
         PaintClaimedStone(pos);                                      // PHASE 5
-=======
-        PaintClaimedStone(pos);                                      // PHASE 5 (+ Phase 6 tint, Phase 7 river skip)
->>>>>>> parent of f86128fd (sprite work)
 
         // Expand the claimable ring.
         foreach (Vector3Int dir in Neighbours)
@@ -442,19 +397,8 @@ public class TileInfluenceManager : MonoBehaviour
 
         minedTiles.Add(pos);
         PaintMinedFloor(pos);                                        // PHASE 5
-<<<<<<< HEAD
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
-=======
-
-        // PHASE 6 — Brighten any adjacent claimed-stone cells.
-        foreach (var dir in Neighbours)
-            RefreshStoneTintAt(pos + dir);
-
-        // PHASE 7 — Walls.
-        RefreshNorthWallAt(pos);
-        RefreshNorthWallAt(pos + Vector3Int.down);
->>>>>>> parent of f86128fd (sprite work)
 
         OnTileMined?.Invoke(pos);
         OnTileCountChanged?.Invoke(minedTiles.Count);
@@ -473,14 +417,6 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Unclaim / Shrink ──────────────────────────────────────────
 
-<<<<<<< HEAD
-=======
-    /// <summary>
-    /// PHASE 6 — Removes only the claim. Mined state and any painted wall
-    /// are preserved. Wall configuration is fully determined by minedTiles,
-    /// which doesn't change here, so no wall refresh is needed either.
-    /// </summary>
->>>>>>> parent of f86128fd (sprite work)
     public void UnclaimTile(Vector3Int pos)
     {
         if (!claimedTiles.Contains(pos)) return;
@@ -488,14 +424,9 @@ public class TileInfluenceManager : MonoBehaviour
         bool wasMined = minedTiles.Contains(pos);
 
         claimedTiles.Remove(pos);
-<<<<<<< HEAD
         if (wasMined) minedTiles.Remove(pos);
         terrain?.RefogTile(pos);
         ClearStateLayers(pos);                                       // PHASE 5
-=======
-        terrain?.RefogTile(pos);
-        ClearClaimedStoneAt(pos);
->>>>>>> parent of f86128fd (sprite work)
 
         RebuildClaimableSet();
 
@@ -524,14 +455,9 @@ public class TileInfluenceManager : MonoBehaviour
         foreach (var cell in toRemove)
         {
             claimedTiles.Remove(cell);
-<<<<<<< HEAD
             if (minedTiles.Remove(cell)) minedRemoved++;
             terrain?.RefogTile(cell);
             ClearStateLayers(cell);                                  // PHASE 5
-=======
-            terrain?.RefogTile(cell);
-            ClearClaimedStoneAt(cell);
->>>>>>> parent of f86128fd (sprite work)
         }
 
         RebuildClaimableSet();
@@ -642,11 +568,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
-<<<<<<< HEAD
     // ── PHASE 5 — Visual State Layer Helpers ──────────────────────
-=======
-    // ── PHASE 5 / 6 / 7 — Visual State Layer Helpers ──────────────
->>>>>>> parent of f86128fd (sprite work)
 
     /// <summary>
     /// Paints the claimed-stone tile on the lower state layer. Bails when
@@ -659,13 +581,10 @@ public class TileInfluenceManager : MonoBehaviour
         claimedStoneTilemap.SetTile(cell, claimedStoneTile);
     }
 
-<<<<<<< HEAD
     /// <summary>
     /// Paints the mined-floor tile on the upper state layer. Bails when
     /// isLoading is true (LoadSaveData does a single bulk repaint instead).
     /// </summary>
-=======
->>>>>>> parent of f86128fd (sprite work)
     private void PaintMinedFloor(Vector3Int cell)
     {
         if (isLoading) return;
@@ -685,45 +604,9 @@ public class TileInfluenceManager : MonoBehaviour
     }
 
     /// <summary>
-<<<<<<< HEAD
     /// Bulk repaint of both state layers from current claimedTiles / minedTiles.
     /// Called once at the end of LoadSaveData. Public so a debug hotkey can
     /// re-sync visuals if data and visuals ever drift.
-=======
-    /// PHASE 7 — A cell c needs a north-wall tile iff c is mined AND the cell
-    /// directly north of c (c + Vector3Int.up) is NOT mined. The wall sprite
-    /// represents the south face of the stone wall north of c.
-    /// </summary>
-    private bool ShouldHaveNorthWall(Vector3Int cell)
-    {
-        return minedTiles.Contains(cell) && !minedTiles.Contains(cell + Vector3Int.up);
-    }
-
-    /// <summary>
-    /// PHASE 7 — Re-applies the north-wall tile (or clears it) for the given
-    /// cell. Safe to call on any cell — handles the no-op case where the cell
-    /// isn't mined. Bails during bulk load (RepaintAllStateLayers handles that).
-    /// </summary>
-    private void RefreshNorthWallAt(Vector3Int cell)
-    {
-        if (isLoading) return;
-        if (northWallTilemap == null || northWallTile == null) return;
-
-        if (ShouldHaveNorthWall(cell))
-            northWallTilemap.SetTile(cell, northWallTile);
-        else
-            northWallTilemap.SetTile(cell, null);
-    }
-
-    /// <summary>
-    /// Bulk repaint of stone, mined-floor, and wall layers from current
-    /// claimedTiles / minedTiles. Called once at the end of LoadSaveData.
-    ///
-    /// PHASE 6 — Stone iteration applies the two-zone tint per cell.
-    ///           River cells are skipped (stays blue).
-    /// PHASE 7 — Wall layer cleared and rebuilt via a single iteration over
-    /// minedTiles, painting where ShouldHaveNorthWall is true.
->>>>>>> parent of f86128fd (sprite work)
     /// </summary>
     public void RepaintAllStateLayers()
     {
@@ -740,19 +623,6 @@ public class TileInfluenceManager : MonoBehaviour
         {
             foreach (var cell in minedTiles)
                 minedFloorTilemap.SetTile(cell, minedFloorTile);
-<<<<<<< HEAD
-=======
-        }
-
-        // PHASE 7 — Walls. One pass over minedTiles.
-        if (northWallTilemap != null && northWallTile != null)
-        {
-            foreach (var cell in minedTiles)
-            {
-                if (ShouldHaveNorthWall(cell))
-                    northWallTilemap.SetTile(cell, northWallTile);
-            }
->>>>>>> parent of f86128fd (sprite work)
         }
     }
 
@@ -851,14 +721,7 @@ public class TileInfluenceSaveData
     /// <summary>Cells inside dungeon influence.</summary>
     public List<SerializableVector3Int> claimedTiles;
 
-<<<<<<< HEAD
     /// <summary>Cells dug out / walkable / buildable. Subset of claimedTiles.</summary>
-=======
-    /// <summary>
-    /// Cells dug out / walkable / buildable.
-    /// PHASE 6 — No longer a strict subset of claimedTiles.
-    /// </summary>
->>>>>>> parent of f86128fd (sprite work)
     public List<SerializableVector3Int> minedTiles;
 }
 
