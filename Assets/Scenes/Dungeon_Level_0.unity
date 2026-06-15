@@ -5151,9 +5151,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   claimableTilemap: {fileID: 521119951}
   claimedStoneTilemap: {fileID: 422176421}
-  shadowTilemap: {fileID: 0}
+  shadowTilemap: {fileID: 205969111}
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
-  claimedStoneTile: {fileID: 11400000, guid: 327c79185d3e67c409ea8dc9e5534c7e, type: 2}
+  claimedStoneTile: {fileID: 11400000, guid: c262af2dcc4636a4f856a0934033654c, type: 2}
   passiveExpansionInterval: 30
   starterMinedChance: 0.7
 --- !u!1 &331019469
@@ -7602,10 +7602,10 @@ MonoBehaviour:
   debugOverlayTilemap: {fileID: 1163852729}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
   debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
-  floorTilemap: {fileID: 0}
-  riverFloorTile: {fileID: 0}
-  cavernFloorTile: {fileID: 0}
-  chamberFloorTile: {fileID: 0}
+  floorTilemap: {fileID: 2016980800}
+  riverFloorTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
+  cavernFloorTile: {fileID: 11400000, guid: a0c089de8ab8fb54ea06785f425de9a2, type: 2}
+  chamberFloorTile: {fileID: 11400000, guid: a0c089de8ab8fb54ea06785f425de9a2, type: 2}
 --- !u!4 &468668986
 Transform:
   m_ObjectHideFlags: 0
@@ -24088,7 +24088,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DungeonTerrain
   floorTilemap: {fileID: 2016980800}
   fogTilemap: {fileID: 2133985157}
-  floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
+  floorTile: {fileID: 11400000, guid: a0c089de8ab8fb54ea06785f425de9a2, type: 2}
   fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
   fallbackRadius: 100
 --- !u!1 &1640345983
