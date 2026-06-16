@@ -106,6 +106,26 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private TileBase debugRiverTile;
     [SerializeField] private TileBase debugChamberTile;
 
+    [Header("Feature Floor Tiles (PHASE A)")]
+    [Tooltip("PHASE A — Same Tilemap as DungeonTerrain.floorTilemap. " +
+             "PaintFeatureFloorTiles overpaints river/cavern/chamber floor " +
+             "tiles onto the natural floor base.")]
+    [SerializeField] private Tilemap floorTilemap;
+
+    [Tooltip("PHASE A — Floor tile painted at every river cell. Leave null " +
+             "to skip river floor painting (rivers will show the natural floor).")]
+    [SerializeField] private TileBase riverFloorTile;
+
+    [Tooltip("PHASE A — Floor tile painted at every core-cavern cell (and " +
+             "tunnel cells). Leave null to skip cavern floor painting.")]
+    [SerializeField] private TileBase cavernFloorTile;
+
+    [Tooltip("PHASE A — Floor tile painted at every chamber cell. Leave null " +
+             "to skip chamber floor painting. Kept as a separate field from " +
+             "cavernFloorTile so chambers can switch to a distinct sprite " +
+             "later without re-wiring.")]
+    [SerializeField] private TileBase chamberFloorTile;
+
     // ── State ─────────────────────────────────────────────────────
 
     private FloorRoot floor;
@@ -157,6 +177,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         RebuildLookup();
 
+        PaintFeatureFloorTiles();   // [PHASE A] overpaint feature floor variants
+
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated: " +
             $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers " + 
@@ -170,6 +192,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         featureData = data ?? new FloorFeatureSaveData();
         RebuildLookup();
+
+        PaintFeatureFloorTiles();   // [PHASE A] overpaint feature floor variants
 
         UnfogAllRevealedFeatures();
 
@@ -864,6 +888,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var r in featureData.rivers)
             foreach (var sv in r.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.River, featureId = r.id };
+    }
+
+    // ── PHASE A — Feature Floor Painting ──────────────────────────
+
+    /// <summary>
+    /// PHASE A — Overpaints river/cavern/chamber floor tiles onto floorTilemap.
+    /// Called at the end of GenerateNew and LoadFromSave so the natural floor
+    /// painted by DungeonTerrain.PaintTerrain is replaced at feature cells with
+    /// the appropriate variant. Idempotent — safe to call multiple times. Cells
+    /// where the corresponding tile asset is null are skipped (the natural
+    /// floor stays at those cells).
+    /// </summary>
+    private void PaintFeatureFloorTiles()
+    {
+        if (floorTilemap == null || featureData == null) return;
+
+        // Rivers
+        if (riverFloorTile != null)
+        {
+            foreach (var r in featureData.rivers)
+                foreach (var sv in r.cells)
+                    floorTilemap.SetTile(sv.ToVector3Int(), riverFloorTile);
+        }
+
+        // Core cavern + tunnels
+        if (cavernFloorTile != null && featureData.coreCavern != null)
+        {
+            foreach (var sv in featureData.coreCavern.cells)
+                floorTilemap.SetTile(sv.ToVector3Int(), cavernFloorTile);
+
+            foreach (var t in featureData.coreCavern.tunnels)
+                foreach (var sv in t.cells)
+                    floorTilemap.SetTile(sv.ToVector3Int(), cavernFloorTile);
+        }
+
+        // Chambers
+        if (chamberFloorTile != null)
+        {
+            foreach (var ch in featureData.chambers)
+                foreach (var sv in ch.cells)
+                    floorTilemap.SetTile(sv.ToVector3Int(), chamberFloorTile);
+        }
     }
 
     // ── Debug Overlay ─────────────────────────────────────────────

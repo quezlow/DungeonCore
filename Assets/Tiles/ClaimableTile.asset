@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: ClaimableTile
   m_EditorClassIdentifier: Unity.2D.Tilemap.Extras::UnityEngine.Tilemaps.AutoTile
   m_DefaultSprite: {fileID: 21300000, guid: afc572b2732ef9342b66371f2123c87b, type: 3}
-  m_DefaultGameObject: {fileID: 0}
+  m_DefaultGameObject: {fileID: 6223068742517362653, guid: 60bc100cf23ed8544972ca7cd2a7220e, type: 3}
   m_DefaultColliderType: 1
   m_TilingRules: []

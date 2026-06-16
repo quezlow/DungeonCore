@@ -154,8 +154,15 @@ public class DungeonSaveController : MonoBehaviour
             FloorManager.Instance.SetFloorSeed(0, floor0Seed);
             floor0.FeatureGenerator.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
-        }
 
+            // Features (rivers / chambers / core cavern + tunnels) are generated above,
+            // AFTER TileInfluenceManager.Start already ran PaintAllStone — so repaint the
+            // stone layer now to exclude those feature cells. Without this they stay buried
+            // under stone painted before they existed. Starter mining is preserved (those
+            // cells are in minedTiles, which PaintAllStone skips).
+            floor0.GetComponentInChildren<TileInfluenceManager>(true)?.RepaintAllStateLayers();
+        }
+    
         AlertsLog.Instance?.ClearHistory();
 
         SaveGame();
