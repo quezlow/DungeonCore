@@ -5152,6 +5152,7 @@ MonoBehaviour:
   claimableTilemap: {fileID: 521119951}
   claimedStoneTilemap: {fileID: 422176421}
   shadowTilemap: {fileID: 205969111}
+  floorTilemap: {fileID: 2016980800}
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
   claimedStoneTile: {fileID: 11400000, guid: c262af2dcc4636a4f856a0934033654c, type: 2}
   passiveExpansionInterval: 30
@@ -6167,8 +6168,8 @@ TilemapRenderer:
   m_MaxChunkCount: 16
   m_MaxFrameAge: 16
   m_SortOrder: 0
-  m_Mode: 0
-  m_DetectChunkCullingBounds: 1
+  m_Mode: 1
+  m_DetectChunkCullingBounds: 0
 --- !u!1839735485 &422176421
 Tilemap:
   m_ObjectHideFlags: 0
@@ -7588,7 +7589,7 @@ MonoBehaviour:
   tunnelWeight3: 30
   tunnelMinAngleSeparation: 90
   tunnelMinLength: 4
-  tunnelMaxLength: 8
+  tunnelMaxLength: 12
   tunnelWideFraction: 0.6
   tunnelWobbleChance: 0.3
   riverPathCost: 5
@@ -17167,7 +17168,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1839735485 &1163852729
 Tilemap:
   m_ObjectHideFlags: 0
@@ -17253,7 +17254,7 @@ TilemapRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 5
+  m_SortingOrder: 10
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
@@ -18402,7 +18403,7 @@ TilemapRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 50
+  m_SortingOrder: 60
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
@@ -24055,10 +24056,10 @@ Transform:
   m_Children:
   - {fileID: 2016980798}
   - {fileID: 1163852731}
-  - {fileID: 2133985155}
   - {fileID: 422176419}
   - {fileID: 205969109}
   - {fileID: 521119953}
+  - {fileID: 2133985155}
   - {fileID: 1276494921}
   m_Father: {fileID: 629551820}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -29665,7 +29666,7 @@ TilemapRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 10
+  m_SortingOrder: 50
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
