@@ -5023,7 +5023,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   claimableTilemap: {fileID: 521119951}
-  claimableTile: {fileID: 11400000, guid: fb413215ece03df4bb82301c25fbcb1f, type: 2}
+  claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
   passiveExpansionInterval: 30
   starterMinedChance: 0.7
 --- !u!1 &331019469
@@ -18917,6 +18917,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1323356321}
   - component: {fileID: 1323356322}
+  - component: {fileID: 1323356323}
   m_Layer: 0
   m_Name: FloorManager
   m_TagString: Untagged
@@ -18955,6 +18956,19 @@ MonoBehaviour:
   cmCamera: {fileID: 1438045299}
   cameraAnchor: {fileID: 491703573}
   maxFloorIndex: 4
+--- !u!114 &1323356323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323356320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eaa3a468dd93c26438189e9811114b7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonCameraSortAxis
+  sortAxis: {x: 0, y: 1, z: 0}
 --- !u!1 &1323739350
 GameObject:
   m_ObjectHideFlags: 0
