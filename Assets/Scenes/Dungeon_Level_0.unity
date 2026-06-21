@@ -5023,11 +5023,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   claimableTilemap: {fileID: 521119951}
-  claimedStoneTilemap: {fileID: 422176421}
-  minedFloorTilemap: {fileID: 1078132797}
   claimableTile: {fileID: 11400000, guid: fb413215ece03df4bb82301c25fbcb1f, type: 2}
-  claimedStoneTile: {fileID: 11400000, guid: c262af2dcc4636a4f856a0934033654c, type: 2}
-  minedFloorTile: {fileID: 11400000, guid: b2866e44c8622da4a889ab1d785c17b9, type: 2}
   passiveExpansionInterval: 30
   starterMinedChance: 0.7
 --- !u!1 &331019469
@@ -30022,8 +30018,8 @@ RectTransform:
   - {fileID: 1241113604}
   - {fileID: 1772136}
   - {fileID: 1071071016}
-  - {fileID: 5983522213685328985}
   - {fileID: 136435628}
+  - {fileID: 5983522213685328985}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
