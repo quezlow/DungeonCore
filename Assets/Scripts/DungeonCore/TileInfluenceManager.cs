@@ -76,6 +76,8 @@ public class TileInfluenceManager : MonoBehaviour
          "mined for connectivity, even if the roll says otherwise.")]
     [Range(0f, 1f)]
     [SerializeField] private float starterMinedChance = 0.7f;
+    [Tooltip("Radius (cells) of the blob-shaped starter room. ~3 ≈ a 6-wide room.")]
+    [SerializeField, Min(1f)] private float starterRoomRadius = 3f;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -176,79 +178,67 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Bootstrap (Floor 2+) ──────────────────────────────────────
 
     /// <summary>
-    /// PHASE 4 — Bootstraps a floor's starter area: a 3×3 around centerCell.
+    /// PHASE 4 — Bootstraps a floor's starter area: a blob-shaped room (a noisy disc
+    /// of radius starterRoomRadius) around centerCell.
     ///
-    /// All 9 cells become claimed. The core cell is always mined. Each of the 8
-    /// surrounding cells is independently mined with probability
-    /// starterMinedChance. If the random roll produces zero mined surrounding
-    /// cells, one is forced mined for connectivity.
-    ///
-    /// Cells that end up claimed-but-not-mined start the game as "claimed stone"
-    /// — visible to the player, contributing to mana regen, mineable later.
+    /// Every cell in the blob is claimed AND mined, so the room reads as open floor
+    /// with an organic edge rather than a 3×3 box. The shape is seeded by centerCell
+    /// so it is deterministic — floor 0 re-runs this on every scene load, and a stable
+    /// seed keeps its room from churning across save cycles.
     /// </summary>
     public void ClaimStarterArea(Vector3Int centerCell)
     {
-        Vector3Int corePos = centerCell;
+        // Build a blob-shaped starter room (a noisy disc) instead of a 3×3 square.
+        // Seeded by centerCell so the shape is deterministic — floor 0 re-runs this on
+        // every scene load, and a stable seed stops its room churning across saves.
+        var rng = new System.Random(centerCell.GetHashCode());
+        float r = starterRoomRadius;                 // ~3 → roughly a 6-wide room
+        float inner = Mathf.Max(1f, r - 1.25f);      // always-open core
+        int span = Mathf.CeilToInt(r);
 
-        var surroundingOffsets = new[]
-        {
-        new Vector3Int(-1,-1,0), new Vector3Int(0,-1,0), new Vector3Int(1,-1,0),
-        new Vector3Int(-1, 0,0),                          new Vector3Int(1, 0,0),
-        new Vector3Int(-1, 1,0), new Vector3Int(0, 1,0), new Vector3Int(1, 1,0),
-    };
+        var roomCells = new List<Vector3Int>();
+        for (int dx = -span; dx <= span; dx++)
+            for (int dy = -span; dy <= span; dy++)
+            {
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                if (dist > r) continue;
+                if (dist > inner)
+                {
+                    // Ragged edge: keep-probability falls from 1 at the core to ~0 past r.
+                    float keep = Mathf.InverseLerp(r + 0.5f, inner, dist);
+                    if (rng.NextDouble() > keep) continue;
+                }
+                roomCells.Add(centerCell + new Vector3Int(dx, dy, 0));
+            }
+        if (!roomCells.Contains(centerCell)) roomCells.Add(centerCell);
 
-        // Step 1 — Claim the core cell. Always mined.
-        if (!claimedTiles.Contains(corePos))
+        // Mine + reveal the whole blob — the open room is the full ~6-wide cavern.
+        foreach (var pos in roomCells)
         {
-            claimedTiles.Add(corePos);
-            claimableTiles.Remove(corePos);
-            terrain?.RevealTile(corePos);
-            claimableTilemap.SetTile(corePos, null);
+            minedTiles.Add(pos);
+            terrain?.RevealTile(pos);
         }
-        minedTiles.Add(corePos);
 
-        // Step 2 — Claim all 8 surrounding cells. Mining decided in Step 3.
-        foreach (var offset in surroundingOffsets)
+        // CLAIM only the central 3×3 — owned territory stays small on every floor.
+        // The rest of the cavern is open but unclaimed; the player claims outward into it.
+        var claimCells = new List<Vector3Int>
         {
-            Vector3Int pos = centerCell + offset;
+            centerCell,
+            centerCell + new Vector3Int(-1, -1, 0), centerCell + new Vector3Int(0, -1, 0), centerCell + new Vector3Int(1, -1, 0),
+            centerCell + new Vector3Int(-1,  0, 0),                                          centerCell + new Vector3Int(1,  0, 0),
+            centerCell + new Vector3Int(-1,  1, 0), centerCell + new Vector3Int(0,  1, 0), centerCell + new Vector3Int(1,  1, 0),
+        };
+        foreach (var pos in claimCells)
+        {
             if (claimedTiles.Contains(pos)) continue;
-
             claimedTiles.Add(pos);
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
             claimableTilemap.SetTile(pos, null);
         }
 
-        // Step 3 — Random mining of surrounding cells.
-        int surroundingMinedCount = 0;
-        foreach (var offset in surroundingOffsets)
-        {
-            Vector3Int pos = centerCell + offset;
-            if (UnityEngine.Random.value < starterMinedChance)
-            {
-                minedTiles.Add(pos);
-                surroundingMinedCount++;
-            }
-        }
-
-        // Step 4 — Connectivity guarantee. If zero surrounding cells were mined,
-        // force one at random.
-        if (surroundingMinedCount == 0)
-        {
-            int forcedIndex = UnityEngine.Random.Range(0, surroundingOffsets.Length);
-            Vector3Int forcedPos = centerCell + surroundingOffsets[forcedIndex];
-            minedTiles.Add(forcedPos);
-            Debug.Log($"[TileInfluenceManager] Starter area: 0/8 surrounding rolled " +
-                      $"mined — forcing {forcedPos} for connectivity.");
-        }
-
-        // Step 5 — Expand the claimable ring around all 9 claimed cells.
-        var allCells = new List<Vector3Int>(surroundingOffsets.Length + 1);
-        allCells.Add(corePos);
-        foreach (var offset in surroundingOffsets)
-            allCells.Add(centerCell + offset);
-
-        foreach (var pos in allCells)
+        // Expand the claimable ring around the claimed 3×3.
+        foreach (var pos in claimCells)
         {
             foreach (var dir in Neighbours)
             {

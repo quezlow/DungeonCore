@@ -28,6 +28,10 @@ public class CaveWallRenderer : MonoBehaviour
     [Tooltip("Behind-cap faces. Player / Order -1 / Individual / Tile Anchor (0.5, 0, 0).")]
     [SerializeField] private Tilemap facesBehindTilemap;
 
+    public Tilemap CapsTilemap => capsTilemap;
+    public Tilemap FacesTilemap => facesTilemap;
+    public Tilemap FacesBehindTilemap => facesBehindTilemap;
+
     [Header("Sheet")]
     [Tooltip("MainLev.png (the wall sheet). Sliced at runtime by cell coordinate.")]
     [SerializeField] private Texture2D sheet;

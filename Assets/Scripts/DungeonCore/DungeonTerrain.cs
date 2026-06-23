@@ -13,9 +13,12 @@ using UnityEngine.Tilemaps;
 [DefaultExecutionOrder(-10)]
 public class DungeonTerrain : MonoBehaviour
 {
-    [Header("Tilemaps")]
+[Header("Tilemaps")]
     [SerializeField] private Tilemap floorTilemap;
     [SerializeField] private Tilemap fogTilemap;
+
+    public Tilemap FloorTilemap => floorTilemap;
+    public Tilemap FogTilemap => fogTilemap;
 
     [Header("Tile Assets")]
     [SerializeField] private TileBase floorTile;

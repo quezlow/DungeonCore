@@ -977,6 +977,7 @@ MonoBehaviour:
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
   passiveExpansionInterval: 30
   starterMinedChance: 0.7
+  starterRoomRadius: 6
 --- !u!1 &3860405893054784038
 GameObject:
   m_ObjectHideFlags: 0
@@ -1540,6 +1541,7 @@ GameObject:
   - component: {fileID: 6151173212404640898}
   - component: {fileID: 7072512162781259412}
   - component: {fileID: 2561889216810021540}
+  - component: {fileID: 8562864742481699618}
   - component: {fileID: 562836618838593223}
   - component: {fileID: 8282947727654970810}
   m_Layer: 0
@@ -1597,6 +1599,21 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
   fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
   fallbackRadius: 100
+--- !u!114 &8562864742481699618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7690371086906352141}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75523fe03c6453440a93958c58fd3b0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FloorTint
+  shallowTint: {r: 1, g: 0.98, b: 0.93, a: 1}
+  deepTint: {r: 0.56, g: 0.64, b: 0.8, a: 1}
+  maxDepth: 6
 --- !u!114 &562836618838593223
 MonoBehaviour:
   m_ObjectHideFlags: 0
