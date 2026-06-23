@@ -3,31 +3,30 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 /// <summary>
-/// STAGES 3a + 3b — Paints the cave wall CAPS (rock tops) and FACES (draped
-/// fronts) for one floor. No RuleTile; the CaveWallClassifier supplies the
-/// classification and this renderer slices sprites straight off MainLev.png at
-/// runtime by the coordinates pinned in cap_reference.png / the spec face table.
+/// Cave wall renderer — paints CAPS (rock tops) and FACES (draped fronts) for
+/// one floor's open areas. A "wall" is any solid cell adjacent to open (mined)
+/// floor, so this renders dug rooms AND the pre-revealed core cavern/tunnels
+/// alike, claimed or not. CaveWallClassifier supplies the classification;
+/// sprites are sliced from MainLev.png at runtime by cell coordinate.
 ///
-///   Caps  — on every CLAIMED solid cell (your walls / "claimed stone").
-///   Faces — on each south-facing wall, a 2-cell drape hung over the open floor
-///           to its south (upper at cell+S, lower at cell+2S, clipped at walls).
-///
-/// Tiles are UnlockedTile instances so per-cell SetColor (the Stage 4 fade /
-/// Stage 5 tint) survives a refresh.
-///
-/// Attach to a child of a FloorRoot, under its Grid. Assign both tilemaps and
-/// the sheet. Caps tilemap: Player / Order 0 / Individual / Tile Anchor (0.5,0.5,0).
-/// Faces tilemap: Player / Order 0 / Individual / Tile Anchor (0.5,0,0) — the
-/// bottom anchor makes a drape sort behind an entity standing on that floor cell.
+/// Three tilemaps, all Player layer, Individual mode:
+///   capsTilemap        — Order 0,  Tile Anchor (0.5, 0.5, 0).  Rock tops.
+///   facesTilemap       — Order 0,  Tile Anchor (0.5, 0,   0).  Fronts over open floor.
+///   facesBehindTilemap — Order -1, Tile Anchor (0.5, 0,   0).  Face slices that drape onto
+///                        another wall's cell; they sort UNDER caps so the nearer wall's
+///                        cap stays on top. No entity stands on a solid cell, so the
+///                        lower order can't affect the walk-behind.
 /// </summary>
 [DisallowMultipleComponent]
 public class CaveWallRenderer : MonoBehaviour
 {
     [Header("Layers")]
-    [Tooltip("Caps tilemap. Player / Order 0 / Individual / Tile Anchor (0.5, 0.5, 0).")]
+    [Tooltip("Caps. Player / Order 0 / Individual / Tile Anchor (0.5, 0.5, 0).")]
     [SerializeField] private Tilemap capsTilemap;
-    [Tooltip("Faces tilemap. Player / Order 0 / Individual / Tile Anchor (0.5, 0, 0).")]
+    [Tooltip("Faces. Player / Order 0 / Individual / Tile Anchor (0.5, 0, 0).")]
     [SerializeField] private Tilemap facesTilemap;
+    [Tooltip("Behind-cap faces. Player / Order -1 / Individual / Tile Anchor (0.5, 0, 0).")]
+    [SerializeField] private Tilemap facesBehindTilemap;
 
     [Header("Sheet")]
     [Tooltip("MainLev.png (the wall sheet). Sliced at runtime by cell coordinate.")]
@@ -39,46 +38,54 @@ public class CaveWallRenderer : MonoBehaviour
     {
         new Vector2Int(6, 8),   // 0  none      -> pillar top
         new Vector2Int(6, 8),   // 1  N         -> pillar top
-        new Vector2Int(14, 9),  // 2  E         -> nubEast top
-        new Vector2Int(7, 6),   // 3  N+E       -> cornerW top
+        new Vector2Int(13, 9),  // 2  E         -> nubEast top   (swapped)
+        new Vector2Int(0, 4),   // 3  N+E       -> SW outer corner top
         new Vector2Int(6, 0),   // 4  S
         new Vector2Int(11, 3),  // 5  N+S
         new Vector2Int(0, 0),   // 6  E+S
         new Vector2Int(0, 1),   // 7  N+E+S
-        new Vector2Int(13, 9),  // 8  W         -> nubWest top
-        new Vector2Int(11, 6),  // 9  N+W       -> cornerE top
+        new Vector2Int(14, 9),  // 8  W         -> nubWest top   (swapped)
+        new Vector2Int(5, 4),   // 9  N+W       -> SE outer corner top
         new Vector2Int(8, 3),   // 10 E+W       -> flat cap (1-deep run)
         new Vector2Int(2, 4),   // 11 N+E+W     -> straight S-wall top
         new Vector2Int(5, 0),   // 12 S+W
         new Vector2Int(5, 1),   // 13 N+S+W
         new Vector2Int(1, 0),   // 14 E+S+W
-        new Vector2Int(1, 1),   // 15 all       -> interior
+        new Vector2Int(1, 1),   // 15 all       -> interior (overridden by concave corner)
     };
 
-    // Face variant -> drape slices, indexed by (int)CaveFace.
+    // Face variant -> drape slices (col, row from top), indexed by (int)CaveFace.
     // enum CaveFace { None=0, Straight=1, CornerW=2, CornerE=3, Pillar=4, NubEast=5, NubWest=6 }
     private static readonly Vector2Int[] FaceUpperCell =
     {
-        new Vector2Int(-1, -1),  // None (unused)
+        new Vector2Int(-1, -1),  // None
         new Vector2Int(2, 5),    // Straight
-        new Vector2Int(7, 7),    // CornerW
-        new Vector2Int(11, 7),   // CornerE
+        new Vector2Int(0, 5),    // CornerW (SW)
+        new Vector2Int(5, 5),    // CornerE (SE)
         new Vector2Int(6, 9),    // Pillar
-        new Vector2Int(14, 10),  // NubEast
-        new Vector2Int(13, 10),  // NubWest
+        new Vector2Int(13, 10),  // NubEast (swapped)
+        new Vector2Int(14, 10),  // NubWest (swapped)
     };
     private static readonly Vector2Int[] FaceLowerCell =
     {
-        new Vector2Int(-1, -1),  // None (unused)
+        new Vector2Int(-1, -1),  // None
         new Vector2Int(2, 6),    // Straight
-        new Vector2Int(7, 8),    // CornerW
-        new Vector2Int(11, 8),   // CornerE
+        new Vector2Int(0, 6),    // CornerW (SW)
+        new Vector2Int(5, 6),    // CornerE (SE)
         new Vector2Int(6, 10),   // Pillar
-        new Vector2Int(14, 11),  // NubEast
-        new Vector2Int(13, 11),  // NubWest
+        new Vector2Int(13, 11),  // NubEast (swapped)
+        new Vector2Int(14, 11),  // NubWest (swapped)
     };
 
-    private static readonly Vector3Int SOUTH = new Vector3Int(0, -1, 0);
+    private static readonly Vector3Int N = new Vector3Int(0, 1, 0);
+    private static readonly Vector3Int S = new Vector3Int(0, -1, 0);
+    private static readonly Vector3Int E = new Vector3Int(1, 0, 0);
+    private static readonly Vector3Int W = new Vector3Int(-1, 0, 0);
+    private static readonly Vector3Int NE = new Vector3Int(1, 1, 0);
+    private static readonly Vector3Int NW = new Vector3Int(-1, 1, 0);
+    private static readonly Vector3Int SE = new Vector3Int(1, -1, 0);
+    private static readonly Vector3Int SW = new Vector3Int(-1, -1, 0);
+    private static readonly Vector3Int[] Neighbours8 = { N, E, S, W, NE, NW, SE, SW };
 
     private FloorRoot floor;
     private TileInfluenceManager influence;
@@ -86,6 +93,8 @@ public class CaveWallRenderer : MonoBehaviour
     private TileBase[] capTiles;
     private TileBase[] faceUpperTiles;
     private TileBase[] faceLowerTiles;
+    private TileBase innerSE, innerSW, innerNE, innerNW;     // concave-corner caps
+    private readonly HashSet<Vector3Int> wallScratch = new();
     private bool subscribed;
     private bool dirty;
 
@@ -107,14 +116,17 @@ public class CaveWallRenderer : MonoBehaviour
     {
         if (sheet == null) { Debug.LogWarning("[CaveWallRenderer] No sheet texture assigned."); return; }
 
-        // Caps pivot centre (they never sort against an entity on their own cell).
+        // Caps + concave corners pivot centre (no entity ever stands on their cell).
         capTiles = new TileBase[16];
         for (int mask = 0; mask < 16; mask++)
             capTiles[mask] = MakeTile(CapCell[mask].x, CapCell[mask].y, new Vector2(0.5f, 0.5f));
 
-        // Faces pivot bottom-centre: with the faces tilemap's bottom Tile Anchor,
-        // a slice sorts by its cell's bottom edge, so an entity on that floor cell
-        // (feet at cell centre) sorts behind it — the walk-behind occlusion.
+        innerSE = MakeTile(0, 7, new Vector2(0.5f, 0.5f));
+        innerSW = MakeTile(5, 7, new Vector2(0.5f, 0.5f));
+        innerNE = MakeTile(0, 10, new Vector2(0.5f, 0.5f));
+        innerNW = MakeTile(5, 10, new Vector2(0.5f, 0.5f));
+
+        // Faces pivot bottom-centre so a slice sorts by its cell's bottom edge.
         faceUpperTiles = new TileBase[FaceUpperCell.Length];
         faceLowerTiles = new TileBase[FaceLowerCell.Length];
         for (int v = 1; v < FaceUpperCell.Length; v++)
@@ -138,8 +150,8 @@ public class CaveWallRenderer : MonoBehaviour
     {
         if (influence != null && !subscribed)
         {
-            influence.OnClaimedTileCountChanged += MarkDirty;   // a wall was claimed
-            influence.OnTileCountChanged += MarkDirty;   // a wall was mined into floor
+            influence.OnClaimedTileCountChanged += MarkDirty;
+            influence.OnTileCountChanged += MarkDirty;
             subscribed = true;
         }
         dirty = true;
@@ -153,8 +165,14 @@ public class CaveWallRenderer : MonoBehaviour
             influence.OnTileCountChanged -= MarkDirty;
             subscribed = false;
         }
+        ClearAll();
+    }
+
+    private void ClearAll()
+    {
         if (capsTilemap != null) capsTilemap.ClearAllTiles();
         if (facesTilemap != null) facesTilemap.ClearAllTiles();
+        if (facesBehindTilemap != null) facesBehindTilemap.ClearAllTiles();
     }
 
     private void MarkDirty(int _) => dirty = true;
@@ -171,25 +189,69 @@ public class CaveWallRenderer : MonoBehaviour
     {
         if (capsTilemap == null || classifier == null || influence == null || capTiles == null) return;
 
-        capsTilemap.ClearAllTiles();
-        if (facesTilemap != null) facesTilemap.ClearAllTiles();
+        ClearAll();
 
-        foreach (Vector3Int cell in influence.ClaimedTiles)
+        // Walls = solid cells the player has CLAIMED (their owned rock, shown as
+        // solid caps / "void") PLUS any solid cell touching open floor (cavern +
+        // room walls, claimed or not). The 8-neighbour reach catches concave-corner
+        // cells, which touch open floor only on a diagonal. Claimable-ring cells are
+        // capped too; their highlight renders above the caps (its tilemap is on a
+        // higher sorting layer) so claimable walls show both cap and highlight.
+        wallScratch.Clear();
+        foreach (Vector3Int c in influence.ClaimedTiles)
+            if (classifier.IsSolid(c)) wallScratch.Add(c);
+        foreach (Vector3Int open in influence.MinedTiles)
+            foreach (Vector3Int dir in Neighbours8)
+            {
+                Vector3Int n = open + dir;
+                if (classifier.IsSolid(n)) wallScratch.Add(n);
+            }
+
+        foreach (Vector3Int wall in wallScratch)
         {
-            if (!classifier.IsSolid(cell)) continue;
+            int mask = classifier.CapMask(wall);
+            capsTilemap.SetTile(wall, CapFor(wall, mask));
 
-            capsTilemap.SetTile(cell, capTiles[classifier.CapMask(cell)]);
+            if (!classifier.IsSouthFacing(wall)) continue;
 
-            if (facesTilemap == null || !classifier.IsSouthFacing(cell)) continue;
-
-            int v = (int)classifier.FaceVariant(cell);
+            int v = (int)classifier.FaceVariant(wall);
             if (v <= 0 || faceUpperTiles == null) continue;
 
-            Vector3Int upper = cell + SOUTH;          // open by definition of south-facing
-            Vector3Int lower = upper + SOUTH;
-            facesTilemap.SetTile(upper, faceUpperTiles[v]);
-            if (!classifier.IsSolid(lower))           // clip the drape at the next wall
+            Vector3Int upper = wall + S;          // open by definition of south-facing
+            Vector3Int lower = upper + S;
+            if (facesTilemap != null) facesTilemap.SetTile(upper, faceUpperTiles[v]);
+
+            if (classifier.IsSolid(lower))
+            {
+                // The drape falls onto the next wall — paint it UNDER that wall's cap.
+                if (facesBehindTilemap != null) facesBehindTilemap.SetTile(lower, faceLowerTiles[v]);
+            }
+            else if (facesTilemap != null)
+            {
                 facesTilemap.SetTile(lower, faceLowerTiles[v]);
+            }
         }
+    }
+
+    // A cardinal-surrounded cell (mask 15) becomes a concave corner when exactly
+    // one diagonal is open; otherwise it is the plain interior cap.
+    private TileBase CapFor(Vector3Int cell, int mask)
+    {
+        if (mask == 15)
+        {
+            bool oNE = !classifier.IsSolid(cell + NE);
+            bool oNW = !classifier.IsSolid(cell + NW);
+            bool oSE = !classifier.IsSolid(cell + SE);
+            bool oSW = !classifier.IsSolid(cell + SW);
+            int open = (oNE ? 1 : 0) + (oNW ? 1 : 0) + (oSE ? 1 : 0) + (oSW ? 1 : 0);
+            if (open == 1)
+            {
+                if (oSE && innerSE != null) return innerSE;
+                if (oSW && innerSW != null) return innerSW;
+                if (oNE && innerNE != null) return innerNE;
+                if (oNW && innerNW != null) return innerNW;
+            }
+        }
+        return capTiles[mask];
     }
 }

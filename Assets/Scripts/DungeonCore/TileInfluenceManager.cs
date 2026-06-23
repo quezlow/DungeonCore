@@ -360,6 +360,24 @@ public class TileInfluenceManager : MonoBehaviour
         MineTile(pos);
     }
 
+    /// <summary>
+    /// Marks a batch of cells as natural open floor — walkable (mined) — WITHOUT
+    /// claiming them. They stay outside the influence ring until the player claims
+    /// into them. Used by terrain generation for the pre-revealed core cavern +
+    /// tunnels (runs on both fresh generation and save-load). Does not fire
+    /// OnTileMined (these are not player digs) and does not expand the claimable
+    /// ring; fires OnTileCountChanged once if anything changed so the wall
+    /// renderer rebuilds.
+    /// </summary>
+    public void MarkNaturalFloor(IEnumerable<Vector3Int> cells)
+    {
+        if (cells == null) return;
+        bool any = false;
+        foreach (var cell in cells)
+            if (minedTiles.Add(cell)) any = true;
+        if (any) OnTileCountChanged?.Invoke(minedTiles.Count);
+    }
+
     // ── Unclaim / Shrink ──────────────────────────────────────────
 
     public void UnclaimTile(Vector3Int pos)

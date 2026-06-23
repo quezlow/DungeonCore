@@ -70,6 +70,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float tunnelWideFraction = 0.6f;
     [Tooltip("Probability per step that the tunnel drifts one cell perpendicular to its direction.")]
     [SerializeField, Range(0f, 1f)] private float tunnelWobbleChance = 0.3f;
+    [Tooltip("Tunnel width in cells. The centreline is dilated to this width (>= 4 recommended).")]
+    [SerializeField, Min(2)] private int tunnelWidth = 4;
 
     // ── Inspector — Pathfinding & Fording ─────────────────────────
 
@@ -637,24 +639,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
         System.Random rng, Vector3Int coreCell, HashSet<Vector3Int> cavernCells,
         double angle, int floorRadius, int tunnelIndex)
     {
-        var added = new HashSet<Vector3Int>();
-
         int length = rng.Next(tunnelMinLength, tunnelMaxLength + 1);
-        int wideUntil = Mathf.RoundToInt(length * tunnelWideFraction);
 
         double dx = Math.Cos(angle);
         double dy = Math.Sin(angle);
         double perpDx = -dy;
         double perpDy = dx;
 
-        // Width-side choice: alternating per tunnel for visual variety, but
-        // deterministic (no RNG consumption needed for this).
-        int widthSide = (tunnelIndex % 2 == 0) ? 1 : -1;
-
-        // Find tunnel start: farthest cavern cell along the angle, capped at
-        // a few cells (cavern is small).
+        // Find tunnel start: farthest cavern cell along the angle.
         Vector3Int startCell = coreCell;
-        for (int r = 1; r <= cavernOuterRadius + 2; r++)
+        for (int r = 1; r <= cavernOuterRadius + 3; r++)
         {
             var test = new Vector3Int(
                 coreCell.x + (int)Math.Round(r * dx),
@@ -663,50 +657,45 @@ public class TerrainFeatureGenerator : MonoBehaviour
             else break;
         }
 
-        // Walk outward from one step past the start cell.
+        // Walk a wobbling centreline outward from one step past the start cell.
+        var centreline = new List<Vector3Int>();
         double curX = startCell.x + dx;
         double curY = startCell.y + dy;
         int driftSteps = 0;
-
         for (int step = 0; step < length; step++)
         {
             if (rng.NextDouble() < tunnelWobbleChance)
                 driftSteps += (rng.Next(2) == 0) ? -1 : 1;
 
-            double pxOff = driftSteps * perpDx;
-            double pyOff = driftSteps * perpDy;
+            var cell = new Vector3Int(
+                (int)Math.Round(curX + driftSteps * perpDx),
+                (int)Math.Round(curY + driftSteps * perpDy), 0);
 
-            var primary = new Vector3Int(
-                (int)Math.Round(curX + pxOff),
-                (int)Math.Round(curY + pyOff), 0);
-
-            // Stop if outside floor radius.
-            int rdx = primary.x - coreCell.x;
-            int rdy = primary.y - coreCell.y;
+            int rdx = cell.x - coreCell.x;
+            int rdy = cell.y - coreCell.y;
             if (rdx * rdx + rdy * rdy > floorRadius * floorRadius) break;
 
-            // Skip cells already inside the cavern (overlap at the mouth).
-            if (!cavernCells.Contains(primary)) added.Add(primary);
-
-            // Width-2 perpendicular companion while in the wide section.
-            if (step < wideUntil)
-            {
-                var secondary = new Vector3Int(
-                    primary.x + (int)Math.Round(perpDx * widthSide),
-                    primary.y + (int)Math.Round(perpDy * widthSide), 0);
-                int sdx = secondary.x - coreCell.x;
-                int sdy = secondary.y - coreCell.y;
-                if (sdx * sdx + sdy * sdy <= floorRadius * floorRadius
-                    && !cavernCells.Contains(secondary))
-                {
-                    added.Add(secondary);
-                }
-            }
-
-            // Advance one step along primary direction.
+            centreline.Add(cell);
             curX += dx;
             curY += dy;
         }
+
+        // Dilate the centreline to a uniform width (tunnelWidth, >= 2). Square brush
+        // matches PaintRiver; no taper, so the tunnel never narrows to a sliver.
+        int half = (tunnelWidth - 1) / 2;
+        int extra = (tunnelWidth - 1) - 2 * half;
+        var added = new HashSet<Vector3Int>();
+        foreach (var c in centreline)
+            for (int ox = -half; ox <= half + extra; ox++)
+                for (int oy = -half; oy <= half + extra; oy++)
+                {
+                    var p = new Vector3Int(c.x + ox, c.y + oy, 0);
+                    int pdx = p.x - coreCell.x;
+                    int pdy = p.y - coreCell.y;
+                    if (pdx * pdx + pdy * pdy > floorRadius * floorRadius) continue;
+                    if (cavernCells.Contains(p)) continue;   // mouth overlaps the blob
+                    added.Add(p);
+                }
 
         return new TunnelData
         {
@@ -950,11 +939,34 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var terrain = floor != null ? floor.Terrain : null;
         if (terrain == null || featureData == null || featureData.coreCavern == null) return;
 
+        var open = new List<Vector3Int>();
         foreach (var sv in featureData.coreCavern.cells)
-            terrain.RevealTile(sv.ToVector3Int());
+        {
+            var c = sv.ToVector3Int();
+            terrain.RevealTile(c);
+            open.Add(c);
+        }
         foreach (var t in featureData.coreCavern.tunnels)
             foreach (var sv in t.cells)
-                terrain.RevealTile(sv.ToVector3Int());
+            {
+                var c = sv.ToVector3Int();
+                terrain.RevealTile(c);
+                open.Add(c);
+            }
+
+        // Also reveal the 1-cell wall border around the cavern so its wall caps
+        // sit on floor, not fog. Fog left under a cap shows through the cap's
+        // transparent edges as a dark outline.
+        foreach (var c in open)
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+
+        // The cavern + tunnels are pre-existing open floor: register them as
+        // walkable (mined) but unclaimed so they are passable and the wall
+        // renderer treats them as open. Runs on fresh-gen and save-load.
+        floor.TileInfluence?.MarkNaturalFloor(open);
     }
 
     private void UnfogAllRevealedFeatures()

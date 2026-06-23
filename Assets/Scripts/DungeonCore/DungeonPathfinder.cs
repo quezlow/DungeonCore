@@ -110,7 +110,16 @@ public static class DungeonPathfinder
 
                 bool owned = influence.IsTileMined(next);
                 bool isRiver = features != null && features.IsRiver(next);
-                bool passable = owned || isRiver;
+
+                // Path A — a north wall's face drapes 2 cells south over open floor;
+                // those cells read as solid wall, so they must not be walkable. A mined
+                // cell is "under an overhang" when there is rock (un-mined) within 2
+                // cells to the north.
+                bool underOverhang = owned &&
+                    (!influence.IsTileMined(next + Vector3Int.up) ||
+                     !influence.IsTileMined(next + new Vector3Int(0, 2, 0)));
+
+                bool passable = (owned && !underOverhang) || isRiver;
 
                 if (!passable && next != goal) continue;
 
