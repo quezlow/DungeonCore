@@ -221,15 +221,11 @@ public class CaveWallRenderer : MonoBehaviour
             Vector3Int lower = upper + S;
             if (facesTilemap != null) facesTilemap.SetTile(upper, faceUpperTiles[v]);
 
-            if (classifier.IsSolid(lower))
-            {
-                // The drape falls onto the next wall — paint it UNDER that wall's cap.
-                if (facesBehindTilemap != null) facesBehindTilemap.SetTile(lower, faceLowerTiles[v]);
-            }
-            else if (facesTilemap != null)
-            {
-                facesTilemap.SetTile(lower, faceLowerTiles[v]);
-            }
+            // Always paint the lower (bottom) slice on the behind tilemap so it sits
+            // BELOW entities — a monster at the foot of the wall renders in front of it
+            // (its head no longer clips behind the base). The cap and upper slice stay
+            // on WalkBehind for the over-the-head occlusion.
+            if (facesBehindTilemap != null) facesBehindTilemap.SetTile(lower, faceLowerTiles[v]);
         }
     }
 

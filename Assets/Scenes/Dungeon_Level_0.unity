@@ -20654,6 +20654,7 @@ GameObject:
   - component: {fileID: 1419482488}
   - component: {fileID: 1419482491}
   - component: {fileID: 1419482490}
+  - component: {fileID: 1419482492}
   - component: {fileID: 1419482489}
   m_Layer: 0
   m_Name: CaveCaps
@@ -20788,6 +20789,23 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!114 &1419482492
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419482487}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9b06e9f20f8eac42bec23652a14e5dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaveWallFade
+  capsTilemap: {fileID: 1419482491}
+  facesTilemap: {fileID: 2073436791}
+  facesBehindTilemap: {fileID: 1445721126}
+  fadeAlpha: 0.5
+  fadeSpeed: 9
 --- !u!1 &1421753136
 GameObject:
   m_ObjectHideFlags: 0
@@ -28905,8 +28923,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -2142731003
-  m_SortingLayer: 5
+  m_SortingLayerID: -1453108971
+  m_SortingLayer: 4
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}

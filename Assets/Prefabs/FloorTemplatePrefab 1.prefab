@@ -290,6 +290,7 @@ GameObject:
   - component: {fileID: 2545038085024385241}
   - component: {fileID: 8862123475429933221}
   - component: {fileID: 4724042244590669132}
+  - component: {fileID: 8377842169456860714}
   - component: {fileID: 7679793890658704837}
   m_Layer: 0
   m_Name: CaveCaps
@@ -407,6 +408,23 @@ TilemapRenderer:
   m_SortOrder: 0
   m_Mode: 1
   m_DetectChunkCullingBounds: 0
+--- !u!114 &8377842169456860714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1031380858442956199}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9b06e9f20f8eac42bec23652a14e5dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CaveWallFade
+  capsTilemap: {fileID: 8862123475429933221}
+  facesTilemap: {fileID: 2458690929967465137}
+  facesBehindTilemap: {fileID: 3487092723613550697}
+  fadeAlpha: 0.5
+  fadeSpeed: 9
 --- !u!114 &7679793890658704837
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1762,6 +1780,8 @@ MonoBehaviour:
   tunnelMaxLength: 8
   tunnelWideFraction: 0.6
   tunnelWobbleChance: 0.3
+  tunnelWidth: 4
+  tunnelTipWidth: 2
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
