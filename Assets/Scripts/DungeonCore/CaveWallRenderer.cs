@@ -42,9 +42,10 @@ public class CaveWallRenderer : MonoBehaviour
     public Tilemap FacesTilemap => facesTilemap;
     public Tilemap FacesBehindTilemap => facesBehindTilemap;
 
-    // Rock-edge cells (R) of mossy straight walls. The glow system reads these and
-    // lights mined cells within its radius. Rebuilt every RebuildAll.
-    public IReadOnlyCollection<Vector3Int> MossWallCells => mossWallCells;
+    // Rock-edge cells (R) of mossy straight walls, split by moss colour so the glow
+    // system can tint green vs gold (cols 0-3 green, 4-7 gold). Rebuilt each RebuildAll.
+    public IReadOnlyCollection<Vector3Int> GreenMossWalls => greenMossCells;
+    public IReadOnlyCollection<Vector3Int> GoldMossWalls => goldMossCells;
 
     [Header("Sheet")]
     [Tooltip("MainLev.png (the wall sheet). Sliced at runtime by cell coordinate.")]
@@ -140,7 +141,8 @@ public class CaveWallRenderer : MonoBehaviour
     private TileBase[][] capVariants;        // index = mask; non-null only for 7, 13, 14
     private TileBase innerSE, innerSW, innerNE, innerNW;     // concave-corner caps
     private readonly HashSet<Vector3Int> wallScratch = new();
-    private readonly HashSet<Vector3Int> mossWallCells = new();
+    private readonly HashSet<Vector3Int> greenMossCells = new();
+    private readonly HashSet<Vector3Int> goldMossCells = new();
     private float mossChance;            // per-dungeon moss density, re-rolled each rebuild
     private bool subscribed;
     private bool dirty;
@@ -256,7 +258,8 @@ public class CaveWallRenderer : MonoBehaviour
         if (capsTilemap != null) capsTilemap.ClearAllTiles();
         if (facesTilemap != null) facesTilemap.ClearAllTiles();
         if (facesBehindTilemap != null) facesBehindTilemap.ClearAllTiles();
-        mossWallCells.Clear();
+        greenMossCells.Clear();
+        goldMossCells.Clear();
     }
 
     private void MarkDirty(int _) => dirty = true;
@@ -308,8 +311,8 @@ public class CaveWallRenderer : MonoBehaviour
             // top always matches the drape.
             if (mask == 11)
             {
-                bool moss = StraightWallTiles(wall, out TileBase capT, out TileBase upperT, out TileBase lowerT);
-                if (moss) mossWallCells.Add(wall);
+                bool moss = StraightWallTiles(wall, out TileBase capT, out TileBase upperT, out TileBase lowerT, out int mossCol);
+                if (moss) { if (mossCol < 4) greenMossCells.Add(wall); else goldMossCells.Add(wall); }
                 capsTilemap.SetTile(wall, capT);
                 Vector3Int u = wall + S;          // S is open for mask 11
                 if (facesTilemap != null) facesTilemap.SetTile(u, upperT);
@@ -343,17 +346,19 @@ public class CaveWallRenderer : MonoBehaviour
     // and decorrelated between stacked floors): rolls the floor's moss chance. On moss,
     // a random moss column (cols 0-7, rows 11/12/13); otherwise a random plain stone
     // column (cols 1-4, rows 4/5/6). All three slices share the column. Returns isMoss.
-    private bool StraightWallTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower)
+    private bool StraightWallTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower, out int mossColumn)
     {
         var rng = new System.Random(unchecked(wall.GetHashCode() ^ (floor.FloorIndex * 73856093)));
         if (mossCapTiles != null && rng.NextDouble() < mossChance)
         {
-            int m = rng.Next(mossCapTiles.Length);             // moss cols 0..7
+            int m = rng.Next(mossCapTiles.Length);             // moss cols 0..7 (0-3 green, 4-7 gold)
             cap = mossCapTiles[m]; upper = mossUpperTiles[m]; lower = mossLowerTiles[m];
+            mossColumn = m;
             return true;
         }
         int s = StoneColumns[rng.Next(StoneColumns.Length)];   // stone cols {1,2,3,4}
         cap = straightCapTiles[s]; upper = straightUpperTiles[s]; lower = straightLowerTiles[s];
+        mossColumn = -1;
         return false;
     }
 
