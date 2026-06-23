@@ -70,12 +70,6 @@ public class TileInfluenceManager : MonoBehaviour
     [SerializeField] private float passiveExpansionInterval = 30f;
 
     [Header("Starter Area")]
-    [Tooltip("PHASE 4 — Per-cell probability that each of the 8 surrounding " +
-         "starter cells starts as mined floor (vs claimed stone). Core " +
-         "cell is always mined regardless. At least 1 of the 8 is guaranteed " +
-         "mined for connectivity, even if the roll says otherwise.")]
-    [Range(0f, 1f)]
-    [SerializeField] private float starterMinedChance = 0.7f;
     [Tooltip("Radius (cells) of the blob-shaped starter room. ~3 ≈ a 6-wide room.")]
     [SerializeField, Min(1f)] private float starterRoomRadius = 3f;
 

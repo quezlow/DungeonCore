@@ -5177,7 +5177,6 @@ MonoBehaviour:
   claimableTilemap: {fileID: 521119951}
   claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
   passiveExpansionInterval: 30
-  starterMinedChance: 0.7
   starterRoomRadius: 4
 --- !u!1 &331019469
 GameObject:
@@ -7612,7 +7611,6 @@ MonoBehaviour:
   tunnelMinAngleSeparation: 90
   tunnelMinLength: 6
   tunnelMaxLength: 14
-  tunnelWideFraction: 0.6
   tunnelWobbleChance: 0.3
   tunnelWidth: 4
   tunnelTipWidth: 2
@@ -20713,6 +20711,8 @@ MonoBehaviour:
   facesBehindTilemap: {fileID: 1445721126}
   sheet: {fileID: 2800000, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
   cellSize: 32
+  mossChanceMin: 0.01
+  mossChanceMax: 0.2
 --- !u!483693784 &1419482490
 TilemapRenderer:
   serializedVersion: 2

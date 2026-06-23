@@ -66,8 +66,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField, Range(45f, 180f)] private float tunnelMinAngleSeparation = 90f;
     [SerializeField, Min(1)] private int tunnelMinLength = 4;
     [SerializeField, Min(1)] private int tunnelMaxLength = 8;
-    [Tooltip("Fraction of tunnel length (0..1) over which it remains 2-cells wide. Beyond this, it narrows to 1 cell.")]
-    [SerializeField, Range(0f, 1f)] private float tunnelWideFraction = 0.6f;
     [Tooltip("Probability per step that the tunnel drifts one cell perpendicular to its direction.")]
     [SerializeField, Range(0f, 1f)] private float tunnelWobbleChance = 0.3f;
     [Tooltip("Tunnel width in cells. The centreline is dilated to this width (>= 4 recommended).")]
