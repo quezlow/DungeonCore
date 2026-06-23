@@ -87,6 +87,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
 
+    private List<Vector3> combatPath = new();
+    private int combatPathIndex = 0;
+    private float combatPathRefreshTimer = 0f;
+    private const float CombatPathRefreshInterval = 0.4f;
+
     private float lastAttackTime;
     private DungeonMonster combatTarget;
     private DungeonChest chestTarget;
@@ -542,11 +547,38 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         float dist = Vector2.Distance(transform.position, combatTarget.transform.position);
         if (dist > attackRange)
         {
+            // Pathfind to the target instead of beelining, so the approach routes
+            // around walls and overhangs. Refresh on a timer since the target moves.
+            Vector3 targetPos = combatTarget.transform.position;
+            combatPathRefreshTimer -= Time.deltaTime;
+            bool needsRefresh = combatPath.Count == 0
+                             || combatPathIndex >= combatPath.Count
+                             || combatPathRefreshTimer <= 0f;
+            if (needsRefresh)
+            {
+                combatPath = DungeonPathfinder.FindPath(currentFloor, transform.position, targetPos);
+                combatPathIndex = 0;
+                combatPathRefreshTimer = CombatPathRefreshInterval;
+            }
+
+            // Unreachable — drop combat and resume the invasion.
+            if (combatPath.Count == 0)
+            {
+                combatTarget = null;
+                state = AdventurerState.MovingToCore;
+                RefreshPath();
+                return;
+            }
+
+            Vector3 stepTarget = combatPath[combatPathIndex];
             transform.position = Vector2.MoveTowards(
-                transform.position, combatTarget.transform.position,
+                transform.position, stepTarget,
                 moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+            if (Vector2.Distance(transform.position, stepTarget) < 0.08f)
+                combatPathIndex++;
             return;
         }
+        combatPath.Clear();
 
         if (Time.time - lastAttackTime < attackCooldown) return;
         lastAttackTime = Time.time;

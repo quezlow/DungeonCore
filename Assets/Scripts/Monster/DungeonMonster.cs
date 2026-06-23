@@ -117,6 +117,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float defendCorePathRefreshTimer = 0f;
     private const float DefendCorePathRefreshInterval = 0.5f;
 
+    private List<Vector3> attackPath = new();
+    private int attackPathIndex = 0;
+    private float attackPathRefreshTimer = 0f;
+    private const float AttackPathRefreshInterval = 0.4f;
+
     // Patrol/Wander pathfinding (DAY 31 PART 3 CLOSE-OUT)
     private List<Vector3> patrolPath = new();
     private int patrolPathIndex = 0;
@@ -638,7 +643,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             for (int dy = -cellRadius; dy <= cellRadius; dy++)
             {
                 Vector3Int cell = spawnCell + new Vector3Int(dx, dy, 0);
-                if (!influence.IsTileMined(cell)) continue;
+                if (!influence.IsTileMined(cell) || influence.IsUnderOverhang(cell)) continue;
 
                 // Circular not square — use squared distance for cheap check.
                 Vector3 cellWorld = influence.CellToWorld(cell);
@@ -726,6 +731,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (target == null || !target.IsAlive)
         {
             target = null;
+            attackPath.Clear();
             EnterState(DetermineDesiredState());
             return;
         }
@@ -733,9 +739,35 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         float dist = Vector2.Distance(transform.position, targetPos);
         if (dist > attackRange)
         {
-            transform.position = Vector2.MoveTowards(transform.position, targetPos, EffectiveMoveSpeed * Time.deltaTime);
+            // Pathfind to the target instead of beelining, so the chase routes around
+            // walls and wall overhangs. Refresh on a timer since the target moves.
+            attackPathRefreshTimer -= Time.deltaTime;
+            bool needsRefresh = attackPath.Count == 0
+                             || attackPathIndex >= attackPath.Count
+                             || attackPathRefreshTimer <= 0f;
+            if (needsRefresh)
+            {
+                attackPath = DungeonPathfinder.FindPath(currentFloor, transform.position, targetPos);
+                attackPathIndex = 0;
+                attackPathRefreshTimer = AttackPathRefreshInterval;
+            }
+
+            // Unreachable (walled off) — drop the chase and resume normal behaviour.
+            if (attackPath.Count == 0)
+            {
+                target = null;
+                EnterState(DetermineDesiredState());
+                return;
+            }
+
+            Vector3 stepTarget = attackPath[attackPathIndex];
+            transform.position = Vector2.MoveTowards(
+                transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+            if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+                attackPathIndex++;
             return;
         }
+        attackPath.Clear();
         if (Time.time - lastAttackTime < attackCooldown) return;
         lastAttackTime = Time.time;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);

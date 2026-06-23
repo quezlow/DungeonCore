@@ -536,6 +536,19 @@ public class TileInfluenceManager : MonoBehaviour
 
     public bool IsTileClaimed(Vector3Int pos) => claimedTiles.Contains(pos);
     public bool IsTileMined(Vector3Int pos) => minedTiles.Contains(pos);
+
+    /// <summary>
+    /// True when this mined floor cell sits under the BOTTOM slice of a north
+    /// wall's draped face — open floor immediately north, solid rock two cells
+    /// north. The bottom wall sprite lands here, so the cell reads as wall, not
+    /// floor: entities must not stand on it or target it.
+    /// </summary>
+    public bool IsUnderOverhang(Vector3Int pos)
+    {
+        if (!minedTiles.Contains(pos)) return false;
+        return minedTiles.Contains(pos + Vector3Int.up)
+            && !minedTiles.Contains(pos + new Vector3Int(0, 2, 0));
+    }
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
 
     public IReadOnlyCollection<Vector3Int> ClaimedTiles => claimedTiles;

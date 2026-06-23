@@ -72,6 +72,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float tunnelWobbleChance = 0.3f;
     [Tooltip("Tunnel width in cells. The centreline is dilated to this width (>= 4 recommended).")]
     [SerializeField, Min(2)] private int tunnelWidth = 4;
+    [Tooltip("Tunnel width at the far tip. The tunnel tapers from tunnelWidth (mouth) to this.")]
+    [SerializeField, Min(1)] private int tunnelTipWidth = 2;
 
     // ── Inspector — Pathfinding & Fording ─────────────────────────
 
@@ -680,12 +682,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
             curY += dy;
         }
 
-        // Dilate the centreline to a uniform width (tunnelWidth, >= 2). Square brush
-        // matches PaintRiver; no taper, so the tunnel never narrows to a sliver.
-        int half = (tunnelWidth - 1) / 2;
-        int extra = (tunnelWidth - 1) - 2 * half;
+        // Dilate the centreline to a tapering width: tunnelWidth at the cavern mouth
+        // narrowing to tunnelTipWidth at the far end. Square brush matches PaintRiver.
         var added = new HashSet<Vector3Int>();
-        foreach (var c in centreline)
+        int span = centreline.Count;
+        for (int i = 0; i < span; i++)
+        {
+            var c = centreline[i];
+            float t = span > 1 ? (float)i / (span - 1) : 0f;
+            int w = Mathf.Max(tunnelTipWidth, Mathf.RoundToInt(Mathf.Lerp(tunnelWidth, tunnelTipWidth, t)));
+            int half = (w - 1) / 2;
+            int extra = (w - 1) - 2 * half;
             for (int ox = -half; ox <= half + extra; ox++)
                 for (int oy = -half; oy <= half + extra; oy++)
                 {
@@ -693,9 +700,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     int pdx = p.x - coreCell.x;
                     int pdy = p.y - coreCell.y;
                     if (pdx * pdx + pdy * pdy > floorRadius * floorRadius) continue;
-                    if (cavernCells.Contains(p)) continue;   // mouth overlaps the blob
+                    if (cavernCells.Contains(p)) continue;
                     added.Add(p);
                 }
+        }
 
         return new TunnelData
         {

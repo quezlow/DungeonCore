@@ -310,6 +310,11 @@ public class DungeonBuildController : MonoBehaviour
             Debug.Log("[BuildController] Waypoint cell must be owned or in a revealed chamber.");
             return;
         }
+        if (ActiveInfluence != null && ActiveInfluence.IsUnderOverhang(cell))
+        {
+            Debug.Log("[BuildController] Waypoint cell is under a wall overhang — not walkable.");
+            return;
+        }
         if (!placementSpawner.AddPatrolWaypoint(cell))
         {
             Debug.Log($"[BuildController] Cannot add waypoint (max {MonsterSpawner.MaxPatrolWaypoints} reached, or duplicate).");

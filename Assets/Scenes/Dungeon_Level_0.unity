@@ -7609,11 +7609,12 @@ MonoBehaviour:
   tunnelWeight2: 50
   tunnelWeight3: 30
   tunnelMinAngleSeparation: 90
-  tunnelMinLength: 4
-  tunnelMaxLength: 8
+  tunnelMinLength: 6
+  tunnelMaxLength: 14
   tunnelWideFraction: 0.6
   tunnelWobbleChance: 0.3
   tunnelWidth: 4
+  tunnelTipWidth: 2
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
@@ -20738,8 +20739,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayerID: -2142731003
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
@@ -28904,8 +28905,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayerID: -2142731003
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
