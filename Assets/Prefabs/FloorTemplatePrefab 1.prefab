@@ -397,8 +397,8 @@ TilemapRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayerID: -2142731003
+  m_SortingLayer: 5
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
@@ -753,7 +753,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DungeonTerrain
   floorTilemap: {fileID: 131661817924871155}
   fogTilemap: {fileID: 8029001582507907639}
-  floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
+  floorTile: {fileID: 11400000, guid: 74c9413d65178c945a1614ccc2244878, type: 2}
   fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
   fallbackRadius: 100
 --- !u!1 &3216912429020762657
