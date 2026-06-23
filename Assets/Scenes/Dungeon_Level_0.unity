@@ -10665,6 +10665,7 @@ MonoBehaviour:
   shallowTint: {r: 1, g: 0.98, b: 0.93, a: 1}
   deepTint: {r: 0.56, g: 0.64, b: 0.8, a: 1}
   maxDepth: 6
+  fogShadow: 0.5
 --- !u!114 &629551822
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10679,7 +10680,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DungeonShadow
   shadowTilemap: {fileID: 1312559821}
   claimedLight: 0.9
-  unclaimedLight: 0.5
+  unclaimedLight: 0.2
   breachFadeTiles: 7
   cursorRadius: 4
   mossRadius: 3

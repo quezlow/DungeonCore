@@ -38,6 +38,13 @@ public class FloorTint : MonoBehaviour
     [Tooltip("Floor index at which the deepest gradient tint is reached.")]
     [SerializeField, Min(1)] private int maxDepth = 8;
 
+    [Header("Fog")]
+    [Tooltip("Darkening multiplied onto the fog tint so unrevealed fog sits at the shadowed-" +
+             "cavern level it borders instead of standing out bright. Lower until the brightness " +
+             "seam at the fog edge disappears (1 = fog keeps the full tint). Pair with " +
+             "DungeonShadow's Unclaimed Light.")]
+    [SerializeField, Range(0f, 1f)] private float fogShadow = 0.5f;
+
     private void Start()
     {
         var floor = GetComponentInParent<FloorRoot>();
@@ -47,7 +54,7 @@ public class FloorTint : MonoBehaviour
         if (floor != null && floor.Terrain != null)
         {
             ApplyTint(floor.Terrain.FloorTilemap, tint);
-            ApplyTint(floor.Terrain.FogTilemap, tint);
+            ApplyTint(floor.Terrain.FogTilemap, tint * fogShadow);
         }
 
         var wallRenderer = floor != null ? floor.GetComponentInChildren<CaveWallRenderer>(true) : null;

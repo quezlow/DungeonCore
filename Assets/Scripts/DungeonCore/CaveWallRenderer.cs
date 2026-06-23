@@ -64,7 +64,7 @@ public class CaveWallRenderer : MonoBehaviour
     private static readonly Vector2Int[] CapCell =
     {
         new Vector2Int(6, 8),   // 0  none      -> pillar top
-        new Vector2Int(6, 8),   // 1  N         -> pillar top
+        new Vector2Int(6, 4),   // 1  N         -> column bottom (run continues north)
         new Vector2Int(13, 9),  // 2  E         -> nubEast top   (swapped)
         new Vector2Int(0, 4),   // 3  N+E       -> SW outer corner top
         new Vector2Int(6, 0),   // 4  S
@@ -82,7 +82,7 @@ public class CaveWallRenderer : MonoBehaviour
     };
 
     // Face variant -> drape slices (col, row from top), indexed by (int)CaveFace.
-    // enum CaveFace { None=0, Straight=1, CornerW=2, CornerE=3, Pillar=4, NubEast=5, NubWest=6 }
+    // enum CaveFace { None=0, Straight=1, CornerW=2, CornerE=3, Pillar=4, NubEast=5, NubWest=6, ColumnBottom=7 }
     private static readonly Vector2Int[] FaceUpperCell =
     {
         new Vector2Int(-1, -1),  // None
@@ -92,6 +92,7 @@ public class CaveWallRenderer : MonoBehaviour
         new Vector2Int(6, 9),    // Pillar
         new Vector2Int(13, 10),  // NubEast (swapped)
         new Vector2Int(14, 10),  // NubWest (swapped)
+        new Vector2Int(6, 5),    // ColumnBottom (N-only run)
     };
     private static readonly Vector2Int[] FaceLowerCell =
     {
@@ -102,6 +103,7 @@ public class CaveWallRenderer : MonoBehaviour
         new Vector2Int(6, 10),   // Pillar
         new Vector2Int(13, 11),  // NubEast (swapped)
         new Vector2Int(14, 11),  // NubWest (swapped)
+        new Vector2Int(6, 6),    // ColumnBottom (N-only run)
     };
 
     // Straight S-wall variety. STONE columns 1-4 (rows 4/5/6) are the default look,
