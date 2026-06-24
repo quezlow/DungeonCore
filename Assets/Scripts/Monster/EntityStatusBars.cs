@@ -71,8 +71,9 @@ public class EntityStatusBars : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (trackedEntity == null) return;
+        if (trackedEntity == null) { Destroy(gameObject); return; }
         transform.position = trackedEntity.position + worldOffset;
+
     }
 
     // ── Public API ────────────────────────────────────────────────
