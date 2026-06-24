@@ -153,6 +153,8 @@ public class DungeonSaveController : MonoBehaviour
             int floor0Seed = FloorManager.DeriveFloorSeed(WorldSeed, 0);
             FloorManager.Instance.SetFloorSeed(0, floor0Seed);
             floor0.FeatureGenerator.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
+            if (floor0.TerrainTypeMap != null)
+                floor0.TerrainTypeMap.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
         }
 
@@ -466,6 +468,9 @@ public class DungeonSaveController : MonoBehaviour
                 if (floorData.floorIndex == 0)
                 {
                     FloorManager.Instance.SetFloorSeed(0, floorData.floorSeed);
+                    var f0 = FloorManager.Instance.GetFloor(0);
+                    if (f0 != null && f0.TerrainTypeMap != null && f0.Terrain != null)
+                        f0.TerrainTypeMap.GenerateNew(floorData.floorSeed, f0.Terrain.CoreCell, f0.Terrain.CurrentRadius);
                     continue;
                 }
                 FloorManager.Instance.RecreateFloorFromSave(

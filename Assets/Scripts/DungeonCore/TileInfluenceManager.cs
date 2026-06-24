@@ -132,6 +132,11 @@ public class TileInfluenceManager : MonoBehaviour
         }
     }
 
+    // Bedrock border ring (unminable rim): bedrock is never added to the claimable
+    // set, so it can never be claimed and therefore never mined.
+    private bool IsBedrock(Vector3Int cell)
+        => MyFloor != null && MyFloor.TerrainTypeMap != null && MyFloor.TerrainTypeMap.IsBedrock(cell);
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -240,6 +245,7 @@ public class TileInfluenceManager : MonoBehaviour
                 if (claimedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
                 if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
+                if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 PaintClaimableTile(neighbour);
@@ -258,6 +264,7 @@ public class TileInfluenceManager : MonoBehaviour
     {
         if (claimedTiles.Contains(pos)) return;
         if (terrain != null && !terrain.IsWithinBounds(pos)) return;
+        if (!silent && IsBedrock(pos)) return;   // bedrock rim: unclaimable
 
         // Chamber gate — uncleared chambers cannot be claimed.
         // silent: true bypasses for save-restore.
@@ -280,6 +287,7 @@ public class TileInfluenceManager : MonoBehaviour
             if (claimedTiles.Contains(neighbour)) continue;
             if (claimableTiles.Contains(neighbour)) continue;
             if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
+            if (IsBedrock(neighbour)) continue;
 
             claimableTiles.Add(neighbour);
             PaintClaimableTile(neighbour);
@@ -464,6 +472,7 @@ public class TileInfluenceManager : MonoBehaviour
                 if (claimedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
                 if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
+                if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 PaintClaimableTile(neighbour);
@@ -505,6 +514,7 @@ public class TileInfluenceManager : MonoBehaviour
                 if (claimedTiles.Contains(neighbour)) continue;
                 if (claimableTiles.Contains(neighbour)) continue;
                 if (terrain != null && !terrain.IsWithinBounds(neighbour)) continue;
+                if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
                 PaintClaimableTile(neighbour);

@@ -53,6 +53,12 @@ public class DungeonBuildController : MonoBehaviour
     private bool dragClaimActive;
     private bool dragMineActive;
 
+    // Feature 3 — mine-target highlight (runtime overlay; no scene setup required).
+    [Header("Mine Highlight")]
+    [SerializeField] private Color mineHighlightColor = new Color(1f, 0.85f, 0.35f, 0.35f);
+    private GameObject mineHighlightGO;
+    private SpriteRenderer mineHighlightSR;
+
     private System.Collections.Generic.List<DungeonStairs> _stairClickBuf;
 
     // DAY 31 PART 3D — Spawner being edited during patrol/attack placement.
@@ -62,6 +68,7 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        BuildMineHighlight();
     }
 
     private void Start()
@@ -71,6 +78,8 @@ public class DungeonBuildController : MonoBehaviour
 
     private void Update()
     {
+        UpdateMineHighlight();
+
         // DAY 31 — Master pause-gate removed. Specific actions choose whether to honor
         // pause (active-pause pattern). Navigation, spawner selection, and command-UI
         // placement modes run during pause; gameplay-changing build modes do not.
@@ -250,8 +259,11 @@ public class DungeonBuildController : MonoBehaviour
 
     private void HandleMineClick()
     {
-        if (!MineInputThisFrame(out Vector3Int cell)) return;
+        if (!MineInputThisFrame(out Vector3Int clicked)) return;
         if (ActiveInfluence == null) return;
+
+        // Feature 3 — a click on a wall's cap OR its south face removes that wall.
+        if (!ResolveMineTarget(clicked, out Vector3Int cell)) return;
 
         // Strict mine-only. Only claimed-not-mined cells with valid adjacency proceed.
         if (ActiveInfluence.IsTileMined(cell)) return;
@@ -297,6 +309,101 @@ public class DungeonBuildController : MonoBehaviour
             if (influence.IsTileMined(cell + d)) return true;
         }
         return false;
+    }
+
+    // ── Feature 3: cap/face click remap + mine-target highlight ───
+
+    /// <summary>
+    /// Resolves a clicked/hovered cell to the wall it represents: the cell itself if it's
+    /// a claimed, unmined wall (cap click); otherwise the wall whose south face is drawn
+    /// over it — one cell north (upper face) or two north (lower face). False if the cell
+    /// maps to no claimed, unmined wall.
+    /// </summary>
+    private bool ResolveMineTarget(Vector3Int c, out Vector3Int target)
+    {
+        target = c;
+        var inf = ActiveInfluence;
+        if (inf == null) return false;
+
+        // Cap click: the cell itself is a claimed, unmined wall.
+        if (inf.IsTileClaimed(c) && !inf.IsTileMined(c)) { target = c; return true; }
+
+        // Face click: an open (mined) cell a wall's south face is draped over.
+        if (inf.IsTileMined(c))
+        {
+            Vector3Int up1 = c + Vector3Int.up;          // wall whose UPPER face sits at c
+            if (inf.IsTileClaimed(up1) && !inf.IsTileMined(up1)) { target = up1; return true; }
+
+            Vector3Int up2 = up1 + Vector3Int.up;        // wall whose LOWER face sits at c
+            if (inf.IsTileMined(up1) && inf.IsTileClaimed(up2) && !inf.IsTileMined(up2)) { target = up2; return true; }
+        }
+        return false;
+    }
+
+    private bool HoverCell(out Vector3Int cell)
+    {
+        cell = default;
+        var inf = ActiveInfluence;
+        if (Mouse.current == null || inf == null || mainCamera == null) return false;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
+        Vector3 w = mainCamera.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+        w.z = 0f;
+        cell = inf.WorldToCell(w);
+        return true;
+    }
+
+    private void BuildMineHighlight()
+    {
+        mineHighlightGO = new GameObject("MineTargetHighlight");
+        mineHighlightSR = mineHighlightGO.AddComponent<SpriteRenderer>();
+        var tex = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply();
+        mineHighlightSR.sprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        mineHighlightSR.color = mineHighlightColor;
+        mineHighlightSR.sortingLayerName = "AdjacentHighlight";
+        mineHighlightSR.sortingOrder = 100;
+        mineHighlightSR.enabled = false;
+    }
+
+    /// <summary>
+    /// Each frame: a translucent fill over the wall the cursor would mine (cap plus any
+    /// visible south-face cells), shown only in Mine mode over a valid mineable target.
+    /// </summary>
+    private void UpdateMineHighlight()
+    {
+        if (mineHighlightSR == null) return;
+        if (CurrentMode != BuildMode.Mine || PauseController.IsGamePaused)
+        {
+            mineHighlightSR.enabled = false;
+            return;
+        }
+
+        var inf = ActiveInfluence;
+        if (inf == null
+            || !HoverCell(out Vector3Int hover)
+            || !ResolveMineTarget(hover, out Vector3Int target)
+            || !CanMineCell(target))
+        {
+            mineHighlightSR.enabled = false;
+            return;
+        }
+
+        // Footprint height: cap, plus visible south-face cells (each present only when the
+        // cell below it is open/mined).
+        Vector3Int s = Vector3Int.down;
+        int n = 1;
+        if (inf.IsTileMined(target + s)) { n = 2; if (inf.IsTileMined(target + s + s)) n = 3; }
+
+        Vector3 topW = inf.CellToWorld(target);
+        Vector3 botW = inf.CellToWorld(target + s * (n - 1));
+        float cellH = Mathf.Abs(inf.CellToWorld(target + s).y - topW.y);
+        float cellW = Mathf.Abs(inf.CellToWorld(target + Vector3Int.right).x - topW.x);
+
+        mineHighlightGO.transform.position = new Vector3((topW.x + botW.x) * 0.5f, (topW.y + botW.y) * 0.5f, 0f);
+        mineHighlightGO.transform.localScale = new Vector3(cellW, cellH * n, 1f);
+        mineHighlightSR.color = mineHighlightColor;
+        mineHighlightSR.enabled = true;
     }
 
     // ── Patrol placement (DAY 31 PART 3D) ─────────────────────────

@@ -18,4 +18,5 @@ public enum TerrainType
     Granite = 3,
     Ruins = 4,
     HolyGround = 5,
+    Bedrock = 6,
 }

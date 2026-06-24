@@ -16,27 +16,38 @@ MonoBehaviour:
   - type: 0
     resistance: 1
     claimableRingTint: {r: 1, g: 1, b: 1, a: 1}
+    stoneTint: {r: 1, g: 1, b: 1, a: 1}
     displayName: Dirt
   - type: 1
     resistance: 1.2
     claimableRingTint: {r: 0.95, g: 0.85, b: 0.65, a: 1}
+    stoneTint: {r: 0.96, g: 0.9, b: 0.78, a: 1}
     displayName: Sand
   - type: 2
     resistance: 2
     claimableRingTint: {r: 0.7, g: 0.72, b: 0.78, a: 1}
+    stoneTint: {r: 0.85, g: 0.87, b: 0.92, a: 1}
     displayName: Stone
   - type: 3
     resistance: 4
     claimableRingTint: {r: 0.5, g: 0.55, b: 0.65, a: 1}
+    stoneTint: {r: 0.68, g: 0.72, b: 0.82, a: 1}
     displayName: Granite
   - type: 4
     resistance: 6
     claimableRingTint: {r: 0.65, g: 0.55, b: 0.7, a: 1}
+    stoneTint: {r: 0.82, g: 0.76, b: 0.85, a: 1}
     displayName: Ruins
   - type: 5
     resistance: 10
     claimableRingTint: {r: 1, g: 0.9, b: 0.7, a: 1}
+    stoneTint: {r: 1, g: 0.95, b: 0.82, a: 1}
     displayName: Holy Ground
+  - type: 6
+    resistance: 9999
+    claimableRingTint: {r: 0.3, g: 0.3, b: 0.35, a: 1}
+    stoneTint: {r: 0.32, g: 0.33, b: 0.4, a: 1}
+    displayName: Bedrock
   riverClaimResistance: 15
   chamberClaimResistance: 1
   riverClaimableTint: {r: 0.45, g: 0.75, b: 0.95, a: 1}

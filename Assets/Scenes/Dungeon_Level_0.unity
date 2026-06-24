@@ -20099,6 +20099,18 @@ PrefabInstance:
       propertyPath: orthographic size
       value: 7
       objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.b
+      value: 0.058823533
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.g
+      value: 0.058823533
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.r
+      value: 0.058823533
+      objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -27354,12 +27366,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e824f13129a573c4894649c73ffc44af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTypeMap
-  resistanceTable: {fileID: 11400000, guid: ae9e55df14d2d0245b299ea2dc8f7275, type: 2}
+  resistanceTable: {fileID: 11400000, guid: 4a699ea36f3cc5d4e9329631fe3e3f72, type: 2}
   minPatches: 3
   maxPatches: 6
   minPatchCells: 5
   maxPatchCells: 12
   patchExclusionFromCenter: 4
+  minRingThickness: 3
+  maxRingThickness: 6
+  ringNoiseScale: 2.5
 --- !u!4 &1894963498
 Transform:
   m_ObjectHideFlags: 0
@@ -34174,6 +34189,7 @@ MonoBehaviour:
   selectedFurniture: {fileID: 11400000, guid: 8cb0676de190c8542943021a598606cc, type: 2}
   selectedTrap: {fileID: 0}
   stairsDefinition: {fileID: 11400000, guid: 7bd57bf5ebf38324e9efabd5e455341a, type: 2}
+  mineHighlightColor: {r: 1, g: 0.85, b: 0.35, a: 0.35}
 --- !u!224 &5983522213685328985
 RectTransform:
   m_ObjectHideFlags: 0

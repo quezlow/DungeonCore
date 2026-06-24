@@ -37,9 +37,18 @@ public class TerrainTypeMap : MonoBehaviour
     [SerializeField] private int maxPatchCells = 12;
     [SerializeField] private int patchExclusionFromCenter = 4;
 
+    [Header("Bedrock Border Ring (unminable rim)")]
+    [Tooltip("The outer rim of the disc is unminable bedrock. Thickness undulates between " +
+             "these two values (in cells), seeded per floor for a natural irregular edge.")]
+    [SerializeField, Min(0)] private int minRingThickness = 2;
+    [SerializeField, Min(0)] private int maxRingThickness = 5;
+    [Tooltip("How rapidly the rim thickness varies around the perimeter. Higher = more, tighter undulations.")]
+    [SerializeField, Min(0.1f)] private float ringNoiseScale = 2.5f;
+
     // ── State ─────────────────────────────────────────────────────
     private Vector3Int centerCell;
     private int floorRadius;
+    private float ringOffX, ringOffY;   // per-floor noise offset for the bedrock rim
     private readonly Dictionary<Vector3Int, TerrainType> patchOverrides = new();
     private bool generated;
 
@@ -64,6 +73,11 @@ public class TerrainTypeMap : MonoBehaviour
             int mixed = floorSeed ^ 0x7E5A91B3;
             var rng = new System.Random(mixed);
             GeneratePatches(rng);
+
+            // Decorrelated RNG for the bedrock rim's undulation offset.
+            var ringRng = new System.Random(mixed ^ 0x51ED2C7);
+            ringOffX = (float)ringRng.NextDouble() * 1000f;
+            ringOffY = (float)ringRng.NextDouble() * 1000f;
         }
 
         generated = true;
@@ -92,6 +106,7 @@ public class TerrainTypeMap : MonoBehaviour
     public TerrainType GetTerrainAt(Vector3Int cell)
     {
         if (!generated) return TerrainType.Dirt;
+        if (IsBedrock(cell)) return TerrainType.Bedrock;
         if (patchOverrides.TryGetValue(cell, out var t)) return t;
         return ComputeRadialBand(cell);
     }
@@ -106,6 +121,12 @@ public class TerrainTypeMap : MonoBehaviour
     {
         if (resistanceTable == null) return Color.white;
         return resistanceTable.GetTint(GetTerrainAt(cell));
+    }
+
+    public Color GetStoneTint(Vector3Int cell)
+    {
+        if (resistanceTable == null) return Color.white;
+        return resistanceTable.GetStoneTint(GetTerrainAt(cell));
     }
 
     public string GetDisplayName(Vector3Int cell)
@@ -126,6 +147,40 @@ public class TerrainTypeMap : MonoBehaviour
         if (norm < 0.55f) return TerrainType.Sand;
         if (norm < 0.80f) return TerrainType.Stone;
         return TerrainType.Granite;
+    }
+
+    // ── Bedrock border ring ───────────────────────────────────────
+
+    /// <summary>
+    /// True when the cell sits in the unminable bedrock rim: the outer band of the disc
+    /// whose thickness undulates between min/maxRingThickness around the perimeter.
+    /// Bedrock is never made claimable, so it can never be claimed and thus never mined.
+    /// </summary>
+    public bool IsBedrock(Vector3Int cell)
+    {
+        if (!generated) return false;
+        long dx = cell.x - centerCell.x;
+        long dy = cell.y - centerCell.y;
+        long distSq = dx * dx + dy * dy;
+        if (distSq > (long)floorRadius * floorRadius) return false;   // outside the disc
+        float inner = floorRadius - RingThicknessAt((int)dx, (int)dy);
+        if (inner < 0f) inner = 0f;
+        return distSq >= (long)(inner * inner);
+    }
+
+    private float RingThicknessAt(int dx, int dy)
+    {
+        // Guard against the new serialized fields deserializing to 0 on a pre-existing
+        // component (so the rim still appears even if the Inspector wasn't touched).
+        int lo = minRingThickness, hi = maxRingThickness;
+        if (hi <= 0) { lo = 2; hi = 5; }
+        float scale = ringNoiseScale > 0f ? ringNoiseScale : 2.5f;
+
+        float len = Mathf.Sqrt((float)dx * dx + (float)dy * dy);
+        float ux = len > 0.0001f ? dx / len : 0f;
+        float uy = len > 0.0001f ? dy / len : 0f;
+        float n = Mathf.PerlinNoise(ux * scale + ringOffX, uy * scale + ringOffY);
+        return Mathf.Lerp(lo, hi, n);
     }
 
     // ── Patch generation ──────────────────────────────────────────

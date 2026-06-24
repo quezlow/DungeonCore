@@ -1745,6 +1745,7 @@ MonoBehaviour:
   shallowTint: {r: 1, g: 0.98, b: 0.93, a: 1}
   deepTint: {r: 0.56, g: 0.64, b: 0.8, a: 1}
   maxDepth: 6
+  fogShadow: 0.5
 --- !u!114 &562836618838593223
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2107,9 +2108,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e824f13129a573c4894649c73ffc44af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTypeMap
-  resistanceTable: {fileID: 11400000, guid: ae9e55df14d2d0245b299ea2dc8f7275, type: 2}
+  resistanceTable: {fileID: 11400000, guid: 4a699ea36f3cc5d4e9329631fe3e3f72, type: 2}
   minPatches: 3
   maxPatches: 6
   minPatchCells: 5
   maxPatchCells: 12
   patchExclusionFromCenter: 4
+  minRingThickness: 2
+  maxRingThickness: 5
+  ringNoiseScale: 2.5
