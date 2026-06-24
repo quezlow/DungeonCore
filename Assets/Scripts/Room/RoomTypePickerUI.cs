@@ -28,7 +28,10 @@ public class RoomTypePickerUI : MonoBehaviour
     [SerializeField] private Transform    entryContainer;
     [SerializeField] private Button       entryButtonPrefab;
     [SerializeField] private TMP_Text     currentRoomLabel;
-    [SerializeField] private Button       closeButton;
+    [SerializeField] private Button closeButton;
+
+    [Tooltip("The visible panel child to show/hide. This script lives on the always-active BuildMenuUIPanels wrapper, so it must toggle this child — NOT its own gameObject, which would disable the whole wrapper and every other picker.")]
+    [SerializeField] private GameObject panel;
 
     [Header("Colours")]
     [SerializeField] private Color selectedColor   = new(0.82f, 0.68f, 0.27f, 1f);
@@ -47,21 +50,21 @@ public class RoomTypePickerUI : MonoBehaviour
         Instance = this;
 
         closeButton?.onClick.AddListener(Close);
-        gameObject.SetActive(false);
+        if (panel != null) panel.SetActive(false);
     }
-
+    
     // ── Public API ────────────────────────────────────────────────
 
     public void Open(RoomAnchor anchor)
     {
         targetAnchor = anchor;
-        gameObject.SetActive(true);
+        if (panel != null) panel.SetActive(true);
 
         // Position the panel near the anchor in screen space.
-        if (Camera.main != null)
+        if (Camera.main != null && panel != null)
         {
             Vector3 screen = Camera.main.WorldToScreenPoint(anchor.transform.position);
-            transform.position = screen + new Vector3(80f, 80f, 0f);
+            panel.transform.position = screen + new Vector3(80f, 80f, 0f);
         }
 
         BuildEntries();
@@ -72,7 +75,7 @@ public class RoomTypePickerUI : MonoBehaviour
     public void Close()
     {
         targetAnchor = null;
-        gameObject.SetActive(false);
+        if (panel != null) panel.SetActive(false);
     }
 
     // ── Building ──────────────────────────────────────────────────
