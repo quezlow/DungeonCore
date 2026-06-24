@@ -107,7 +107,7 @@ public class MonsterSelectionUI : MonoBehaviour
 
         if (monsterIcon      != null) monsterIcon.sprite     = def.icon;
         if (monsterNameLabel != null) monsterNameLabel.text  = def.monsterName;
-        if (costLabel        != null) costLabel.text         = $"Capacity: {def.CapacityCost}";
+        if (costLabel != null) costLabel.text = $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
         if (descriptionLabel != null) descriptionLabel.text  = def.description;
     }
 

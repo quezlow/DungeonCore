@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
   prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
   capacityCost: 5
+  manaCost: 15
   description: "A reanimated warrior stripped down to bone and instinct. Cheap to
     summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
     Don't expect them to win many fights \u2014 expect them to buy time."

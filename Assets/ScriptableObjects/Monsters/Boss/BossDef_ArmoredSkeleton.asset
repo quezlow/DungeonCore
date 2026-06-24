@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 10
+  manaCost: 15
   description: 
   isAquatic: 0
   passiveRegenPerSecond: 1
@@ -26,5 +27,6 @@ MonoBehaviour:
   damageMultiplier: 3
   xpRewardMultiplier: 5
   capacityCostMultiplier: 4
+  manaCostMultiplier: 4
   scaleMultiplier: 1.5
   tint: {r: 1, g: 1, b: 1, a: 1}

@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 1880763209359424529, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
   prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
   capacityCost: 7
+  manaCost: 15
   description: Slow, relentless, and difficult to put down. Zombies absorb punishment
     that would drop a skeleton in seconds, making them ideal for chokepoints and
     doorways. Just don't ask them to catch anything that runs.

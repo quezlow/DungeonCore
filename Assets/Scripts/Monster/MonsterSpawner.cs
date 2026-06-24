@@ -163,6 +163,25 @@ public class MonsterSpawner : MonoBehaviour
     public void OnSelected() { if (selectionRing != null) selectionRing.SetActive(true); }
     public void OnDeselected() { if (selectionRing != null) selectionRing.SetActive(false); }
 
+    /// <summary>
+    /// Phase 3 closeout (#1) - player-initiated removal. Refunds half the spawn
+    /// mana, despawns the live monster (no loot, no respawn), and destroys this
+    /// spawner. Capacity is returned by OnDestroy. Caller handles the in-combat
+    /// gate and confirmation.
+    /// </summary>
+    public void RemoveByPlayer()
+    {
+        if (definition != null && DungeonCore.Instance != null)
+            DungeonCore.Instance.AddMana(definition.ManaCost * 0.5f);
+
+        if (spawnedMonster != null)
+        {
+            spawnedMonster.DespawnSilently();
+            spawnedMonster = null;
+        }
+        Destroy(gameObject);
+    }
+
     // ── Orders API (DAY 31 PART 3D) ───────────────────────────────
 
     public void SetOrderMode(SpawnerOrderMode mode)

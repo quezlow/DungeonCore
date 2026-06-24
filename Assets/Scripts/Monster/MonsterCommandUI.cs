@@ -34,6 +34,9 @@ public class MonsterCommandUI : MonoBehaviour
     [SerializeField] private Button clearOrdersButton;
     [SerializeField] private Button closeButton;
 
+    [Header("Removal (Phase 3 closeout #1)")]
+    [SerializeField] private ConfirmDialog confirmDialog;
+
     private MonsterSpawner current;
 
     private void Awake()
@@ -169,6 +172,27 @@ public class MonsterCommandUI : MonoBehaviour
     {
         if (current == null) return;
         current.ClearAllOrders();
+    }
+
+    /// <summary>Phase 3 closeout (#1) - wire a "Remove" button's onClick here.</summary>
+    public void OnRemoveClicked()
+    {
+        if (current == null) return;
+
+        // In-combat gate (locked decision): block while the live monster is fighting.
+        if (current.HasLiveMonster && current.SpawnedMonster != null && current.SpawnedMonster.IsInCombat)
+        {
+            BuildFeedback.Reject(current.transform.position, "Can't remove while in combat");
+            return;
+        }
+
+        var spawner = current;   // capture: the dialog callback fires later
+        int refund = spawner.Definition != null ? Mathf.RoundToInt(spawner.Definition.ManaCost * 0.5f) : 0;
+        string msg = $"Remove this spawner? Refunds {refund} mana, frees {spawner.CapacityCost} capacity.";
+        if (confirmDialog != null)
+            confirmDialog.Show(msg, () => spawner.RemoveByPlayer(), null, "Remove", "Cancel");
+        else
+            spawner.RemoveByPlayer();   // fallback if no dialog is wired
     }
 
     public void OnCloseClicked()

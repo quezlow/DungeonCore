@@ -39,6 +39,8 @@ public class MonsterDefinition : ScriptableObject
 
     [Header("Cost")]
     [SerializeField] private int capacityCost = 5;
+    [Tooltip("Mana spent to place a spawner of this monster. Boss variants scale it.")]
+    [SerializeField] private float manaCost = 25f;
 
     [Header("Description")]
     [TextArea(2, 4)]
@@ -67,4 +69,7 @@ public class MonsterDefinition : ScriptableObject
     /// Virtual so BossVariantDefinition can scale it.
     /// </summary>
     public virtual int CapacityCost => capacityCost;
+
+    /// <summary>Mana spent to place a spawner of this monster. Virtual so bosses scale it.</summary>
+    public virtual float ManaCost => manaCost;
 }

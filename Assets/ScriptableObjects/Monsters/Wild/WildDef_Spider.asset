@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 3744249878153681198, guid: 3595ba2fbd5594048afc3102bbe2f851, type: 3}
   prefab: {fileID: 9207189859156101171, guid: 4e6224405df5065488d5cf3db9d823bb, type: 3}
   capacityCost: 0
+  manaCost: 0
   description: 
   isAquatic: 0
   passiveRegenPerSecond: 1

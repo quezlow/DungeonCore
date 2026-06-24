@@ -230,6 +230,21 @@ public class DungeonBuildController : MonoBehaviour
 
     // ── Claim ─────────────────────────────────────────────────────
 
+    /// <summary>Phase 3 closeout (#6) - feedback for a rejected build action at a cell.</summary>
+    private void RejectAt(Vector3Int cell, string reason)
+    {
+        Vector3 world;
+        var inf = ActiveInfluence;
+        if (inf != null) world = inf.CellToWorld(cell);
+        else if (mainCamera != null && Mouse.current != null)
+        {
+            world = mainCamera.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+            world.z = 0f;
+        }
+        else world = Vector3.zero;
+        BuildFeedback.Reject(world, reason);
+    }
+
     private void HandleClaimClick()
     {
         if (!ClaimInputThisFrame(out Vector3Int cell)) return;
@@ -243,6 +258,7 @@ public class DungeonBuildController : MonoBehaviour
         if (features != null && features.IsCellInUnclearedChamber(cell))
         {
             Debug.Log("[BuildController] Cannot claim cavern — clear wild monsters first.");
+            RejectAt(cell, "Clear the wild monsters first");
             dragClaimActive = false;
             return;
         }
@@ -251,6 +267,7 @@ public class DungeonBuildController : MonoBehaviour
 
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
         {
+            RejectAt(cell, "Not enough mana");
             dragClaimActive = false;
             return;
         }
@@ -272,6 +289,7 @@ public class DungeonBuildController : MonoBehaviour
         if (!CanMineCell(cell))
         {
             Debug.Log("[BuildController] Cannot mine here — must be adjacent to existing mined area.");
+            RejectAt(cell, "Must be next to a mined tile");
             return;
         }
 
@@ -280,6 +298,7 @@ public class DungeonBuildController : MonoBehaviour
 
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
         {
+            RejectAt(cell, "Not enough mana");
             dragMineActive = false;
             return;
         }
@@ -415,16 +434,19 @@ public class DungeonBuildController : MonoBehaviour
         if (!IsCellValidForWaypoint(cell))
         {
             Debug.Log("[BuildController] Waypoint cell must be owned or in a revealed chamber.");
+            RejectAt(cell, "Must be owned or a revealed chamber");
             return;
         }
         if (ActiveInfluence != null && ActiveInfluence.IsUnderOverhang(cell))
         {
             Debug.Log("[BuildController] Waypoint cell is under a wall overhang — not walkable.");
+            RejectAt(cell, "Blocked by a wall overhang");
             return;
         }
         if (!placementSpawner.AddPatrolWaypoint(cell))
         {
             Debug.Log($"[BuildController] Cannot add waypoint (max {MonsterSpawner.MaxPatrolWaypoints} reached, or duplicate).");
+            RejectAt(cell, "Max waypoints reached");
         }
     }
 
@@ -437,6 +459,7 @@ public class DungeonBuildController : MonoBehaviour
         if (!IsCellValidForWaypoint(cell))
         {
             Debug.Log("[BuildController] Attack target must be owned or in a revealed chamber.");
+            RejectAt(cell, "Must be owned or a revealed chamber");
             return;
         }
         placementSpawner.SetAttackTarget(cell);
@@ -474,7 +497,17 @@ public class DungeonBuildController : MonoBehaviour
         if (spawnerShellPrefab == null) return;
         var def = MonsterSelectionUI.Instance?.Selected;
         if (def == null) return;
-        if (!DungeonCore.Instance.TrySpendCapacity(def.CapacityCost)) return;
+
+        var core = DungeonCore.Instance;
+        if (core == null) return;
+
+        // Phase 3 closeout - spawners cost BOTH capacity and mana (per the roadmap).
+        // Pre-check both so we never spend one resource and then fail on the other.
+        if (core.FreeCapacity < def.CapacityCost) { RejectAt(cell, "Monster capacity full"); return; }
+        if (core.CurrentMana < def.ManaCost) { RejectAt(cell, "Not enough mana"); return; }
+
+        core.TrySpendCapacity(def.CapacityCost);
+        core.SpendMana(def.ManaCost);
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
@@ -488,7 +521,7 @@ public class DungeonBuildController : MonoBehaviour
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedChest == null || selectedChest.prefab == null) return;
-        if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) return;
+        if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var chest = Instantiate(selectedChest.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) chest.transform.SetParent(ActiveFloor.transform, true);
@@ -501,8 +534,8 @@ public class DungeonBuildController : MonoBehaviour
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedFurniture == null) return;
-        if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell)) return;
-        if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost)) return;
+        if (selectedFurniture.blocksPathfinding && RoomValidator.WouldBlockDungeon(cell)) { RejectAt(cell, "Would block the dungeon path"); return; }
+        if (!DungeonCore.Instance.SpendMana(selectedFurniture.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var piece = Instantiate(selectedFurniture.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) piece.transform.SetParent(ActiveFloor.transform, true);
@@ -528,8 +561,8 @@ public class DungeonBuildController : MonoBehaviour
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (selectedTrap == null || selectedTrap.prefab == null) return;
-        if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) return;
-        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) return;
+        if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) { RejectAt(cell, "A trap is already here"); return; }
+        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var trap = Instantiate(selectedTrap.prefab, worldPos, Quaternion.identity);
@@ -544,12 +577,12 @@ public class DungeonBuildController : MonoBehaviour
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (FloorManager.Instance == null) return;
         if (FloorManager.Instance.IsCoreRelocationPending) { SetMode(BuildMode.Claim); return; }
-        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { SetMode(BuildMode.Claim); return; }
-        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { SetMode(BuildMode.Claim); return; }
-        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { RejectAt(cell, "Deepest floor reached"); SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { RejectAt(cell, "This floor already has stairs down"); SetMode(BuildMode.Claim); return; }
+        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { RejectAt(cell, "Level up before expanding deeper"); SetMode(BuildMode.Claim); return; }
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (stairsDefinition == null || stairsDefinition.prefab == null) return;
-        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) return;
+        if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
         if (!DungeonCore.Instance.TryConsumeStairCredit()) return;
 
         int currentFloorIndex = FloorManager.Instance.ActiveFloorIndex;

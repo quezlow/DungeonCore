@@ -845,6 +845,17 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         Destroy(gameObject);
     }
 
+    /// <summary>
+    /// Phase 3 closeout (#1) — remove with no loot, no respawn and no death event
+    /// (player removed this monster's spawner). Destroys the separate status-bar
+    /// object that OnDestroy alone would orphan.
+    /// </summary>
+    public void DespawnSilently()
+    {
+        if (statusBars != null) Destroy(statusBars.gameObject);
+        Destroy(gameObject);
+    }
+
     private void OnDestroy()
     {
         // Safety net for any teardown path that skips Die() (e.g. scene unload).
@@ -869,4 +880,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public float MonsterXP => monsterXP;
     public FloorRoot CurrentFloor => currentFloor;
     public BossVariantDefinition BossDefinition => bossDefinition;
+
+    /// <summary>Phase 3 closeout (#1) - true while actively fighting a target.</summary>
+    public bool IsInCombat => state == MonsterState.Attack;
 }

@@ -30,6 +30,7 @@ public class BossVariantDefinition : MonsterDefinition
     [Min(1f)] public float damageMultiplier = 3f;
     [Min(1f)] public float xpRewardMultiplier = 5f;
     [Min(1f)] public float capacityCostMultiplier = 4f;
+    [Min(1f)] public float manaCostMultiplier = 4f;
     [Min(0.5f)] public float scaleMultiplier = 1.5f;
 
     [Header("Visual")]
@@ -40,6 +41,9 @@ public class BossVariantDefinition : MonsterDefinition
     /// <summary>Capacity cost scaled by the boss multiplier.</summary>
     public override int CapacityCost
         => Mathf.Max(1, Mathf.RoundToInt(base.CapacityCost * capacityCostMultiplier));
+
+    /// <summary>Mana cost scaled by the boss multiplier.</summary>
+    public override float ManaCost => base.ManaCost * manaCostMultiplier;
 
     /// <summary>Returns the title for alerts and status bars.</summary>
     public string GetBossTitle()
