@@ -21415,6 +21415,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 827983951845051009, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1438045298}
+    - targetCorrespondingSourceObject: {fileID: 827983951845051009, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1438045302}
   m_SourcePrefab: {fileID: 100100000, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
 --- !u!1 &1438045297 stripped
 GameObject:
@@ -21452,6 +21455,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
+--- !u!114 &1438045302
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1438045297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00b2d199b96b516448144ab30fb26aed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineImpulseListener
+  ApplyAfter: 2
+  ChannelMask: 1
+  Gain: 1
+  Use2DDistance: 0
+  UseCameraSpace: 1
+  SignalCombinationMode: 0
+  ReactionSettings:
+    m_SecondaryNoise: {fileID: 0}
+    AmplitudeGain: 1
+    FrequencyGain: 1
+    Duration: 1
+    m_NoiseOffsets: {x: 0, y: 0, z: 0}
 --- !u!1 &1438652379
 GameObject:
   m_ObjectHideFlags: 0
@@ -32185,6 +32212,8 @@ GameObject:
   - component: {fileID: 7601438563657851050}
   - component: {fileID: 4548966641185237238}
   - component: {fileID: 760082062}
+  - component: {fileID: 9148225019790764727}
+  - component: {fileID: 9148225019790764726}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -32747,6 +32776,8 @@ MonoBehaviour:
   quintupleButton: {fileID: 0}
   activeColour: {r: 1, g: 0.85, b: 0.2, a: 1}
   inactiveColour: {r: 0.4, g: 0.4, b: 0.4, a: 1}
+  killHitstopSeconds: 0.05
+  bossHitstopSeconds: 0.15
 --- !u!222 &3338006888216494481
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -37262,6 +37293,72 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b41e7155a283e784a8d953179cdbd7f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+--- !u!114 &9148225019790764726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046709260463597617}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 234660d7cb84081478e7e5f753ce74b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenShake
+  bossDeathForce: 1.2
+--- !u!114 &9148225019790764727
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046709260463597617}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 180ecf9b41d478f468eb3e9083753217, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineImpulseSource
+  ImpulseDefinition:
+    ImpulseChannel: 1
+    ImpulseShape: 4
+    CustomImpulseShape:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    ImpulseDuration: 0.3
+    ImpulseType: 0
+    DissipationRate: 0.25
+    RawSignal: {fileID: 0}
+    AmplitudeGain: 1
+    FrequencyGain: 1
+    RepeatMode: 0
+    Randomize: 1
+    TimeEnvelope:
+      AttackShape:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      DecayShape:
+        serializedVersion: 2
+        m_Curve: []
+        m_PreInfinity: 2
+        m_PostInfinity: 2
+        m_RotationOrder: 4
+      AttackTime: 0
+      SustainTime: 0.2
+      DecayTime: 0.7
+      ScaleWithImpact: 1
+      HoldForever: 0
+    ImpactRadius: 100
+    DirectionMode: 0
+    DissipationMode: 2
+    DissipationDistance: 100
+    PropagationSpeed: 343
+  DefaultVelocity: {x: 0, y: -0.4, z: 0}
 --- !u!222 &9167274261039393849
 CanvasRenderer:
   m_ObjectHideFlags: 0

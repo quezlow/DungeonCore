@@ -602,6 +602,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
+        GetComponent<DamageFlash>()?.Flash();   
         if (currentHP <= 0f) { Die(); return true; }
         return false;
     }
@@ -614,6 +615,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
         if (statusBars != null) Destroy(statusBars.gameObject);
+
+        TimeScaleController.Instance?.DoKillHitstop();
+
         Destroy(gameObject);
     }
 

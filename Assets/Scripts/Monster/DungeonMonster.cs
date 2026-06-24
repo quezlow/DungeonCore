@@ -832,6 +832,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         pendingHealDisplay = 0f;
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
+        GetComponent<DamageFlash>()?.Flash(); 
         if (currentHP <= 0f) Die();
     }
 
@@ -840,6 +841,17 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);
         GetComponent<LootTable>()?.Roll(transform.position);
+
+        if (IsBoss)
+        {
+            TimeScaleController.Instance?.DoBossHitstop();
+            ScreenShake.Instance?.ShakeBossDeath();
+        }
+        else
+        {
+            TimeScaleController.Instance?.DoKillHitstop();
+        }
+
         spawner?.OnMonsterDied();
         OnDied?.Invoke(this);
         Destroy(gameObject);
