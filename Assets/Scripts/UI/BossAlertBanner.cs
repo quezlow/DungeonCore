@@ -39,7 +39,9 @@ public class BossAlertBanner : MonoBehaviour
     {
         if (rect == null) rect = GetComponent<RectTransform>();
         if (rect != null) rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, hiddenY);
-        gameObject.SetActive(false);
+        // Start hidden by being disabled in the Inspector, NOT by a
+        // self-hide here. Awake runs on first activation, so a self-hide would re-hide the
+        // banner the moment Show() activates it. (Show positions + slides it in.)
     }
 
     /// <summary>Called by BossAlertService.NotifyBossDeath().</summary>
