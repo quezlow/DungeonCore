@@ -76,6 +76,7 @@ public class MonsterSelectionUI : MonoBehaviour
 
     private void HandleModeChanged(BuildMode mode)
     {
+        Debug.Log($"[MonsterPicker] HandleModeChanged({mode})");
         if (mode == BuildMode.PlaceSpawner)
             Show();
         else
@@ -120,6 +121,7 @@ public class MonsterSelectionUI : MonoBehaviour
     private void Show()
     {
         if (panel != null) panel.SetActive(true);
+        Debug.Log($"[MonsterPicker] Show() — activeSelf={(panel != null && panel.activeSelf)} activeInHierarchy={(panel != null && panel.activeInHierarchy)}");
     }
 
     private void Hide()

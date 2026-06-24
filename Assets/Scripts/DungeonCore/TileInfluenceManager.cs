@@ -405,20 +405,19 @@ public class TileInfluenceManager : MonoBehaviour
 
         if (toRemove.Count == 0) return;
 
-        int minedRemoved = 0;
         foreach (var cell in toRemove)
         {
             claimedTiles.Remove(cell);
-            if (minedTiles.Remove(cell)) minedRemoved++;
-            terrain?.RefogTile(cell);
+            // Breach shrinks ownership only. A dug tunnel persists: mined cells keep their
+            // mined state and stay revealed, so only re-fog cells that were never dug.
+            if (!minedTiles.Contains(cell)) terrain?.RefogTile(cell);
         }
 
         RebuildClaimableSet();
         DungeonCore.Instance?.RemoveClaimedTiles(toRemove.Count);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
-        if (minedRemoved > 0) OnTileCountChanged?.Invoke(minedTiles.Count);
 
-        Debug.Log($"[TileInfluenceManager] Breach shrink removed {toRemove.Count} claimed ({minedRemoved} mined).");
+        Debug.Log($"[TileInfluenceManager] Breach shrink unclaimed {toRemove.Count} cell(s); mined tunnels preserved.");
     }
 
     // ── Passive Expansion ─────────────────────────────────────────
@@ -540,8 +539,14 @@ public class TileInfluenceManager : MonoBehaviour
     public bool IsUnderOverhang(Vector3Int pos)
     {
         if (!minedTiles.Contains(pos)) return false;
-        return minedTiles.Contains(pos + Vector3Int.up)
-            && !minedTiles.Contains(pos + new Vector3Int(0, 2, 0));
+
+        // A south-facing wall's draped face is two cells tall and covers the two open
+        // cells directly south of it (upper slice at wall+S, lower slice at wall+2S).
+        // Both read as wall, so neither is walkable:
+        //   - a solid cell directly north      -> pos is the face's UPPER slice.
+        //   - one open cell north, then solid   -> pos is the face's LOWER slice.
+        if (!minedTiles.Contains(pos + Vector3Int.up)) return true;
+        return !minedTiles.Contains(pos + new Vector3Int(0, 2, 0));
     }
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
 
