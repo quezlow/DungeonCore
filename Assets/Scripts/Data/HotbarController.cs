@@ -27,6 +27,8 @@ public class HotbarController : MonoBehaviour
 
     void Update()
     {
+        if (PauseController.IsGamePaused) return;
+
         for (int i = 0; i < slotCount; i++)
         {
             if (Keyboard.current[hotbarKeys[i]].wasPressedThisFrame)
