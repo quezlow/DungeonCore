@@ -122,14 +122,14 @@ public class ActionBarHUD : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
-        var kb = Keyboard.current;
-        if (kb == null) return;
+        if (Keybinds.WasPressed(GameAction.Mine)) OnMineTabClicked();
+        if (Keybinds.WasPressed(GameAction.Build)) OnBuildTabClicked();
+        if (Keybinds.WasPressed(GameAction.Summon)) OnSummonTabClicked();
+        if (Keybinds.WasPressed(GameAction.Claim)) OnClaimTabClicked();
 
-        if (kb.mKey.wasPressedThisFrame) OnMineTabClicked();
-        if (kb.bKey.wasPressedThisFrame) OnBuildTabClicked();
-        if (kb.vKey.wasPressedThisFrame) OnSummonTabClicked();
-        if (kb.cKey.wasPressedThisFrame) OnClaimTabClicked();
-        if (kb.escapeKey.wasPressedThisFrame) CancelToIdle();
+        // Esc (cancel) stays hard-bound.
+        var kb = Keyboard.current;
+        if (kb != null && kb.escapeKey.wasPressedThisFrame) CancelToIdle();
     }
 
     // ── Tab click handlers ────────────────────────────────────────

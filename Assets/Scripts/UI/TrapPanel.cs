@@ -36,7 +36,6 @@ public class TrapPanel : MonoBehaviour
 
     [Header("Hotkey")]
     [Tooltip("Key that toggles panel visibility.")]
-    [SerializeField] private Key hotkey = Key.T;
 
     private readonly List<Button> spawnedEntries = new();
     private bool isOpen = false;
@@ -54,10 +53,7 @@ public class TrapPanel : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
 
-        var kb = Keyboard.current;
-        if (kb == null) return;
-
-        if (kb[hotkey].wasPressedThisFrame)
+        if (Keybinds.WasPressed(GameAction.ToggleTraps))
             Toggle();
     }
 

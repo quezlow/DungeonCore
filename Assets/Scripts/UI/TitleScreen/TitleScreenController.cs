@@ -36,6 +36,7 @@ public class TitleScreenController : MonoBehaviour
     private void Awake()
     {
         DcrAudioSettings.Load();
+        Keybinds.Load();
 
         continueButton.onClick.AddListener(HandleContinue);
         loadGameButton.onClick.AddListener(HandleLoadGame);

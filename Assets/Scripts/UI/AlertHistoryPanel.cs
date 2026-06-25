@@ -45,7 +45,6 @@ public class AlertHistoryPanel : MonoBehaviour
 
     [Header("Hotkey")]
     [Tooltip("Key that toggles panel visibility.")]
-    [SerializeField] private Key hotkey = Key.L;
 
     [Header("UI References")]
     [SerializeField] private GameObject panel;
@@ -107,9 +106,7 @@ public class AlertHistoryPanel : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-        var kb = Keyboard.current;
-        if (kb == null) return;
-        if (kb[hotkey].wasPressedThisFrame) Toggle();
+        if (Keybinds.WasPressed(GameAction.ToggleAlerts)) Toggle();
     }
 
     // ── Public API ────────────────────────────────────────────────

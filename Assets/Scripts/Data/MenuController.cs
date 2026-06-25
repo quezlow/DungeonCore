@@ -22,8 +22,7 @@ public class MenuController : MonoBehaviour
 
     void Update()
     {
-        if (Keyboard.current == null) return;
-        if (!Keyboard.current.tabKey.wasPressedThisFrame) return;
+        if (!Keybinds.WasPressed(GameAction.AvatarMenu)) return;
 
         bool opening = !menuCanvas.activeSelf;
 

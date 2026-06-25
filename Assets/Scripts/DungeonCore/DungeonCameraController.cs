@@ -168,10 +168,10 @@ public class DungeonCameraController : MonoBehaviour
         if (keyboard != null)
         {
             float h = 0f, v = 0f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) h += 1f;
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) h -= 1f;
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) v += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) v -= 1f;
+            if (Keybinds.IsHeld(GameAction.PanRight) || keyboard.rightArrowKey.isPressed) h += 1f;
+            if (Keybinds.IsHeld(GameAction.PanLeft) || keyboard.leftArrowKey.isPressed) h -= 1f;
+            if (Keybinds.IsHeld(GameAction.PanUp) || keyboard.upArrowKey.isPressed) v += 1f;
+            if (Keybinds.IsHeld(GameAction.PanDown) || keyboard.downArrowKey.isPressed) v -= 1f;
             if (Mathf.Abs(h) > 0f || Mathf.Abs(v) > 0f)
                 move += new Vector3(h, v, 0f).normalized * keyboardPanSpeed * Time.unscaledDeltaTime;
         }
