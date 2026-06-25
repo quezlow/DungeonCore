@@ -255,6 +255,18 @@ public class DungeonSaveController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Renames the CURRENTLY-LOADED dungeon: updates the live name (so the header and the
+    /// next save reflect it) and rewrites the meta.json sidecar now (so the slot list shows
+    /// it immediately). Renaming a DIFFERENT slot rewrites that slot's meta only.
+    /// </summary>
+    public void RenameCurrentDungeon(string newName)
+    {
+        if (currentSave == null) return;
+        currentSave.dungeonName = string.IsNullOrWhiteSpace(newName) ? "Unnamed Dungeon" : newName.Trim();
+        WriteMetadataAtomically(BuildMetadata(currentSave));
+    }
+
     private SlotMetadata BuildMetadata(DungeonSaveData data)
     {
         return new SlotMetadata

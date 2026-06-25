@@ -1,9 +1,11 @@
 using System.Collections;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+
 
 /// <summary>
 /// Wave 2a — In-dungeon pause menu, assembled from the themed UI prefabs.
@@ -45,13 +47,16 @@ public class PauseMenuController : MonoBehaviour
     [SerializeField] private SlotPickerController slotPicker;
     [SerializeField] private ConfirmDialog loadConfirm;
     [SerializeField] private SaveQuitDialog quitDialog;
+    [SerializeField] private NameDialog nameDialog;   // rename a save slot from the Load list
 
     [Header("Feedback (optional)")]
     [SerializeField] private TMP_Text saveFlashLabel;
 
     private const string GAMEPLAY_SCENE = "Dungeon_Level_0";
 
-    private bool isOpen;
+    // Static so other systems (e.g. the camera) can tell the pause menu is up and stop
+    // responding to scroll / WASD while the player is in the menu or the Load list.
+    public static bool IsMenuOpen { get; private set; }
     private SlotTileView pendingLoadTile;
 
     private void Awake()
@@ -70,11 +75,13 @@ public class PauseMenuController : MonoBehaviour
         {
             slotPicker.OnSlotChosen += HandleSlotChosen;
             slotPicker.OnBack += CloseLoad;
+            slotPicker.OnRenameRequested += HandleRename;
+            slotPicker.OnDeleteRequested += HandleDelete;
         }
 
         if (backdrop != null) backdrop.SetActive(false);
         if (board != null) board.SetActive(false);
-        isOpen = false;
+        IsMenuOpen = false;
     }
 
     private void Start()
@@ -90,6 +97,8 @@ public class PauseMenuController : MonoBehaviour
         {
             slotPicker.OnSlotChosen -= HandleSlotChosen;
             slotPicker.OnBack -= CloseLoad;
+            slotPicker.OnRenameRequested -= HandleRename;
+            slotPicker.OnDeleteRequested -= HandleDelete;
         }
         var settingsCtrl = settingsPanel != null ? settingsPanel.GetComponent<SettingsMenuController>() : null;
         if (settingsCtrl != null) settingsCtrl.OnBack -= CloseSettings;
@@ -100,7 +109,7 @@ public class PauseMenuController : MonoBehaviour
         var kb = Keyboard.current;
         if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
 
-        if (isOpen) Resume();
+        if (IsMenuOpen) Resume();
         else if (IsIdle()) Open();
     }
 
@@ -116,19 +125,16 @@ public class PauseMenuController : MonoBehaviour
     // Open / Resume
     public void Open()
     {
-        isOpen = true;
+        IsMenuOpen = true;
         if (backdrop != null) backdrop.SetActive(true);
         if (board != null) board.SetActive(true);
-        if (dungeonNameLabel != null)
-            dungeonNameLabel.text = DungeonSaveController.Instance != null
-                ? DungeonSaveController.Instance.CurrentDungeonName
-                : string.Empty;
+        RefreshHeader();
         TimeScaleController.Instance?.SetPaused();
     }
 
     public void Resume()
     {
-        isOpen = false;
+        IsMenuOpen = false;
         if (settingsPanel != null) settingsPanel.SetActive(false);
         slotPicker?.Hide();
         if (board != null) board.SetActive(false);
@@ -183,6 +189,68 @@ public class PauseMenuController : MonoBehaviour
         SceneManager.LoadScene(GAMEPLAY_SCENE);
     }
 
+    // Rename / Delete (from the Load list)
+    private void HandleRename(SlotTileView tile)
+    {
+        if (tile == null || nameDialog == null) return;
+        string current = tile.Meta?.dungeonName ?? "";
+        nameDialog.Show(
+                    current,
+                    $"Rename Slot {tile.SlotId}",
+                    newName =>
+                    {
+                        int activeId = SaveSlotManager.Instance != null ? SaveSlotManager.Instance.ActiveSlotId : -1;
+                        if (tile.SlotId == activeId && DungeonSaveController.Instance != null)
+                            DungeonSaveController.Instance.RenameCurrentDungeon(newName);   // live name + header + next save
+                        else
+                            RenameSlot(tile.SlotId, newName);                               // other slot: meta.json only
+                        slotPicker?.Refresh();
+                        RefreshHeader();
+                    },
+                    null);
+    }
+
+    private void RefreshHeader()
+    {
+        if (dungeonNameLabel == null) return;
+        dungeonNameLabel.text = DungeonSaveController.Instance != null
+            ? DungeonSaveController.Instance.CurrentDungeonName
+            : string.Empty;
+    }
+
+    private void HandleDelete(SlotTileView tile)
+    {
+        if (tile == null || loadConfirm == null) return;
+        loadConfirm.Show(
+            $"Delete Slot {tile.SlotId}? This cannot be undone.",
+            () => { SlotPaths.DeleteSlot(tile.SlotId); slotPicker?.Refresh(); },
+            null, "Delete", "Cancel");
+    }
+
+    private static void RenameSlot(int slotId, string newName)
+    {
+        var meta = SlotPaths.ReadMetadata(slotId);
+        if (meta == null)
+        {
+            Debug.LogWarning($"[PauseMenu] Cannot rename slot {slotId} — no meta.json.");
+            return;
+        }
+        meta.dungeonName = string.IsNullOrWhiteSpace(newName) ? "Unnamed Dungeon" : newName.Trim();
+        try
+        {
+            string tmp = SlotPaths.MetaTmpPath(slotId);
+            File.WriteAllText(tmp, JsonUtility.ToJson(meta, prettyPrint: true));
+            File.Replace(tmp, SlotPaths.MetaPath(slotId), null);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PauseMenu] Failed to rewrite meta for slot {slotId}: {e.Message}");
+        }
+    }
+
+    // Save
+
+
     // Save
     private void SaveNow()
     {
@@ -222,6 +290,7 @@ public class PauseMenuController : MonoBehaviour
 
     private static void RestoreTimeForSceneChange()
     {
+        IsMenuOpen = false;
         Time.timeScale = 1f;
         PauseController.SetPause(false);
     }

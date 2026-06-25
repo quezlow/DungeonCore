@@ -93,7 +93,16 @@ public class DungeonCameraController : MonoBehaviour
 
     private void Update()
     {
-        // DAY 31 — Camera operates during pause (active-pause pattern).
+        // DAY 31 — Camera operates during pause (active-pause pattern), EXCEPT:
+        //  - while the pause MENU is up (scroll belongs to its Load list, not zoom), and
+        //  - while typing in a text field (e.g. renaming a save).
+        if (PauseMenuController.IsMenuOpen) return;
+
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        var sel = es != null ? es.currentSelectedGameObject : null;
+        var typingField = sel != null ? sel.GetComponent<TMPro.TMP_InputField>() : null;
+        if (typingField != null && typingField.isFocused) return;
+
         HandleZoom();
         HandlePan();
 

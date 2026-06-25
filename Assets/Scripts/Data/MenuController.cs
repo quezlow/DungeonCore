@@ -26,6 +26,11 @@ public class MenuController : MonoBehaviour
         if (!Keyboard.current.tabKey.wasPressedThisFrame) return;
 
         bool opening = !menuCanvas.activeSelf;
+
+        // Don't open the avatar menu over an existing pause (e.g. the pause menu).
+        // Closing it is always allowed.
+        if (opening && PauseController.IsGamePaused) return;
+
         menuCanvas.SetActive(opening);
 
         if (opening)
