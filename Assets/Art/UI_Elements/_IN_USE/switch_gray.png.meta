@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a6823ddb7d9ca6d44b48fb37fa642714
+guid: 794c43e3d01cb4244aa4b45ca853c16b
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4238711552060958762
-    second: Close_Button_0
+      213: 3291677089480305488
+    second: switch_gray_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -53,7 +53,7 @@ TextureImporter:
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Close_Button_0
+      name: switch_gray_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 92
-        height: 89
+        width: 84
+        height: 41
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6d7df021d421d25c0800000000000000
-      internalID: -4238711552060958762
+      spriteID: 05be3c17fd26ead20800000000000000
+      internalID: 3291677089480305488
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Close_Button_0: -4238711552060958762
+      switch_gray_0: 3291677089480305488
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

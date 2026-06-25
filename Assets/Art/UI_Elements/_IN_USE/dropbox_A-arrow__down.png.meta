@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: ef3ca4f20bf122b44814c8acd20bf9d1
+guid: c255c9951d60aeb4c8a2aa277aff8d95
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3518048378211023571
-    second: TITLE__board__short_0
+      213: 2886051572623304377
+    second: dropbox_A-arrow__down_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -53,7 +53,7 @@ TextureImporter:
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: TITLE__board__short_0
+      name: dropbox_A-arrow__down_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 196
-        height: 100
+        width: 29
+        height: 20
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d25c712b3a16d2fc0800000000000000
-      internalID: -3518048378211023571
+      spriteID: 9b66ba54d905d0820800000000000000
+      internalID: 2886051572623304377
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      TITLE__board__short_0: -3518048378211023571
+      dropbox_A-arrow__down_0: 2886051572623304377
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

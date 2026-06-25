@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 8d82a437eda51bb4e85a5d91dba3c71c
+guid: 288444ace755fb64b9ca09edfbb37627
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8566028455312386561
-    second: Chain_0
+      213: 5730570408817429009
+    second: dropbox_C-selected_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -52,8 +52,8 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteBorder: {x: 20, y: 10, z: 20, w: 8}
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Chain_0
+      name: dropbox_C-selected_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 60
-        height: 122
+        width: 432
+        height: 47
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ff59731318a5f1980800000000000000
-      internalID: -8566028455312386561
+      spriteID: 11a8de9cc63178f40800000000000000
+      internalID: 5730570408817429009
       vertices: []
       indices: 
       edges: []
@@ -139,7 +139,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Chain_0: -8566028455312386561
+      dropbox_C-selected_0: 5730570408817429009
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

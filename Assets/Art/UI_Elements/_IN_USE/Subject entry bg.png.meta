@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 7a5e461bcebbebb46b101dc147326e36
+guid: 6d02972af001e7043a045614c62b181a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2905426029644237685
-    second: dropbox_C-menu_0
+      213: 2502954487787093512
+    second: Subject entry bg_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -52,8 +52,8 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteBorder: {x: 24, y: 20, z: 24, w: 20}
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: dropbox_C-menu_0
+      name: Subject entry bg_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 432
-        height: 47
+        width: 573
+        height: 76
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 57b4e129495225820800000000000000
-      internalID: 2905426029644237685
+      spriteID: 80ef48d68d74cb220800000000000000
+      internalID: 2502954487787093512
       vertices: []
       indices: 
       edges: []
@@ -139,7 +139,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      dropbox_C-menu_0: 2905426029644237685
+      Subject entry bg_0: 2502954487787093512
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

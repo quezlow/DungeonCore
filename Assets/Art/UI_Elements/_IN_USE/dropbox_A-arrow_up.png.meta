@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 46d9a1afde480e6408abf4d678db4cae
+guid: f3e6d49bf1b31724187271f2bf6f83e9
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7549741861626563573
-    second: switch_btn_beige_0
+      213: -5459896734650472612
+    second: dropbox_A-arrow_up_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -53,7 +53,7 @@ TextureImporter:
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: switch_btn_beige_0
+      name: dropbox_A-arrow_up_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 28
-        height: 28
+        width: 29
+        height: 20
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b043adfe6cde93790800000000000000
-      internalID: -7549741861626563573
+      spriteID: c57e7dcf8dc8a34b0800000000000000
+      internalID: -5459896734650472612
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      switch_btn_beige_0: -7549741861626563573
+      dropbox_A-arrow_up_0: -5459896734650472612
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

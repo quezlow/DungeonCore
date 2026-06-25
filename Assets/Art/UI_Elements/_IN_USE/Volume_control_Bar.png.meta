@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 794c43e3d01cb4244aa4b45ca853c16b
+guid: 114d84e7e72968940bc2edeb6280fd42
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3291677089480305488
-    second: switch_gray_0
+      213: -3614451609130353680
+    second: Volume_control_Bar_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -52,8 +52,8 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 16
-  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
-  spriteGenerateFallbackPhysicsShape: 1
+  spriteBorder: {x: 11, y: 0, z: 11, w: 0}
+  spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: switch_gray_0
+      name: Volume_control_Bar_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 84
-        height: 41
+        width: 358
+        height: 22
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 05be3c17fd26ead20800000000000000
-      internalID: 3291677089480305488
+      spriteID: 0fb32f36963e6ddc0800000000000000
+      internalID: -3614451609130353680
       vertices: []
       indices: 
       edges: []
@@ -139,7 +139,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 0
+    internalID: 1537655665
     vertices: []
     indices: 
     edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      switch_gray_0: 3291677089480305488
+      Volume_control_Bar_0: -3614451609130353680
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
