@@ -16,5 +16,6 @@ MonoBehaviour:
   validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
   minTileCount: 9
   requiredFurniture: []
+  requiresBossSpawner: 0
   techNodeUnlockKey: 
-  techNodeDescription: 
+  techNodeDescription: Books, books, books...

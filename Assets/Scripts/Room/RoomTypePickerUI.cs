@@ -88,9 +88,13 @@ public class RoomTypePickerUI : MonoBehaviour
 
         foreach (var def in roomDefinitions)
         {
-            var btn   = Instantiate(entryButtonPrefab, entryContainer);
+            var btn = Instantiate(entryButtonPrefab, entryContainer);
             var label = btn.GetComponentInChildren<TMP_Text>();
             if (label != null) label.text = def.roomName;
+
+            var tip = btn.GetComponent<TooltipTrigger>();
+            if (tip == null) tip = btn.gameObject.AddComponent<TooltipTrigger>();
+            tip.SetContent(def.roomName, def.techNodeDescription);
 
             btn.gameObject.SetActive(true);
 

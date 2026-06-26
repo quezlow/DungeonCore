@@ -18,4 +18,4 @@ MonoBehaviour:
   requiredFurniture: []
   requiresBossSpawner: 1
   techNodeUnlockKey: 
-  techNodeDescription: 
+  techNodeDescription: Your boss calls this room home.

@@ -16,5 +16,6 @@ MonoBehaviour:
   validationTintColor: {r: 0.88916004, g: 0.8962264, b: 0.1986917, a: 0.6}
   minTileCount: 9
   requiredFurniture: []
+  requiresBossSpawner: 0
   techNodeUnlockKey: 
-  techNodeDescription: 
+  techNodeDescription: Worship me
