@@ -40,6 +40,10 @@ public static class Keybinds
 
     private static readonly Dictionary<GameAction, Key> Current = new();
 
+    /// <summary>Fires whenever a binding changes (rebind or reset), so UI such as the
+    /// action bar can refresh its shortcut hints.</summary>
+    public static event System.Action OnRebind;
+
     /// <summary>All rebindable actions, in display order.</summary>
     public static readonly GameAction[] All =
     {
@@ -95,6 +99,7 @@ public static class Keybinds
         Current[action] = key;
         PlayerPrefs.SetInt(PREF_PREFIX + action, (int)key);
         PlayerPrefs.Save();
+        OnRebind?.Invoke();
     }
 
     public static void ResetToDefault(GameAction action) => Rebind(action, Defaults[action]);

@@ -21,6 +21,11 @@ public class KeybindControlsUI : MonoBehaviour
     private readonly List<KeybindRowUI> rows = new();
     private GameAction? listening;
 
+    /// <summary>True while a rebind capture is in progress. Synced in LateUpdate so a
+    /// reader polling in Update (the pause menu's Esc handler) sees a value that's stable
+    /// for the whole frame — including the frame the rebind is cancelled.</summary>
+    public static bool IsRebinding { get; private set; }
+
     private void Awake()
     {
         BuildRows();
@@ -35,7 +40,11 @@ public class KeybindControlsUI : MonoBehaviour
         SetStatus(string.Empty);
     }
 
-    private void OnDisable() => CancelListening();
+    private void OnDisable()
+    {
+        CancelListening();
+        IsRebinding = false;
+    }
 
     private void BuildRows()
     {
@@ -106,6 +115,11 @@ public class KeybindControlsUI : MonoBehaviour
             SetStatus($"{Keybinds.Label(target)} → {Keybinds.DisplayName(candidate)}");
             return;
         }
+    }
+
+    private void LateUpdate()
+    {
+        IsRebinding = listening != null;
     }
 
     private void CancelListening()

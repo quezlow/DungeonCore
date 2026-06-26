@@ -110,12 +110,17 @@ public class ActionBarHUD : MonoBehaviour
 
         // Sync visual state to whatever mode is already active.
         HandleModeChanged(DungeonBuildController.Instance.CurrentMode);
+
+        // Keep the tab shortcut hints (e.g. "MINE (M)") in sync with Keybinds.
+        Keybinds.OnRebind += RefreshShortcutLabels;
+        RefreshShortcutLabels();
     }
 
     private void OnDestroy()
     {
         if (DungeonBuildController.Instance != null)
             DungeonBuildController.Instance.OnModeChanged -= HandleModeChanged;
+        Keybinds.OnRebind -= RefreshShortcutLabels;
     }
 
     private void Update()
@@ -325,6 +330,21 @@ public class ActionBarHUD : MonoBehaviour
     }
 
     // ── Highlight helpers ─────────────────────────────────────────
+
+    private void RefreshShortcutLabels()
+    {
+        SetTabLabel(claimTabButton, "CLAIM", GameAction.Claim);
+        SetTabLabel(mineTabButton, "MINE", GameAction.Mine);
+        SetTabLabel(buildTabButton, "BUILD", GameAction.Build);
+        SetTabLabel(summonTabButton, "SUMMON", GameAction.Summon);
+    }
+
+    private void SetTabLabel(Button btn, string label, GameAction action)
+    {
+        if (btn == null) return;
+        var tmp = btn.GetComponentInChildren<TMP_Text>();
+        if (tmp != null) tmp.text = $"{label} ({Keybinds.DisplayName(action)})";
+    }
 
     private void UpdateTabHighlights()
     {

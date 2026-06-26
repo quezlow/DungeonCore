@@ -109,6 +109,9 @@ public class PauseMenuController : MonoBehaviour
         var kb = Keyboard.current;
         if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
 
+        // A rebind capture in the Controls tab owns Esc (to cancel the rebind).
+        if (KeybindControlsUI.IsRebinding) return;
+
         if (IsMenuOpen) Resume();
         else if (IsIdle()) Open();
     }
