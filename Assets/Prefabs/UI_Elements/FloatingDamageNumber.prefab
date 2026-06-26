@@ -67,8 +67,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: New Text
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
-  m_sharedMaterial: {fileID: 387749889392614070, guid: 484c233fb3586ab4bbb2f0bb6e4d4eca, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 8e00e220f041a334ea07f6679f4fa957, type: 2}
+  m_sharedMaterial: {fileID: -8444891303326375043, guid: 8e00e220f041a334ea07f6679f4fa957, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -215,8 +215,7 @@ MonoBehaviour:
   arcHeight: 1
   arcSpread: 0.6
   lifetime: 0.9
-  spawnYOffset: 0.5
   fadeStartFraction: 0.6
-  colourMonsterDamage: {r: 0.9811321, g: 0, b: 0, a: 1}
-  colourAdventDamage: {r: 1, g: 0.8137255, b: 0, a: 1}
-  colourHeal: {r: 0.16140087, g: 0.8773585, b: 0.16140091, a: 1}
+  colourMonsterDamage: {r: 0.7529412, g: 0.22352941, b: 0.16862746, a: 1}
+  colourAdventDamage: {r: 0.8235294, g: 0.654902, b: 0.30588236, a: 1}
+  colourHeal: {r: 0.19691172, g: 0.7075472, b: 0.19691175, a: 1}
