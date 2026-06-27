@@ -222,6 +222,9 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.alertUnreadCount = AlertsLog.Instance.GetUnreadCountForSave();
         }
 
+        if (RunStats.Instance != null)
+            currentSave.runStats = RunStats.Instance.GetSaveData();
+
         if (!WriteSaveAtomically(currentSave))
         {
             Debug.LogError("[DungeonSaveController] Atomic save failed; previous save preserved.");
@@ -573,6 +576,8 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.alertHistory ?? new System.Collections.Generic.List<AlertEntrySaveData>(),
                 currentSave.alertUnreadCount);
             }
+
+            RunStats.Instance?.RestoreFromSave(currentSave.runStats);
 
             // DAY 31 — Defer camera restore one frame so it runs after all initial
             // Start() methods have completed. Without the deferral, DungeonCameraController.

@@ -11260,7 +11260,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99798644
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -13893,7 +13893,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000044799857}
+  m_AnchoredPosition: {x: 0, y: 0.000017574956}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -42269,6 +42269,7 @@ GameObject:
   - component: {fileID: 760082062}
   - component: {fileID: 9148225019790764727}
   - component: {fileID: 9148225019790764726}
+  - component: {fileID: 9148225019790764728}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -45271,6 +45272,7 @@ GameObject:
   - component: {fileID: 1293583751}
   - component: {fileID: 1293583750}
   - component: {fileID: 1293583757}
+  - component: {fileID: 8718354098649203286}
   m_Layer: 5
   m_Name: UICanvas_Dungeon
   m_TagString: Untagged
@@ -47930,6 +47932,20 @@ MonoBehaviour:
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
   m_PresetInfoIsWorld: 0
+--- !u!114 &8718354098649203286
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5766085413386445018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73c801b759a70044ba90c2047a312fa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HudToggle
+  hudRoot: {fileID: 359501544}
+  toggleKey: 102
 --- !u!224 &8728006261929614807
 RectTransform:
   m_ObjectHideFlags: 0
@@ -48527,6 +48543,18 @@ MonoBehaviour:
     DissipationDistance: 100
     PropagationSpeed: 343
   DefaultVelocity: {x: 0, y: -0.4, z: 0}
+--- !u!114 &9148225019790764728
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046709260463597617}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 055442dffb12f4f46b3b14321f9cdb10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunStats
 --- !u!222 &9167274261039393849
 CanvasRenderer:
   m_ObjectHideFlags: 0

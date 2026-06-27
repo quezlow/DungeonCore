@@ -52,6 +52,34 @@ public class DungeonSaveData
 
     public List<AlertEntrySaveData> alertHistory = new();
     public int alertUnreadCount = 0;
+
+    public RunStatsSaveData runStats;
+}
+
+[Serializable]
+public class RunStatsSaveData
+{
+    // Cumulative (whole run)
+    public List<ClassKillSaveData> killsByClass = new();
+    public int monstersLost;
+    public int biggestParty;
+    public int goldEarned;
+    public int maxDayReached = 1;
+
+    // Current day (preserves a mid-day save/load's partial tally)
+    public int currentDay = 1;
+    public int partiesToday;
+    public int slainToday;
+    public int monstersLostToday;
+    public int goldEarnedToday;
+    public float notorietyAtDayStart;
+}
+
+[Serializable]
+public class ClassKillSaveData
+{
+    public string className;
+    public int count;
 }
 
 [Serializable]

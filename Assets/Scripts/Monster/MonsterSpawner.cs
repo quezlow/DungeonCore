@@ -326,6 +326,7 @@ public class MonsterSpawner : MonoBehaviour
     public void OnMonsterDied()
     {
         Vector3 deathPos = spawnedMonster != null ? spawnedMonster.transform.position : transform.position;
+        RunStats.Instance?.RecordMonsterLost(definition != null ? definition.monsterName : "Monster");
         FloorRoot floor = spawnedMonster != null
             ? spawnedMonster.CurrentFloor
             : GetComponentInParent<FloorRoot>();

@@ -57,6 +57,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     [Header("XP & Notoriety")]
     [SerializeField] private float xpOnDeath = 15f;
+    private string className = "Adventurer";
 
     [Header("Dropped Loot Prefab")]
     [SerializeField] private DroppedLoot droppedLootPrefab;
@@ -121,6 +122,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             detectionRange = def.detectionRange;
             chestDetectionRange = def.chestDetectionRange;
             xpOnDeath = def.xpOnDeath;
+            className = def.className;
             canDetectTraps = def.canDetectTraps;
             trapDetectionRadius = def.trapDetectionRadius;
             trapDetectionChancePerSecond = def.trapDetectionChancePerSecond;
@@ -612,6 +614,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentFloor?.Entities?.Unregister(this);
         DungeonCore.Instance?.AddXP(xpOnDeath);
         DungeonCore.Instance?.AddNotoriety(5f);
+        RunStats.Instance?.RecordAdventurerSlain(className);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
         if (statusBars != null) Destroy(statusBars.gameObject);

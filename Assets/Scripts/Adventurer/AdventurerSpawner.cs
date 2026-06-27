@@ -122,6 +122,7 @@ public class AdventurerSpawner : MonoBehaviour
         }
 
         int size = RollPartySize();
+        RunStats.Instance?.RecordPartySpawned(size);
         Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
 
         for (int i = 0; i < size; i++)
