@@ -51,13 +51,32 @@ public class DungeonBuildController : MonoBehaviour
     private Camera mainCamera;
     private Vector3Int dragClaimLastCell;
     private bool dragClaimActive;
-    private bool dragMineActive;
 
     // Feature 3 — mine-target highlight (runtime overlay; no scene setup required).
     [Header("Mine Highlight")]
     [SerializeField] private Color mineHighlightColor = new Color(1f, 0.85f, 0.35f, 0.35f);
     private GameObject mineHighlightGO;
     private SpriteRenderer mineHighlightSR;
+
+    // ── Auto-dig queue (runtime overlay; no scene setup) ──────────
+    [Header("Dig Queue")]
+    [SerializeField] private float digTicksPerSecond = 10f;
+    [SerializeField] private Color digQueueColor = new Color(0.35f, 0.7f, 1f, 0.28f);
+    private readonly List<(int floor, Vector3Int cell)> digQueue = new();
+    private readonly HashSet<(int floor, Vector3Int cell)> digQueued = new();
+    private float digTickTimer;
+    private bool digOverlayDirty;
+    private int lastOverlayFloor = int.MinValue;
+    private readonly List<SpriteRenderer> digOverlayPool = new();
+    private Sprite digOverlaySprite;
+    private Transform digOverlayParent;
+
+    // Mine-gesture state (click vs drag).
+    private Vector3Int minePressCell;
+    private Vector3Int mineLastCell;
+    private bool mineTracking;
+    private bool mineIsDrag;
+    private bool mineShiftAtPress;
 
     private System.Collections.Generic.List<DungeonStairs> _stairClickBuf;
 
@@ -69,6 +88,7 @@ public class DungeonBuildController : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         BuildMineHighlight();
+        BuildDigOverlayAssets();
     }
 
     private void Start()
@@ -79,6 +99,8 @@ public class DungeonBuildController : MonoBehaviour
     private void Update()
     {
         UpdateMineHighlight();
+        UpdateDigQueueOverlay();
+        if (!PauseController.IsGamePaused) ProcessDigQueue();
 
         // DAY 31 — Master pause-gate removed. Specific actions choose whether to honor
         // pause (active-pause pattern). Navigation, spawner selection, and command-UI
@@ -129,7 +151,7 @@ public class DungeonBuildController : MonoBehaviour
         switch (CurrentMode)
         {
             case BuildMode.Claim: HandleClaimClick(); break;
-            case BuildMode.Mine: HandleMineClick(); break;
+            case BuildMode.Mine: HandleMineInput(); break;
             case BuildMode.PlaceEntrance: HandleEntrancePlacement(); break;
             case BuildMode.PlaceSpawner: HandleSpawnerPlacement(); break;
             case BuildMode.PlaceChest: HandleChestPlacement(); break;
@@ -146,7 +168,6 @@ public class DungeonBuildController : MonoBehaviour
         if (CurrentMode == mode) return;
         CurrentMode = mode;
         dragClaimActive = false;
-        dragMineActive = false;
         Debug.Log($"[BuildController] Mode → {mode}");
         OnModeChanged?.Invoke(mode);
     }
@@ -274,35 +295,91 @@ public class DungeonBuildController : MonoBehaviour
         ActiveInfluence.ClaimTile(cell);
     }
 
-    private void HandleMineClick()
+    // ── Mine input: click mines one now · drag queues a swath · Shift+click queues one ──
+    private void HandleMineInput()
     {
-        if (!MineInputThisFrame(out Vector3Int clicked)) return;
-        if (ActiveInfluence == null) return;
+        var mouse = Mouse.current;
+        if (mouse == null) return;
 
-        // Feature 3 — a click on a wall's cap OR its south face removes that wall.
-        if (!ResolveMineTarget(clicked, out Vector3Int cell)) return;
+        // Right-click clears the whole dig queue.
+        if (mouse.rightButton.wasPressedThisFrame) { ClearDigQueue(); return; }
 
-        // Strict mine-only. Only claimed-not-mined cells with valid adjacency proceed.
-        if (ActiveInfluence.IsTileMined(cell)) return;
-        if (!ActiveInfluence.IsTileClaimed(cell)) return;
+        bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
+        // Press: start tracking; defer the mine-vs-queue decision until release/first move.
+        if (mouse.leftButton.wasPressedThisFrame)
+        {
+            mineTracking = false;
+            mineIsDrag = false;
+            if (!overUI && HoverCell(out Vector3Int c))
+            {
+                mineTracking = true;
+                minePressCell = c;
+                mineLastCell = c;
+                mineShiftAtPress = IsShiftHeld();
+            }
+            return;
+        }
+
+        // Held + entered a new cell → it's a drag: queue the press cell, then each new cell.
+        if (mineTracking && mouse.leftButton.isPressed)
+        {
+            if (HoverCell(out Vector3Int c) && c != mineLastCell)
+            {
+                if (!mineIsDrag) { mineIsDrag = true; EnqueueDig(minePressCell); }
+                EnqueueDig(c);
+                mineLastCell = c;
+            }
+            return;
+        }
+
+        // Release with no movement → a click: Shift queues one, otherwise mine one now.
+        if (mineTracking && mouse.leftButton.wasReleasedThisFrame)
+        {
+            if (!mineIsDrag)
+            {
+                if (mineShiftAtPress) EnqueueDig(minePressCell);
+                else MineImmediate(minePressCell);
+            }
+            mineTracking = false;
+            mineIsDrag = false;
+        }
+    }
+
+    // Immediate single-tile mine (the old click behavior), used for a plain click.
+    private void MineImmediate(Vector3Int rawCell)
+    {
+        var inf = ActiveInfluence;
+        if (inf == null) return;
+        if (!ResolveMineTarget(rawCell, out Vector3Int cell)) return;
+        if (inf.IsTileMined(cell)) return;
+        if (!inf.IsTileClaimed(cell)) return;
         if (!CanMineCell(cell))
         {
-            Debug.Log("[BuildController] Cannot mine here — must be adjacent to existing mined area.");
             RejectAt(cell, "Must be next to a mined tile");
             return;
         }
-
-        float multiplier = ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f;
-        float cost = mineManaCost * multiplier;
-
+        float cost = mineManaCost * (ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(cell) : 1f);
         if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
         {
             RejectAt(cell, "Not enough mana");
-            dragMineActive = false;
             return;
         }
-        ActiveInfluence.MineTile(cell);
+        inf.MineTile(cell);
+    }
+
+    // Adds a hovered cell's wall target to the queue (claimed + unmined; adjacency
+    // is checked later, at dig time, so interior cells can be queued ahead).
+    private void EnqueueDig(Vector3Int rawCell)
+    {
+        var inf = ActiveInfluence;
+        if (inf == null || FloorManager.Instance == null) return;
+        if (!ResolveMineTarget(rawCell, out Vector3Int cell)) return;
+        if (inf.IsTileMined(cell) || !inf.IsTileClaimed(cell)) return;
+        var key = (FloorManager.Instance.ActiveFloorIndex, cell);
+        if (!digQueued.Add(key)) return;
+        digQueue.Add(key);
+        digOverlayDirty = true;
     }
 
     /// <summary>
@@ -751,7 +828,7 @@ public class DungeonBuildController : MonoBehaviour
             if (col == null) continue;
             if (col.OverlapPoint(worldPos))
             {
-                FloorManager.Instance?.SwitchToFloor(stair.LinkedFloorIndex);
+                FloorManager.Instance?.SwitchToFloorAnimated(stair.LinkedFloorIndex);
                 return true;
             }
         }
@@ -850,29 +927,128 @@ public class DungeonBuildController : MonoBehaviour
         return false;
     }
 
-    private bool MineInputThisFrame(out Vector3Int cell)
+    // ── Dig-queue processing ──────────────────────────────────────
+    private enum DigResult { Dug, Blocked, Stalled }
+
+    // Digs queued cells on the active floor over time; spends mana per tile and
+    // pauses (no burst) when mana runs out, resuming as it regenerates.
+    private void ProcessDigQueue()
     {
-        cell = default;
-
-        if (Mouse.current == null) return false;
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
-
-        bool pressed = Mouse.current.leftButton.isPressed;
-        if (!pressed) { dragMineActive = false; return false; }
-
-        // Worldspace click → cell. Mirrors what ClaimInputThisFrame does.
-        if (ActiveInfluence == null || ActiveFloor == null) return false;
-        Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
-        mouseWorld.z = 0f;
-        cell = ActiveInfluence.WorldToCell(mouseWorld);
-
-        bool firstPress = Mouse.current.leftButton.wasPressedThisFrame;
-        if (firstPress || dragMineActive)
+        if (digQueue.Count == 0) { digTickTimer = 0f; return; }
+        float interval = digTicksPerSecond > 0f ? 1f / digTicksPerSecond : 0.1f;
+        digTickTimer += Time.deltaTime;
+        int safety = 0;
+        while (digTickTimer >= interval && digQueue.Count > 0 && safety < 8)
         {
-            dragMineActive = true;
-            return true;
+            if (TryDigOneQueued() == DigResult.Dug) { digTickTimer -= interval; safety++; continue; }
+            digTickTimer = 0f;   // blocked/stalled — wait, don't bank ticks
+            break;
         }
-        return false;
+    }
+
+    private DigResult TryDigOneQueued()
+    {
+        var inf = ActiveInfluence;
+        var floor = ActiveFloor;
+        if (inf == null || floor == null || FloorManager.Instance == null) return DigResult.Stalled;
+        int active = FloorManager.Instance.ActiveFloorIndex;
+
+        for (int i = 0; i < digQueue.Count; i++)
+        {
+            var ord = digQueue[i];
+            if (ord.floor != active) continue;   // off-floor cells pause until you return
+            Vector3Int cell = ord.cell;
+
+            if (inf.IsTileMined(cell) || !inf.IsTileClaimed(cell)) { RemoveDigAt(i); i--; continue; }
+            if (!CanMineCell(cell)) continue;     // not on the mined frontier yet
+
+            float cost = mineManaCost * floor.GetClaimCostMultiplier(cell);
+            if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
+                return DigResult.Blocked;          // out of mana — wait for regen
+
+            inf.MineTile(cell);
+            RemoveDigAt(i);
+            return DigResult.Dug;
+        }
+        return DigResult.Stalled;
+    }
+
+    private void RemoveDigAt(int i)
+    {
+        digQueued.Remove(digQueue[i]);
+        digQueue.RemoveAt(i);
+        digOverlayDirty = true;
+    }
+
+    private void ClearDigQueue()
+    {
+        if (digQueue.Count == 0) return;
+        digQueue.Clear();
+        digQueued.Clear();
+        digOverlayDirty = true;
+    }
+
+    // ── Dig-queue overlay (pooled translucent quads over queued cells) ──
+    private void BuildDigOverlayAssets()
+    {
+        var tex = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply();
+        digOverlaySprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        digOverlayParent = new GameObject("DigQueueOverlay").transform;
+    }
+
+    private SpriteRenderer CreateDigOverlayQuad()
+    {
+        var go = new GameObject("DigQueueCell");
+        if (digOverlayParent != null) go.transform.SetParent(digOverlayParent, false);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = digOverlaySprite;
+        sr.sortingLayerName = "AdjacentHighlight";
+        sr.sortingOrder = 90;   // under the hover highlight (100)
+        sr.enabled = false;
+        return sr;
+    }
+
+    // Rebuilt only when the queue or active floor changes; draws active-floor cells.
+    private void UpdateDigQueueOverlay()
+    {
+        int active = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloorIndex : int.MinValue;
+        if (active != lastOverlayFloor) { digOverlayDirty = true; lastOverlayFloor = active; }
+        if (!digOverlayDirty) return;
+        digOverlayDirty = false;
+
+        var inf = ActiveInfluence;
+        float cw = 1f, ch = 1f;
+        if (inf != null)
+        {
+            Vector3 o = inf.CellToWorld(Vector3Int.zero);
+            cw = Mathf.Abs(inf.CellToWorld(Vector3Int.right).x - o.x);
+            ch = Mathf.Abs(inf.CellToWorld(Vector3Int.up).y - o.y);
+        }
+
+        int j = 0;
+        if (inf != null)
+        {
+            for (int i = 0; i < digQueue.Count; i++)
+            {
+                if (digQueue[i].floor != active) continue;
+                if (j >= digOverlayPool.Count) digOverlayPool.Add(CreateDigOverlayQuad());
+                var sr = digOverlayPool[j++];
+                Vector3 w = inf.CellToWorld(digQueue[i].cell);
+                sr.transform.position = new Vector3(w.x, w.y, 0f);
+                sr.transform.localScale = new Vector3(cw, ch, 1f);
+                sr.color = digQueueColor;
+                sr.enabled = true;
+            }
+        }
+        for (; j < digOverlayPool.Count; j++) digOverlayPool[j].enabled = false;
+    }
+
+    private static bool IsShiftHeld()
+    {
+        var kb = Keyboard.current;
+        return kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
     }
 
     private void RevalidateAllAnchors()

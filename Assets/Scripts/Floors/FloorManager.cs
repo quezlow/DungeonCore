@@ -146,6 +146,28 @@ public class FloorManager : MonoBehaviour
         SetActiveFloor(targetIndex, snapCamera: false);
     }
 
+    // Faded floor-view switch (0.25s out / in). Routed from the floor selector and
+    // staircase-travel clicks so the camera's instant jump between floor offsets is
+    // hidden behind black. Load and build-flow switches keep the instant version.
+    private bool floorFadeInProgress;
+
+    public async void SwitchToFloorAnimated(int targetIndex)
+    {
+        if (floorFadeInProgress) return;
+        if (targetIndex < 0 || !FloorExists(targetIndex)) return;
+        if (ActiveFloorIndex == targetIndex) return;            // already here — no fade
+        if (ScreenFader.Instance == null) { SwitchToFloor(targetIndex); return; }
+
+        floorFadeInProgress = true;
+        try
+        {
+            await ScreenFader.Instance.FadeOut(0.25f);
+            SwitchToFloor(targetIndex);
+            await ScreenFader.Instance.FadeIn(0.25f);
+        }
+        finally { floorFadeInProgress = false; }
+    }
+
     public void EnsureFloorExists(int targetIndex, Vector3Int centerCell = default)
     {
         if (FloorExists(targetIndex)) return;
@@ -158,6 +180,23 @@ public class FloorManager : MonoBehaviour
     {
         CoreFloorIndex = floorIndex;
         Debug.Log($"[FloorManager] Core is now on floor {floorIndex}.");
+    }
+
+    // ── Floor names (player-renamable; persisted via FloorSaveData.floorName) ──
+    public event Action<int> OnFloorRenamed;
+    private readonly Dictionary<int, string> floorNames = new();
+
+    // Custom name for a floor, or null if unnamed.
+    public string GetFloorName(int floorIndex)
+        => floorNames.TryGetValue(floorIndex, out var n) ? n : null;
+
+    // Sets (or clears, if blank) a floor's custom name and notifies listeners.
+    public void SetFloorName(int floorIndex, string name)
+    {
+        string trimmed = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        if (trimmed == null) floorNames.Remove(floorIndex);
+        else floorNames[floorIndex] = trimmed;
+        OnFloorRenamed?.Invoke(floorIndex);
     }
 
     public void MarkCoreRelocationComplete()

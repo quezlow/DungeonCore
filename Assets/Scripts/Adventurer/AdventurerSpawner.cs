@@ -10,6 +10,8 @@ using UnityEngine;
 /// </summary>
 public class AdventurerSpawner : MonoBehaviour
 {
+    public static AdventurerSpawner Instance { get; private set; }
+
     [Header("Adventurer Types")]
     [SerializeField] private List<AdventurerDefinition> adventurerTypes = new();
 
@@ -34,8 +36,29 @@ public class AdventurerSpawner : MonoBehaviour
     private float timer = 0f;
     private bool transitPaused = false;
 
+    // ── Read API for the wave-preview HUD (no behaviour change) ──
+    public bool SpawningActive =>
+        !PauseController.IsGamePaused
+        && !transitPaused
+        && DungeonEntrance.Instance != null
+        && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight);
+
+    public float SecondsUntilNextParty => Mathf.Max(0f, CurrentInterval() - timer);
+    public int PredictedMinPartySize => minPartySize;
+    public int PredictedMaxPartySize
+    {
+        get
+        {
+            if (!scalePartySizeWithNotoriety || DungeonCore.Instance == null) return maxPartySize;
+            float t = Mathf.Clamp01(DungeonCore.Instance.Notoriety / notorietyHighThreshold);
+            return Mathf.Max(minPartySize, Mathf.RoundToInt(Mathf.Lerp(minPartySize, maxPartySize, t)));
+        }
+    }
+
     private void OnEnable()
     {
+        Instance = this;
+
         if (DayNightCycle.Instance != null)
         {
             DayNightCycle.Instance.OnNightStarted += HandleNightStarted;
@@ -48,6 +71,8 @@ public class AdventurerSpawner : MonoBehaviour
 
     private void OnDisable()
     {
+        if (Instance == this) Instance = null;
+
         if (DayNightCycle.Instance != null)
         {
             DayNightCycle.Instance.OnNightStarted -= HandleNightStarted;

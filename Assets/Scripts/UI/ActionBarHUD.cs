@@ -126,6 +126,7 @@ public class ActionBarHUD : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
+        if (NameDialog.IsOpen || WarningTrapNameDialog.IsOpen) return;
 
         if (Keybinds.WasPressed(GameAction.Mine)) OnMineTabClicked();
         if (Keybinds.WasPressed(GameAction.Build)) OnBuildTabClicked();

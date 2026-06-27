@@ -189,7 +189,7 @@ public class PauseMenuController : MonoBehaviour
         if (pendingLoadTile == null) return;
         SaveSlotManager.Instance?.SetActiveSlot(pendingLoadTile.SlotId);
         RestoreTimeForSceneChange();
-        SceneManager.LoadScene(GAMEPLAY_SCENE);
+        SceneLoader.FadeToScene(GAMEPLAY_SCENE);
     }
 
     // Rename / Delete (from the Load list)

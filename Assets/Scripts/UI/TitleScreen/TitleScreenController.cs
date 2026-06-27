@@ -157,6 +157,7 @@ public class TitleScreenController : MonoBehaviour
     {
         SlotPaths.DeleteSlot(pendingSlotId);
         SaveSlotManager.Instance.BeginNewGame(pendingSlotId, pendingDungeonName, type);
+        SceneLoader.FadeToScene(GAMEPLAY_SCENE);
         SceneManager.LoadScene(GAMEPLAY_SCENE);
     }
 
@@ -164,7 +165,7 @@ public class TitleScreenController : MonoBehaviour
     {
         SaveSlotManager.Instance.SetActiveSlot(slotId);
         SaveSlotManager.Instance.ClearPendingNewGame();
-        SceneManager.LoadScene(GAMEPLAY_SCENE);
+        SceneLoader.FadeToScene(GAMEPLAY_SCENE);
     }
 
     private void HandleRenameRequested(SlotTileView tile)

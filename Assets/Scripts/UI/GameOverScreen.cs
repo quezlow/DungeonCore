@@ -73,7 +73,7 @@ public class GameOverScreen : MonoBehaviour
     public void OnRestartClicked()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        SceneLoader.FadeToScene(SceneManager.GetActiveScene().name);
     }
 
     /// <summary>
@@ -84,7 +84,7 @@ public class GameOverScreen : MonoBehaviour
     public void OnQuitClicked()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(titleSceneName);
+        SceneLoader.FadeToScene(titleSceneName);
     }
 
     // ── Flavour ───────────────────────────────────────────────────

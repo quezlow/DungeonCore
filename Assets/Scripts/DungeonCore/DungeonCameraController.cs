@@ -36,6 +36,10 @@ public class DungeonCameraController : MonoBehaviour
     private bool isDragging;
     private float currentFloorOriginY = 0f;
 
+    // Camera bookmarks (Ctrl+F1–F4 set · F1–F4 jump). Session-only.
+    private struct CamBookmark { public bool set; public Vector3 pos; public int floor; public float zoom; }
+    private readonly CamBookmark[] bookmarks = new CamBookmark[4];
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -97,6 +101,7 @@ public class DungeonCameraController : MonoBehaviour
         //  - while the pause MENU is up (scroll belongs to its Load list, not zoom), and
         //  - while typing in a text field (e.g. renaming a save).
         if (PauseMenuController.IsMenuOpen) return;
+        if (NameDialog.IsOpen || WarningTrapNameDialog.IsOpen) return;
 
         var es = UnityEngine.EventSystems.EventSystem.current;
         var sel = es != null ? es.currentSelectedGameObject : null;
@@ -105,6 +110,7 @@ public class DungeonCameraController : MonoBehaviour
 
         HandleZoom();
         HandlePan();
+        HandleBookmarks();
 
         // DAY 31 — Return-to-core auto-pan disabled per design change.
         // Re-enable by uncommenting if/when desired; ForceReturnToCore() still works
@@ -283,5 +289,63 @@ public class DungeonCameraController : MonoBehaviour
             FloorManager.Instance.SwitchToFloor(floorIndex);
         }
         PanTo(worldPos);
+    }
+
+    // ── Camera Bookmarks (Ctrl+F1–F4 set · F1–F4 jump · session-only) ──────
+    private void HandleBookmarks()
+    {
+        var kb = Keyboard.current;
+        if (kb == null) return;
+        bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+        if (kb.f1Key.wasPressedThisFrame) BookmarkKey(0, ctrl);
+        if (kb.f2Key.wasPressedThisFrame) BookmarkKey(1, ctrl);
+        if (kb.f3Key.wasPressedThisFrame) BookmarkKey(2, ctrl);
+        if (kb.f4Key.wasPressedThisFrame) BookmarkKey(3, ctrl);
+    }
+
+    private void BookmarkKey(int slot, bool ctrl)
+    {
+        if (ctrl) SetBookmark(slot);
+        else JumpToBookmark(slot);
+    }
+
+    private void SetBookmark(int slot)
+    {
+        if (FloorManager.Instance == null) return;
+        bookmarks[slot] = new CamBookmark
+        {
+            set = true,
+            pos = transform.position,
+            floor = FloorManager.Instance.ActiveFloorIndex,
+            zoom = targetZoom,
+        };
+        Debug.Log($"[CameraController] Bookmark {slot + 1} set (floor {bookmarks[slot].floor}).");
+    }
+
+    private async void JumpToBookmark(int slot)
+    {
+        var bm = bookmarks[slot];
+        if (!bm.set) return;
+
+        bool crossFloor = FloorManager.Instance != null
+            && bm.floor != FloorManager.Instance.ActiveFloorIndex;
+
+        if (crossFloor && ScreenFader.Instance != null)
+            await ScreenFader.Instance.FadeOut(0.25f);
+
+        if (crossFloor && FloorManager.Instance != null)
+            FloorManager.Instance.SwitchToFloor(bm.floor);
+
+        PanTo(bm.pos);
+        targetZoom = bm.zoom;
+        if (cmCam != null)
+        {
+            var lens = cmCam.Lens;
+            lens.OrthographicSize = bm.zoom;
+            cmCam.Lens = lens;
+        }
+
+        if (crossFloor && ScreenFader.Instance != null)
+            await ScreenFader.Instance.FadeIn(0.25f);
     }
 }

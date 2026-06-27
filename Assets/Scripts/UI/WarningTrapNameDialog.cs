@@ -27,6 +27,8 @@ public class WarningTrapNameDialog : MonoBehaviour
 
     private WarningTrap targetTrap;
 
+    public static bool IsOpen { get; private set; }
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -45,6 +47,7 @@ public class WarningTrapNameDialog : MonoBehaviour
     public void Open(WarningTrap trap)
     {
         targetTrap = trap;
+        IsOpen = true;
 
         if (panel != null) panel.SetActive(true);
 
@@ -78,5 +81,6 @@ public class WarningTrapNameDialog : MonoBehaviour
     {
         if (panel != null) panel.SetActive(false);
         targetTrap = null;
+        IsOpen = false;
     }
 }

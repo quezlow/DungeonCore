@@ -1,5 +1,6 @@
 using System;
 using TMPro;
+using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,6 +28,8 @@ public class NameDialog : MonoBehaviour
     private Action<string> onSubmit;
     private Action onCancel;
 
+    public static bool IsOpen { get; private set; }
+
     private void Awake()
     {
         inputField.characterLimit = MAX_NAME_LENGTH;
@@ -35,6 +38,8 @@ public class NameDialog : MonoBehaviour
         cancelButton.onClick.AddListener(HandleCancel);
         gameObject.SetActive(false);
     }
+
+    private void OnDisable() => IsOpen = false;
 
     public void Show(string initialText, string prompt,
                      Action<string> submit, Action cancel = null)
@@ -47,6 +52,7 @@ public class NameDialog : MonoBehaviour
         transform.SetAsLastSibling();
         inputField.Select();
         inputField.ActivateInputField();
+        IsOpen = true;
     }
 
     private char ValidateChar(string text, int charIndex, char addedChar)

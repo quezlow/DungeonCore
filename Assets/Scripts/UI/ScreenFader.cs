@@ -9,38 +9,39 @@ public class ScreenFader : MonoBehaviour
     [SerializeField] float fadeDuration = 0.5f;
     [SerializeField] CinemachineCamera vcam;
 
-    CinemachinePositionComposer transposer;
-    Vector3 originalDamping;
-    
-
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
 
-    async Task Fade(float targetTransparency)
+    // Core fade. unscaledDeltaTime so it animates even when Time.timeScale is 0
+    // (pause menu / game over). vcam poke is null-guarded — menu scenes such as
+    // the title screen have no Cinemachine camera.
+    async Task Fade(float targetAlpha, float duration)
     {
-        float start = canvasGroup.alpha, t = 0;
-        while(t < fadeDuration)
+        if (canvasGroup == null) return;
+        if (duration <= 0f)
         {
-            t += Time.deltaTime;
-            canvasGroup.alpha = Mathf.Lerp(start, targetTransparency, t / fadeDuration);
-            vcam.PreviousStateIsValid = false;
-
-            await Task.Yield();
+            canvasGroup.alpha = targetAlpha;
+            if (vcam != null) vcam.PreviousStateIsValid = false;
+            return;
         }
 
-        canvasGroup.alpha = targetTransparency;
+        float start = canvasGroup.alpha;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            canvasGroup.alpha = Mathf.Lerp(start, targetAlpha, t / duration);
+            if (vcam != null) vcam.PreviousStateIsValid = false;
+            await Task.Yield();
+        }
+        canvasGroup.alpha = targetAlpha;
     }
 
-    public async Task FadeIn()
-    {
-        await Fade(0); //fade to transparent
-    }
-
-    public async Task FadeOut()
-    {
-        await Fade(1); //fade to black
-    }
+    public async Task FadeIn() { await Fade(0f, fadeDuration); }  // to transparent
+    public async Task FadeOut() { await Fade(1f, fadeDuration); }  // to black
+    public async Task FadeIn(float duration) { await Fade(0f, duration); }
+    public async Task FadeOut(float duration) { await Fade(1f, duration); }
 }

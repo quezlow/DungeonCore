@@ -68,6 +68,7 @@ public class FloorSaveData
     public List<RoomAnchorSaveData> roomAnchors = new();
     public List<TrapSaveData> traps = new();
     public List<StairsSaveData> stairs = new();
+    public string floorName;   // player-set floor name (additive; null on old saves)
 }
 
 [Serializable]

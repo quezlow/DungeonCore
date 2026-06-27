@@ -109,7 +109,7 @@ public class DungeonSaveController : MonoBehaviour
             ExitToTitleScreen();
             return;
         }
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        SceneLoader.FadeToScene(SceneManager.GetActiveScene().name);
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public class DungeonSaveController : MonoBehaviour
     /// </summary>
     public void ExitToTitleScreen()
     {
-        SceneManager.LoadScene("TitleScreen");
+        SceneLoader.FadeToScene("TitleScreen");
     }
 
     private void CleanupStaleTempFile()
@@ -309,6 +309,7 @@ public class DungeonSaveController : MonoBehaviour
             floorSeed = FloorManager.Instance.GetFloorSeed(floor.FloorIndex),
             featureData = floor.FeatureGenerator != null ? floor.FeatureGenerator.GetSaveData() : null,
             tileData = floor.TileInfluence != null ? floor.TileInfluence.GetSaveData() : null,
+            floorName = FloorManager.Instance.GetFloorName(floor.FloorIndex),
         };
 
         if (floor.WildMonsterController != null && data.featureData != null)
@@ -485,10 +486,14 @@ public class DungeonSaveController : MonoBehaviour
                         f0.TerrainTypeMap.GenerateNew(floorData.floorSeed, f0.Terrain.CoreCell, f0.Terrain.CurrentRadius);
                     continue;
                 }
-                FloorManager.Instance.RecreateFloorFromSave(
-                    floorData.floorIndex,
-                    floorData.centerCell.ToVector3Int(),
-                    floorData.floorSeed);
+                FloorManager.Instance.RestoreState(
+                currentSave.coreFloorIndex,
+                currentSave.pendingCoreRelocationFloor,
+                currentSave.visitedFloors);
+
+                // Restore floor names (null/empty on old saves → no-op).
+                foreach (var fd in currentSave.floors)
+                    FloorManager.Instance.SetFloorName(fd.floorIndex, fd.floorName);
             }
 
             FloorManager.Instance.RestoreState(

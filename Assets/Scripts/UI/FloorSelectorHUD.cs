@@ -19,6 +19,7 @@ public class FloorSelectorHUD : MonoBehaviour
     [Header("Wiring")]
     [SerializeField] private Transform buttonContainer;
     [SerializeField] private Button floorButtonPrefab;
+    [SerializeField] private NameDialog nameDialog;
 
     [Header("Highlight Colours")]
     [SerializeField] private Color selectedColor = new(0.82f, 0.68f, 0.27f, 1f);
@@ -38,6 +39,7 @@ public class FloorSelectorHUD : MonoBehaviour
 
         FloorManager.Instance.OnFloorCreated += HandleFloorCreated;
         FloorManager.Instance.OnActiveFloorChanged += HandleFloorChanged;
+        FloorManager.Instance.OnFloorRenamed += HandleFloorRenamed;
 
         Rebuild();
         HandleFloorChanged(FloorManager.Instance.ActiveFloorIndex);
@@ -48,6 +50,7 @@ public class FloorSelectorHUD : MonoBehaviour
         if (FloorManager.Instance == null) return;
         FloorManager.Instance.OnFloorCreated -= HandleFloorCreated;
         FloorManager.Instance.OnActiveFloorChanged -= HandleFloorChanged;
+        FloorManager.Instance.OnFloorRenamed -= HandleFloorRenamed;
     }
 
     // ── Event Handlers ────────────────────────────────────────────
@@ -94,10 +97,21 @@ public class FloorSelectorHUD : MonoBehaviour
             if (label != null) label.text = FloorLabel(floor);
 
             int captured = floor;
-            btn.onClick.AddListener(() => FloorManager.Instance.SwitchToFloor(captured));
+            btn.onClick.AddListener(() => FloorManager.Instance.SwitchToFloorAnimated(captured));
+
+            var ctx = btn.gameObject.AddComponent<FloorButtonContext>();
+            ctx.FloorIndex = floor;
+            ctx.OnRightClick = OpenRenameDialog;
+
+            var tip = btn.gameObject.GetComponent<TooltipTrigger>();
+            if (tip == null) tip = btn.gameObject.AddComponent<TooltipTrigger>();
+            ApplyFloorTooltip(tip, floor);
 
             floorButtons[floor] = btn;
         }
+
+        // Hide the selector until there's more than the ground floor to switch between.
+        buttonContainer.gameObject.SetActive(floors.Count >= 2);
 
         HandleFloorChanged(FloorManager.Instance.ActiveFloorIndex);
     }
@@ -109,4 +123,29 @@ public class FloorSelectorHUD : MonoBehaviour
         if (floor == 0) return "G";
         return floor > 0 ? $"+{floor}" : $"B{-floor}";
     }
+
+    // ── Rename + tooltip ──────────────────────────────────────────
+    private void OpenRenameDialog(int floor)
+    {
+        if (nameDialog == null) { Debug.LogWarning("[FloorSelectorHUD] No NameDialog assigned."); return; }
+        string current = FloorManager.Instance.GetFloorName(floor) ?? "";
+        nameDialog.Show(current, $"Name {DescriptiveName(floor)}", newName =>
+        {
+            FloorManager.Instance.SetFloorName(floor, newName);
+            DungeonSaveController.Instance?.SaveGame();
+        });
+    }
+
+    private void HandleFloorRenamed(int _) => Rebuild();
+
+    private void ApplyFloorTooltip(TooltipTrigger tip, int floor)
+    {
+        string custom = FloorManager.Instance.GetFloorName(floor);
+        bool named = !string.IsNullOrEmpty(custom);
+        tip.SetContent(named ? custom : DescriptiveName(floor),
+                       named ? DescriptiveName(floor) : "Right-click to rename");
+    }
+
+    private string DescriptiveName(int floor)
+        => floor == 0 ? "Ground Floor" : (floor > 0 ? $"Upper Floor {floor}" : $"Basement {-floor}");
 }
