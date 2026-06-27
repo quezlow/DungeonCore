@@ -41,9 +41,11 @@ public class PauseMenuController : MonoBehaviour
     [SerializeField] private Button loadButton;
     [SerializeField] private Button quitToTitleButton;
     [SerializeField] private Button quitToDesktopButton;
+    [SerializeField] private Button runLogButton;
 
     [Header("Sub-panels (in this scene)")]
     [SerializeField] private GameObject settingsPanel;
+    [SerializeField] private GameObject runLogPanel;
     [SerializeField] private SlotPickerController slotPicker;
     [SerializeField] private ConfirmDialog loadConfirm;
     [SerializeField] private SaveQuitDialog quitDialog;
@@ -67,9 +69,13 @@ public class PauseMenuController : MonoBehaviour
         loadButton.onClick.AddListener(OpenLoad);
         quitToTitleButton.onClick.AddListener(() => PromptQuit(false));
         quitToDesktopButton.onClick.AddListener(() => PromptQuit(true));
+        if (runLogButton != null) runLogButton.onClick.AddListener(OpenRunLog);
 
         var settingsCtrl = settingsPanel != null ? settingsPanel.GetComponent<SettingsMenuController>() : null;
         if (settingsCtrl != null) settingsCtrl.OnBack += CloseSettings;
+
+        var runLogCtrl = runLogPanel != null ? runLogPanel.GetComponent<RunLogPanel>() : null;
+        if (runLogCtrl != null) runLogCtrl.OnBack += CloseRunLog;
 
         if (slotPicker != null)
         {
@@ -89,6 +95,7 @@ public class PauseMenuController : MonoBehaviour
         // Hide the settings panel AFTER its own Awake has wired its sliders.
         // (SlotPicker, ConfirmDialog and SaveQuitDialog self-hide in their own Awake.)
         if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (runLogPanel != null) runLogPanel.SetActive(false);
     }
 
     private void OnDestroy()
@@ -102,6 +109,9 @@ public class PauseMenuController : MonoBehaviour
         }
         var settingsCtrl = settingsPanel != null ? settingsPanel.GetComponent<SettingsMenuController>() : null;
         if (settingsCtrl != null) settingsCtrl.OnBack -= CloseSettings;
+
+        var runLogCtrl = runLogPanel != null ? runLogPanel.GetComponent<RunLogPanel>() : null;
+        if (runLogCtrl != null) runLogCtrl.OnBack -= CloseRunLog;
     }
 
     private void Update()
@@ -139,6 +149,7 @@ public class PauseMenuController : MonoBehaviour
     {
         IsMenuOpen = false;
         if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (runLogPanel != null) runLogPanel.SetActive(false);
         slotPicker?.Hide();
         if (board != null) board.SetActive(false);
         if (backdrop != null) backdrop.SetActive(false);
@@ -155,6 +166,19 @@ public class PauseMenuController : MonoBehaviour
     private void CloseSettings()
     {
         if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (board != null) board.SetActive(true);
+    }
+
+    // Run Log
+    private void OpenRunLog()
+    {
+        if (board != null) board.SetActive(false);
+        if (runLogPanel != null) runLogPanel.SetActive(true);
+    }
+
+    private void CloseRunLog()
+    {
+        if (runLogPanel != null) runLogPanel.SetActive(false);
         if (board != null) board.SetActive(true);
     }
 
