@@ -486,20 +486,20 @@ public class DungeonSaveController : MonoBehaviour
                         f0.TerrainTypeMap.GenerateNew(floorData.floorSeed, f0.Terrain.CoreCell, f0.Terrain.CurrentRadius);
                     continue;
                 }
-                FloorManager.Instance.RestoreState(
-                currentSave.coreFloorIndex,
-                currentSave.pendingCoreRelocationFloor,
-                currentSave.visitedFloors);
-
-                // Restore floor names (null/empty on old saves → no-op).
-                foreach (var fd in currentSave.floors)
-                    FloorManager.Instance.SetFloorName(fd.floorIndex, fd.floorName);
+                FloorManager.Instance.RecreateFloorFromSave(
+                                    floorData.floorIndex,
+                                    floorData.centerCell.ToVector3Int(),
+                                    floorData.floorSeed);
             }
 
             FloorManager.Instance.RestoreState(
                 currentSave.coreFloorIndex,
                 currentSave.pendingCoreRelocationFloor,
                 currentSave.visitedFloors);
+
+            // Restore floor names (null/empty on old saves → no-op).
+            foreach (var fd in currentSave.floors)
+                FloorManager.Instance.SetFloorName(fd.floorIndex, fd.floorName);
 
             if (DungeonCore.Instance != null)
             {
