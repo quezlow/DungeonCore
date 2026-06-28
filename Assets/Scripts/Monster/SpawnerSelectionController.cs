@@ -1,37 +1,37 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// DAY 31 PART 3D — Singleton owning the "currently selected spawner" state.
+/// Owns the set of currently-selected spawners (multi-select). One instance on a
+/// persistent manager. Back-compatible surface kept for existing consumers:
+///   - CurrentSelected => Primary (last-added) for single-target UI/readers.
+///   - Select(spawner)  => single-select (replaces the set with one).
+///   - OnSelectionChanged fires with Primary (or null) on any change.
+/// New surface: Selected / Count / IsSelected / Toggle / SelectSet for group ops.
 ///
-/// Place ONE instance on a persistent manager GameObject. SpawnerSelectionController.Instance
-/// is consumed by:
-///   - MonsterCommandUI (subscribes to OnSelectionChanged to show/hide the panel)
-///   - MonsterWaypointVisuals (per-spawner; shows visuals only when its spawner is selected)
-///   - DungeonBuildController (calls Select / Deselect from spawner click detection)
-///
-/// SELECTION PERSISTENCE THROUGH MODE CHANGES
-///   When the player enters PlaceMonsterPatrol or PlaceMonsterAttackTarget, the
-///   selection is preserved (those modes are launched from the command UI for
-///   the selected spawner). Any other mode change deselects.
+/// Selection persists through PlaceMonsterPatrol / PlaceMonsterAttackTarget; any
+/// other mode deselects.
 /// </summary>
 public class SpawnerSelectionController : MonoBehaviour
 {
     public static SpawnerSelectionController Instance { get; private set; }
 
-    public MonsterSpawner CurrentSelected { get; private set; }
+    private readonly List<MonsterSpawner> selected = new();
+
+    public IReadOnlyList<MonsterSpawner> Selected => selected;
+    public int Count => selected.Count;
+    public MonsterSpawner Primary => selected.Count > 0 ? selected[selected.Count - 1] : null;
+    public MonsterSpawner CurrentSelected => Primary;   // back-compat alias
+    public bool IsSelected(MonsterSpawner s) => s != null && selected.Contains(s);
+
+    /// <summary>Fires on any selection change, carrying the Primary (or null).</summary>
     public event Action<MonsterSpawner> OnSelectionChanged;
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
-
-    private void OnEnable()
-    {
-        // Wired in Awake/OnEnable per project pattern, but subscription only in Start
-        // to ensure DungeonBuildController.Instance has been set up first.
     }
 
     private void Start()
@@ -57,23 +57,64 @@ public class SpawnerSelectionController : MonoBehaviour
         => mode == BuildMode.PlaceMonsterPatrol
         || mode == BuildMode.PlaceMonsterAttackTarget;
 
+    // ── Single ────────────────────────────────────────────────────
+
+    /// <summary>Replaces the whole selection with one spawner (or clears if null).</summary>
     public void Select(MonsterSpawner spawner)
     {
         if (spawner == null) { Deselect(); return; }
-        if (CurrentSelected == spawner) return;
+        if (selected.Count == 1 && selected[0] == spawner) return;
+        ClearInternal();
+        AddInternal(spawner);
+        OnSelectionChanged?.Invoke(Primary);
+    }
 
-        if (CurrentSelected != null) CurrentSelected.OnDeselected();
-        CurrentSelected = spawner;
-        CurrentSelected.OnSelected();
-        OnSelectionChanged?.Invoke(CurrentSelected);
+    // ── Multi ─────────────────────────────────────────────────────
+
+    /// <summary>Adds/removes a spawner from the selection (shift-click).</summary>
+    public void Toggle(MonsterSpawner spawner)
+    {
+        if (spawner == null) return;
+        if (selected.Contains(spawner)) RemoveInternal(spawner);
+        else AddInternal(spawner);
+        OnSelectionChanged?.Invoke(Primary);
+    }
+
+    /// <summary>Selects a set; additive keeps the current selection, else replaces it.</summary>
+    public void SelectSet(IEnumerable<MonsterSpawner> set, bool additive)
+    {
+        if (!additive) ClearInternal();
+        if (set != null)
+            foreach (var s in set)
+                if (s != null && !selected.Contains(s)) AddInternal(s);
+        OnSelectionChanged?.Invoke(Primary);
     }
 
     public void Deselect()
     {
-        if (CurrentSelected == null) return;
-        var was = CurrentSelected;
-        CurrentSelected = null;
-        if (was != null) was.OnDeselected();
+        if (selected.Count == 0) return;
+        ClearInternal();
         OnSelectionChanged?.Invoke(null);
+    }
+
+    // ── Internal ──────────────────────────────────────────────────
+
+    private void AddInternal(MonsterSpawner s)
+    {
+        selected.Add(s);
+        s.OnSelected();
+    }
+
+    private void RemoveInternal(MonsterSpawner s)
+    {
+        selected.Remove(s);
+        if (s != null) s.OnDeselected();
+    }
+
+    private void ClearInternal()
+    {
+        for (int i = 0; i < selected.Count; i++)
+            if (selected[i] != null) selected[i].OnDeselected();
+        selected.Clear();
     }
 }

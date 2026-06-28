@@ -114,7 +114,8 @@ public class DungeonBuildController : MonoBehaviour
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame
                 && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
                 && SpawnerSelectionController.Instance != null
-                && SpawnerSelectionController.Instance.CurrentSelected != null)
+                && SpawnerSelectionController.Instance.CurrentSelected != null
+                && !ShiftHeld())
             {
                 SpawnerSelectionController.Instance.Deselect();
             }
@@ -539,7 +540,16 @@ public class DungeonBuildController : MonoBehaviour
             RejectAt(cell, "Must be owned or a revealed chamber");
             return;
         }
-        placementSpawner.SetAttackTarget(cell);
+        var sel = SpawnerSelectionController.Instance;
+        if (sel != null && sel.Count > 0)
+        {
+            foreach (var s in sel.Selected)
+                if (s != null) s.SetAttackTarget(cell);
+        }
+        else
+        {
+            placementSpawner.SetAttackTarget(cell);
+        }
         placementSpawner = null;
         SetMode(BuildMode.Claim);
         FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
@@ -868,7 +878,7 @@ public class DungeonBuildController : MonoBehaviour
             var monsterFloor = monster.CurrentFloor;
             if (FloorManager.Instance != null && monsterFloor != FloorManager.Instance.ActiveFloor) continue;
 
-            SpawnerSelectionController.Instance?.Select(monster.Spawner);
+            HandleSpawnerClicked(monster.Spawner);
             return true;
         }
 
@@ -882,10 +892,55 @@ public class DungeonBuildController : MonoBehaviour
             var spawnerFloor = spawner.GetComponentInParent<FloorRoot>();
             if (FloorManager.Instance != null && spawnerFloor != FloorManager.Instance.ActiveFloor) continue;
 
-            SpawnerSelectionController.Instance?.Select(spawner);
+            HandleSpawnerClicked(spawner);
             return true;
         }
         return false;
+    }
+
+    private static bool ShiftHeld()
+    {
+        var kb = Keyboard.current;
+        return kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
+    }
+
+    private MonsterSpawner lastClickedSpawner;
+    private float lastClickTime;
+    private const float DoubleClickWindow = 0.30f;
+    private System.Collections.Generic.List<MonsterSpawner> _sameTypeBuf;
+
+    // Single-click selects/toggles (Part 1); a second click on the same spawner
+    // within the window selects all of that type on the active floor.
+    private void HandleSpawnerClicked(MonsterSpawner spawner)
+    {
+        if (spawner == null) return;
+
+        bool isDouble = spawner == lastClickedSpawner
+            && Time.unscaledTime - lastClickTime <= DoubleClickWindow;
+        lastClickedSpawner = spawner;
+        lastClickTime = Time.unscaledTime;
+
+        if (isDouble) { SelectSameType(spawner); return; }
+
+        if (ShiftHeld()) SpawnerSelectionController.Instance?.Toggle(spawner);
+        else SpawnerSelectionController.Instance?.Select(spawner);
+    }
+
+    private void SelectSameType(MonsterSpawner template)
+    {
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null || template == null) return;
+
+        var def = template.Definition;
+        _sameTypeBuf ??= new System.Collections.Generic.List<MonsterSpawner>();
+        floor.Entities.FillAll(_sameTypeBuf);
+
+        var same = new System.Collections.Generic.List<MonsterSpawner>();
+        for (int i = 0; i < _sameTypeBuf.Count; i++)
+            if (_sameTypeBuf[i] != null && _sameTypeBuf[i].Definition == def)
+                same.Add(_sameTypeBuf[i]);
+
+        SpawnerSelectionController.Instance?.SelectSet(same, ShiftHeld());
     }
 
     private bool LeftClickThisFrame(out Vector3Int cell)

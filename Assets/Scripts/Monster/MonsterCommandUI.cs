@@ -98,8 +98,15 @@ public class MonsterCommandUI : MonoBehaviour
     private void RefreshDisplay()
     {
         if (current == null) return;
+
+        int selCount = SpawnerSelectionController.Instance != null
+            ? SpawnerSelectionController.Instance.Count : 1;
+        if (patrolButton != null) patrolButton.interactable = selCount <= 1;
+
         if (monsterNameLabel != null)
-            monsterNameLabel.text = current.Definition != null ? current.Definition.monsterName : "Monster";
+            monsterNameLabel.text = selCount > 1
+                ? $"{selCount} monsters"
+                : (current.Definition != null ? current.Definition.monsterName : "Monster");
 
         if (statusLabel != null)
             statusLabel.text = BuildStatusText(current);
@@ -131,10 +138,20 @@ public class MonsterCommandUI : MonoBehaviour
 
     // ── Button hooks (wire in Inspector) ──────────────────────────
 
+    private void ForEachSelected(System.Action<MonsterSpawner> action)
+    {
+        var sel = SpawnerSelectionController.Instance;
+        if (sel != null && sel.Count > 0)
+        {
+            foreach (var s in sel.Selected) if (s != null) action(s);
+        }
+        else if (current != null) action(current);
+    }
+
     public void OnWanderClicked()
     {
         if (current == null) return;
-        current.ClearAllOrders();
+        ForEachSelected(s => s.ClearAllOrders());
     }
 
     public void OnPatrolClicked()
@@ -158,7 +175,8 @@ public class MonsterCommandUI : MonoBehaviour
     public void OnDefendClicked()
     {
         if (current == null) return;
-        current.SetAllowDefendCore(!current.AllowDefendCore);
+        bool newValue = !current.AllowDefendCore;
+        ForEachSelected(s => s.SetAllowDefendCore(newValue));
     }
 
     public void OnLoopToggleChanged(bool isLoop)
@@ -171,7 +189,7 @@ public class MonsterCommandUI : MonoBehaviour
     public void OnClearOrdersClicked()
     {
         if (current == null) return;
-        current.ClearAllOrders();
+        ForEachSelected(s => s.ClearAllOrders());
     }
 
     /// <summary>Phase 3 closeout (#1) - wire a "Remove" button's onClick here.</summary>
