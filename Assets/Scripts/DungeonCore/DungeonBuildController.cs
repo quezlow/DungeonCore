@@ -124,10 +124,11 @@ public class DungeonBuildController : MonoBehaviour
         if (CurrentMode == BuildMode.PlaceMonsterPatrol)
         {
             var kb = Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) { CommitPatrolPlacement(); return; }
-            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            if (kb != null && kb.escapeKey.wasPressedThisFrame)
             {
-                placementSpawner?.RemoveLastPatrolWaypoint();
+                redesignateTarget = null; roomTracking = false;
+                ClearRoomPreview();
+                SetMode(BuildMode.Claim);
                 return;
             }
             HandlePatrolPlacement();
@@ -631,16 +632,181 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.Claim);
     }
 
+    private Vector3Int roomDragStart;
+    private Vector3Int roomDragLast;
+    private bool roomTracking;
+    private RoomAnchor redesignateTarget;   // set by BeginRoomRedesignate; null = create new
+    private System.Collections.Generic.List<RoomAnchor> _roomAnchorBuf;
+
+    // Live drag-preview overlay (pooled quads, runtime-built — mirrors the dig overlay).
+    private readonly System.Collections.Generic.List<SpriteRenderer> roomPreviewPool = new();
+    private Transform roomPreviewParent;
+    [SerializeField] private Color roomPreviewColor = new Color(0.83f, 0.65f, 0.15f, 0.35f);
+
+    /// Called by RoomAnchor on right-click — re-drag an existing room's footprint.
+    public void BeginRoomRedesignate(RoomAnchor anchor)
+    {
+        redesignateTarget = anchor;
+        SetMode(BuildMode.PlaceRoomAnchor);
+    }
+
     private void HandleRoomAnchorPlacement()
     {
-        if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
-        if (roomAnchorPrefab == null) return;
-        Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
+        var mouse = Mouse.current;
+        if (mouse == null) return;
+
+        var kb = Keyboard.current;
+        if (kb != null && kb.escapeKey.wasPressedThisFrame)
+        {
+            redesignateTarget = null; roomTracking = false;
+            SetMode(BuildMode.Claim);
+            return;
+        }
+
+        bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+        // Press on mined ground → start the rectangle (this cell is also the anchor spot).
+        if (mouse.leftButton.wasPressedThisFrame)
+        {
+            roomTracking = false;
+            ClearRoomPreview();
+            if (!overUI && HoverCell(out Vector3Int c)
+                && ActiveInfluence != null && ActiveInfluence.IsTileMined(c))
+            {
+                roomTracking = true;
+                roomDragStart = c;
+                roomDragLast = c;
+                PaintRoomPreview(roomDragStart, roomDragLast);
+            }
+            return;
+        }
+
+        // Held → track the opposite corner; repaint the preview only when it changes.
+        if (roomTracking && mouse.leftButton.isPressed)
+        {
+            if (HoverCell(out Vector3Int c) && c != roomDragLast)
+            {
+                roomDragLast = c;
+                PaintRoomPreview(roomDragStart, roomDragLast);
+            }
+            return;
+        }
+
+        // Release → build the footprint.
+        if (roomTracking && mouse.leftButton.wasReleasedThisFrame)
+        {
+            roomTracking = false;
+            ClearRoomPreview();
+            CommitRoomFootprint(roomDragStart, roomDragLast);
+            return;
+        }
+    }
+
+    private void CommitRoomFootprint(Vector3Int a, Vector3Int b)
+    {
+        if (ActiveInfluence == null) { redesignateTarget = null; SetMode(BuildMode.Claim); return; }
+
+        int minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
+        int minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
+
+        // Tiles already claimed by another room are skipped — overlap is blocked.
+        var claimed = CollectOtherRoomFootprints(redesignateTarget);
+
+        var cells = new System.Collections.Generic.List<Vector3Int>();
+        for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                var cell = new Vector3Int(x, y, a.z);
+                if (ActiveInfluence.IsTileMined(cell) && !claimed.Contains(cell))
+                    cells.Add(cell);
+            }
+
+        if (cells.Count == 0) { redesignateTarget = null; SetMode(BuildMode.Claim); return; }
+
+        if (redesignateTarget != null)
+        {
+            redesignateTarget.SetFootprint(cells);   // keep its type, swap the footprint
+            redesignateTarget = null;
+            SetMode(BuildMode.Claim);
+            return;
+        }
+
+        if (roomAnchorPrefab == null) { SetMode(BuildMode.Claim); return; }
+        Vector3 worldPos = ActiveInfluence.CellToWorld(roomDragStart);
         var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) anchor.transform.SetParent(ActiveFloor.transform, true);
-        anchor.Initialise(cell);
+        anchor.Initialise(roomDragStart);
+        anchor.SetFootprint(cells);
         SetMode(BuildMode.Claim);
+        RoomTypePickerUI.Instance?.Open(anchor);
+    }
+
+    private System.Collections.Generic.HashSet<Vector3Int> CollectOtherRoomFootprints(RoomAnchor exclude)
+    {
+        var set = new System.Collections.Generic.HashSet<Vector3Int>();
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.Entities == null) return set;
+
+        _roomAnchorBuf ??= new System.Collections.Generic.List<RoomAnchor>();
+        floor.Entities.FillAll(_roomAnchorBuf);
+        for (int i = 0; i < _roomAnchorBuf.Count; i++)
+        {
+            var anchor = _roomAnchorBuf[i];
+            if (anchor == null || anchor == exclude) continue;
+            var fp = anchor.Footprint;
+            for (int j = 0; j < fp.Count; j++) set.Add(fp[j]);
+        }
+        return set;
+    }
+
+    private SpriteRenderer CreateRoomPreviewQuad()
+    {
+        var go = new GameObject("RoomPreviewCell");
+        if (roomPreviewParent != null) go.transform.SetParent(roomPreviewParent, false);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = digOverlaySprite;            // reuse the 1×1 white sprite
+        sr.sortingLayerName = "AdjacentHighlight";
+        sr.sortingOrder = 95;                    // above dig (90), under hover (100)
+        sr.enabled = false;
+        return sr;
+    }
+
+    // Lights up exactly the cells CommitRoomFootprint would take: mined tiles in the
+    // rectangle, minus any already claimed by another room.
+    private void PaintRoomPreview(Vector3Int a, Vector3Int b)
+    {
+        var inf = ActiveInfluence;
+        if (inf == null) { ClearRoomPreview(); return; }
+
+        Vector3 o = inf.CellToWorld(Vector3Int.zero);
+        float cw = Mathf.Abs(inf.CellToWorld(Vector3Int.right).x - o.x);
+        float ch = Mathf.Abs(inf.CellToWorld(Vector3Int.up).y - o.y);
+
+        int minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
+        int minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
+
+        var claimed = CollectOtherRoomFootprints(redesignateTarget);
+
+        int j = 0;
+        for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                var cell = new Vector3Int(x, y, a.z);
+                if (!inf.IsTileMined(cell) || claimed.Contains(cell)) continue;
+                if (j >= roomPreviewPool.Count) roomPreviewPool.Add(CreateRoomPreviewQuad());
+                var sr = roomPreviewPool[j++];
+                Vector3 w = inf.CellToWorld(cell);
+                sr.transform.position = new Vector3(w.x, w.y, 0f);
+                sr.transform.localScale = new Vector3(cw, ch, 1f);
+                sr.color = roomPreviewColor;
+                sr.enabled = true;
+            }
+        for (; j < roomPreviewPool.Count; j++) roomPreviewPool[j].enabled = false;
+    }
+
+    private void ClearRoomPreview()
+    {
+        for (int i = 0; i < roomPreviewPool.Count; i++) roomPreviewPool[i].enabled = false;
     }
 
     private void HandleTrapPlacement()
@@ -770,7 +936,8 @@ public class DungeonBuildController : MonoBehaviour
 
     public void RestoreRoomAnchor(FloorRoot floor, Vector3Int cell, string roomName,
                                   FurnitureDefinitionRegistry furnitureRegistry,
-                                  RoomDefinitionRegistry roomDefRegistry, int tier = 1)
+                                  RoomDefinitionRegistry roomDefRegistry, int tier = 1,
+                                  System.Collections.Generic.List<SerializableVector3Int> footprint = null)
     {
         if (roomAnchorPrefab == null) return;
         if (floor?.TileInfluence == null) return;
@@ -778,11 +945,24 @@ public class DungeonBuildController : MonoBehaviour
         var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
         anchor.transform.SetParent(floor.transform, true);
         anchor.Initialise(cell);
+
+        if (footprint != null && footprint.Count > 0)
+        {
+            var cells = new System.Collections.Generic.List<Vector3Int>(footprint.Count);
+            for (int i = 0; i < footprint.Count; i++) cells.Add(footprint[i].ToVector3Int());
+            anchor.SetFootprint(cells);
+        }
+
         if (!string.IsNullOrEmpty(roomName))
         {
             var defRes = roomDefRegistry?.GetByName(roomName);
             if (defRes != null) anchor.SetRoomType(defRes);
         }
+
+        // Flood-fill-era saves have no footprint — seed one so the room keeps its
+        // old extent. New saves always carry an explicit footprint.
+        if (footprint == null || footprint.Count == 0)
+            anchor.MigrateFootprintFromFloodFill();
         anchor.SetTier(tier);
     }
 
@@ -1052,6 +1232,7 @@ public class DungeonBuildController : MonoBehaviour
         tex.Apply();
         digOverlaySprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
         digOverlayParent = new GameObject("DigQueueOverlay").transform;
+        roomPreviewParent = new GameObject("RoomPreviewOverlay").transform;
     }
 
     private SpriteRenderer CreateDigOverlayQuad()

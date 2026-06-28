@@ -77,6 +77,59 @@ public static class RoomValidator
         return ValidationResult.Pass(roomTiles);
     }
 
+    /// <summary>
+    /// Footprint-based validation. The room IS the player-designated cells (not a
+    /// flood-fill). Intersect the footprint with currently-mined tiles, then run the
+    /// same size / furniture / boss checks against that set. No upper size cap.
+    /// </summary>
+    public static ValidationResult Validate(
+        IReadOnlyList<Vector3Int> footprint, RoomDefinition roomDef)
+    {
+        if (roomDef == null)
+            return ValidationResult.Fail("No room type assigned.");
+        if (TileInfluenceManager.Instance == null)
+            return ValidationResult.Fail("TileInfluenceManager not available.");
+
+        var roomTiles = new HashSet<Vector3Int>();
+        if (footprint != null)
+            for (int i = 0; i < footprint.Count; i++)
+                if (TileInfluenceManager.Instance.IsTileMined(footprint[i]))
+                    roomTiles.Add(footprint[i]);
+
+        if (roomTiles.Count < roomDef.minTileCount)
+            return ValidationResult.Fail(
+                $"{roomDef.roomName} requires at least {roomDef.minTileCount} tiles " +
+                $"(found {roomTiles.Count}).");
+
+        if (roomDef.requiredFurniture != null && roomDef.requiredFurniture.Count > 0)
+        {
+            var pieces = FindFurnitureInRoom(roomTiles);
+            foreach (var req in roomDef.requiredFurniture)
+            {
+                if (req.furnitureType == null) continue;
+                int count = 0;
+                foreach (var p in pieces)
+                    if (p.Definition == req.furnitureType) count++;
+                if (count < req.minimumCount)
+                    return ValidationResult.Fail(
+                        $"{roomDef.roomName} requires {req.minimumCount}× " +
+                        $"{req.furnitureType.furnitureName} (found {count}).");
+            }
+        }
+
+        if (roomDef.requiresBossSpawner)
+        {
+            if (!HasBossSpawnerInRoom(roomTiles))
+                return ValidationResult.Fail(
+                    $"{roomDef.roomName} requires a boss-variant monster spawner.");
+        }
+
+        return ValidationResult.Pass(roomTiles);
+    }
+
+    /// <summary>Public flood-fill from a cell — seeds footprints for old saves.</summary>
+    public static HashSet<Vector3Int> FloodFillRoom(Vector3Int origin) => FloodFill(origin);
+
     public static bool WouldBlockRoom(Vector3Int anchorCell, Vector3Int blockedCell)
     {
         if (TileInfluenceManager.Instance == null) return false;

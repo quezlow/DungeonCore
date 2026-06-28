@@ -24,6 +24,11 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     // Cached result from last validation — used by the tint and toast systems.
     private HashSet<UnityEngine.Vector3Int> lastRoomTiles;
 
+    // The player-designated footprint (a dragged rectangle of mined cells). Source
+    // of truth for the room's extent — replaces the old flood-fill-from-anchor model.
+    private readonly List<Vector3Int> footprint = new();
+    public IReadOnlyList<Vector3Int> Footprint => footprint;
+
     private Collider2D myCollider;
 
     // ── Events ────────────────────────────────────────────────────
@@ -55,17 +60,24 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
+        if (myCollider == null || Mouse.current == null) return;
 
-        // Only this anchor should open the picker if the click landed on it.
-        if (myCollider == null) return;
+        // Don't intercept clicks while a room is being designated / resized.
+        if (DungeonBuildController.Instance != null
+            && DungeonBuildController.Instance.CurrentMode == BuildMode.PlaceRoomAnchor) return;
+
+        bool left = Mouse.current.leftButton.wasPressedThisFrame;
+        bool right = Mouse.current.rightButton.wasPressedThisFrame;
+        if (!left && !right) return;
 
         Vector3 screen = Mouse.current.position.ReadValue();
         Vector3 world = Camera.main.ScreenToWorldPoint(screen);
         world.z = 0f;
+        if (!myCollider.OverlapPoint(world)) return;
 
-        if (myCollider.OverlapPoint(world))
-            RoomTypePickerUI.Instance?.Open(this);
+        // Left-click opens the type picker; right-click re-drags this room's footprint.
+        if (right) DungeonBuildController.Instance?.BeginRoomRedesignate(this);
+        else RoomTypePickerUI.Instance?.Open(this);
     }
 
     // ── Public API ────────────────────────────────────────────────
@@ -94,7 +106,7 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
             return;
         }
 
-        var result = RoomValidator.Validate(OccupiedCell, AssignedRoom);
+        var result = RoomValidator.Validate(footprint, AssignedRoom);
         bool wasValid = IsValid;
 
         IsValid = result.IsValid;
@@ -112,6 +124,25 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
 
     /// <summary>Returns the tiles in this room, or null if not validated.</summary>
     public System.Collections.Generic.HashSet<Vector3Int> GetRoomTiles() => lastRoomTiles;
+
+    /// <summary>Sets the designated footprint and re-validates.</summary>
+    public void SetFootprint(IEnumerable<Vector3Int> cells)
+    {
+        footprint.Clear();
+        if (cells != null)
+            foreach (var c in cells)
+                if (!footprint.Contains(c)) footprint.Add(c);
+        Revalidate();
+    }
+
+    /// <summary>
+    /// One-time seed for flood-fill-era saves with no stored footprint: derive the
+    /// footprint from a flood-fill of the anchor cell, then re-validate.
+    /// </summary>
+    public void MigrateFootprintFromFloodFill()
+    {
+        SetFootprint(RoomValidator.FloodFillRoom(OccupiedCell));
+    }
 
     // ── Upgrades ──────────────────────────────────────────────────
 
