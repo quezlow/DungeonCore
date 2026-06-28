@@ -13,6 +13,7 @@ public class VideoSettingsUI : MonoBehaviour
     [SerializeField] private TMP_Dropdown resolutionDropdown;
     [SerializeField] private Toggle fullscreenToggle;
     [SerializeField] private Toggle vsyncToggle;
+    [SerializeField] private Toggle colorblindToggle;
 
     private List<Vector2Int> resolutions;
 
@@ -31,6 +32,12 @@ public class VideoSettingsUI : MonoBehaviour
             vsyncToggle.SetIsOnWithoutNotify(DcrVideoSettings.VSync);
             vsyncToggle.onValueChanged.AddListener(DcrVideoSettings.SetVSync);
         }
+        ColorblindPalette.EnsureLoaded();
+        if (colorblindToggle != null)
+        {
+            colorblindToggle.SetIsOnWithoutNotify(ColorblindPalette.Enabled);
+            colorblindToggle.onValueChanged.AddListener(ColorblindPalette.SetEnabled);
+        }
         if (resolutionDropdown != null)
             resolutionDropdown.onValueChanged.AddListener(OnResolutionChanged);
     }
@@ -39,6 +46,7 @@ public class VideoSettingsUI : MonoBehaviour
     {
         if (fullscreenToggle != null) fullscreenToggle.SetIsOnWithoutNotify(DcrVideoSettings.Fullscreen);
         if (vsyncToggle != null) vsyncToggle.SetIsOnWithoutNotify(DcrVideoSettings.VSync);
+        if (colorblindToggle != null) colorblindToggle.SetIsOnWithoutNotify(ColorblindPalette.Enabled);
         SyncResolutionDropdown();
     }
 

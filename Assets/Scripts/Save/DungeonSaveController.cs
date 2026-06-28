@@ -47,7 +47,7 @@ public class DungeonSaveController : MonoBehaviour
         if (activeSlotId < SlotPaths.MIN_SLOT_ID || activeSlotId > SlotPaths.MAX_SLOT_ID)
         {
             Debug.LogError($"[DungeonSaveController] No valid active slot ({activeSlotId}). Routing to TitleScreen.");
-            SceneManager.LoadScene("TitleScreen");
+            SceneLoader.FadeToScene("TitleScreen");
             return;
         }
 

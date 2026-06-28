@@ -158,7 +158,6 @@ public class TitleScreenController : MonoBehaviour
         SlotPaths.DeleteSlot(pendingSlotId);
         SaveSlotManager.Instance.BeginNewGame(pendingSlotId, pendingDungeonName, type);
         SceneLoader.FadeToScene(GAMEPLAY_SCENE);
-        SceneManager.LoadScene(GAMEPLAY_SCENE);
     }
 
     private void LaunchSlot(int slotId)

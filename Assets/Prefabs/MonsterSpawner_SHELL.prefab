@@ -143,6 +143,7 @@ MonoBehaviour:
   patrolLoop: 1
   hasAttackTarget: 0
   attackTargetCell: {x: 0, y: 0, z: 0}
+  allowDefendCore: 1
   selectionRing: {fileID: 7016193919390986283}
 --- !u!212 &622185872695354028
 SpriteRenderer:
@@ -189,8 +190,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1453108971
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -855298285791758126, guid: 5c0b06bae3560eb4e962c7ef32108c3c, type: 3}
@@ -454,7 +455,7 @@ LineRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1004282579
-  m_SortingLayer: 9
+  m_SortingLayer: 10
   m_SortingOrder: 50
   m_MaskInteraction: 0
   m_Positions:

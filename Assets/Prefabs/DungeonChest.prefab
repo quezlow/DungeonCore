@@ -79,8 +79,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1453108971
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 5267353087624012429, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
@@ -108,9 +108,6 @@ MonoBehaviour:
   closedSprite: {fileID: 5267353087624012429, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
   openedSprite: {fileID: 2705553309653748599, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
   interactRadius: 0.8
-  isTrapChest: 0
-  trapDamage: 15
-  trapChestClosedSprite: {fileID: 8195280985811113441, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
 --- !u!114 &8381172194126189238
 MonoBehaviour:
   m_ObjectHideFlags: 0

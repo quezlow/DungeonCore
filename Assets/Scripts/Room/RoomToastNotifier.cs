@@ -49,13 +49,13 @@ public class RoomToastNotifier : MonoBehaviour
                 string reason = string.IsNullOrEmpty(anchor.LastFailReason)
                     ? $"{anchor.AssignedRoom.roomName} incomplete"
                     : anchor.LastFailReason;
-                StartCoroutine(ShowToast(anchor.transform.position, reason, failColor));
+                StartCoroutine(ShowToast(anchor.transform.position, reason, ColorblindPalette.Invalid(failColor)));
             }
             return;
         }
 
         string message = $"{anchor.AssignedRoom.roomName} Complete!";
-        Color color = anchor.AssignedRoom.validationTintColor;
+        Color color = ColorblindPalette.Valid(anchor.AssignedRoom.validationTintColor);
 
         if (toastPrefab != null)
             StartCoroutine(ShowToast(anchor.transform.position, message, color));

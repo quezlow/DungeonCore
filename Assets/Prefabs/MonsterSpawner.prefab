@@ -45,12 +45,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e09b9ed5d72d36d48bf47377cbc65b01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonsterSpawner
-  monsterPrefab: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
   capacityCost: 10
-  patrolRadius: 4
-  patrolSpeed: 1.2
-  patrolWait: 2
   respawnDelay: 15
+  respawnBlockRadius: -1
+  orderMode: 0
+  patrolWaypoints: []
+  patrolLoop: 1
+  hasAttackTarget: 0
+  attackTargetCell: {x: 0, y: 0, z: 0}
+  allowDefendCore: 1
+  selectionRing: {fileID: 0}
 --- !u!212 &3333242013426582403
 SpriteRenderer:
   serializedVersion: 2
@@ -96,8 +100,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1453108971
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -855298285791758126, guid: 5c0b06bae3560eb4e962c7ef32108c3c, type: 3}
