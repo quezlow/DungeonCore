@@ -17,13 +17,18 @@ public enum BuildMode
     PlaceTrap,
     PlaceStairs,
     PlaceCore,
-    PlaceMonsterPatrol,        // DAY 31 PART 3D
-    PlaceMonsterAttackTarget,  // DAY 31 PART 3D / 3E
+    PlaceMonsterPatrol,        
+    PlaceMonsterAttackTarget,
+    None, 
 }
 
 public class DungeonBuildController : MonoBehaviour
 {
     public static DungeonBuildController Instance { get; private set; }
+
+    /// Raised by the marquee selector while a box-select drag is in progress, so
+    /// claim/mine input is suppressed for the duration of the drag.
+    public bool SuppressBuildInput { get; set; }
 
     public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
     public void SetSelectedTrap(TrapDefinition def) => selectedTrap = def;
@@ -45,7 +50,7 @@ public class DungeonBuildController : MonoBehaviour
     [Header("Stairs")]
     [SerializeField] private StairsDefinition stairsDefinition;
 
-    public BuildMode CurrentMode { get; private set; } = BuildMode.Claim;
+    public BuildMode CurrentMode { get; private set; } = BuildMode.None;
     public event Action<BuildMode> OnModeChanged;
 
     private Camera mainCamera;
@@ -108,9 +113,22 @@ public class DungeonBuildController : MonoBehaviour
 
         if (TryHandleStairClick()) return;
 
-        if (CurrentMode == BuildMode.Claim)
+        if (CurrentMode == BuildMode.None)
         {
             if (TryHandleSpawnerOrMonsterClick()) return;
+
+            // Right-click with monsters selected = move/attack-here for the whole group.
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame
+                && SpawnerSelectionController.Instance != null
+                && SpawnerSelectionController.Instance.Count > 0
+                && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
+            {
+                if (HoverCell(out Vector3Int moveCell) && IsCellValidForWaypoint(moveCell))
+                    foreach (var s in SpawnerSelectionController.Instance.Selected)
+                        if (s != null) s.SetAttackTarget(moveCell);
+                return;
+            }
+
             if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame
                 && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
                 && SpawnerSelectionController.Instance != null
@@ -128,7 +146,7 @@ public class DungeonBuildController : MonoBehaviour
             {
                 redesignateTarget = null; roomTracking = false;
                 ClearRoomPreview();
-                SetMode(BuildMode.Claim);
+                SetMode(BuildMode.None);
                 return;
             }
             HandlePatrolPlacement();
@@ -209,14 +227,14 @@ public class DungeonBuildController : MonoBehaviour
     private void CommitPatrolPlacement()
     {
         placementSpawner = null;
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
         FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
     }
 
     private void CancelAttackTargetPlacement()
     {
         placementSpawner = null;
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
         FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
     }
 
@@ -270,6 +288,7 @@ public class DungeonBuildController : MonoBehaviour
 
     private void HandleClaimClick()
     {
+        if (SuppressBuildInput) return;
         if (!ClaimInputThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
 
@@ -300,6 +319,7 @@ public class DungeonBuildController : MonoBehaviour
     // ── Mine input: click mines one now · drag queues a swath · Shift+click queues one ──
     private void HandleMineInput()
     {
+        if (SuppressBuildInput) return;
         var mouse = Mouse.current;
         if (mouse == null) return;
 
@@ -509,7 +529,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandlePatrolPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (placementSpawner == null) { SetMode(BuildMode.Claim); return; }
+        if (placementSpawner == null) { SetMode(BuildMode.None); return; }
         if (!IsCellValidForWaypoint(cell))
         {
             Debug.Log("[BuildController] Waypoint cell must be owned or in a revealed chamber.");
@@ -534,7 +554,7 @@ public class DungeonBuildController : MonoBehaviour
     private void HandleAttackTargetPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
-        if (placementSpawner == null) { SetMode(BuildMode.Claim); return; }
+        if (placementSpawner == null) { SetMode(BuildMode.None); return; }
         if (!IsCellValidForWaypoint(cell))
         {
             Debug.Log("[BuildController] Attack target must be owned or in a revealed chamber.");
@@ -552,7 +572,7 @@ public class DungeonBuildController : MonoBehaviour
             placementSpawner.SetAttackTarget(cell);
         }
         placementSpawner = null;
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
         FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
     }
 
@@ -570,7 +590,7 @@ public class DungeonBuildController : MonoBehaviour
         var entrance = Instantiate(entrancePrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) entrance.transform.SetParent(ActiveFloor.transform, true);
         entrance.Initialise(cell);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private void HandleSpawnerPlacement()
@@ -601,7 +621,7 @@ public class DungeonBuildController : MonoBehaviour
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) spawner.transform.SetParent(ActiveFloor.transform, true);
         spawner.Initialise(def);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private void HandleChestPlacement()
@@ -614,7 +634,7 @@ public class DungeonBuildController : MonoBehaviour
         var chest = Instantiate(selectedChest.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) chest.transform.SetParent(ActiveFloor.transform, true);
         chest.Initialise(selectedChest);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private void HandleFurniturePlacement()
@@ -629,7 +649,7 @@ public class DungeonBuildController : MonoBehaviour
         if (ActiveFloor != null) piece.transform.SetParent(ActiveFloor.transform, true);
         piece.Initialise(selectedFurniture, cell);
         RevalidateAllAnchors();
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private Vector3Int roomDragStart;
@@ -659,7 +679,7 @@ public class DungeonBuildController : MonoBehaviour
         if (kb != null && kb.escapeKey.wasPressedThisFrame)
         {
             redesignateTarget = null; roomTracking = false;
-            SetMode(BuildMode.Claim);
+            SetMode(BuildMode.None);
             return;
         }
 
@@ -704,7 +724,7 @@ public class DungeonBuildController : MonoBehaviour
 
     private void CommitRoomFootprint(Vector3Int a, Vector3Int b)
     {
-        if (ActiveInfluence == null) { redesignateTarget = null; SetMode(BuildMode.Claim); return; }
+        if (ActiveInfluence == null) { redesignateTarget = null; SetMode(BuildMode.None); return; }
 
         int minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
         int minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
@@ -721,23 +741,23 @@ public class DungeonBuildController : MonoBehaviour
                     cells.Add(cell);
             }
 
-        if (cells.Count == 0) { redesignateTarget = null; SetMode(BuildMode.Claim); return; }
+        if (cells.Count == 0) { redesignateTarget = null; SetMode(BuildMode.None); return; }
 
         if (redesignateTarget != null)
         {
             redesignateTarget.SetFootprint(cells);   // keep its type, swap the footprint
             redesignateTarget = null;
-            SetMode(BuildMode.Claim);
+            SetMode(BuildMode.None);
             return;
         }
 
-        if (roomAnchorPrefab == null) { SetMode(BuildMode.Claim); return; }
+        if (roomAnchorPrefab == null) { SetMode(BuildMode.None); return; }
         Vector3 worldPos = ActiveInfluence.CellToWorld(roomDragStart);
         var anchor = Instantiate(roomAnchorPrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) anchor.transform.SetParent(ActiveFloor.transform, true);
         anchor.Initialise(roomDragStart);
         anchor.SetFootprint(cells);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
         RoomTypePickerUI.Instance?.Open(anchor);
     }
 
@@ -822,17 +842,17 @@ public class DungeonBuildController : MonoBehaviour
         if (ActiveFloor != null) trap.transform.SetParent(ActiveFloor.transform, true);
         trap.Initialise(selectedTrap, cell);
         if (trap is WarningTrap warning) WarningTrapNameDialog.Instance?.Open(warning);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private void HandleStairsPlacement()
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (FloorManager.Instance == null) return;
-        if (FloorManager.Instance.IsCoreRelocationPending) { SetMode(BuildMode.Claim); return; }
-        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { RejectAt(cell, "Deepest floor reached"); SetMode(BuildMode.Claim); return; }
-        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { RejectAt(cell, "This floor already has stairs down"); SetMode(BuildMode.Claim); return; }
-        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { RejectAt(cell, "Level up before expanding deeper"); SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance.IsCoreRelocationPending) { SetMode(BuildMode.None); return; }
+        if (FloorManager.Instance.ActiveFloorIndex >= FloorManager.Instance.MaxAllowedFloorIndex) { RejectAt(cell, "Deepest floor reached"); SetMode(BuildMode.None); return; }
+        if (FloorManager.Instance.FloorHasDownStair(FloorManager.Instance.ActiveFloorIndex)) { RejectAt(cell, "This floor already has stairs down"); SetMode(BuildMode.None); return; }
+        if (DungeonCore.Instance == null || DungeonCore.Instance.StairCredits <= 0) { RejectAt(cell, "Level up before expanding deeper"); SetMode(BuildMode.None); return; }
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         if (stairsDefinition == null || stairsDefinition.prefab == null) return;
         if (!DungeonCore.Instance.SpendMana(stairsDefinition.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
@@ -856,7 +876,7 @@ public class DungeonBuildController : MonoBehaviour
             upStairs.Initialise(cell, nextFloorIndex, DungeonStairs.Direction.Up, stairsDefinition.upVariantSprite);
         }
 
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     private void HandlePlaceCoreMode()
@@ -864,15 +884,15 @@ public class DungeonBuildController : MonoBehaviour
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null) return;
         if (!ActiveInfluence.IsTileMined(cell)) return;
-        if (FloorManager.Instance == null || !FloorManager.Instance.CanPlaceCore) { SetMode(BuildMode.Claim); return; }
+        if (FloorManager.Instance == null || !FloorManager.Instance.CanPlaceCore) { SetMode(BuildMode.None); return; }
 
         int destIdx = FloorManager.Instance.PendingCoreRelocationFloor;
         var destFloor = FloorManager.Instance.GetFloor(destIdx);
-        if (destFloor == null) { SetMode(BuildMode.Claim); return; }
+        if (destFloor == null) { SetMode(BuildMode.None); return; }
         if (FloorManager.Instance.ActiveFloorIndex != destIdx) { FloorManager.Instance.SwitchToFloor(destIdx); return; }
 
         DungeonCore.Instance.Relocate(destFloor, cell);
-        SetMode(BuildMode.Claim);
+        SetMode(BuildMode.None);
     }
 
     // ── Restore (Save/Load) ───────────────────────────────────────

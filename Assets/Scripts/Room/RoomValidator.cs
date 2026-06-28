@@ -87,13 +87,18 @@ public static class RoomValidator
     {
         if (roomDef == null)
             return ValidationResult.Fail("No room type assigned.");
-        if (TileInfluenceManager.Instance == null)
+                // Validate against the ACTIVE floor's influence. TileInfluenceManager.Instance
+        // is reassigned by every floor's manager in Awake, so it can point at the wrong
+        // floor; the footprint was captured against the active floor, so match that.
+        var influence = FloorManager.Instance?.ActiveFloor?.TileInfluence;
+        if (influence == null) influence = TileInfluenceManager.Instance;
+        if (influence == null)
             return ValidationResult.Fail("TileInfluenceManager not available.");
 
         var roomTiles = new HashSet<Vector3Int>();
         if (footprint != null)
             for (int i = 0; i < footprint.Count; i++)
-                if (TileInfluenceManager.Instance.IsTileMined(footprint[i]))
+                if (influence.IsTileMined(footprint[i]))
                     roomTiles.Add(footprint[i]);
 
         if (roomTiles.Count < roomDef.minTileCount)
@@ -222,7 +227,7 @@ public static class RoomValidator
         return visited;
     }
 
-    private static List<FurniturePiece> FindFurnitureInRoom(HashSet<Vector3Int> roomTiles)
+    public static List<FurniturePiece> FindFurnitureInRoom(HashSet<Vector3Int> roomTiles)
     {
         var result = new List<FurniturePiece>();
         var floor = FloorManager.Instance?.ActiveFloor;
@@ -244,13 +249,13 @@ public static class RoomValidator
     /// sits within the room tiles. Spawners are filtered to the active floor to
     /// match the flood-fill's scope (TileInfluenceManager.Instance is per-floor).
     /// </summary>
-    private static bool HasBossSpawnerInRoom(HashSet<Vector3Int> roomTiles)
+    public static bool HasBossSpawnerInRoom(HashSet<Vector3Int> roomTiles)
     {
-        var influence = TileInfluenceManager.Instance;
-        if (influence == null) return false;
-
         var floor = FloorManager.Instance?.ActiveFloor;
         if (floor?.Entities == null) return false;
+
+        var influence = floor.TileInfluence != null ? floor.TileInfluence : TileInfluenceManager.Instance;
+        if (influence == null) return false;
 
         var buf = _spawnerBuf ??= new List<MonsterSpawner>();
         floor.Entities.FillAll(buf);

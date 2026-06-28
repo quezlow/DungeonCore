@@ -123,13 +123,13 @@ public class PauseMenuController : MonoBehaviour
         if (KeybindControlsUI.IsRebinding) return;
 
         if (IsMenuOpen) Resume();
-        else if (IsIdle()) Open();
+        else if (IsIdle() && ActionBarHUD.LastCancelFrame != Time.frameCount) Open();
     }
 
     private static bool IsIdle()
     {
         var build = DungeonBuildController.Instance;
-        if (build == null || build.CurrentMode != BuildMode.Claim) return false;
+        if (build == null || build.CurrentMode != BuildMode.None) return false;
         var sel = SpawnerSelectionController.Instance;
         if (sel != null && sel.CurrentSelected != null) return false;
         return true;

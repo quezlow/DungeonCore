@@ -29,6 +29,9 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     private readonly List<Vector3Int> footprint = new();
     public IReadOnlyList<Vector3Int> Footprint => footprint;
 
+    /// <summary>Why the last validation failed (null when valid). For UI feedback.</summary>
+    public string LastFailReason { get; private set; }
+
     private Collider2D myCollider;
 
     // ── Events ────────────────────────────────────────────────────
@@ -53,6 +56,12 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     private void OnDestroy()
     {
         GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);
+    }
+
+    /// <summary>Player-initiated removal — unregisters (via OnDestroy) and despawns.</summary>
+    public void RemoveByPlayer()
+    {
+        Destroy(gameObject);
     }
 
     // ── Click Detection (new Input System) ────────────────────────
@@ -86,10 +95,10 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     /// Assigns a room type and immediately re-validates.
     /// Called by RoomTypePickerUI when the player selects a type.
     /// </summary>
-    public void SetRoomType(RoomDefinition def)
+    public void SetRoomType(RoomDefinition def, bool announce = false)
     {
         AssignedRoom = def;
-        Revalidate();
+        Revalidate(announce);
     }
 
     /// <summary>
@@ -97,12 +106,13 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     /// Called after furniture is placed or removed anywhere in the dungeon
     /// (DungeonBuildController calls this on all anchors after each furniture change).
     /// </summary>
-    public void Revalidate()
+    public void Revalidate(bool announce = false)
     {
         if (AssignedRoom == null)
         {
             IsValid = false;
             lastRoomTiles = null;
+            LastFailReason = "No room type assigned.";
             return;
         }
 
@@ -111,8 +121,9 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
 
         IsValid = result.IsValid;
         lastRoomTiles = result.IsValid ? result.RoomTiles : null;
+        LastFailReason = result.IsValid ? null : result.FailReason;
 
-        if (IsValid != wasValid)
+        if (IsValid != wasValid || announce)
         {
             Debug.Log(IsValid
                 ? $"[RoomAnchor] Room validated: {AssignedRoom.roomName} ({lastRoomTiles?.Count} tiles)"

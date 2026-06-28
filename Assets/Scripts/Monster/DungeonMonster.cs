@@ -69,6 +69,53 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float monsterXP;
     private bool isVeteran;
     public MonsterSpawner Spawner => spawner;
+
+    // ── Selection highlight (runtime ring that follows the monster) ──
+    private static Sprite selectionRingSprite;
+    private SpriteRenderer selectionHighlight;
+
+    /// <summary>Shows/hides a ring under this monster when its spawner is selected.</summary>
+    public void SetSelected(bool on)
+    {
+        if (selectionHighlight == null)
+        {
+            if (!on) return;
+            selectionHighlight = BuildSelectionHighlight();
+        }
+        if (selectionHighlight != null) selectionHighlight.enabled = on;
+    }
+
+    private SpriteRenderer BuildSelectionHighlight()
+    {
+        if (selectionRingSprite == null) selectionRingSprite = GenerateSelectionRing();
+        var body = GetComponentInChildren<SpriteRenderer>();   // capture before adding our own
+        var go = new GameObject("SelectionHighlight");
+        go.transform.SetParent(transform, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localScale = new Vector3(1.35f, 1.35f, 1f);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = selectionRingSprite;
+        if (body != null) { sr.sortingLayerID = body.sortingLayerID; sr.sortingOrder = body.sortingOrder - 1; }
+        sr.color = new Color(0.36f, 0.94f, 0.45f, 0.85f);
+        return sr;
+    }
+
+    private static Sprite GenerateSelectionRing()
+    {
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+        float c = (size - 1) * 0.5f, outer = size * 0.5f, inner = outer * 0.78f;
+        var clear = new Color(1f, 1f, 1f, 0f);
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c));
+                tex.SetPixel(x, y, (d <= outer && d >= inner) ? Color.white : clear);
+            }
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+    }
     private float lastAttackTime;
 
     private IMonsterTarget target;

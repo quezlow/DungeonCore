@@ -29,6 +29,7 @@ public class RoomTypePickerUI : MonoBehaviour
     [SerializeField] private Button       entryButtonPrefab;
     [SerializeField] private TMP_Text     currentRoomLabel;
     [SerializeField] private Button closeButton;
+    [SerializeField] private Button deleteButton;
 
     [Tooltip("The visible panel child to show/hide. This script lives on the always-active BuildMenuUIPanels wrapper, so it must toggle this child — NOT its own gameObject, which would disable the whole wrapper and every other picker.")]
     [SerializeField] private GameObject panel;
@@ -55,6 +56,7 @@ public class RoomTypePickerUI : MonoBehaviour
         Instance = this;
 
         closeButton?.onClick.AddListener(Close);
+        deleteButton?.onClick.AddListener(OnDeleteClicked);
         upgradeButton?.onClick.AddListener(OnUpgradeClicked);
         if (panel != null) panel.SetActive(false);
     }
@@ -85,6 +87,12 @@ public class RoomTypePickerUI : MonoBehaviour
         if (panel != null) panel.SetActive(false);
     }
 
+    private void OnDeleteClicked()
+    {
+        if (targetAnchor != null) targetAnchor.RemoveByPlayer();
+        Close();
+    }
+
     // ── Building ──────────────────────────────────────────────────
 
     private void BuildEntries()
@@ -101,7 +109,7 @@ public class RoomTypePickerUI : MonoBehaviour
 
             var tip = btn.GetComponent<TooltipTrigger>();
             if (tip == null) tip = btn.gameObject.AddComponent<TooltipTrigger>();
-            tip.SetContent(def.roomName, def.techNodeDescription);
+            tip.SetContent(def.roomName, BuildRequirementText(def));
 
             btn.gameObject.SetActive(true);
 
@@ -112,9 +120,56 @@ public class RoomTypePickerUI : MonoBehaviour
         }
     }
 
+    // Description + each requirement with a live have/need count measured against
+    // the target anchor's designated footprint.
+    private string BuildRequirementText(RoomDefinition def)
+    {
+        if (def == null) return "";
+        var sb = new System.Text.StringBuilder();
+        sb.Append(def.techNodeDescription);
+
+        var footprintSet = new HashSet<Vector3Int>();
+        if (targetAnchor != null)
+            foreach (var c in targetAnchor.Footprint) footprintSet.Add(c);
+
+        int mined = 0;
+        if (TileInfluenceManager.Instance != null)
+            foreach (var c in footprintSet)
+                if (TileInfluenceManager.Instance.IsTileMined(c)) mined++;
+
+        bool anyReq = def.minTileCount > 0
+            || (def.requiredFurniture != null && def.requiredFurniture.Count > 0)
+            || def.requiresBossSpawner;
+        if (anyReq) sb.Append("\n\n<b>Requires</b>");
+
+        if (def.minTileCount > 0)
+            sb.Append($"\n• Size: {mined}/{def.minTileCount}");
+
+        if (def.requiredFurniture != null && def.requiredFurniture.Count > 0)
+        {
+            var pieces = RoomValidator.FindFurnitureInRoom(footprintSet);
+            foreach (var req in def.requiredFurniture)
+            {
+                if (req.furnitureType == null) continue;
+                int have = 0;
+                for (int i = 0; i < pieces.Count; i++)
+                    if (pieces[i].Definition == req.furnitureType) have++;
+                sb.Append($"\n• {req.furnitureType.furnitureName}: {have}/{req.minimumCount}");
+            }
+        }
+
+        if (def.requiresBossSpawner)
+        {
+            bool hasBoss = RoomValidator.HasBossSpawnerInRoom(footprintSet);
+            sb.Append($"\n• Boss spawner: {(hasBoss ? 1 : 0)}/1");
+        }
+
+        return sb.ToString();
+    }
+
     private void OnEntryClicked(RoomDefinition def)
     {
-        targetAnchor?.SetRoomType(def);
+        targetAnchor?.SetRoomType(def, announce: true);
         RefreshLabel();
         RefreshHighlights();
         Close(); // close after selection — the anchor now shows the room label

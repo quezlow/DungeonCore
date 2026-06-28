@@ -160,8 +160,8 @@ public class MonsterSpawner : MonoBehaviour
 
     // ── Selection visual ──────────────────────────────────────────
 
-    public void OnSelected() { if (selectionRing != null) selectionRing.SetActive(true); }
-    public void OnDeselected() { if (selectionRing != null) selectionRing.SetActive(false); }
+    public void OnSelected() { if (selectionRing != null) selectionRing.SetActive(true); spawnedMonster?.SetSelected(true); }
+    public void OnDeselected() { if (selectionRing != null) selectionRing.SetActive(false); spawnedMonster?.SetSelected(false); }
 
     /// <summary>
     /// Phase 3 closeout (#1) - player-initiated removal. Refunds half the spawn
@@ -303,6 +303,9 @@ public class MonsterSpawner : MonoBehaviour
             spawnedMonster.transform.SetParent(floorRoot.transform, true);
 
         spawnedMonster.Initialise(this);
+        if (SpawnerSelectionController.Instance != null
+            && SpawnerSelectionController.Instance.IsSelected(this))
+            spawnedMonster.SetSelected(true);
 
         if (definition is BossVariantDefinition bossDef)
             spawnedMonster.ApplyBossModifiers(bossDef);

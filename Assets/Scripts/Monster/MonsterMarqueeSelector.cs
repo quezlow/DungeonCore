@@ -12,6 +12,7 @@ using UnityEngine.InputSystem;
 /// SCENE SETUP: add to a persistent UI/manager object. Wire `marqueeRect` to a UI
 /// Image under the dungeon canvas (anchor + pivot bottom-left, Raycast Target OFF).
 /// </summary>
+[DefaultExecutionOrder(-50)]   // run before DungeonBuildController so build input is suppressed in time
 public class MonsterMarqueeSelector : MonoBehaviour
 {
     [SerializeField] private RectTransform marqueeRect;
@@ -43,7 +44,7 @@ public class MonsterMarqueeSelector : MonoBehaviour
         if (mouse == null) return;
 
         if (DungeonBuildController.Instance == null
-            || DungeonBuildController.Instance.CurrentMode != BuildMode.Claim)
+            || DungeonBuildController.Instance.CurrentMode != BuildMode.None)
         { CancelDrag(); return; }
 
         if (mouse.leftButton.wasPressedThisFrame) TryArm(mouse);
@@ -82,6 +83,8 @@ public class MonsterMarqueeSelector : MonoBehaviour
         {
             if (Vector2.Distance(screen, startScreen) < dragThreshold) return;
             dragging = true;
+            if (DungeonBuildController.Instance != null)
+                DungeonBuildController.Instance.SuppressBuildInput = true;
             if (marqueeRect != null) marqueeRect.gameObject.SetActive(true);
         }
         DrawBox(startScreen, screen);
@@ -97,6 +100,8 @@ public class MonsterMarqueeSelector : MonoBehaviour
     private void CancelDrag()
     {
         armed = false; dragging = false;
+        if (DungeonBuildController.Instance != null)
+            DungeonBuildController.Instance.SuppressBuildInput = false;
         if (marqueeRect != null) marqueeRect.gameObject.SetActive(false);
     }
 

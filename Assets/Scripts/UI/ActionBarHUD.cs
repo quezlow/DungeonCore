@@ -83,6 +83,10 @@ public class ActionBarHUD : MonoBehaviour
     private enum ActiveTab { None, Mine, Build, Summon, Claim }
     private ActiveTab currentTab = ActiveTab.None;
 
+    /// <summary>Frame on which Esc was consumed as a cancel. The pause menu checks this
+    /// so it doesn't also open on the same Esc press (order-safe across scripts).</summary>
+    public static int LastCancelFrame { get; private set; } = -1;
+
     // Spawned entry buttons cached for re-highlighting.
     private readonly List<(BuildMode mode, Button button)> spawnedEntries = new();
 
@@ -133,9 +137,22 @@ public class ActionBarHUD : MonoBehaviour
         if (Keybinds.WasPressed(GameAction.Summon)) OnSummonTabClicked();
         if (Keybinds.WasPressed(GameAction.Claim)) OnClaimTabClicked();
 
-        // Esc (cancel) stays hard-bound.
+        // Esc (cancel) stays hard-bound. Only treat it as a cancel when a tool is
+        // active or something is selected; otherwise leave Esc for the pause menu.
         var kb = Keyboard.current;
-        if (kb != null && kb.escapeKey.wasPressedThisFrame) CancelToIdle();
+        if (kb != null && kb.escapeKey.wasPressedThisFrame)
+        {
+            var build = DungeonBuildController.Instance;
+            bool somethingToCancel =
+                (build != null && build.CurrentMode != BuildMode.None)
+                || (SpawnerSelectionController.Instance != null
+                    && SpawnerSelectionController.Instance.CurrentSelected != null);
+            if (somethingToCancel)
+            {
+                CancelToIdle();
+                LastCancelFrame = Time.frameCount;
+            }
+        }
     }
 
     // ── Tab click handlers ────────────────────────────────────────
@@ -216,11 +233,10 @@ public class ActionBarHUD : MonoBehaviour
     {
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
-        DungeonBuildController.Instance.SetMode(BuildMode.Claim);
-        // PHASE 5 — Claim is the new "idle" active state; SetMode above triggers
-        // HandleModeChanged which sets currentTab = ActiveTab.Claim. No fallback
-        // override needed here, but kept for symmetry with the tab-click handlers.
-        currentTab = ActiveTab.Claim;
+        DungeonBuildController.Instance.SetMode(BuildMode.None);
+        // PHASE 5+ — None is the idle select-and-command state; SetMode above triggers
+        // HandleModeChanged, which sets currentTab = ActiveTab.None (no tab lit).
+        currentTab = ActiveTab.None;
         UpdateTabHighlights();
     }
 
@@ -234,6 +250,11 @@ public class ActionBarHUD : MonoBehaviour
     {
         switch (mode)
         {
+            case BuildMode.None:
+                currentTab = ActiveTab.None;   // idle: select & command, no tab lit
+                HideBuildPanel();
+                break;
+
             case BuildMode.Claim:
                 // PHASE 5 — Claim is now its own active mode (formerly the idle default).
                 // Post-placement revert lands here; Claim tab gets highlighted.

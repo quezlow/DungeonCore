@@ -27,7 +27,10 @@ public class RoomToastNotifier : MonoBehaviour
     [Header("Tile Tint")]
     [SerializeField] private Tilemap    highlightTilemap;
     [SerializeField] private TileBase   highlightTile;
-    [SerializeField] private float      tintDuration = 1.2f;
+    [SerializeField] private float tintDuration = 1.2f;
+
+    [Header("Failure")]
+    [SerializeField] private Color failColor = new(0.91f, 0.27f, 0.38f, 1f);
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -38,13 +41,24 @@ public class RoomToastNotifier : MonoBehaviour
 
     private void HandleValidation(RoomAnchor anchor, bool isValid)
     {
-        if (!isValid) return; // only celebrate successes
+        if (!isValid)
+        {
+            // Failure feedback — a brief red toast naming what's missing.
+            if (toastPrefab != null && anchor.AssignedRoom != null)
+            {
+                string reason = string.IsNullOrEmpty(anchor.LastFailReason)
+                    ? $"{anchor.AssignedRoom.roomName} incomplete"
+                    : anchor.LastFailReason;
+                StartCoroutine(ShowToast(anchor.transform.position, reason, failColor));
+            }
+            return;
+        }
 
         string message = $"{anchor.AssignedRoom.roomName} Complete!";
-        Color  color   = anchor.AssignedRoom.validationTintColor;
+        Color color = anchor.AssignedRoom.validationTintColor;
 
         if (toastPrefab != null)
-            StartCoroutine(ShowToast(anchor.transform.position, message));
+            StartCoroutine(ShowToast(anchor.transform.position, message, color));
 
         var tiles = anchor.GetRoomTiles();
         if (tiles != null && highlightTilemap != null && highlightTile != null)
@@ -53,13 +67,13 @@ public class RoomToastNotifier : MonoBehaviour
 
     // ── Toast ─────────────────────────────────────────────────────
 
-    private IEnumerator ShowToast(Vector3 worldPos, string message)
+    private IEnumerator ShowToast(Vector3 worldPos, string message, Color textColor)
     {
-        var go    = Instantiate(toastPrefab, worldPos + Vector3.up * 0.5f, Quaternion.identity);
+        var go = Instantiate(toastPrefab, worldPos + Vector3.up * 0.5f, Quaternion.identity);
         var label = go.GetComponentInChildren<TMP_Text>();
-        var cg    = go.GetComponent<CanvasGroup>() ?? go.AddComponent<CanvasGroup>();
+        var cg = go.GetComponent<CanvasGroup>() ?? go.AddComponent<CanvasGroup>();
 
-        if (label != null) label.text = message;
+        if (label != null) { label.text = message; label.color = textColor; }
 
         float elapsed = 0f;
         while (elapsed < toastDuration)
