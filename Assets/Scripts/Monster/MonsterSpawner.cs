@@ -63,6 +63,7 @@ public class MonsterSpawner : MonoBehaviour
     private int pendingAlivePatrolIndex;
     private float pendingAliveXP;
     private bool pendingAliveIsVeteran;
+    private int pendingAliveKills;
 
     // ── Public reads ──────────────────────────────────────────────
     public int CapacityCost => definition != null ? definition.CapacityCost : capacityCost;
@@ -266,7 +267,7 @@ public class MonsterSpawner : MonoBehaviour
     }
 
     public void SetPendingAliveState(Vector3Int cell, float hp, int patrolIndex,
-                                     float xp, bool isVeteran)
+                                     float xp, bool isVeteran, int kills)
     {
         hasPendingAliveState = true;
         pendingAliveCell = cell;
@@ -274,6 +275,7 @@ public class MonsterSpawner : MonoBehaviour
         pendingAlivePatrolIndex = patrolIndex;
         pendingAliveXP = xp;
         pendingAliveIsVeteran = isVeteran;
+        pendingAliveKills = kills;
     }
 
     // ── Spawning ──────────────────────────────────────────────────
@@ -317,6 +319,7 @@ public class MonsterSpawner : MonoBehaviour
         if (hasPendingAliveState)
         {
             spawnedMonster.SetMonsterXP(pendingAliveXP);
+            spawnedMonster.SetMonsterKills(pendingAliveKills);
             spawnedMonster.SetVeteran(pendingAliveIsVeteran);
             spawnedMonster.SetCurrentHP(pendingAliveHP);
             spawnedMonster.SetPatrolIndex(pendingAlivePatrolIndex);

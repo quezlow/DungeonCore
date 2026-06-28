@@ -352,6 +352,7 @@ public class DungeonSaveController : MonoBehaviour
                 spawnerData.alivePatrolIndex = s.SpawnedMonster.PatrolIndex;
                 spawnerData.aliveMonsterXP = s.SpawnedMonster.MonsterXP;
                 spawnerData.aliveMonsterIsVeteran = s.SpawnedMonster.IsVeteran;
+                spawnerData.aliveMonsterKills = s.SpawnedMonster.KillCount;
             }
 
             data.spawners.Add(spawnerData);
@@ -657,7 +658,8 @@ public class DungeonSaveController : MonoBehaviour
                         s.aliveMonsterHP,
                         s.alivePatrolIndex,
                         s.aliveMonsterXP,
-                        s.aliveMonsterIsVeteran);
+                        s.aliveMonsterIsVeteran,
+                        s.aliveMonsterKills);
                 }
             }
         }

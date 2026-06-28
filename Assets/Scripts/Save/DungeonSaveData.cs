@@ -122,6 +122,7 @@ public class MonsterSpawnerSaveData
     public int alivePatrolIndex;
     public float aliveMonsterXP;
     public bool aliveMonsterIsVeteran;
+    public int aliveMonsterKills;
 }
 
 [Serializable]

@@ -67,6 +67,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private float currentHP;
     private float monsterXP;
+    private int killCount;
     private bool isVeteran;
     public MonsterSpawner Spawner => spawner;
 
@@ -245,6 +246,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public void SetMonsterXP(float xp)
     {
         monsterXP = Mathf.Max(0f, xp);
+    }
+
+    /// <summary>Restores lifetime kills after save load.</summary>
+    public void SetMonsterKills(int kills)
+    {
+        killCount = Mathf.Max(0, kills);
     }
 
     /// <summary>Adds HP (clamped to maxHP) with floating heal numbers. Used by
@@ -847,7 +854,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         lastAttackTime = Time.time;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         target.TakeDamage(attackDamage);
-        if (!target.IsAlive) { GainXP(xpPerKill); target = null; }
+        if (!target.IsAlive) { killCount++; GainXP(xpPerKill); target = null; }
     }
 
     private void GainXP(float amount)
@@ -965,9 +972,28 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
     public float MonsterXP => monsterXP;
+    public int KillCount => killCount;
+    public float XpToVeteran => xpToVeteran;
+
+    /// <summary>Name for the info panel: boss title, or "Veteran {name}", or the base name.</summary>
+    public string DisplayName
+    {
+        get
+        {
+            if (bossDefinition != null) return bossDefinition.GetBossTitle();
+            var def = IsWild ? wildDefinition : spawner?.Definition;
+            string n = def != null ? def.monsterName : "Monster";
+            return isVeteran ? $"Veteran {n}" : n;
+        }
+    }
     public FloorRoot CurrentFloor => currentFloor;
     public BossVariantDefinition BossDefinition => bossDefinition;
 
     /// <summary>Phase 3 closeout (#1) - true while actively fighting a target.</summary>
     public bool IsInCombat => state == MonsterState.Attack;
+
+    /// <summary>The current combat target's transform, or null if not fighting.
+    /// Used by the targeting-line visuals. Update() nulls dead targets, so this is
+    /// safe to read in LateUpdate.</summary>
+    public Transform CombatTarget => (target != null && target.IsAlive) ? target.Transform : null;
 }
