@@ -34,8 +34,13 @@ public class RoomTypePickerUI : MonoBehaviour
     [SerializeField] private GameObject panel;
 
     [Header("Colours")]
-    [SerializeField] private Color selectedColor   = new(0.82f, 0.68f, 0.27f, 1f);
+    [SerializeField] private Color selectedColor = new(0.82f, 0.68f, 0.27f, 1f);
     [SerializeField] private Color unselectedColor = new(1f, 1f, 1f, 0.55f);
+
+    [Header("Upgrade UI")]
+    [SerializeField] private TMP_Text tierLabel;
+    [SerializeField] private Button upgradeButton;
+    [SerializeField] private TMP_Text upgradeCostLabel;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -50,9 +55,10 @@ public class RoomTypePickerUI : MonoBehaviour
         Instance = this;
 
         closeButton?.onClick.AddListener(Close);
+        upgradeButton?.onClick.AddListener(OnUpgradeClicked);
         if (panel != null) panel.SetActive(false);
     }
-    
+
     // ── Public API ────────────────────────────────────────────────
 
     public void Open(RoomAnchor anchor)
@@ -70,6 +76,7 @@ public class RoomTypePickerUI : MonoBehaviour
         BuildEntries();
         RefreshLabel();
         RefreshHighlights();
+        RefreshUpgrade();
     }
 
     public void Close()
@@ -129,6 +136,36 @@ public class RoomTypePickerUI : MonoBehaviour
             if (img != null)
                 img.color = def == targetAnchor?.AssignedRoom
                     ? selectedColor : unselectedColor;
+        }
+    }
+
+    private void RefreshUpgrade()
+    {
+        var a = targetAnchor;
+        bool has = a != null && a.AssignedRoom != null;
+
+        if (tierLabel != null)
+            tierLabel.text = has ? $"Tier {a.Tier} / {a.AssignedRoom.maxTier}" : "";
+
+        bool canBuy = has && a.CanUpgrade
+            && (DungeonCore.Instance == null || DungeonCore.Instance.Gold >= a.UpgradeCost);
+        if (upgradeButton != null) upgradeButton.interactable = canBuy;
+
+        if (upgradeCostLabel != null)
+        {
+            if (has && a.Tier >= a.AssignedRoom.maxTier) upgradeCostLabel.text = "MAX";
+            else if (has && a.CanUpgrade) upgradeCostLabel.text = $"{a.UpgradeCost}g";
+            else upgradeCostLabel.text = "";
+        }
+    }
+
+    private void OnUpgradeClicked()
+    {
+        if (targetAnchor == null) return;
+        if (targetAnchor.TryUpgrade())
+        {
+            RefreshLabel();
+            RefreshUpgrade();
         }
     }
 }

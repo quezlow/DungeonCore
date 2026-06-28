@@ -228,6 +228,16 @@ public class DungeonCore : MonoBehaviour
         OnGoldChanged?.Invoke(currentGold);
     }
 
+    /// <summary>Spends gold if affordable. Returns false (no change) if too poor.</summary>
+    public bool TrySpendGold(int cost)
+    {
+        if (cost <= 0) return true;
+        if (currentGold < cost) return false;
+        currentGold -= cost;
+        OnGoldChanged?.Invoke(currentGold);
+        return true;
+    }
+
     public bool TrySpendCapacity(int cost)
     {
         if (usedCapacity + cost > MaxCapacity) return false;

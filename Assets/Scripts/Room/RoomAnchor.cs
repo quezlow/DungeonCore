@@ -112,4 +112,54 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
 
     /// <summary>Returns the tiles in this room, or null if not validated.</summary>
     public System.Collections.Generic.HashSet<Vector3Int> GetRoomTiles() => lastRoomTiles;
+
+    // ── Upgrades ──────────────────────────────────────────────────
+
+    /// <summary>Current upgrade tier (1 = base). Scales this room's effects.</summary>
+    public int Tier { get; private set; } = 1;
+
+    /// <summary>Multiplier applied to effect magnitudes. Linear with tier.</summary>
+    public float EffectScale => Tier;
+
+    /// <summary>Gold cost of the next tier, or 0 if maxed / unassigned.</summary>
+    public int UpgradeCost =>
+        (AssignedRoom != null && Tier < AssignedRoom.maxTier)
+            ? AssignedRoom.upgradeBaseCost * Tier
+            : 0;
+
+    /// <summary>Valid room with tier headroom (gold + research checked at purchase).</summary>
+    public bool CanUpgrade =>
+        AssignedRoom != null && IsValid && Tier < AssignedRoom.maxTier;
+
+    /// <summary>Research gate, assigned by the tech tree when it lands (null = always allowed).</summary>
+    public static System.Func<RoomDefinition, int, bool> UpgradeGate;
+
+    /// <summary>Fires after a successful upgrade. UI refreshes on this.</summary>
+    public static event System.Action<RoomAnchor> OnRoomUpgraded;
+
+    /// <summary>
+    /// Buys the next tier: needs a valid room, tier headroom, the research gate
+    /// (if set), and enough gold. Returns true on success.
+    /// </summary>
+    public bool TryUpgrade()
+    {
+        if (!CanUpgrade) return false;
+
+        int nextTier = Tier + 1;
+        if (UpgradeGate != null && !UpgradeGate(AssignedRoom, nextTier)) return false;
+
+        int cost = UpgradeCost;
+        if (DungeonCore.Instance == null || !DungeonCore.Instance.TrySpendGold(cost)) return false;
+
+        Tier = nextTier;
+        OnRoomUpgraded?.Invoke(this);
+        return true;
+    }
+
+    /// <summary>Restore-only: sets tier directly (no cost). Called after SetRoomType on load.</summary>
+    public void SetTier(int tier)
+    {
+        int max = AssignedRoom != null ? AssignedRoom.maxTier : tier;
+        Tier = Mathf.Clamp(tier, 1, Mathf.Max(1, max));
+    }
 }

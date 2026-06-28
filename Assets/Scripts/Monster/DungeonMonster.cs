@@ -200,6 +200,34 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         monsterXP = Mathf.Max(0f, xp);
     }
 
+    /// <summary>Adds HP (clamped to maxHP) with floating heal numbers. Used by
+    /// room effects (Lair). No post-damage cooldown — a Lair always mends.</summary>
+    public void Heal(float amount)
+    {
+        if (amount <= 0f || currentHP >= maxHP) return;
+        float newHP = Mathf.Min(maxHP, currentHP + amount);
+        float actuallyHealed = newHP - currentHP;
+        currentHP = newHP;
+        statusBars?.SetHP(currentHP, maxHP);
+
+        pendingHealDisplay += actuallyHealed;
+        if (pendingHealDisplay >= HEAL_DISPLAY_THRESHOLD)
+        {
+            DamageNumberSpawner.Spawn(pendingHealDisplay, transform.position,
+                FloatingDamageNumber.DamageType.Heal);
+            pendingHealDisplay = 0f;
+        }
+    }
+
+    /// <summary>Adds XP toward Veteran (room effects — Training). Promotion gates
+    /// (boss / wild / already-veteran) are handled by TryPromoteToVeteran.</summary>
+    public void AddXP(float amount)
+    {
+        if (amount <= 0f) return;
+        monsterXP += amount;
+        TryPromoteToVeteran();
+    }
+
     /// <summary>
     /// DAY 31 PART 3 CLOSE-OUT — Re-apply veteran buffs after save load.
     /// Bypasses the threshold check (the monster was already veteran when saved)

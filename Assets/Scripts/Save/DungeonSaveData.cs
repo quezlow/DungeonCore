@@ -144,6 +144,7 @@ public class RoomAnchorSaveData
 {
     public SerializableVector3Int cell;
     public string assignedRoomName;
+    public int tier = 1;
 }
 
 [Serializable]

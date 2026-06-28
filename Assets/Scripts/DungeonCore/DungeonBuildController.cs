@@ -760,7 +760,7 @@ public class DungeonBuildController : MonoBehaviour
 
     public void RestoreRoomAnchor(FloorRoot floor, Vector3Int cell, string roomName,
                                   FurnitureDefinitionRegistry furnitureRegistry,
-                                  RoomDefinitionRegistry roomDefRegistry)
+                                  RoomDefinitionRegistry roomDefRegistry, int tier = 1)
     {
         if (roomAnchorPrefab == null) return;
         if (floor?.TileInfluence == null) return;
@@ -773,6 +773,7 @@ public class DungeonBuildController : MonoBehaviour
             var defRes = roomDefRegistry?.GetByName(roomName);
             if (defRes != null) anchor.SetRoomType(defRes);
         }
+        anchor.SetTier(tier);
     }
 
     public void RestoreTrap(FloorRoot floor, TrapDefinition def, Vector3Int cell, bool isFlagged,

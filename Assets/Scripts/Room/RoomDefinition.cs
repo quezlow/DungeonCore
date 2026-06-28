@@ -48,6 +48,34 @@ public class RoomDefinition : ScriptableObject
     [Tooltip("Human-readable description of what this TechNode unlocks. " +
              "Displayed in the room label tooltip (Day 25+).")]
     public string techNodeDescription = "";
+
+    [Header("Upgrades")]
+    [Tooltip("Maximum upgrade tier (1 = no upgrades). Higher tiers scale this room's effects.")]
+    [Min(1)] public int maxTier = 3;
+
+    [Tooltip("Gold cost for tier 1→2. Each further tier costs this × the current tier.")]
+    [Min(0)] public int upgradeBaseCost = 100;
+
+    [Header("Mechanical Effects")]
+    [Tooltip("Effects applied while this room is valid. Lair = HP regen for the " +
+             "room's monsters; Training = XP over time toward Veteran. More types later.")]
+    public List<RoomEffect> effects = new();
+}
+
+public enum RoomEffectType
+{
+    LairRegen,   // HP per second for monsters whose spawner sits in the room
+    TrainingXp,  // XP per second toward Veteran for those monsters
+}
+
+[Serializable]
+public class RoomEffect
+{
+    public RoomEffectType type = RoomEffectType.LairRegen;
+
+    [Tooltip("Per-second magnitude: HP/sec for LairRegen, XP/sec for TrainingXp.")]
+    [Min(0f)]
+    public float perSecond = 1f;
 }
 
 [Serializable]

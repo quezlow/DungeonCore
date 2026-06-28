@@ -383,7 +383,8 @@ public class DungeonSaveController : MonoBehaviour
             data.roomAnchors.Add(new RoomAnchorSaveData
             {
                 cell = SerializableVector3Int.From(a.OccupiedCell),
-                assignedRoomName = a.AssignedRoom?.roomName ?? ""
+                assignedRoomName = a.AssignedRoom?.roomName ?? "",
+                tier = a.Tier
             });
         }
 
@@ -680,7 +681,7 @@ public class DungeonSaveController : MonoBehaviour
 
         if (data.roomAnchors != null)
             foreach (var a in data.roomAnchors)
-                DungeonBuildController.Instance.RestoreRoomAnchor(floor, a.cell.ToVector3Int(), a.assignedRoomName, furnitureRegistry, roomDefRegistry);
+                DungeonBuildController.Instance.RestoreRoomAnchor(floor, a.cell.ToVector3Int(), a.assignedRoomName, furnitureRegistry, roomDefRegistry, a.tier);
 
         if (data.traps != null)
         {
