@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 /// <summary>
 /// Per-floor container that bundles all the systems a single floor needs.
@@ -25,6 +26,7 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TileInfluenceManager tileInfluence;
     [SerializeField] private TrapRegistry trapRegistry;
     [SerializeField] private DungeonTerrain terrain;
+    [SerializeField] private Tilemap highlightTilemap;
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
     [SerializeField] private FeatureRevealController featureRevealController;
     [SerializeField] private WildMonsterController wildMonsterController;
@@ -46,6 +48,7 @@ public class FloorRoot : MonoBehaviour
     public TerrainTypeMap TerrainTypeMap => terrainTypeMap;  
     public FloorEntityRegistry Entities => entities;
     public PolygonCollider2D CameraBounds => cameraBounds;
+    public Tilemap HighlightTilemap => highlightTilemap;
 
     public float WorldOriginY => floorIndex * -2000f;
 

@@ -12302,7 +12302,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9967932
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -14839,6 +14839,7 @@ MonoBehaviour:
   tileInfluence: {fileID: 328756363}
   trapRegistry: {fileID: 1133935243466788771}
   terrain: {fileID: 1639800173}
+  highlightTilemap: {fileID: 1276494923}
   featureGenerator: {fileID: 468668985}
   featureRevealController: {fileID: 652070175}
   wildMonsterController: {fileID: 1848019895}
@@ -14937,7 +14938,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.00003637352}
+  m_AnchoredPosition: {x: 0, y: -0.000022273365}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278

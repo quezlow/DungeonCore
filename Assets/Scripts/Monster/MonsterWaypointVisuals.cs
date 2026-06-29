@@ -145,7 +145,11 @@ public class MonsterWaypointVisuals : MonoBehaviour
         tmp.fontStyle = TMPro.FontStyles.Bold;
 
         var mr = marker.GetComponent<MeshRenderer>();
-        if (mr != null) mr.sortingOrder = 100;
+        if (mr != null)
+        {
+            mr.sortingLayerName = "WorldUI";
+            mr.sortingOrder = 100;
+        }
 
         return marker;
     }

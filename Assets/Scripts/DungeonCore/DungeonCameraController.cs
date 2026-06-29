@@ -40,6 +40,11 @@ public class DungeonCameraController : MonoBehaviour
     private struct CamBookmark { public bool set; public Vector3 pos; public int floor; public float zoom; }
     private readonly CamBookmark[] bookmarks = new CamBookmark[4];
 
+    // Pause camera input while the window is unfocused (alt-tab) so
+    // edge-scroll can't push the view out of bounds while you're away.
+    private bool hasFocus = true;
+    private void OnApplicationFocus(bool focus) => hasFocus = focus;
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -107,6 +112,7 @@ public class DungeonCameraController : MonoBehaviour
         var sel = es != null ? es.currentSelectedGameObject : null;
         var typingField = sel != null ? sel.GetComponent<TMPro.TMP_InputField>() : null;
         if (typingField != null && typingField.isFocused) return;
+        if (!hasFocus) return;
 
         HandleZoom();
         HandlePan();
@@ -253,6 +259,36 @@ public class DungeonCameraController : MonoBehaviour
     public void ForceReturnToCore() { timeSinceLastInput = returnDelay; }
     /// <summary>Max orthographic size — used by DungeonBoundsUpdater to size minimum bounds.</summary>
     public float MaxZoom => maxZoom;
+
+    // ── Bookmark persistence (per-save) ───────────────────────────
+    public struct BookmarkData { public bool set; public Vector3 pos; public int floor; public float zoom; }
+
+    public BookmarkData[] ExportBookmarks()
+    {
+        var arr = new BookmarkData[bookmarks.Length];
+        for (int i = 0; i < bookmarks.Length; i++)
+            arr[i] = new BookmarkData
+            {
+                set = bookmarks[i].set,
+                pos = bookmarks[i].pos,
+                floor = bookmarks[i].floor,
+                zoom = bookmarks[i].zoom
+            };
+        return arr;
+    }
+
+    public void ImportBookmarks(BookmarkData[] data)
+    {
+        if (data == null) return;
+        for (int i = 0; i < bookmarks.Length && i < data.Length; i++)
+            bookmarks[i] = new CamBookmark
+            {
+                set = data[i].set,
+                pos = data[i].pos,
+                floor = data[i].floor,
+                zoom = data[i].zoom
+            };
+    }
 
     public void PanTo(Vector3 worldPos)
     {

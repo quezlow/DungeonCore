@@ -64,6 +64,7 @@ public class FeatureAlertBanner : MonoBehaviour
     /// </summary>
     public void Show(string message, Vector3 worldPos, int floorIndex)
     {
+        if (!gameObject.activeSelf) gameObject.SetActive(true);
         if (label != null) label.text = message;
 
         if (clickArea != null)

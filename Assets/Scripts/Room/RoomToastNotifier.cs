@@ -41,6 +41,7 @@ public class RoomToastNotifier : MonoBehaviour
 
     private void HandleValidation(RoomAnchor anchor, bool isValid)
     {
+        if (DungeonSaveController.IsLoading) return;
         if (!isValid)
         {
             // Failure feedback — a brief red toast naming what's missing.
@@ -61,8 +62,9 @@ public class RoomToastNotifier : MonoBehaviour
             StartCoroutine(ShowToast(anchor.transform.position, message, color));
 
         var tiles = anchor.GetRoomTiles();
-        if (tiles != null && highlightTilemap != null && highlightTile != null)
-            StartCoroutine(FlashTiles(tiles, color));
+        var tm = FloorManager.Instance?.ActiveFloor?.HighlightTilemap ?? highlightTilemap;
+        if (tiles != null && tm != null && highlightTile != null)
+            StartCoroutine(FlashTiles(tiles, color, tm));
     }
 
     // ── Toast ─────────────────────────────────────────────────────
@@ -94,30 +96,32 @@ public class RoomToastNotifier : MonoBehaviour
 
     // ── Tile Tint Flash ───────────────────────────────────────────
 
-    private IEnumerator FlashTiles(HashSet<Vector3Int> tiles, Color tintColor)
+    private IEnumerator FlashTiles(HashSet<Vector3Int> tiles, Color tintColor, Tilemap tm)
     {
+        if (tm == null) yield break;
+
         // Paint tiles.
         foreach (var cell in tiles)
-            highlightTilemap.SetTile(cell, highlightTile);
+            tm.SetTile(cell, highlightTile);
 
         // Fade tint in then out.
         float elapsed = 0f;
         while (elapsed < tintDuration)
         {
             elapsed += Time.deltaTime;
-            float t  = elapsed / tintDuration;
-            float a  = t < 0.3f
+            float t = elapsed / tintDuration;
+            float a = t < 0.3f
                 ? Mathf.Lerp(0f, tintColor.a, t / 0.3f)
                 : Mathf.Lerp(tintColor.a, 0f, (t - 0.3f) / 0.7f);
 
-            highlightTilemap.color = new Color(tintColor.r, tintColor.g, tintColor.b, a);
+            tm.color = new Color(tintColor.r, tintColor.g, tintColor.b, a);
             yield return null;
         }
 
         // Clear tiles.
         foreach (var cell in tiles)
-            highlightTilemap.SetTile(cell, null);
+            tm.SetTile(cell, null);
 
-        highlightTilemap.color = Color.white;
+        tm.color = Color.white;
     }
 }

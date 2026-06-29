@@ -27,6 +27,7 @@ public class HotbarController : MonoBehaviour
 
     void Update()
     {
+        if (Keybinds.IsTextInputActive()) return;
         if (PauseController.IsGamePaused) return;
 
         for (int i = 0; i < slotCount; i++)

@@ -36,6 +36,7 @@ public class FloatingDamageNumber : MonoBehaviour
     {
         var canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
+        canvas.sortingLayerName = "WorldUI";
         canvas.sortingOrder = 20;
         if (TryGetComponent<UnityEngine.UI.GraphicRaycaster>(out var gr))
             Destroy(gr);

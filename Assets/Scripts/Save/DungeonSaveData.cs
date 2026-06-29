@@ -45,15 +45,24 @@ public class DungeonSaveData
     public bool hasEntrance;
     public SerializableVector3Int entranceCell;
 
-    // DAY 31 — Camera position + active floor for restoring the view on load.
     public bool hasCameraState;
     public SerializableVector3 cameraWorldPos;  // world space, includes floor Y offset
     public int cameraFloorIndex;
+    public List<CameraBookmarkSaveData> cameraBookmarks = new();
 
     public List<AlertEntrySaveData> alertHistory = new();
     public int alertUnreadCount = 0;
 
     public RunStatsSaveData runStats;
+}
+
+[Serializable]
+public class CameraBookmarkSaveData
+{
+    public bool set;
+    public SerializableVector3 pos;
+    public int floor;
+    public float zoom;
 }
 
 [Serializable]

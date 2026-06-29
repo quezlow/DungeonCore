@@ -33,6 +33,7 @@ public class HudToggle : MonoBehaviour
 
     private void Update()
     {
+        if (Keybinds.IsTextInputActive()) return;
         var kb = Keyboard.current;
         if (kb == null || group == null) return;
 

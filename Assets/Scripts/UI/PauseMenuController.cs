@@ -310,6 +310,13 @@ public class PauseMenuController : MonoBehaviour
 
     private void DoQuit(bool toDesktop)
     {
+        // Close all menu UI before the fade so nothing lingers on top of it.
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (runLogPanel != null) runLogPanel.SetActive(false);
+        if (board != null) board.SetActive(false);
+        if (backdrop != null) backdrop.SetActive(false);
+        slotPicker?.Hide();
+
         RestoreTimeForSceneChange();
         if (toDesktop) Application.Quit();
         else DungeonSaveController.Instance?.ExitToTitleScreen();

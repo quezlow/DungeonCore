@@ -44,6 +44,17 @@ public static class Keybinds
     /// action bar can refresh its shortcut hints.</summary>
     public static event System.Action OnRebind;
 
+    // True while a TMP_InputField is focused (renaming a floor/save, etc.) — used
+    // to suppress gameplay hotkeys so typed characters don't fire mode switches.
+    public static bool IsTextInputActive()
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        var sel = es != null ? es.currentSelectedGameObject : null;
+        return sel != null
+            && sel.TryGetComponent(out TMPro.TMP_InputField field)
+            && field.isFocused;
+    }
+
     /// <summary>All rebindable actions, in display order.</summary>
     public static readonly GameAction[] All =
     {
@@ -122,6 +133,7 @@ public static class Keybinds
     // ── Reads used by gameplay ────────────────────────────────────
     public static bool WasPressed(GameAction action)
     {
+        if (IsTextInputActive()) return false;
         var kb = Keyboard.current;
         if (kb == null) return false;
         var key = KeyFor(action);
@@ -131,6 +143,7 @@ public static class Keybinds
 
     public static bool IsHeld(GameAction action)
     {
+        if (IsTextInputActive()) return false;
         var kb = Keyboard.current;
         if (kb == null) return false;
         var key = KeyFor(action);

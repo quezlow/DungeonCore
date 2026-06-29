@@ -28,6 +28,7 @@ public class DungeonSaveController : MonoBehaviour
 
     private DungeonSaveData currentSave = new();
     private bool isLoading;
+    public static bool IsLoading => Instance != null && Instance.isLoading;
     public int WorldSeed { get; private set; }
 
     public MonsterDefinitionRegistry GetMonsterRegistry() => monsterRegistry;
@@ -208,6 +209,16 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.hasCameraState = true;
             currentSave.cameraWorldPos = SerializableVector3.From(DungeonCameraController.Instance.transform.position);
             currentSave.cameraFloorIndex = FloorManager.Instance.ActiveFloorIndex;
+
+            currentSave.cameraBookmarks.Clear();
+            foreach (var b in DungeonCameraController.Instance.ExportBookmarks())
+                currentSave.cameraBookmarks.Add(new CameraBookmarkSaveData
+                {
+                    set = b.set,
+                    pos = SerializableVector3.From(b.pos),
+                    floor = b.floor,
+                    zoom = b.zoom
+                });
         }
 
         foreach (var floor in FloorManager.Instance.AllFloors)
@@ -591,6 +602,24 @@ public class DungeonSaveController : MonoBehaviour
                 StartCoroutine(RestoreCameraDeferred(
                     currentSave.cameraWorldPos.ToVector3(),
                     currentSave.cameraFloorIndex));
+
+            if (currentSave.cameraBookmarks != null && DungeonCameraController.Instance != null)
+            {
+                var bm = new DungeonCameraController.BookmarkData[currentSave.cameraBookmarks.Count];
+                for (int i = 0; i < bm.Length; i++)
+                {
+                    var s = currentSave.cameraBookmarks[i];
+                    bm[i] = new DungeonCameraController.BookmarkData
+                    {
+                        set = s.set,
+                        pos = s.pos.ToVector3(),
+                        floor = s.floor,
+                        zoom = s.zoom
+                    };
+                }
+                DungeonCameraController.Instance.ImportBookmarks(bm);
+            }
+
 
             return true;
         }

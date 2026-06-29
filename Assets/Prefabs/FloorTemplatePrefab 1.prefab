@@ -1762,6 +1762,7 @@ MonoBehaviour:
   tileInfluence: {fileID: 2894437004907475980}
   trapRegistry: {fileID: 5316089791698207634}
   terrain: {fileID: 917423282464261291}
+  highlightTilemap: {fileID: 6035043713791843268}
   featureGenerator: {fileID: 2292102316443211690}
   featureRevealController: {fileID: 1175181438670990947}
   wildMonsterController: {fileID: 7821470843430572059}
