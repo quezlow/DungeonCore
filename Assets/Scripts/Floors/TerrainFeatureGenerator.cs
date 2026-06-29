@@ -39,6 +39,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private float riverMeanderDegrees = 35f;
     [SerializeField] private int minRiverWidth = 2;
     [SerializeField] private int maxRiverWidth = 5;
+    [Tooltip("Floor-bank thickness eroded inward from each side of a river. The river " +
+             "footprint never grows; banks eat into the water. Clamped per-river so a " +
+             "water channel always survives, so narrow rivers get thinner banks or none.")]
+    [SerializeField] private int minRiverBank = 1;
+    [SerializeField] private int maxRiverBank = 3;
 
     // ── Inspector — Exclusion ─────────────────────────────────────
 
@@ -107,6 +112,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "River cells paint here as they're revealed.")]
     [SerializeField] private Tilemap waterTilemap;
     [SerializeField] private TileBase waterTile;
+
+    // Water cells of every revealed river, accumulated as water is painted. The cave-wall
+    // renderer reads this so a discovered river is framed by caps the moment it appears,
+    // even on stretches where water meets rock directly (no banks).
+    private readonly HashSet<Vector3Int> revealedRiverCells = new();
+    public IReadOnlyCollection<Vector3Int> RevealedRiverCells => revealedRiverCells;
 
     [Header("Debug Visualization")]
     [SerializeField] private bool autoPaintDebugOverlay = false;
@@ -254,6 +265,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData.revealedRiverIds.Add(riverId);
         PaintRiverWater(riverId);
         PaintRiverOverlay(riverId);
+        MarkRiverBanksAsFloor(riverId);
         UnfogRiver(riverId);
     }
 
@@ -457,15 +469,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var cells = PaintRiver(polyline, width, floorCentre, floorRadius);
             if (cells.Count == 0) continue;
 
+            // Chambers yield the FULL footprint (water + banks) to the river.
             foreach (var chamber in featureData.chambers)
                 chamber.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
+
+            // Erode the outer shell into dry floor banks; the eroded core stays water.
+            int bankWidth = rng.Next(minRiverBank, maxRiverBank + 1);
+            SplitRiverBanks(cells, bankWidth, out var waterCells, out var bankCells);
 
             featureData.rivers.Add(new RiverData
             {
                 id = featureData.rivers.Count,
                 width = width,
                 polyline = ToSerializable(polyline),
-                cells = ToSerializable(new List<Vector3Int>(cells)),
+                cells = ToSerializable(new List<Vector3Int>(waterCells)),
+                bankCells = ToSerializable(new List<Vector3Int>(bankCells)),
             });
         }
 
@@ -777,6 +795,40 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return dilated;
     }
 
+    /// <summary>
+    /// Splits a river footprint into a water core and dry floor banks by peeling the
+    /// outer shell inward bankWidth times. Each pass moves every boundary cell (one with
+    /// an 8-neighbour outside the remaining water) into the banks. Peeling stops early if
+    /// the next pass would leave no water, so a channel always survives and very thin
+    /// rivers simply get no banks. Erosion is symmetric, so both banks share a width.
+    /// </summary>
+    private static void SplitRiverBanks(
+        HashSet<Vector3Int> footprint, int bankWidth,
+        out HashSet<Vector3Int> water, out HashSet<Vector3Int> banks)
+    {
+        water = new HashSet<Vector3Int>(footprint);
+        banks = new HashSet<Vector3Int>();
+        var ring = new List<Vector3Int>();
+
+        for (int k = 0; k < bankWidth; k++)
+        {
+            ring.Clear();
+            foreach (var c in water)
+            {
+                bool edge = false;
+                for (int dx = -1; dx <= 1 && !edge; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        if (!water.Contains(new Vector3Int(c.x + dx, c.y + dy, 0))) { edge = true; break; }
+                    }
+                if (edge) ring.Add(c);
+            }
+            if (ring.Count == 0 || ring.Count >= water.Count) break;   // keep a water core
+            foreach (var c in ring) { water.Remove(c); banks.Add(c); }
+        }
+    }
+
     private static IEnumerable<Vector3Int> BresenhamLine(Vector3Int a, Vector3Int b)
     {
         int x0 = a.x, y0 = a.y;
@@ -865,8 +917,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
 
         foreach (var r in featureData.rivers)
+        {
             foreach (var sv in r.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.River, featureId = r.id };
+            if (r.bankCells != null)
+                foreach (var sv in r.bankCells)
+                    cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.RiverBank, featureId = r.id };
+        }
     }
 
     // ── Debug Overlay ─────────────────────────────────────────────
@@ -896,6 +953,28 @@ public class TerrainFeatureGenerator : MonoBehaviour
             }
     }
 
+    /// <summary>
+    /// Registers a revealed river's dry banks as natural floor (walkable, unclaimed,
+    /// mined) so they read as ground, give units footing, and form a mined frontier the
+    /// rock beyond them can be dug from. Mirrors the core cavern: it lands in minedTiles
+    /// and is therefore saved, so banks persist across a reload without re-marking.
+    /// </summary>
+    private void MarkRiverBanksAsFloor(int riverId)
+    {
+        if (featureData == null || floor == null) return;
+        var inf = floor.TileInfluence;
+        if (inf == null) return;
+        foreach (var r in featureData.rivers)
+        {
+            if (r.id != riverId) continue;
+            if (r.bankCells == null || r.bankCells.Count == 0) return;
+            var cells = new List<Vector3Int>(r.bankCells.Count);
+            foreach (var sv in r.bankCells) cells.Add(sv.ToVector3Int());
+            inf.MarkNaturalFloor(cells);
+            return;
+        }
+    }
+
     /// <summary>Paint one river's cells into the water tilemap (real rendering).</summary>
     private void PaintRiverWater(int riverId)
     {
@@ -904,7 +983,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             if (r.id != riverId) continue;
             foreach (var sv in r.cells)
-                waterTilemap.SetTile(sv.ToVector3Int(), waterTile);
+            {
+                var rc = sv.ToVector3Int();
+                waterTilemap.SetTile(rc, waterTile);
+                revealedRiverCells.Add(rc);
+            }
             return;
         }
     }
@@ -943,9 +1026,27 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var r in featureData.rivers)
         {
             if (r.id != riverId) continue;
-            foreach (var sv in r.cells)
-                terrain.RevealTile(sv.ToVector3Int());
+            RevealWithBorder(terrain, r.cells);
+            if (r.bankCells != null) RevealWithBorder(terrain, r.bankCells);
             return;
+        }
+    }
+
+    /// <summary>
+    /// Reveals each listed cell plus its 1-cell border, so a river's wall caps sit on
+    /// revealed ground the instant it's discovered (mirrors UnfogCoreCavern). Fog left
+    /// under a cap shows through its transparent edges as a dark rim.
+    /// </summary>
+    private static void RevealWithBorder(DungeonTerrain terrain, List<SerializableVector3Int> cells)
+    {
+        foreach (var sv in cells)
+        {
+            var c = sv.ToVector3Int();
+            terrain.RevealTile(c);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
         }
     }
 

@@ -122,6 +122,7 @@ public class FeatureRevealController : MonoBehaviour
 
         switch (fref.type)
         {
+            case FeatureType.RiverBank:
             case FeatureType.River:
                 if (features.IsRiverRevealed(fref.featureId)) return;
                 features.RevealRiver(fref.featureId);

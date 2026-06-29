@@ -329,6 +329,7 @@ public class TileInfluenceManager : MonoBehaviour
             foreach (var dir in Neighbours)
             {
                 if (minedTiles.Contains(pos + dir)) { hasAdjacentMined = true; break; }
+                if (Features != null && Features.IsRiver(pos + dir)) { hasAdjacentMined = true; break; }
             }
             if (!hasAdjacentMined) return;
         }

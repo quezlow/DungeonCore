@@ -398,6 +398,8 @@ public class DungeonBuildController : MonoBehaviour
         if (inf == null || FloorManager.Instance == null) return;
         if (!ResolveMineTarget(rawCell, out Vector3Int cell)) return;
         if (inf.IsTileMined(cell) || !inf.IsTileClaimed(cell)) return;
+        var feats = ActiveFloor?.FeatureGenerator;
+        if (feats != null && feats.IsRiver(cell)) return;   // water is never dug — don't queue it
         var key = (FloorManager.Instance.ActiveFloorIndex, cell);
         if (!digQueued.Add(key)) return;
         digQueue.Add(key);
@@ -429,6 +431,7 @@ public class DungeonBuildController : MonoBehaviour
         foreach (var d in dirs)
         {
             if (influence.IsTileMined(cell + d)) return true;
+            if (feats != null && feats.IsRiver(cell + d)) return true;   // water is an open frontier
         }
         return false;
     }

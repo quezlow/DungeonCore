@@ -28,7 +28,11 @@ public class RiverData
     public int id;
     public int width;
     public List<SerializableVector3Int> polyline = new();
+    // Water-channel cells: fordable, un-mineable, painted with the water tile.
     public List<SerializableVector3Int> cells = new();
+    // Dry floor banks eroded from the river's outer shell (walkable natural floor).
+    // Empty on pre-bank saves, which keep behaving as all-water rivers.
+    public List<SerializableVector3Int> bankCells = new();
 }
 
 [Serializable]
@@ -60,7 +64,7 @@ public struct FeatureRef
     public int featureId;
 }
 
-public enum FeatureType { None, River, Chamber, CoreCavern }
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank }
 
 [Serializable]
 public class CoreCavernData

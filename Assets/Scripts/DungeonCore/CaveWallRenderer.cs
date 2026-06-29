@@ -304,6 +304,18 @@ public class CaveWallRenderer : MonoBehaviour
                 if (classifier.IsSolid(n)) wallScratch.Add(n);
             }
 
+        // Revealed river water is open but never mined: treat its cells like mined floor
+        // for framing, so a discovered river gets caps/faces straight away on the rare
+        // stretches where water meets rock directly (banks handle the rest as mined floor).
+        var feats = floor != null ? floor.FeatureGenerator : null;
+        if (feats != null)
+            foreach (Vector3Int open in feats.RevealedRiverCells)
+                foreach (Vector3Int dir in Neighbours8)
+                {
+                    Vector3Int n = open + dir;
+                    if (classifier.IsSolid(n)) wallScratch.Add(n);
+                }
+
         foreach (Vector3Int wall in wallScratch)
         {
             int mask = classifier.CapMask(wall);
