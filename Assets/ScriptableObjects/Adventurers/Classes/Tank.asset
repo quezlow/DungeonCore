@@ -28,3 +28,8 @@ MonoBehaviour:
   healRadius: 4
   taunts: 1
   scoutRooms: 0
+  maxStamina: 80
+  maxMana: 0
+  attackUsesMana: 0
+  attackCost: 12
+  healManaCost: 0

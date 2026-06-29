@@ -64,6 +64,13 @@ public class MonsterDefinition : ScriptableObject
              "default. Raise per-definition if a specific wild species should heal.")]
     [Min(0f)] public float wildRegenMultiplier = 0f;
 
+    [Header("Stamina")]
+    [Tooltip("Combat stamina pool. 0 = tireless: no stamina bar, never skips a swing. " +
+             "Drains by Attack Stamina Cost per attack; regen rates live on DungeonMonster.")]
+    [Min(0f)] public float maxStamina = 0f;
+    [Tooltip("Stamina spent per attack. Ignored when Max Stamina is 0.")]
+    [Min(0f)] public float attackStaminaCost = 0f;
+
     /// <summary>
     /// Mana/capacity cost to keep this monster active.
     /// Virtual so BossVariantDefinition can scale it.

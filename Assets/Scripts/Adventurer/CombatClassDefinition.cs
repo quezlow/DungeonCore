@@ -47,4 +47,17 @@ public class CombatClassDefinition : ScriptableObject
     [Header("Explorer")]
     [Tooltip("Detours to scout this many random rooms before pursuing its goal.")]
     public int scoutRooms = 0;
+
+    [Header("Resources")]
+    [Tooltip("Stamina pool. 0 = no stamina bar. Basic attacks spend Attack Cost from here " +
+             "unless Attack Uses Mana is ticked.")]
+    public float maxStamina = 0f;
+    [Tooltip("Mana pool. 0 = no mana bar. Casters (Mage bolts, Cleric heals) spend from here.")]
+    public float maxMana = 0f;
+    [Tooltip("If true, this class's basic attack costs MANA instead of stamina (Mage).")]
+    public bool attackUsesMana = false;
+    [Tooltip("Cost of one basic attack, drawn from mana if Attack Uses Mana else stamina.")]
+    public float attackCost = 0f;
+    [Tooltip("Mana cost per heal cast (Cleric). Ignored if the class doesn't heal.")]
+    public float healManaCost = 0f;
 }

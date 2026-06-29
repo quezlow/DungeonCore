@@ -91,6 +91,16 @@ public class EntityStatusBars : MonoBehaviour
         transform.position = entity.position + worldOffset;
     }
 
+    /// <summary>— show/hide the stamina + mana bars per entity (only entities
+    /// that actually use a resource get its bar). Overrides the prefab defaults.</summary>
+    public void ConfigureResourceBars(bool stamina, bool mana)
+    {
+        showStamina = stamina;
+        showMana = mana;
+        if (staminaBar != null) staminaBar.gameObject.SetActive(showStamina);
+        if (manaBar != null) manaBar.gameObject.SetActive(showMana);
+    }
+
     public void SetHP(float current, float max)
     {
         if (hpBar == null) return;

@@ -94,6 +94,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Header("Stair Traversal")]
     [SerializeField] private float stairTraversalDuration = 1.5f;
 
+    [Header("Resource Regen")]
+    [Tooltip("Stamina regen per second: slow in combat, fast out of combat.")]
+    [SerializeField] private float staminaRegenInCombat = 3f;
+    [SerializeField] private float staminaRegenOutOfCombat = 15f;
+    [Tooltip("Mana regen per second: near-zero in combat (attrition), fast out of combat.")]
+    [SerializeField] private float manaRegenInCombat = 0.5f;
+    [SerializeField] private float manaRegenOutOfCombat = 12f;
+
     // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
@@ -130,6 +138,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private bool taunts = false;
     private int scoutRoomsRemaining = 0;
     private static readonly List<DungeonAdventurer> _healBuf = new();
+
+    // Resources — pools/costs from the class; current values run down in combat.
+    private float maxStamina = 0f;
+    private float maxMana = 0f;
+    private float attackCost = 0f;
+    private bool attackUsesMana = false;
+    private float healManaCost = 0f;
+    private float currentStamina = 0f;
+    private float currentMana = 0f;
 
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
@@ -221,6 +238,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         taunts = c.taunts;
         scoutRoomsRemaining = c.scoutRooms;
+
+        // Resource pools/costs from the class; start full.
+        maxStamina = c.maxStamina;
+        maxMana = c.maxMana;
+        attackCost = c.attackCost;
+        attackUsesMana = c.attackUsesMana;
+        healManaCost = c.healManaCost;
+        currentStamina = maxStamina;
+        currentMana = maxMana;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -245,6 +271,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             statusBars = Instantiate(statusBarsPrefab);
             statusBars.Initialise(transform);
             statusBars.SetHP(currentHP, maxHP);
+            statusBars.ConfigureResourceBars(maxStamina > 0f, maxMana > 0f);
+            if (maxStamina > 0f) statusBars.SetStamina(currentStamina, maxStamina);
+            if (maxMana > 0f) statusBars.SetMana(currentMana, maxMana);
         }
 
         UnlockState.OnChanged += HandleUnlockChanged;
@@ -286,6 +315,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         ApplySeparation();
 
         if (healsAllies) TickHeal();
+        TickResources();
 
         switch (state)
         {
@@ -754,6 +784,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         combatPath.Clear();
 
         if (Time.time - lastAttackTime < attackCooldown) return;
+
+        // Pay the attack's resource cost; if the pool is dry, skip this
+        // cycle (cooldown stays elapsed, so it fires the instant regen catches up).
+        if (!SpendAttackCost()) return;
         lastAttackTime = Time.time;
 
         DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
@@ -840,7 +874,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             float ratio = a.MaxHP > 0f ? a.CurrentHP / a.MaxHP : 1f;
             if (ratio < bestRatio) { bestRatio = ratio; best = a; }
         }
-        if (best != null && bestRatio < 1f) best.Heal(healAmount);
+        if (best == null || bestRatio >= 1f) return;
+
+        // A heal costs mana; a dry Cleric can't heal until it regens.
+        if (healManaCost > 0f)
+        {
+            if (currentMana < healManaCost) return;
+            currentMana -= healManaCost;
+            statusBars?.SetMana(currentMana, maxMana);
+        }
+        best.Heal(healAmount);
     }
 
     public void Heal(float amount)
@@ -849,6 +892,42 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentHP = Mathf.Min(maxHP, currentHP + amount);
         statusBars?.SetHP(currentHP, maxHP);
         DamageNumberSpawner.Spawn(amount, transform.position, FloatingDamageNumber.DamageType.Heal);
+    }
+
+    // ── Resources: stamina / mana ───────────────────────
+
+    private void TickResources()
+    {
+        bool inCombat = state == AdventurerState.Combat;
+
+        if (maxStamina > 0f && currentStamina < maxStamina)
+        {
+            float r = inCombat ? staminaRegenInCombat : staminaRegenOutOfCombat;
+            currentStamina = Mathf.Min(maxStamina, currentStamina + r * Time.deltaTime);
+            statusBars?.SetStamina(currentStamina, maxStamina);
+        }
+        if (maxMana > 0f && currentMana < maxMana)
+        {
+            float r = inCombat ? manaRegenInCombat : manaRegenOutOfCombat;
+            currentMana = Mathf.Min(maxMana, currentMana + r * Time.deltaTime);
+            statusBars?.SetMana(currentMana, maxMana);
+        }
+    }
+
+    private bool SpendAttackCost()
+    {
+        if (attackCost <= 0f) return true;
+        if (attackUsesMana)
+        {
+            if (currentMana < attackCost) return false;
+            currentMana -= attackCost;
+            statusBars?.SetMana(currentMana, maxMana);
+            return true;
+        }
+        if (currentStamina < attackCost) return false;
+        currentStamina -= attackCost;
+        statusBars?.SetStamina(currentStamina, maxStamina);
+        return true;
     }
 
     private void BeginObserving()

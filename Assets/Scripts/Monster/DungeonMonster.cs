@@ -119,6 +119,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     }
     private float lastAttackTime;
 
+    // Stamina — pool/cost from MonsterDefinition; regen rates here.
+    [Header("Stamina Regen (Day 41)")]
+    [SerializeField] private float staminaRegenInCombat = 3f;
+    [SerializeField] private float staminaRegenOutOfCombat = 15f;
+    private float maxStamina = 0f;
+    private float attackStaminaCost = 0f;
+    private float currentStamina = 0f;
+
     private IMonsterTarget target;
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
@@ -220,6 +228,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             statusBars = Instantiate(statusBarsPrefab);
             statusBars.Initialise(transform);
             statusBars.SetHP(currentHP, maxHP);
+            statusBars.ConfigureResourceBars(maxStamina > 0f, false);
+            if (maxStamina > 0f) statusBars.SetStamina(currentStamina, maxStamina);
             if (bossDefinition != null) statusBars.SetBossLabel(bossDefinition.GetBossTitle());
         }
     }
@@ -337,6 +347,30 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         effectiveRegenPerSecond = baseRegen;
         effectiveRegenCooldown = def.regenCooldown;
+
+        // — stamina pool from the definition (0 = tireless).
+        maxStamina = def.maxStamina;
+        attackStaminaCost = def.attackStaminaCost;
+        currentStamina = maxStamina;
+    }
+
+    // ── Stamina ──────────────────────────────────────────
+
+    private void TickStaminaRegen()
+    {
+        float r = state == MonsterState.Attack ? staminaRegenInCombat : staminaRegenOutOfCombat;
+        if (r <= 0f || currentStamina >= maxStamina) return;
+        currentStamina = Mathf.Min(maxStamina, currentStamina + r * Time.deltaTime);
+        statusBars?.SetStamina(currentStamina, maxStamina);
+    }
+
+    private bool SpendAttackStamina()
+    {
+        if (maxStamina <= 0f || attackStaminaCost <= 0f) return true;
+        if (currentStamina < attackStaminaCost) return false;
+        currentStamina -= attackStaminaCost;
+        statusBars?.SetStamina(currentStamina, maxStamina);
+        return true;
     }
 
     private void Update()
@@ -349,6 +383,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (target != null && !target.IsAlive) target = null;
         if (IsRegenState(state)) TickRegen();
+        if (maxStamina > 0f) TickStaminaRegen();
 
         // DAY 31 PART 3D — re-resolve desired state from orders each frame.
         // Attack state owns transitions out of itself (target-death path).
@@ -907,6 +942,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
         attackPath.Clear();
         if (Time.time - lastAttackTime < attackCooldown) return;
+        if (!SpendAttackStamina()) return;
         lastAttackTime = Time.time;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         target.TakeDamage(attackDamage);
