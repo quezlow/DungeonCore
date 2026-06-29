@@ -17,10 +17,12 @@ public enum CaveFace { None, Straight, CornerW, CornerE, Pillar, NubEast, NubWes
 public class CaveWallClassifier
 {
     private readonly TileInfluenceManager influence;
+    private readonly TerrainFeatureGenerator features;
 
-    public CaveWallClassifier(TileInfluenceManager influence)
+    public CaveWallClassifier(TileInfluenceManager influence, TerrainFeatureGenerator features = null)
     {
         this.influence = influence;
+        this.features = features;
     }
 
     private static readonly Vector3Int N = new Vector3Int(0, 1, 0);
@@ -28,8 +30,11 @@ public class CaveWallClassifier
     private static readonly Vector3Int E = new Vector3Int(1, 0, 0);
     private static readonly Vector3Int W = new Vector3Int(-1, 0, 0);
 
-    /// Solid = not mined. (Open / floor = mined.)
-    public bool IsSolid(Vector3Int cell) => influence != null && !influence.IsTileMined(cell);
+    /// Solid = not mined and not a river. (Open = mined floor OR fordable river water.)
+    public bool IsSolid(Vector3Int cell)
+        => influence != null
+        && !influence.IsTileMined(cell)
+        && !(features != null && features.IsRiver(cell));
 
     /// 16-mask over the four cardinal neighbours: N=1, E=2, S=4, W=8, set = solid.
     public int CapMask(Vector3Int cell)

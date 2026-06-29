@@ -159,7 +159,7 @@ public class CaveWallRenderer : MonoBehaviour
             return;
         }
         influence = floor.TileInfluence;
-        if (influence != null) classifier = new CaveWallClassifier(influence);
+        if (influence != null) classifier = new CaveWallClassifier(influence, floor.FeatureGenerator);
         BuildTiles();
     }
 

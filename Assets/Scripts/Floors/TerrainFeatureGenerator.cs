@@ -102,6 +102,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     // ── Inspector — Debug ─────────────────────────────────────────
 
+    [Header("River Rendering")]
+    [Tooltip("Per-floor water tilemap, sorting above the floor and below units. " +
+             "River cells paint here as they're revealed.")]
+    [SerializeField] private Tilemap waterTilemap;
+    [SerializeField] private TileBase waterTile;
+
     [Header("Debug Visualization")]
     [SerializeField] private bool autoPaintDebugOverlay = false;
     [SerializeField] private Tilemap debugOverlayTilemap;
@@ -174,6 +180,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         RebuildLookup();
 
         UnfogAllRevealedFeatures();
+        RepaintRevealedRiverWater();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
@@ -245,6 +252,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData == null) return;
         if (featureData.revealedRiverIds.Contains(riverId)) return;
         featureData.revealedRiverIds.Add(riverId);
+        PaintRiverWater(riverId);
         PaintRiverOverlay(riverId);
         UnfogRiver(riverId);
     }
@@ -888,16 +896,30 @@ public class TerrainFeatureGenerator : MonoBehaviour
             }
     }
 
-    private void PaintRiverOverlay(int riverId)
+    /// <summary>Paint one river's cells into the water tilemap (real rendering).</summary>
+    private void PaintRiverWater(int riverId)
     {
-        if (debugOverlayTilemap == null || debugRiverTile == null) return;
+        if (waterTilemap == null || waterTile == null) return;
         foreach (var r in featureData.rivers)
         {
             if (r.id != riverId) continue;
             foreach (var sv in r.cells)
-                debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
+                waterTilemap.SetTile(sv.ToVector3Int(), waterTile);
             return;
         }
+    }
+
+    /// <summary>Repaint water for every already-revealed river (used after a load).</summary>
+    public void RepaintRevealedRiverWater()
+    {
+        if (featureData == null || waterTilemap == null || waterTile == null) return;
+        foreach (int id in featureData.revealedRiverIds)
+            PaintRiverWater(id);
+    }
+
+    private void PaintRiverOverlay(int riverId)
+    {
+        if (debugOverlayTilemap == null || debugRiverTile == null) return;
     }
 
     private void PaintChamberOverlay(int chamberId)

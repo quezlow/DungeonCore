@@ -1,4 +1,5 @@
 using TMPro;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -45,10 +46,18 @@ public class ChestSelectionUI : MonoBehaviour
 
     private int selectedIndex = 0;
 
+    // Trap-variant chests live in the Traps carousel, so the chest picker shows treasure only.
+    private readonly List<ChestDefinition> pool = new();
+    private void BuildPool()
+    {
+        pool.Clear();
+        if (registry != null && registry.All != null)
+            foreach (var c in registry.All)
+                if (c != null && !c.isTrapChest) pool.Add(c);
+    }
+
     public ChestDefinition Selected =>
-        registry != null && registry.All != null && registry.All.Count > 0
-            ? registry.All[selectedIndex]
-            : null;
+        pool.Count > 0 ? pool[Mathf.Clamp(selectedIndex, 0, pool.Count - 1)] : null;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -61,6 +70,7 @@ public class ChestSelectionUI : MonoBehaviour
 
     private void Start()
     {
+        BuildPool();
         if (DungeonBuildController.Instance != null)
             DungeonBuildController.Instance.OnModeChanged += HandleModeChanged;
 
@@ -102,16 +112,16 @@ public class ChestSelectionUI : MonoBehaviour
 
     public void OnPrevClicked()
     {
-        if (registry == null || registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex - 1 + registry.All.Count) % registry.All.Count;
+        if (pool.Count == 0) return;
+        selectedIndex = (selectedIndex - 1 + pool.Count) % pool.Count;
         RefreshDisplay();
         PushSelectionToBuildController();
     }
 
     public void OnNextClicked()
     {
-        if (registry == null || registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex + 1) % registry.All.Count;
+        if (pool.Count == 0) return;
+        selectedIndex = (selectedIndex + 1) % pool.Count;
         RefreshDisplay();
         PushSelectionToBuildController();
     }

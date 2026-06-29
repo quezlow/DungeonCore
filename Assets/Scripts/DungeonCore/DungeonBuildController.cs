@@ -417,6 +417,10 @@ public class DungeonBuildController : MonoBehaviour
         if (!influence.IsTileClaimed(cell)) return false;
         if (influence.IsTileMined(cell)) return false;
 
+        // Rivers are water — claimable and fordable, but can't be excavated.
+        var feats = ActiveFloor?.FeatureGenerator;
+        if (feats != null && feats.IsRiver(cell)) return false;
+
         // Core cell bypass — first mine has no neighbors.
         var terrain = ActiveFloor?.Terrain;
         if (terrain != null && cell == terrain.CoreCell) return true;
@@ -833,6 +837,19 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
+        // Trap chests are chosen from the Traps carousel but place as chests.
+        if (selectedTrap == null && selectedChest != null)
+        {
+            if (selectedChest.prefab == null) return;
+            if (!DungeonCore.Instance.SpendMana(selectedChest.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
+            Vector3 chestWorld = ActiveInfluence.CellToWorld(cell);
+            var trapChest = Instantiate(selectedChest.prefab, chestWorld, Quaternion.identity);
+            if (ActiveFloor != null) trapChest.transform.SetParent(ActiveFloor.transform, true);
+            trapChest.Initialise(selectedChest);
+            SetMode(BuildMode.None);
+            return;
+        }
+
         if (selectedTrap == null || selectedTrap.prefab == null) return;
         if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) { RejectAt(cell, "A trap is already here"); return; }
         if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
