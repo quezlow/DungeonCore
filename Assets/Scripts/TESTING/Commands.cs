@@ -29,4 +29,12 @@ public class Commands : MonoBehaviour
         UnlockState.Toggle(UnlockState.OracleChamber);
         Debug.Log($"[Commands] Oracle Chamber unlocked = {UnlockState.IsUnlocked(UnlockState.OracleChamber)}");
     }
+
+    [ContextMenu("Test Cycle Global Monster Aggression")]
+    void TestCycleAggression()
+    {
+        int n = System.Enum.GetValues(typeof(MonsterAggression)).Length;
+        MonsterAggressionSettings.Set((MonsterAggression)(((int)MonsterAggressionSettings.Global + 1) % n));
+        Debug.Log($"[Commands] Global monster aggression = {MonsterAggressionSettings.Global}");
+    }
 }

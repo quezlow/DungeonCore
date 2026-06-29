@@ -148,6 +148,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private MonsterDefinition wildDefinition;
     public MonsterDefinition WildDefinition => wildDefinition;
 
+    [Header("Aggression")]
+    [Tooltip("Override the GLOBAL monster aggression for this monster only. " +
+             "Leave off to follow the global toggle (wild monsters always default Aggressive). " +
+             "Set on a prefab to make it type-wide; set at runtime via SetAggressionOverride for a single monster.")]
+    [SerializeField] private bool overrideGlobalAggression = false;
+    [SerializeField] private MonsterAggression aggressionOverride = MonsterAggression.Normal;
+    [Tooltip("A Defensive monster that takes damage retaliates for this many seconds.")]
+    [SerializeField] private float defensiveRetaliationDuration = 6f;
+
     // Regen
     private float lastDamageTime = -9999f;
     private float pendingHealDisplay = 0f;
@@ -786,14 +795,53 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // ── Combat ────────────────────────────────────────────────────
 
+    // ── Aggression ───────────────────────────────────────
+
+    /// <summary>Resolved stance: individual override > wild default (Aggressive) > global toggle.</summary>
+    private MonsterAggression EffectiveAggression
+    {
+        get
+        {
+            // Player-set per-monster stance lives on the spawner (survives respawns).
+            if (spawner != null && spawner.TryGetAggressionOverride(out var spawnerStance))
+                return spawnerStance;
+            if (overrideGlobalAggression) return aggressionOverride;   // prefab default / wild fallback
+            if (IsWild) return MonsterAggression.Aggressive;
+            return MonsterAggressionSettings.Global;
+        }
+    }
+
+    /// <summary>Runtime per-monster override (for a future select-and-set-stance UI).</summary>
+    public void SetAggressionOverride(MonsterAggression stance)
+    {
+        overrideGlobalAggression = true;
+        aggressionOverride = stance;
+    }
+
+    public void ClearAggressionOverride() => overrideGlobalAggression = false;
+
     private void ScanForHostiles()
     {
         if (currentFloor?.Entities == null) return;
 
+        var aggr = EffectiveAggression;
+
+        // Defensive monsters stay passive during their normal routine, but still
+        // engage when retaliating, defending the core, or under an explicit order.
+        bool forceEngage = state == MonsterState.DefendCore
+                        || (spawner != null && spawner.HasAttackTarget)
+                        || (Time.time - lastDamageTime) < defensiveRetaliationDuration;
+        if (aggr == MonsterAggression.Defensive && !forceEngage) { target = null; return; }
+
+        // Normal and (retaliating) Defensive spare Pilgrims; Aggressive does not.
+        bool sparePilgrims = aggr != MonsterAggression.Aggressive;
+
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
 
-        var adv = currentFloor.Entities.Nearest<DungeonAdventurer>(transform.position, nearestDist);
+        var adv = currentFloor.Entities.Nearest<DungeonAdventurer>(
+            transform.position, nearestDist,
+            a => !sparePilgrims || a.Intent != PartyIntent.Pilgrim);
         if (adv != null)
         {
             nearest = adv;

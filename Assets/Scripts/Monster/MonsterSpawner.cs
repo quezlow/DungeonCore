@@ -26,23 +26,27 @@ public class MonsterSpawner : MonoBehaviour
     [Header("Capacity")]
     [SerializeField] private int capacityCost = 5;
 
-    [Header("Respawn (DAY 31 PART 3B)")]
+    [Header("Respawn")]
     [SerializeField] private float respawnDelay = 15f;
     [SerializeField] private float respawnBlockRadius = -1f;
 
-    [Header("Orders (DAY 31 PART 3D)")]
+    [Header("Orders")]
     [SerializeField] private SpawnerOrderMode orderMode = SpawnerOrderMode.Wander;
     [SerializeField] private List<Vector3Int> patrolWaypoints = new();
     [SerializeField] private bool patrolLoop = true;
     [SerializeField] private bool hasAttackTarget = false;
     [SerializeField] private Vector3Int attackTargetCell;
 
-    [Tooltip("DAY 31 PART 3 CLOSE-OUT — When true (default), this spawner's monster " +
+    [Tooltip("When true (default), this spawner's monster " +
              "will leave its orders to intercept threats near the dungeon core. " +
              "Disable for roving patrols that should hold their route regardless.")]
     [SerializeField] private bool allowDefendCore = true;
 
-    [Header("Selection Visual (DAY 31 PART 3D)")]
+    [Tooltip("Per-monster combat stance. Inherit = follow the global toggle. " +
+             "Set from the monster command panel; persists across respawns.")]
+    [SerializeField] private MonsterStance aggressionStance = MonsterStance.Inherit;
+
+    [Header("Selection Visual")]
     [Tooltip("Optional child GameObject (e.g. a ring sprite) toggled on when this spawner is selected.")]
     [SerializeField] private GameObject selectionRing;
 
@@ -85,6 +89,30 @@ public class MonsterSpawner : MonoBehaviour
     public bool HasAttackTarget => hasAttackTarget;
     public Vector3Int AttackTargetCell => attackTargetCell;
     public bool AllowDefendCore => allowDefendCore;
+
+    // ── Aggression stance (Day 35) ────────────────────────────────
+    public MonsterStance AggressionStance => aggressionStance;
+
+    /// <summary>True + resolved stance when this spawner overrides the global toggle;
+    /// false when Inherit (the monster follows the global stance).</summary>
+    public bool TryGetAggressionOverride(out MonsterAggression stance)
+    {
+        switch (aggressionStance)
+        {
+            case MonsterStance.Defensive: stance = MonsterAggression.Defensive; return true;
+            case MonsterStance.Normal: stance = MonsterAggression.Normal; return true;
+            case MonsterStance.Aggressive: stance = MonsterAggression.Aggressive; return true;
+            default: stance = MonsterAggression.Normal; return false;
+        }
+    }
+
+    /// <summary>Set an explicit stance (used to apply one value across a multi-selection).</summary>
+    public void SetAggressionStance(MonsterStance stance)
+    {
+        if (aggressionStance == stance) return;
+        aggressionStance = stance;
+        OnOrdersChanged?.Invoke();
+    }
 
     public event System.Action OnOrdersChanged;
 

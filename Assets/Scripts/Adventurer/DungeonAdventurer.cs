@@ -816,6 +816,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     public float MaxHP => maxHP;
     public AdventurerState State => state;
     public BehaviourTrait Trait => trait;
+    public PartyIntent Intent => intent;
     public int CarriedLootCount => carriedLoot.Count;
     public FloorRoot CurrentFloor => currentFloor;
 }

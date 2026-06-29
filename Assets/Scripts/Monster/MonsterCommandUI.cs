@@ -34,6 +34,13 @@ public class MonsterCommandUI : MonoBehaviour
     [SerializeField] private Button clearOrdersButton;
     [SerializeField] private Button closeButton;
 
+    [Header("Aggression Stance")]
+    [Tooltip("A single button that cycles Global -> Defensive -> Normal -> Aggressive. " +
+             "Its label (assign the button's child TMP_Text) shows the current stance. " +
+             "Applies to every selected spawner.")]
+    [SerializeField] private Button aggressionButton;
+    [SerializeField] private TMP_Text aggressionLabel;
+
     [Header("Removal (Phase 3 closeout #1)")]
     [SerializeField] private ConfirmDialog confirmDialog;
 
@@ -49,10 +56,13 @@ public class MonsterCommandUI : MonoBehaviour
         if (SpawnerSelectionController.Instance != null)
             SpawnerSelectionController.Instance.OnSelectionChanged += HandleSelectionChanged;
 
-        // DAY 31 — Code-side toggle subscription. Avoids Inspector wiring mishaps
+        // Code-side toggle subscription. Avoids Inspector wiring mishaps
         // (Static-bool variant fires with a fixed value regardless of toggle state).
         if (loopToggle != null)
             loopToggle.onValueChanged.AddListener(OnLoopToggleChanged);
+
+        if (aggressionButton != null)
+            aggressionButton.onClick.AddListener(OnAggressionClicked);
     }
 
     private void OnDestroy()
@@ -114,13 +124,16 @@ public class MonsterCommandUI : MonoBehaviour
         if (loopToggle != null)
             loopToggle.SetIsOnWithoutNotify(current.PatrolLoop);
 
-        // DAY 31 PART 3 CLOSE-OUT — defend button label reflects current permission.
+        // Defend button label reflects current permission.
         if (defendButton != null)
         {
             var defendLabel = defendButton.GetComponentInChildren<TMP_Text>();
             if (defendLabel != null)
                 defendLabel.text = current.AllowDefendCore ? "Defend: ON" : "Defend: OFF";
         }
+
+        // Aggression-stance button face shows the current (or "Mixed") stance.
+        if (aggressionLabel != null) aggressionLabel.text = AggressionDisplay();
     }
 
     private static string BuildStatusText(MonsterSpawner s)
@@ -212,6 +225,32 @@ public class MonsterCommandUI : MonoBehaviour
         else
             spawner.RemoveByPlayer();   // fallback if no dialog is wired
     }
+
+    public void OnAggressionClicked()
+    {
+        if (current == null) return;
+        var next = (MonsterStance)(((int)current.AggressionStance + 1) % 4);
+        ForEachSelected(s => s.SetAggressionStance(next));
+    }
+
+    private string AggressionDisplay()
+    {
+        if (current == null) return "";
+        var first = current.AggressionStance;
+        var sel = SpawnerSelectionController.Instance;
+        if (sel != null && sel.Count > 1)
+            foreach (var s in sel.Selected)
+                if (s != null && s.AggressionStance != first) return "Mixed";
+        return StanceText(first);
+    }
+
+    private static string StanceText(MonsterStance s) => s switch
+    {
+        MonsterStance.Defensive => "Defensive",
+        MonsterStance.Normal => "Normal",
+        MonsterStance.Aggressive => "Aggressive",
+        _ => "Global",
+    };
 
     public void OnCloseClicked()
     {
