@@ -33,6 +33,26 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightAggressive = 2f;
     [SerializeField] private float weightCowardly = 1f;
 
+    [Header("Intent Weights (Day 35)")]
+    [Tooltip("Flat baseline weights before Notoriety/Reputation scaling. " +
+             "Keep Destroyer dominant so most raids stay hostile.")]
+    [SerializeField] private float baseDestroyer = 2f;
+    [SerializeField] private float basePilgrim = 1f;
+    [SerializeField] private float baseGiftGiver = 1f;
+    [Tooltip("Per-point Notoriety added to the Destroyer weight.")]
+    [SerializeField] private float notorietyToDestroyer = 0.03f;
+    [Tooltip("Per-point Reputation added to the Pilgrim / Gift-Giver weights.")]
+    [SerializeField] private float reputationToPilgrim = 0.04f;
+    [SerializeField] private float reputationToGiftGiver = 0.02f;
+
+    [Header("Gift-Giver Tribute (Day 35)")]
+    [Tooltip("TributeChest prefab dropped near the entrance by a Gift-Giver party.")]
+    [SerializeField] private TributeChest tributeChestPrefab;
+    [SerializeField] private int tributeGoldValue = 20;
+    [SerializeField] private float tributeAbsorbDelay = 1.5f;
+    [Tooltip("Random scatter radius around the entrance for the tribute drop.")]
+    [SerializeField] private float tributeScatter = 1.2f;
+
     private float timer = 0f;
     private bool transitPaused = false;
 
@@ -125,15 +145,22 @@ public class AdventurerSpawner : MonoBehaviour
         RunStats.Instance?.RecordPartySpawned(size);
         Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
 
+        var party = new AdventurerParty(RollIntent());
+
         for (int i = 0; i < size; i++)
         {
             var def = adventurerTypes[Random.Range(0, adventurerTypes.Count)];
             var trait = RollTrait();
-            SpawnMember(def, trait, spawnPos);
+            SpawnMember(def, trait, spawnPos, party);
         }
+
+        if (party.Intent == PartyIntent.GiftGiver)
+            DropTribute(spawnPos);
+
+        Debug.Log($"[AdventurerSpawner] Spawned {size} adventurer(s) — intent {party.Intent}.");
     }
 
-    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos)
+    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party)
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
@@ -146,7 +173,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (floor != null)
             adventurer.transform.SetParent(floor.transform, true);
 
-        adventurer.Initialise(def, trait);
+        adventurer.Initialise(def, trait, party);
     }
 
     private int RollPartySize()
@@ -167,6 +194,46 @@ public class AdventurerSpawner : MonoBehaviour
         if (roll < weightCautious + weightBalanced) return BehaviourTrait.Balanced;
         if (roll < weightCautious + weightBalanced + weightAggressive) return BehaviourTrait.Aggressive;
         return BehaviourTrait.Cowardly;
+    }
+
+    // ── Intent ───────────────────────────────────────────
+
+    private PartyIntent RollIntent()
+    {
+        float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
+        float rep = DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f;
+
+        float wDestroyer = Mathf.Max(0f, baseDestroyer + noto * notorietyToDestroyer);
+        float wPilgrim = Mathf.Max(0f, basePilgrim + rep * reputationToPilgrim);
+        float wGiftGiver = Mathf.Max(0f, baseGiftGiver + rep * reputationToGiftGiver);
+
+        float total = wDestroyer + wPilgrim + wGiftGiver;
+        if (total <= 0f) return PartyIntent.Destroyer;
+
+        float roll = Random.Range(0f, total);
+        if (roll < wDestroyer) return PartyIntent.Destroyer;
+        if (roll < wDestroyer + wPilgrim) return PartyIntent.Pilgrim;
+        return PartyIntent.GiftGiver;
+    }
+
+    private void DropTribute(Vector3 entrancePos)
+    {
+        if (tributeChestPrefab == null)
+        {
+            Debug.LogWarning("[AdventurerSpawner] Gift-Giver party but no tributeChestPrefab assigned.");
+            return;
+        }
+
+        Vector2 scatter = Random.insideUnitCircle * tributeScatter;
+        Vector3 pos = entrancePos + new Vector3(scatter.x, scatter.y, 0f);
+
+        var tribute = Instantiate(tributeChestPrefab, pos, Quaternion.identity);
+
+        var floor = FloorManager.Instance?.GetFloor(0);
+        if (floor != null)
+            tribute.transform.SetParent(floor.transform, true);
+
+        tribute.Initialise(tributeGoldValue, tributeAbsorbDelay);
     }
 
     [ContextMenu("Force Spawn Party Now")]

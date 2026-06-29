@@ -33,6 +33,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Combat,
         Retreating,
         UsingStairs,
+        Worshipping,
     }
 
     // ── Inspector ─────────────────────────────────────────────────
@@ -46,6 +47,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     [Header("Behaviour")]
     [SerializeField] private float retreatThreshold = 0.3f;
+
+    [Header("Intent")]
+    [Tooltip("Pilgrims move at this fraction of normal speed.")]
+    [SerializeField] private float pilgrimSpeedMultiplier = 0.7f;
+    [Tooltip("Seconds a Pilgrim dwells at the core before leaving peacefully.")]
+    [SerializeField] private float worshipDuration = 4f;
+    [Tooltip("Notoriety removed once per party on a completed pilgrimage exit.")]
+    [SerializeField] private float pilgrimNotorietyReduction = 10f;
 
     [Header("Separation")]
     [SerializeField] private float separationRadius = 0.6f;
@@ -85,6 +94,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private AdventurerState state = AdventurerState.MovingToCore;
     private BehaviourTrait trait = BehaviourTrait.Balanced;
 
+    // Intent — assigned in Initialise, shared via the party object.
+    private AdventurerParty party;
+    private PartyIntent intent = PartyIntent.Destroyer;
+    private bool worshipCompleted = false;
+    private float worshipTimer = 0f;
+
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
 
@@ -110,7 +125,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty)
     {
         if (def != null)
         {
@@ -137,6 +152,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             BehaviourTrait.Cowardly => 1.0f,
             _ => 0.3f,
         };
+
+        party = assignedParty;
+        intent = assignedParty != null ? assignedParty.Intent : PartyIntent.Destroyer;
+        if (intent == PartyIntent.Pilgrim)
+            moveSpeed *= pilgrimSpeedMultiplier;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -162,6 +182,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             statusBars.Initialise(transform);
             statusBars.SetHP(currentHP, maxHP);
         }
+
+        UnlockState.OnChanged += HandleUnlockChanged;
+        RefreshIntentBadge();
 
         RefreshPath();
     }
@@ -197,8 +220,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 ScanForMonsters();
                 if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
                 {
-                    ScanForChests();
-                    ScanForLoot();
+                    // Destroyers beeline and Pilgrims are non-acquisitive — neither
+                    // detours for chests or loot. Gift-Givers behave normally.
+                    if (intent != PartyIntent.Destroyer && intent != PartyIntent.Pilgrim)
+                    {
+                        ScanForChests();
+                        ScanForLoot();
+                    }
                     FollowPath();
                 }
                 break;
@@ -219,6 +247,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             case AdventurerState.Retreating:
                 ScanForLoot();
                 FollowPath();
+                break;
+
+            case AdventurerState.Worshipping:
+                HandleWorship();
                 break;
         }
     }
@@ -298,7 +330,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     public void ForceRefreshPath()
     {
-        if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs)
+        if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs
+            && state != AdventurerState.Worshipping)
             state = AdventurerState.MovingToCore;
         RefreshPath();
     }
@@ -336,7 +369,22 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 if (loot != null) Destroy(loot.gameObject);
             carriedLoot.Clear();
 
-            DungeonCore.Instance?.AddReputation(2f);
+            // A Pilgrim that finished worshipping leaves peacefully and calms the
+            // dungeon's Notoriety — once per party, regardless of pilgrim count.
+            if (intent == PartyIntent.Pilgrim && worshipCompleted)
+            {
+                if (party != null && !party.exitBonusApplied)
+                {
+                    party.exitBonusApplied = true;
+                    DungeonCore.Instance?.AddNotoriety(-pilgrimNotorietyReduction);
+                    Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}.");
+                }
+            }
+            else
+            {
+                DungeonCore.Instance?.AddReputation(2f);
+            }
+
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
@@ -347,6 +395,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             {
                 Debug.LogWarning("[Adventurer] OnReachedDestination called far from core — refreshing path.");
                 RefreshPath();
+                return;
+            }
+
+            // Pilgrims do not breach — they worship at the core, then depart.
+            if (intent == PartyIntent.Pilgrim)
+            {
+                BeginWorship();
                 return;
             }
 
@@ -446,6 +501,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void ScanForMonsters()
     {
+        // Pilgrims travel non-aggressively — they never initiate combat.
+        if (intent == PartyIntent.Pilgrim) return;
+
         if (currentFloor?.Entities == null) return;
         var nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
 
@@ -598,6 +656,26 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         RefreshPath();
     }
 
+    // ── Worship (Day 35, Pilgrim intent) ──────────────────────────
+
+    private void BeginWorship()
+    {
+        state = AdventurerState.Worshipping;
+        worshipTimer = worshipDuration;
+        combatTarget = null;
+        chestTarget = null;
+        Debug.Log("[Adventurer] Pilgrim worshipping at the core.");
+    }
+
+    private void HandleWorship()
+    {
+        worshipTimer -= Time.deltaTime;
+        if (worshipTimer > 0f) return;
+
+        worshipCompleted = true;
+        StartRetreat();
+    }
+
     // ── Health ────────────────────────────────────────────────────
 
     public bool TakeDamage(float amount)
@@ -628,6 +706,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         // Safety net for retreat/exit paths and scene unloads.
         currentFloor?.Entities?.Unregister(this);
+        UnlockState.OnChanged -= HandleUnlockChanged;
     }
 
     private void DropCarriedLoot()
@@ -697,6 +776,40 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     }
 
     void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
+
+    // ── Intent Badge ─────────────────────────────────────
+
+    private void HandleUnlockChanged(string key)
+    {
+        if (key == UnlockState.OracleChamber) RefreshIntentBadge();
+    }
+
+    private void RefreshIntentBadge()
+    {
+        if (statusBars == null) return;
+        if (!UnlockState.IsUnlocked(UnlockState.OracleChamber))
+        {
+            statusBars.SetIntentLabel(null, Color.white);
+            return;
+        }
+        statusBars.SetIntentLabel(IntentDisplayName(), IntentColour());
+    }
+
+    private string IntentDisplayName() => intent switch
+    {
+        PartyIntent.Pilgrim => "Pilgrim",
+        PartyIntent.GiftGiver => "Gift-Giver",
+        PartyIntent.Destroyer => "Destroyer",
+        _ => "",
+    };
+
+    private Color IntentColour() => intent switch
+    {
+        PartyIntent.Pilgrim => new Color(0.55f, 0.80f, 1.00f),  // calm blue
+        PartyIntent.GiftGiver => new Color(0.50f, 0.90f, 0.50f),  // gift green
+        PartyIntent.Destroyer => new Color(1.00f, 0.45f, 0.40f),  // threat red
+        _ => Color.white,
+    };
 
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;

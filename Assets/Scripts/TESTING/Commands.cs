@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Commaands : MonoBehaviour
+public class Commands : MonoBehaviour
 {
     [ContextMenu("Test Add XP")]
     void TestXP() => DungeonCore.Instance.AddXP(50f);
@@ -22,4 +22,11 @@ public class Commaands : MonoBehaviour
 
     [ContextMenu("Test Add Notoriety")]
     void TestNotoriety() => DungeonCore.Instance.AddNotoriety(10f);
+
+    [ContextMenu("Test Toggle Oracle Chamber Unlock")]
+    void TestToggleOracle()
+    {
+        UnlockState.Toggle(UnlockState.OracleChamber);
+        Debug.Log($"[Commands] Oracle Chamber unlocked = {UnlockState.IsUnlocked(UnlockState.OracleChamber)}");
+    }
 }

@@ -40,6 +40,12 @@ public class EntityStatusBars : MonoBehaviour
              "Leave unassigned on non-boss-capable entity prefabs.")]
     [SerializeField] private TMP_Text bossLabel;
 
+    [Header("Intent Label (optional)")]
+    [Tooltip("Separate label above the bars used to show a Pilgrim / Gift-Giver / " +
+             "Destroyer intent badge once the Oracle Chamber is unlocked. Assign on " +
+             "the adventurer status-bars prefab; leave empty on monster prefabs.")]
+    [SerializeField] private TMP_Text intentLabel;
+
     [Header("Offset above entity pivot")]
     [SerializeField] private Vector3 worldOffset = new Vector3(0f, 0.7f, 0f);
 
@@ -67,6 +73,7 @@ public class EntityStatusBars : MonoBehaviour
         if (staminaBar != null) staminaBar.gameObject.SetActive(showStamina);
         if (manaBar != null) manaBar.gameObject.SetActive(showMana);
         if (bossLabel != null) bossLabel.gameObject.SetActive(false);
+        if (intentLabel != null) intentLabel.gameObject.SetActive(false);
     }
 
     private void LateUpdate()
@@ -138,6 +145,26 @@ public class EntityStatusBars : MonoBehaviour
         else
         {
             bossLabel.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Show or hide the party-intent badge above the bars. Pass
+    /// null/empty to hide. Uses the dedicated intentLabel slot so it never
+    /// collides with the boss / veteran label.
+    /// </summary>
+    public void SetIntentLabel(string text, Color colour)
+    {
+        if (intentLabel == null) return;
+        if (string.IsNullOrEmpty(text))
+        {
+            intentLabel.gameObject.SetActive(false);
+        }
+        else
+        {
+            intentLabel.text = text;
+            intentLabel.color = colour;
+            intentLabel.gameObject.SetActive(true);
         }
     }
 }
