@@ -24,6 +24,16 @@ public class AdventurerDefinition : ScriptableObject
     [Tooltip("Display name for this combat class (e.g. Fighter, Mage, Rogue).")]
     public string className = "Adventurer";
 
+    [Header("Type (Day 37)")]
+    [Tooltip("Which of the nine adventurer types this asset represents. Drives the " +
+             "derived intent (reward category) and goal (behaviour) via AdventurerTypeInfo.")]
+    public AdventurerType type = AdventurerType.Mercenary;
+
+    [Tooltip("If true, every instance is forced to the trait below instead of the " +
+             "spawner's random roll (e.g. the Noble is always Cowardly).")]
+    public bool overrideTrait = false;
+    public BehaviourTrait forcedTrait = BehaviourTrait.Balanced;
+
     [Header("Prefab")]
     [Tooltip("The DungeonAdventurer prefab used for this class. " +
              "All classes can share the same prefab until sprites are added on Day 39.")]

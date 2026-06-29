@@ -335,6 +335,23 @@ public class DungeonCore : MonoBehaviour
         OnReputationChanged?.Invoke(reputation);
     }
 
+    // ── Day 37 stubs (consumed by later faction / escalation systems) ──
+    /// <summary>A Noble died — flag a retaliation wave for the future faction system.</summary>
+    public bool NobleRetaliationPending { get; private set; }
+    public void FlagNobleRetaliation()
+    {
+        NobleRetaliationPending = true;
+        Debug.Log("[DungeonCore] Noble slain — retaliation flagged (faction system, later).");
+    }
+
+    /// <summary>An Inspector left with findings — flag for the future escalation path.</summary>
+    public bool InspectorFindingsPending { get; private set; }
+    public void FlagInspectorFindings()
+    {
+        InspectorFindingsPending = true;
+        Debug.Log("[DungeonCore] Inspector departed with findings (escalation path, later).");
+    }
+
     private void DecayNotoriety()
     {
         if (notoriety <= 0f) return;

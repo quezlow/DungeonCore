@@ -39,6 +39,7 @@ public class CoreThreatMonitor : MonoBehaviour
     public event System.Action<bool> OnThreatStateChanged;
 
     private float pollTimer;
+    private bool visitorsPresent;
 
     private void Awake()
     {
@@ -70,35 +71,50 @@ public class CoreThreatMonitor : MonoBehaviour
         var coreFloor = FloorManager.Instance.GetFloor(coreFloorIndex);
         if (coreFloor == null) { Clear(); return; }
 
-        DungeonAdventurer nearest = null;
+        DungeonAdventurer nearestThreat = null;
+        DungeonAdventurer nearestVisitor = null;
         if (coreFloor.Entities != null)
         {
-            nearest = coreFloor.Entities.Nearest<DungeonAdventurer>(
+            // Only core-breaching goals (Mercenary / Hero / Suicidal) count as a threat.
+            nearestThreat = coreFloor.Entities.Nearest<DungeonAdventurer>(
                 corePos, coreThreatRadius,
                 adv => adv.State != AdventurerState.Retreating &&
-                       adv.State != AdventurerState.UsingStairs);
+                       adv.State != AdventurerState.UsingStairs &&
+                       adv.ThreatensCore);
+
+            // Peaceful arrivals near the core (pilgrims, cultists, observers, looters).
+            nearestVisitor = coreFloor.Entities.Nearest<DungeonAdventurer>(
+                corePos, coreThreatRadius,
+                adv => adv.State != AdventurerState.Retreating &&
+                       adv.State != AdventurerState.UsingStairs &&
+                       !adv.ThreatensCore);
         }
 
         bool wasThreatened = IsCoreThreatened;
-        IsCoreThreatened = nearest != null;
-        NearestThreat = nearest;
+        IsCoreThreatened = nearestThreat != null;
+        NearestThreat = nearestThreat;
 
         if (IsCoreThreatened != wasThreatened)
         {
             OnThreatStateChanged?.Invoke(IsCoreThreatened);
-            if (IsCoreThreatened) FireAlert(nearest);
+            if (IsCoreThreatened) FireThreatAlert(nearestThreat);
         }
+
+        bool hadVisitors = visitorsPresent;
+        visitorsPresent = nearestVisitor != null;
+        if (visitorsPresent && !hadVisitors) FireVisitorAlert(nearestVisitor);
     }
 
     private void Clear()
     {
+        visitorsPresent = false;
         if (!IsCoreThreatened) return;
         IsCoreThreatened = false;
         NearestThreat = null;
         OnThreatStateChanged?.Invoke(false);
     }
 
-    private void FireAlert(DungeonAdventurer threat)
+    private void FireThreatAlert(DungeonAdventurer threat)
     {
         if (threat == null) return;
         int floorIdx = FloorManager.Instance != null
@@ -108,5 +124,18 @@ public class CoreThreatMonitor : MonoBehaviour
 
         Debug.LogWarning($"[CoreThreatMonitor] {msg}");
         AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat);
+    }
+
+    // Peaceful approach — pilgrims, cultists, scholars, inspectors. Not a danger.
+    private void FireVisitorAlert(DungeonAdventurer visitor)
+    {
+        if (visitor == null) return;
+        int floorIdx = FloorManager.Instance != null
+            ? FloorManager.Instance.CoreFloorIndex : 0;
+        Vector3 pos = visitor.transform.position;
+        string msg = $"Peaceful visitors near the core on Floor {floorIdx + 1}";
+
+        Debug.Log($"[CoreThreatMonitor] {msg}");
+        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Discovery);
     }
 }

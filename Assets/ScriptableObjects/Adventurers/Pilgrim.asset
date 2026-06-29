@@ -10,18 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a06685f012016f14787c469609bd25e6, type: 3}
-  m_Name: Adventurer_Stub
+  m_Name: Pilgrim
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
   className: Adventurer
+  type: 3
+  overrideTrait: 0
+  forcedTrait: 1
   prefab: {fileID: 2173209403938016358, guid: 57302f1fe2f3764489df81c7bbef7890, type: 3}
-  maxHP: 50
+  maxHP: 40
   moveSpeed: 2
-  attackDamage: 8
-  attackRange: 1.2
-  attackCooldown: 1.5
-  detectionRange: 2.5
+  attackDamage: 4
+  attackRange: 1
+  attackCooldown: 1.8
+  detectionRange: 2
   chestDetectionRange: 3
-  xpOnDeath: 15
+  xpOnDeath: 12
   canDetectTraps: 0
   trapDetectionRadius: 2.5
   trapDetectionChancePerSecond: 0.3

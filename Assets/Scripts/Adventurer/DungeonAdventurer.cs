@@ -34,6 +34,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Retreating,
         UsingStairs,
         Worshipping,
+        MovingToRoom,   // observers heading to a room
+        Observing,      // dwelling in a room
     }
 
     // ── Inspector ─────────────────────────────────────────────────
@@ -55,6 +57,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float worshipDuration = 4f;
     [Tooltip("Notoriety removed once per party on a completed pilgrimage exit.")]
     [SerializeField] private float pilgrimNotorietyReduction = 10f;
+
+    [Header("Type Behaviour")]
+    [Tooltip("Seconds an observer (Scholar / Inspector / Noble) dwells in each room.")]
+    [SerializeField] private float observeDwellDuration = 3f;
+    [Tooltip("How many rooms an observer visits before leaving.")]
+    [SerializeField] private int maxRoomsToObserve = 3;
+    [Tooltip("Suicidal death grants xpOnDeath * this multiplier.")]
+    [SerializeField] private float suicidalXpMultiplier = 2f;
+    [Tooltip("Reputation granted when a Suicidal achieves a glorious death.")]
+    [SerializeField] private float suicidalReputationGain = 3f;
 
     [Header("Separation")]
     [SerializeField] private float separationRadius = 0.6f;
@@ -100,6 +112,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private bool worshipCompleted = false;
     private float worshipTimer = 0f;
 
+    // Type / goal + observer state
+    private AdventurerType type = AdventurerType.Mercenary;
+    private AdventurerGoal goal = AdventurerGoal.BreachCore;
+    private RoomAnchor roomTarget;
+    private readonly HashSet<RoomAnchor> visitedRooms = new();
+    private int roomsObserved = 0;
+    private float observeTimer = 0f;
+
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
 
@@ -143,7 +163,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             trapDetectionChancePerSecond = def.trapDetectionChancePerSecond;
         }
 
-        trait = assignedTrait;
+        type = def != null ? def.type : AdventurerType.Mercenary;
+        intent = AdventurerTypeInfo.IntentOf(type);
+        goal = AdventurerTypeInfo.GoalOf(type);
+
+        trait = (def != null && def.overrideTrait) ? def.forcedTrait : assignedTrait;
         retreatThreshold = trait switch
         {
             BehaviourTrait.Cautious => 0.5f,
@@ -152,9 +176,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             BehaviourTrait.Cowardly => 1.0f,
             _ => 0.3f,
         };
+        // Suicidal seeks a glorious death — never retreats on HP.
+        if (goal == AdventurerGoal.SeekDeath) retreatThreshold = -1f;
 
         party = assignedParty;
-        intent = assignedParty != null ? assignedParty.Intent : PartyIntent.Destroyer;
         if (intent == PartyIntent.Pilgrim)
             moveSpeed *= pilgrimSpeedMultiplier;
     }
@@ -185,6 +210,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         UnlockState.OnChanged += HandleUnlockChanged;
         RefreshIntentBadge();
+
+        // Day 37 — observers head room-to-room instead of toward the core.
+        if (goal == AdventurerGoal.ObserveRooms)
+            state = PickNextRoom() ? AdventurerState.MovingToRoom : AdventurerState.Retreating;
 
         RefreshPath();
     }
@@ -220,9 +249,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 ScanForMonsters();
                 if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
                 {
-                    // Destroyers beeline and Pilgrims are non-acquisitive — neither
-                    // detours for chests or loot. Gift-Givers behave normally.
-                    if (intent != PartyIntent.Destroyer && intent != PartyIntent.Pilgrim)
+                    // Only looters detour for chests/loot; everyone else beelines.
+                    if (goal == AdventurerGoal.LootAndLeave)
                     {
                         ScanForChests();
                         ScanForLoot();
@@ -251,6 +279,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             case AdventurerState.Worshipping:
                 HandleWorship();
+                break;
+
+            case AdventurerState.MovingToRoom:
+                ScanForMonsters();   // non-combat goal; only a Cowardly observer flees
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
+                    FollowPath();
+                break;
+
+            case AdventurerState.Observing:
+                HandleObserving();
                 break;
         }
     }
@@ -283,13 +321,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         int myFloor = currentFloor.FloorIndex;
         int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
 
-        Vector3 goal;
+        Vector3 goalPos;
 
         if (state == AdventurerState.Retreating)
         {
             if (myFloor == 0)
             {
-                goal = DungeonEntrance.Instance != null
+                goalPos = DungeonEntrance.Instance != null
                     ? DungeonEntrance.Instance.SpawnPosition
                     : transform.position;
             }
@@ -298,34 +336,38 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 var upStair = FindNearestStair(DungeonStairs.Direction.Up);
                 if (upStair == null) { currentPath = new List<Vector3>(); return; }
                 stairTarget = upStair;
-                goal = upStair.transform.position;
+                goalPos = upStair.transform.position;
             }
         }
         else if (state == AdventurerState.MovingToChest && chestTarget != null)
         {
-            goal = chestTarget.transform.position;
+            goalPos = chestTarget.transform.position;
+        }
+        else if (state == AdventurerState.MovingToRoom && roomTarget != null)
+        {
+            goalPos = roomTarget.transform.position;
         }
         else
         {
             if (myFloor == coreFloor)
-                goal = DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : transform.position;
+                goalPos = DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : transform.position;
             else if (coreFloor > myFloor)
             {
                 var downStair = FindNearestStair(DungeonStairs.Direction.Down);
                 if (downStair == null) { currentPath = new List<Vector3>(); return; }
                 stairTarget = downStair;
-                goal = downStair.transform.position;
+                goalPos = downStair.transform.position;
             }
             else
             {
                 var upStair = FindNearestStair(DungeonStairs.Direction.Up);
                 if (upStair == null) { currentPath = new List<Vector3>(); return; }
                 stairTarget = upStair;
-                goal = upStair.transform.position;
+                goalPos = upStair.transform.position;
             }
         }
 
-        currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, goal);
+        currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, goalPos);
     }
 
     public void ForceRefreshPath()
@@ -363,6 +405,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void OnReachedDestination()
     {
+        if (state == AdventurerState.MovingToRoom)
+        {
+            BeginObserving();
+            return;
+        }
+
         if (state == AdventurerState.Retreating)
         {
             foreach (var loot in carriedLoot)
@@ -398,10 +446,17 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 return;
             }
 
-            // Pilgrims do not breach — they worship at the core, then depart.
-            if (intent == PartyIntent.Pilgrim)
+            // Worshippers (Pilgrim, Cultist) pray at the core, then depart.
+            if (goal == AdventurerGoal.WorshipCore)
             {
                 BeginWorship();
+                return;
+            }
+
+            // A looter that reached the core empty-handed leaves — it never breaches.
+            if (goal == AdventurerGoal.LootAndLeave)
+            {
+                StartRetreat();
                 return;
             }
 
@@ -501,15 +556,23 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void ScanForMonsters()
     {
-        // Pilgrims travel non-aggressively — they never initiate combat.
-        if (intent == PartyIntent.Pilgrim) return;
+        // Non-combat goals never initiate combat — but a Cowardly observer still
+        // flees the moment it sees a monster (e.g. the Noble bolting for the exit).
+        if (goal == AdventurerGoal.WorshipCore || goal == AdventurerGoal.ObserveRooms)
+        {
+            if (trait == BehaviourTrait.Cowardly && currentFloor?.Entities != null
+                && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, detectionRange))
+                StartRetreat();
+            return;
+        }
 
         if (currentFloor?.Entities == null) return;
         var nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
 
         if (nearest == null) return;
 
-        if (trait == BehaviourTrait.Cowardly) { StartRetreat(); return; }
+        // Suicidal welcomes death and never flees; anyone else Cowardly retreats.
+        if (trait == BehaviourTrait.Cowardly && goal != AdventurerGoal.SeekDeath) { StartRetreat(); return; }
 
         combatTarget = nearest;
         chestTarget = null;
@@ -560,6 +623,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             chestTarget.Interact(this);
             visitedChests.Add(chestTarget);
             chestTarget = null;
+            // Treasure Hunters leave with their prize rather than pressing on to the core.
+            if (goal == AdventurerGoal.LootAndLeave) { StartRetreat(); return; }
             state = AdventurerState.MovingToCore;
             RefreshPath();
         }
@@ -590,6 +655,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         carriedLoot.Add(loot);
         loot.PickUp();
+
+        // Treasure Hunters grab and go — leave the moment they're carrying loot.
+        if (goal == AdventurerGoal.LootAndLeave && state != AdventurerState.Retreating)
+            StartRetreat();
     }
 
     // ── Combat ────────────────────────────────────────────────────
@@ -676,6 +745,47 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         StartRetreat();
     }
 
+    // ── Observe (Day 37 — Scholar / Inspector / Noble) ────────────
+
+    private bool PickNextRoom()
+    {
+        roomTarget = null;
+        if (currentFloor?.Entities == null) return false;
+        roomTarget = currentFloor.Entities.Nearest<RoomAnchor>(
+            transform.position, float.MaxValue,
+            r => r != null && r.GetRoomTiles() != null && !visitedRooms.Contains(r));
+        return roomTarget != null;
+    }
+
+    private void BeginObserving()
+    {
+        state = AdventurerState.Observing;
+        observeTimer = observeDwellDuration;
+        combatTarget = null;
+        chestTarget = null;
+        if (roomTarget != null) visitedRooms.Add(roomTarget);
+        roomsObserved++;
+        Debug.Log($"[Adventurer] {className} observing a room ({roomsObserved}/{maxRoomsToObserve}).");
+    }
+
+    private void HandleObserving()
+    {
+        observeTimer -= Time.deltaTime;
+        if (observeTimer > 0f) return;
+
+        if (roomsObserved < maxRoomsToObserve && PickNextRoom())
+        {
+            state = AdventurerState.MovingToRoom;
+            RefreshPath();
+            return;
+        }
+
+        // Done — Inspectors file their findings (stub) before leaving.
+        if (type == AdventurerType.Inspector)
+            DungeonCore.Instance?.FlagInspectorFindings();
+        StartRetreat();
+    }
+
     // ── Health ────────────────────────────────────────────────────
 
     public bool TakeDamage(float amount)
@@ -690,8 +800,23 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         currentFloor?.Entities?.Unregister(this);
-        DungeonCore.Instance?.AddXP(xpOnDeath);
-        DungeonCore.Instance?.AddNotoriety(5f);
+
+        if (type == AdventurerType.Suicidal)
+        {
+            // A glorious death — word spreads. XP boost + Reputation, no Notoriety penalty.
+            DungeonCore.Instance?.AddXP(xpOnDeath * suicidalXpMultiplier);
+            DungeonCore.Instance?.AddReputation(suicidalReputationGain);
+        }
+        else
+        {
+            DungeonCore.Instance?.AddXP(xpOnDeath);
+            DungeonCore.Instance?.AddNotoriety(5f);
+        }
+
+        // A slain Noble triggers family retaliation later (faction system).
+        if (type == AdventurerType.Noble)
+            DungeonCore.Instance?.FlagNobleRetaliation();
+
         RunStats.Instance?.RecordAdventurerSlain(className);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
@@ -815,8 +940,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
     public AdventurerState State => state;
-    public BehaviourTrait Trait => trait;
     public PartyIntent Intent => intent;
+    public BehaviourTrait Trait => trait;
     public int CarriedLootCount => carriedLoot.Count;
     public FloorRoot CurrentFloor => currentFloor;
+
+    // Type / goal reads
+    public AdventurerType Type => type;
+    public AdventurerGoal Goal => goal;
+    /// <summary>True only for goals that destroy the core on arrival (Mercenary / Hero / Suicidal).
+    /// Worshippers, looters and observers are NOT a danger to the core.</summary>
+    public bool ThreatensCore => goal == AdventurerGoal.BreachCore || goal == AdventurerGoal.SeekDeath;
 }

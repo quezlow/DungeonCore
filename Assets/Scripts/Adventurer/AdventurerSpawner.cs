@@ -33,7 +33,7 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightAggressive = 2f;
     [SerializeField] private float weightCowardly = 1f;
 
-    [Header("Intent Weights (Day 35)")]
+    [Header("Intent Weights")]
     [Tooltip("Flat baseline weights before Notoriety/Reputation scaling. " +
              "Keep Destroyer dominant so most raids stay hostile.")]
     [SerializeField] private float baseDestroyer = 2f;
@@ -45,10 +45,45 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float reputationToPilgrim = 0.04f;
     [SerializeField] private float reputationToGiftGiver = 0.02f;
 
-    [Header("Gift-Giver Tribute (Day 35)")]
+    [Header("Type Weights")]
+    [Tooltip("Flat weights WITHIN each intent category. The category is rolled first " +
+             "(Notoriety/Reputation scaled, above), then a type is picked here.")]
+    [SerializeField] private float weightMercenary = 3f;       // Destroyer
+    [SerializeField] private float weightHero = 1f;            // Destroyer (gated)
+    [SerializeField] private float weightTreasureHunter = 3f;  // Gift-Giver
+    [SerializeField] private float weightCultist = 1f;         // Gift-Giver
+    [SerializeField] private float weightPilgrim = 2f;         // Pilgrim
+    [SerializeField] private float weightScholar = 1.5f;       // Pilgrim
+    [SerializeField] private float weightSuicidal = 0.4f;      // Pilgrim (rare)
+    [SerializeField] private float weightNoble = 1f;           // Pilgrim
+    [SerializeField] private float weightInspector = 0.8f;     // Pilgrim (conditional)
+    [Tooltip("Heroes only appear once Notoriety reaches this threshold.")]
+    [SerializeField] private float heroNotorietyThreshold = 60f;
+    [Tooltip("Master switch for Inspector spawns (later gated by the escalation system).")]
+    [SerializeField] private bool inspectorEnabled = true;
+
+    [Header("Party Composition")]
+    [Tooltip("Mercenary guards escorting a Noble.")]
+    [SerializeField] private int nobleGuardMin = 2;
+    [SerializeField] private int nobleGuardMax = 3;
+    [Tooltip("Scholars per Scholar party + their mercenary guards.")]
+    [SerializeField] private int scholarMin = 1;
+    [SerializeField] private int scholarMax = 2;
+    [SerializeField] private int scholarGuardMin = 1;
+    [SerializeField] private int scholarGuardMax = 2;
+    [Tooltip("Mercenary guards escorting an Inspector.")]
+    [SerializeField] private int inspectorGuardMin = 1;
+    [SerializeField] private int inspectorGuardMax = 2;
+    [Tooltip("Optional dedicated (e.g. high-level) Mercenary-type definition for escort " +
+             "guards. Falls back to the Mercenary type asset if unset. Keep it Mercenary-typed.")]
+    [SerializeField] private AdventurerDefinition guardDef;
+
+    [Header("Gift-Giver Tribute")]
     [Tooltip("TributeChest prefab dropped near the entrance by a Gift-Giver party.")]
     [SerializeField] private TributeChest tributeChestPrefab;
     [SerializeField] private int tributeGoldValue = 20;
+    [Tooltip("Cultists bring the richest tribute of any type.")]
+    [SerializeField] private int cultistTributeGoldValue = 50;
     [SerializeField] private float tributeAbsorbDelay = 1.5f;
     [Tooltip("Random scatter radius around the entrance for the tribute drop.")]
     [SerializeField] private float tributeScatter = 1.2f;
@@ -141,23 +176,79 @@ public class AdventurerSpawner : MonoBehaviour
             return;
         }
 
-        int size = RollPartySize();
-        RunStats.Instance?.RecordPartySpawned(size);
         Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
 
-        var party = new AdventurerParty(RollIntent());
+        AdventurerType partyType = RollType();
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(partyType));
 
-        for (int i = 0; i < size; i++)
-        {
-            var def = adventurerTypes[Random.Range(0, adventurerTypes.Count)];
-            var trait = RollTrait();
-            SpawnMember(def, trait, spawnPos, party);
-        }
+        int spawned = SpawnComposition(partyType, spawnPos, party);
+        RunStats.Instance?.RecordPartySpawned(spawned);
 
         if (party.Intent == PartyIntent.GiftGiver)
-            DropTribute(spawnPos);
+            DropTribute(spawnPos, partyType);
 
-        Debug.Log($"[AdventurerSpawner] Spawned {size} adventurer(s) — intent {party.Intent}.");
+        Debug.Log($"[AdventurerSpawner] Spawned {spawned} adventurer(s) — type {partyType}, intent {party.Intent}.");
+    }
+
+    // ── Composition (Day 37) ─────────────────────────────────────
+
+    private AdventurerDefinition Def(AdventurerType t)
+    {
+        var d = adventurerTypes.Find(x => x != null && x.type == t);
+        if (d == null) Debug.LogError($"[AdventurerSpawner] No AdventurerDefinition for type {t}.");
+        return d;
+    }
+
+    /// <summary>Spawns a party's members for its type. Returns the member count.</summary>
+    private int SpawnComposition(AdventurerType partyType, Vector3 spawnPos, AdventurerParty party)
+    {
+        switch (partyType)
+        {
+            case AdventurerType.Noble:
+                {
+                    // A cowardly Noble (trait forced on the asset) escorted by hired muscle.
+                    int count = 0;
+                    var noble = Def(AdventurerType.Noble);
+                    if (noble != null) { SpawnMember(noble, RollTrait(), spawnPos, party); count++; }
+                    count += SpawnGuards(Random.Range(nobleGuardMin, nobleGuardMax + 1), spawnPos, party);
+                    return count;
+                }
+            case AdventurerType.Scholar:
+                {
+                    // Passive scholars with a small protective guard.
+                    int count = SpawnUniform(AdventurerType.Scholar, Random.Range(scholarMin, scholarMax + 1), spawnPos, party);
+                    count += SpawnGuards(Random.Range(scholarGuardMin, scholarGuardMax + 1), spawnPos, party);
+                    return count;
+                }
+            case AdventurerType.Inspector:
+                {
+                    int count = 0;
+                    var insp = Def(AdventurerType.Inspector);
+                    if (insp != null) { SpawnMember(insp, RollTrait(), spawnPos, party); count++; }
+                    count += SpawnGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party);
+                    return count;
+                }
+            default:
+                return SpawnUniform(partyType, RollPartySize(), spawnPos, party);
+        }
+    }
+
+    private int SpawnUniform(AdventurerType t, int n, Vector3 spawnPos, AdventurerParty party)
+    {
+        var def = Def(t);
+        if (def == null) return 0;
+        for (int i = 0; i < n; i++) SpawnMember(def, RollTrait(), spawnPos, party);
+        return n;
+    }
+
+    private int SpawnGuards(int n, Vector3 spawnPos, AdventurerParty party)
+    {
+        // Guards are Mercenary-typed muscle (Destroyer goal). A dedicated high-level
+        // guardDef is used if assigned, else the standard Mercenary type asset.
+        var def = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        if (def == null) return 0;
+        for (int i = 0; i < n; i++) SpawnMember(def, RollTrait(), spawnPos, party);
+        return n;
     }
 
     private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party)
@@ -216,7 +307,61 @@ public class AdventurerSpawner : MonoBehaviour
         return PartyIntent.GiftGiver;
     }
 
-    private void DropTribute(Vector3 entrancePos)
+    // ── Type Roll (Day 37) ───────────────────────────────────────
+    // The party TYPE is the roll: the category (Pilgrim/GiftGiver/Destroyer) is
+    // rolled first with the Day-35 Notoriety/Reputation scaling, then a concrete
+    // type is picked within that category by flat weight (with gates).
+
+    private AdventurerType RollType()
+    {
+        switch (RollIntent())
+        {
+            case PartyIntent.Destroyer: return RollDestroyerType();
+            case PartyIntent.GiftGiver: return RollGiftGiverType();
+            default: return RollPilgrimType();
+        }
+    }
+
+    private AdventurerType RollDestroyerType()
+    {
+        float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
+        float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
+        float wMerc = Mathf.Max(0f, weightMercenary);
+        float total = wMerc + wHero;
+        if (total <= 0f) return AdventurerType.Mercenary;
+        if (Random.Range(0f, total) < wHero) return AdventurerType.Hero;
+        return AdventurerType.Mercenary;
+    }
+
+    private AdventurerType RollGiftGiverType()
+    {
+        float wTH = Mathf.Max(0f, weightTreasureHunter);
+        float wCult = Mathf.Max(0f, weightCultist);
+        float total = wTH + wCult;
+        if (total <= 0f) return AdventurerType.TreasureHunter;
+        if (Random.Range(0f, total) < wCult) return AdventurerType.Cultist;
+        return AdventurerType.TreasureHunter;
+    }
+
+    private AdventurerType RollPilgrimType()
+    {
+        float wPil = Mathf.Max(0f, weightPilgrim);
+        float wSch = Mathf.Max(0f, weightScholar);
+        float wSui = Mathf.Max(0f, weightSuicidal);
+        float wNob = Mathf.Max(0f, weightNoble);
+        float wIns = inspectorEnabled ? Mathf.Max(0f, weightInspector) : 0f;
+        float total = wPil + wSch + wSui + wNob + wIns;
+        if (total <= 0f) return AdventurerType.Pilgrim;
+
+        float roll = Random.Range(0f, total);
+        if (roll < wPil) return AdventurerType.Pilgrim;
+        roll -= wPil; if (roll < wSch) return AdventurerType.Scholar;
+        roll -= wSch; if (roll < wSui) return AdventurerType.Suicidal;
+        roll -= wSui; if (roll < wNob) return AdventurerType.Noble;
+        return AdventurerType.Inspector;
+    }
+
+    private void DropTribute(Vector3 entrancePos, AdventurerType partyType)
     {
         if (tributeChestPrefab == null)
         {
@@ -233,7 +378,8 @@ public class AdventurerSpawner : MonoBehaviour
         if (floor != null)
             tribute.transform.SetParent(floor.transform, true);
 
-        tribute.Initialise(tributeGoldValue, tributeAbsorbDelay);
+        int value = partyType == AdventurerType.Cultist ? cultistTributeGoldValue : tributeGoldValue;
+        tribute.Initialise(value, tributeAbsorbDelay);
     }
 
     [ContextMenu("Force Spawn Party Now")]

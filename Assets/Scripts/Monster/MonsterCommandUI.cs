@@ -41,6 +41,14 @@ public class MonsterCommandUI : MonoBehaviour
     [SerializeField] private Button aggressionButton;
     [SerializeField] private TMP_Text aggressionLabel;
 
+    [Header("Aggression Stance Colours (Day 35)")]
+    [Tooltip("Label tint per stance — tune freely.")]
+    [SerializeField] private Color stanceGlobalColor = new Color(0.60f, 0.60f, 0.62f);  // dim grey
+    [SerializeField] private Color stanceDefensiveColor = new Color(0.55f, 0.72f, 0.92f);  // steel
+    [SerializeField] private Color stanceNormalColor = new Color(0.92f, 0.90f, 0.82f);  // parchment
+    [SerializeField] private Color stanceAggressiveColor = new Color(0.85f, 0.27f, 0.27f);  // red
+    [SerializeField] private Color stanceMixedColor = new Color(0.72f, 0.60f, 0.86f);  // muted violet
+
     [Header("Removal (Phase 3 closeout #1)")]
     [SerializeField] private ConfirmDialog confirmDialog;
 
@@ -132,8 +140,12 @@ public class MonsterCommandUI : MonoBehaviour
                 defendLabel.text = current.AllowDefendCore ? "Defend: ON" : "Defend: OFF";
         }
 
-        // Aggression-stance button face shows the current (or "Mixed") stance.
-        if (aggressionLabel != null) aggressionLabel.text = AggressionDisplay();
+        // Aggression-stance button face shows the current (or "Mixed") stance + colour.
+        if (aggressionLabel != null)
+        {
+            aggressionLabel.text = AggressionDisplay();
+            aggressionLabel.color = StanceColor();
+        }
     }
 
     private static string BuildStatusText(MonsterSpawner s)
@@ -251,6 +263,24 @@ public class MonsterCommandUI : MonoBehaviour
         MonsterStance.Aggressive => "Aggressive",
         _ => "Global",
     };
+
+    // DAY 35 — label colour matching the displayed stance (or Mixed across a selection).
+    private Color StanceColor()
+    {
+        if (current == null) return stanceGlobalColor;
+        var first = current.AggressionStance;
+        var sel = SpawnerSelectionController.Instance;
+        if (sel != null && sel.Count > 1)
+            foreach (var s in sel.Selected)
+                if (s != null && s.AggressionStance != first) return stanceMixedColor;
+        return first switch
+        {
+            MonsterStance.Defensive => stanceDefensiveColor,
+            MonsterStance.Normal => stanceNormalColor,
+            MonsterStance.Aggressive => stanceAggressiveColor,
+            _ => stanceGlobalColor,
+        };
+    }
 
     public void OnCloseClicked()
     {
