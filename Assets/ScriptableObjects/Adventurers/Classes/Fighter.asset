@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ea403601488e874eac2c53b70713cca, type: 3}
+  m_Name: Fighter
+  m_EditorClassIdentifier: Assembly-CSharp::CombatClassDefinition
+  combatClass: 0
+  spawnWeight: 3
+  hpMultiplier: 1
+  moveSpeedMultiplier: 1
+  attackDamageMultiplier: 1
+  attackRangeMultiplier: 1
+  attackCooldownMultiplier: 1
+  detectionRangeMultiplier: 1
+  rangedAttacker: 0
+  detectsTraps: 0
+  healsAllies: 0
+  healAmount: 6
+  healInterval: 3
+  healRadius: 4
+  taunts: 0
+  scoutRooms: 0

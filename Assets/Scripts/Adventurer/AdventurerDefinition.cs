@@ -8,10 +8,9 @@ using UnityEngine;
 /// DAY 21: One stub definition covers all party members (same prefab, different
 /// stats per class asset).
 ///
-/// DAY 39 — All Six Combat Classes: add Fighter, Mage, Rogue, Cleric, Explorer,
-/// Tank as separate assets. Uncomment the CombatClass field and unique behaviour
-/// hook once the class system is built. No code changes needed here or in
-/// DungeonAdventurer — just populate the new fields on each asset.
+/// All Six Combat Classes: combat role is a SEPARATE axis. See
+/// CombatClassDefinition (one asset per class) + the spawner's per-member
+/// assignment. This definition only carries the type + base stats.
 ///
 /// CREATE ASSETS: right-click in Project →
 ///   Create → Dungeon → Adventurer Definition
@@ -54,15 +53,4 @@ public class AdventurerDefinition : ScriptableObject
     public bool canDetectTraps = false;
     public float trapDetectionRadius = 2.5f;
     public float trapDetectionChancePerSecond = 0.3f;
-
-
-    // ── Day 39 stub ───────────────────────────────────────────────
-    // Uncomment when combat class unique behaviours are implemented.
-    //
-    // [Header("Day 39 — Combat Class")]
-    // public CombatClass combatClass = CombatClass.Fighter;
-    //
-    // [Tooltip("Optional: hook for class-unique behaviour. Resolved in
-    //           DungeonAdventurer.HandleCombatClassBehaviour().")]
-    // public bool hasUniqueAbility = false;
 }

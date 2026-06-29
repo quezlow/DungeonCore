@@ -12756,7 +12756,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999902
+  m_Size: 0.99414766
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -15458,7 +15458,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00005744585}
+  m_AnchoredPosition: {x: 0, y: 0.00015557549}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -23771,6 +23771,11 @@ MonoBehaviour:
   closeButton: {fileID: 713819244}
   aggressionButton: {fileID: 413826894}
   aggressionLabel: {fileID: 735081515}
+  stanceGlobalColor: {r: 0.6, g: 0.6, b: 0.62, a: 1}
+  stanceDefensiveColor: {r: 0.55, g: 0.72, b: 0.92, a: 1}
+  stanceNormalColor: {r: 0.92, g: 0.9, b: 0.82, a: 1}
+  stanceAggressiveColor: {r: 0.85, g: 0.27, b: 0.27, a: 1}
+  stanceMixedColor: {r: 0.72, g: 0.6, b: 0.86, a: 1}
   confirmDialog: {fileID: 1924789153319159469}
 --- !u!1 &1078132794
 GameObject:
@@ -46638,6 +46643,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerSpawner
   adventurerTypes:
   - {fileID: 11400000, guid: 47852613e229f3345aaaf889ba623b7b, type: 2}
+  - {fileID: 11400000, guid: e673ab988d70b45438eb1262002e6243, type: 2}
+  - {fileID: 11400000, guid: fb6ad7fb5df4a154daf5acfc3b0aaafe, type: 2}
+  - {fileID: 11400000, guid: 0ef6e03567689ee4294c41f0634f6ecb, type: 2}
+  - {fileID: 11400000, guid: ceff0a110f7836848b12a62543b35ae9, type: 2}
+  - {fileID: 11400000, guid: 6ca50fe657f5d2f45b75816bf511a004, type: 2}
+  - {fileID: 11400000, guid: 9367a980ff24aa343ba4c41cfb838197, type: 2}
+  - {fileID: 11400000, guid: 1a36de416b627a9438c6a076e1526723, type: 2}
+  - {fileID: 11400000, guid: 709240a6e613b234197daf3e33557a50, type: 2}
+  - {fileID: 11400000, guid: e7089f84ef44422449243fa5aa037036, type: 2}
   minPartySize: 3
   maxPartySize: 5
   scalePartySizeWithNotoriety: 1
@@ -46656,10 +46670,39 @@ MonoBehaviour:
   notorietyToDestroyer: 0.03
   reputationToPilgrim: 0.04
   reputationToGiftGiver: 0.02
+  weightMercenary: 3
+  weightHero: 1
+  weightTreasureHunter: 3
+  weightCultist: 1
+  weightPilgrim: 2
+  weightScholar: 1.5
+  weightSuicidal: 0.4
+  weightNoble: 1
+  weightInspector: 0.8
+  heroNotorietyThreshold: 60
+  inspectorEnabled: 1
+  nobleGuardMin: 2
+  nobleGuardMax: 3
+  scholarMin: 1
+  scholarMax: 2
+  scholarGuardMin: 1
+  scholarGuardMax: 2
+  inspectorGuardMin: 1
+  inspectorGuardMax: 2
+  guardDef: {fileID: 0}
   tributeChestPrefab: {fileID: 6910794033115046792, guid: 1d386c8aef808844680624d505d9e02b, type: 3}
   tributeGoldValue: 20
+  cultistTributeGoldValue: 50
   tributeAbsorbDelay: 1.5
   tributeScatter: 1.2
+  combatClasses:
+  - {fileID: 11400000, guid: c1f82deed9df40343bf08af44c1aa2ea, type: 2}
+  - {fileID: 11400000, guid: 183f7e86a19f89e4db506d4b81ff0c88, type: 2}
+  - {fileID: 11400000, guid: 7429cc416efb9614f96c3d07e9737157, type: 2}
+  - {fileID: 11400000, guid: 1530f9333b38e3244929b04375e0181d, type: 2}
+  - {fileID: 11400000, guid: 1b2933e0c5baf3944a15b0086d2072c0, type: 2}
+  - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
+  varietyBias: 2
 --- !u!1 &737226779995572404
 GameObject:
   m_ObjectHideFlags: 0

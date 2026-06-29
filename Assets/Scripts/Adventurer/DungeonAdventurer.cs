@@ -120,6 +120,17 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private int roomsObserved = 0;
     private float observeTimer = 0f;
 
+    // Combat class (Day 39) — overlay applied in Initialise
+    private CombatClass combatClass = CombatClass.Fighter;
+    private bool healsAllies = false;
+    private float healAmount = 6f;
+    private float healInterval = 3f;
+    private float healRadius = 4f;
+    private float healTimer = 0f;
+    private bool taunts = false;
+    private int scoutRoomsRemaining = 0;
+    private static readonly List<DungeonAdventurer> _healBuf = new();
+
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
 
@@ -145,7 +156,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null)
     {
         if (def != null)
         {
@@ -182,6 +193,34 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         party = assignedParty;
         if (intent == PartyIntent.Pilgrim)
             moveSpeed *= pilgrimSpeedMultiplier;
+
+        ApplyCombatClass(classDef);
+    }
+
+    /// <summary>Day 39 — overlay the combat-class multipliers + behaviour on top of
+    /// the type's base stats. Null (non-combatants) leaves the member a plain Fighter.</summary>
+    private void ApplyCombatClass(CombatClassDefinition c)
+    {
+        if (c == null) return;
+        combatClass = c.combatClass;
+
+        maxHP *= c.hpMultiplier;
+        moveSpeed *= c.moveSpeedMultiplier;
+        attackDamage *= c.attackDamageMultiplier;
+        attackRange *= c.attackRangeMultiplier;
+        attackCooldown *= c.attackCooldownMultiplier;
+        detectionRange *= c.detectionRangeMultiplier;
+
+        if (c.detectsTraps) canDetectTraps = true;
+
+        healsAllies = c.healsAllies;
+        healAmount = c.healAmount;
+        healInterval = c.healInterval;
+        healRadius = c.healRadius;
+        healTimer = c.healInterval;   // first heal one interval in
+
+        taunts = c.taunts;
+        scoutRoomsRemaining = c.scoutRooms;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -211,9 +250,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         UnlockState.OnChanged += HandleUnlockChanged;
         RefreshIntentBadge();
 
-        // Day 37 — observers head room-to-room instead of toward the core.
+        // observers head room-to-room instead of toward the core.
         if (goal == AdventurerGoal.ObserveRooms)
             state = PickNextRoom() ? AdventurerState.MovingToRoom : AdventurerState.Retreating;
+        // Day 39 — Explorer class scouts a random room before pursuing its goal.
+        else if (scoutRoomsRemaining > 0 && PickRandomRoom())
+            state = AdventurerState.MovingToRoom;
 
         RefreshPath();
     }
@@ -242,6 +284,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             StartRetreat();
 
         ApplySeparation();
+
+        if (healsAllies) TickHeal();
 
         switch (state)
         {
@@ -757,6 +801,56 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         return roomTarget != null;
     }
 
+    // Day 39 — Explorer scouts a RANDOM validated room (vs the observer's nearest).
+    private bool PickRandomRoom()
+    {
+        roomTarget = null;
+        if (currentFloor?.Entities == null) return false;
+        var rooms = currentFloor.Entities.GetAll<RoomAnchor>();
+        RoomAnchor pick = null;
+        int seen = 0;
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            var r = rooms[i];
+            if (r == null || r.GetRoomTiles() == null || visitedRooms.Contains(r)) continue;
+            seen++;
+            if (Random.Range(0, seen) == 0) pick = r;   // one-pass reservoir sample
+        }
+        roomTarget = pick;
+        return roomTarget != null;
+    }
+
+    // ── Cleric (Day 39) ───────────────────────────────────────────
+
+    private void TickHeal()
+    {
+        healTimer -= Time.deltaTime;
+        if (healTimer > 0f) return;
+        healTimer = healInterval;
+        if (currentFloor?.Entities == null) return;
+
+        // Heal the most-wounded ally in range (excluding self).
+        currentFloor.Entities.WithinRadius(transform.position, healRadius, _healBuf);
+        DungeonAdventurer best = null;
+        float bestRatio = 1f;
+        for (int i = 0; i < _healBuf.Count; i++)
+        {
+            var a = _healBuf[i];
+            if (a == this || a == null) continue;
+            float ratio = a.MaxHP > 0f ? a.CurrentHP / a.MaxHP : 1f;
+            if (ratio < bestRatio) { bestRatio = ratio; best = a; }
+        }
+        if (best != null && bestRatio < 1f) best.Heal(healAmount);
+    }
+
+    public void Heal(float amount)
+    {
+        if (amount <= 0f || currentHP >= maxHP) return;
+        currentHP = Mathf.Min(maxHP, currentHP + amount);
+        statusBars?.SetHP(currentHP, maxHP);
+        DamageNumberSpawner.Spawn(amount, transform.position, FloatingDamageNumber.DamageType.Heal);
+    }
+
     private void BeginObserving()
     {
         state = AdventurerState.Observing;
@@ -772,6 +866,22 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         observeTimer -= Time.deltaTime;
         if (observeTimer > 0f) return;
+
+        // Day 39 — Explorer (a combat class on a non-observer goal) scouts, then
+        // resumes its real goal instead of leaving like an observer type.
+        if (goal != AdventurerGoal.ObserveRooms)
+        {
+            scoutRoomsRemaining--;
+            if (scoutRoomsRemaining > 0 && PickRandomRoom())
+            {
+                state = AdventurerState.MovingToRoom;
+                RefreshPath();
+                return;
+            }
+            state = AdventurerState.MovingToCore;   // pursue the type's actual goal
+            RefreshPath();
+            return;
+        }
 
         if (roomsObserved < maxRoomsToObserve && PickNextRoom())
         {
@@ -951,4 +1061,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     /// <summary>True only for goals that destroy the core on arrival (Mercenary / Hero / Suicidal).
     /// Worshippers, looters and observers are NOT a danger to the core.</summary>
     public bool ThreatensCore => goal == AdventurerGoal.BreachCore || goal == AdventurerGoal.SeekDeath;
+
+    // Combat class reads
+    public CombatClass Class => combatClass;
+    /// <summary>Tank taunt — monsters prefer a taunting adventurer as their target.</summary>
+    public bool IsTaunting => taunts;
 }

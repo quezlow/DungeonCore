@@ -836,6 +836,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // Normal and (retaliating) Defensive spare Pilgrims; Aggressive does not.
         bool sparePilgrims = aggr != MonsterAggression.Aggressive;
 
+        // Tank taunt (minimal): a taunting adventurer in detection range is
+        // preferred over the nearest target. FLAG: expand into full class-aware target
+        // priority later (the "Class-aware target priority" backlog item).
+        var taunter = currentFloor.Entities.Nearest<DungeonAdventurer>(
+            transform.position, detectionRange,
+            a => a.IsTaunting && (!sparePilgrims || a.Intent != PartyIntent.Pilgrim));
+        if (taunter != null) { target = taunter; state = MonsterState.Attack; return; }
+
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
 
