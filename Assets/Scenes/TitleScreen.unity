@@ -5143,6 +5143,15 @@ MonoBehaviour:
   monsterRegistry: {fileID: 11400000, guid: b8bcaf4899d5da64d8e15bf956877f5f, type: 2}
   adventurerTypes:
   - {fileID: 11400000, guid: 47852613e229f3345aaaf889ba623b7b, type: 2}
+  - {fileID: 11400000, guid: e673ab988d70b45438eb1262002e6243, type: 2}
+  - {fileID: 11400000, guid: fb6ad7fb5df4a154daf5acfc3b0aaafe, type: 2}
+  - {fileID: 11400000, guid: 0ef6e03567689ee4294c41f0634f6ecb, type: 2}
+  - {fileID: 11400000, guid: ceff0a110f7836848b12a62543b35ae9, type: 2}
+  - {fileID: 11400000, guid: 6ca50fe657f5d2f45b75816bf511a004, type: 2}
+  - {fileID: 11400000, guid: 9367a980ff24aa343ba4c41cfb838197, type: 2}
+  - {fileID: 11400000, guid: 1a36de416b627a9438c6a076e1526723, type: 2}
+  - {fileID: 11400000, guid: 709240a6e613b234197daf3e33557a50, type: 2}
+  - {fileID: 11400000, guid: e7089f84ef44422449243fa5aa037036, type: 2}
   monsterHeight: 170
   adventurerHeight: 170
   wanderSpeed: 55
