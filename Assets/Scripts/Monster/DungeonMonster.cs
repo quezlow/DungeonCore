@@ -127,6 +127,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float attackStaminaCost = 0f;
     private float currentStamina = 0f;
 
+    // Class-aware target priority — cached from the definition.
+    private TargetPriority targetPriority = TargetPriority.Nearest;
+    private static readonly List<DungeonAdventurer> _advScanBuf = new();
+
     private IMonsterTarget target;
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
@@ -352,6 +356,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         maxStamina = def.maxStamina;
         attackStaminaCost = def.attackStaminaCost;
         currentStamina = maxStamina;
+
+        targetPriority = def.targetPriority;
     }
 
     // ── Stamina ──────────────────────────────────────────
@@ -882,21 +888,63 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
 
-        var adv = currentFloor.Entities.Nearest<DungeonAdventurer>(
-            transform.position, nearestDist,
+        // Day 42 — class-aware target priority. Gather in-range adventurers (minus
+        // spared Pilgrims), then pick by the monster's TargetPriority: hard preference,
+        // nearest tie-break; Nearest = pure nearest (unchanged default).
+        currentFloor.Entities.WithinRadius(transform.position, detectionRange, _advScanBuf,
             a => !sparePilgrims || a.Intent != PartyIntent.Pilgrim);
+        var adv = SelectAdventurer(_advScanBuf, out float advDist);
         if (adv != null)
         {
             nearest = adv;
-            nearestDist = Vector2.Distance(transform.position, adv.transform.position);
+            nearestDist = advDist;
         }
 
+        // Wild-vs-player monster targeting stays nearest-based; a closer hostile
+        // monster still preempts the chosen adventurer (unchanged behaviour).
         var m = currentFloor.Entities.Nearest<DungeonMonster>(
             transform.position, nearestDist,
             candidate => candidate != this && candidate.IsWild != this.IsWild);
         if (m != null) { nearest = m; }
 
         if (nearest != null) { target = nearest; state = MonsterState.Attack; }
+    }
+
+    // ── Class-aware target priority ─────────────────────
+
+    /// <summary>Pick the best adventurer from the in-range buffer by TargetPriority.
+    /// Lower PriorityKey wins; ties break by nearest. Null if the buffer is empty.</summary>
+    private DungeonAdventurer SelectAdventurer(List<DungeonAdventurer> buf, out float dist)
+    {
+        DungeonAdventurer best = null;
+        float bestKey = float.MaxValue, bestDist = float.MaxValue;
+        for (int i = 0; i < buf.Count; i++)
+        {
+            var a = buf[i];
+            if (a == null) continue;
+            float d = Vector2.Distance(transform.position, a.transform.position);
+            float key = PriorityKey(a);
+            if (key < bestKey || (key == bestKey && d < bestDist))
+            {
+                bestKey = key; bestDist = d; best = a;
+            }
+        }
+        dist = bestDist;
+        return best;
+    }
+
+    /// <summary>Lower = more preferred. Class modes: 0 for a match, 1 otherwise (so the
+    /// nearest match wins, else nearest of anyone). Wounded: HP fraction (lowest wins).
+    /// Nearest: 0 for all, so the tie-break yields the nearest.</summary>
+    private float PriorityKey(DungeonAdventurer a)
+    {
+        switch (targetPriority)
+        {
+            case TargetPriority.Casters: return (a.Class == CombatClass.Mage || a.Class == CombatClass.Cleric) ? 0f : 1f;
+            case TargetPriority.Healers: return a.Class == CombatClass.Cleric ? 0f : 1f;
+            case TargetPriority.Wounded: return a.MaxHP > 0f ? a.CurrentHP / a.MaxHP : 0f;
+            default: return 0f;
+        }
     }
 
     private void AttackTarget()

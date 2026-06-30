@@ -22,3 +22,6 @@ MonoBehaviour:
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 2
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 3

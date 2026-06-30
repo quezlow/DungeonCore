@@ -71,6 +71,12 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Stamina spent per attack. Ignored when Max Stamina is 0.")]
     [Min(0f)] public float attackStaminaCost = 0f;
 
+    [Header("Targeting")]
+    [Tooltip("Which adventurer this monster prefers to attack. Nearest = no class bias " +
+             "(default). Casters = Mage/Cleric; Healers = Cleric; Wounded = lowest HP%. " +
+             "A taunting Tank still overrides this.")]
+    public TargetPriority targetPriority = TargetPriority.Nearest;
+
     /// <summary>
     /// Mana/capacity cost to keep this monster active.
     /// Virtual so BossVariantDefinition can scale it.
