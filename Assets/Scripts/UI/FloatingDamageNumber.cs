@@ -29,6 +29,7 @@ public class FloatingDamageNumber : MonoBehaviour
     [SerializeField] private Color colourMonsterDamage = new Color(1f, 0.35f, 0.35f); // red
     [SerializeField] private Color colourAdventDamage = new Color(1f, 0.85f, 0.2f);  // yellow
     [SerializeField] private Color colourHeal = new Color(0.4f, 1f, 0.4f);  // green
+    [SerializeField] private Color colourAlert = new Color(1f, 0.75f, 0.1f);  // warning amber
 
     // ─────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ public class FloatingDamageNumber : MonoBehaviour
 
     // ── Public API ────────────────────────────────────────────────
 
-    public enum DamageType { MonsterHit, AdventurerHit, Heal }
+    public enum DamageType { MonsterHit, AdventurerHit, Heal, Alert }
 
     /// <summary>Initialise and begin the arc animation.</summary>
     public void Initialise(float amount, DamageType type)
@@ -55,15 +56,19 @@ public class FloatingDamageNumber : MonoBehaviour
             return;
         }
 
-        label.text = type == DamageType.Heal
-            ? $"+{Mathf.CeilToInt(amount)}"
-            : Mathf.CeilToInt(amount).ToString();
+        label.text = type switch
+        {
+            DamageType.Alert => "!",
+            DamageType.Heal => $"+{Mathf.CeilToInt(amount)}",
+            _ => Mathf.CeilToInt(amount).ToString(),
+        };
 
         label.color = type switch
         {
             DamageType.MonsterHit => colourMonsterDamage,
             DamageType.AdventurerHit => colourAdventDamage,
             DamageType.Heal => colourHeal,
+            DamageType.Alert => colourAlert,
             _ => Color.white
         };
 

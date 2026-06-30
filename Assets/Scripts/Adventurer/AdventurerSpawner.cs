@@ -98,6 +98,14 @@ public class AdventurerSpawner : MonoBehaviour
              "down-weighted, so varied parties dominate but odd comps still happen.")]
     [SerializeField] private float varietyBias = 2f;
 
+    [Header("Organize / Formation")]
+    [Tooltip("Base seconds a party pauses at the entrance to form up.")]
+    [SerializeField] private float organizeBaseSeconds = 1.5f;
+    [Tooltip("Extra organize seconds per member.")]
+    [SerializeField] private float organizePerMember = 0.4f;
+    [Tooltip("Random +/- jitter (seconds) so parties vary.")]
+    [SerializeField] private float organizeJitter = 0.6f;
+
     private float timer = 0f;
     private bool transitPaused = false;
 
@@ -193,6 +201,8 @@ public class AdventurerSpawner : MonoBehaviour
 
         int spawned = SpawnComposition(partyType, spawnPos, party);
         RunStats.Instance?.RecordPartySpawned(spawned);
+
+        SetupOrganize(party, partyType, spawned, spawnPos);
 
         if (party.Intent == PartyIntent.GiftGiver)
             DropTribute(spawnPos, partyType);
@@ -433,6 +443,53 @@ public class AdventurerSpawner : MonoBehaviour
         int value = partyType == AdventurerType.Cultist ? cultistTributeGoldValue : tributeGoldValue;
         tribute.Initialise(value, tributeAbsorbDelay);
     }
+
+    // ── Organize / formation ────────────────────────────
+
+    private void SetupOrganize(AdventurerParty party, AdventurerType partyType, int count, Vector3 spawnPos)
+    {
+        FormationType formation = FormationFor(partyType);
+        party.Formation = formation;
+        if (formation == FormationType.None) return;
+
+        // Advance direction: entrance -> core (fallback right).
+        Vector2 dir = Vector2.right;
+        if (DungeonCore.Instance != null)
+        {
+            Vector2 d = (Vector2)(DungeonCore.Instance.transform.position - spawnPos);
+            if (d.sqrMagnitude > 0.01f) dir = d.normalized;
+        }
+        party.AdvanceDir = dir;
+
+        // Duration: size-scaled, temperament-scaled, jittered.
+        float seconds = organizeBaseSeconds + organizePerMember * count;
+        seconds *= TemperamentMultiplier(RollTrait());
+        seconds += Random.Range(-organizeJitter, organizeJitter);
+        party.OrganizeEndTime = Time.time + Mathf.Max(0.3f, seconds);
+    }
+
+    private static FormationType FormationFor(AdventurerType t)
+    {
+        switch (t)
+        {
+            case AdventurerType.Mercenary:
+            case AdventurerType.Hero:
+                return FormationType.Assault;
+            case AdventurerType.Noble:
+            case AdventurerType.Scholar:
+            case AdventurerType.Inspector:
+                return FormationType.Escort;
+            default:
+                return FormationType.None;   // Pilgrim, Cultist, Suicidal, TreasureHunter
+        }
+    }
+
+    private static float TemperamentMultiplier(BehaviourTrait t) => t switch
+    {
+        BehaviourTrait.Aggressive => 0.7f,   // charge in
+        BehaviourTrait.Cautious => 1.3f,     // form up carefully
+        _ => 1f,
+    };
 
     [ContextMenu("Force Spawn Party Now")]
     public void ForceSpawnParty() { timer = 0f; SpawnParty(); }

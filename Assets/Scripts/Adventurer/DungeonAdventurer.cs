@@ -36,6 +36,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Worshipping,
         MovingToRoom,   // observers heading to a room
         Observing,      // dwelling in a room
+        Organizing,     // Forming up at the entrance before advancing
     }
 
     // ── Inspector ─────────────────────────────────────────────────
@@ -90,6 +91,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private bool canDetectTraps = false;
     [SerializeField] private float trapDetectionRadius = 2.5f;
     [SerializeField] private float trapDetectionChancePerSecond = 0.3f;
+    [Tooltip("Seconds the party pauses when this Rogue spots a new trap.")]
+    [SerializeField] private float trapHaltDuration = 1f;
+    [Tooltip("Minimum seconds between trap-warning halts (anti-stutter).")]
+    [SerializeField] private float trapHaltCooldown = 4f;
 
     [Header("Stair Traversal")]
     [SerializeField] private float stairTraversalDuration = 1.5f;
@@ -147,6 +152,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float healManaCost = 0f;
     private float currentStamina = 0f;
     private float currentMana = 0f;
+
+    // Formation — assigned slot to hold during Organizing.
+    private Vector3? formationSlot;
 
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
@@ -279,12 +287,30 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         UnlockState.OnChanged += HandleUnlockChanged;
         RefreshIntentBadge();
 
-        // observers head room-to-room instead of toward the core.
+        // Attackers/observers pause at the threshold to form up first;
+        // everyone else (worshippers, Suicidal, Treasure Hunter) advances immediately.
+        if (party != null && party.Formation != FormationType.None)
+            BeginOrganizing();
+        else
+            BeginAdvance();
+    }
+
+    // Claim a formation slot and hold at the threshold until the party forms up.
+    private void BeginOrganizing()
+    {
+        state = AdventurerState.Organizing;
+        formationSlot = ComputeFormationSlot();
+    }
+
+    // Set the post-organize advance state (observer tour / Explorer scout / core).
+    private void BeginAdvance()
+    {
         if (goal == AdventurerGoal.ObserveRooms)
             state = PickNextRoom() ? AdventurerState.MovingToRoom : AdventurerState.Retreating;
-        // Day 39 — Explorer class scouts a random room before pursuing its goal.
         else if (scoutRoomsRemaining > 0 && PickRandomRoom())
             state = AdventurerState.MovingToRoom;
+        else
+            state = AdventurerState.MovingToCore;
 
         RefreshPath();
     }
@@ -329,7 +355,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                         ScanForChests();
                         ScanForLoot();
                     }
-                    FollowPath();
+                    if (!MovementHalted) FollowPath();
                 }
                 break;
 
@@ -338,7 +364,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
                 {
                     ScanForLoot();
-                    MoveToChest();
+                    if (!MovementHalted) MoveToChest();
                 }
                 break;
 
@@ -357,12 +383,17 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             case AdventurerState.MovingToRoom:
                 ScanForMonsters();   // non-combat goal; only a Cowardly observer flees
-                if (state != AdventurerState.Combat && state != AdventurerState.Retreating)
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating
+                    && !MovementHalted)
                     FollowPath();
                 break;
 
             case AdventurerState.Observing:
                 HandleObserving();
+                break;
+
+            case AdventurerState.Organizing:
+                HandleOrganizing();
                 break;
         }
     }
@@ -1065,8 +1096,101 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             if (trap.IsFlagged) continue;
             trap.Flag();
             Debug.Log($"[Adventurer] Detected trap at {trap.OccupiedCell}.");
+            ReactToTrapDetection();
             break;
         }
+    }
+
+    // ── Formation / organize + Rogue halt ───────────────
+
+    // Movement freezes briefly when a Rogue in the party warns of a trap;
+    // combat and retreat ignore the halt.
+    private bool MovementHalted =>
+        party != null && Time.time < party.HaltUntil
+        && state != AdventurerState.Combat && state != AdventurerState.Retreating;
+
+    private void HandleOrganizing()
+    {
+        // Combat overrides forming up — a monster on us breaks formation.
+        ScanForMonsters();
+        if (state != AdventurerState.Organizing) return;
+
+        if (formationSlot.HasValue)
+            transform.position = Vector2.MoveTowards(
+                transform.position, formationSlot.Value,
+                moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+
+        // Hold until the whole party has formed up, then advance together.
+        if (party == null || Time.time >= party.OrganizeEndTime)
+            BeginAdvance();
+    }
+
+    private Vector3 ComputeFormationSlot()
+    {
+        Vector3 anchor = DungeonEntrance.Instance != null
+            ? DungeonEntrance.Instance.SpawnPosition
+            : transform.position;
+        Vector2 fwd = party != null ? party.AdvanceDir : Vector2.right;
+        if (fwd.sqrMagnitude < 0.01f) fwd = Vector2.right;
+        Vector2 side = new Vector2(-fwd.y, fwd.x);
+
+        ComputeSlotOffset(out float forward, out float lateral);
+        return anchor + (Vector3)(fwd * forward + side * lateral);
+    }
+
+    private void ComputeSlotOffset(out float forward, out float lateral)
+    {
+        const float rankGap = 1.1f;
+        const float sideGap = 0.9f;
+
+        if (party != null && party.Formation == FormationType.Escort)
+        {
+            bool isVip = type != AdventurerType.Mercenary;   // guards are Mercenary-typed
+            if (isVip)
+            {
+                forward = 0f;
+                lateral = sideGap * Spread(party.ClaimSlot(0));
+            }
+            else
+            {
+                int tier = (combatClass == CombatClass.Tank || combatClass == CombatClass.Fighter) ? 0 : 1;
+                forward = tier == 0 ? 2f : 1.2f;
+                lateral = sideGap * Spread(party.ClaimSlot(10 + tier));
+            }
+            return;
+        }
+
+        // Assault — ranks front (Tank/Fighter) to rear (Cleric).
+        int rank = AssaultRank(combatClass);
+        forward = 2f - rank * rankGap;
+        lateral = sideGap * Spread(party != null ? party.ClaimSlot(rank) : 0);
+    }
+
+    private static int AssaultRank(CombatClass c) => c switch
+    {
+        CombatClass.Tank => 0,
+        CombatClass.Fighter => 0,
+        CombatClass.Rogue => 1,
+        CombatClass.Explorer => 1,
+        CombatClass.Mage => 2,
+        CombatClass.Cleric => 3,
+        _ => 1,
+    };
+
+    // 0 -> centre, then +1, -1, +2, -2 ... symmetric without needing the lane total.
+    private static float Spread(int i)
+    {
+        int step = (i + 1) / 2;
+        return (i % 2 == 1) ? step : -step;
+    }
+
+    // A Rogue spotting a NEW trap throws a yellow "!" and briefly halts the party.
+    private void ReactToTrapDetection()
+    {
+        DamageNumberSpawner.Spawn(0f, transform.position, FloatingDamageNumber.DamageType.Alert);
+        if (party == null || Time.time < party.HaltCooldownEnd) return;
+        party.HaltUntil = Time.time + trapHaltDuration;
+        party.HaltCooldownEnd = Time.time + trapHaltCooldown;
     }
 
     public void ApplySlow(float multiplier, float duration)
@@ -1075,7 +1199,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (duration > slowTimer) slowTimer = duration;
     }
 
-    // ── IMonsterTarget (DAY 31 PART 2) ────────────────────────────
+    // ── IMonsterTarget ────────────────────────────
 
     Transform IMonsterTarget.Transform => transform;
 

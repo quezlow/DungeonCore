@@ -46703,6 +46703,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1b2933e0c5baf3944a15b0086d2072c0, type: 2}
   - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
   varietyBias: 2
+  organizeBaseSeconds: 2.5
+  organizePerMember: 1
+  organizeJitter: 1
 --- !u!1 &737226779995572404
 GameObject:
   m_ObjectHideFlags: 0
