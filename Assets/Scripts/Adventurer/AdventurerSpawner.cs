@@ -493,4 +493,21 @@ public class AdventurerSpawner : MonoBehaviour
 
     [ContextMenu("Force Spawn Party Now")]
     public void ForceSpawnParty() { timer = 0f; SpawnParty(); }
+
+    /// <summary>Spawns a single Hero at the entrance (Inspector-escalation response).</summary>
+    public void DispatchHeroParty()
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var hero = Def(AdventurerType.Hero);
+        if (hero == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        var used = new Dictionary<CombatClass, int>();
+        SpawnMember(hero, RollTrait(), spawnPos, party, used);
+
+        SetupOrganize(party, AdventurerType.Hero, 1, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(1);
+    }
 }

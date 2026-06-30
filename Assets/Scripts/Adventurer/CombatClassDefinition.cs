@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// DAY 39 — Defines a combat class as a multiplier OVERLAY on a member's
@@ -60,4 +61,8 @@ public class CombatClassDefinition : ScriptableObject
     public float attackCost = 0f;
     [Tooltip("Mana cost per heal cast (Cleric). Ignored if the class doesn't heal.")]
     public float healManaCost = 0f;
+
+    [Header("Loot")]
+    [Tooltip("Gold this class drops on death (weighted). Rolled in addition to the adventurer's own LootTable.")]
+    public List<LootTable.DropEntry> classLoot = new();
 }

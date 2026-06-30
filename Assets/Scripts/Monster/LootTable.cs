@@ -95,6 +95,25 @@ public class LootTable : MonoBehaviour
 
     // ── Internals ─────────────────────────────────────────────────
 
+    /// <summary>Weighted pick over an arbitrary entry list (no spawn). Returns null if empty.</summary>
+    public static DropEntry PickWeighted(List<DropEntry> entries)
+    {
+        if (entries == null || entries.Count == 0) return null;
+
+        float total = 0f;
+        foreach (var e in entries) total += Mathf.Max(0f, e.weight);
+        if (total <= 0f) return null;
+
+        float roll = UnityEngine.Random.Range(0f, total);
+        float running = 0f;
+        foreach (var e in entries)
+        {
+            running += Mathf.Max(0f, e.weight);
+            if (roll <= running) return e;
+        }
+        return entries[entries.Count - 1];
+    }
+
     private void SpawnDrop(DropEntry entry, Vector3 pos)
     {
         switch (lootOwner)

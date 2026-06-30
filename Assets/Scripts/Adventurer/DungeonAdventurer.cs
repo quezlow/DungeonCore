@@ -84,6 +84,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Header("Dropped Loot Prefab")]
     [SerializeField] private DroppedLoot droppedLootPrefab;
 
+    [Header("Loot")]
+    [Tooltip("Gold-value multiplier on this unit's class loot when it's a guard escorting a VIP (Noble / Scholar / Inspector).")]
+    [SerializeField] private float escortGuardLootMultiplier = 1.75f;
+
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
@@ -128,6 +132,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // Type / goal + observer state
     private AdventurerType type = AdventurerType.Mercenary;
     private AdventurerGoal goal = AdventurerGoal.BreachCore;
+
+    // Inspector escalation — adventurer deaths witnessed during this unit's visit.
+    public static int AdventurerDeaths { get; private set; }
+    private int deathsAtArrival;
     private RoomAnchor roomTarget;
     private readonly HashSet<RoomAnchor> visitedRooms = new();
     private int roomsObserved = 0;
@@ -135,6 +143,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Combat class (Day 39) — overlay applied in Initialise
     private CombatClass combatClass = CombatClass.Fighter;
+    private CombatClassDefinition classDef;   // kept for class loot on death
     private bool healsAllies = false;
     private float healAmount = 6f;
     private float healInterval = 3f;
@@ -228,6 +237,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         if (c == null) return;
         combatClass = c.combatClass;
+        classDef = c;
 
         maxHP *= c.hpMultiplier;
         moveSpeed *= c.moveSpeedMultiplier;
@@ -267,6 +277,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         rb.bodyType = RigidbodyType2D.Kinematic;
 
         lootTable = GetComponent<LootTable>();
+        deathsAtArrival = AdventurerDeaths;
 
         currentFloor = GetComponentInParent<FloorRoot>();
         if (currentFloor == null)
@@ -1000,9 +1011,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             return;
         }
 
-        // Done — Inspectors file their findings (stub) before leaving.
+        // Inspectors file their findings with the Guild on the way out.
         if (type == AdventurerType.Inspector)
-            DungeonCore.Instance?.FlagInspectorFindings();
+            InspectorEscalation.Instance?.ReportFindings(
+                AdventurerDeaths - deathsAtArrival,
+                DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f);
         StartRetreat();
     }
 
@@ -1019,6 +1032,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void Die()
     {
+        AdventurerDeaths++;
         currentFloor?.Entities?.Unregister(this);
 
         if (type == AdventurerType.Suicidal)
@@ -1040,6 +1054,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         RunStats.Instance?.RecordAdventurerSlain(className);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
+        DropClassLoot();
         if (statusBars != null) Destroy(statusBars.gameObject);
 
         TimeScaleController.Instance?.DoKillHitstop();
@@ -1064,6 +1079,28 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             loot.DropAndAbsorb(transform.position + new Vector3(scatter.x, scatter.y), droppedLootPrefab);
         }
         carriedLoot.Clear();
+    }
+
+    // Drops the unit's combat-class loot (gold) on death into the core-absorbed pool.
+    // VIP-escort guards drop higher-value gear via the escort multiplier.
+    private void DropClassLoot()
+    {
+        if (classDef == null || droppedLootPrefab == null) return;
+
+        var entry = LootTable.PickWeighted(classDef.classLoot);
+        if (entry == null) return;
+
+        bool escortGuard = party != null
+            && party.Formation == FormationType.Escort
+            && type == AdventurerType.Mercenary;
+
+        int value = Mathf.Max(1, Mathf.RoundToInt(
+            entry.goldValue * (escortGuard ? escortGuardLootMultiplier : 1f)));
+
+        Vector2 scatter = Random.insideUnitCircle * 0.3f;
+        var d = Instantiate(droppedLootPrefab,
+            transform.position + new Vector3(scatter.x, scatter.y, 0f), Quaternion.identity);
+        d.Initialise(value);
     }
 
     // ── Trap Helpers ──────────────────────────────────────────────

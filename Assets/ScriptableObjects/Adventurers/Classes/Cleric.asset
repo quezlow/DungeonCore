@@ -33,3 +33,4 @@ MonoBehaviour:
   attackUsesMana: 0
   attackCost: 7
   healManaCost: 15
+  classLoot: []
