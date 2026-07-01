@@ -604,8 +604,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                     Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}.");
                 }
             }
-            else
+            else if (intent == PartyIntent.GiftGiver)
             {
+                // Word of rich pickings spreads — satisfied looters and tribute
+                // bearers raise the dungeon's desirability. A retreating Destroyer
+                // or an empty-handed observer does not.
                 DungeonCore.Instance?.AddReputation(2f);
             }
 

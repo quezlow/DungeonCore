@@ -239,6 +239,9 @@ public class DungeonSaveController : MonoBehaviour
         if (TrackedPartyRegistry.Instance != null)
             currentSave.trackedParties = TrackedPartyRegistry.Instance.GetSaveData();
 
+        if (InspectorEscalation.Instance != null)
+            currentSave.inspectorEscalation = InspectorEscalation.Instance.GetSaveData();
+
         if (!WriteSaveAtomically(currentSave))
         {
             Debug.LogError("[DungeonSaveController] Atomic save failed; previous save preserved.");
@@ -598,6 +601,7 @@ public class DungeonSaveController : MonoBehaviour
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             TrackedPartyRegistry.Instance?.RestoreFromSave(currentSave.trackedParties);
+            InspectorEscalation.Instance?.RestoreFromSave(currentSave.inspectorEscalation);
 
             // DAY 31 — Defer camera restore one frame so it runs after all initial
             // Start() methods have completed. Without the deferral, DungeonCameraController.

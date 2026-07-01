@@ -4,7 +4,8 @@ using UnityEngine;
 /// Adventurers' Guild escalation. When an Inspector leaves having witnessed enough
 /// adventurer deaths during its visit — and the dungeon's Reputation is too low to
 /// dismiss the report — a Hero is dispatched after a short delay. The player can spend
-/// gold during that window to call the Hero off. State is runtime-only.
+/// gold during that window to call the Hero off. Dispatch state is persisted
+/// via DungeonSaveData.inspectorEscalation.
 /// </summary>
 public class InspectorEscalation : MonoBehaviour
 {
@@ -94,4 +95,26 @@ public class InspectorEscalation : MonoBehaviour
             "A Hero has entered the dungeon.",
             EntrancePos, -1, AlertCategory.Threat);
     }
+
+    // ── Save / Load ───────────────────────────────────────────────
+
+    public InspectorEscalationSaveData GetSaveData() => new InspectorEscalationSaveData
+    {
+        dispatchPending = dispatchPending,
+        dispatchTimer = dispatchTimer,
+    };
+
+    public void RestoreFromSave(InspectorEscalationSaveData data)
+    {
+        if (data == null || !data.dispatchPending) return;
+        dispatchPending = true;
+        dispatchTimer = Mathf.Max(0.1f, data.dispatchTimer);
+    }
+}
+
+[System.Serializable]
+public class InspectorEscalationSaveData
+{
+    public bool dispatchPending;
+    public float dispatchTimer;
 }

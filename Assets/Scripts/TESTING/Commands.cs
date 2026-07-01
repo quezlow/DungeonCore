@@ -44,4 +44,35 @@ public class Commands : MonoBehaviour
         MonsterAggressionSettings.Set((MonsterAggression)(((int)MonsterAggressionSettings.Global + 1) % n));
         Debug.Log($"[Commands] Global monster aggression = {MonsterAggressionSettings.Global}");
     }
+
+    [ContextMenu("Test Force Pending Returns Due Now")]
+    void TestForcePendingReturns()
+    {
+        var reg = TrackedPartyRegistry.Instance;
+        if (reg == null) { Debug.Log("[Commands] No TrackedPartyRegistry in scene."); return; }
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        int n = 0;
+        foreach (var p in reg.PendingParties) { p.returnDay = day; n++; }
+        Debug.Log($"[Commands] {n} pending part(ies) marked due today (day {day}) — next party spawn deploys one.");
+    }
+
+    [ContextMenu("Test Grant Pending Survivors 400 XP")]
+    void TestGrantPendingSurvivorXp()
+    {
+        var reg = TrackedPartyRegistry.Instance;
+        if (reg == null) { Debug.Log("[Commands] No TrackedPartyRegistry in scene."); return; }
+        int n = 0;
+        foreach (var p in reg.PendingParties)
+            foreach (var m in p.members)
+                if (m.survived) { m.xp += 400; n++; }
+        Debug.Log($"[Commands] Granted 400 XP to {n} pending survivor(s) — four levels at default tuning.");
+    }
+
+    [ContextMenu("Test Dispatch Hero Party")]
+    void TestDispatchHero()
+    {
+        if (AdventurerSpawner.Instance == null) { Debug.Log("[Commands] No AdventurerSpawner in scene."); return; }
+        AdventurerSpawner.Instance.DispatchHeroParty();
+        Debug.Log("[Commands] Hero party dispatched.");
+    }
 }

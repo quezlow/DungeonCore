@@ -56,6 +56,8 @@ public class DungeonSaveData
     public RunStatsSaveData runStats;
 
     public List<TrackedParty> trackedParties = new();
+
+    public InspectorEscalationSaveData inspectorEscalation;
 }
 
 [Serializable]
