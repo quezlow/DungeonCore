@@ -26,8 +26,8 @@ MonoBehaviour:
   detectionRange: 4
   chestDetectionRange: 3
   xpOnDeath: 80
-  knockbackForce: 3
-  knockbackMinDamage: 10
+  knockbackForce: 1.2
+  knockbackMinDamage: 15
   canDetectTraps: 0
   trapDetectionRadius: 2.5
   trapDetectionChancePerSecond: 0.3

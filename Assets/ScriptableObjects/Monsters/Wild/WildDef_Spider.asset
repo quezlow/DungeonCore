@@ -25,5 +25,5 @@ MonoBehaviour:
   maxStamina: 0
   attackStaminaCost: 0
   targetPriority: 3
-  knockbackForce: 1
-  knockbackMinDamage: 6
+  knockbackForce: 0
+  knockbackMinDamage: 0

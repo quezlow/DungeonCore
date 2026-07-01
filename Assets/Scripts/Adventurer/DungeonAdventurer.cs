@@ -100,6 +100,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Header("UI")]
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
+    [Header("Animation")]
+    [Tooltip("Seconds to hold the body after death so the death clip can play before despawn. 0 = despawn immediately.")]
+    [SerializeField] private float deathAnimSeconds = 0f;
+    private EntityAnimationDriver animDriver;
+
     [Header("Trap Detection")]
     [SerializeField] private bool canDetectTraps = false;
     [SerializeField] private float trapDetectionRadius = 2.5f;
@@ -300,6 +305,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         rb.bodyType = RigidbodyType2D.Kinematic;
 
         lootTable = GetComponent<LootTable>();
+        animDriver = GetComponent<EntityAnimationDriver>();
         deathsAtArrival = AdventurerDeaths;
 
         currentFloor = GetComponentInParent<FloorRoot>();
@@ -875,6 +881,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
             FloatingDamageNumber.DamageType.MonsterHit);
+        animDriver?.OnAttack();
         combatTarget.TakeDamage(attackDamage);
         if (knockbackForce > 0f && attackDamage >= knockbackMinDamage)
             ((IMonsterTarget)combatTarget).ApplyKnockback(transform.position, knockbackForce);
@@ -1068,8 +1075,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
-        GetComponent<DamageFlash>()?.Flash();   
+        GetComponent<DamageFlash>()?.Flash();
         if (currentHP <= 0f) { Die(); return true; }
+        animDriver?.OnHurt();
         return false;
     }
 
@@ -1104,7 +1112,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         TimeScaleController.Instance?.DoKillHitstop();
 
-        Destroy(gameObject);
+        animDriver?.OnDeath();
+        enabled = false;                 // freeze behaviour; the Animator plays the death clip
+        Destroy(gameObject, deathAnimSeconds);
     }
 
     private void OnDestroy()

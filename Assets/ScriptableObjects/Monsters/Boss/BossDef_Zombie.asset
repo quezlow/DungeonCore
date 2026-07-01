@@ -26,7 +26,7 @@ MonoBehaviour:
   attackStaminaCost: 0
   targetPriority: 3
   knockbackForce: 1
-  knockbackMinDamage: 10
+  knockbackMinDamage: 12
   bossTitle: Carl
   hpMultiplier: 5
   damageMultiplier: 3

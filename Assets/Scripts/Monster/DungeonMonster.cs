@@ -68,6 +68,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore }
     private MonsterState state = MonsterState.Wander;
 
+    [Header("Animation")]
+    [Tooltip("Seconds to hold the body after death so the death clip can play before despawn. 0 = despawn immediately.")]
+    [SerializeField] private float deathAnimSeconds = 0f;
+    private EntityAnimationDriver animDriver;
+
     private float currentHP;
     private float monsterXP;
     private int killCount;
@@ -221,6 +226,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void Start()
     {
         spawnPosition = transform.position;
+        animDriver = GetComponent<EntityAnimationDriver>();
         if (currentFloor == null) currentFloor = GetComponentInParent<FloorRoot>();
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent.");
@@ -998,6 +1004,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (!SpendAttackStamina()) return;
         lastAttackTime = Time.time;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
+        animDriver?.OnAttack();
         target.TakeDamage(attackDamage);
         var kdef = IsWild ? wildDefinition : spawner?.Definition;
         if (kdef != null && kdef.knockbackForce > 0f && attackDamage >= kdef.knockbackMinDamage)
@@ -1062,8 +1069,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         pendingHealDisplay = 0f;
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
-        GetComponent<DamageFlash>()?.Flash(); 
+        GetComponent<DamageFlash>()?.Flash();
         if (currentHP <= 0f) Die();
+        else animDriver?.OnHurt();
     }
 
     private void Die()
@@ -1084,7 +1092,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         spawner?.OnMonsterDied();
         OnDied?.Invoke(this);
-        Destroy(gameObject);
+
+        animDriver?.OnDeath();
+        enabled = false;                 // freeze behaviour; the Animator plays the death clip
+        Destroy(gameObject, deathAnimSeconds);
     }
 
     /// <summary>

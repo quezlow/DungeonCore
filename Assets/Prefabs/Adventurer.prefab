@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: -9217131695072375135}
   - component: {fileID: -7778411665281565798}
   - component: {fileID: -8149406109296636804}
+  - component: {fileID: 2653270127069683060}
   m_Layer: 0
   m_Name: Adventurer
   m_TagString: Untagged
@@ -163,6 +164,7 @@ MonoBehaviour:
   droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
   escortGuardLootMultiplier: 1.75
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
+  deathAnimSeconds: 0
   canDetectTraps: 0
   trapDetectionRadius: 2.5
   trapDetectionChancePerSecond: 0.3
@@ -271,3 +273,16 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0.9375}
   m_Radius: 0.9375
+--- !u!114 &2653270127069683060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558727629903577335}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 130bd28300969f745809500942b5a7ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EntityAnimationDriver
+  moveThreshold: 0.05

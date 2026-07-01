@@ -25,8 +25,8 @@ MonoBehaviour:
   maxStamina: 0
   attackStaminaCost: 0
   targetPriority: 0
-  knockbackForce: 3
-  knockbackMinDamage: 10
+  knockbackForce: 1.2
+  knockbackMinDamage: 12
   bossTitle: Jimbo
   hpMultiplier: 5
   damageMultiplier: 3
