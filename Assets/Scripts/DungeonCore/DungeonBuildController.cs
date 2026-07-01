@@ -954,6 +954,20 @@ public class DungeonBuildController : MonoBehaviour
         return spawner;
     }
 
+    /// <summary>Spawn a transient minion (raised by a necromancer) at a cell: a spawner
+    /// that holds no capacity, never respawns, and self-destructs when its monster dies.
+    /// Returns the spawner (its monster spawns on the spawner's Start).</summary>
+    public MonsterSpawner SpawnTransientMinion(FloorRoot floor, MonsterDefinition def, Vector3Int cell, float lifetime)
+    {
+        if (spawnerShellPrefab == null || def == null) return null;
+        if (floor?.TileInfluence == null) return null;
+        Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
+        var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
+        spawner.transform.SetParent(floor.transform, true);
+        spawner.InitialiseTransient(def, lifetime);
+        return spawner;
+    }
+
     public void RestoreChest(FloorRoot floor, ChestDefinition def, Vector3Int cell, bool isOpened)
     {
         if (def == null || def.prefab == null) return;

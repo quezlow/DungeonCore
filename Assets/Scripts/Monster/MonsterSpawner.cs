@@ -54,6 +54,8 @@ public class MonsterSpawner : MonoBehaviour
     private MonsterDefinition definition;
     private DungeonMonster spawnedMonster;
     private bool capacityHeld;
+    private bool transient;          // raised minion: no capacity, no respawn, self-destructs
+    private float minionLifetime;    // seconds the raised minion lives (0 = permanent)
 
     private bool isRespawning;
     private float respawnTimer;
@@ -123,6 +125,18 @@ public class MonsterSpawner : MonoBehaviour
         definition = def;
         capacityHeld = true;
         GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+    }
+
+    /// <summary>Initialise as a transient minion (raised by a necromancer): holds no
+    /// capacity, never respawns, and self-destructs when its monster dies. The spawned
+    /// monster is given a lifetime after which it crumbles.</summary>
+    public void InitialiseTransient(MonsterDefinition def, float lifetime)
+    {
+        definition = def;
+        capacityHeld = false;
+        transient = true;
+        minionLifetime = lifetime;
+        RestoreOrders(SpawnerOrderMode.Wander, null, true, false, default, true);
     }
 
     private void Start()
@@ -333,6 +347,7 @@ public class MonsterSpawner : MonoBehaviour
             spawnedMonster.transform.SetParent(floorRoot.transform, true);
 
         spawnedMonster.Initialise(this);
+        if (transient && spawnedMonster != null) spawnedMonster.SetLifetime(minionLifetime);
         if (SpawnerSelectionController.Instance != null
             && SpawnerSelectionController.Instance.IsSelected(this))
             spawnedMonster.SetSelected(true);
@@ -368,6 +383,9 @@ public class MonsterSpawner : MonoBehaviour
             : GetComponentInParent<FloorRoot>();
 
         spawnedMonster = null;
+
+        if (transient) { Destroy(gameObject); return; }
+
         isRespawning = true;
         respawnTimer = 0f;
         isBlocked = false;

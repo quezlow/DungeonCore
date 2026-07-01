@@ -89,6 +89,22 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Minimum damage this monster's hit must deal to trigger knockback.")]
     [Min(0f)] public float knockbackMinDamage = 0f;
 
+    [Header("Necromancy")]
+    [Tooltip("If true, this monster raises nearby adventurer corpses into transient minions.")]
+    public bool isNecromancer = false;
+    [Tooltip("Radius (world units) within which the necromancer can raise a corpse.")]
+    [Min(0f)] public float raiseRange = 3f;
+    [Tooltip("Seconds the necromancer channels (holding still) before a raise completes.")]
+    [Min(0f)] public float raiseChannelSeconds = 1.5f;
+    [Tooltip("Cooldown between raises.")]
+    [Min(0f)] public float raiseCooldown = 5f;
+    [Tooltip("Maximum living raised minions this necromancer sustains at once.")]
+    [Min(0)] public int maxRisen = 3;
+    [Tooltip("Seconds a raised minion lives before crumbling for good.")]
+    [Min(0f)] public float risenLifetime = 45f;
+    [Tooltip("Possible monster types a raise produces — one is chosen at random (e.g. Skeleton, Zombie).")]
+    public System.Collections.Generic.List<MonsterDefinition> risenDefinitions = new();
+
     [Header("Telegraph")]
     [Tooltip("Windup seconds before this monster's attack lands (shows a pre-attack tell). 0 = instant, no telegraph.")]
     [Min(0f)] public float telegraphSeconds = 0f;

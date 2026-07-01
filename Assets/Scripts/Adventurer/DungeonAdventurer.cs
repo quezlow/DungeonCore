@@ -98,6 +98,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     [Header("Dropped Loot Prefab")]
     [SerializeField] private DroppedLoot droppedLootPrefab;
+    [Tooltip("Corpse left at this adventurer's death spot; a necromancer can raise it. None = no corpse.")]
+    [SerializeField] private GameObject corpsePrefab;
 
     [Header("Loot")]
     [Tooltip("Gold-value multiplier on this unit's class loot when it's a guard escorting a VIP (Noble / Scholar / Inspector).")]
@@ -1135,6 +1137,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (statusBars != null) Destroy(statusBars.gameObject);
 
         TimeScaleController.Instance?.DoKillHitstop();
+
+        if (corpsePrefab != null)
+        {
+            var corpse = Instantiate(corpsePrefab, transform.position, Quaternion.identity);
+            if (currentFloor != null) corpse.transform.SetParent(currentFloor.transform, true);
+        }
 
         animDriver?.OnDeath();
         enabled = false;                 // freeze behaviour; the Animator plays the death clip

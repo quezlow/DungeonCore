@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Necromancer
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Necromancer
+  icon: {fileID: 8223914979737005702, guid: 4397b9d7d4259764aaeac714863c4f8f, type: 3}
+  prefab: {fileID: 6444287558482829946, guid: a6d6d21598f44db4782bc36170cc3aa4, type: 3}
+  capacityCost: 30
+  manaCost: 50
+  requiredTier: 1
+  requiredRank: 1
+  description: Raises the dead, for a time
+  isAquatic: 0
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 1
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions:
+  - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
+  - {fileID: 11400000, guid: 5a5166ef10480db4399df78641f7470a, type: 2}
+  telegraphSeconds: 0

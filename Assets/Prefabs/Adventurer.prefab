@@ -140,6 +140,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DungeonAdventurer
   maxHP: 50
   moveSpeed: 2
+  encumbrancePerGold: 0.003
+  encumbranceFloor: 0.5
   attackDamage: 8
   attackRange: 1.2
   attackCooldown: 1.5
@@ -163,6 +165,7 @@ MonoBehaviour:
   lootSatisfactionFactor: 0.1
   lootSatisfactionCap: 25
   droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
+  corpsePrefab: {fileID: 7299068176191048567, guid: 25c352d74c928eb439985896203ac93e, type: 3}
   escortGuardLootMultiplier: 1.75
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
   deathAnimSeconds: 0

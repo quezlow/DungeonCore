@@ -141,6 +141,16 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private static readonly List<DungeonAdventurer> _advScanBuf = new();
 
     private IMonsterTarget target;
+
+    // Necromancy — a necromancer reads its behaviour params from the definition.
+    private bool isNecromancer;
+    private float raiseCooldownRemaining;
+    private bool isChanneling;
+    private float channelRemaining;
+    private Corpse channelTarget;
+    private readonly List<MonsterSpawner> risenSpawners = new();
+    // Transient raised minion: crumbles when this reaches 0 (0 = permanent).
+    private float lifetimeRemaining = 0f;
     private MonsterSpawner spawner;
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
@@ -237,6 +247,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         ResolveEffectiveRegen();
         PickWanderTarget();
+
+        var ndef = IsWild ? wildDefinition : spawner?.Definition;
+        isNecromancer = ndef != null && ndef.isNecromancer;
 
         if (statusBarsPrefab != null)
         {
@@ -420,6 +433,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (target != null && !target.IsAlive) target = null;
         if (IsRegenState(state)) TickRegen();
         if (maxStamina > 0f) TickStaminaRegen();
+
+        if (lifetimeRemaining > 0f)
+        {
+            lifetimeRemaining -= Time.deltaTime;
+            if (lifetimeRemaining <= 0f) { Die(); return; }
+        }
+
+        if (isNecromancer && TickNecromancer()) return;   // channeling a raise — hold position
 
         // DAY 31 PART 3D — re-resolve desired state from orders each frame.
         // Attack state owns transitions out of itself (target-death path).
@@ -1135,6 +1156,91 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         animDriver?.OnDeath();
         enabled = false;                 // freeze behaviour; the Animator plays the death clip
         Destroy(gameObject, deathAnimSeconds);
+    }
+
+    /// <summary>Transient raised minions get a finite lifetime; 0 leaves the monster permanent.</summary>
+    public void SetLifetime(float seconds) { lifetimeRemaining = Mathf.Max(0f, seconds); }
+
+    // Necromancy methods
+
+    /// <summary>Necromancer behaviour tick. Returns true while channeling a raise (hold
+    /// position this frame). Reads its params from the monster definition.</summary>
+    private bool TickNecromancer()
+    {
+        var def = IsWild ? wildDefinition : spawner?.Definition;
+        if (def == null) return false;
+
+        if (raiseCooldownRemaining > 0f) raiseCooldownRemaining -= Time.deltaTime;
+
+        for (int i = risenSpawners.Count - 1; i >= 0; i--)
+            if (risenSpawners[i] == null) risenSpawners.RemoveAt(i);
+
+        if (isChanneling)
+        {
+            ScanForHostiles();   // a threat cancels the channel
+            if (target != null || channelTarget == null || channelTarget.Claimed
+                || Vector2.Distance(transform.position, channelTarget.transform.position) > def.raiseRange)
+            {
+                isChanneling = false;
+                channelTarget = null;
+                return false;
+            }
+            channelRemaining -= Time.deltaTime;
+            if (channelRemaining <= 0f)
+            {
+                RaiseCorpse(def, channelTarget);
+                isChanneling = false;
+                channelTarget = null;
+                raiseCooldownRemaining = def.raiseCooldown;
+                return false;
+            }
+            return true;
+        }
+
+        if (raiseCooldownRemaining > 0f) return false;
+        if (target != null) return false;
+        if (risenSpawners.Count >= def.maxRisen) return false;
+        if (def.risenDefinitions == null || def.risenDefinitions.Count == 0) return false;
+
+        var corpse = FindRaisableCorpse(def.raiseRange);
+        if (corpse == null) return false;
+
+        channelTarget = corpse;
+        channelRemaining = def.raiseChannelSeconds;
+        isChanneling = true;
+        return true;
+    }
+
+    /// <summary>Nearest un-claimed corpse within range, or null.</summary>
+    private Corpse FindRaisableCorpse(float range)
+    {
+        Corpse best = null;
+        float bestSqr = range * range;
+        var list = Corpse.Active;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var c = list[i];
+            if (c == null || c.Claimed) continue;
+            float d = ((Vector2)(c.transform.position - transform.position)).sqrMagnitude;
+            if (d <= bestSqr) { bestSqr = d; best = c; }
+        }
+        return best;
+    }
+
+    /// <summary>Consume a corpse and spawn a random risen minion at it (transient, capped).</summary>
+    private void RaiseCorpse(MonsterDefinition def, Corpse corpse)
+    {
+        if (corpse == null || corpse.Claimed) return;
+        var floor = currentFloor;
+        if (floor?.TileInfluence == null) { corpse.Claim(); return; }
+
+        var risenDef = def.risenDefinitions[Random.Range(0, def.risenDefinitions.Count)];
+        Vector3Int cell = floor.TileInfluence.WorldToCell(corpse.transform.position);
+        corpse.Claim();
+        if (risenDef == null) return;
+
+        var spawner = DungeonBuildController.Instance?.SpawnTransientMinion(floor, risenDef, cell, def.risenLifetime);
+        if (spawner != null) risenSpawners.Add(spawner);
     }
 
     /// <summary>
