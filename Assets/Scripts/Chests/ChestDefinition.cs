@@ -12,12 +12,18 @@ using UnityEngine;
 /// Future chest types (locked, magical, etc.) slot in by creating additional
 /// ChestDefinition assets pointing at distinct prefabs.
 /// </summary>
+/// <summary>Chest tier — a placement-picker label; richer tiers are authored with higher-rarity loot.</summary>
+public enum ChestTier { Bronze, Silver, Gold }
+
 [CreateAssetMenu(fileName = "NewChestDefinition",
-                 menuName  = "Dungeon/Chest Definition")]
+                 menuName = "Dungeon/Chest Definition")]
 public class ChestDefinition : ScriptableObject
 {
     [Header("Identity")]
     public string chestName = "Chest";
+
+    [Tooltip("Display tier for the placement picker. Author richer tiers with higher-rarity LootTable entries.")]
+    public ChestTier tier = ChestTier.Bronze;
 
     [Header("Prefab")]
     [Tooltip("DungeonChest prefab to instantiate. Trap variants are typically " +
@@ -48,6 +54,7 @@ public class ChestDefinition : ScriptableObject
     public List<string> GetStatLines()
     {
         var lines = new List<string>();
+        lines.Add($"Tier: {tier}");
         if (isTrapChest)
             lines.Add($"Trap Damage: {trapDamage:0}");
         return lines;

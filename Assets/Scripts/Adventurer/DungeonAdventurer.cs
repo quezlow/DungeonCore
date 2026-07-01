@@ -79,6 +79,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     [Header("XP & Notoriety")]
     [SerializeField] private float xpOnDeath = 15f;
+    [Tooltip("Notoriety removed per gold of loot an adventurer escapes with (satisfied departure).")]
+    [SerializeField] private float lootSatisfactionFactor = 0.1f;
+    [Tooltip("Maximum notoriety a single satisfied escape can remove.")]
+    [SerializeField] private float lootSatisfactionCap = 25f;
     private string className = "Adventurer";
 
     [Header("Dropped Loot Prefab")]
@@ -542,6 +546,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         if (state == AdventurerState.Retreating)
         {
+            int carried = CarriedLootValue;   // capture before the haul is destroyed
+
             foreach (var loot in carriedLoot)
                 if (loot != null) Destroy(loot.gameObject);
             carriedLoot.Clear();
@@ -563,7 +569,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 DungeonCore.Instance?.AddReputation(2f);
             }
 
-            party?.OnMemberResolved(partyMember, true, false, CarriedLootValue);
+            // A looter that escapes with a haul leaves satisfied, calming the dungeon
+            // in proportion to what it carried out (capped).
+            if (carried > 0)
+            {
+                float drop = Mathf.Min(lootSatisfactionCap, carried * lootSatisfactionFactor);
+                DungeonCore.Instance?.AddNotoriety(-drop);
+                if (party != null) party.notorietyDelta -= drop;
+            }
+
+            party?.OnMemberResolved(partyMember, true, false, carried);
 
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
