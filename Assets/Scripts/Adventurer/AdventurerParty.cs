@@ -53,6 +53,38 @@ public class AdventurerParty
     public float notorietyDelta = 0f;                  // net notoriety this party caused (raid summary)
     private int resolvedCount = 0;
 
+    // ── Party banner ────────────────────────────────────
+    public bool hasBanner = false;             // guards one banner per party
+    public int bannerColorIndex = -1;          // pinned-pool index (persisted); -1 = intent-coloured
+    private readonly List<DungeonAdventurer> live = new();
+
+    /// <summary>Track a member's live instance (for the banner's lead + majority logic).</summary>
+    public void RegisterLive(DungeonAdventurer a) { if (a != null && !live.Contains(a)) live.Add(a); }
+    public void DeregisterLive(DungeonAdventurer a) { live.Remove(a); }
+
+    /// <summary>Members still alive in the dungeon (died and fled both leave this list).</summary>
+    public int LiveCount()
+    {
+        int n = 0;
+        foreach (var a in live) if (a != null) n++;
+        return n;
+    }
+
+    /// <summary>The party's current banner-bearer among live members: Hero, else an
+    /// Escort VIP (Noble / Scholar / Inspector), else the first live member.</summary>
+    public DungeonAdventurer CurrentLead()
+    {
+        DungeonAdventurer vip = null, first = null;
+        foreach (var a in live)
+        {
+            if (a == null) continue;
+            if (a.Type == AdventurerType.Hero) return a;
+            if (vip == null && (a.Type == AdventurerType.Noble || a.Type == AdventurerType.Scholar || a.Type == AdventurerType.Inspector)) vip = a;
+            if (first == null) first = a;
+        }
+        return vip != null ? vip : first;
+    }
+
     /// <summary>Registers a member as it spawns. A named member marks the whole party tracked.</summary>
     public PartyMember RegisterMember(AdventurerType type, string name, bool named)
     {

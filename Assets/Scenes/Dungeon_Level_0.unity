@@ -42930,6 +42930,64 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1825911040}
   m_CullTransparentMesh: 1
+--- !u!1 &1831622584
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1831622585}
+  - component: {fileID: 1831622586}
+  m_Layer: 0
+  m_Name: PartyBannerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1831622585
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1831622584}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1831622586
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1831622584}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd5a0a78884cc92419a9fbaee0548ee9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PartyBannerManager
+  bannerPrefab: {fileID: 8081446351906012657, guid: 9878702556b8a984b9fa71f93666bdd4, type: 3}
+  pilgrimBar: {fileID: 21300000, guid: 6c70e8211662a8e4e9c8fa8b9be40d7c, type: 3}
+  giftGiverBar: {fileID: 21300000, guid: 648426e70c0fef34489d73f6abb6f9c9, type: 3}
+  destroyerBar: {fileID: 2342182142869429787, guid: 54613ae05f2baa9478c9bb82f28b746e, type: 3}
+  pinnedPool:
+  - {fileID: 21300000, guid: 5988ed5195218334986d305a675017e1, type: 3}
+  - {fileID: 21300000, guid: c2c8c690c9b65c6448012724d39ee890, type: 3}
+  - {fileID: 21300000, guid: 54b179a09fd5f2d4c91a25c8e7cb86a4, type: 3}
+  - {fileID: 21300000, guid: 798aaf098a91d08499805ab0f4ac7769, type: 3}
+  - {fileID: 21300000, guid: feb37a09a917dd7459907defc9df7392, type: 3}
+  - {fileID: 21300000, guid: b2d19510e4d5b184da5f5ce306e29704, type: 3}
+  - {fileID: 21300000, guid: edc29bedf7f869a4a9a86640f92b5738, type: 3}
+  - {fileID: 21300000, guid: a169a71354623f444ad0b8a70d798c70, type: 3}
+  - {fileID: 21300000, guid: 0fbbaa481c3c5044f948b470cdab0e31, type: 3}
 --- !u!1 &1832112169
 GameObject:
   m_ObjectHideFlags: 0
@@ -54338,6 +54396,7 @@ Transform:
   - {fileID: 2133235185}
   - {fileID: 1995073985}
   - {fileID: 1593361211}
+  - {fileID: 1831622585}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!225 &5000115159085552515

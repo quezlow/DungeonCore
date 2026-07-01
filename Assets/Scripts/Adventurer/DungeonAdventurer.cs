@@ -240,6 +240,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         partyMember = party?.RegisterMember(type, displayName, named);
         if (partyMember != null) partyMember.combatClass = combatClass;
+        party?.RegisterLive(this);
     }
 
     /// <summary>Day 39 — overlay the combat-class multipliers + behaviour on top of
@@ -1085,6 +1086,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // Safety net for retreat/exit paths and scene unloads.
         currentFloor?.Entities?.Unregister(this);
         UnlockState.OnChanged -= HandleUnlockChanged;
+        party?.DeregisterLive(this);
     }
 
     private void DropCarriedLoot()

@@ -68,7 +68,7 @@ public class KnownPartiesPanel : MonoBehaviour
         {
             if (p == null) continue;
             AddRow("In dungeon:  " + TrackedPartyRegistry.LabelFor(p), p.tracked,
-                   () => { p.tracked = true; Refresh(); });
+                   () => { p.tracked = true; PartyBannerManager.Instance?.ShowBanner(p); Refresh(); });
         }
 
         foreach (var rec in reg.PendingParties)

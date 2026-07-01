@@ -212,6 +212,8 @@ public class AdventurerSpawner : MonoBehaviour
 
         SetupOrganize(party, partyType, spawned, spawnPos);
 
+        if (party.tracked) PartyBannerManager.Instance?.ShowBanner(party);
+
         if (party.Intent == PartyIntent.GiftGiver)
             DropTribute(spawnPos, partyType);
 
@@ -523,6 +525,8 @@ public class AdventurerSpawner : MonoBehaviour
 
         SetupOrganize(party, AdventurerType.Hero, 1, spawnPos);
         RunStats.Instance?.RecordPartySpawned(1);
+
+        PartyBannerManager.Instance?.ShowBanner(party);
     }
 
     private CombatClassDefinition ClassDefFor(CombatClass c)
@@ -563,6 +567,9 @@ public class AdventurerSpawner : MonoBehaviour
 
         SetupOrganize(party, primary, party.Members.Count, spawnPos);
         RunStats.Instance?.RecordPartySpawned(party.Members.Count);
+
+        party.bannerColorIndex = record.bannerColorIndex;
+        PartyBannerManager.Instance?.ShowBanner(party);
 
         string who = !string.IsNullOrEmpty(leadName) ? leadName : "A familiar party";
         AlertsLog.Instance?.AddAlert($"{who} returns to the dungeon.", spawnPos, -1, AlertCategory.Threat);

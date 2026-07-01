@@ -83,6 +83,8 @@ public class TrackedPartyRegistry : MonoBehaviour
 
         if (survivors == 0) return;   // total wipe — the nemesis is gone
 
+        record.bannerColorIndex = party.bannerColorIndex;
+
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         record.returnDay = day + Mathf.Max(0, returnDelayDays);
         pending.Add(record);
@@ -136,6 +138,7 @@ public class TrackedPartyRegistry : MonoBehaviour
 public class TrackedParty
 {
     public int returnDay;
+    public int bannerColorIndex = -1;
     public List<TrackedMember> members = new();
 }
 
