@@ -27,6 +27,10 @@ public class CombatClassDefinition : ScriptableObject
     public float attackCooldownMultiplier = 1f;
     public float detectionRangeMultiplier = 1f;
 
+    [Header("Telegraph")]
+    [Tooltip("Windup seconds before this class's attack lands (shows a pre-attack tell). 0 = instant, no telegraph.")]
+    public float telegraphSeconds = 0f;
+
     [Header("Mage")]
     [Tooltip("Cosmetic marker — the ranged feel comes from a large attackRangeMultiplier.")]
     public bool rangedAttacker = false;

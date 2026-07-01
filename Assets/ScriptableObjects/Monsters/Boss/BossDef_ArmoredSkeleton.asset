@@ -27,6 +27,7 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 1.2
   knockbackMinDamage: 12
+  telegraphSeconds: 0.5
   bossTitle: Jimbo
   hpMultiplier: 5
   damageMultiplier: 3

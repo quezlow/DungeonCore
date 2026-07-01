@@ -52,6 +52,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float knockbackSpeed = 8f;        // shove travel speed (units/sec)
     private Vector2 knockbackDir;
     private float knockbackRemaining;
+    private float telegraphSeconds = 0f;                       // windup before a hit (from combat class); 0 = instant
+    private AttackTelegraph telegraph;
 
     [Header("Behaviour")]
     [SerializeField] private float retreatThreshold = 0.3f;
@@ -272,6 +274,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         attackDamage *= c.attackDamageMultiplier;
         attackRange *= c.attackRangeMultiplier;
         attackCooldown *= c.attackCooldownMultiplier;
+        telegraphSeconds = c.telegraphSeconds;
         detectionRange *= c.detectionRangeMultiplier;
 
         if (c.detectsTraps) canDetectTraps = true;
@@ -306,6 +309,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         lootTable = GetComponent<LootTable>();
         animDriver = GetComponent<EntityAnimationDriver>();
+        telegraph = GetComponent<AttackTelegraph>();
         deathsAtArrival = AdventurerDeaths;
 
         currentFloor = GetComponentInParent<FloorRoot>();
@@ -830,6 +834,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy)
         {
+            telegraph?.Cancel();
             combatTarget = null;
             state = AdventurerState.MovingToCore;
             RefreshPath();
@@ -839,6 +844,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         float dist = Vector2.Distance(transform.position, combatTarget.transform.position);
         if (dist > attackRange)
         {
+            telegraph?.Cancel();   // target stepped out of range mid-windup — abort the tell
+
             // Pathfind to the target instead of beelining, so the approach routes
             // around walls and overhangs. Refresh on a timer since the target moves.
             Vector3 targetPos = combatTarget.transform.position;
@@ -872,12 +879,24 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
         combatPath.Clear();
 
+        if (telegraph != null && telegraph.IsWinding) return;   // charging — the strike fires on completion
+
         if (Time.time - lastAttackTime < attackCooldown) return;
 
         // Pay the attack's resource cost; if the pool is dry, skip this
         // cycle (cooldown stays elapsed, so it fires the instant regen catches up).
         if (!SpendAttackCost()) return;
         lastAttackTime = Time.time;
+
+        if (telegraph != null && telegraphSeconds > 0f)
+            telegraph.Begin(telegraphSeconds, TelegraphColors.ForClass(combatClass), DealAttackDamage);
+        else
+            DealAttackDamage();
+    }
+
+    private void DealAttackDamage()
+    {
+        if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy) return;
 
         DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
             FloatingDamageNumber.DamageType.MonsterHit);
@@ -1312,6 +1331,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
     {
         if (force <= 0f) return;
+        telegraph?.Cancel();
         Vector2 d = (Vector2)transform.position - fromPos;
         knockbackDir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
         knockbackRemaining = force;

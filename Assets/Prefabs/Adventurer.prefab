@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: -7778411665281565798}
   - component: {fileID: -8149406109296636804}
   - component: {fileID: 2653270127069683060}
+  - component: {fileID: 457420344039817621}
   m_Layer: 0
   m_Name: Adventurer
   m_TagString: Untagged
@@ -286,3 +287,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EntityAnimationDriver
   moveThreshold: 0.05
+--- !u!114 &457420344039817621
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558727629903577335}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7387a77e4aeb0e845afc156ad45b8f27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AttackTelegraph

@@ -29,3 +29,4 @@ MonoBehaviour:
   targetPriority: 3
   knockbackForce: 0.4
   knockbackMinDamage: 4
+  telegraphSeconds: 0.3

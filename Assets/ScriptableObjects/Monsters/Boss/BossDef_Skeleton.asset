@@ -27,6 +27,7 @@ MonoBehaviour:
   targetPriority: 1
   knockbackForce: 1
   knockbackMinDamage: 12
+  telegraphSeconds: 0.5
   bossTitle: Bonelord
   hpMultiplier: 5
   damageMultiplier: 3

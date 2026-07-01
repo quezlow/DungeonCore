@@ -20,6 +20,7 @@ MonoBehaviour:
   attackRangeMultiplier: 1
   attackCooldownMultiplier: 0.8
   detectionRangeMultiplier: 1.3
+  telegraphSeconds: 0.25
   rangedAttacker: 0
   detectsTraps: 1
   healsAllies: 0
@@ -36,5 +37,6 @@ MonoBehaviour:
   classLoot:
   - label: Loose Coins
     lootType: 0
+    rarity: 0
     goldValue: 8
     weight: 3

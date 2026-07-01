@@ -20,6 +20,7 @@ MonoBehaviour:
   attackRangeMultiplier: 3
   attackCooldownMultiplier: 1.2
   detectionRangeMultiplier: 1.2
+  telegraphSeconds: 0.5
   rangedAttacker: 1
   detectsTraps: 0
   healsAllies: 0

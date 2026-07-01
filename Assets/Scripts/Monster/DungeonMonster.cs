@@ -28,6 +28,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private float knockbackSpeed = 8f;   // shove travel speed (units/sec)
     private Vector2 knockbackDir;
     private float knockbackRemaining;
+    private AttackTelegraph telegraph;
     [SerializeField] private float detectionRange = 3f;
 
     [Header("Monster XP (Veteran System)")]
@@ -227,6 +228,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         spawnPosition = transform.position;
         animDriver = GetComponent<EntityAnimationDriver>();
+        telegraph = GetComponent<AttackTelegraph>();
         if (currentFloor == null) currentFloor = GetComponentInParent<FloorRoot>();
         if (currentFloor == null)
             Debug.LogWarning("[DungeonMonster] No FloorRoot in parent.");
@@ -962,6 +964,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (target == null || !target.IsAlive)
         {
+            telegraph?.Cancel();
             target = null;
             attackPath.Clear();
             EnterState(DetermineDesiredState());
@@ -971,6 +974,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         float dist = Vector2.Distance(transform.position, targetPos);
         if (dist > attackRange)
         {
+            telegraph?.Cancel();   // target stepped out of range mid-windup — abort the tell
+
             // Pathfind to the target instead of beelining, so the chase routes around
             // walls and wall overhangs. Refresh on a timer since the target moves.
             attackPathRefreshTimer -= Time.deltaTime;
@@ -1000,9 +1005,26 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             return;
         }
         attackPath.Clear();
+
+        if (telegraph != null && telegraph.IsWinding) return;   // charging — the strike fires on completion
+
         if (Time.time - lastAttackTime < attackCooldown) return;
         if (!SpendAttackStamina()) return;
         lastAttackTime = Time.time;
+
+        var tdef = IsWild ? wildDefinition : spawner?.Definition;
+        float windup = tdef != null ? tdef.telegraphSeconds : 0f;
+        if (telegraph != null && windup > 0f)
+            telegraph.Begin(windup, TelegraphColors.Monster, DealAttackDamage);
+        else
+            DealAttackDamage();
+    }
+
+    private void DealAttackDamage()
+    {
+        if (target == null || !target.IsAlive) return;
+
+        Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();
         target.TakeDamage(attackDamage);
@@ -1131,6 +1153,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
     {
         if (force <= 0f) return;
+        telegraph?.Cancel();
         Vector2 d = (Vector2)transform.position - fromPos;
         knockbackDir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
         knockbackRemaining = force;

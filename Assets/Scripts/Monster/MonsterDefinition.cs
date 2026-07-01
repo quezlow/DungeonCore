@@ -83,6 +83,10 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Minimum damage this monster's hit must deal to trigger knockback.")]
     [Min(0f)] public float knockbackMinDamage = 0f;
 
+    [Header("Telegraph")]
+    [Tooltip("Windup seconds before this monster's attack lands (shows a pre-attack tell). 0 = instant, no telegraph.")]
+    [Min(0f)] public float telegraphSeconds = 0f;
+
     /// <summary>
     /// Mana/capacity cost to keep this monster active.
     /// Virtual so BossVariantDefinition can scale it.
