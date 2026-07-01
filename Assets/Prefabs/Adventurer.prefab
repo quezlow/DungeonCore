@@ -142,6 +142,9 @@ MonoBehaviour:
   attackRange: 1.2
   attackCooldown: 1.5
   detectionRange: 2.5
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  knockbackSpeed: 8
   retreatThreshold: 0.2
   pilgrimSpeedMultiplier: 0.7
   worshipDuration: 4
@@ -155,6 +158,8 @@ MonoBehaviour:
   chestDetectionRange: 5
   pickupRadius: 0.6
   xpOnDeath: 15
+  lootSatisfactionFactor: 0.1
+  lootSatisfactionCap: 25
   droppedLootPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
   escortGuardLootMultiplier: 1.75
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
@@ -206,10 +211,12 @@ MonoBehaviour:
   entries:
   - label: 
     lootType: 0
+    rarity: 0
     goldValue: 3
     weight: 2
   - label: 
     lootType: 0
+    rarity: 0
     goldValue: 8
     weight: 1
   carriableLootPrefab: {fileID: 0}

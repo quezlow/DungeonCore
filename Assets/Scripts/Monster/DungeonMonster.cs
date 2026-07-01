@@ -25,6 +25,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private float attackDamage = 5f;
     [SerializeField] private float attackRange = 1.2f;
     [SerializeField] private float attackCooldown = 1.5f;
+    [SerializeField] private float knockbackSpeed = 8f;   // shove travel speed (units/sec)
+    private Vector2 knockbackDir;
+    private float knockbackRemaining;
     [SerializeField] private float detectionRange = 3f;
 
     [Header("Monster XP (Veteran System)")]
@@ -382,6 +385,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
+
+        if (knockbackRemaining > 0f) { KnockbackStep(); return; }
 
         UpdateTerrainSpeedMultiplier();
         TickSlow();
@@ -994,6 +999,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         lastAttackTime = Time.time;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         target.TakeDamage(attackDamage);
+        var kdef = IsWild ? wildDefinition : spawner?.Definition;
+        if (kdef != null && kdef.knockbackForce > 0f && attackDamage >= kdef.knockbackMinDamage)
+            target.ApplyKnockback(transform.position, kdef.knockbackForce);
         if (!target.IsAlive) { killCount++; GainXP(xpPerKill); target = null; }
     }
 
@@ -1108,6 +1116,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
     }
     void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
+
+    void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
+    {
+        if (force <= 0f) return;
+        Vector2 d = (Vector2)transform.position - fromPos;
+        knockbackDir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
+        knockbackRemaining = force;
+    }
+
+    private void KnockbackStep()
+    {
+        float step = Mathf.Min(knockbackRemaining, knockbackSpeed * Time.deltaTime);
+        Vector3 next = transform.position + (Vector3)(knockbackDir * step);
+        if (DungeonPathfinder.IsWalkable(currentFloor, next)) transform.position = next;
+        else knockbackRemaining = 0f;
+        knockbackRemaining -= step;
+    }
 
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;

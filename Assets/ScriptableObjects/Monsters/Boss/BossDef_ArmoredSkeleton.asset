@@ -22,6 +22,11 @@ MonoBehaviour:
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 3
+  knockbackMinDamage: 10
   bossTitle: Jimbo
   hpMultiplier: 5
   damageMultiplier: 3

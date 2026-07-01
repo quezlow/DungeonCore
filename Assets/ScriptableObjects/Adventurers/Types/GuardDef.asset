@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: GuardDef
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
   className: Adventurer
+  named: 0
   type: 1
   overrideTrait: 0
   forcedTrait: 1
@@ -25,6 +26,8 @@ MonoBehaviour:
   detectionRange: 3
   chestDetectionRange: 3
   xpOnDeath: 40
+  knockbackForce: 2
+  knockbackMinDamage: 15
   canDetectTraps: 0
   trapDetectionRadius: 2.5
   trapDetectionChancePerSecond: 0.3

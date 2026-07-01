@@ -25,4 +25,7 @@ public interface IMonsterTarget
 
     /// <summary>Apply damage. Return value is discarded — read IsAlive afterwards to test for death.</summary>
     void TakeDamage(float amount);
+
+    /// <summary>Shove the target away from a world position (knockback). force = shove distance.</summary>
+    void ApplyKnockback(Vector2 fromPos, float force);
 }

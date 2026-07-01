@@ -49,7 +49,13 @@ public class AdventurerDefinition : ScriptableObject
     public float attackCooldown   = 1.5f;
     public float detectionRange   = 2.5f;
     public float chestDetectionRange = 3f;
-    public float xpOnDeath        = 15f;
+    public float xpOnDeath = 15f;
+
+    [Header("Knockback")]
+    [Tooltip("Shove distance applied to a target on a heavy hit. 0 = never knocks back.")]
+    public float knockbackForce = 0f;
+    [Tooltip("Minimum damage this adventurer's hit must deal to trigger knockback.")]
+    public float knockbackMinDamage = 0f;
 
     [Header("Trap Detection (Day 39 — Rogue Class)")]
     [Tooltip("If true, instances of this class can detect and flag nearby traps.")]

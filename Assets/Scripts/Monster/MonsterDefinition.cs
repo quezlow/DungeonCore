@@ -77,6 +77,12 @@ public class MonsterDefinition : ScriptableObject
              "A taunting Tank still overrides this.")]
     public TargetPriority targetPriority = TargetPriority.Nearest;
 
+    [Header("Knockback")]
+    [Tooltip("Shove distance applied to a target on a heavy hit. 0 = this monster never knocks back.")]
+    [Min(0f)] public float knockbackForce = 0f;
+    [Tooltip("Minimum damage this monster's hit must deal to trigger knockback.")]
+    [Min(0f)] public float knockbackMinDamage = 0f;
+
     /// <summary>
     /// Mana/capacity cost to keep this monster active.
     /// Virtual so BossVariantDefinition can scale it.

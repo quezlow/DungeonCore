@@ -47,6 +47,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float attackRange = 1.2f;
     [SerializeField] private float attackCooldown = 1.5f;
     [SerializeField] private float detectionRange = 2.5f;
+    [SerializeField] private float knockbackForce = 0f;        // shove distance on a heavy hit; 0 = none
+    [SerializeField] private float knockbackMinDamage = 0f;    // min hit damage to trigger knockback
+    [SerializeField] private float knockbackSpeed = 8f;        // shove travel speed (units/sec)
+    private Vector2 knockbackDir;
+    private float knockbackRemaining;
 
     [Header("Behaviour")]
     [SerializeField] private float retreatThreshold = 0.3f;
@@ -208,6 +213,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             attackDamage = def.attackDamage;
             attackRange = def.attackRange;
             attackCooldown = def.attackCooldown;
+            knockbackForce = def.knockbackForce;
+            knockbackMinDamage = def.knockbackMinDamage;
             detectionRange = def.detectionRange;
             chestDetectionRange = def.chestDetectionRange;
             xpOnDeath = def.xpOnDeath;
@@ -354,6 +361,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             slowTimer -= Time.deltaTime;
             if (slowTimer <= 0f) slowMultiplier = 1f;
         }
+
+        if (knockbackRemaining > 0f) { KnockbackStep(); return; }
 
         if (state == AdventurerState.UsingStairs)
         {
@@ -867,6 +876,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
             FloatingDamageNumber.DamageType.MonsterHit);
         combatTarget.TakeDamage(attackDamage);
+        if (knockbackForce > 0f && attackDamage >= knockbackMinDamage)
+            ((IMonsterTarget)combatTarget).ApplyKnockback(transform.position, knockbackForce);
     }
 
     private void StartRetreat()
@@ -1287,6 +1298,23 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     }
 
     void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
+
+    void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
+    {
+        if (force <= 0f) return;
+        Vector2 d = (Vector2)transform.position - fromPos;
+        knockbackDir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
+        knockbackRemaining = force;
+    }
+
+    private void KnockbackStep()
+    {
+        float step = Mathf.Min(knockbackRemaining, knockbackSpeed * Time.deltaTime);
+        Vector3 next = transform.position + (Vector3)(knockbackDir * step);
+        if (DungeonPathfinder.IsWalkable(currentFloor, next)) transform.position = next;
+        else knockbackRemaining = 0f;   // hit a wall — stop short
+        knockbackRemaining -= step;
+    }
 
     // ── Intent Badge ─────────────────────────────────────
 

@@ -25,6 +25,8 @@ MonoBehaviour:
   maxStamina: 0
   attackStaminaCost: 0
   targetPriority: 1
+  knockbackForce: 1
+  knockbackMinDamage: 10
   bossTitle: Bonelord
   hpMultiplier: 5
   damageMultiplier: 3

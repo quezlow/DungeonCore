@@ -70,6 +70,26 @@ public static class DungeonPathfinder
         return FindPath(activeFloor, startWorld, goalWorld);
     }
 
+    /// <summary>True if a world position sits on a tile an entity may stand on — mirrors the
+    /// pathfinder's neighbour rule (owned floor not under an overhang, or a river) and excludes
+    /// trap-flagged cells. Used by knockback so a shove never pushes a target into a wall.</summary>
+    public static bool IsWalkable(FloorRoot floor, Vector3 worldPos)
+    {
+        if (floor == null) return false;
+        var influence = floor.TileInfluence;
+        if (influence == null) return false;
+
+        Vector3Int cell = influence.WorldToCell(worldPos);
+
+        var blocked = floor.TrapRegistry?.GetFlaggedCells();
+        if (blocked != null && blocked.Contains(cell)) return false;
+
+        bool owned = influence.IsTileMined(cell);
+        bool overhang = influence.IsUnderOverhang(cell);
+        bool river = floor.FeatureGenerator != null && floor.FeatureGenerator.IsRiver(cell);
+        return (owned && !overhang) || river;
+    }
+
     // ── Dijkstra core ────────────────────────────────────────────
 
     private static List<Vector3> RunDijkstra(
