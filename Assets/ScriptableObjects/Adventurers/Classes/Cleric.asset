@@ -33,4 +33,8 @@ MonoBehaviour:
   attackUsesMana: 0
   attackCost: 7
   healManaCost: 15
-  classLoot: []
+  classLoot:
+  - label: Tithe Coins
+    lootType: 0
+    goldValue: 16
+    weight: 3

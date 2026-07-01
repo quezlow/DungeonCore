@@ -33,3 +33,8 @@ MonoBehaviour:
   attackUsesMana: 1
   attackCost: 8
   healManaCost: 0
+  classLoot:
+  - label: Coin Purse
+    lootType: 0
+    goldValue: 10
+    weight: 2
