@@ -39,7 +39,9 @@ public class CarriableLoot : MonoBehaviour
     public void PickUp()
     {
         StopAllCoroutines();
-        Destroy(gameObject);
+        // Hide, don't destroy: the carrying adventurer keeps a live reference so
+        // CarriedLootValue and DropCarriedLoot still work. Cleaned up on drop / escape.
+        gameObject.SetActive(false);
     }
 
     /// <summary>

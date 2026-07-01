@@ -43,6 +43,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Header("Stats")]
     [SerializeField] private float maxHP = 50f;
     [SerializeField] private float moveSpeed = 2f;
+    [Tooltip("Move-speed fraction lost per gold of carried loot (encumbrance). 0 = carrying never slows.")]
+    [SerializeField] private float encumbrancePerGold = 0.003f;
+    [Tooltip("Floor on the encumbrance multiplier, so even a huge haul still moves (0.5 = half speed).")]
+    [SerializeField] private float encumbranceFloor = 0.5f;
     [SerializeField] private float attackDamage = 8f;
     [SerializeField] private float attackRange = 1.2f;
     [SerializeField] private float attackCooldown = 1.5f;
@@ -546,7 +550,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         Vector3 waypoint = currentPath[pathIndex];
         transform.position = Vector2.MoveTowards(
-            transform.position, waypoint, moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+            transform.position, waypoint, EffectiveMoveSpeed * Time.deltaTime);
 
         if (Vector2.Distance(transform.position, waypoint) < 0.08f)
         {
@@ -778,7 +782,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             Vector3 waypoint = currentPath[pathIndex];
             transform.position = Vector2.MoveTowards(
-                transform.position, waypoint, moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+                transform.position, waypoint, EffectiveMoveSpeed * Time.deltaTime);
             if (Vector2.Distance(transform.position, waypoint) < 0.08f)
                 pathIndex++;
             return;
@@ -821,6 +825,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void PickUpLoot(CarriableLoot loot)
     {
         carriedLoot.Add(loot);
+        loot.transform.SetParent(transform);
         loot.PickUp();
 
         // Treasure Hunters grab and go — leave the moment they're carrying loot.
@@ -872,7 +877,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             Vector3 stepTarget = combatPath[combatPathIndex];
             transform.position = Vector2.MoveTowards(
                 transform.position, stepTarget,
-                moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+                EffectiveMoveSpeed * Time.deltaTime);
             if (Vector2.Distance(transform.position, stepTarget) < 0.08f)
                 combatPathIndex++;
             return;
@@ -1231,7 +1236,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (formationSlot.HasValue)
             transform.position = Vector2.MoveTowards(
                 transform.position, formationSlot.Value,
-                moveSpeed * slowMultiplier * terrainSpeedMultiplier * Time.deltaTime);
+                EffectiveMoveSpeed * Time.deltaTime);
 
         // Hold until the whole party has formed up, then advance together.
         if (party == null || Time.time >= party.OrganizeEndTime)
@@ -1412,6 +1417,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             return v;
         }
     }
+
+    /// <summary>Carried loot slows the adventurer: 1 when empty, down to encumbranceFloor for a heavy haul.</summary>
+    private float EncumbranceMultiplier()
+    {
+        if (carriedLoot.Count == 0) return 1f;
+        return Mathf.Max(encumbranceFloor, 1f - CarriedLootValue * encumbrancePerGold);
+    }
+
+    /// <summary>Move speed after every modifier — trap slow, terrain (fording), and loot encumbrance.</summary>
+    private float EffectiveMoveSpeed => moveSpeed * EncumbranceMultiplier() * slowMultiplier * terrainSpeedMultiplier;
     /// <summary>Tank taunt — monsters prefer a taunting adventurer as their target.</summary>
     public bool IsTaunting => taunts;
 }
