@@ -15,6 +15,7 @@ public class CarriableLoot : MonoBehaviour
 {
     [Header("Value")]
     [SerializeField] private int goldValue = 1;
+    private Rarity rarity = Rarity.Common;
 
     [Header("Failsafe absorption")]
     [Tooltip("If uncollected after this many seconds, absorb directly into core.")]
@@ -52,7 +53,7 @@ public class CarriableLoot : MonoBehaviour
         if (droppedLootPrefab != null)
         {
             var drop = Instantiate(droppedLootPrefab, position, Quaternion.identity);
-            drop.Initialise(goldValue);
+            drop.Initialise(goldValue, rarity);
         }
         else
         {
@@ -62,10 +63,13 @@ public class CarriableLoot : MonoBehaviour
         Destroy(gameObject);
     }
 
-    /// <summary>Initialise gold value before Start() coroutine runs.</summary>
-    public void Initialise(int value)
+    /// <summary>Initialise gold value + rarity tint before Start() coroutine runs.</summary>
+    public void Initialise(int value, Rarity rarity = Rarity.Common)
     {
         goldValue = value;
+        this.rarity = rarity;
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.color = LootRarity.ColorFor(rarity);
     }
 
     // ── Failsafe ──────────────────────────────────────────────────

@@ -94,7 +94,9 @@ public class LootPanel : MonoBehaviour
         foreach (var e in c.classLoot)
         {
             if (e == null) continue;
-            parts.Add($"{e.label} {e.goldValue}g x{e.weight:0.#}");
+            int value = Mathf.Max(1, Mathf.RoundToInt(e.goldValue * LootRarity.MultiplierFor(e.rarity)));
+            string tag = $"<color={LootRarity.HexFor(e.rarity)}>[{e.rarity}]</color>";
+            parts.Add($"{e.label} {tag} {value}g x{e.weight:0.#}");
         }
         return string.Join("   -   ", parts);
     }

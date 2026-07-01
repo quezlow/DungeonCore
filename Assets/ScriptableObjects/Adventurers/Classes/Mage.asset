@@ -36,5 +36,6 @@ MonoBehaviour:
   classLoot:
   - label: Coin Purse
     lootType: 0
+    rarity: 4
     goldValue: 10
     weight: 2

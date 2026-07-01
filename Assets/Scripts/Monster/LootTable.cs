@@ -32,6 +32,7 @@ public class LootTable : MonoBehaviour
     {
         public string label = "Gold";
         public LootType lootType = LootType.Gold;
+        public Rarity rarity = Rarity.Common;
         [Min(1)]
         public int goldValue = 1;
         [Min(0)]
@@ -116,18 +117,20 @@ public class LootTable : MonoBehaviour
 
     private void SpawnDrop(DropEntry entry, Vector3 pos)
     {
+        int value = Mathf.Max(1, Mathf.RoundToInt(entry.goldValue * LootRarity.MultiplierFor(entry.rarity)));
+
         switch (lootOwner)
         {
             case LootOwner.Monster:
                 if (carriableLootPrefab != null)
                 {
                     var c = Instantiate(carriableLootPrefab, pos, Quaternion.identity);
-                    c.Initialise(entry.goldValue);
+                    c.Initialise(value, entry.rarity);
                 }
                 else
                 {
                     // Fallback: absorb directly if no prefab assigned
-                    DungeonCore.Instance?.AddGold(entry.goldValue);
+                    DungeonCore.Instance?.AddGold(value);
                 }
                 break;
 
@@ -135,11 +138,11 @@ public class LootTable : MonoBehaviour
                 if (droppedLootPrefab != null)
                 {
                     var d = Instantiate(droppedLootPrefab, pos, Quaternion.identity);
-                    d.Initialise(entry.goldValue);
+                    d.Initialise(value, entry.rarity);
                 }
                 else
                 {
-                    DungeonCore.Instance?.AddGold(entry.goldValue);
+                    DungeonCore.Instance?.AddGold(value);
                 }
                 break;
         }

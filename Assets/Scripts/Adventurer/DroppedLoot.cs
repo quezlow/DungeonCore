@@ -38,9 +38,11 @@ public class DroppedLoot : MonoBehaviour
         Destroy(gameObject);
     }
 
-    /// <summary>Set gold value before the coroutine starts (called by spawner).</summary>
-    public void Initialise(int value)
+    /// <summary>Set gold value + rarity tint before the coroutine starts (called by spawner).</summary>
+    public void Initialise(int value, Rarity rarity = Rarity.Common)
     {
         goldValue = value;
+        var sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.color = LootRarity.ColorFor(rarity);
     }
 }

@@ -1113,12 +1113,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             && type == AdventurerType.Mercenary;
 
         int value = Mathf.Max(1, Mathf.RoundToInt(
-            entry.goldValue * (escortGuard ? escortGuardLootMultiplier : 1f)));
+            entry.goldValue * (escortGuard ? escortGuardLootMultiplier : 1f)
+            * LootRarity.MultiplierFor(entry.rarity)));
 
         Vector2 scatter = Random.insideUnitCircle * 0.3f;
         var d = Instantiate(droppedLootPrefab,
             transform.position + new Vector3(scatter.x, scatter.y, 0f), Quaternion.identity);
-        d.Initialise(value);
+        d.Initialise(value, entry.rarity);
     }
 
     // ── Trap Helpers ──────────────────────────────────────────────

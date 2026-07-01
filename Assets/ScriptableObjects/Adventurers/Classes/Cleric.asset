@@ -36,5 +36,6 @@ MonoBehaviour:
   classLoot:
   - label: Tithe Coins
     lootType: 0
+    rarity: 1
     goldValue: 16
     weight: 3
