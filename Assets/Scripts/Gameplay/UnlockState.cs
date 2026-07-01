@@ -19,6 +19,9 @@ public static class UnlockState
     /// <summary>Canonical key for the Oracle Chamber intent-reveal node.</summary>
     public const string OracleChamber = "oracle_chamber";
 
+    /// <summary>Canonical key for the adventurer stats panel (Study Adventurer Anatomy research node).</summary>
+    public const string AdventurerStats = "adventurer_stats";
+
     private static readonly HashSet<string> unlocked = new HashSet<string>();
 
     /// <summary>Raised whenever any key is unlocked or locked. Argument is the

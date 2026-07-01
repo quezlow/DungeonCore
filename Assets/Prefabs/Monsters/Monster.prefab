@@ -110,7 +110,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 3295236706101327806, guid: 9c405fb3923e9144a880f70b93e1ab8b, type: 3}
@@ -153,6 +153,11 @@ MonoBehaviour:
   wildAggroOutwardChance: 0.3
   waypointArrivalDistance: 0.25
   statusBarsPrefab: {fileID: 1155635938565229876, guid: 8fad6292833ee5646acaf381d1e99231, type: 3}
+  staminaRegenInCombat: 3
+  staminaRegenOutOfCombat: 15
+  overrideGlobalAggression: 0
+  aggressionOverride: 1
+  defensiveRetaliationDuration: 6
 --- !u!114 &7006659558031369426
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -203,8 +208,8 @@ CircleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Offset: {x: 0, y: 0.8}
+  m_Radius: 0.8
 --- !u!114 &-2964177932734536163
 MonoBehaviour:
   m_ObjectHideFlags: 0

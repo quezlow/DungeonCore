@@ -1320,6 +1320,20 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Combat class reads
     public CombatClass Class => combatClass;
+
+    /// <summary>Name if this is a named individual (from named-party tracking); else null/empty.</summary>
+    public string DisplayName => displayName;
+
+    /// <summary>Total gold value of all loot this adventurer is currently carrying.</summary>
+    public int CarriedLootValue
+    {
+        get
+        {
+            int v = 0;
+            foreach (var l in carriedLoot) if (l != null) v += l.GoldValue;
+            return v;
+        }
+    }
     /// <summary>Tank taunt — monsters prefer a taunting adventurer as their target.</summary>
     public bool IsTaunting => taunts;
 }

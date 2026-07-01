@@ -30,6 +30,13 @@ public class Commands : MonoBehaviour
         Debug.Log($"[Commands] Oracle Chamber unlocked = {UnlockState.IsUnlocked(UnlockState.OracleChamber)}");
     }
 
+    [ContextMenu("Test Toggle Adventurer Stats Unlock")]
+    void TestToggleAdventurerStats()
+    {
+        UnlockState.Toggle(UnlockState.AdventurerStats);
+        Debug.Log($"[Commands] Adventurer Stats unlocked = {UnlockState.IsUnlocked(UnlockState.AdventurerStats)}");
+    }
+
     [ContextMenu("Test Cycle Global Monster Aggression")]
     void TestCycleAggression()
     {
