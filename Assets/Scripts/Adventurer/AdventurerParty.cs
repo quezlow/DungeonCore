@@ -50,6 +50,7 @@ public class AdventurerParty
     // ── Named / tracked party (persistent nemesis) ──────
     public bool tracked = false;                       // set by a named member, or a player pin
     public readonly List<PartyMember> Members = new();
+    public float notorietyDelta = 0f;                  // net notoriety this party caused (raid summary)
     private int resolvedCount = 0;
 
     /// <summary>Registers a member as it spawns. A named member marks the whole party tracked.</summary>
@@ -63,17 +64,43 @@ public class AdventurerParty
 
     /// <summary>Called when a member dies or escapes. When all members have resolved,
     /// a tracked party is recorded for return and the party leaves the active list.</summary>
-    public void OnMemberResolved(PartyMember member, bool escaped)
+    public void OnMemberResolved(PartyMember member, bool escaped, bool breached = false, int lootValue = 0)
     {
         if (member == null || member.resolved) return;
         member.resolved = true;
         member.escaped = escaped;
+        member.breached = breached;
+        member.lootValue = lootValue;
         resolvedCount++;
 
         if (resolvedCount < Members.Count || Members.Count == 0) return;
 
+        RecordRaidSummary();
+
         if (tracked) TrackedPartyRegistry.Instance?.RecordResolvedParty(this);
         TrackedPartyRegistry.Instance?.DeregisterActive(this);
+    }
+
+    /// <summary>On full resolution, hand a per-raid record to RunStats for the day-end summary.</summary>
+    private void RecordRaidSummary()
+    {
+        int slain = 0, fled = 0, breachedCount = 0, stolen = 0, recovered = 0;
+        foreach (var m in Members)
+        {
+            if (m.escaped) { fled++; stolen += m.lootValue; }
+            else { if (m.breached) breachedCount++; else slain++; recovered += m.lootValue; }
+        }
+
+        RunStats.Instance?.RecordRaid(new RaidRecord
+        {
+            label = TrackedPartyRegistry.LabelFor(this),
+            slain = slain,
+            fled = fled,
+            breached = breachedCount,
+            stolen = stolen,
+            recovered = recovered,
+            notorietyDelta = notorietyDelta,
+        });
     }
 }
 
@@ -85,5 +112,7 @@ public class PartyMember
     public string name;
     public bool named;
     public bool escaped;
+    public bool breached;
+    public int lootValue;
     public bool resolved;
 }

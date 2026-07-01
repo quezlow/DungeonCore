@@ -553,6 +553,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 {
                     party.exitBonusApplied = true;
                     DungeonCore.Instance?.AddNotoriety(-pilgrimNotorietyReduction);
+                    party.notorietyDelta -= pilgrimNotorietyReduction;
                     Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}.");
                 }
             }
@@ -561,7 +562,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 DungeonCore.Instance?.AddReputation(2f);
             }
 
-            party?.OnMemberResolved(partyMember, true);
+            party?.OnMemberResolved(partyMember, true, false, CarriedLootValue);
 
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
@@ -592,7 +593,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
-            party?.OnMemberResolved(partyMember, false);
+            party?.OnMemberResolved(partyMember, false, true, CarriedLootValue);
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
@@ -1048,7 +1049,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         AdventurerDeaths++;
-        party?.OnMemberResolved(partyMember, false);
+        party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
         currentFloor?.Entities?.Unregister(this);
 
         if (type == AdventurerType.Suicidal)
@@ -1061,6 +1062,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             DungeonCore.Instance?.AddXP(xpOnDeath);
             DungeonCore.Instance?.AddNotoriety(5f);
+            if (party != null) party.notorietyDelta += 5f;
         }
 
         // A slain Noble triggers family retaliation later (faction system).

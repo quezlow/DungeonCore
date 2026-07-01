@@ -84,6 +84,7 @@ public class RunStatsSaveData
     public int monstersLostToday;
     public int goldEarnedToday;
     public float notorietyAtDayStart;
+    public List<RaidRecord> raidsToday = new();
 }
 
 [Serializable]

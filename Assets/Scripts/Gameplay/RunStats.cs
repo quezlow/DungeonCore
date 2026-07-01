@@ -28,6 +28,7 @@ public class RunStats : MonoBehaviour
     private int monstersLostToday;
     private int goldEarnedToday;
     private float notorietyAtDayStart;
+    private readonly List<RaidRecord> raidsToday = new();
 
     private int lastGold;
 
@@ -50,6 +51,7 @@ public class RunStats : MonoBehaviour
         public int monstersLost;
         public int goldEarned;
         public float notorietyDelta;
+        public List<RaidRecord> raids;
     }
 
     // ── Lifecycle ──
@@ -108,6 +110,11 @@ public class RunStats : MonoBehaviour
         if (size > biggestParty) biggestParty = size;
     }
 
+    public void RecordRaid(RaidRecord raid)
+    {
+        if (raid != null) raidsToday.Add(raid);
+    }
+
     // ── Internal handlers ──
     private void HandleGoldChanged(int newTotal)
     {
@@ -124,7 +131,9 @@ public class RunStats : MonoBehaviour
         slainToday = 0;
         monstersLostToday = 0;
         goldEarnedToday = 0;
+        goldEarnedToday = 0;
         notorietyAtDayStart = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
+        raidsToday.Clear();
     }
 
     private void HandleNightStarted()
@@ -138,6 +147,7 @@ public class RunStats : MonoBehaviour
             monstersLost = monstersLostToday,
             goldEarned = goldEarnedToday,
             notorietyDelta = noto - notorietyAtDayStart,
+            raids = new List<RaidRecord>(raidsToday),
         };
         Debug.Log($"[RunStats] Day {summary.day} ended — parties {summary.parties}, " +
                   $"slain {summary.adventurersSlain}, lost {summary.monstersLost}, " +
@@ -161,6 +171,7 @@ public class RunStats : MonoBehaviour
             goldEarnedToday = goldEarnedToday,
             notorietyAtDayStart = notorietyAtDayStart,
         };
+        data.raidsToday = new List<RaidRecord>(raidsToday);
         foreach (var kvp in killsByClass)
             data.killsByClass.Add(new ClassKillSaveData { className = kvp.Key, count = kvp.Value });
         return data;
@@ -169,6 +180,7 @@ public class RunStats : MonoBehaviour
     public void RestoreFromSave(RunStatsSaveData data)
     {
         killsByClass.Clear();
+        raidsToday.Clear();
         monstersLost = 0; biggestParty = 0; goldEarned = 0;
         maxDayReached = 1; currentDay = 1;
         partiesToday = 0; slainToday = 0; monstersLostToday = 0; goldEarnedToday = 0;
@@ -185,6 +197,7 @@ public class RunStats : MonoBehaviour
             monstersLostToday = data.monstersLostToday;
             goldEarnedToday = data.goldEarnedToday;
             notorietyAtDayStart = data.notorietyAtDayStart;
+            if (data.raidsToday != null) raidsToday.AddRange(data.raidsToday);
             if (data.killsByClass != null)
                 foreach (var ck in data.killsByClass)
                     if (!string.IsNullOrEmpty(ck.className)) killsByClass[ck.className] = ck.count;
@@ -192,4 +205,17 @@ public class RunStats : MonoBehaviour
 
         if (DungeonCore.Instance != null) lastGold = DungeonCore.Instance.Gold;
     }
+}
+
+/// <summary>One resolved raid — a row in the day-end summary, persisted with the day's tally.</summary>
+[Serializable]
+public class RaidRecord
+{
+    public string label;          // "Garrick's company" / "Mercenary party (4)"
+    public int slain;
+    public int fled;
+    public int breached;
+    public int stolen;            // chest-loot value escapees carried out
+    public int recovered;         // chest-loot value absorbed from the fallen
+    public float notorietyDelta;  // net notoriety this party caused
 }
