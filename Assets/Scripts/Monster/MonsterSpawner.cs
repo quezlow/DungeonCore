@@ -339,6 +339,8 @@ public class MonsterSpawner : MonoBehaviour
 
         if (definition is BossVariantDefinition bossDef)
             spawnedMonster.ApplyBossModifiers(bossDef);
+        else if (definition is SubBossVariantDefinition subDef)
+            spawnedMonster.ApplySubBossModifiers(subDef);
 
         // DAY 31 — Apply pending alive state from save load and clear so future
         // respawns (after death) revert to default full-HP/spawner-cell behavior.

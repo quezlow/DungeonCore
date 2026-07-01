@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3428bb2ac07a8047be86be2272422d7, type: 3}
+  m_Name: SubBossDef_Zombie
+  m_EditorClassIdentifier: Assembly-CSharp::SubBossVariantDefinition
+  monsterName: Zombie Sub Boss
+  icon: {fileID: 1880763209359424529, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
+  capacityCost: 5
+  manaCost: 25
+  requiredTier: 0
+  requiredRank: 5
+  description: A well fed zombie
+  isAquatic: 0
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  telegraphSeconds: 0
+  hpMultiplier: 2.5
+  damageMultiplier: 2
+  xpRewardMultiplier: 2.5
+  capacityCostMultiplier: 2
+  manaCostMultiplier: 2
+  scaleMultiplier: 1.25
+  tint: {r: 0.990566, g: 0.89172715, b: 0.52799034, a: 1}

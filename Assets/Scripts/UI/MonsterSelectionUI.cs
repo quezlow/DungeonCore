@@ -103,10 +103,16 @@ public class MonsterSelectionUI : MonoBehaviour
         var def = Selected;
         if (def == null) return;
 
-        if (monsterIcon      != null) monsterIcon.sprite     = def.icon;
-        if (monsterNameLabel != null) monsterNameLabel.text  = def.monsterName;
-        if (costLabel != null) costLabel.text = $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
-        if (descriptionLabel != null) descriptionLabel.text  = def.description;
+        bool locked = DungeonCore.Instance != null
+            && def.RequiredFlatLevel > DungeonCore.Instance.DungeonLevel;
+
+        if (monsterIcon != null) monsterIcon.sprite = def.icon;
+        if (monsterNameLabel != null) monsterNameLabel.text = def.monsterName;
+        if (costLabel != null)
+            costLabel.text = locked
+                ? $"Unlocks at {LevelTierUtil.DisplayName(def.RequiredFlatLevel)}"
+                : $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
+        if (descriptionLabel != null) descriptionLabel.text = def.description;
     }
 
     public void OnCloseClicked()

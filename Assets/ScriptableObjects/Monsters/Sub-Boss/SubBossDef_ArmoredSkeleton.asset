@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3428bb2ac07a8047be86be2272422d7, type: 3}
+  m_Name: SubBossDef_ArmoredSkeleton
+  m_EditorClassIdentifier: Assembly-CSharp::SubBossVariantDefinition
+  monsterName: Armored Skeleton Sub Boss
+  icon: {fileID: 1941305032766050162, guid: fc2f36fc949a174499bcd702cc12f522, type: 3}
+  prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
+  capacityCost: 5
+  manaCost: 25
+  requiredTier: 0
+  requiredRank: 5
+  description: A larger armored skeleton, but not as large as they can get...
+  isAquatic: 0
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  telegraphSeconds: 0
+  hpMultiplier: 2.5
+  damageMultiplier: 2
+  xpRewardMultiplier: 2.5
+  capacityCostMultiplier: 2
+  manaCostMultiplier: 2
+  scaleMultiplier: 1.25
+  tint: {r: 1, g: 0.41037738, b: 0.41037738, a: 1}

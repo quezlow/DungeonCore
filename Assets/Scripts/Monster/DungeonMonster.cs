@@ -340,14 +340,31 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (def == null) return;
         bossDefinition = def;
-        maxHP *= def.hpMultiplier;
-        currentHP = maxHP;
-        attackDamage *= def.damageMultiplier;
-        xpPerKill *= def.xpRewardMultiplier;
-        transform.localScale *= def.scaleMultiplier;
-        var sr = GetComponentInChildren<SpriteRenderer>();
-        if (sr != null) sr.color = def.tint;
+        ApplyStatMultipliers(def.hpMultiplier, def.damageMultiplier,
+            def.xpRewardMultiplier, def.scaleMultiplier, def.tint);
     }
+
+    /// <summary>Sub-boss scaling — the same shared stat bump as a boss, milder, and with
+    /// no boss label / alert (a sub-boss is just a tougher standard monster).</summary>
+    public void ApplySubBossModifiers(SubBossVariantDefinition def)
+    {
+        if (def == null) return;
+        ApplyStatMultipliers(def.hpMultiplier, def.damageMultiplier,
+            def.xpRewardMultiplier, def.scaleMultiplier, def.tint);
+    }
+
+    /// <summary>Shared stat scaler used by both boss and sub-boss variants.</summary>
+    private void ApplyStatMultipliers(float hpMult, float dmgMult, float xpMult, float scaleMult, Color tint)
+    {
+        maxHP *= hpMult;
+        currentHP = maxHP;
+        attackDamage *= dmgMult;
+        xpPerKill *= xpMult;
+        transform.localScale *= scaleMult;
+        var sr = GetComponentInChildren<SpriteRenderer>();
+        if (sr != null) sr.color = tint;
+    }
+
     private void ResolveEffectiveRegen()
     {
         // DAY 31 — Wild monsters now have a direct definition back-reference (wildDefinition);

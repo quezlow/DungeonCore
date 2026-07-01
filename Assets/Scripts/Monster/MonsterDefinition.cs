@@ -42,6 +42,12 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Mana spent to place a spawner of this monster. Boss variants scale it.")]
     [SerializeField] private float manaCost = 25f;
 
+    [Header("Unlock")]
+    [Tooltip("Level tier at which this monster becomes placeable. Bronze rank 1 = available from the start.")]
+    public LevelTier requiredTier = LevelTier.Bronze;
+    [Tooltip("Rank within the required tier at which this monster unlocks (1-based).")]
+    [Min(1)] public int requiredRank = 1;
+
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;
@@ -95,4 +101,7 @@ public class MonsterDefinition : ScriptableObject
 
     /// <summary>Mana spent to place a spawner of this monster. Virtual so bosses scale it.</summary>
     public virtual float ManaCost => manaCost;
+
+    /// <summary>Flat dungeon level at which this monster unlocks (from requiredTier / requiredRank).</summary>
+    public int RequiredFlatLevel => LevelTierUtil.ToFlatLevel(requiredTier, requiredRank);
 }
