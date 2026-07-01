@@ -90,6 +90,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     [Header("XP & Notoriety")]
     [SerializeField] private float xpOnDeath = 15f;
+
+    [Header("Leveling (named / tracked heroes)")]
+    [Tooltip("XP a tracked hero gains per monster kill.")]
+    [SerializeField] private float xpPerKill = 25f;
+    [Tooltip("Total XP per level step: level = 1 + totalXP / this, capped at the tier ladder max (God 1).")]
+    [SerializeField] private float xpPerLevel = 100f;
+    [Tooltip("Max HP added per level above 1 (0.10 = +10% per level).")]
+    [SerializeField] private float hpPerLevel = 0.10f;
+    [Tooltip("Attack damage added per level above 1 (0.08 = +8% per level).")]
+    [SerializeField] private float damagePerLevel = 0.08f;
     [Tooltip("Notoriety removed per gold of loot an adventurer escapes with (satisfied departure).")]
     [SerializeField] private float lootSatisfactionFactor = 0.1f;
     [Tooltip("Maximum notoriety a single satisfied escape can remove.")]
@@ -217,7 +227,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null, int returningXp = 0)
     {
         if (def != null)
         {
@@ -263,7 +273,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         ApplyCombatClass(classDef);
 
         partyMember = party?.RegisterMember(type, displayName, named);
-        if (partyMember != null) partyMember.combatClass = combatClass;
+        if (partyMember != null)
+        {
+            partyMember.combatClass = combatClass;
+            partyMember.xp = returningXp;
+            ApplyLevelBoost(LevelFromXp(returningXp));
+        }
         party?.RegisterLive(this);
     }
 
@@ -909,8 +924,27 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             FloatingDamageNumber.DamageType.MonsterHit);
         animDriver?.OnAttack();
         combatTarget.TakeDamage(attackDamage);
+        if (party != null && party.tracked && partyMember != null
+            && !((IMonsterTarget)combatTarget).IsAlive)
+            partyMember.xp += Mathf.RoundToInt(xpPerKill);
         if (knockbackForce > 0f && attackDamage >= knockbackMinDamage)
             ((IMonsterTarget)combatTarget).ApplyKnockback(transform.position, knockbackForce);
+    }
+
+    /// <summary>Flat level (1..God 1) from a hero's cumulative kill XP. Excess XP beyond the
+    /// cap is kept in the total but does not raise the level further.</summary>
+    private int LevelFromXp(int xp)
+        => Mathf.Clamp(1 + Mathf.FloorToInt(xp / Mathf.Max(1f, xpPerLevel)), 1, LevelTierUtil.MaxFlatLevel);
+
+    /// <summary>Apply a returning hero's level as flat stat multipliers. Only ever called at
+    /// spawn (never mid-delve), so a hero's stats never change while it is in the dungeon.</summary>
+    private void ApplyLevelBoost(int level)
+    {
+        if (level <= 1) return;
+        int steps = level - 1;
+        maxHP *= 1f + hpPerLevel * steps;
+        attackDamage *= 1f + damagePerLevel * steps;
+        currentHP = maxHP;
     }
 
     private void StartRetreat()

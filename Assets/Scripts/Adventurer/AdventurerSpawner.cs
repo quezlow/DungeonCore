@@ -284,7 +284,7 @@ public class AdventurerSpawner : MonoBehaviour
         return n;
     }
 
-    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null)
+    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null, int returningXp = 0)
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
@@ -302,7 +302,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(name) && def.named)
             name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
 
-        adventurer.Initialise(def, trait, party, classDef, name);
+        adventurer.Initialise(def, trait, party, classDef, name, returningXp);
     }
 
     // ── Combat class assignment (Day 39) ─────────────────────────
@@ -560,7 +560,7 @@ public class AdventurerSpawner : MonoBehaviour
 
             if (m.survived)
                 SpawnMember(def, RollTrait(), spawnPos, party, used,
-                            ClassDefFor((CombatClass)m.combatClass), m.name);
+                            ClassDefFor((CombatClass)m.combatClass), m.name, m.xp);
             else
                 SpawnMember(def, RollTrait(), spawnPos, party, used);
         }

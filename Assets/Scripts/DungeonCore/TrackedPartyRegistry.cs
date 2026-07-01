@@ -77,6 +77,7 @@ public class TrackedPartyRegistry : MonoBehaviour
                 name = m.name,
                 named = m.named,
                 survived = m.escaped,
+                xp = m.xp,
             });
             if (m.escaped) survivors++;
         }
@@ -150,4 +151,5 @@ public class TrackedMember
     public string name;
     public bool named;
     public bool survived;     // escaped alive last visit (else replaced by a fresh roll)
+    public int xp;            // cumulative kill XP carried across returns
 }

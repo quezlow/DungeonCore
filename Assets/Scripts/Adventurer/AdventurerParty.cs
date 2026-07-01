@@ -141,6 +141,7 @@ public class PartyMember
 {
     public AdventurerType type;
     public CombatClass combatClass;
+    public int xp;                 // cumulative kill XP (persisted via TrackedMember)
     public string name;
     public bool named;
     public bool escaped;
