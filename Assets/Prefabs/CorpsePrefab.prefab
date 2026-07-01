@@ -82,15 +82,15 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -5180898821907363623, guid: 5f7e6599bcf410943ae1ea48c761b48e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 15.46875, y: 9.96875}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
 --- !u!114 &2285861365768900217
 MonoBehaviour:
@@ -104,4 +104,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4221efd82079b3a46bc12b0d1ecef694, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Corpse
+  spriteVariants:
+  - {fileID: -5180898821907363623, guid: 5f7e6599bcf410943ae1ea48c761b48e, type: 3}
+  - {fileID: -4628481674968988871, guid: 5f7e6599bcf410943ae1ea48c761b48e, type: 3}
+  - {fileID: -4132104951630573652, guid: 5f7e6599bcf410943ae1ea48c761b48e, type: 3}
+  - {fileID: -2641920100001950145, guid: 5f7e6599bcf410943ae1ea48c761b48e, type: 3}
+  randomFlipX: 1
   lifetime: 37
