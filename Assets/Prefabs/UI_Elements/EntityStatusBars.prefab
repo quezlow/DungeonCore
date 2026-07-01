@@ -1471,9 +1471,9 @@ MonoBehaviour:
   manaBar: {fileID: 3066851980021328341}
   bossLabel: {fileID: 6534509481403353359}
   intentLabel: {fileID: 7585761408728133245}
-  worldOffset: {x: 0, y: 1.7, z: 0}
-  showStamina: 0
-  showMana: 0
+  worldOffset: {x: 0, y: -1.7, z: 0}
+  showStamina: 1
+  showMana: 1
 --- !u!1 &7515637644473017958
 GameObject:
   m_ObjectHideFlags: 0

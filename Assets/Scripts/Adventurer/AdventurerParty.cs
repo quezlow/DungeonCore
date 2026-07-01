@@ -46,4 +46,44 @@ public class AdventurerParty
         slotCounts[lane] = n + 1;
         return n;
     }
+
+    // ── Named / tracked party (persistent nemesis) ──────
+    public bool tracked = false;                       // set by a named member, or a player pin
+    public readonly List<PartyMember> Members = new();
+    private int resolvedCount = 0;
+
+    /// <summary>Registers a member as it spawns. A named member marks the whole party tracked.</summary>
+    public PartyMember RegisterMember(AdventurerType type, string name, bool named)
+    {
+        var m = new PartyMember { type = type, name = name, named = named };
+        Members.Add(m);
+        if (named) tracked = true;
+        return m;
+    }
+
+    /// <summary>Called when a member dies or escapes. When all members have resolved,
+    /// a tracked party is recorded for return and the party leaves the active list.</summary>
+    public void OnMemberResolved(PartyMember member, bool escaped)
+    {
+        if (member == null || member.resolved) return;
+        member.resolved = true;
+        member.escaped = escaped;
+        resolvedCount++;
+
+        if (resolvedCount < Members.Count || Members.Count == 0) return;
+
+        if (tracked) TrackedPartyRegistry.Instance?.RecordResolvedParty(this);
+        TrackedPartyRegistry.Instance?.DeregisterActive(this);
+    }
+}
+
+/// <summary>One member of a party, for formation and named-party tracking. Populated at spawn.</summary>
+public class PartyMember
+{
+    public AdventurerType type;
+    public CombatClass combatClass;
+    public string name;
+    public bool named;
+    public bool escaped;
+    public bool resolved;
 }

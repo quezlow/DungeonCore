@@ -23,6 +23,9 @@ public class AdventurerDefinition : ScriptableObject
     [Tooltip("Display name for this combat class (e.g. Fighter, Mage, Rogue).")]
     public string className = "Adventurer";
 
+    [Tooltip("If true, instances spawn as named individuals and their party is tracked as a persistent nemesis (default-on for Hero).")]
+    public bool named = false;
+
     [Header("Type (Day 37)")]
     [Tooltip("Which of the nine adventurer types this asset represents. Drives the " +
              "derived intent (reward category) and goal (behaviour) via AdventurerTypeInfo.")]

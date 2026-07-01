@@ -196,8 +196,16 @@ public class AdventurerSpawner : MonoBehaviour
 
         Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
 
+        var returning = TrackedPartyRegistry.Instance?.TakeReturningParty();
+        if (returning != null)
+        {
+            SpawnReturningParty(returning, spawnPos);
+            return;
+        }
+
         AdventurerType partyType = RollType();
         var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(partyType));
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
 
         int spawned = SpawnComposition(partyType, spawnPos, party);
         RunStats.Instance?.RecordPartySpawned(spawned);
@@ -274,7 +282,7 @@ public class AdventurerSpawner : MonoBehaviour
         return n;
     }
 
-    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used)
+    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null)
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
@@ -287,7 +295,12 @@ public class AdventurerSpawner : MonoBehaviour
         if (floor != null)
             adventurer.transform.SetParent(floor.transform, true);
 
-        adventurer.Initialise(def, trait, party, ResolveCombatClass(def.type, used));
+        var classDef = forcedClass != null ? forcedClass : ResolveCombatClass(def.type, used);
+        string name = presetName;
+        if (string.IsNullOrEmpty(name) && def.named)
+            name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
+
+        adventurer.Initialise(def, trait, party, classDef, name);
     }
 
     // ── Combat class assignment (Day 39) ─────────────────────────
@@ -504,10 +517,54 @@ public class AdventurerSpawner : MonoBehaviour
         if (hero == null) return;
 
         var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
         var used = new Dictionary<CombatClass, int>();
         SpawnMember(hero, RollTrait(), spawnPos, party, used);
 
         SetupOrganize(party, AdventurerType.Hero, 1, spawnPos);
         RunStats.Instance?.RecordPartySpawned(1);
+    }
+
+    private CombatClassDefinition ClassDefFor(CombatClass c)
+    {
+        if (combatClasses == null) return null;
+        foreach (var cd in combatClasses)
+            if (cd != null && cd.combatClass == c) return cd;
+        return null;
+    }
+
+    /// <summary>Re-deploys a tracked party: survivors return as their exact selves;
+    /// fallen members are replaced by a fresh roll of the same type.</summary>
+    private void SpawnReturningParty(TrackedParty record, Vector3 spawnPos)
+    {
+        if (record == null || record.members.Count == 0) return;
+
+        AdventurerType primary = (AdventurerType)record.members[0].type;
+        string leadName = null;
+        foreach (var m in record.members)
+            if (m.named) { primary = (AdventurerType)m.type; leadName = m.name; break; }
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(primary));
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+        var used = new Dictionary<CombatClass, int>();
+
+        foreach (var m in record.members)
+        {
+            var type = (AdventurerType)m.type;
+            var def = Def(type);
+            if (def == null) continue;
+
+            if (m.survived)
+                SpawnMember(def, RollTrait(), spawnPos, party, used,
+                            ClassDefFor((CombatClass)m.combatClass), m.name);
+            else
+                SpawnMember(def, RollTrait(), spawnPos, party, used);
+        }
+
+        SetupOrganize(party, primary, party.Members.Count, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(party.Members.Count);
+
+        string who = !string.IsNullOrEmpty(leadName) ? leadName : "A familiar party";
+        AlertsLog.Instance?.AddAlert($"{who} returns to the dungeon.", spawnPos, -1, AlertCategory.Threat);
     }
 }

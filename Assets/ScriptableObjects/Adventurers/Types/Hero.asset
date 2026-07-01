@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Hero
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
   className: Adventurer
+  named: 1
   type: 7
   overrideTrait: 0
   forcedTrait: 1

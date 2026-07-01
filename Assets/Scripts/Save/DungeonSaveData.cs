@@ -54,6 +54,8 @@ public class DungeonSaveData
     public int alertUnreadCount = 0;
 
     public RunStatsSaveData runStats;
+
+    public List<TrackedParty> trackedParties = new();
 }
 
 [Serializable]

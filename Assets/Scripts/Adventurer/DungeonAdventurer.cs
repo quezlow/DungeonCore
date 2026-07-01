@@ -144,6 +144,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // Combat class (Day 39) — overlay applied in Initialise
     private CombatClass combatClass = CombatClass.Fighter;
     private CombatClassDefinition classDef;   // kept for class loot on death
+
+    // Named-adventurer tracking — this unit's roster record + identity.
+    private PartyMember partyMember;
+    private string displayName;
+    private bool named;
     private bool healsAllies = false;
     private float healAmount = 6f;
     private float healInterval = 3f;
@@ -190,7 +195,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null)
     {
         if (def != null)
         {
@@ -228,7 +233,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (intent == PartyIntent.Pilgrim)
             moveSpeed *= pilgrimSpeedMultiplier;
 
+        named = def != null && def.named;
+        displayName = presetName;
+
         ApplyCombatClass(classDef);
+
+        partyMember = party?.RegisterMember(type, displayName, named);
+        if (partyMember != null) partyMember.combatClass = combatClass;
     }
 
     /// <summary>Day 39 — overlay the combat-class multipliers + behaviour on top of
@@ -293,6 +304,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             statusBars.ConfigureResourceBars(maxStamina > 0f, maxMana > 0f);
             if (maxStamina > 0f) statusBars.SetStamina(currentStamina, maxStamina);
             if (maxMana > 0f) statusBars.SetMana(currentMana, maxMana);
+            if (named && !string.IsNullOrEmpty(displayName)) statusBars.SetBossLabel(displayName);
         }
 
         UnlockState.OnChanged += HandleUnlockChanged;
@@ -549,6 +561,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 DungeonCore.Instance?.AddReputation(2f);
             }
 
+            party?.OnMemberResolved(partyMember, true);
+
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
@@ -578,6 +592,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
+            party?.OnMemberResolved(partyMember, false);
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
         }
@@ -1033,6 +1048,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         AdventurerDeaths++;
+        party?.OnMemberResolved(partyMember, false);
         currentFloor?.Entities?.Unregister(this);
 
         if (type == AdventurerType.Suicidal)
