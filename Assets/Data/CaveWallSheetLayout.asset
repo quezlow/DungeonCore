@@ -1,0 +1,233 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7be53a4eb08faa46ab4e28a51e58505, type: 3}
+  m_Name: CaveWallSheetLayout
+  m_EditorClassIdentifier: Assembly-CSharp::CaveWallSheetLayout
+  sheet: {fileID: 2800000, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
+  cellSize: 32
+  capSlots:
+  - cell: {x: 6, y: 8}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 4}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 13, y: 9}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 0, y: 4}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 0}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 11, y: 3}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 0, y: 0}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 0, y: 1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 14, y: 9}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 5, y: 4}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 8, y: 3}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 2, y: 4}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 5, y: 0}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 5, y: 1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 1, y: 0}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 1, y: 1}
+    overrideSprite: {fileID: 0}
+  innerSE:
+    cell: {x: 0, y: 7}
+    overrideSprite: {fileID: 0}
+  innerSW:
+    cell: {x: 5, y: 7}
+    overrideSprite: {fileID: 0}
+  innerNE:
+    cell: {x: 0, y: 10}
+    overrideSprite: {fileID: 0}
+  innerNW:
+    cell: {x: 5, y: 10}
+    overrideSprite: {fileID: 0}
+  faceUpperSlots:
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 2, y: 5}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 0, y: 5}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 5, y: 5}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 9}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 13, y: 10}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 14, y: 10}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 5}
+    overrideSprite: {fileID: 0}
+  faceLowerSlots:
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 2, y: 6}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 0, y: 6}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 5, y: 6}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 10}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 13, y: 11}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 14, y: 11}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 6, y: 6}
+    overrideSprite: {fileID: 0}
+  stoneVariants:
+  - cap:
+      cell: {x: 1, y: 4}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 1, y: 5}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 1, y: 6}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 2, y: 4}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 2, y: 5}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 2, y: 6}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 3, y: 4}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 3, y: 5}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 3, y: 6}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 4, y: 4}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 4, y: 5}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 4, y: 6}
+      overrideSprite: {fileID: 0}
+  greenMossVariants:
+  - cap:
+      cell: {x: 0, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 0, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 0, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 1, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 1, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 1, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 2, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 2, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 2, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 3, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 3, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 3, y: 13}
+      overrideSprite: {fileID: 0}
+  goldMossVariants:
+  - cap:
+      cell: {x: 4, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 4, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 4, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 5, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 5, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 5, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 6, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 6, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 6, y: 13}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: 7, y: 11}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 7, y: 12}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 7, y: 13}
+      overrideSprite: {fileID: 0}
+  capVariety:
+  - mask: 7
+    variants:
+    - cell: {x: 0, y: 1}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 0, y: 2}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 0, y: 3}
+      overrideSprite: {fileID: 0}
+  - mask: 13
+    variants:
+    - cell: {x: 5, y: 1}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 5, y: 2}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 5, y: 3}
+      overrideSprite: {fileID: 0}
+  - mask: 14
+    variants:
+    - cell: {x: 1, y: 0}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 2, y: 0}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 3, y: 0}
+      overrideSprite: {fileID: 0}
+    - cell: {x: 4, y: 0}
+      overrideSprite: {fileID: 0}

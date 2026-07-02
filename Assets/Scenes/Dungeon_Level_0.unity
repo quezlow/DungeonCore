@@ -13966,7 +13966,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.993891
+  m_Size: 0.9998929
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16893,7 +16893,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00071230496}
+  m_AnchoredPosition: {x: 0, y: -0.0000058661863}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -32215,15 +32215,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.b
-      value: 0.058823533
+      value: 0.10196079
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.g
-      value: 0.058823533
+      value: 0.098039225
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.r
-      value: 0.058823533
+      value: 0.098039225
       objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.x
@@ -33221,8 +33221,7 @@ MonoBehaviour:
   capsTilemap: {fileID: 1419482491}
   facesTilemap: {fileID: 2073436791}
   facesBehindTilemap: {fileID: 1445721126}
-  sheet: {fileID: 2800000, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
-  cellSize: 32
+  layout: {fileID: 11400000, guid: 5954869e24418d7458f70d50111fe27e, type: 2}
   mossChanceMin: 0.01
   mossChanceMax: 0.2
 --- !u!483693784 &1419482490

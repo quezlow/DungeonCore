@@ -440,8 +440,7 @@ MonoBehaviour:
   capsTilemap: {fileID: 8862123475429933221}
   facesTilemap: {fileID: 2458690929967465137}
   facesBehindTilemap: {fileID: 3487092723613550697}
-  sheet: {fileID: 2800000, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
-  cellSize: 32
+  layout: {fileID: 11400000, guid: 5954869e24418d7458f70d50111fe27e, type: 2}
   mossChanceMin: 0.01
   mossChanceMax: 0.2
 --- !u!1 &1591221787737532935
@@ -1406,6 +1405,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60c19c94b55b8cf4baffc3b84bf6549a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TrapRegistry
+  flaggedPathCost: 10
 --- !u!1 &3950794761522420356
 GameObject:
   m_ObjectHideFlags: 0
@@ -2067,6 +2067,8 @@ MonoBehaviour:
   riverMeanderDegrees: 35
   minRiverWidth: 3
   maxRiverWidth: 7
+  minRiverBank: 1
+  maxRiverBank: 3
   exclusionRadiusFromCenter: 4
   cavernInnerRadius: 2
   cavernOuterRadius: 3

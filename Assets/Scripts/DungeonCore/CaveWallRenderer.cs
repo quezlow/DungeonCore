@@ -47,10 +47,12 @@ public class CaveWallRenderer : MonoBehaviour
     public IReadOnlyCollection<Vector3Int> GreenMossWalls => greenMossCells;
     public IReadOnlyCollection<Vector3Int> GoldMossWalls => goldMossCells;
 
-    [Header("Sheet")]
-    [Tooltip("MainLev.png (the wall sheet). Sliced at runtime by cell coordinate.")]
-    [SerializeField] private Texture2D sheet;
-    [SerializeField] private int cellSize = 32;
+    [Header("Sheet Layout")]
+    [Tooltip("Every sprite assignment for this renderer: the sheet texture, cell size, and which " +
+             "cell (or override sprite) fills each cap, face, and variety slot. Create one via " +
+             "Assets > Create > Dungeon > Cave Wall Sheet Layout; a fresh asset is pre-filled " +
+             "with the MainLev layout.")]
+    [SerializeField] private CaveWallSheetLayout layout;
 
     [Header("Moss")]
     [Tooltip("Each straight wall rolls this chance to be mossy (cols 0-7, rows 11-13); otherwise " +
@@ -59,64 +61,6 @@ public class CaveWallRenderer : MonoBehaviour
              "Set min = max to pin it: 1, 1 for all-moss, 0, 0 for all stone variety.")]
     [SerializeField, Range(0f, 1f)] private float mossChanceMin = 0.01f;
     [SerializeField, Range(0f, 1f)] private float mossChanceMax = 0.20f;
-
-    // Cap mask (N=1,E=2,S=4,W=8; set = solid) -> sheet cell (col, row from top).
-    private static readonly Vector2Int[] CapCell =
-    {
-        new Vector2Int(6, 8),   // 0  none      -> pillar top
-        new Vector2Int(6, 4),   // 1  N         -> column bottom (run continues north)
-        new Vector2Int(13, 9),  // 2  E         -> nubEast top   (swapped)
-        new Vector2Int(0, 4),   // 3  N+E       -> SW outer corner top
-        new Vector2Int(6, 0),   // 4  S
-        new Vector2Int(11, 3),  // 5  N+S
-        new Vector2Int(0, 0),   // 6  E+S
-        new Vector2Int(0, 1),   // 7  N+E+S     (plain variants shuffled in)
-        new Vector2Int(14, 9),  // 8  W         -> nubWest top   (swapped)
-        new Vector2Int(5, 4),   // 9  N+W       -> SE outer corner top
-        new Vector2Int(8, 3),   // 10 E+W       -> flat cap (1-deep run)
-        new Vector2Int(2, 4),   // 11 N+E+W     -> straight S-wall top (stone column 2)
-        new Vector2Int(5, 0),   // 12 S+W
-        new Vector2Int(5, 1),   // 13 N+S+W     (plain variants shuffled in)
-        new Vector2Int(1, 0),   // 14 E+S+W     (plain variants shuffled in)
-        new Vector2Int(1, 1),   // 15 all       -> interior (overridden by concave corner)
-    };
-
-    // Face variant -> drape slices (col, row from top), indexed by (int)CaveFace.
-    // enum CaveFace { None=0, Straight=1, CornerW=2, CornerE=3, Pillar=4, NubEast=5, NubWest=6, ColumnBottom=7 }
-    private static readonly Vector2Int[] FaceUpperCell =
-    {
-        new Vector2Int(-1, -1),  // None
-        new Vector2Int(2, 5),    // Straight (stone column 2)
-        new Vector2Int(0, 5),    // CornerW (SW)
-        new Vector2Int(5, 5),    // CornerE (SE)
-        new Vector2Int(6, 9),    // Pillar
-        new Vector2Int(13, 10),  // NubEast (swapped)
-        new Vector2Int(14, 10),  // NubWest (swapped)
-        new Vector2Int(6, 5),    // ColumnBottom (N-only run)
-    };
-    private static readonly Vector2Int[] FaceLowerCell =
-    {
-        new Vector2Int(-1, -1),  // None
-        new Vector2Int(2, 6),    // Straight (stone column 2)
-        new Vector2Int(0, 6),    // CornerW (SW)
-        new Vector2Int(5, 6),    // CornerE (SE)
-        new Vector2Int(6, 10),   // Pillar
-        new Vector2Int(13, 11),  // NubEast (swapped)
-        new Vector2Int(14, 11),  // NubWest (swapped)
-        new Vector2Int(6, 6),    // ColumnBottom (N-only run)
-    };
-
-    // Straight S-wall variety. STONE columns 1-4 (rows 4/5/6) are the default look,
-    // picked uniformly. MOSS columns 0-7 (rows 11/12/13) replace them at the moss
-    // rate. Either way a whole column travels as a unit: cap + upper + lower.
-    private static readonly int[] StoneColumns = { 1, 2, 3, 4 };
-    private const int MossColumnCount = 8;
-
-    // Plain (non-moss) cap variety, shuffled with the base per cell. These masks
-    // are cap-only (S is solid, so there is no south face): N+E+S, N+S+W, E+S+W.
-    private static readonly Vector2Int[] Cap7Variants = { new Vector2Int(0, 1), new Vector2Int(0, 2), new Vector2Int(0, 3) };
-    private static readonly Vector2Int[] Cap13Variants = { new Vector2Int(5, 1), new Vector2Int(5, 2), new Vector2Int(5, 3) };
-    private static readonly Vector2Int[] Cap14Variants = { new Vector2Int(1, 0), new Vector2Int(2, 0), new Vector2Int(3, 0), new Vector2Int(4, 0) };
 
     private static readonly Vector3Int N = new Vector3Int(0, 1, 0);
     private static readonly Vector3Int S = new Vector3Int(0, -1, 0);
@@ -130,16 +74,18 @@ public class CaveWallRenderer : MonoBehaviour
 
     private FloorRoot floor;
     private TileInfluenceManager influence;
+    private TerrainTypeMap terrainTypeMap;
     private CaveWallClassifier classifier;
     private TileBase[] capTiles;
     private TileBase[] faceUpperTiles;
     private TileBase[] faceLowerTiles;
-    private TileBase[] straightCapTiles;     // stone cap,   index = column 1..4 (row 4)
-    private TileBase[] straightUpperTiles;   // stone upper, index = column 1..4 (row 5)
-    private TileBase[] straightLowerTiles;   // stone lower, index = column 1..4 (row 6)
-    private TileBase[] mossCapTiles;         // moss cap,    index = column 0..7 (row 11)
-    private TileBase[] mossUpperTiles;       // moss upper,  index = column 0..7 (row 12)
-    private TileBase[] mossLowerTiles;       // moss lower,  index = column 0..7 (row 13)
+    private TileBase[] straightCapTiles;     // stone variety caps, index = variant
+    private TileBase[] straightUpperTiles;   // stone variety upper slices
+    private TileBase[] straightLowerTiles;   // stone variety lower slices
+    private TileBase[] mossCapTiles;         // moss caps: green variants first, then gold
+    private TileBase[] mossUpperTiles;       // moss upper slices (same order)
+    private TileBase[] mossLowerTiles;       // moss lower slices (same order)
+    private int greenMossCount;              // moss index < greenMossCount -> green glow
     private TileBase[][] capVariants;        // index = mask; non-null only for 7, 13, 14
     private TileBase innerSE, innerSW, innerNE, innerNW;     // concave-corner caps
     private readonly HashSet<Vector3Int> wallScratch = new();
@@ -159,75 +105,109 @@ public class CaveWallRenderer : MonoBehaviour
             return;
         }
         influence = floor.TileInfluence;
+        terrainTypeMap = floor.TerrainTypeMap;
         if (influence != null) classifier = new CaveWallClassifier(influence, floor.FeatureGenerator);
         BuildTiles();
     }
 
     private void BuildTiles()
     {
-        if (sheet == null) { Debug.LogWarning("[CaveWallRenderer] No sheet texture assigned."); return; }
+        if (layout == null)
+        {
+            Debug.LogError("[CaveWallRenderer] No CaveWallSheetLayout assigned - walls will not render. " +
+                           "Create one via Assets > Create > Dungeon > Cave Wall Sheet Layout and assign it.");
+            return;
+        }
+        if (layout.sheet == null)
+            Debug.LogWarning("[CaveWallRenderer] Layout has no sheet texture; slots without override sprites will be empty.");
 
         // Caps + concave corners pivot centre (no entity ever stands on their cell).
+        var capPivot = new Vector2(0.5f, 0.5f);
         capTiles = new TileBase[16];
         for (int mask = 0; mask < 16; mask++)
-            capTiles[mask] = MakeTile(CapCell[mask].x, CapCell[mask].y, new Vector2(0.5f, 0.5f));
+            capTiles[mask] = MakeTile(SlotAt(layout.capSlots, mask), capPivot);
 
-        innerSE = MakeTile(0, 7, new Vector2(0.5f, 0.5f));
-        innerSW = MakeTile(5, 7, new Vector2(0.5f, 0.5f));
-        innerNE = MakeTile(0, 10, new Vector2(0.5f, 0.5f));
-        innerNW = MakeTile(5, 10, new Vector2(0.5f, 0.5f));
+        innerSE = MakeTile(layout.innerSE, capPivot);
+        innerSW = MakeTile(layout.innerSW, capPivot);
+        innerNE = MakeTile(layout.innerNE, capPivot);
+        innerNW = MakeTile(layout.innerNW, capPivot);
 
         // Faces pivot bottom-centre so a slice sorts by its cell's bottom edge.
-        faceUpperTiles = new TileBase[FaceUpperCell.Length];
-        faceLowerTiles = new TileBase[FaceLowerCell.Length];
-        for (int v = 1; v < FaceUpperCell.Length; v++)
+        var facePivot = new Vector2(0.5f, 0f);
+        faceUpperTiles = new TileBase[8];
+        faceLowerTiles = new TileBase[8];
+        for (int v = 1; v < 8; v++)
         {
-            faceUpperTiles[v] = MakeTile(FaceUpperCell[v].x, FaceUpperCell[v].y, new Vector2(0.5f, 0f));
-            faceLowerTiles[v] = MakeTile(FaceLowerCell[v].x, FaceLowerCell[v].y, new Vector2(0.5f, 0f));
+            faceUpperTiles[v] = MakeTile(SlotAt(layout.faceUpperSlots, v), facePivot);
+            faceLowerTiles[v] = MakeTile(SlotAt(layout.faceLowerSlots, v), facePivot);
         }
 
-        // Straight-wall STONE variety. Index by column (1..4); slot 0 unused.
-        straightCapTiles = new TileBase[5];
-        straightUpperTiles = new TileBase[5];
-        straightLowerTiles = new TileBase[5];
-        for (int col = 1; col <= 4; col++)
-        {
-            straightCapTiles[col] = MakeTile(col, 4, new Vector2(0.5f, 0.5f));
-            straightUpperTiles[col] = MakeTile(col, 5, new Vector2(0.5f, 0f));
-            straightLowerTiles[col] = MakeTile(col, 6, new Vector2(0.5f, 0f));
-        }
+        // Straight-wall variety: stone plus green/gold moss, each list any length.
+        // Green variants come first in the combined moss arrays; greenMossCount marks
+        // the boundary the glow system splits on.
+        int stoneLen = layout.stoneVariants != null ? layout.stoneVariants.Length : 0;
+        straightCapTiles = new TileBase[stoneLen];
+        straightUpperTiles = new TileBase[stoneLen];
+        straightLowerTiles = new TileBase[stoneLen];
+        for (int i = 0; i < stoneLen; i++)
+            SetColumn(layout.stoneVariants[i], straightCapTiles, straightUpperTiles, straightLowerTiles, i, capPivot, facePivot);
 
-        // Straight-wall MOSS variety. Columns 0..7 at rows 11 (cap) / 12 (upper) / 13 (lower).
-        mossCapTiles = new TileBase[MossColumnCount];
-        mossUpperTiles = new TileBase[MossColumnCount];
-        mossLowerTiles = new TileBase[MossColumnCount];
-        for (int m = 0; m < MossColumnCount; m++)
-        {
-            mossCapTiles[m] = MakeTile(m, 11, new Vector2(0.5f, 0.5f));
-            mossUpperTiles[m] = MakeTile(m, 12, new Vector2(0.5f, 0f));
-            mossLowerTiles[m] = MakeTile(m, 13, new Vector2(0.5f, 0f));
-        }
+        int greenLen = layout.greenMossVariants != null ? layout.greenMossVariants.Length : 0;
+        int goldLen = layout.goldMossVariants != null ? layout.goldMossVariants.Length : 0;
+        greenMossCount = greenLen;
+        mossCapTiles = new TileBase[greenLen + goldLen];
+        mossUpperTiles = new TileBase[greenLen + goldLen];
+        mossLowerTiles = new TileBase[greenLen + goldLen];
+        for (int i = 0; i < greenLen; i++)
+            SetColumn(layout.greenMossVariants[i], mossCapTiles, mossUpperTiles, mossLowerTiles, i, capPivot, facePivot);
+        for (int i = 0; i < goldLen; i++)
+            SetColumn(layout.goldMossVariants[i], mossCapTiles, mossUpperTiles, mossLowerTiles, greenLen + i, capPivot, facePivot);
 
-        // Plain cap variety (base + alternates), shuffled per cell.
+        // Cap variety pools: any mask may define one; a pool replaces that mask's base cap.
         capVariants = new TileBase[16][];
-        capVariants[7] = BuildCapVariants(Cap7Variants);
-        capVariants[13] = BuildCapVariants(Cap13Variants);
-        capVariants[14] = BuildCapVariants(Cap14Variants);
+        if (layout.capVariety != null)
+            foreach (var set in layout.capVariety)
+            {
+                if (set == null || set.variants == null || set.variants.Length == 0) continue;
+                if (set.mask < 0 || set.mask > 15) continue;
+                var arr = new TileBase[set.variants.Length];
+                for (int i = 0; i < arr.Length; i++)
+                    arr[i] = MakeTile(set.variants[i], capPivot);
+                capVariants[set.mask] = arr;
+            }
     }
 
-    private TileBase[] BuildCapVariants(Vector2Int[] cells)
+    private static CaveWallSheetLayout.SheetSlot SlotAt(CaveWallSheetLayout.SheetSlot[] arr, int index)
+        => (arr != null && index >= 0 && index < arr.Length) ? arr[index] : null;
+
+    private void SetColumn(CaveWallSheetLayout.WallColumn col, TileBase[] caps, TileBase[] uppers, TileBase[] lowers,
+                           int index, Vector2 capPivot, Vector2 facePivot)
     {
-        var arr = new TileBase[cells.Length];
-        for (int i = 0; i < cells.Length; i++)
-            arr[i] = MakeTile(cells[i].x, cells[i].y, new Vector2(0.5f, 0.5f));
-        return arr;
+        caps[index] = MakeTile(col != null ? col.cap : null, capPivot);
+        uppers[index] = MakeTile(col != null ? col.upper : null, facePivot);
+        lowers[index] = MakeTile(col != null ? col.lower : null, facePivot);
     }
 
-    private TileBase MakeTile(int col, int rowFromTop, Vector2 pivot)
+    private TileBase MakeTile(CaveWallSheetLayout.SheetSlot slot, Vector2 pivot)
     {
-        int px = col * cellSize;
-        int py = sheet.height - (rowFromTop + 1) * cellSize;   // sheet rows top-down; texture Y bottom-up
-        Sprite spr = Sprite.Create(sheet, new Rect(px, py, cellSize, cellSize), pivot, cellSize);
+        if (slot == null) return null;
+
+        Sprite spr;
+        if (slot.overrideSprite != null)
+        {
+            // Override wins: any sprite from any texture. Its import pivot and PPU apply
+            // (caps: Center; faces: Bottom; PPU = the sprite's pixel size).
+            spr = slot.overrideSprite;
+        }
+        else
+        {
+            if (layout.sheet == null || slot.cell.x < 0 || slot.cell.y < 0) return null;
+            int cs = layout.cellSize;
+            int px = slot.cell.x * cs;
+            int py = layout.sheet.height - (slot.cell.y + 1) * cs;   // sheet rows top-down; texture Y bottom-up
+            spr = Sprite.Create(layout.sheet, new Rect(px, py, cs, cs), pivot, cs);
+        }
+
         var tile = ScriptableObject.CreateInstance<UnlockedTile>();
         tile.sprite = spr;
         return tile;
@@ -320,17 +300,22 @@ public class CaveWallRenderer : MonoBehaviour
         {
             int mask = classifier.CapMask(wall);
 
-            // Straight S-wall (mask 11): plain stone variety, or a moss column at the
-            // floor's rolled rate. Cap + both face slices share the chosen column so the
+            // Per-cell material tint: the whole wall column - cap and both face slices -
+            // takes the wall cell's stone tint. CaveWallFade preserves this RGB while it
+            // fades the alpha.
+            Color tint = StoneTintFor(wall);
+
+            // Straight S-wall (mask 11): plain stone variety, or a moss variant at the
+            // floor's rolled rate. Cap + both face slices share the chosen variant so the
             // top always matches the drape.
             if (mask == 11)
             {
-                bool moss = StraightWallTiles(wall, out TileBase capT, out TileBase upperT, out TileBase lowerT, out int mossCol);
-                if (moss) { if (mossCol < 4) greenMossCells.Add(wall); else goldMossCells.Add(wall); }
-                capsTilemap.SetTile(wall, capT);
+                bool moss = StraightWallTiles(wall, out TileBase capT, out TileBase upperT, out TileBase lowerT, out int mossIndex);
+                if (moss) { if (mossIndex < greenMossCount) greenMossCells.Add(wall); else goldMossCells.Add(wall); }
+                capsTilemap.SetTile(wall, capT); capsTilemap.SetColor(wall, tint);
                 Vector3Int u = wall + S;          // S is open for mask 11
-                if (facesTilemap != null) facesTilemap.SetTile(u, upperT);
-                if (facesBehindTilemap != null) facesBehindTilemap.SetTile(u + S, lowerT);
+                if (facesTilemap != null) { facesTilemap.SetTile(u, upperT); facesTilemap.SetColor(u, tint); }
+                if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(u + S, lowerT); facesBehindTilemap.SetColor(u + S, tint); }
                 continue;
             }
 
@@ -338,7 +323,7 @@ public class CaveWallRenderer : MonoBehaviour
             TileBase capTile = (capVariants != null && capVariants[mask] != null)
                 ? PickCapVariant(wall, mask)
                 : CapFor(wall, mask);
-            capsTilemap.SetTile(wall, capTile);
+            capsTilemap.SetTile(wall, capTile); capsTilemap.SetColor(wall, tint);
 
             if (!classifier.IsSouthFacing(wall)) continue;
 
@@ -346,33 +331,46 @@ public class CaveWallRenderer : MonoBehaviour
             int v = (int)classifier.FaceVariant(wall);
             if (v <= 0 || faceUpperTiles == null) continue;
             Vector3Int upper = wall + S;
-            if (facesTilemap != null) facesTilemap.SetTile(upper, faceUpperTiles[v]);
+            if (facesTilemap != null) { facesTilemap.SetTile(upper, faceUpperTiles[v]); facesTilemap.SetColor(upper, tint); }
 
             // Always paint the lower (bottom) slice on the behind tilemap so it sits
             // BELOW entities — a monster at the foot of the wall renders in front of it
             // (its head no longer clips behind the base). The cap and upper slice stay
             // on WalkBehind for the over-the-head occlusion.
-            if (facesBehindTilemap != null) facesBehindTilemap.SetTile(upper + S, faceLowerTiles[v]);
+            if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(upper + S, faceLowerTiles[v]); facesBehindTilemap.SetColor(upper + S, tint); }
         }
     }
 
+    // The wall cell's material tint (Dirt/Sand/Stone/Granite/...). White if no terrain map.
+    private Color StoneTintFor(Vector3Int wall)
+        => terrainTypeMap != null ? terrainTypeMap.GetStoneTint(wall) : Color.white;
+
     // Straight S-wall pick (deterministic per wall + floor, so stable across rebuilds
     // and decorrelated between stacked floors): rolls the floor's moss chance. On moss,
-    // a random moss column (cols 0-7, rows 11/12/13); otherwise a random plain stone
-    // column (cols 1-4, rows 4/5/6). All three slices share the column. Returns isMoss.
-    private bool StraightWallTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower, out int mossColumn)
+    // a random moss variant (green variants first, then gold); otherwise a random plain
+    // stone variant. All three slices travel together. mossIndex is the combined-array
+    // index (green when < greenMossCount), or -1 for stone.
+    private bool StraightWallTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower, out int mossIndex)
     {
         var rng = new System.Random(unchecked(wall.GetHashCode() ^ (floor.FloorIndex * 73856093)));
-        if (mossCapTiles != null && rng.NextDouble() < mossChance)
+        if (mossCapTiles != null && mossCapTiles.Length > 0 && rng.NextDouble() < mossChance)
         {
-            int m = rng.Next(mossCapTiles.Length);             // moss cols 0..7 (0-3 green, 4-7 gold)
+            int m = rng.Next(mossCapTiles.Length);
             cap = mossCapTiles[m]; upper = mossUpperTiles[m]; lower = mossLowerTiles[m];
-            mossColumn = m;
+            mossIndex = m;
             return true;
         }
-        int s = StoneColumns[rng.Next(StoneColumns.Length)];   // stone cols {1,2,3,4}
-        cap = straightCapTiles[s]; upper = straightUpperTiles[s]; lower = straightLowerTiles[s];
-        mossColumn = -1;
+        mossIndex = -1;
+        if (straightCapTiles != null && straightCapTiles.Length > 0)
+        {
+            int v = rng.Next(straightCapTiles.Length);
+            cap = straightCapTiles[v]; upper = straightUpperTiles[v]; lower = straightLowerTiles[v];
+            return false;
+        }
+        // No stone variety defined: fall back to the base straight cap + face slices.
+        cap = capTiles != null ? capTiles[11] : null;
+        upper = faceUpperTiles != null ? faceUpperTiles[(int)CaveFace.Straight] : null;
+        lower = faceLowerTiles != null ? faceLowerTiles[(int)CaveFace.Straight] : null;
         return false;
     }
 
