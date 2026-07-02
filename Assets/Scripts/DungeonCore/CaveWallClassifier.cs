@@ -12,7 +12,7 @@ using UnityEngine;
 ///   SOUTH-FACING = solid AND its south neighbour is open. These cells get a
 ///   draped face; their southern neighbours are the floor the face hangs over.
 /// </summary>
-public enum CaveFace { None, Straight, CornerW, CornerE, Pillar, NubEast, NubWest }
+public enum CaveFace { None, Straight, CornerW, CornerE, Pillar, NubEast, NubWest, ColumnBottom }
 
 public class CaveWallClassifier
 {
@@ -61,7 +61,7 @@ public class CaveWallClassifier
         bool e = IsSolid(cell + E);
         bool w = IsSolid(cell + W);
 
-        if (!e && !w) return CaveFace.Pillar;                          // 1_0_0 and 0_0_0
+        if (!e && !w) return n ? CaveFace.ColumnBottom : CaveFace.Pillar;           // 1_0_0 -> column bottom, 0_0_0 -> pillar
         if (e && w) return CaveFace.Straight;                         // 1_1_1 and 0_1_1
         if (e) return n ? CaveFace.CornerW : CaveFace.NubEast;   // E solid, W open
         return n ? CaveFace.CornerE : CaveFace.NubWest;                 // W solid, E open

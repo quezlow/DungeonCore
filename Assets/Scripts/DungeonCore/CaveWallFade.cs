@@ -119,7 +119,8 @@ public class CaveWallFade : MonoBehaviour
             float cur = state.TryGetValue(cell, out float a) ? a : 1f;
             cur = Mathf.MoveTowards(cur, fadeAlpha, step);
             state[cell] = cur;
-            map.SetColor(cell, new Color(1f, 1f, 1f, cur));
+            Color keep = map.GetColor(cell);
+            map.SetColor(cell, new Color(keep.r, keep.g, keep.b, cur));
         }
 
         // Fade the rest back toward opaque; drop a cell once it is fully restored.
@@ -133,13 +134,15 @@ public class CaveWallFade : MonoBehaviour
             float cur = Mathf.MoveTowards(state[cell], 1f, step);
             if (cur >= 0.999f)
             {
-                map.SetColor(cell, Color.white);
+                Color keep = map.GetColor(cell);
+                map.SetColor(cell, new Color(keep.r, keep.g, keep.b, 1f));
                 state.Remove(cell);
             }
             else
             {
                 state[cell] = cur;
-                map.SetColor(cell, new Color(1f, 1f, 1f, cur));
+                Color keep = map.GetColor(cell);
+                map.SetColor(cell, new Color(keep.r, keep.g, keep.b, cur));
             }
         }
     }
