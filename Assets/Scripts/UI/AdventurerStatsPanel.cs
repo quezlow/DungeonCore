@@ -31,6 +31,9 @@ public class AdventurerStatsPanel : MonoBehaviour
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text statsText;
     [SerializeField] private Image hpFill;
+    [Tooltip("Optional. Marks the inspected adventurer's party tracked, so it " +
+             "returns like a named party. Label and interactability are code-driven.")]
+    [SerializeField] private Button pinPartyButton;
 
     private DungeonAdventurer current;
     private bool isOpen;
@@ -57,6 +60,29 @@ public class AdventurerStatsPanel : MonoBehaviour
     }
 
     public void OnCloseClicked() => Hide();
+
+    /// <summary>Wired to the Pin Party button. Marks the inspected adventurer's
+    /// party tracked — it persists and returns like a named party — and banners it.</summary>
+    public void OnPinPartyClicked()
+    {
+        var p = current != null ? current.Party : null;
+        if (p == null || p.tracked) return;
+        p.tracked = true;
+        PartyBannerManager.Instance?.ShowBanner(p);
+        RefreshPinButton();
+    }
+
+    private void RefreshPinButton()
+    {
+        if (pinPartyButton == null) return;
+        var p = current != null ? current.Party : null;
+        bool hasParty = p != null;
+        pinPartyButton.gameObject.SetActive(hasParty);
+        pinPartyButton.interactable = hasParty && !p.tracked;
+
+        var t = pinPartyButton.GetComponentInChildren<TMP_Text>(true);
+        if (t != null) t.text = hasParty && p.tracked ? "Pinned" : "Pin Party";
+    }
 
     public void Hide()
     {
@@ -96,5 +122,7 @@ public class AdventurerStatsPanel : MonoBehaviour
                 $"Intent    {current.Intent}\n" +
                 $"Trait     {current.Trait}\n" +
                 $"Loot      {current.CarriedLootValue}g";
+
+        RefreshPinButton();
     }
 }

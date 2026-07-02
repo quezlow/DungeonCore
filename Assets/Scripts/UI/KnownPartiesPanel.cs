@@ -83,14 +83,30 @@ public class KnownPartiesPanel : MonoBehaviour
         var row = Instantiate(entryPrefab, entryContainer);
         row.SetActive(true);
 
-        var text = row.GetComponentInChildren<TMP_Text>();
-        if (text != null) text.text = (pinned ? "[*] " : "[  ] ") + label;
-
         var btn = row.GetComponentInChildren<Button>();
+
+        // Row label: the first TMP_Text that is NOT part of the button, so a
+        // button with its own text child can never steal the row's label slot.
+        TMP_Text rowText = null;
+        foreach (var t in row.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (btn != null && t.transform.IsChildOf(btn.transform)) continue;
+            rowText = t;
+            break;
+        }
+        if (rowText != null) rowText.text = (pinned ? "[*] " : "[  ] ") + label;
+
         if (btn != null)
         {
-            btn.interactable = onPin != null && !pinned;
-            if (onPin != null) btn.onClick.AddListener(() => onPin());
+            bool canPin = onPin != null && !pinned;
+            btn.gameObject.SetActive(onPin != null || pinned);
+            btn.interactable = canPin;
+
+            // Label the button in code so an empty prefab label can't hide it.
+            var btnText = btn.GetComponentInChildren<TMP_Text>(true);
+            if (btnText != null) btnText.text = pinned ? "Pinned" : "Pin";
+
+            if (canPin) btn.onClick.AddListener(() => onPin());
         }
 
         spawned.Add(row);
