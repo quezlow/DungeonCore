@@ -245,7 +245,13 @@ public class FloorManager : MonoBehaviour
 
     // ── Save / Load support ───────────────────────────────────────
 
+
+
     public IEnumerable<int> VisitedFloorsForSave => visitedFloors;
+
+    /// <summary>Floors the player has opened — floor 0 from the start, plus each
+    /// deeper floor on its first visit. Drives the concurrent-party cap.</summary>
+    public int VisitedFloorCount => visitedFloors.Count;
 
     /// <summary>
     /// Recreate a floor from save. Terrain is regenerated using centerCell;

@@ -32,6 +32,16 @@ public class WavePreviewHUD : MonoBehaviour
         if (icon != null) icon.enabled = visible;
         if (!visible) return;
 
+        if (spawner.PartyCapReached)
+        {
+            if (label != null)
+            {
+                label.text = "The halls are occupied — none dare enter.";
+                label.color = textColour;
+            }
+            return;
+        }
+
         float eta = spawner.SecondsUntilNextParty;
         int m = Mathf.FloorToInt(eta / 60f);
         int s = Mathf.FloorToInt(eta % 60f);

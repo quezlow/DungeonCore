@@ -109,6 +109,32 @@ public class AdventurerSpawner : MonoBehaviour
     private float timer = 0f;
     private bool transitPaused = false;
 
+    // ── Concurrent-party cap ──────────────────────────────────────
+    // One party at a time until the player opens a second floor; one per opened
+    // floor thereafter. Event spawns (Hero dispatch) bypass the gate but still
+    // occupy a slot, so natural waves hold while a Hero raids.
+    private readonly List<AdventurerParty> liveParties = new();
+
+    private void RegisterLiveParty(AdventurerParty party)
+    {
+        if (party != null) liveParties.Add(party);
+    }
+
+    /// <summary>Parties with at least one member still alive in the dungeon.
+    /// Prunes finished parties (all dead, fled, or breached) as it counts.</summary>
+    public int ActivePartyCount()
+    {
+        for (int i = liveParties.Count - 1; i >= 0; i--)
+            if (liveParties[i] == null || liveParties[i].LiveCount() == 0)
+                liveParties.RemoveAt(i);
+        return liveParties.Count;
+    }
+
+    public int MaxConcurrentParties()
+        => Mathf.Max(1, FloorManager.Instance != null ? FloorManager.Instance.VisitedFloorCount : 1);
+
+    public bool PartyCapReached => ActivePartyCount() >= MaxConcurrentParties();
+
     // ── Read API for the wave-preview HUD (no behaviour change) ──
     public bool SpawningActive =>
         !PauseController.IsGamePaused
@@ -166,6 +192,13 @@ public class AdventurerSpawner : MonoBehaviour
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())
         {
+            // Hold at the threshold while the dungeon is at capacity — the next
+            // party steps in the moment a slot frees, no fresh interval.
+            if (PartyCapReached)
+            {
+                timer = CurrentInterval();
+                return;
+            }
             timer = 0f;
             SpawnParty();
         }
@@ -205,6 +238,7 @@ public class AdventurerSpawner : MonoBehaviour
 
         AdventurerType partyType = RollType();
         var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(partyType));
+        RegisterLiveParty(party);
         TrackedPartyRegistry.Instance?.RegisterActive(party);
 
         int spawned = SpawnComposition(partyType, spawnPos, party);
@@ -519,6 +553,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (hero == null) return;
 
         var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
         TrackedPartyRegistry.Instance?.RegisterActive(party);
         var used = new Dictionary<CombatClass, int>();
         SpawnMember(hero, RollTrait(), spawnPos, party, used);
@@ -549,6 +584,7 @@ public class AdventurerSpawner : MonoBehaviour
             if (m.named) { primary = (AdventurerType)m.type; leadName = m.name; break; }
 
         var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(primary));
+        RegisterLiveParty(party);
         TrackedPartyRegistry.Instance?.RegisterActive(party);
         var used = new Dictionary<CombatClass, int>();
 

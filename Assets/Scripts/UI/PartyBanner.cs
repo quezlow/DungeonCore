@@ -33,6 +33,19 @@ public class PartyBanner : MonoBehaviour
         originalSize = (p != null && p.Members.Count > 0) ? p.Members.Count : 1;
         if (bar != null && barSprite != null) bar.sprite = barSprite;
         if (label != null) label.text = text;
+
+        // The name reads off the ribbon itself: centre the label on the bar and
+        // sort it one step above, so the ribbon can never sit empty or swallow it.
+        if (label != null && bar != null)
+        {
+            label.transform.position = bar.transform.position;
+            var labelRenderer = label.GetComponent<Renderer>();
+            if (labelRenderer != null)
+            {
+                labelRenderer.sortingLayerID = bar.sortingLayerID;
+                labelRenderer.sortingOrder = bar.sortingOrder + 1;
+            }
+        }
     }
 
     private void LateUpdate()
