@@ -324,7 +324,7 @@ public class DungeonCore : MonoBehaviour
 
     public void AddNotoriety(float amount)
     {
-        notoriety += amount;
+        notoriety = Mathf.Max(0f, notoriety + amount);
         timeSinceLastKill = 0f;
         OnNotorietyChanged?.Invoke(notoriety);
     }

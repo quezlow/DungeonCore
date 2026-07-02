@@ -18,9 +18,14 @@ public class PartyBanner : MonoBehaviour
     [SerializeField] private SpriteRenderer bar;
     [SerializeField] private TMP_Text label;
     [SerializeField] private Vector3 worldOffset = new Vector3(0f, 1.3f, 0f);
+    [Tooltip("Clearance above the lead's sprite top when it stands taller than the " +
+             "fallback offset — keeps the name clear of big sprites and their status bars.")]
+    [SerializeField] private float spriteClearance = 0.75f;
 
     private AdventurerParty party;
     private int originalSize;
+    private DungeonAdventurer cachedLead;
+    private SpriteRenderer leadSprite;
 
     public void Initialise(AdventurerParty p, Sprite barSprite, string text)
     {
@@ -38,6 +43,16 @@ public class PartyBanner : MonoBehaviour
         // Drop once a majority of the party is gone (died or fled), or none remain.
         if (lead == null || party.LiveCount() * 2 < originalSize) { Destroy(gameObject); return; }
 
-        transform.position = lead.transform.position + worldOffset;
+        if (lead != cachedLead)
+        {
+            cachedLead = lead;
+            leadSprite = lead.GetComponentInChildren<SpriteRenderer>();
+        }
+
+        Vector3 basePos = lead.transform.position;
+        float y = basePos.y + worldOffset.y;
+        if (leadSprite != null && leadSprite.sprite != null)
+            y = Mathf.Max(y, leadSprite.bounds.max.y + spriteClearance);
+        transform.position = new Vector3(basePos.x + worldOffset.x, y, basePos.z + worldOffset.z);
     }
 }

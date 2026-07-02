@@ -28,10 +28,11 @@ public class DungeonChest : MonoBehaviour
     public ChestDefinition Definition { get; private set; }
  
     public bool IsTrapChest => Definition != null && Definition.isTrapChest;
- 
+
     private SpriteRenderer spriteRenderer;
     private LootTable lootTable;
- 
+    private float openedAt = -1f;
+
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -57,7 +58,8 @@ public class DungeonChest : MonoBehaviour
     {
         if (IsOpened) return;
         IsOpened = true;
- 
+        openedAt = Time.time;
+
         if (openedSprite != null) spriteRenderer.sprite = openedSprite;
  
         lootTable?.Roll(transform.position);
@@ -74,12 +76,32 @@ public class DungeonChest : MonoBehaviour
         SoundEffectManager.Play("Chest");
         Debug.Log("[DungeonChest] Opened by adventurer.");
     }
- 
+
     public void SetOpened(bool opened)
     {
         IsOpened = opened;
         if (opened && openedSprite != null) spriteRenderer.sprite = openedSprite;
+        openedAt = opened ? Time.time : -1f;   // loaded-open chests restart their countdown
     }
- 
+
+    private void Update()
+    {
+        if (!IsOpened || openedAt < 0f) return;
+        float reset = Definition != null ? Definition.resetSeconds : 0f;
+        if (reset <= 0f) return;
+        if (Time.time - openedAt < reset) return;
+        Close();
+    }
+
+    /// <summary>Re-arms the chest: closed sprite, lootable again, and — for trap
+    /// variants — the trap resets with it. The next Interact rolls fresh loot.</summary>
+    private void Close()
+    {
+        IsOpened = false;
+        openedAt = -1f;
+        if (closedSprite != null) spriteRenderer.sprite = closedSprite;
+        Debug.Log("[DungeonChest] Chest reset — lootable again.");
+    }
+
     public float InteractRadius => interactRadius;
 }

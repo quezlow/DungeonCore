@@ -47,7 +47,11 @@ public class EntityStatusBars : MonoBehaviour
     [SerializeField] private TMP_Text intentLabel;
 
     [Header("Offset above entity pivot")]
+    [Tooltip("Fallback / minimum offset. The bars ride the tracked entity's sprite " +
+             "top when that stands higher, so tall sprites lift the bars automatically.")]
     [SerializeField] private Vector3 worldOffset = new Vector3(0f, 0.7f, 0f);
+    [Tooltip("Clearance above the sprite's top edge when riding sprite bounds.")]
+    [SerializeField] private float spriteClearance = 0.25f;
 
     [Header("Stubs — enable when stats are implemented")]
     [SerializeField] private bool showStamina = false;
@@ -56,6 +60,7 @@ public class EntityStatusBars : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
 
     private Transform trackedEntity;
+    private SpriteRenderer trackedSprite;
 
     // ─────────────────────────────────────────────────────────────
 
@@ -79,8 +84,7 @@ public class EntityStatusBars : MonoBehaviour
     private void LateUpdate()
     {
         if (trackedEntity == null) { Destroy(gameObject); return; }
-        transform.position = trackedEntity.position + worldOffset;
-
+        transform.position = AnchoredPosition();
     }
 
     // ── Public API ────────────────────────────────────────────────
@@ -88,7 +92,20 @@ public class EntityStatusBars : MonoBehaviour
     public void Initialise(Transform entity)
     {
         trackedEntity = entity;
-        transform.position = entity.position + worldOffset;
+        trackedSprite = entity != null ? entity.GetComponentInChildren<SpriteRenderer>() : null;
+        transform.position = AnchoredPosition();
+    }
+
+    /// <summary>Entity position + offset, riding the sprite's top edge when the
+    /// sprite stands taller than the fallback offset. Bounds are world-space, so
+    /// scale, flips, and animation frames are all accounted for.</summary>
+    private Vector3 AnchoredPosition()
+    {
+        Vector3 basePos = trackedEntity.position;
+        float y = basePos.y + worldOffset.y;
+        if (trackedSprite != null && trackedSprite.sprite != null)
+            y = Mathf.Max(y, trackedSprite.bounds.max.y + spriteClearance);
+        return new Vector3(basePos.x + worldOffset.x, y, basePos.z + worldOffset.z);
     }
 
     /// <summary>— show/hide the stamina + mana bars per entity (only entities

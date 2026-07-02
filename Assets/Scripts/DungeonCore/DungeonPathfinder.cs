@@ -71,8 +71,9 @@ public static class DungeonPathfinder
     }
 
     /// <summary>True if a world position sits on a tile an entity may stand on — mirrors the
-    /// pathfinder's neighbour rule (owned floor not under an overhang, or a river) and excludes
-    /// trap-flagged cells. Used by knockback so a shove never pushes a target into a wall.</summary>
+    /// pathfinder's neighbour rule (owned floor not under an overhang, or a river). Flagged
+    /// trap cells ARE standable: knocking a target onto a trap it knows about is legal, and
+    /// the trap fires. Used by knockback so a shove never pushes a target into a wall.</summary>
     public static bool IsWalkable(FloorRoot floor, Vector3 worldPos)
     {
         if (floor == null) return false;
@@ -80,9 +81,6 @@ public static class DungeonPathfinder
         if (influence == null) return false;
 
         Vector3Int cell = influence.WorldToCell(worldPos);
-
-        var blocked = floor.TrapRegistry?.GetFlaggedCells();
-        if (blocked != null && blocked.Contains(cell)) return false;
 
         bool owned = influence.IsTileMined(cell);
         bool overhang = influence.IsUnderOverhang(cell);
@@ -106,6 +104,7 @@ public static class DungeonPathfinder
         if (start == goal) return new List<Vector3>();
 
         var blocked = trapReg?.GetFlaggedCells();
+        int flaggedCost = trapReg != null ? trapReg.FlaggedPathCost : 10;
 
         var heap = new MinHeap();
         var costSoFar = new Dictionary<Vector3Int, int>();
@@ -126,7 +125,7 @@ public static class DungeonPathfinder
             {
                 Vector3Int next = current + dir;
 
-                if (blocked != null && blocked.Contains(next) && next != goal) continue;
+                bool flagged = blocked != null && blocked.Contains(next);
 
                 bool owned = influence.IsTileMined(next);
                 bool isRiver = features != null && features.IsRiver(next);
@@ -141,7 +140,7 @@ public static class DungeonPathfinder
 
                 if (!passable && (next != goal || underOverhang)) continue;
 
-                int stepCost = isRiver ? riverCost : 1;
+                int stepCost = flagged ? flaggedCost : (isRiver ? riverCost : 1);
                 int newCost = costSoFar[current] + stepCost;
 
                 if (!costSoFar.TryGetValue(next, out int existingCost) || newCost < existingCost)

@@ -16,6 +16,13 @@ public class TrapRegistry : MonoBehaviour
 {
     public static TrapRegistry Instance { get; private set; }
 
+    [Header("Pathfinding")]
+    [Tooltip("Dijkstra step cost for a flagged damage-trap cell. Rivers cost 5. " +
+             "At 10, a party detours up to nine clear tiles to avoid one known trap " +
+             "but walks across when no cheaper route exists.")]
+    [SerializeField, Min(1)] private int flaggedPathCost = 10;
+    public int FlaggedPathCost => Mathf.Max(1, flaggedPathCost);
+
     private readonly Dictionary<Vector3Int, TrapBase> trapsByCell = new();
     private readonly HashSet<Vector3Int> flaggedCellsCache = new();
     private bool flaggedCacheDirty = true;

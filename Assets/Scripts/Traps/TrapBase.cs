@@ -13,11 +13,11 @@ using UnityEngine;
 ///
 /// FLAGGED STATE
 ///   When a Rogue (or any canDetectTraps adventurer) detects this trap, it gets
-///   flagged. Flagged cells are returned by TrapRegistry.GetFlaggedCells() and
-///   used by DungeonPathfinder.FindPath() to route around them. Monsters DO NOT
-///   detect or flag traps (T4) — they always blunder in unless the trap is
-///   already flagged by an adventurer, in which case the flagged-state check
-///   below skips the trigger uniformly.
+///   flagged. Flagged cells carry a high Dijkstra step cost (TrapRegistry.
+///   FlaggedPathCost) so adventurers detour around them when a cheaper route
+///   exists — but a flagged trap still FIRES on any adventurer forced across
+///   it. Awareness buys avoidance, not immunity; disarming is the Rogue's
+///   coming answer. The wild-monster path keeps its flagged-state skip.
 ///
 /// DAY 31 PART 3C — WILD MONSTER PATH
 ///   OnMonsterEntered(DungeonMonster) mirrors OnAdventurerEntered.
@@ -61,7 +61,6 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public void OnAdventurerEntered(DungeonAdventurer adv)
     {
         if (Definition == null) return;
-        if (IsFlagged) return;
         if (Time.time - lastTriggerTime < Definition.cooldown) return;
 
         lastTriggerTime = Time.time;

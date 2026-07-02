@@ -33,6 +33,12 @@ public class ChestDefinition : ScriptableObject
     [Header("Placement")]
     public float manaCost = 5f;
 
+    [Header("Reset")]
+    [Tooltip("Seconds after being opened before this chest closes and re-arms " +
+             "with a fresh loot roll. Trap variants re-arm their trap too. " +
+             "0 = never resets (one-shot).")]
+    public float resetSeconds = 120f;
+
     [Header("Trap Variant")]
     [Tooltip("If true, interacting with this chest damages the adventurer.")]
     public bool isTrapChest = false;

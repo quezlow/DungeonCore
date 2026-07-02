@@ -210,6 +210,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float attackPathRefreshTimer = 0f;
     private const float AttackPathRefreshInterval = 0.4f;
 
+    [Header("Chase Leash")]
+    [Tooltip("How far (world units, roughly tiles) this monster pursues a target from " +
+             "the spot where the chase began before giving up and returning to its " +
+             "duties. 0 = no leash.")]
+    [SerializeField, Min(0f)] private float chaseLeashRadius = 10f;
+
+    private Vector3 chaseAnchor;
+    private bool chaseAnchored;
+
     // Patrol/Wander pathfinding (DAY 31 PART 3 CLOSE-OUT)
     private List<Vector3> patrolPath = new();
     private int patrolPathIndex = 0;
@@ -1005,9 +1014,28 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             telegraph?.Cancel();
             target = null;
             attackPath.Clear();
+            chaseAnchored = false;
             EnterState(DetermineDesiredState());
             return;
         }
+
+        // Leash: remember where this chase began; give up if it drags too far.
+        if (!chaseAnchored)
+        {
+            chaseAnchor = transform.position;
+            chaseAnchored = true;
+        }
+        if (chaseLeashRadius > 0f
+            && Vector2.Distance(transform.position, chaseAnchor) > chaseLeashRadius)
+        {
+            telegraph?.Cancel();
+            target = null;
+            attackPath.Clear();
+            chaseAnchored = false;
+            EnterState(DetermineDesiredState());
+            return;
+        }
+
         Vector3 targetPos = target.Transform.position;
         float dist = Vector2.Distance(transform.position, targetPos);
         if (dist > attackRange)
@@ -1031,6 +1059,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             if (attackPath.Count == 0)
             {
                 target = null;
+                chaseAnchored = false;
                 EnterState(DetermineDesiredState());
                 return;
             }

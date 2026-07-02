@@ -69,6 +69,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float worshipDuration = 4f;
     [Tooltip("Notoriety removed once per party on a completed pilgrimage exit.")]
     [SerializeField] private float pilgrimNotorietyReduction = 10f;
+    [Tooltip("Core XP granted once per party when a worship-completed Pilgrim " +
+             "party exits peacefully. Faith feeds the reborn god.")]
+    [SerializeField] private float pilgrimXpReward = 10f;
 
     [Header("Type Behaviour")]
     [Tooltip("Seconds an observer (Scholar / Inspector / Noble) dwells in each room.")]
@@ -600,8 +603,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 {
                     party.exitBonusApplied = true;
                     DungeonCore.Instance?.AddNotoriety(-pilgrimNotorietyReduction);
+                    DungeonCore.Instance?.AddXP(pilgrimXpReward);
                     party.notorietyDelta -= pilgrimNotorietyReduction;
-                    Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}.");
+                    Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}, +{pilgrimXpReward:0} XP.");
                 }
             }
             else if (intent == PartyIntent.GiftGiver)
@@ -1258,6 +1262,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             if (trap.IsFlagged) continue;
             trap.Flag();
+            DamageNumberSpawner.Spawn(0f, influence.CellToWorld(trap.OccupiedCell),
+                FloatingDamageNumber.DamageType.Alert);
             Debug.Log($"[Adventurer] Detected trap at {trap.OccupiedCell}.");
             ReactToTrapDetection();
             break;
