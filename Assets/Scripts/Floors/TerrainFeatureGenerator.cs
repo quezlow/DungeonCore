@@ -843,7 +843,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         for (int i = 0; i < span; i++)
         {
             var c = centreline[i];
-            float t = span > 1 ? (float)i / (span - 1) : 0f;
+            // Full mouth width across the whole outdoor approach run; the taper
+            // toward tip width begins only once the channel enters the rock.
+            float t;
+            if (i <= entranceApronRun || span - 1 <= entranceApronRun) t = 0f;
+            else t = Mathf.Clamp01((float)(i - entranceApronRun) / (span - 1 - entranceApronRun));
             int w = Mathf.Max(entranceTipWidth,
                 Mathf.RoundToInt(Mathf.Lerp(entranceMouthWidth, entranceTipWidth, t)));
             int half = (w - 1) / 2;
@@ -1256,8 +1260,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var ch in featureData.chambers)
         {
             if (ch.id != chamberId) continue;
+
+            // Chambers reveal like every other feature: unfog WITH the wall border
+            // so the surrounding rock shows, and register the floor as natural
+            // (mined, unclaimed) so the wall renderer frames it, wilds and
+            // adventurers can walk it, and the rock beside it becomes mineable
+            // through the normal claimable ring. The clear-before-claim gate
+            // (IsCellInUnclearedChamber) still holds until the wilds are dead.
+            RevealWithBorder(terrain, ch.cells);
+
+            var open = new List<Vector3Int>(ch.cells.Count);
             foreach (var sv in ch.cells)
-                terrain.RevealTile(sv.ToVector3Int());
+                open.Add(sv.ToVector3Int());
+            floor.TileInfluence?.MarkNaturalFloor(open);
             return;
         }
     }

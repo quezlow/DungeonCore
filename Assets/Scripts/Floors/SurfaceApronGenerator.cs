@@ -43,6 +43,9 @@ public class SurfaceApronGenerator : MonoBehaviour
     [Range(0f, 1f)][SerializeField] private float treeDensityInner = 0.02f;
     [Tooltip("Tree spawn chance per cell at the outer edge of the apron.")]
     [Range(0f, 1f)][SerializeField] private float treeDensityOuter = 0.35f;
+    [Tooltip("Tree-free strip beside the rim, in cells — keeps canopies from " +
+             "overlapping the wall caps and faces along the map edge.")]
+    [SerializeField, Min(0)] private int treeFreeInnerBand = 4;
 
     private FloorRoot floor;
     private bool generated;
@@ -118,9 +121,12 @@ public class SurfaceApronGenerator : MonoBehaviour
                 else
                     apronTilemap.SetTile(cell, grassTile);
 
-                // Treeline: densifies toward the map edge; the road corridor stays clear.
+                // Treeline: densifies toward the map edge; the road corridor stays
+                // clear, and a band beside the rim stays tree-free so canopies never
+                // overlap the wall caps.
                 if (inClearing || treePrefabs.Count == 0 || propParent == null) continue;
-                float t = Mathf.InverseLerp(radius, outer, dist);
+                if (dist < radius + treeFreeInnerBand) continue;
+                float t = Mathf.InverseLerp(radius + treeFreeInnerBand, outer, dist);
                 float chance = Mathf.Lerp(treeDensityInner, treeDensityOuter, t);
                 if (rng.NextDouble() >= chance) continue;
 

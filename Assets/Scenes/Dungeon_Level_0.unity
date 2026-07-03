@@ -11866,7 +11866,7 @@ MonoBehaviour:
   entranceOffshootMin: 1
   entranceOffshootMax: 3
   entranceOffshootBoxSize: 7
-  entranceApronRun: 4
+  entranceApronRun: 16
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
@@ -13973,7 +13973,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99098814
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -39304,6 +39304,7 @@ MonoBehaviour:
   - {fileID: 4069393593609523799, guid: 3972bcbbb8601674d914874c23e110b0, type: 3}
   treeDensityInner: 0.02
   treeDensityOuter: 0.35
+  treeFreeInnerBand: 4
 --- !u!1 &1635813497
 GameObject:
   m_ObjectHideFlags: 0
