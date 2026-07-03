@@ -157,6 +157,11 @@ public class DungeonSaveController : MonoBehaviour
             if (floor0.TerrainTypeMap != null)
                 floor0.TerrainTypeMap.GenerateNew(floor0Seed, floor0.Terrain.CoreCell, floor0.Terrain.CurrentRadius);
             floor0.FeatureRevealController?.RunInitialCatchup(silent: true);
+
+            // Seeded entrance: stand the DungeonEntrance at the cave mouth.
+            var cave = floor0.FeatureGenerator.EntranceCave;
+            if (cave != null && DungeonBuildController.Instance != null)
+                DungeonBuildController.Instance.RestoreEntrance(floor0, cave.mouthCell.ToVector3Int());
         }
 
         AlertsLog.Instance?.ClearHistory();

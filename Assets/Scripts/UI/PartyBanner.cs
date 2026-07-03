@@ -21,6 +21,13 @@ public class PartyBanner : MonoBehaviour
     [Tooltip("Clearance above the lead's sprite top when it stands taller than the " +
              "fallback offset — keeps the name clear of big sprites and their status bars.")]
     [SerializeField] private float spriteClearance = 0.75f;
+    [Tooltip("World-space width the ribbon is scaled to, whatever the source sprite's " +
+             "pixel size — keeps every pool sprite the same size on screen. 0 = native.")]
+    [SerializeField] private float targetWorldWidth = 3f;
+
+    /// <summary>The party this banner follows — lets the manager find and remove
+    /// a banner when its party is unpinned.</summary>
+    public AdventurerParty Party => party;
 
     private AdventurerParty party;
     private int originalSize;
@@ -34,11 +41,25 @@ public class PartyBanner : MonoBehaviour
         if (bar != null && barSprite != null) bar.sprite = barSprite;
         if (label != null) label.text = text;
 
-        // The name reads off the ribbon itself: centre the label on the bar and
-        // sort it one step above, so the ribbon can never sit empty or swallow it.
+        // Normalize the ribbon to a fixed world width so every bar sprite —
+        // intent-coloured or pinned-pool — renders the same size on screen,
+        // whatever its native pixel dimensions or import PPU.
+        if (bar != null && bar.sprite != null && targetWorldWidth > 0f)
+        {
+            float nativeWidth = bar.sprite.bounds.size.x;
+            if (nativeWidth > 0.01f)
+            {
+                float s = targetWorldWidth / nativeWidth;
+                bar.transform.localScale = new Vector3(s, s, 1f);
+            }
+        }
+
+        // The name reads off the ribbon itself: centre the label on the bar's
+        // rendered bounds (pivot-safe) and sort it one step above, so the ribbon
+        // can never sit empty or swallow it.
         if (label != null && bar != null)
         {
-            label.transform.position = bar.transform.position;
+            label.transform.position = bar.bounds.center;
             var labelRenderer = label.GetComponent<Renderer>();
             if (labelRenderer != null)
             {

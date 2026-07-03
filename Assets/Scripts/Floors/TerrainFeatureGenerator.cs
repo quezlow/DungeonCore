@@ -78,6 +78,26 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Tooltip("Tunnel width at the far tip. The tunnel tapers from tunnelWidth (mouth) to this.")]
     [SerializeField, Min(1)] private int tunnelTipWidth = 2;
 
+    // ── Inspector — Entrance Cave (Floor 0) ───────────────────────
+
+    [Header("Entrance Cave (Floor 0)")]
+    [Tooltip("Tunnel length in cells, carved inward from the disc edge. Keep this above " +
+             "the bedrock rim's max thickness so an interior run always exists for the " +
+             "player's influence to touch and trigger discovery.")]
+    [SerializeField, Min(6)] private int entranceTunnelMinLength = 9;
+    [SerializeField, Min(6)] private int entranceTunnelMaxLength = 13;
+    [Tooltip("Tunnel width at the mouth, tapering toward the interior tip.")]
+    [SerializeField, Min(2)] private int entranceMouthWidth = 3;
+    [SerializeField, Min(1)] private int entranceTipWidth = 2;
+    [Tooltip("Probability per step that the tunnel drifts one cell perpendicular to its direction.")]
+    [Range(0f, 1f)]
+    [SerializeField] private float entranceWobbleChance = 0.35f;
+    [Tooltip("Offshoot chamberlets budding from the tunnel's interior half.")]
+    [SerializeField, Range(0, 3)] private int entranceOffshootMin = 1;
+    [SerializeField, Range(0, 3)] private int entranceOffshootMax = 2;
+    [Tooltip("CA bounding-box edge length for each offshoot chamberlet.")]
+    [SerializeField, Min(5)] private int entranceOffshootBoxSize = 7;
+
     // ── Inspector — Pathfinding & Fording ─────────────────────────
 
     [Header("Pathfinding")]
@@ -169,6 +189,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (floor != null && floor.FloorIndex == 0)
         {
             GenerateCoreCavernAndTunnels(rng, centerCell, floorRadius);
+            GenerateEntranceCave(rng, centerCell, floorRadius);
         }
 
         GenerateChambers(rng, centerCell, floorRadius);
@@ -214,6 +235,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsCoreCavern(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.CoreCavern;
     public bool IsReservedCoreFeature(Vector3Int cell) => reservedCoreCells.Contains(cell);
     public CoreCavernData CoreCavern => featureData?.coreCavern;
+    public bool IsEntranceCave(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.EntranceCave;
+    public EntranceCaveData EntranceCave => featureData?.entranceCave;
+    public bool IsEntranceDiscovered
+        => featureData?.entranceCave != null && featureData.entranceCave.discovered;
+
+    /// <summary>Marks the entrance cave found. Persists via FloorFeatureSaveData.</summary>
+    public void MarkEntranceDiscovered()
+    {
+        if (featureData?.entranceCave != null) featureData.entranceCave.discovered = true;
+    }
 
     public int GetChamberId(Vector3Int cell)
     {
@@ -329,6 +360,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     var mid = r.polyline[r.polyline.Count / 2].ToVector3Int();
                     return floor.TileInfluence.CellToWorld(mid);
                 }
+        }
+        else if (type == FeatureType.EntranceCave && featureData.entranceCave != null)
+        {
+            return floor.TileInfluence.CellToWorld(featureData.entranceCave.mouthCell.ToVector3Int());
         }
         return transform.position;
     }
@@ -736,6 +771,131 @@ public class TerrainFeatureGenerator : MonoBehaviour
         };
     }
 
+    // ── Entrance Cave Generation ──────────────────────────────────
+
+    /// <summary>
+    /// Carves the surface entrance: a wobbling tunnel driven inward from a
+    /// seeded point on the disc edge, through the bedrock rim, plus small CA
+    /// offshoot chamberlets on its interior half. Cells are reserved so
+    /// chambers and rivers avoid the footprint. Pre-revealed and registered
+    /// as natural floor (walkable, unclaimed) like the core cavern.
+    /// </summary>
+    private void GenerateEntranceCave(System.Random rng, Vector3Int centerCell, int floorRadius)
+    {
+        double angle = rng.NextDouble() * 2.0 * Math.PI;
+        double dx = Math.Cos(angle);
+        double dy = Math.Sin(angle);
+
+        // Mouth: the outermost in-disc cell along the bearing.
+        var mouth = new Vector3Int(
+            centerCell.x + (int)Math.Round(floorRadius * dx),
+            centerCell.y + (int)Math.Round(floorRadius * dy), 0);
+        int guard = 0;
+        while (!IsInFloorRadius(mouth, centerCell, floorRadius) && guard++ < 8)
+            mouth = new Vector3Int(
+                mouth.x - (int)Math.Round(dx),
+                mouth.y - (int)Math.Round(dy), 0);
+
+        // Centreline: walk inward (toward the core) with perpendicular wobble.
+        double inDx = -dx, inDy = -dy;
+        double perpDx = -inDy, perpDy = inDx;
+        int length = rng.Next(entranceTunnelMinLength, entranceTunnelMaxLength + 1);
+
+        var centreline = new List<Vector3Int> { mouth };
+        double curX = mouth.x + inDx;
+        double curY = mouth.y + inDy;
+        int driftSteps = 0;
+        for (int step = 1; step < length; step++)
+        {
+            if (rng.NextDouble() < entranceWobbleChance)
+                driftSteps += (rng.Next(2) == 0) ? -1 : 1;
+
+            var cell = new Vector3Int(
+                (int)Math.Round(curX + driftSteps * perpDx),
+                (int)Math.Round(curY + driftSteps * perpDy), 0);
+
+            if (IsInExclusion(cell, centerCell)) break;
+            if (reservedCoreCells.Contains(cell)) break;
+
+            centreline.Add(cell);
+            curX += inDx;
+            curY += inDy;
+        }
+
+        // Dilate with taper: mouth width at the surface end, tip width inside.
+        var carved = new HashSet<Vector3Int>();
+        int span = centreline.Count;
+        for (int i = 0; i < span; i++)
+        {
+            var c = centreline[i];
+            float t = span > 1 ? (float)i / (span - 1) : 0f;
+            int w = Mathf.Max(entranceTipWidth,
+                Mathf.RoundToInt(Mathf.Lerp(entranceMouthWidth, entranceTipWidth, t)));
+            int half = (w - 1) / 2;
+            int extra = (w - 1) - 2 * half;
+            for (int ox = -half; ox <= half + extra; ox++)
+                for (int oy = -half; oy <= half + extra; oy++)
+                {
+                    var p = new Vector3Int(c.x + ox, c.y + oy, 0);
+                    if (!IsInFloorRadius(p, centerCell, floorRadius)) continue;
+                    if (IsInExclusion(p, centerCell)) continue;
+                    if (reservedCoreCells.Contains(p)) continue;
+                    carved.Add(p);
+                }
+        }
+
+        // Offshoot chamberlets: bud from the interior half of the centreline,
+        // offset perpendicular so they hang off the tunnel like cave pockets.
+        // RunChamberCA already filters floor radius, exclusion, and reserved cells.
+        int offshoots = rng.Next(entranceOffshootMin, entranceOffshootMax + 1);
+        for (int i = 0; i < offshoots && span > 3; i++)
+        {
+            var stem = centreline[rng.Next(span / 2, span)];
+            int side = rng.Next(2) == 0 ? -1 : 1;
+            int reach = 2 + rng.Next(2);
+            var pocketCentre = new Vector3Int(
+                stem.x + (int)Math.Round(side * reach * perpDx),
+                stem.y + (int)Math.Round(side * reach * perpDy), 0);
+
+            var pocket = RunChamberCA(rng, pocketCentre, entranceOffshootBoxSize, centerCell, floorRadius);
+            if (pocket.Count < 4) continue;
+            foreach (var p in pocket) carved.Add(p);
+        }
+
+        if (carved.Count == 0) return;
+        carved.Add(mouth);
+
+        featureData.entranceCave = new EntranceCaveData
+        {
+            mouthCell = SerializableVector3Int.From(mouth),
+            angleDegrees = (float)(angle * 180.0 / Math.PI),
+            cells = ToSerializable(new List<Vector3Int>(carved)),
+        };
+
+        // Reserve so chambers and rivers avoid the cave footprint.
+        foreach (var c in carved) reservedCoreCells.Add(c);
+
+        UnfogEntranceCave();
+    }
+
+    /// <summary>
+    /// Unfogs the entrance cave with a wall border and registers its cells as
+    /// natural floor (walkable, unclaimed, mined). Runs on fresh generation
+    /// and save-load; MarkNaturalFloor is idempotent so both paths are safe.
+    /// </summary>
+    private void UnfogEntranceCave()
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null || featureData.entranceCave == null) return;
+
+        RevealWithBorder(terrain, featureData.entranceCave.cells);
+
+        var open = new List<Vector3Int>(featureData.entranceCave.cells.Count);
+        foreach (var sv in featureData.entranceCave.cells)
+            open.Add(sv.ToVector3Int());
+        floor.TileInfluence?.MarkNaturalFloor(open);
+    }
+
     private List<Vector3Int> BuildRiverPolyline(
         System.Random rng, Vector3Int floorCentre, int floorRadius, int controlPointCount)
     {
@@ -909,6 +1069,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     cellLookup[c] = new FeatureRef { type = FeatureType.CoreCavern, featureId = 0 };
                     reservedCoreCells.Add(c);
                 }
+            }
+        }
+
+        if (featureData.entranceCave != null)
+        {
+            foreach (var sv in featureData.entranceCave.cells)
+            {
+                var c = sv.ToVector3Int();
+                cellLookup[c] = new FeatureRef { type = FeatureType.EntranceCave, featureId = 0 };
+                reservedCoreCells.Add(c);
             }
         }
 
@@ -1102,6 +1272,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         if (featureData == null) return;
         UnfogCoreCavern();
+        UnfogEntranceCave();
         foreach (var rid in featureData.revealedRiverIds) UnfogRiver(rid);
         foreach (var cid in featureData.revealedChamberIds) UnfogChamber(cid);
     }

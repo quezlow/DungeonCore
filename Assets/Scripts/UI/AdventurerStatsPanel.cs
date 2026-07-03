@@ -66,9 +66,19 @@ public class AdventurerStatsPanel : MonoBehaviour
     public void OnPinPartyClicked()
     {
         var p = current != null ? current.Party : null;
-        if (p == null || p.tracked) return;
-        p.tracked = true;
-        PartyBannerManager.Instance?.ShowBanner(p);
+        if (p == null) return;
+        if (p.HasNamedMember()) return;   // named parties are permanent nemeses
+
+        if (p.tracked)
+        {
+            p.tracked = false;
+            PartyBannerManager.Instance?.HideBanner(p);
+        }
+        else
+        {
+            p.tracked = true;
+            PartyBannerManager.Instance?.ShowBanner(p);
+        }
         RefreshPinButton();
     }
 
@@ -78,10 +88,16 @@ public class AdventurerStatsPanel : MonoBehaviour
         var p = current != null ? current.Party : null;
         bool hasParty = p != null;
         pinPartyButton.gameObject.SetActive(hasParty);
-        pinPartyButton.interactable = hasParty && !p.tracked;
+
+        bool named = hasParty && p.HasNamedMember();
+        pinPartyButton.interactable = hasParty && !named;
 
         var t = pinPartyButton.GetComponentInChildren<TMP_Text>(true);
-        if (t != null) t.text = hasParty && p.tracked ? "Pinned" : "Pin Party";
+        if (t != null)
+            t.text = !hasParty ? "Pin Party"
+                   : named ? "Named"
+                   : p.tracked ? "Unpin Party"
+                               : "Pin Party";
     }
 
     public void Hide()

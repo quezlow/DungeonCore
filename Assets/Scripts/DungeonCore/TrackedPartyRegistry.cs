@@ -35,6 +35,22 @@ public class TrackedPartyRegistry : MonoBehaviour
     private int nextNameIndex = 0;
 
     public IReadOnlyList<TrackedParty> PendingParties => pending;
+
+    /// <summary>Drop a pending record (player unpin) — that party never returns.
+    /// Named parties are refused; nemeses are permanent.</summary>
+    public void ForgetPending(TrackedParty rec)
+    {
+        if (rec == null || HasNamedMember(rec)) return;
+        pending.Remove(rec);
+    }
+
+    public static bool HasNamedMember(TrackedParty rec)
+    {
+        if (rec == null) return false;
+        foreach (var m in rec.members)
+            if (m != null && m.named && !string.IsNullOrEmpty(m.name)) return true;
+        return false;
+    }
     public IReadOnlyList<AdventurerParty> ActiveParties => active;
 
     private void Awake()

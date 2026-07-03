@@ -133,9 +133,17 @@ public class TileInfluenceManager : MonoBehaviour
     }
 
     // Bedrock border ring (unminable rim): bedrock is never added to the claimable
-    // set, so it can never be claimed and therefore never mined.
+    // set, so it can never be claimed and therefore never mined. Cells carved by
+    // the entrance cave are exempt — the tunnel through the rim is claimable
+    // ground (claim cost applies, no dig cost) so influence can reach the mouth.
     private bool IsBedrock(Vector3Int cell)
-        => MyFloor != null && MyFloor.TerrainTypeMap != null && MyFloor.TerrainTypeMap.IsBedrock(cell);
+    {
+        if (MyFloor == null || MyFloor.TerrainTypeMap == null) return false;
+        if (!MyFloor.TerrainTypeMap.IsBedrock(cell)) return false;
+        var features = MyFloor.FeatureGenerator;
+        if (features != null && features.IsEntranceCave(cell)) return false;
+        return true;
+    }
 
     // ── Lifecycle ─────────────────────────────────────────────────
 

@@ -67,18 +67,37 @@ public class KnownPartiesPanel : MonoBehaviour
         foreach (var p in reg.ActiveParties)
         {
             if (p == null) continue;
-            AddRow("In dungeon:  " + TrackedPartyRegistry.LabelFor(p), p.tracked,
-                   () => { p.tracked = true; PartyBannerManager.Instance?.ShowBanner(p); Refresh(); });
+            var party = p;
+            bool named = party.HasNamedMember();
+            AddRow("In dungeon:  " + TrackedPartyRegistry.LabelFor(party), party.tracked, named,
+                   () =>
+                   {
+                       if (party.tracked)
+                       {
+                           party.tracked = false;
+                           PartyBannerManager.Instance?.HideBanner(party);
+                       }
+                       else
+                       {
+                           party.tracked = true;
+                           PartyBannerManager.Instance?.ShowBanner(party);
+                       }
+                       Refresh();
+                   });
         }
 
         foreach (var rec in reg.PendingParties)
         {
             if (rec == null) continue;
-            AddRow("Returning:  " + TrackedPartyRegistry.LabelFor(rec), true, null);
+            var record = rec;
+            bool named = TrackedPartyRegistry.HasNamedMember(record);
+            AddRow("Returning:  " + TrackedPartyRegistry.LabelFor(record), true, named,
+                   named ? null
+                         : () => { reg.ForgetPending(record); Refresh(); });
         }
     }
 
-    private void AddRow(string label, bool pinned, System.Action onPin)
+    private void AddRow(string label, bool pinned, bool named, System.Action onToggle)
     {
         var row = Instantiate(entryPrefab, entryContainer);
         row.SetActive(true);
@@ -98,15 +117,16 @@ public class KnownPartiesPanel : MonoBehaviour
 
         if (btn != null)
         {
-            bool canPin = onPin != null && !pinned;
-            btn.gameObject.SetActive(onPin != null || pinned);
-            btn.interactable = canPin;
+            bool canToggle = !named && onToggle != null;
+            btn.gameObject.SetActive(true);
+            btn.interactable = canToggle;
 
             // Label the button in code so an empty prefab label can't hide it.
             var btnText = btn.GetComponentInChildren<TMP_Text>(true);
-            if (btnText != null) btnText.text = pinned ? "Pinned" : "Pin";
+            if (btnText != null)
+                btnText.text = named ? "Named" : (pinned ? "Unpin" : "Pin");
 
-            if (canPin) btn.onClick.AddListener(() => onPin());
+            if (canToggle) btn.onClick.AddListener(() => onToggle());
         }
 
         spawned.Add(row);

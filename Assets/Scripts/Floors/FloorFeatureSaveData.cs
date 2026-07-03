@@ -20,6 +20,10 @@ public class FloorFeatureSaveData
     public List<int> revealedChamberIds = new();
 
     public CoreCavernData coreCavern;
+
+    // Seeded surface entrance: tunnel through the bedrock rim + offshoot
+    // chamberlets. Null on floors without one and on legacy saves.
+    public EntranceCaveData entranceCave;
 }
 
 [Serializable]
@@ -64,7 +68,7 @@ public struct FeatureRef
     public int featureId;
 }
 
-public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank }
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave }
 
 [Serializable]
 public class CoreCavernData
@@ -80,4 +84,23 @@ public class TunnelData
     /// <summary>Outward bearing from the cavern, in degrees (debug / tuning only).</summary>
     public float angleDegrees;
     public List<SerializableVector3Int> cells = new();
+}
+
+[Serializable]
+public class EntranceCaveData
+{
+    /// <summary>Cell at the outer disc edge where the tunnel meets the surface.
+    /// The DungeonEntrance object stands here; adventurers spawn here.</summary>
+    public SerializableVector3Int mouthCell;
+
+    /// <summary>Bearing from the floor centre to the mouth, in degrees.
+    /// The apron reads this to lay the pilgrim road.</summary>
+    public float angleDegrees;
+
+    /// <summary>Every carved cell: tunnel + offshoot chamberlets, mouth included.</summary>
+    public List<SerializableVector3Int> cells = new();
+
+    /// <summary>True once the player's influence has touched the cave.
+    /// Gates the discovery alert and the compass HUD.</summary>
+    public bool discovered;
 }

@@ -134,7 +134,27 @@ public class FeatureRevealController : MonoBehaviour
                 features.RevealChamber(fref.featureId);
                 FireAlert(FeatureType.Chamber, fref.featureId, "A cavern has been revealed", silent);
                 break;
+
+            case FeatureType.EntranceCave:
+                if (features.IsEntranceDiscovered) return;
+                features.MarkEntranceDiscovered();
+                FireEntranceAlert(silent);
+                break;
         }
+    }
+
+    private void FireEntranceAlert(bool silent)
+    {
+        if (floor == null || features == null || features.EntranceCave == null) return;
+        Vector3 worldPos = features.GetFeatureCenterWorld(FeatureType.EntranceCave, 0);
+        string message = "The seal is broken. Air moves through the deep — they will come.";
+
+        AlertsLog.Instance?.AddAlert(message, worldPos, floor.FloorIndex, AlertCategory.Discovery);
+
+        if (silent) return;
+        if (discoveryBanner != null)
+            discoveryBanner.Show(message, worldPos, floor.FloorIndex);
+        SoundEffectManager.Play(revealSfxKey);
     }
 
     private void FireAlert(FeatureType type, int featureId, string baseMessage, bool silent)

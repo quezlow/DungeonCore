@@ -45,6 +45,17 @@ public class PartyBannerManager : MonoBehaviour
         party.hasBanner = true;
     }
 
+    /// <summary>Remove a party's banner (unpin). Clears hasBanner so a re-pin
+    /// spawns a fresh one; bannerColorIndex is kept so the colour stays stable.</summary>
+    public void HideBanner(AdventurerParty party)
+    {
+        if (party == null) return;
+        foreach (var b in Object.FindObjectsByType<PartyBanner>())
+            if (b != null && b.Party == party)
+                Destroy(b.gameObject);
+        party.hasBanner = false;
+    }
+
     private static bool HasNamed(AdventurerParty p)
     {
         foreach (var m in p.Members) if (m.named) return true;

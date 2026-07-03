@@ -50,6 +50,14 @@ public class AdventurerParty
     // ── Named / tracked party (persistent nemesis) ──────
     public bool tracked = false;                       // set by a named member, or a player pin
     public readonly List<PartyMember> Members = new();
+
+    /// <summary>True if any member is named. Named parties are permanent
+    /// nemeses and cannot be unpinned.</summary>
+    public bool HasNamedMember()
+    {
+        foreach (var m in Members) if (m != null && m.named) return true;
+        return false;
+    }
     public float notorietyDelta = 0f;                  // net notoriety this party caused (raid summary)
     private int resolvedCount = 0;
 
