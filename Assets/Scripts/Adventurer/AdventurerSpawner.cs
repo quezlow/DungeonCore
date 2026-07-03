@@ -356,9 +356,14 @@ public class AdventurerSpawner : MonoBehaviour
         // party and holding its cap slot forever.
         Vector2 scatter = Random.insideUnitCircle * 1.5f;
         Vector3 pos = spawnPos + new Vector3(scatter.x, scatter.y, 0f);
-        if (floor != null && floor.TileInfluence != null
-            && !floor.TileInfluence.IsTileMined(floor.TileInfluence.WorldToCell(pos)))
-            pos = spawnPos;
+        if (floor != null && floor.TileInfluence != null)
+        {
+            var scatterCell = floor.TileInfluence.WorldToCell(pos);
+            bool okGround = floor.TileInfluence.IsTileMined(scatterCell)
+                || (floor.FeatureGenerator != null
+                    && floor.FeatureGenerator.IsEntranceCave(scatterCell));
+            if (!okGround) pos = spawnPos;
+        }
 
         var adventurer = Instantiate(def.prefab, pos, Quaternion.identity);
 

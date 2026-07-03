@@ -97,6 +97,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField, Range(0, 3)] private int entranceOffshootMax = 2;
     [Tooltip("CA bounding-box edge length for each offshoot chamberlet.")]
     [SerializeField, Min(5)] private int entranceOffshootBoxSize = 7;
+    [Tooltip("How far the channel runs OUT past the disc edge onto the apron, in cells. " +
+             "Straight along the road bearing; parties spawn at its outer end.")]
+    [SerializeField, Min(1)] private int entranceApronRun = 4;
 
     // ── Inspector — Pathfinding & Fording ─────────────────────────
 
@@ -805,7 +808,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         double perpDx = -inDy, perpDy = inDx;
         int length = rng.Next(entranceTunnelMinLength, entranceTunnelMaxLength + 1);
 
-        var centreline = new List<Vector3Int> { mouth };
+        // Straight approach run on the apron: the channel breaches the rim and
+        // runs out along the road bearing, so the surface physically connects
+        // to the tunnel — no fog band, no boxed-in mouth.
+        var centreline = new List<Vector3Int>();
+        for (int step = entranceApronRun; step >= 1; step--)
+            centreline.Add(new Vector3Int(
+                mouth.x + (int)Math.Round(step * dx),
+                mouth.y + (int)Math.Round(step * dy), 0));
+        centreline.Add(mouth);
         double curX = mouth.x + inDx;
         double curY = mouth.y + inDy;
         int driftSteps = 0;
@@ -841,7 +852,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 for (int oy = -half; oy <= half + extra; oy++)
                 {
                     var p = new Vector3Int(c.x + ox, c.y + oy, 0);
-                    if (!IsInFloorRadius(p, centerCell, floorRadius)) continue;
                     if (IsInExclusion(p, centerCell)) continue;
                     if (reservedCoreCells.Contains(p)) continue;
                     carved.Add(p);
@@ -869,10 +879,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (carved.Count == 0) return;
         carved.Add(mouth);
 
-        // Spawn point: a few steps down the tunnel, where the corridor is still
-        // near full width — scatter around it stays on carved floor.
-        int spawnIdx = Mathf.Min(3, centreline.Count - 1);
-        var spawn = centreline[spawnIdx];
+        // Spawn point: the outer end of the approach run, on the pilgrim road —
+        // parties materialize on the surface and walk in; retreaters leave in view.
+        var spawn = centreline.Count > 0 ? centreline[0] : mouth;
         if (!carved.Contains(spawn)) spawn = mouth;
 
         featureData.entranceCave = new EntranceCaveData
@@ -902,9 +911,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         RevealWithBorder(terrain, featureData.entranceCave.cells);
 
+        // Only IN-DISC cells become natural (mined) floor. Outdoor approach cells
+        // stay out of minedTiles entirely: the wall renderer paints boundaries
+        // around mined floor, so mined cells on the apron grow stone frames on
+        // the grass, and the two-cell drape rule then blocks their walkability.
+        // Outdoor cells are walkable via the entrance-cave feature lookup instead.
         var open = new List<Vector3Int>(featureData.entranceCave.cells.Count);
         foreach (var sv in featureData.entranceCave.cells)
-            open.Add(sv.ToVector3Int());
+        {
+            var c = sv.ToVector3Int();
+            if (terrain.IsWithinBounds(c)) open.Add(c);
+        }
         floor.TileInfluence?.MarkNaturalFloor(open);
     }
 

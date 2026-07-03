@@ -11858,14 +11858,15 @@ MonoBehaviour:
   tunnelWobbleChance: 0.3
   tunnelWidth: 4
   tunnelTipWidth: 2
-  entranceTunnelMinLength: 9
-  entranceTunnelMaxLength: 13
-  entranceMouthWidth: 3
-  entranceTipWidth: 2
+  entranceTunnelMinLength: 11
+  entranceTunnelMaxLength: 18
+  entranceMouthWidth: 4
+  entranceTipWidth: 3
   entranceWobbleChance: 0.35
   entranceOffshootMin: 1
-  entranceOffshootMax: 2
+  entranceOffshootMax: 3
   entranceOffshootBoxSize: 7
+  entranceApronRun: 4
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
@@ -13972,7 +13973,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99986386
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16856,8 +16857,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonShadow
   shadowTilemap: {fileID: 1312559821}
-  claimedLight: 0.9
-  unclaimedLight: 0.2
+  claimedLight: 0.5
+  unclaimedLight: 0.1
   breachFadeTiles: 7
   cursorRadius: 4
   mossRadius: 3
@@ -16899,7 +16900,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000025226936}
+  m_AnchoredPosition: {x: 0, y: -0.000006322981}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -32556,16 +32557,20 @@ PrefabInstance:
       value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: m_BackGroundColor.a
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.b
-      value: 0.10196079
+      value: 0.18431373
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.g
-      value: 0.098039225
+      value: 0.15686275
       objectReference: {fileID: 0}
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.r
-      value: 0.098039225
+      value: 0.20392157
       objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.x

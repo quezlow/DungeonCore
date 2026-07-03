@@ -85,7 +85,9 @@ public static class DungeonPathfinder
         bool owned = influence.IsTileMined(cell);
         bool overhang = influence.IsUnderOverhang(cell);
         bool river = floor.FeatureGenerator != null && floor.FeatureGenerator.IsRiver(cell);
-        return (owned && !overhang) || river;
+        bool caveApproach = !owned && floor.FeatureGenerator != null
+            && floor.FeatureGenerator.IsEntranceCave(cell);
+        return (owned && !overhang) || river || caveApproach;
     }
 
     // ── Dijkstra core ────────────────────────────────────────────
@@ -136,7 +138,11 @@ public static class DungeonPathfinder
                 // / wander target placed there would pull a monster straight in.
                 bool underOverhang = influence.IsUnderOverhang(next);
 
-                bool passable = (owned && !underOverhang) || isRiver;
+                // The entrance approach: carved channel cells OUTSIDE the disc are
+                // walkable surface ground — never mined, never walled, no drape.
+                bool caveApproach = !owned && features != null && features.IsEntranceCave(next);
+
+                bool passable = (owned && !underOverhang) || isRiver || caveApproach;
 
                 if (!passable && (next != goal || underOverhang)) continue;
 

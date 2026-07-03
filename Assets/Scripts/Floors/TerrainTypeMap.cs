@@ -82,7 +82,7 @@ public class TerrainTypeMap : MonoBehaviour
 
         generated = true;
 
-        // DAY 32 — Repaint any claimable cells that were painted before
+        // Repaint any claimable cells that were painted before
         //          generation completed (Floor 0 startup ordering).
         var influence = GetComponentInParent<FloorRoot>()?.TileInfluence;
         influence?.RepaintClaimableTiles();
