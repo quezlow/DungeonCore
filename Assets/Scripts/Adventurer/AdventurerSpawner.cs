@@ -574,6 +574,60 @@ public class AdventurerSpawner : MonoBehaviour
     [ContextMenu("Force Spawn Party Now")]
     public void ForceSpawnParty() { timer = 0f; SpawnParty(); }
 
+    // ── Live-party restore ──────────────────────────────
+    /// <summary>Recreates every in-dungeon party from a mid-raid save. Runs before floor
+    /// objects restore, and each living member registers with its floor at once so trap
+    /// re-arming correctly skips floors that still hold a party.</summary>
+    public void RestoreLiveParties(List<LivePartySaveData> saves)
+    {
+        if (saves == null) return;
+        foreach (var s in saves)
+        {
+            if (s == null || s.members == null || s.members.Count == 0) continue;
+
+            var party = new AdventurerParty((PartyIntent)s.intent);
+            RegisterLiveParty(party);
+            TrackedPartyRegistry.Instance?.RegisterActive(party);
+            party.ApplyRestoredState(s);
+
+            foreach (var rec in s.members)
+            {
+                if (rec.isLive) SpawnRestoredMember(rec, party);
+                else party.AddResolvedMember(rec);
+            }
+
+            if (party.tracked) PartyBannerManager.Instance?.ShowBanner(party);
+        }
+    }
+
+    private void SpawnRestoredMember(LiveMemberSaveData rec, AdventurerParty party)
+    {
+        var def = Def((AdventurerType)rec.type);
+        if (def == null || def.prefab == null) return;
+
+        var floor = FloorManager.Instance?.GetFloor(rec.floorIndex) ?? FloorManager.Instance?.GetFloor(0);
+        if (floor == null) return;
+
+        var adventurer = Instantiate(def.prefab, rec.position.ToVector3(), Quaternion.identity);
+        adventurer.transform.SetParent(floor.transform, true);
+
+        var classDef = ClassDefFor((CombatClass)rec.combatClass);
+        adventurer.Initialise(def, (BehaviourTrait)rec.trait, party, classDef, rec.name, rec.xp, rec.returnGrudge);
+
+        // Register with the floor now (not in the deferred Start) so the trap-reset pass
+        // sees the party and leaves this floor's traps as they were saved.
+        floor.Entities?.Register(adventurer);
+
+        adventurer.ApplyLiveState(rec);
+
+        if (rec.tributeValue > 0 && tributeChestPrefab != null)
+        {
+            party.tributeAssigned = true;
+            var chestSprite = tributeChestPrefab.GetComponent<SpriteRenderer>()?.sprite;
+            adventurer.AssignTribute(rec.tributeValue, tributeChestPrefab, tributeAbsorbDelay, tributeScatter, chestSprite);
+        }
+    }
+
     /// <summary>Spawns a single Hero at the entrance (Inspector-escalation response).</summary>
     public void DispatchHeroParty()
     {

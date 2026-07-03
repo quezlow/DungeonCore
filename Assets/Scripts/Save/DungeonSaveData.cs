@@ -57,6 +57,8 @@ public class DungeonSaveData
 
     public List<TrackedParty> trackedParties = new();
 
+    public List<LivePartySaveData> liveParties = new();
+
     public InspectorEscalationSaveData inspectorEscalation;
 }
 
@@ -180,4 +182,48 @@ public class StairsSaveData
 {
     public SerializableVector3Int cell;
     public int direction;
+}
+
+[Serializable]
+public class LivePartySaveData
+{
+    public int intent;
+    public bool tracked;
+    public int bannerColorIndex = -1;
+    public bool exitBonusApplied;
+    public bool tributeAssigned;
+    public bool fractured;
+    public float notorietyDelta;
+    public List<LiveMemberSaveData> members = new();
+}
+
+[Serializable]
+public class LiveMemberSaveData
+{
+    // Roster identity — every member, alive or already resolved.
+    public int type;
+    public int combatClass;
+    public int trait;
+    public string name;
+    public bool named;
+    public bool resolved;
+    public bool escaped;
+    public bool breached;
+    public int lootValue;
+    public int xp;
+    public string grudgeMonster;
+
+    // Live dynamic state — only when isLive.
+    public bool isLive;
+    public int floorIndex;
+    public SerializableVector3 position;
+    public float currentHP;
+    public int state;
+    public bool worshipCompleted;
+    public float worshipTimer;
+    public int roomsObserved;
+    public int carriedGold;
+    public int tributeValue;
+    public string returnGrudge;
+    public float grudgeDamage;
 }

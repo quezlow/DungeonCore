@@ -236,6 +236,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private LootTable lootTable;
 
     private readonly List<CarriableLoot> carriedLoot = new();
+    private int restoredCarriedGold;                   // carried gold from a mid-raid save (no loot objects)
+    private LiveMemberSaveData pendingRestore;         // applied at the end of Start once status bars exist
 
     // ── Tribute bearing (Pilgrim / Cultist gift delivery) ────────
     private int tributeValue;
@@ -388,7 +390,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         // Attackers/observers pause at the threshold to form up first;
         // everyone else (worshippers, Suicidal, Treasure Hunter) advances immediately.
-        if (party != null && party.Formation != FormationType.None)
+        if (pendingRestore != null)
+            ApplyPendingRestore();
+        else if (party != null && party.Formation != FormationType.None)
             BeginOrganizing();
         else
             BeginAdvance();
@@ -1354,6 +1358,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             Vector2 scatter = Random.insideUnitCircle * 0.3f;
             loot.DropAndAbsorb(transform.position + new Vector3(scatter.x, scatter.y), droppedLootPrefab);
         }
+        if (restoredCarriedGold > 0 && droppedLootPrefab != null)
+        {
+            Vector2 lumpScatter = Random.insideUnitCircle * 0.3f;
+            var d = Instantiate(droppedLootPrefab,
+                transform.position + new Vector3(lumpScatter.x, lumpScatter.y, 0f), Quaternion.identity);
+            d.Initialise(restoredCarriedGold);
+            restoredCarriedGold = 0;
+        }
         carriedLoot.Clear();
     }
 
@@ -1677,6 +1689,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Type / goal reads
     public AdventurerType Type => type;
+    public PartyMember Member => partyMember;
     public AdventurerGoal Goal => goal;
     /// <summary>True only for goals that destroy the core on arrival (Mercenary / Hero / Suicidal).
     /// Worshippers, looters and observers are NOT a danger to the core.</summary>
@@ -1693,10 +1706,59 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         get
         {
-            int v = 0;
+            int v = restoredCarriedGold;
             foreach (var l in carriedLoot) if (l != null) v += l.GoldValue;
             return v;
         }
+    }
+
+    // ── Save / restore (live persistence) ───────────────
+    /// <summary>Writes this unit's dynamic state into its roster save record.</summary>
+    public void CaptureLiveState(LiveMemberSaveData rec)
+    {
+        rec.floorIndex = currentFloor != null ? currentFloor.FloorIndex : 0;
+        rec.position = SerializableVector3.From(transform.position);
+        rec.currentHP = currentHP;
+        rec.state = (int)state;
+        rec.worshipCompleted = worshipCompleted;
+        rec.worshipTimer = worshipTimer;
+        rec.roomsObserved = roomsObserved;
+        rec.carriedGold = CarriedLootValue;
+        rec.tributeValue = tributeValue;
+        rec.returnGrudge = returnGrudge;
+        rec.grudgeMonster = grudgeMonster;
+        rec.grudgeDamage = grudgeDamage;
+    }
+
+    /// <summary>Queues restored state; applied at the end of Start so it overrides the
+    /// fresh-spawn defaults (full HP, initial state) once status bars exist.</summary>
+    public void ApplyLiveState(LiveMemberSaveData rec) => pendingRestore = rec;
+
+    private void ApplyPendingRestore()
+    {
+        var rec = pendingRestore;
+        pendingRestore = null;
+
+        currentHP = Mathf.Clamp(rec.currentHP, 1f, maxHP);
+        statusBars?.SetHP(currentHP, maxHP);
+        restoredCarriedGold = rec.carriedGold;
+        returnGrudge = rec.returnGrudge;
+        grudgeMonster = rec.grudgeMonster;
+        grudgeDamage = rec.grudgeDamage;
+        if (partyMember != null) partyMember.grudgeMonster = grudgeMonster;
+        worshipCompleted = rec.worshipCompleted;
+        worshipTimer = rec.worshipTimer;
+        roomsObserved = rec.roomsObserved;
+
+        // Settled states resume; mid-action states fall back to advancing.
+        state = (AdventurerState)rec.state switch
+        {
+            AdventurerState.UsingStairs => AdventurerState.MovingToCore,
+            AdventurerState.Disarming => AdventurerState.MovingToCore,
+            AdventurerState.Organizing => AdventurerState.MovingToCore,
+            var s => s,
+        };
+        RefreshPath();
     }
 
     /// <summary>Carried loot slows the adventurer: 1 when empty, down to encumbranceFloor for a heavy haul.</summary>

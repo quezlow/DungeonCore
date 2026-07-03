@@ -269,7 +269,12 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.runStats = RunStats.Instance.GetSaveData();
 
         if (TrackedPartyRegistry.Instance != null)
+        {
             currentSave.trackedParties = TrackedPartyRegistry.Instance.GetSaveData();
+            currentSave.liveParties = new();
+            foreach (var p in TrackedPartyRegistry.Instance.ActiveParties)
+                if (p != null) currentSave.liveParties.Add(p.CaptureSaveState());
+        }
 
         if (InspectorEscalation.Instance != null)
             currentSave.inspectorEscalation = InspectorEscalation.Instance.GetSaveData();
@@ -614,6 +619,10 @@ public class DungeonSaveController : MonoBehaviour
                 var floor0 = FloorManager.Instance.GetFloor(0);
                 DungeonBuildController.Instance.RestoreEntrance(floor0, currentSave.entranceCell.ToVector3Int());
             }
+
+            // Live parties restore first, so a floor reloading with a party keeps its
+            // saved trap state — each restored member registers with its floor at once.
+            AdventurerSpawner.Instance?.RestoreLiveParties(currentSave.liveParties);
 
             // Pass 4: spawners, chests, furniture, anchors, traps, stairs.
             foreach (var floorData in currentSave.floors)

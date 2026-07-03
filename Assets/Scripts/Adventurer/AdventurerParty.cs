@@ -104,6 +104,86 @@ public class AdventurerParty
         return m;
     }
 
+    // ── Save / restore (live persistence) ───────────────
+    /// <summary>Captures the whole party — flags plus every roster member, with the
+    /// live state of those still in the dungeon — for a mid-raid save.</summary>
+    public LivePartySaveData CaptureSaveState()
+    {
+        var s = new LivePartySaveData
+        {
+            intent = (int)Intent,
+            tracked = tracked,
+            bannerColorIndex = bannerColorIndex,
+            exitBonusApplied = exitBonusApplied,
+            tributeAssigned = tributeAssigned,
+            fractured = fractured,
+            notorietyDelta = notorietyDelta,
+        };
+        foreach (var m in Members)
+        {
+            var rec = new LiveMemberSaveData
+            {
+                type = (int)m.type,
+                combatClass = (int)m.combatClass,
+                trait = (int)m.trait,
+                name = m.name,
+                named = m.named,
+                resolved = m.resolved,
+                escaped = m.escaped,
+                breached = m.breached,
+                lootValue = m.lootValue,
+                xp = m.xp,
+                grudgeMonster = m.grudgeMonster,
+            };
+            if (!m.resolved)
+            {
+                var adv = FindLive(m);
+                if (adv != null) { adv.CaptureLiveState(rec); rec.isLive = true; }
+            }
+            s.members.Add(rec);
+        }
+        return s;
+    }
+
+    private DungeonAdventurer FindLive(PartyMember m)
+    {
+        foreach (var a in live) if (a != null && a.Member == m) return a;
+        return null;
+    }
+
+    /// <summary>Re-applies the party-level flags after construction (see AdventurerSpawner).</summary>
+    public void ApplyRestoredState(LivePartySaveData s)
+    {
+        tracked = s.tracked;
+        bannerColorIndex = s.bannerColorIndex;
+        exitBonusApplied = s.exitBonusApplied;
+        tributeAssigned = s.tributeAssigned;
+        fractured = s.fractured;
+        notorietyDelta = s.notorietyDelta;
+    }
+
+    /// <summary>Re-adds a member that had already died or fled at save time, so the roster
+    /// size, morale threshold and raid summary stay correct.</summary>
+    public void AddResolvedMember(LiveMemberSaveData rec)
+    {
+        var m = new PartyMember
+        {
+            type = (AdventurerType)rec.type,
+            combatClass = (CombatClass)rec.combatClass,
+            trait = (BehaviourTrait)rec.trait,
+            name = rec.name,
+            named = rec.named,
+            xp = rec.xp,
+            grudgeMonster = rec.grudgeMonster,
+            resolved = true,
+            escaped = rec.escaped,
+            breached = rec.breached,
+            lootValue = rec.lootValue,
+        };
+        Members.Add(m);
+        resolvedCount++;
+    }
+
     /// <summary>Called when a member dies or escapes. When all members have resolved,
     /// a tracked party is recorded for return and the party leaves the active list.</summary>
     public void OnMemberResolved(PartyMember member, bool escaped, bool breached = false, int lootValue = 0)
