@@ -50,7 +50,7 @@ public class AdventurerSpawner : MonoBehaviour
              "(Notoriety/Reputation scaled, above), then a type is picked here.")]
     [SerializeField] private float weightMercenary = 3f;       // Destroyer
     [SerializeField] private float weightHero = 1f;            // Destroyer (gated)
-    [SerializeField] private float weightTreasureHunter = 3f;  // Gift-Giver
+    [SerializeField] private float weightTreasureHunter = 3f;  // Destroyer — thieves take, they don't give
     [SerializeField] private float weightCultist = 1f;         // Gift-Giver
     [SerializeField] private float weightPilgrim = 2f;         // Pilgrim
     [SerializeField] private float weightScholar = 1.5f;       // Pilgrim
@@ -78,8 +78,9 @@ public class AdventurerSpawner : MonoBehaviour
              "guards. Falls back to the Mercenary type asset if unset. Keep it Mercenary-typed.")]
     [SerializeField] private AdventurerDefinition guardDef;
 
-    [Header("Gift-Giver Tribute")]
-    [Tooltip("TributeChest prefab dropped near the entrance by a Gift-Giver party.")]
+    [Header("Tribute Bearers")]
+    [Tooltip("TributeChest prefab. One member of each Pilgrim or Cultist party " +
+             "carries it to the core and drops it there — or where they fall or flee.")]
     [SerializeField] private TributeChest tributeChestPrefab;
     [SerializeField] private int tributeGoldValue = 20;
     [Tooltip("Cultists bring the richest tribute of any type.")]
@@ -275,8 +276,9 @@ public class AdventurerSpawner : MonoBehaviour
 
         if (party.tracked) PartyBannerManager.Instance?.ShowBanner(party);
 
-        if (party.Intent == PartyIntent.GiftGiver)
-            DropTribute(spawnPos, partyType);
+        // Tribute is no longer littered at the spawn point: one member of each
+        // Pilgrim or Cultist party carries the chest to the core (assigned in
+        // SpawnMember) and drops it on arrival — or where they fall or flee.
 
         Debug.Log($"[AdventurerSpawner] Spawned {spawned} adventurer(s) — type {partyType}, intent {party.Intent}.");
     }
@@ -376,6 +378,17 @@ public class AdventurerSpawner : MonoBehaviour
             name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
 
         adventurer.Initialise(def, trait, party, classDef, name, returningXp);
+
+        // One bearer per Pilgrim/Cultist party carries the tribute to the core.
+        if (party != null && !party.tributeAssigned
+            && (def.type == AdventurerType.Pilgrim || def.type == AdventurerType.Cultist)
+            && tributeChestPrefab != null)
+        {
+            party.tributeAssigned = true;
+            int value = def.type == AdventurerType.Cultist ? cultistTributeGoldValue : tributeGoldValue;
+            var chestSprite = tributeChestPrefab.GetComponent<SpriteRenderer>()?.sprite;
+            adventurer.AssignTribute(value, tributeChestPrefab, tributeAbsorbDelay, tributeScatter, chestSprite);
+        }
     }
 
     // ── Combat class assignment (Day 39) ─────────────────────────
@@ -477,20 +490,20 @@ public class AdventurerSpawner : MonoBehaviour
         float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
         float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
         float wMerc = Mathf.Max(0f, weightMercenary);
-        float total = wMerc + wHero;
+        float wTH = Mathf.Max(0f, weightTreasureHunter);
+        float total = wMerc + wHero + wTH;
         if (total <= 0f) return AdventurerType.Mercenary;
-        if (Random.Range(0f, total) < wHero) return AdventurerType.Hero;
+        float roll = Random.Range(0f, total);
+        if (roll < wHero) return AdventurerType.Hero;
+        if (roll < wHero + wTH) return AdventurerType.TreasureHunter;
         return AdventurerType.Mercenary;
     }
 
     private AdventurerType RollGiftGiverType()
     {
-        float wTH = Mathf.Max(0f, weightTreasureHunter);
-        float wCult = Mathf.Max(0f, weightCultist);
-        float total = wTH + wCult;
-        if (total <= 0f) return AdventurerType.TreasureHunter;
-        if (Random.Range(0f, total) < wCult) return AdventurerType.Cultist;
-        return AdventurerType.TreasureHunter;
+        // Cultists are the only gift-bearers by category; Treasure Hunters rolled
+        // here historically, but thieves take — they don't give.
+        return AdventurerType.Cultist;
     }
 
     private AdventurerType RollPilgrimType()
@@ -509,27 +522,6 @@ public class AdventurerSpawner : MonoBehaviour
         roll -= wSch; if (roll < wSui) return AdventurerType.Suicidal;
         roll -= wSui; if (roll < wNob) return AdventurerType.Noble;
         return AdventurerType.Inspector;
-    }
-
-    private void DropTribute(Vector3 entrancePos, AdventurerType partyType)
-    {
-        if (tributeChestPrefab == null)
-        {
-            Debug.LogWarning("[AdventurerSpawner] Gift-Giver party but no tributeChestPrefab assigned.");
-            return;
-        }
-
-        Vector2 scatter = Random.insideUnitCircle * tributeScatter;
-        Vector3 pos = entrancePos + new Vector3(scatter.x, scatter.y, 0f);
-
-        var tribute = Instantiate(tributeChestPrefab, pos, Quaternion.identity);
-
-        var floor = FloorManager.Instance?.GetFloor(0);
-        if (floor != null)
-            tribute.transform.SetParent(floor.transform, true);
-
-        int value = partyType == AdventurerType.Cultist ? cultistTributeGoldValue : tributeGoldValue;
-        tribute.Initialise(value, tributeAbsorbDelay);
     }
 
     // ── Organize / formation ────────────────────────────

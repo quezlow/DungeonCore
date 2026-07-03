@@ -49,6 +49,7 @@ public class AdventurerParty
 
     // ── Named / tracked party (persistent nemesis) ──────
     public bool tracked = false;                       // set by a named member, or a player pin
+    public bool tributeAssigned = false;               // one bearer per Pilgrim/Cultist party
     public readonly List<PartyMember> Members = new();
 
     /// <summary>True if any member is named. Named parties are permanent

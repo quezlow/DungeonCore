@@ -220,6 +220,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private LootTable lootTable;
 
     private readonly List<CarriableLoot> carriedLoot = new();
+
+    // ── Tribute bearing (Pilgrim / Cultist gift delivery) ────────
+    private int tributeValue;
+    private TributeChest tributePrefab;
+    private float tributeAbsorbDelay = 1.5f;
+    private float tributeScatter = 1.2f;
+    private GameObject tributeVisual;
+    public bool CarryingTribute => tributePrefab != null && tributeValue > 0;
     private readonly HashSet<DungeonChest> visitedChests = new();
 
     // Multi-floor state
@@ -610,9 +618,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             }
             else if (intent == PartyIntent.GiftGiver)
             {
-                // Word of rich pickings spreads — satisfied looters and tribute
-                // bearers raise the dungeon's desirability. A retreating Destroyer
-                // or an empty-handed observer does not.
+                // Tribute bearers raise the dungeon's desirability on a peaceful exit.
+                DungeonCore.Instance?.AddReputation(2f);
+            }
+            else if (goal == AdventurerGoal.LootAndLeave && carried > 0)
+            {
+                // Word of rich pickings spreads — a thief escaping WITH a haul is
+                // the best advertisement a dungeon can buy. Empty-handed, nobody
+                // talks.
                 DungeonCore.Instance?.AddReputation(2f);
             }
 
@@ -956,6 +969,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void StartRetreat()
     {
+        // A fleeing bearer panic-drops the offering where they turn tail —
+        // the god is paid either way.
+        DropCarriedTribute("panic-dropped");
+
         state = AdventurerState.Retreating;
         combatTarget = null;
         chestTarget = null;
@@ -970,7 +987,61 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         worshipTimer = worshipDuration;
         combatTarget = null;
         chestTarget = null;
+
+        // The offering is laid at the god's feet before the prayer begins.
+        DropCarriedTribute("laid at the core");
+
         Debug.Log("[Adventurer] Pilgrim worshipping at the core.");
+    }
+
+    /// <summary>Marks this adventurer as the party's tribute bearer (called by the
+    /// spawner). The chest rides visibly on the bearer until it is dropped — at
+    /// the core on arrival, where they fall, or where they turn tail.</summary>
+    public void AssignTribute(int value, TributeChest prefab, float absorbDelay, float scatter, Sprite chestSprite)
+    {
+        tributeValue = value;
+        tributePrefab = prefab;
+        tributeAbsorbDelay = absorbDelay;
+        tributeScatter = scatter;
+
+        if (chestSprite != null && tributeVisual == null)
+        {
+            // Grab the bearer's own renderer BEFORE creating the child, so the
+            // lookup can't find the chest sprite it is about to create.
+            var own = GetComponentInChildren<SpriteRenderer>();
+
+            tributeVisual = new GameObject("TributeCarry");
+            tributeVisual.transform.SetParent(transform, false);
+            tributeVisual.transform.localPosition = new Vector3(0.3f, 0.35f, 0f);
+            tributeVisual.transform.localScale = Vector3.one * 0.6f;
+            var sr = tributeVisual.AddComponent<SpriteRenderer>();
+            sr.sprite = chestSprite;
+            if (own != null)
+            {
+                sr.sortingLayerID = own.sortingLayerID;
+                sr.sortingOrder = own.sortingOrder + 1;
+            }
+        }
+    }
+
+    /// <summary>Drops the carried tribute chest where the bearer stands — the core
+    /// on delivery, the death cell if they fall, or the spot they turned tail.
+    /// The chest absorbs into the core's gold as always.</summary>
+    private void DropCarriedTribute(string reason)
+    {
+        if (!CarryingTribute) return;
+
+        Vector2 scatter = Random.insideUnitCircle * tributeScatter;
+        Vector3 pos = transform.position + new Vector3(scatter.x, scatter.y, 0f);
+        var chest = Instantiate(tributePrefab, pos, Quaternion.identity);
+        chest.transform.SetParent(transform.parent, true);
+        chest.Initialise(tributeValue, tributeAbsorbDelay);
+
+        Debug.Log($"[Adventurer] Tribute ({tributeValue}g) {reason}.");
+
+        tributeValue = 0;
+        tributePrefab = null;
+        if (tributeVisual != null) { Destroy(tributeVisual); tributeVisual = null; }
     }
 
     private void HandleWorship()
@@ -1151,6 +1222,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         AdventurerDeaths++;
+        DropCarriedTribute("fell with the offering");
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
         currentFloor?.Entities?.Unregister(this);
 

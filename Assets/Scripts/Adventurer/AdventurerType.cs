@@ -37,7 +37,7 @@ public static class AdventurerTypeInfo
 {
     public static PartyIntent IntentOf(AdventurerType type) => type switch
     {
-        AdventurerType.TreasureHunter => PartyIntent.GiftGiver,
+        AdventurerType.TreasureHunter => PartyIntent.Destroyer,
         AdventurerType.Mercenary => PartyIntent.Destroyer,
         AdventurerType.Scholar => PartyIntent.Pilgrim,
         AdventurerType.Pilgrim => PartyIntent.Pilgrim,
