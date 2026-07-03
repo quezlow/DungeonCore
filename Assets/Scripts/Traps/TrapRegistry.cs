@@ -53,6 +53,25 @@ public class TrapRegistry : MonoBehaviour
         OnFlaggedTrapsChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Re-arms every trap on this floor and clears all trap awareness. Called the
+    /// instant the floor empties of adventurers, so the next incursion meets the
+    /// floor's defences intact. Idempotent: a no-op when nothing needs resetting.
+    /// </summary>
+    public void ResetAllTraps()
+    {
+        bool any = false;
+        foreach (var kvp in trapsByCell)
+        {
+            var trap = kvp.Value;
+            if (trap == null) continue;
+            if (!trap.IsFlagged && !trap.IsDisarmed) continue;
+            trap.ResetArmed();
+            any = true;
+        }
+        if (any) NotifyFlaggedChanged();
+    }
+
     // ── Queries ───────────────────────────────────────────────────
 
     public TrapBase GetTrapAt(Vector3Int cell)

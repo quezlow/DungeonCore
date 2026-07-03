@@ -1022,7 +1022,7 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     public void RestoreTrap(FloorRoot floor, TrapDefinition def, Vector3Int cell, bool isFlagged,
-                            string warningLabel = "", bool hasLink = false,
+                            bool isDisarmed = false, string warningLabel = "", bool hasLink = false,
                             Vector3Int linkedCell = default)
     {
         if (def == null || def.prefab == null) return;
@@ -1036,6 +1036,7 @@ public class DungeonBuildController : MonoBehaviour
         if (trap is PressurePlateTrap plate && hasLink)
             plate.SetLink(linkedCell);
         if (isFlagged) trap.Flag();
+        if (isDisarmed) trap.Disarm();
     }
 
     public void RestoreStairs(FloorRoot floor, Vector3Int cell, DungeonStairs.Direction dir)

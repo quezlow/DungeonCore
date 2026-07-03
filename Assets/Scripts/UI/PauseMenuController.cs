@@ -42,6 +42,7 @@ public class PauseMenuController : MonoBehaviour
     [SerializeField] private Button quitToTitleButton;
     [SerializeField] private Button quitToDesktopButton;
     [SerializeField] private Button runLogButton;
+    [SerializeField] private Button copySeedButton;
 
     [Header("Sub-panels (in this scene)")]
     [SerializeField] private GameObject settingsPanel;
@@ -70,6 +71,7 @@ public class PauseMenuController : MonoBehaviour
         quitToTitleButton.onClick.AddListener(() => PromptQuit(false));
         quitToDesktopButton.onClick.AddListener(() => PromptQuit(true));
         if (runLogButton != null) runLogButton.onClick.AddListener(OpenRunLog);
+        if (copySeedButton != null) copySeedButton.onClick.AddListener(CopySeed);
 
         var settingsCtrl = settingsPanel != null ? settingsPanel.GetComponent<SettingsMenuController>() : null;
         if (settingsCtrl != null) settingsCtrl.OnBack += CloseSettings;
@@ -282,12 +284,19 @@ public class PauseMenuController : MonoBehaviour
     private void SaveNow()
     {
         DungeonSaveController.Instance?.SaveGame();
-        if (saveFlashLabel != null) StartCoroutine(FlashSaved());
+        if (saveFlashLabel != null) StartCoroutine(FlashMessage("Saved!"));
     }
 
-    private IEnumerator FlashSaved()
+    private void CopySeed()
     {
-        saveFlashLabel.text = "Saved!";
+        int seed = DungeonSaveController.Instance != null ? DungeonSaveController.Instance.WorldSeed : 0;
+        GUIUtility.systemCopyBuffer = seed.ToString();
+        if (saveFlashLabel != null) StartCoroutine(FlashMessage($"Seed {seed} copied"));
+    }
+
+    private IEnumerator FlashMessage(string msg)
+    {
+        saveFlashLabel.text = msg;
         saveFlashLabel.gameObject.SetActive(true);
         float t = 0f;
         while (t < 1.5f) { t += Time.unscaledDeltaTime; yield return null; }

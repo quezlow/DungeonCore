@@ -61,6 +61,7 @@ public class AdventurerParty
     }
     public float notorietyDelta = 0f;                  // net notoriety this party caused (raid summary)
     private int resolvedCount = 0;
+    private bool fractured = false;                    // morale breaks once per party
 
     // ── Party banner ────────────────────────────────────
     public bool hasBanner = false;             // guards one banner per party
@@ -114,12 +115,17 @@ public class AdventurerParty
         member.lootValue = lootValue;
         resolvedCount++;
 
+        // A slain member may break a combat party's nerve. The fraction needed to
+        // break varies with disposition — cowards bolt early, the bold hold on.
+        if (!escaped && !breached) CheckMoraleFracture();
+
         if (resolvedCount < Members.Count || Members.Count == 0) return;
 
         RecordRaidSummary();
 
         if (tracked) TrackedPartyRegistry.Instance?.RecordResolvedParty(this);
         TrackedPartyRegistry.Instance?.DeregisterActive(this);
+        DungeonSaveController.Instance?.RequestAutosave();
     }
 
     /// <summary>On full resolution, hand a per-raid record to RunStats for the day-end summary.</summary>
@@ -143,6 +149,55 @@ public class AdventurerParty
             notorietyDelta = notorietyDelta,
         });
     }
+
+    // ── Morale ──────────────────────────────────────────
+    /// <summary>A death may shatter a fighting party's resolve. Only Destroyer-intent
+    /// parties fracture; the survivors (bar Heroes and the Suicidal) turn and flee.</summary>
+    private void CheckMoraleFracture()
+    {
+        if (fractured) return;
+        if (Intent != PartyIntent.Destroyer) return;   // only parties here to fight
+        if (Members.Count == 0) return;
+
+        int slain = 0;
+        foreach (var m in Members)
+            if (m.resolved && !m.escaped && !m.breached) slain++;
+
+        if ((float)slain / Members.Count < FractureThreshold()) return;
+
+        fractured = true;
+
+        Vector3 pos = Vector3.zero;
+        var lead = CurrentLead();
+        if (lead != null) pos = lead.transform.position;
+
+        foreach (var a in live)
+        {
+            if (a == null) continue;
+            if (a.Type == AdventurerType.Hero || a.Type == AdventurerType.Suicidal) continue;
+            a.ForceRetreat();
+        }
+
+        AlertsLog.Instance?.AddAlert("Their nerve breaks. The survivors turn and run.", pos, -1, AlertCategory.Combat);
+    }
+
+    /// <summary>The party's collective breaking point — the mean of its members'
+    /// dispositions. Cowards pull it down; the aggressive push it up.</summary>
+    private float FractureThreshold()
+    {
+        float sum = 0f; int n = 0;
+        foreach (var m in Members) { sum += MoraleBreakFraction(m.trait); n++; }
+        return n > 0 ? sum / n : 0.5f;
+    }
+
+    // Fraction of the party that must fall before a member of each disposition loses heart.
+    private static float MoraleBreakFraction(BehaviourTrait t) => t switch
+    {
+        BehaviourTrait.Cowardly => 0.25f,
+        BehaviourTrait.Cautious => 0.4f,
+        BehaviourTrait.Aggressive => 0.7f,
+        _ => 0.5f,   // Balanced (and any default)
+    };
 }
 
 /// <summary>One member of a party, for formation and named-party tracking. Populated at spawn.</summary>
@@ -150,6 +205,7 @@ public class PartyMember
 {
     public AdventurerType type;
     public CombatClass combatClass;
+    public BehaviourTrait trait;   // this member's disposition (drives morale)
     public int xp;                 // cumulative kill XP (persisted via TrackedMember)
     public string name;
     public bool named;
@@ -157,4 +213,5 @@ public class PartyMember
     public bool breached;
     public int lootValue;
     public bool resolved;
+    public string grudgeMonster;   // worst offender this raid; carried home by survivors
 }

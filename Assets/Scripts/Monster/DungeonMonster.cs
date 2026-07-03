@@ -77,6 +77,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float currentHP;
     private float monsterXP;
     private int killCount;
+    private string killTitle;   // "Slayer of X" — earned by felling a named Hero; instance-only, not saved
     private bool isVeteran;
     public MonsterSpawner Spawner => spawner;
 
@@ -1094,11 +1095,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();
+        var advTarget = target as DungeonAdventurer;
+        advTarget?.RecordDamagedBy(TypeName, attackDamage);
         target.TakeDamage(attackDamage);
         var kdef = IsWild ? wildDefinition : spawner?.Definition;
         if (kdef != null && kdef.knockbackForce > 0f && attackDamage >= kdef.knockbackMinDamage)
             target.ApplyKnockback(transform.position, kdef.knockbackForce);
-        if (!target.IsAlive) { killCount++; GainXP(xpPerKill); target = null; }
+        if (!target.IsAlive)
+        {
+            killCount++; GainXP(xpPerKill);
+            if (advTarget != null && advTarget.IsNamedHero) GrantKillTitle(advTarget.DisplayName);
+            target = null;
+        }
     }
 
     private void GainXP(float amount)
@@ -1326,6 +1334,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public int KillCount => killCount;
     public float XpToVeteran => xpToVeteran;
 
+    /// <summary>This monster's type name (its definition), for grudge matching. Null if unresolved.</summary>
+    public string TypeName
+    {
+        get { var d = IsWild ? wildDefinition : spawner?.Definition; return d != null ? d.monsterName : null; }
+    }
+
+    /// <summary>Records this monster felling a named Hero. Instance-only; a respawn starts untitled.</summary>
+    public void GrantKillTitle(string heroName)
+    {
+        if (string.IsNullOrEmpty(heroName)) return;
+        killTitle = $"Slayer of {heroName}";
+        AlertsLog.Instance?.AddAlert(
+            $"My {TypeName} has felled {heroName}. It will be remembered.",
+            transform.position, currentFloor != null ? currentFloor.FloorIndex : -1,
+            AlertCategory.Combat);
+    }
+
     /// <summary>Name for the info panel: boss title, or "Veteran {name}", or the base name.</summary>
     public string DisplayName
     {
@@ -1334,7 +1359,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             if (bossDefinition != null) return bossDefinition.GetBossTitle();
             var def = IsWild ? wildDefinition : spawner?.Definition;
             string n = def != null ? def.monsterName : "Monster";
-            return isVeteran ? $"Veteran {n}" : n;
+            string full = isVeteran ? $"Veteran {n}" : n;
+            return string.IsNullOrEmpty(killTitle) ? full : $"{full} — {killTitle}";
         }
     }
     public FloorRoot CurrentFloor => currentFloor;

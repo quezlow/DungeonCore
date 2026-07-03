@@ -91,7 +91,12 @@ public class KnownPartiesPanel : MonoBehaviour
             if (rec == null) continue;
             var record = rec;
             bool named = TrackedPartyRegistry.HasNamedMember(record);
-            AddRow("Returning:  " + TrackedPartyRegistry.LabelFor(record), true, named,
+
+            int survivors = 0;
+            foreach (var m in record.members) if (m != null && m.survived) survivors++;
+            string tally = $"  ({survivors} of {record.members.Count} survived)";
+
+            AddRow("Returning:  " + TrackedPartyRegistry.LabelFor(record) + tally, true, named,
                    named ? null
                          : () => { reg.ForgetPending(record); Refresh(); });
         }

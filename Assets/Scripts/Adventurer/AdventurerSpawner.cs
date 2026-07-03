@@ -347,7 +347,7 @@ public class AdventurerSpawner : MonoBehaviour
         return n;
     }
 
-    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null, int returningXp = 0)
+    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null, int returningXp = 0, string returningGrudge = null)
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
@@ -377,7 +377,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(name) && def.named)
             name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
 
-        adventurer.Initialise(def, trait, party, classDef, name, returningXp);
+        adventurer.Initialise(def, trait, party, classDef, name, returningXp, returningGrudge);
 
         // One bearer per Pilgrim/Cultist party carries the tribute to the core.
         if (party != null && !party.tributeAssigned
@@ -627,7 +627,7 @@ public class AdventurerSpawner : MonoBehaviour
 
             if (m.survived)
                 SpawnMember(def, RollTrait(), spawnPos, party, used,
-                            ClassDefFor((CombatClass)m.combatClass), m.name, m.xp);
+                            ClassDefFor((CombatClass)m.combatClass), m.name, m.xp, m.grudgeMonster);
             else
                 SpawnMember(def, RollTrait(), spawnPos, party, used);
         }
@@ -638,7 +638,14 @@ public class AdventurerSpawner : MonoBehaviour
         party.bannerColorIndex = record.bannerColorIndex;
         PartyBannerManager.Instance?.ShowBanner(party);
 
+        string grudge = null;
+        foreach (var m in record.members)
+            if (m.survived && !string.IsNullOrEmpty(m.grudgeMonster)) { grudge = m.grudgeMonster; break; }
+
         string who = !string.IsNullOrEmpty(leadName) ? leadName : "A familiar party";
-        AlertsLog.Instance?.AddAlert($"{who} returns to the dungeon.", spawnPos, -1, AlertCategory.Threat);
+        string line = string.IsNullOrEmpty(grudge)
+            ? $"{who} returns to the dungeon."
+            : $"{who} returns — and remembers the {grudge} that drew their blood.";
+        AlertsLog.Instance?.AddAlert(line, spawnPos, -1, AlertCategory.Threat);
     }
 }

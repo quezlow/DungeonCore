@@ -169,6 +169,7 @@ public class TrapSaveData
     public string trapName;
     public SerializableVector3Int cell;
     public bool isFlagged;
+    public bool isDisarmed;
     public string warningLabel;
     public bool hasLink;
     public SerializableVector3Int linkedCell;

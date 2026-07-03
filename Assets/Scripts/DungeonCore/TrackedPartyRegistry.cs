@@ -94,6 +94,7 @@ public class TrackedPartyRegistry : MonoBehaviour
                 named = m.named,
                 survived = m.escaped,
                 xp = m.xp,
+                grudgeMonster = m.grudgeMonster,
             });
             if (m.escaped) survivors++;
         }
@@ -168,4 +169,5 @@ public class TrackedMember
     public bool named;
     public bool survived;     // escaped alive last visit (else replaced by a fresh roll)
     public int xp;            // cumulative kill XP carried across returns
+    public string grudgeMonster;   // monster type this survivor holds a grudge against
 }

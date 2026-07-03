@@ -54,6 +54,7 @@ public class BossAlertService : MonoBehaviour
     public void NotifyBossDeath(MonsterSpawner spawner, BossVariantDefinition bossDef,
                                 int floorIndex, Vector3 worldPos)
     {
+        DungeonSaveController.Instance?.RequestAutosave();
         string title = bossDef != null ? bossDef.GetBossTitle() : "Boss";
         string message = $"{title} on Floor {floorIndex + 1} has been defeated";
 

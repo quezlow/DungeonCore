@@ -33,6 +33,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public TrapDefinition Definition { get; protected set; }
     public Vector3Int OccupiedCell { get; protected set; }
     public bool IsFlagged { get; private set; }
+    public bool IsDisarmed { get; private set; }
 
     private float lastTriggerTime = -999f;
 
@@ -61,6 +62,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public void OnAdventurerEntered(DungeonAdventurer adv)
     {
         if (Definition == null) return;
+        if (IsDisarmed) return;
         if (Time.time - lastTriggerTime < Definition.cooldown) return;
 
         lastTriggerTime = Time.time;
@@ -71,6 +73,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public void TriggerExternally(DungeonAdventurer adv)
     {
         if (Definition == null || adv == null) return;
+        if (IsDisarmed) return;
         ApplyEffect(adv);
         Debug.Log($"[Trap] {Definition.trapName} triggered externally at {OccupiedCell}.");
     }
@@ -89,6 +92,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     {
         if (Definition == null) return;
         if (m == null) return;
+        if (IsDisarmed) return;
         if (IsFlagged) return;
         if (Time.time - lastTriggerTime < Definition.cooldown) return;
 
@@ -105,6 +109,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public void TriggerExternallyMonster(DungeonMonster m)
     {
         if (Definition == null || m == null) return;
+        if (IsDisarmed) return;
         ApplyEffect(m);
         Debug.Log($"[Trap] {Definition.trapName} triggered externally on monster at {OccupiedCell}.");
     }
@@ -124,6 +129,31 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         IsFlagged = true;
         Debug.Log($"[Trap] {Definition.trapName} at {OccupiedCell} flagged.");
         GetComponentInParent<FloorRoot>()?.TrapRegistry?.NotifyFlaggedChanged();
+    }
+
+    /// <summary>
+    /// A Rogue has neutralised this trap. It no longer fires for anyone, and its
+    /// flagged path-cost is cleared so the party walks the cell at normal cost.
+    /// Reversed by ResetArmed() the moment the floor empties of adventurers.
+    /// </summary>
+    public void Disarm()
+    {
+        if (IsDisarmed) return;
+        IsDisarmed = true;
+        IsFlagged = false;
+        Debug.Log($"[Trap] {Definition.trapName} at {OccupiedCell} disarmed.");
+        GetComponentInParent<FloorRoot>()?.TrapRegistry?.NotifyFlaggedChanged();
+    }
+
+    /// <summary>
+    /// Re-arms this trap and forgets all awareness of it: disarmed becomes armed
+    /// and flagged becomes hidden. Called for every trap on a floor the instant
+    /// that floor clears of adventurers. The caller fires one NotifyFlaggedChanged().
+    /// </summary>
+    public void ResetArmed()
+    {
+        IsDisarmed = false;
+        IsFlagged = false;
     }
 
     // ── Factory ───────────────────────────────────────────────────

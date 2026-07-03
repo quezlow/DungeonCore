@@ -33,6 +33,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Combat,
         Retreating,
         UsingStairs,
+        Disarming,      // Rogue channelling to neutralise a flagged trap
         Worshipping,
         MovingToRoom,   // observers heading to a room
         Observing,      // dwelling in a room
@@ -135,6 +136,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Tooltip("Minimum seconds between trap-warning halts (anti-stutter).")]
     [SerializeField] private float trapHaltCooldown = 4f;
 
+    [Tooltip("Seconds a Rogue spends channelling to disarm one flagged trap.")]
+    [SerializeField] private float disarmChannelSeconds = 1.5f;
+    [Tooltip("Chance a disarm attempt backfires, firing the trap on the Rogue once before it retries.")]
+    [SerializeField, Range(0f, 1f)] private float disarmBackfireChance = 0.2f;
+    [Tooltip("How close a Rogue must get to a flagged trap before it stops to disarm it.")]
+    [SerializeField] private float disarmReach = 1.1f;
+
     [Header("Stair Traversal")]
     [SerializeField] private float stairTraversalDuration = 1.5f;
 
@@ -184,6 +192,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private PartyMember partyMember;
     private string displayName;
     private bool named;
+
+    // Grudge — cumulative damage taken per monster type. The worst offender is the
+    // grudge carried home on survival; returnGrudge is one brought in from last visit.
+    private readonly Dictionary<string, float> damageByType = new();
+    private string grudgeMonster;      // running arg-max of damageByType this raid
+    private float grudgeDamage;        // damage total behind the current grudge
+    private string returnGrudge;       // grudge from a prior visit — biases target choice
+
     private bool healsAllies = false;
     private float healAmount = 6f;
     private float healInterval = 3f;
@@ -236,9 +252,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float stairTimer;
     private AdventurerState stateBeforeStairs;
 
+    private TrapBase disarmTarget;
+    private float disarmTimer;
+    private AdventurerState stateBeforeDisarm;
+
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null, int returningXp = 0)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null, int returningXp = 0, string returningGrudge = null)
     {
         if (def != null)
         {
@@ -288,8 +308,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             partyMember.combatClass = combatClass;
             partyMember.xp = returningXp;
+            partyMember.trait = trait;
             ApplyLevelBoost(LevelFromXp(returningXp));
         }
+        returnGrudge = returningGrudge;
         party?.RegisterLive(this);
     }
 
@@ -456,6 +478,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 FollowPath();
                 break;
 
+            case AdventurerState.Disarming:
+                ScanForMonsters();
+                if (state == AdventurerState.Disarming) HandleDisarming();
+                break;
+
             case AdventurerState.Worshipping:
                 HandleWorship();
                 break;
@@ -577,6 +604,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
 
         Vector3 waypoint = currentPath[pathIndex];
+
+        if (canDetectTraps && state != AdventurerState.Retreating && TryBeginDisarm(waypoint))
+            return;
+
         transform.position = Vector2.MoveTowards(
             transform.position, waypoint, EffectiveMoveSpeed * Time.deltaTime);
 
@@ -710,7 +741,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             state = stateBeforeStairs; stairTarget = null; RefreshPath();
             return;
         }
-        currentFloor?.Entities?.Unregister(this);
+        UnregisterFromFloor(currentFloor);
         transform.SetParent(destFloor.transform, true);
         transform.position = matchingStair.transform.position;
         currentFloor = destFloor;
@@ -718,6 +749,18 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         Debug.Log($"[Adventurer] Arrived on floor {destIdx}.");
         state = stateBeforeStairs; stairTarget = null; RefreshPath();
+    }
+
+    // Leaves a floor's registry and, if that floor now holds no adventurers,
+    // re-arms its traps. The scene.isLoaded guard skips teardown, where the
+    // registry and traps may already be gone.
+    private void UnregisterFromFloor(FloorRoot floor)
+    {
+        if (floor == null) return;
+        floor.Entities?.Unregister(this);
+        if (!gameObject.scene.isLoaded) return;
+        if (floor.Entities != null && floor.Entities.Count<DungeonAdventurer>() == 0)
+            floor.TrapRegistry?.ResetAllTraps();
     }
 
     private DungeonStairs FindNearestStair(DungeonStairs.Direction dir)
@@ -775,7 +818,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
 
         if (currentFloor?.Entities == null) return;
-        var nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
+        DungeonMonster nearest = null;
+        if (!string.IsNullOrEmpty(returnGrudge))
+            nearest = currentFloor.Entities.Nearest<DungeonMonster>(
+                transform.position, detectionRange, m => m.TypeName == returnGrudge);
+        if (nearest == null)
+            nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
 
         if (nearest == null) return;
 
@@ -965,6 +1013,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         maxHP *= 1f + hpPerLevel * steps;
         attackDamage *= 1f + damagePerLevel * steps;
         currentHP = maxHP;
+    }
+
+    /// <summary>Party morale broke — this member turns and flees, unless already
+    /// retreating. Heroes and the Suicidal are filtered out by the caller.</summary>
+    public void ForceRetreat()
+    {
+        if (state == AdventurerState.Retreating) return;
+        StartRetreat();
     }
 
     private void StartRetreat()
@@ -1219,12 +1275,31 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         return false;
     }
 
+    /// <summary>Accumulates damage taken from a monster type and keeps the running
+    /// worst offender — the grudge this unit carries home if it survives.</summary>
+    public void RecordDamagedBy(string monsterType, float amount)
+    {
+        if (string.IsNullOrEmpty(monsterType) || amount <= 0f) return;
+        damageByType.TryGetValue(monsterType, out float total);
+        total += amount;
+        damageByType[monsterType] = total;
+        if (total > grudgeDamage)
+        {
+            grudgeDamage = total;
+            grudgeMonster = monsterType;
+            if (partyMember != null) partyMember.grudgeMonster = grudgeMonster;
+        }
+    }
+
+    /// <summary>True for a named Hero — the only kill that earns a monster a title.</summary>
+    public bool IsNamedHero => named && type == AdventurerType.Hero;
+
     private void Die()
     {
         AdventurerDeaths++;
         DropCarriedTribute("fell with the offering");
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
-        currentFloor?.Entities?.Unregister(this);
+        UnregisterFromFloor(currentFloor);
 
         if (type == AdventurerType.Suicidal)
         {
@@ -1265,7 +1340,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void OnDestroy()
     {
         // Safety net for retreat/exit paths and scene unloads.
-        currentFloor?.Entities?.Unregister(this);
+        UnregisterFromFloor(currentFloor);
         UnlockState.OnChanged -= HandleUnlockChanged;
         party?.DeregisterLive(this);
     }
@@ -1319,6 +1394,87 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (trap != null) trap.OnAdventurerEntered(this);
     }
 
+    // Only damage traps are worth a Rogue's time — Warning markers and pressure
+    // plates carry no payload to defuse.
+    private static bool IsDisarmableTrap(TrapBase trap)
+    {
+        if (trap == null || trap.Definition == null) return false;
+        var b = trap.Definition.behaviour;
+        return b == TrapDefinition.TrapBehaviour.SpikeTrap
+            || b == TrapDefinition.TrapBehaviour.Pitfall;
+    }
+
+    // True (and enters the Disarming state) when the next waypoint holds a flagged,
+    // still-armed damage trap and the Rogue is close enough to work on it.
+    private bool TryBeginDisarm(Vector3 waypoint)
+    {
+        if (currentFloor == null) return false;
+        var influence = currentFloor.TileInfluence;
+        var trapReg = currentFloor.TrapRegistry;
+        if (influence == null || trapReg == null) return false;
+
+        Vector3Int cell = influence.WorldToCell(waypoint);
+        var trap = trapReg.GetTrapAt(cell);
+        if (trap == null || !trap.IsFlagged || trap.IsDisarmed) return false;
+        if (!IsDisarmableTrap(trap)) return false;
+        if (Vector2.Distance(transform.position, waypoint) > disarmReach) return false;
+
+        BeginDisarm(trap);
+        return true;
+    }
+
+    private void BeginDisarm(TrapBase trap)
+    {
+        disarmTarget = trap;
+        disarmTimer = disarmChannelSeconds;
+        stateBeforeDisarm = state;
+        state = AdventurerState.Disarming;
+    }
+
+    private void HandleDisarming()
+    {
+        if (disarmTarget == null || disarmTarget.IsDisarmed)
+        {
+            state = stateBeforeDisarm;
+            disarmTarget = null;
+            RefreshPath();
+            return;
+        }
+
+        disarmTimer -= Time.deltaTime;
+        if (disarmTimer > 0f) return;
+
+        if (Random.value < disarmBackfireChance)
+        {
+            // The snare bites back once; the rogue steadies and tries again.
+            disarmTarget.TriggerExternally(this);
+            disarmTimer = disarmChannelSeconds;
+            return;
+        }
+
+        Vector3 where = disarmTarget.transform.position;
+        disarmTarget.Disarm();
+        AlertsLog.Instance?.AddAlert(
+            "Deft hands find my snare. One of my fangs falls still.",
+            where, currentFloor != null ? currentFloor.FloorIndex : -1,
+            AlertCategory.Trap);
+
+        state = stateBeforeDisarm;
+        disarmTarget = null;
+        RefreshFloorPaths();
+    }
+
+    // A cleared lane changes the cheapest route, so every adventurer on this floor
+    // re-paths through it. Nothing listens to flagged-changes for path recompute,
+    // so we push the refresh explicitly.
+    private void RefreshFloorPaths()
+    {
+        if (currentFloor?.Entities == null) return;
+        var advs = currentFloor.Entities.GetAll<DungeonAdventurer>();
+        for (int i = 0; i < advs.Count; i++)
+            if (advs[i] != null) advs[i].ForceRefreshPath();
+    }
+
     private void ScanForTraps()
     {
         if (currentFloor == null) return;
@@ -1338,6 +1494,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 FloatingDamageNumber.DamageType.Alert);
             Debug.Log($"[Adventurer] Detected trap at {trap.OccupiedCell}.");
             ReactToTrapDetection();
+            RefreshPath();
             break;
         }
     }

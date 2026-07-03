@@ -18,6 +18,8 @@ public class WavePreviewHUD : MonoBehaviour
     [Header("References")]
     [SerializeField] private TMP_Text label;
     [SerializeField] private Image icon;
+    [Tooltip("Optional second line: a tracked nemesis returning with the next dawn.")]
+    [SerializeField] private TMP_Text nemesisLabel;
 
     [Header("Display")]
     [SerializeField] private string prefix = "NEXT RAID";
@@ -30,6 +32,7 @@ public class WavePreviewHUD : MonoBehaviour
 
         if (label != null) label.enabled = visible;
         if (icon != null) icon.enabled = visible;
+        UpdateNemesisLine(visible);
         if (!visible) return;
 
         if (spawner.PartyCapReached)
@@ -65,5 +68,25 @@ public class WavePreviewHUD : MonoBehaviour
             label.text = $"{prefix} {m}:{s:D2} · {size}";
             label.color = textColour;
         }
+    }
+
+    // Second line: names a tracked nemesis due to return the next day.
+    private void UpdateNemesisLine(bool visible)
+    {
+        if (nemesisLabel == null) return;
+        if (!visible) { nemesisLabel.enabled = false; return; }
+
+        var reg = TrackedPartyRegistry.Instance;
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        TrackedParty soonest = null;
+        if (reg != null)
+            foreach (var p in reg.PendingParties)
+                if (p != null && p.returnDay == day + 1) { soonest = p; break; }
+
+        if (soonest == null) { nemesisLabel.enabled = false; return; }
+
+        nemesisLabel.enabled = true;
+        nemesisLabel.text = $"{TrackedPartyRegistry.LabelFor(soonest)} returns with the dawn.";
+        nemesisLabel.color = textColour;
     }
 }

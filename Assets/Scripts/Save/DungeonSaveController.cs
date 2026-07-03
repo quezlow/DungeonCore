@@ -26,8 +26,13 @@ public class DungeonSaveController : MonoBehaviour
     private string metaPath;
     private string metaTmpPath;
 
+    [Header("Autosave")]
+    [Tooltip("Seconds to wait after the last autosave trigger before writing, so bursts coalesce.")]
+    [SerializeField] private float autosaveDebounceSeconds = 2f;
+
     private DungeonSaveData currentSave = new();
     private bool isLoading;
+    private Coroutine autosaveRoutine;
     public static bool IsLoading => Instance != null && Instance.isLoading;
     public int WorldSeed { get; private set; }
 
@@ -66,6 +71,7 @@ public class DungeonSaveController : MonoBehaviour
         {
             DungeonCore.Instance.OnLevelUp += HandleLevelUp;
             DungeonCore.Instance.OnGameOver += HandleGameOver;
+            DungeonCore.Instance.OnFirstBreach += RequestAutosave;
         }
 
         CleanupStaleTempFile();
@@ -79,9 +85,26 @@ public class DungeonSaveController : MonoBehaviour
         if (DungeonCore.Instance == null) return;
         DungeonCore.Instance.OnLevelUp -= HandleLevelUp;
         DungeonCore.Instance.OnGameOver -= HandleGameOver;
+        DungeonCore.Instance.OnFirstBreach -= RequestAutosave;
     }
 
-    private void HandleLevelUp(int _) => SaveGame();
+    private void HandleLevelUp(int _) => RequestAutosave();
+
+    /// <summary>Coalesces bursty autosave triggers (level-up, first breach, boss defeat,
+    /// raid resolution) into a single write a short beat after the last one.</summary>
+    public void RequestAutosave()
+    {
+        if (isLoading) return;
+        if (autosaveRoutine != null) StopCoroutine(autosaveRoutine);
+        autosaveRoutine = StartCoroutine(AutosaveAfterDelay());
+    }
+
+    private IEnumerator AutosaveAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(autosaveDebounceSeconds);
+        autosaveRoutine = null;
+        SaveGame();
+    }
 
     /// DAY 34 — Game-over event handler.
     ///
@@ -426,6 +449,7 @@ public class DungeonSaveController : MonoBehaviour
                 trapName = t.Definition.trapName,
                 cell = SerializableVector3Int.From(t.OccupiedCell),
                 isFlagged = t.IsFlagged,
+                isDisarmed = t.IsDisarmed,
                 warningLabel = (t is WarningTrap w) ? w.WarningLabel : "",
                 hasLink = (t is PressurePlateTrap pp) && pp.HasLink,
                 linkedCell = (t is PressurePlateTrap pp2 && pp2.HasLink)
@@ -740,13 +764,20 @@ public class DungeonSaveController : MonoBehaviour
             {
                 var def = trapRegistry?.GetByName(t.trapName);
                 if (def == null) continue;
-                DungeonBuildController.Instance.RestoreTrap(floor, def, t.cell.ToVector3Int(), t.isFlagged, t.warningLabel, t.hasLink, t.linkedCell.ToVector3Int());
+                DungeonBuildController.Instance.RestoreTrap(floor, def, t.cell.ToVector3Int(), t.isFlagged, t.isDisarmed, t.warningLabel, t.hasLink, t.linkedCell.ToVector3Int());
             }
         }
 
         if (data.stairs != null)
             foreach (var st in data.stairs)
                 DungeonBuildController.Instance.RestoreStairs(floor, st.cell.ToVector3Int(), (DungeonStairs.Direction)st.direction);
+
+        // No incursion is in progress on a freshly loaded floor, so its traps start
+        // armed and unwatched. Once adventurers persist through load, a floor that
+        // reloads WITH a live party will have a non-zero count here and keep the
+        // trap state it was saved with.
+        if (floor.Entities == null || floor.Entities.Count<DungeonAdventurer>() == 0)
+            floor.TrapRegistry?.ResetAllTraps();
     }
 
     /// <summary>DAY 34 — Wipes the active slot's folder entirely.</summary>
