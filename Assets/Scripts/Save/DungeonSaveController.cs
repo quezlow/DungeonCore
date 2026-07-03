@@ -161,7 +161,11 @@ public class DungeonSaveController : MonoBehaviour
             // Seeded entrance: stand the DungeonEntrance at the cave mouth.
             var cave = floor0.FeatureGenerator.EntranceCave;
             if (cave != null && DungeonBuildController.Instance != null)
-                DungeonBuildController.Instance.RestoreEntrance(floor0, cave.mouthCell.ToVector3Int());
+            {
+                var standCell = cave.hasSpawnCell ? cave.spawnCell.ToVector3Int()
+                                                  : cave.mouthCell.ToVector3Int();
+                DungeonBuildController.Instance.RestoreEntrance(floor0, standCell);
+            }
         }
 
         AlertsLog.Instance?.ClearHistory();

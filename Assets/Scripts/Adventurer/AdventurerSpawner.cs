@@ -140,7 +140,33 @@ public class AdventurerSpawner : MonoBehaviour
         !PauseController.IsGamePaused
         && !transitPaused
         && DungeonEntrance.Instance != null
+        && EntranceDiscovered
         && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight);
+
+    /// <summary>True when the seeded entrance has been found — or on legacy saves
+    /// with a player-placed entrance, which have no seal to break.</summary>
+    public bool EntranceDiscovered
+    {
+        get
+        {
+            var features = FloorManager.Instance?.GetFloor(0)?.FeatureGenerator;
+            if (features == null || features.EntranceCave == null) return true;
+            return features.IsEntranceDiscovered;
+        }
+    }
+
+    /// <summary>The day of discovery is a grace period — word spreads overnight;
+    /// the first wave arrives with the next dawn.</summary>
+    public bool InGraceDay
+    {
+        get
+        {
+            var cave = FloorManager.Instance?.GetFloor(0)?.FeatureGenerator?.EntranceCave;
+            if (cave == null || !cave.discovered || cave.discoveredDay < 0) return false;
+            return DayNightCycle.Instance != null
+                && DayNightCycle.Instance.CurrentDay <= cave.discoveredDay;
+        }
+    }
 
     public float SecondsUntilNextParty => Mathf.Max(0f, CurrentInterval() - timer);
     public int PredictedMinPartySize => minPartySize;
@@ -188,6 +214,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (transitPaused) return;
         if (DungeonEntrance.Instance == null) return;
         if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
+        if (!EntranceDiscovered || InGraceDay) { timer = 0f; return; }
 
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())
@@ -322,12 +349,19 @@ public class AdventurerSpawner : MonoBehaviour
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
+        var floor = FloorManager.Instance?.GetFloor(0);
+
+        // Scatter for a natural cluster — but never off walkable ground. A member
+        // spawned on unmined apron can neither path nor resolve, freezing the
+        // party and holding its cap slot forever.
         Vector2 scatter = Random.insideUnitCircle * 1.5f;
         Vector3 pos = spawnPos + new Vector3(scatter.x, scatter.y, 0f);
+        if (floor != null && floor.TileInfluence != null
+            && !floor.TileInfluence.IsTileMined(floor.TileInfluence.WorldToCell(pos)))
+            pos = spawnPos;
 
         var adventurer = Instantiate(def.prefab, pos, Quaternion.identity);
 
-        var floor = FloorManager.Instance?.GetFloor(0);
         if (floor != null)
             adventurer.transform.SetParent(floor.transform, true);
 

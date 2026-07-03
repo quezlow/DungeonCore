@@ -243,7 +243,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// <summary>Marks the entrance cave found. Persists via FloorFeatureSaveData.</summary>
     public void MarkEntranceDiscovered()
     {
-        if (featureData?.entranceCave != null) featureData.entranceCave.discovered = true;
+        if (featureData?.entranceCave == null) return;
+        featureData.entranceCave.discovered = true;
+        if (featureData.entranceCave.discoveredDay < 0)
+            featureData.entranceCave.discoveredDay =
+                DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
     }
 
     public int GetChamberId(Vector3Int cell)
@@ -865,9 +869,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (carved.Count == 0) return;
         carved.Add(mouth);
 
+        // Spawn point: a few steps down the tunnel, where the corridor is still
+        // near full width — scatter around it stays on carved floor.
+        int spawnIdx = Mathf.Min(3, centreline.Count - 1);
+        var spawn = centreline[spawnIdx];
+        if (!carved.Contains(spawn)) spawn = mouth;
+
         featureData.entranceCave = new EntranceCaveData
         {
             mouthCell = SerializableVector3Int.From(mouth),
+            spawnCell = SerializableVector3Int.From(spawn),
+            hasSpawnCell = true,
             angleDegrees = (float)(angle * 180.0 / Math.PI),
             cells = ToSerializable(new List<Vector3Int>(carved)),
         };

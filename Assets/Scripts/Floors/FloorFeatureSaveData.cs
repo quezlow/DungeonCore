@@ -103,4 +103,14 @@ public class EntranceCaveData
     /// <summary>True once the player's influence has touched the cave.
     /// Gates the discovery alert and the compass HUD.</summary>
     public bool discovered;
+
+    /// <summary>Interior cell a few steps down the tunnel where the (invisible)
+    /// entrance stands and parties spawn — deep enough that spawn scatter always
+    /// lands on carved floor, never the apron.</summary>
+    public SerializableVector3Int spawnCell;
+    public bool hasSpawnCell;
+
+    /// <summary>Day the seal broke. The first wave arrives the day after;
+    /// -1 = not yet discovered.</summary>
+    public int discoveredDay = -1;
 }

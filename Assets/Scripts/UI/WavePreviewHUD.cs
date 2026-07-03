@@ -42,6 +42,16 @@ public class WavePreviewHUD : MonoBehaviour
             return;
         }
 
+        if (spawner.InGraceDay)
+        {
+            if (label != null)
+            {
+                label.text = "They will come with the dawn.";
+                label.color = textColour;
+            }
+            return;
+        }
+
         float eta = spawner.SecondsUntilNextParty;
         int m = Mathf.FloorToInt(eta / 60f);
         int s = Mathf.FloorToInt(eta % 60f);
