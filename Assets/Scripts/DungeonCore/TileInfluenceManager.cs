@@ -554,8 +554,20 @@ public class TileInfluenceManager : MonoBehaviour
         // Both read as wall, so neither is walkable:
         //   - a solid cell directly north      -> pos is the face's UPPER slice.
         //   - one open cell north, then solid   -> pos is the face's LOWER slice.
-        if (!minedTiles.Contains(pos + Vector3Int.up)) return true;
-        return !minedTiles.Contains(pos + new Vector3Int(0, 2, 0));
+        // Cells beyond the floor disc are open air, not rock: nothing drapes from
+        // the surface, so they are never a face source. This mirrors
+        // CaveWallClassifier.IsSolid so walkability and visuals agree at the breach.
+        if (DrapesFrom(pos + Vector3Int.up)) return true;
+        return DrapesFrom(pos + new Vector3Int(0, 2, 0));
+    }
+
+    /// <summary>True if a face would drape from this cell: unmined rock inside the
+    /// floor disc. Out-of-disc cells are open surface and never drape.</summary>
+    private bool DrapesFrom(Vector3Int cell)
+    {
+        if (minedTiles.Contains(cell)) return false;
+        var terrain = MyFloor != null ? MyFloor.Terrain : null;
+        return terrain == null || terrain.IsWithinBounds(cell);
     }
     public bool IsTileClaimable(Vector3Int pos) => claimableTiles.Contains(pos);
 

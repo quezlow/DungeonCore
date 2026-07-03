@@ -18,11 +18,14 @@ public class CaveWallClassifier
 {
     private readonly TileInfluenceManager influence;
     private readonly TerrainFeatureGenerator features;
+    private readonly DungeonTerrain terrain;
 
-    public CaveWallClassifier(TileInfluenceManager influence, TerrainFeatureGenerator features = null)
+    public CaveWallClassifier(TileInfluenceManager influence, TerrainFeatureGenerator features = null,
+                              DungeonTerrain terrain = null)
     {
         this.influence = influence;
         this.features = features;
+        this.terrain = terrain;
     }
 
     private static readonly Vector3Int N = new Vector3Int(0, 1, 0);
@@ -30,11 +33,15 @@ public class CaveWallClassifier
     private static readonly Vector3Int E = new Vector3Int(1, 0, 0);
     private static readonly Vector3Int W = new Vector3Int(-1, 0, 0);
 
-    /// Solid = not mined and not a river. (Open = mined floor OR fordable river water.)
+    /// Solid = an IN-DISC cell that is not mined and not a river. Cells beyond the
+    /// floor disc are OPEN AIR — the surface — so no wall ever paints on the apron,
+    /// and the rim's outer edge is a true solid/open boundary where it borders
+    /// revealed ground (the breach corners).
     public bool IsSolid(Vector3Int cell)
         => influence != null
         && !influence.IsTileMined(cell)
-        && !(features != null && features.IsRiver(cell));
+        && !(features != null && features.IsRiver(cell))
+        && (terrain == null || terrain.IsWithinBounds(cell));
 
     /// 16-mask over the four cardinal neighbours: N=1, E=2, S=4, W=8, set = solid.
     public int CapMask(Vector3Int cell)

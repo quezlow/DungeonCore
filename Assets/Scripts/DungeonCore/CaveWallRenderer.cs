@@ -106,7 +106,7 @@ public class CaveWallRenderer : MonoBehaviour
         }
         influence = floor.TileInfluence;
         terrainTypeMap = floor.TerrainTypeMap;
-        if (influence != null) classifier = new CaveWallClassifier(influence, floor.FeatureGenerator);
+        if (influence != null) classifier = new CaveWallClassifier(influence, floor.FeatureGenerator, floor.Terrain);
         BuildTiles();
     }
 
