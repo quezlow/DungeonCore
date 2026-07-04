@@ -353,7 +353,8 @@ public class AdventurerSpawner : MonoBehaviour
         return n;
     }
 
-    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used, CombatClassDefinition forcedClass = null, string presetName = null, int returningXp = 0, string returningGrudge = null)
+    private void SpawnMember(AdventurerDefinition def, BehaviourTrait trait, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used,
+        CombatClassDefinition forcedClass = null, string presetName = null, int returningXp = 0, string returningGrudge = null, DungeonType forcedAffinity = DungeonType.None)
     {
         if (def.prefab == null) { Debug.LogError($"[AdventurerSpawner] '{def.className}' has no prefab."); return; }
 
@@ -383,9 +384,10 @@ public class AdventurerSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(name) && def.named)
             name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
 
-        DungeonType memberAffinity = affinityProfiles != null
-            ? affinityProfiles.Roll(AdventurerTypeInfo.FactionOf(def.type), def.type, classDef)
-            : DungeonType.None;
+        DungeonType memberAffinity = forcedAffinity != DungeonType.None ? forcedAffinity
+            : affinityProfiles != null
+                ? affinityProfiles.Roll(AdventurerTypeInfo.FactionOf(def.type), def.type, classDef)
+                : DungeonType.None;
         adventurer.Initialise(def, trait, party, classDef, name, returningXp, returningGrudge, memberAffinity);
         adventurer.ApplyAffinityVisuals(affinityProfiles);
 
@@ -670,6 +672,42 @@ public class AdventurerSpawner : MonoBehaviour
         SetupOrganize(party, AdventurerType.Hero, 1, spawnPos);
         RunStats.Instance?.RecordPartySpawned(1);
 
+        PartyBannerManager.Instance?.ShowBanner(party);
+    }
+
+    /// <summary>Dispatch a Holy Order crusade: an ordained Hero leading Paladins (Tank)
+    /// and Clerics, all forced to Light so they read as a holy strike via the flavour
+    /// names. Fired by HolyOrderStrike when the core is dark and infamous.</summary>
+    public void DispatchHolyOrderStrike(int guardCount)
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        // Ordained Hero, forced Light.
+        SpawnMember(heroDef, RollTrait(), spawnPos, party, used, forcedAffinity: DungeonType.Light);
+
+        // Guards: alternating Paladins (Tank) and Clerics, all Light.
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        var tankClass = ClassDefFor(CombatClass.Tank);
+        var clericClass = ClassDefFor(CombatClass.Cleric);
+        if (guardBase != null)
+            for (int i = 0; i < guardCount; i++)
+            {
+                var cls = (i % 2 == 0) ? tankClass : clericClass;
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used,
+                            forcedClass: cls, forcedAffinity: DungeonType.Light);
+            }
+
+        SetupOrganize(party, AdventurerType.Hero, 1 + guardCount, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(1 + guardCount);
         PartyBannerManager.Instance?.ShowBanner(party);
     }
 

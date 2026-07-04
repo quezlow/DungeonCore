@@ -240,4 +240,12 @@ public class Commands : MonoBehaviour
 
     [ContextMenu("Test Shift Alignment Good (+15)")]
     void TestShiftGood() => AlignmentSystem.Instance?.Shift(15f);
+
+    [ContextMenu("Test Dispatch Holy Order Strike")]
+    void TestDispatchHolyOrderStrike()
+    {
+        if (HolyOrderStrike.Instance == null) { Debug.Log("[Commands] No HolyOrderStrike in scene."); return; }
+        HolyOrderStrike.Instance.Fire();
+        Debug.Log("[Commands] Holy Order strike dispatched.");
+    }
 }

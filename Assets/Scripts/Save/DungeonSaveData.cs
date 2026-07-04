@@ -65,6 +65,8 @@ public class DungeonSaveData
 
     public AlignmentSaveData alignment;
 
+    public HolyOrderStrikeSaveData holyOrderStrike;
+
     public BestiarySaveData bestiary;
 }
 

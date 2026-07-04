@@ -285,6 +285,9 @@ public class DungeonSaveController : MonoBehaviour
         if (AlignmentSystem.Instance != null)
             currentSave.alignment = AlignmentSystem.Instance.GetSaveData();
 
+        if (HolyOrderStrike.Instance != null)
+            currentSave.holyOrderStrike = HolyOrderStrike.Instance.GetSaveData();
+
         if (BestiaryState.Instance != null)
             currentSave.bestiary = BestiaryState.Instance.GetSaveData();
 
@@ -655,6 +658,7 @@ public class DungeonSaveController : MonoBehaviour
             InspectorEscalation.Instance?.RestoreFromSave(currentSave.inspectorEscalation);
             FactionSystem.Instance?.RestoreFromSave(currentSave.factionSystem);
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
+            HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             BestiaryState.Instance?.RestoreFromSave(currentSave.bestiary);
 
             // DAY 31 — Defer camera restore one frame so it runs after all initial
