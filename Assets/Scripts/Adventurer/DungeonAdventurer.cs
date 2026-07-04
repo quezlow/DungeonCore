@@ -201,6 +201,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private CombatClassDefinition classDef;   // kept for class loot on death
     private DungeonType affinity = DungeonType.None;
     public DungeonType Affinity => affinity;
+    private string flavorClassName;
+    public string FlavorClassName => string.IsNullOrEmpty(flavorClassName) ? combatClass.ToString() : flavorClassName;
 
     // Named-adventurer tracking — this unit's roster record + identity.
     private PartyMember partyMember;
@@ -331,6 +333,18 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
         returnGrudge = returningGrudge;
         party?.RegisterLive(this);
+    }
+
+    /// <summary>Compute this adventurer's flavour name and apply its affinity sprite
+    /// tint. Called by the spawner after Initialise, once affinity and class are set.</summary>
+    public void ApplyAffinityVisuals(AffinityProfiles profiles)
+    {
+        if (profiles == null) return;
+        flavorClassName = profiles.FlavorName(combatClass, affinity);
+        if (affinity == DungeonType.None) return;
+        var sr = GetComponentInChildren<SpriteRenderer>();
+        if (sr != null) sr.color = Color.Lerp(sr.color, profiles.ColorFor(affinity), profiles.TintStrength);
+        GetComponent<DamageFlash>()?.RefreshBaseColors();
     }
 
     /// <summary>Day 39 — overlay the combat-class multipliers + behaviour on top of

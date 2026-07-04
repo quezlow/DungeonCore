@@ -24,7 +24,11 @@ public class DamageFlash : MonoBehaviour
     private Color[] baseColors;
     private Coroutine running;
 
-    private void Awake()
+    private void Awake() => RefreshBaseColors();
+
+    /// <summary>Re-capture the current sprite colours as the flash base, so a tint
+    /// applied after Awake becomes what the flash returns to.</summary>
+    public void RefreshBaseColors()
     {
         renderers = GetComponentsInChildren<SpriteRenderer>(true);
         baseColors = new Color[renderers.Length];

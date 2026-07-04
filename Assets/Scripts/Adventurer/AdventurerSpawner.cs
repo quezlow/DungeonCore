@@ -387,6 +387,7 @@ public class AdventurerSpawner : MonoBehaviour
             ? affinityProfiles.Roll(AdventurerTypeInfo.FactionOf(def.type), def.type, classDef)
             : DungeonType.None;
         adventurer.Initialise(def, trait, party, classDef, name, returningXp, returningGrudge, memberAffinity);
+        adventurer.ApplyAffinityVisuals(affinityProfiles);
 
         // One bearer per Pilgrim/Cultist party carries the tribute to the core.
         if (party != null && !party.tributeAssigned
@@ -635,6 +636,7 @@ public class AdventurerSpawner : MonoBehaviour
 
         var classDef = ClassDefFor((CombatClass)rec.combatClass);
         adventurer.Initialise(def, (BehaviourTrait)rec.trait, party, classDef, rec.name, rec.xp, rec.returnGrudge, (DungeonType)rec.affinity);
+        adventurer.ApplyAffinityVisuals(affinityProfiles);
 
         // Register with the floor now (not in the deferred Start) so the trap-reset pass
         // sees the party and leaves this floor's traps as they were saved.

@@ -42,6 +42,15 @@ public class AffinityProfiles : ScriptableObject
 
     [Header("Affinity tint colours (used by the sprite tint)")]
     [SerializeField] private List<AffinityColorEntry> colors = new();
+    [Tooltip("How strongly the affinity colour tints the sprite. Faint reads at a glance without washing the art out.")]
+    [Range(0f, 1f)][SerializeField] private float tintStrength = 0.35f;
+    public float TintStrength => tintStrength;
+
+    [System.Serializable]
+    public class FlavorNameEntry { public CombatClass combatClass; public DungeonType affinity = DungeonType.Fire; public string name; }
+
+    [Header("Flavour names (class + affinity; unlisted falls back to the class name)")]
+    [SerializeField] private List<FlavorNameEntry> flavorNames = new();
 
     private static readonly DungeonType[] RealAffinities =
     {
@@ -96,5 +105,15 @@ public class AffinityProfiles : ScriptableObject
     {
         foreach (var c in colors) if (c.type == t) return c.color;
         return Color.white;
+    }
+
+    /// <summary>The flavour name for a class + affinity combo, or the plain class
+    /// name if none is configured (Tank+Light -> "Paladin", Mage+Dark -> "Cultist Mage").</summary>
+    public string FlavorName(CombatClass cls, DungeonType aff)
+    {
+        foreach (var f in flavorNames)
+            if (f.combatClass == cls && f.affinity == aff && !string.IsNullOrEmpty(f.name))
+                return f.name;
+        return cls.ToString();
     }
 }

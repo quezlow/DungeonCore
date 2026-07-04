@@ -70,3 +70,53 @@ MonoBehaviour:
     color: {r: 0.41960785, g: 0.24705882, b: 0.627451, a: 0}
   - type: 6
     color: {r: 0.9490196, g: 0.8392157, b: 0.29411766, a: 0}
+  tintStrength: 0.35
+  flavorNames:
+  - combatClass: 0
+    affinity: 1
+    name: Berserker
+  - combatClass: 0
+    affinity: 5
+    name: Reaver
+  - combatClass: 0
+    affinity: 6
+    name: Crusader
+  - combatClass: 1
+    affinity: 1
+    name: Pyromancer
+  - combatClass: 1
+    affinity: 2
+    name: Hydromancer
+  - combatClass: 1
+    affinity: 3
+    name: Aeromancer
+  - combatClass: 1
+    affinity: 4
+    name: Geomancer
+  - combatClass: 1
+    affinity: 6
+    name: Luminary
+  - combatClass: 1
+    affinity: 5
+    name: Necromancer
+  - combatClass: 2
+    affinity: 3
+    name: Assassin
+  - combatClass: 3
+    affinity: 5
+    name: Heretic
+  - combatClass: 4
+    affinity: 3
+    name: Scout
+  - combatClass: 4
+    affinity: 4
+    name: Ranger
+  - combatClass: 5
+    affinity: 4
+    name: Warden
+  - combatClass: 5
+    affinity: 5
+    name: Blackguard
+  - combatClass: 5
+    affinity: 6
+    name: Paladin

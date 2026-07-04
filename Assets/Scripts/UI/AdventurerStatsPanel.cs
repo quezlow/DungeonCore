@@ -134,7 +134,8 @@ public class AdventurerStatsPanel : MonoBehaviour
             statsText.text =
                 $"HP        {hp:0} / {max:0}\n" +
                 $"Type      {current.Type}\n" +
-                $"Class     {current.Class}\n" +
+                $"Class     {current.FlavorClassName}\n" +
+                $"Affinity  {current.Affinity}\n" +
                 $"Intent    {current.Intent}\n" +
                 $"Trait     {current.Trait}\n" +
                 $"Loot      {current.CarriedLootValue}g";
