@@ -251,7 +251,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 105, y: 155}
+  m_AnchoredPosition: {x: 125, y: 155}
   m_SizeDelta: {x: 50, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &8593800
@@ -14247,7 +14247,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9848492
+  m_Size: 0.99999356
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16989,7 +16989,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 510, y: 0}
-  m_SizeDelta: {x: 300, y: 400}
+  m_SizeDelta: {x: 350, y: 400}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &629220987
 MonoBehaviour:
@@ -17175,7 +17175,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0002159041}
+  m_AnchoredPosition: {x: 0, y: 0.0005624118}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -17486,16 +17486,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
   m_Padding:
     m_Left: 0
-    m_Right: 5
+    m_Right: 20
     m_Top: 0
     m_Bottom: 0
   m_ChildAlignment: 0
   m_Spacing: 4
-  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandWidth: 0
   m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 1
+  m_ChildControlWidth: 0
   m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
+  m_ChildScaleWidth: 1
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
 --- !u!1 &652070174
@@ -43294,7 +43294,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -1.2653, y: -32.493607}
-  m_SizeDelta: {x: 250, y: 275}
+  m_SizeDelta: {x: 300, y: 275}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1746519904
 MonoBehaviour:
@@ -46816,7 +46816,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 155.1}
+  m_AnchoredPosition: {x: 25, y: 155.1}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1914577734
@@ -52693,6 +52693,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1a36de416b627a9438c6a076e1526723, type: 2}
   - {fileID: 11400000, guid: 709240a6e613b234197daf3e33557a50, type: 2}
   - {fileID: 11400000, guid: e7089f84ef44422449243fa5aa037036, type: 2}
+  - {fileID: 11400000, guid: 18c69142d7bc241479840395da90a3a0, type: 2}
   minPartySize: 3
   maxPartySize: 5
   scalePartySizeWithNotoriety: 1
@@ -52705,12 +52706,14 @@ MonoBehaviour:
   weightBalanced: 4
   weightAggressive: 2
   weightCowardly: 1
+  baseDelver: 6
   baseDestroyer: 2
   basePilgrim: 1
   baseGiftGiver: 1
   notorietyToDestroyer: 0.03
   reputationToPilgrim: 0.04
   reputationToGiftGiver: 0.02
+  weightDelver: 5
   weightMercenary: 3
   weightHero: 1
   weightTreasureHunter: 3

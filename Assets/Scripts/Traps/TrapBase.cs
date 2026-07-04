@@ -52,9 +52,21 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
 
     protected virtual void OnDestroy()
     {
+        if (Definition != null && Definition.capacityCost > 0)
+            DungeonCore.Instance?.ReturnCapacity(Definition.capacityCost);
+
         var floor = GetComponentInParent<FloorRoot>();
         floor?.TrapRegistry?.Unregister(this);
         floor?.Entities?.Unregister(this);
+    }
+
+    /// <summary>Player-initiated removal. Refunds half the placement mana and
+    /// destroys the trap; the capacity it held is returned in OnDestroy.</summary>
+    public void RemoveByPlayer()
+    {
+        if (Definition != null && DungeonCore.Instance != null)
+            DungeonCore.Instance.AddMana(Definition.manaCost * 0.5f);
+        Destroy(gameObject);
     }
 
     // ── Adventurer Trigger ────────────────────────────────────────

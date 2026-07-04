@@ -33,6 +33,8 @@ public class TrapDefinition : ScriptableObject
 
     [Header("Placement")]
     public float manaCost = 8f;
+    [Tooltip("Capacity this trap occupies while placed. Returned when the trap is removed.")]
+    [Min(0)] public int capacityCost = 2;
 
     [Header("Trigger")]
     [Tooltip("Damage dealt to the adventurer on trigger.")]

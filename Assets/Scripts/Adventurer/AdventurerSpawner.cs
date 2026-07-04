@@ -34,10 +34,11 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightCowardly = 1f;
 
     [Header("Intent Weights")]
-    [Tooltip("Flat baseline weights before Notoriety/Reputation scaling. " +
-             "Keep Destroyer dominant so most raids stay hostile.")]
-    [SerializeField] private float baseDestroyer = 2f;
-    [SerializeField] private float basePilgrim = 1f;
+    [Tooltip("Flat baseline weights before Notoriety/Reputation scaling. Delvers are " +
+             "the common case; Destroyers stay rare until Notoriety climbs.")]
+    [SerializeField] private float baseDelver = 6f;
+    [SerializeField] private float baseDestroyer = 0.5f;
+    [SerializeField] private float basePilgrim = 1.5f;
     [SerializeField] private float baseGiftGiver = 1f;
     [Tooltip("Per-point Notoriety added to the Destroyer weight.")]
     [SerializeField] private float notorietyToDestroyer = 0.03f;
@@ -48,9 +49,10 @@ public class AdventurerSpawner : MonoBehaviour
     [Header("Type Weights")]
     [Tooltip("Flat weights WITHIN each intent category. The category is rolled first " +
              "(Notoriety/Reputation scaled, above), then a type is picked here.")]
+    [SerializeField] private float weightDelver = 5f;          // Delver - the common adventurer
     [SerializeField] private float weightMercenary = 3f;       // Destroyer
     [SerializeField] private float weightHero = 1f;            // Destroyer (gated)
-    [SerializeField] private float weightTreasureHunter = 3f;  // Destroyer — thieves take, they don't give
+    [SerializeField] private float weightTreasureHunter = 3f;  // Delver — loot-focused, doesn't chase the core
     [SerializeField] private float weightCultist = 1f;         // Gift-Giver
     [SerializeField] private float weightPilgrim = 2f;         // Pilgrim
     [SerializeField] private float weightScholar = 1.5f;       // Pilgrim
@@ -457,14 +459,17 @@ public class AdventurerSpawner : MonoBehaviour
         float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
         float rep = DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f;
 
+        float wDelver = Mathf.Max(0f, baseDelver);
         float wDestroyer = Mathf.Max(0f, baseDestroyer + noto * notorietyToDestroyer);
         float wPilgrim = Mathf.Max(0f, basePilgrim + rep * reputationToPilgrim);
         float wGiftGiver = Mathf.Max(0f, baseGiftGiver + rep * reputationToGiftGiver);
 
-        float total = wDestroyer + wPilgrim + wGiftGiver;
-        if (total <= 0f) return PartyIntent.Destroyer;
+        float total = wDelver + wDestroyer + wPilgrim + wGiftGiver;
+        if (total <= 0f) return PartyIntent.Delver;
 
         float roll = Random.Range(0f, total);
+        if (roll < wDelver) return PartyIntent.Delver;
+        roll -= wDelver;
         if (roll < wDestroyer) return PartyIntent.Destroyer;
         if (roll < wDestroyer + wPilgrim) return PartyIntent.Pilgrim;
         return PartyIntent.GiftGiver;
@@ -479,6 +484,7 @@ public class AdventurerSpawner : MonoBehaviour
     {
         switch (RollIntent())
         {
+            case PartyIntent.Delver: return RollDelverType();
             case PartyIntent.Destroyer: return RollDestroyerType();
             case PartyIntent.GiftGiver: return RollGiftGiverType();
             default: return RollPilgrimType();
@@ -490,13 +496,22 @@ public class AdventurerSpawner : MonoBehaviour
         float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
         float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
         float wMerc = Mathf.Max(0f, weightMercenary);
-        float wTH = Mathf.Max(0f, weightTreasureHunter);
-        float total = wMerc + wHero + wTH;
+        float total = wMerc + wHero;
         if (total <= 0f) return AdventurerType.Mercenary;
         float roll = Random.Range(0f, total);
         if (roll < wHero) return AdventurerType.Hero;
-        if (roll < wHero + wTH) return AdventurerType.TreasureHunter;
         return AdventurerType.Mercenary;
+    }
+
+    private AdventurerType RollDelverType()
+    {
+        float wDel = Mathf.Max(0f, weightDelver);
+        float wTH = Mathf.Max(0f, weightTreasureHunter);
+        float total = wDel + wTH;
+        if (total <= 0f) return AdventurerType.Delver;
+        float roll = Random.Range(0f, total);
+        if (roll < wTH) return AdventurerType.TreasureHunter;
+        return AdventurerType.Delver;
     }
 
     private AdventurerType RollGiftGiverType()

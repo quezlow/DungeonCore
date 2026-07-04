@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a06685f012016f14787c469609bd25e6, type: 3}
   m_Name: Cultist
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
-  className: Adventurer
+  className: Cultist
+  named: 0
   type: 6
   overrideTrait: 0
   forcedTrait: 1
@@ -25,6 +26,8 @@ MonoBehaviour:
   detectionRange: 2
   chestDetectionRange: 3
   xpOnDeath: 18
+  knockbackForce: 0
+  knockbackMinDamage: 0
   canDetectTraps: 0
   trapDetectionRadius: 2.5
   trapDetectionChancePerSecond: 0.3

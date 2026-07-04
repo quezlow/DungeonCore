@@ -16,6 +16,7 @@ public enum AdventurerType
     Cultist,
     Hero,
     Inspector,
+    Delver,
 }
 
 /// <summary>
@@ -30,6 +31,7 @@ public enum AdventurerGoal
     BreachCore,     // advance + fight, breach if reached (Mercenary, Hero)
     ObserveRooms,   // visit rooms, observe, leave        (Scholar, Inspector, Noble)
     SeekDeath,      // advance + fight, never retreat      (Suicidal)
+    Delve,          // hunt monsters for XP + loot, leave alive (Delver)
 }
 
 /// <summary>Single source of truth mapping a type to its intent + goal.</summary>
@@ -37,7 +39,8 @@ public static class AdventurerTypeInfo
 {
     public static PartyIntent IntentOf(AdventurerType type) => type switch
     {
-        AdventurerType.TreasureHunter => PartyIntent.Destroyer,
+        AdventurerType.TreasureHunter => PartyIntent.Delver,
+        AdventurerType.Delver => PartyIntent.Delver,
         AdventurerType.Mercenary => PartyIntent.Destroyer,
         AdventurerType.Scholar => PartyIntent.Pilgrim,
         AdventurerType.Pilgrim => PartyIntent.Pilgrim,
@@ -60,6 +63,7 @@ public static class AdventurerTypeInfo
         AdventurerType.Cultist => AdventurerGoal.WorshipCore,
         AdventurerType.Hero => AdventurerGoal.BreachCore,
         AdventurerType.Inspector => AdventurerGoal.ObserveRooms,
+        AdventurerType.Delver => AdventurerGoal.Delve,
         _ => AdventurerGoal.BreachCore,
     };
 
@@ -78,6 +82,7 @@ public static class AdventurerTypeInfo
         AdventurerType.Cultist => FactionId.Cultists,
         AdventurerType.Hero => FactionId.AdventurersGuild,
         AdventurerType.Inspector => FactionId.AdventurersGuild,
+        AdventurerType.Delver => FactionId.AdventurersGuild,
         _ => FactionId.AdventurersGuild,
     };
 }

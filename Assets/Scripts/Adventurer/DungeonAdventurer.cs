@@ -36,6 +36,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Disarming,      // Rogue channelling to neutralise a flagged trap
         Worshipping,
         MovingToRoom,   // observers heading to a room
+        Hunting,        // delver seeking the next monster to fight
         Observing,      // dwelling in a room
         Organizing,     // Forming up at the entrance before advancing
     }
@@ -52,6 +53,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float attackRange = 1.2f;
     [SerializeField] private float attackCooldown = 1.5f;
     [SerializeField] private float detectionRange = 2.5f;
+
+    [Header("Delving")]
+    [Tooltip("How far a Delver looks for prey - large enough to cover a whole floor.")]
+    [SerializeField] private float huntRange = 1000f;
+    [Tooltip("Rooms a Delver searches with no monster in sight before it leaves.")]
+    [SerializeField] private int delveSearchRooms = 3;
+    [Tooltip("Generous backstop: a Delver leaves after this many kills even if unhurt. 0 = no cap.")]
+    [SerializeField] private int delveKillCap = 12;
+
     [SerializeField] private float knockbackForce = 0f;        // shove distance on a heavy hit; 0 = none
     [SerializeField] private float knockbackMinDamage = 0f;    // min hit damage to trigger knockback
     [SerializeField] private float knockbackSpeed = 8f;        // shove travel speed (units/sec)
@@ -183,6 +193,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private readonly HashSet<RoomAnchor> visitedRooms = new();
     private int roomsObserved = 0;
     private float observeTimer = 0f;
+    private int searchRoomsRemaining = 0;
+    private int delveKills = 0;
 
     // Combat class (Day 39) — overlay applied in Initialise
     private CombatClass combatClass = CombatClass.Fighter;
@@ -408,7 +420,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // Set the post-organize advance state (observer tour / Explorer scout / core).
     private void BeginAdvance()
     {
-        if (goal == AdventurerGoal.ObserveRooms)
+        if (goal == AdventurerGoal.Delve)
+        {
+            searchRoomsRemaining = delveSearchRooms;
+            state = AdventurerState.Hunting;
+        }
+        else if (goal == AdventurerGoal.ObserveRooms)
             state = PickNextRoom() ? AdventurerState.MovingToRoom : AdventurerState.Retreating;
         else if (scoutRoomsRemaining > 0 && PickRandomRoom())
             state = AdventurerState.MovingToRoom;
@@ -493,9 +510,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             case AdventurerState.MovingToRoom:
                 ScanForMonsters();   // non-combat goal; only a Cowardly observer flees
+                if (goal == AdventurerGoal.Delve) ScanForLoot();
                 if (state != AdventurerState.Combat && state != AdventurerState.Retreating
                     && !MovementHalted)
                     FollowPath();
+                break;
+
+            case AdventurerState.Hunting:
+                HandleHunting();
                 break;
 
             case AdventurerState.Observing:
@@ -587,6 +609,18 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     public void ForceRefreshPath()
     {
+        if (goal == AdventurerGoal.Delve)
+        {
+            if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs)
+            {
+                combatTarget = null;
+                roomTarget = null;
+                searchRoomsRemaining = delveSearchRooms;
+                state = AdventurerState.Hunting;
+            }
+            RefreshPath();
+            return;
+        }
         if (state != AdventurerState.Retreating && state != AdventurerState.UsingStairs
             && state != AdventurerState.Worshipping)
             state = AdventurerState.MovingToCore;
@@ -626,6 +660,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         if (state == AdventurerState.MovingToRoom)
         {
+            if (goal == AdventurerGoal.Delve)
+            {
+                // A searching delver checks the room off and resumes the hunt.
+                if (roomTarget != null) visitedRooms.Add(roomTarget);
+                roomTarget = null;
+                state = AdventurerState.Hunting;
+                return;
+            }
             BeginObserving();
             return;
         }
@@ -924,15 +966,53 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             StartRetreat();
     }
 
-    // ── Combat ────────────────────────────────────────────────────
+    // ── Delving ───────────────────────────────
+
+    private void HandleHunting()
+    {
+        // Grab loot underfoot, but never chase chests - that's a Treasure Hunter's job.
+        ScanForLoot();
+        if (state != AdventurerState.Hunting) return;
+
+        // Generous backstop so a delver in a harmless dungeon still eventually leaves.
+        if (delveKillCap > 0 && delveKills >= delveKillCap) { StartRetreat(); return; }
+
+        // Hunt the nearest monster anywhere on the floor; Combat does the chase + kill.
+        DungeonMonster prey = currentFloor?.Entities != null
+            ? currentFloor.Entities.Nearest<DungeonMonster>(transform.position, huntRange)
+            : null;
+
+        if (prey != null)
+        {
+            if (trait == BehaviourTrait.Cowardly) { StartRetreat(); return; }
+            searchRoomsRemaining = delveSearchRooms;   // the floor isn't empty - refill the search budget
+            combatTarget = prey;
+            chestTarget = null;
+            state = AdventurerState.Combat;
+            return;
+        }
+
+        // Nothing to hunt - wander the dungeon a while, then leave satisfied.
+        if (searchRoomsRemaining <= 0 || !PickRandomRoom()) { StartRetreat(); return; }
+        searchRoomsRemaining--;
+        state = AdventurerState.MovingToRoom;
+        RefreshPath();
+    }
+
+    // Delvers resume the hunt after each kill; everyone else presses on to the core.
+    private AdventurerState PostCombatState()
+        => goal == AdventurerGoal.Delve ? AdventurerState.Hunting : AdventurerState.MovingToCore;
+
+    // ── Combat ───────────────────────────────────
 
     private void HandleCombat()
     {
         if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy)
         {
             telegraph?.Cancel();
+            if (goal == AdventurerGoal.Delve && combatTarget != null) delveKills++;
             combatTarget = null;
-            state = AdventurerState.MovingToCore;
+            state = PostCombatState();
             RefreshPath();
             return;
         }
@@ -956,11 +1036,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 combatPathRefreshTimer = CombatPathRefreshInterval;
             }
 
-            // Unreachable — drop combat and resume the invasion.
+            // Unreachable — drop combat and resume the invasion (or the hunt).
             if (combatPath.Count == 0)
             {
                 combatTarget = null;
-                state = AdventurerState.MovingToCore;
+                state = PostCombatState();
                 RefreshPath();
                 return;
             }

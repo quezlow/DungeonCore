@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a06685f012016f14787c469609bd25e6, type: 3}
   m_Name: Hero
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
-  className: Adventurer
+  className: Hero
   named: 1
   type: 7
   overrideTrait: 0

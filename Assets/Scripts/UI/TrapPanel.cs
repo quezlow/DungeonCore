@@ -118,6 +118,13 @@ public class TrapPanel : MonoBehaviour
             Vector3 captured = trap.transform.position;
             btn.onClick.AddListener(() => DungeonCameraController.Instance?.PanTo(captured));
 
+            var removeBtn = btn.transform.Find("RemoveButton")?.GetComponent<Button>();
+            if (removeBtn != null)
+            {
+                var capturedTrap = trap;
+                removeBtn.onClick.AddListener(() => { capturedTrap.RemoveByPlayer(); BuildEntries(); });
+            }
+
             spawnedEntries.Add(btn);
         }
     }
@@ -147,6 +154,7 @@ public class TrapPanel : MonoBehaviour
             }
         }
 
+        parts.Add($"Cap: {def.capacityCost}");
         if (trap.IsFlagged)
             parts.Add("FLAGGED");
 

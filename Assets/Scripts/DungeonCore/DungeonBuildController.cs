@@ -856,7 +856,10 @@ public class DungeonBuildController : MonoBehaviour
 
         if (selectedTrap == null || selectedTrap.prefab == null) return;
         if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) { RejectAt(cell, "A trap is already here"); return; }
-        if (!DungeonCore.Instance.SpendMana(selectedTrap.manaCost)) { RejectAt(cell, "Not enough mana"); return; }
+        if (DungeonCore.Instance.FreeCapacity < selectedTrap.capacityCost) { RejectAt(cell, "Trap capacity full"); return; }
+        if (DungeonCore.Instance.CurrentMana < selectedTrap.manaCost) { RejectAt(cell, "Not enough mana"); return; }
+        DungeonCore.Instance.TrySpendCapacity(selectedTrap.capacityCost);
+        DungeonCore.Instance.SpendMana(selectedTrap.manaCost);
 
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var trap = Instantiate(selectedTrap.prefab, worldPos, Quaternion.identity);

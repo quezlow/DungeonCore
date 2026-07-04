@@ -17,4 +17,5 @@ public enum PartyIntent
     Pilgrim,
     GiftGiver,
     Destroyer,
+    Delver,
 }
