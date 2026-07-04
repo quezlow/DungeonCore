@@ -1,0 +1,220 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// Tracks the dungeon's relationship with each of the four factions: a continuous
+/// standing (-100..+100, neutral 0) and a sticky escalation tier (0..3). Standing
+/// moves on in-dungeon outcomes - a faction's member slain lowers its standing;
+/// a completed pilgrimage or delivered tribute raises the relevant faction. The
+/// tier ratchets UP when standing crosses a negative band and never decays on its
+/// own; later systems lower it through deliberate appeasement.
+///
+/// The player only learns their standing with the daily reckoning: a DISPLAYED
+/// snapshot is refreshed at nightfall (DayNightCycle.OnNightStarted) and is what
+/// the FactionPanel shows. The live values keep moving underneath and are exposed
+/// for debug tooling.
+///
+/// SCENE SETUP: put this on a persistent manager GameObject alongside the other
+/// singletons (e.g. InspectorEscalation). No inspector references are required -
+/// the tuning fields below all have working defaults.
+/// </summary>
+public class FactionSystem : MonoBehaviour
+{
+    public static FactionSystem Instance { get; private set; }
+
+    [Header("Standing Bounds")]
+    [SerializeField] private float standingMin = -100f;
+    [SerializeField] private float standingMax = 100f;
+
+    [Header("Standing Deltas")]
+    [Tooltip("Standing a faction loses each time one of its members is slain.")]
+    [SerializeField] private float standingLossPerKill = 4f;
+    [Tooltip("Holy Order standing gained when a pilgrimage completes (once per party).")]
+    [SerializeField] private float standingGainPilgrimage = 6f;
+    [Tooltip("Cultist standing gained per cultist that departs in peace.")]
+    [SerializeField] private float standingGainTribute = 3f;
+
+    [Header("Escalation Tier Bands")]
+    [Tooltip("Standing at or below which the tier ratchets to 1 / 2 / 3. Tier never falls on its own.")]
+    [SerializeField] private float tier1Standing = -20f;
+    [SerializeField] private float tier2Standing = -50f;
+    [SerializeField] private float tier3Standing = -80f;
+
+    private class Relation
+    {
+        public float standing;
+        public int tier;
+        public float displayedStanding;
+        public int displayedTier;
+    }
+
+    private readonly Dictionary<FactionId, Relation> relations = new();
+    private bool subscribed;
+
+    /// <summary>Fires (faction) whenever a faction's live standing or tier changes.</summary>
+    public event Action<FactionId> OnStandingChanged;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        foreach (var f in FactionInfo.All) relations[f] = new Relation();
+    }
+
+    private void Start()
+    {
+        if (subscribed || DayNightCycle.Instance == null) return;
+        DayNightCycle.Instance.OnNightStarted += RefreshDisplayed;
+        subscribed = true;
+    }
+
+    private void OnDestroy()
+    {
+        if (subscribed && DayNightCycle.Instance != null)
+            DayNightCycle.Instance.OnNightStarted -= RefreshDisplayed;
+        if (Instance == this) Instance = null;
+    }
+
+    // Live reads (debug / internal)
+    public float Standing(FactionId f) => Rel(f).standing;
+    public int Tier(FactionId f) => Rel(f).tier;
+
+    // Displayed reads (panel - refreshed at nightfall)
+    public float DisplayedStanding(FactionId f) => Rel(f).displayedStanding;
+    public int DisplayedTier(FactionId f) => Rel(f).displayedTier;
+
+    public float StandingMin => standingMin;
+    public float StandingMax => standingMax;
+    public int MaxTier => 3;
+
+    /// <summary>Which faction eats the standing hit for a slain member. A Mercenary
+    /// in an Escort party is a hired guard - the Guild's problem, not the Company's;
+    /// everyone else falls to their type's default faction.</summary>
+    public static FactionId FactionForKill(AdventurerType type, FormationType formation)
+    {
+        if (type == AdventurerType.Mercenary && formation == FormationType.Escort)
+            return FactionId.AdventurersGuild;
+        return AdventurerTypeInfo.FactionOf(type);
+    }
+
+    public void RegisterKill(AdventurerType type, FormationType formation)
+        => AddStanding(FactionForKill(type, formation), -standingLossPerKill);
+
+    public void RegisterPilgrimage() => AddStanding(FactionId.HolyOrder, standingGainPilgrimage);
+    public void RegisterTribute() => AddStanding(FactionId.Cultists, standingGainTribute);
+
+    /// <summary>Adjust a faction's standing, clamp it, and ratchet its tier up if
+    /// standing has crossed into a worse band.</summary>
+    public void AddStanding(FactionId f, float delta)
+    {
+        var r = Rel(f);
+        r.standing = Mathf.Clamp(r.standing + delta, standingMin, standingMax);
+        EvaluateTier(r);
+        OnStandingChanged?.Invoke(f);
+    }
+
+    /// <summary>Force a faction's escalation tier up by one (0..3). For the later
+    /// trigger events - Noble retaliation, Holy Ground desecration, and the like.</summary>
+    public void RaiseTier(FactionId f)
+    {
+        var r = Rel(f);
+        int next = Mathf.Min(MaxTier, r.tier + 1);
+        if (next == r.tier) return;
+        r.tier = next;
+        OnStandingChanged?.Invoke(f);
+    }
+
+    private void EvaluateTier(Relation r)
+    {
+        int band = 0;
+        if (r.standing <= tier3Standing) band = 3;
+        else if (r.standing <= tier2Standing) band = 2;
+        else if (r.standing <= tier1Standing) band = 1;
+        if (band > r.tier) r.tier = band;   // ratchet only - never falls here
+    }
+
+    private void RefreshDisplayed()
+    {
+        foreach (var kv in relations)
+        {
+            kv.Value.displayedStanding = kv.Value.standing;
+            kv.Value.displayedTier = kv.Value.tier;
+        }
+    }
+
+    private Relation Rel(FactionId f)
+    {
+        if (!relations.TryGetValue(f, out var r)) { r = new Relation(); relations[f] = r; }
+        return r;
+    }
+
+    /// <summary>The adventurer types a faction draws from when it dispatches. Read
+    /// by the reactive escalation systems, and the "studied intel" the panel will
+    /// reveal once research exists.</summary>
+    public static IReadOnlyList<AdventurerType> PoolFor(FactionId f) => f switch
+    {
+        FactionId.AdventurersGuild => GuildPool,
+        FactionId.HolyOrder => HolyOrderPool,
+        FactionId.MercenaryCompany => MercenaryPool,
+        FactionId.Cultists => CultistPool,
+        _ => Array.Empty<AdventurerType>(),
+    };
+
+    private static readonly AdventurerType[] GuildPool =
+    {
+        AdventurerType.TreasureHunter, AdventurerType.Scholar,
+        AdventurerType.Noble, AdventurerType.Inspector, AdventurerType.Hero,
+    };
+    private static readonly AdventurerType[] HolyOrderPool = { AdventurerType.Pilgrim };
+    private static readonly AdventurerType[] MercenaryPool = { AdventurerType.Mercenary };
+    private static readonly AdventurerType[] CultistPool = { AdventurerType.Cultist };
+
+    public FactionSystemSaveData GetSaveData()
+    {
+        var data = new FactionSystemSaveData();
+        foreach (var f in FactionInfo.All)
+        {
+            var r = Rel(f);
+            data.relations.Add(new FactionRelationSave
+            {
+                faction = f,
+                standing = r.standing,
+                tier = r.tier,
+                displayedStanding = r.displayedStanding,
+                displayedTier = r.displayedTier,
+            });
+        }
+        return data;
+    }
+
+    public void RestoreFromSave(FactionSystemSaveData data)
+    {
+        if (data == null || data.relations == null) return;
+        foreach (var rec in data.relations)
+        {
+            var r = Rel(rec.faction);
+            r.standing = rec.standing;
+            r.tier = rec.tier;
+            r.displayedStanding = rec.displayedStanding;
+            r.displayedTier = rec.displayedTier;
+        }
+        foreach (var f in FactionInfo.All) OnStandingChanged?.Invoke(f);
+    }
+}
+
+[System.Serializable]
+public class FactionSystemSaveData
+{
+    public List<FactionRelationSave> relations = new();
+}
+
+[System.Serializable]
+public class FactionRelationSave
+{
+    public FactionId faction;
+    public float standing;
+    public int tier;
+    public float displayedStanding;
+    public int displayedTier;
+}

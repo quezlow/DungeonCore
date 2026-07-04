@@ -60,6 +60,8 @@ public class DungeonSaveData
     public List<LivePartySaveData> liveParties = new();
 
     public InspectorEscalationSaveData inspectorEscalation;
+
+    public FactionSystemSaveData factionSystem;
 }
 
 [Serializable]

@@ -144,4 +144,24 @@ public class Commands : MonoBehaviour
         AdventurerSpawner.Instance.DispatchHeroParty();
         Debug.Log("[Commands] Hero party dispatched.");
     }
+
+    [ContextMenu("Test Print Faction Standings")]
+    void TestPrintFactionStandings()
+    {
+        var fs = FactionSystem.Instance;
+        if (fs == null) { Debug.Log("[Commands] No FactionSystem in scene."); return; }
+        foreach (var f in FactionInfo.All)
+            Debug.Log($"[Commands] {FactionInfo.DisplayName(f)} - live {fs.Standing(f):0.#} (tier {fs.Tier(f)}), " +
+                      $"shown {fs.DisplayedStanding(f):0.#} (tier {fs.DisplayedTier(f)}).");
+    }
+
+    [ContextMenu("Test Anger Adventurers Guild (-25)")]
+    void TestAngerGuild()
+    {
+        var fs = FactionSystem.Instance;
+        if (fs == null) { Debug.Log("[Commands] No FactionSystem in scene."); return; }
+        fs.AddStanding(FactionId.AdventurersGuild, -25f);
+        Debug.Log($"[Commands] Guild standing now {fs.Standing(FactionId.AdventurersGuild):0.#} " +
+                  $"(tier {fs.Tier(FactionId.AdventurersGuild)}).");
+    }
 }

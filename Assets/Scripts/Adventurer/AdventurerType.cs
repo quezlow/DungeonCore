@@ -62,4 +62,22 @@ public static class AdventurerTypeInfo
         AdventurerType.Inspector => AdventurerGoal.ObserveRooms,
         _ => AdventurerGoal.BreachCore,
     };
+
+    /// <summary>The faction a type is dispatched by. Mercenaries map to the
+    /// Mercenary Company here, but a Mercenary spawned as an escort guard is
+    /// attributed to the Guild at the point of the kill (FactionSystem.FactionForKill)
+    /// - attribution is by role, not type.</summary>
+    public static FactionId FactionOf(AdventurerType type) => type switch
+    {
+        AdventurerType.TreasureHunter => FactionId.AdventurersGuild,
+        AdventurerType.Mercenary => FactionId.MercenaryCompany,
+        AdventurerType.Scholar => FactionId.AdventurersGuild,
+        AdventurerType.Pilgrim => FactionId.HolyOrder,
+        AdventurerType.Suicidal => FactionId.AdventurersGuild,
+        AdventurerType.Noble => FactionId.AdventurersGuild,
+        AdventurerType.Cultist => FactionId.Cultists,
+        AdventurerType.Hero => FactionId.AdventurersGuild,
+        AdventurerType.Inspector => FactionId.AdventurersGuild,
+        _ => FactionId.AdventurersGuild,
+    };
 }
