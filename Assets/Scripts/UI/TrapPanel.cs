@@ -47,6 +47,18 @@ public class TrapPanel : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         Hide();
+        TrapBase.OnTrapsChanged += HandleTrapsChanged;
+    }
+
+    private void OnDestroy()
+    {
+        TrapBase.OnTrapsChanged -= HandleTrapsChanged;
+        if (Instance == this) Instance = null;
+    }
+
+    private void HandleTrapsChanged()
+    {
+        if (isOpen) BuildEntries();
     }
 
     private void Update()
@@ -122,7 +134,7 @@ public class TrapPanel : MonoBehaviour
             if (removeBtn != null)
             {
                 var capturedTrap = trap;
-                removeBtn.onClick.AddListener(() => { capturedTrap.RemoveByPlayer(); BuildEntries(); });
+                removeBtn.onClick.AddListener(() => capturedTrap.RemoveByPlayer());
             }
 
             spawnedEntries.Add(btn);

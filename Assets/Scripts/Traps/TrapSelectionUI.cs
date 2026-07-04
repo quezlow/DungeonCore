@@ -23,6 +23,8 @@ public class TrapSelectionUI : MonoBehaviour
     [SerializeField] private TMP_Text trapNameLabel;
     [SerializeField] private Image manaCostIcon;
     [SerializeField] private TMP_Text manaCostLabel;
+    [Tooltip("Optional - shows the trap's capacity cost. Blank for trap-chests.")]
+    [SerializeField] private TMP_Text capacityCostLabel;
     [SerializeField] private TMP_Text descriptionLabel;
     [SerializeField] private TMP_Text statsLabel;
 
@@ -122,6 +124,8 @@ public class TrapSelectionUI : MonoBehaviour
         if (trapIcon != null) trapIcon.sprite = icon;
         if (trapNameLabel != null) trapNameLabel.text = label;
         if (manaCostLabel != null) manaCostLabel.text = cost.ToString("0");
+        if (capacityCostLabel != null)
+            capacityCostLabel.text = (!e.IsChest && e.trap != null) ? e.trap.capacityCost.ToString("0") : "";
         if (descriptionLabel != null) descriptionLabel.text = desc;
         if (statsLabel != null) statsLabel.text = string.Join("\n", stats);
 

@@ -35,6 +35,9 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     public bool IsFlagged { get; private set; }
     public bool IsDisarmed { get; private set; }
 
+    /// <summary>Fires whenever any trap is placed or destroyed, so live panels can refresh.</summary>
+    public static event System.Action OnTrapsChanged;
+
     private float lastTriggerTime = -999f;
 
     // ── Lifecycle ─────────────────────────────────────────────────
@@ -48,6 +51,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
 
         floor?.TrapRegistry?.Register(this);
         floor?.Entities?.Register(this);
+        OnTrapsChanged?.Invoke();
     }
 
     protected virtual void OnDestroy()
@@ -58,6 +62,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         var floor = GetComponentInParent<FloorRoot>();
         floor?.TrapRegistry?.Unregister(this);
         floor?.Entities?.Unregister(this);
+        OnTrapsChanged?.Invoke();
     }
 
     /// <summary>Player-initiated removal. Refunds half the placement mana and
