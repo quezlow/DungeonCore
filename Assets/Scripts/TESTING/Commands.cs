@@ -178,6 +178,7 @@ public class Commands : MonoBehaviour
     [SerializeField] private MonsterDefinition testInvaderDef;
 
     [ContextMenu("Test Spawn Invader")]
+    [ContextMenu("Test Spawn Invader")]
     void TestSpawnInvader()
     {
         if (testInvaderDef == null || testInvaderDef.prefab == null) { Debug.Log("[Commands] Assign Test Invader Def (a MonsterDefinition with a prefab) first."); return; }
@@ -187,5 +188,20 @@ public class Commands : MonoBehaviour
         if (floor != null) monster.transform.SetParent(floor.transform, true);
         monster.InitialiseInvader(floor, testInvaderDef);
         Debug.Log($"[Commands] Spawned invader '{testInvaderDef.monsterName}' at the entrance.");
+    }
+
+    [ContextMenu("Test Discover Invader Type")]
+    void TestDiscoverInvader()
+    {
+        if (testInvaderDef == null) { Debug.Log("[Commands] Assign Test Invader Def first."); return; }
+        BestiaryState.Instance?.Discover(testInvaderDef.monsterName);
+    }
+
+    [ContextMenu("Test Print Bestiary")]
+    void TestPrintBestiary()
+    {
+        if (BestiaryState.Instance == null) { Debug.Log("[Commands] No BestiaryState in scene."); return; }
+        var all = BestiaryState.Instance.AllDiscovered;
+        Debug.Log(all.Count == 0 ? "[Commands] Bestiary empty." : $"[Commands] Discovered: {string.Join(", ", all)}");
     }
 }

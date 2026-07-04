@@ -1235,6 +1235,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void Die()
     {
+        if (IsWild && wildDefinition != null)
+            BestiaryState.Instance?.Discover(wildDefinition.monsterName);
+
         currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);
         GetComponent<LootTable>()?.Roll(transform.position);

@@ -62,6 +62,8 @@ public class DungeonSaveData
     public InspectorEscalationSaveData inspectorEscalation;
 
     public FactionSystemSaveData factionSystem;
+
+    public BestiarySaveData bestiary;
 }
 
 [Serializable]

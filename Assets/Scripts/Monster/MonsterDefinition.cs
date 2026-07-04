@@ -47,6 +47,8 @@ public class MonsterDefinition : ScriptableObject
     public LevelTier requiredTier = LevelTier.Bronze;
     [Tooltip("Rank within the required tier at which this monster unlocks (1-based).")]
     [Min(1)] public int requiredRank = 1;
+    [Tooltip("If true, stays hidden in the build menu until the player has slain one of this type in the wild (Bestiary discovery).")]
+    public bool requiresDiscovery = false;
 
     [Header("Description")]
     [TextArea(2, 4)]

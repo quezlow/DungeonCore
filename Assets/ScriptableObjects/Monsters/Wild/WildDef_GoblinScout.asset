@@ -19,6 +19,7 @@ MonoBehaviour:
   manaCost: 35
   requiredTier: 0
   requiredRank: 1
+  requiresDiscovery: 1
   description: 
   isAquatic: 0
   passiveRegenPerSecond: 1

@@ -619,6 +619,7 @@ public class DungeonBuildController : MonoBehaviour
         // Phase 3 closeout - spawners cost BOTH capacity and mana (per the roadmap).
         // Pre-check both so we never spend one resource and then fail on the other.
         if (def.RequiredFlatLevel > core.DungeonLevel) { RejectAt(cell, $"{def.monsterName} unlocks at {LevelTierUtil.DisplayName(def.RequiredFlatLevel)}"); return; }
+        if (def.requiresDiscovery && !BestiaryState.Discovered(def.monsterName)) { RejectAt(cell, $"{def.monsterName} - slay one in the wild to learn it"); return; }
         if (core.FreeCapacity < def.CapacityCost) { RejectAt(cell, "Monster capacity full"); return; }
         if (core.CurrentMana < def.ManaCost) { RejectAt(cell, "Not enough mana"); return; }
 
