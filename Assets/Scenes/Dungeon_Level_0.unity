@@ -9534,6 +9534,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 377720639}
   m_CullTransparentMesh: 1
+--- !u!1 &388835396
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 388835397}
+  - component: {fileID: 388835398}
+  m_Layer: 0
+  m_Name: DungeonRatingController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &388835397
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 388835396}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &388835398
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 388835396}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4041f20f4f7dc0f4e838a7c6df04092b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonRating
+  floorPerDay: 8
+  veteranBonusFraction: 0.5
 --- !u!1 &390178025
 GameObject:
   m_ObjectHideFlags: 0
@@ -14248,7 +14294,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99989927
+  m_Size: 0.99999356
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17176,7 +17222,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0009893624}
+  m_AnchoredPosition: {x: 0, y: 0.00027251476}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -56621,6 +56667,7 @@ Transform:
   - {fileID: 150602188216864434}
   - {fileID: 1773436874983252449}
   - {fileID: 3104286511088313391}
+  - {fileID: 388835397}
   - {fileID: 2455971751750778493}
   - {fileID: 2098685298}
   - {fileID: 1323356321}

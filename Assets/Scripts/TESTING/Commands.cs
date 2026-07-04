@@ -164,4 +164,13 @@ public class Commands : MonoBehaviour
         Debug.Log($"[Commands] Guild standing now {fs.Standing(FactionId.AdventurersGuild):0.#} " +
                   $"(tier {fs.Tier(FactionId.AdventurersGuild)}).");
     }
+
+    [ContextMenu("Test Print Dungeon Rating")]
+    void TestPrintDungeonRating()
+    {
+        var r = DungeonRating.Instance;
+        if (r == null) { Debug.Log("[Commands] No DungeonRating in scene."); return; }
+        Debug.Log($"[Commands] Dungeon rating {r.CurrentRating:0.#} = capacity {r.CapacityInvested():0.#} " +
+                  $"+ veterans {r.VeteranBonus():0.#} + day floor {r.DayFloor():0.#}.");
+    }
 }
