@@ -203,6 +203,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     public DungeonType Affinity => affinity;
     private string flavorClassName;
     public string FlavorClassName => string.IsNullOrEmpty(flavorClassName) ? combatClass.ToString() : flavorClassName;
+    private MonsterDefinition unlocksOnDeath;
+    private bool unlockRequiresDarkCore;
 
     // Named-adventurer tracking — this unit's roster record + identity.
     private PartyMember partyMember;
@@ -294,6 +296,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             canDetectTraps = def.canDetectTraps;
             trapDetectionRadius = def.trapDetectionRadius;
             trapDetectionChancePerSecond = def.trapDetectionChancePerSecond;
+            unlocksOnDeath = def.unlocksOnDeath;
+            unlockRequiresDarkCore = def.unlockRequiresDarkCore;
         }
 
         type = def != null ? def.type : AdventurerType.Mercenary;
@@ -1421,6 +1425,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             if (party != null) party.notorietyDelta += 5f;
             FactionSystem.Instance?.RegisterKill(type, party != null ? party.Formation : FormationType.None);
             AlignmentSystem.Instance?.OnAdventurerKilled(type, combatClass, state == AdventurerState.Retreating);
+            if (unlocksOnDeath != null
+                && (!unlockRequiresDarkCore || (DungeonCore.Instance != null && DungeonCore.Instance.DungeonType == DungeonType.Dark)))
+                BestiaryState.Instance?.Discover(unlocksOnDeath.monsterName);
         }
 
         // A slain Noble triggers family retaliation later (faction system).

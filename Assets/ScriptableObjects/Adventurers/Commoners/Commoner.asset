@@ -17,6 +17,8 @@ MonoBehaviour:
   type: 10
   overrideTrait: 0
   forcedTrait: 0
+  unlocksOnDeath: {fileID: 11400000, guid: 673f898506f52ef4ebe921a506ee55d7, type: 2}
+  unlockRequiresDarkCore: 1
   prefab: {fileID: 2486973880247246908, guid: 518240a44dd2bf942acae64fcacff3da, type: 3}
   maxHP: 8
   moveSpeed: 2

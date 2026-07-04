@@ -36,6 +36,12 @@ public class AdventurerDefinition : ScriptableObject
     public bool overrideTrait = false;
     public BehaviourTrait forcedTrait = BehaviourTrait.Balanced;
 
+    [Header("Unlock on death")]
+    [Tooltip("Killing one of these discovers this monster in the bestiary - e.g. a commoner unlocks the human-frame thrall. Leave empty for none.")]
+    public MonsterDefinition unlocksOnDeath;
+    [Tooltip("If true, the unlock only fires for a Dark core.")]
+    public bool unlockRequiresDarkCore = false;
+
     [Header("Prefab")]
     [Tooltip("The DungeonAdventurer prefab used for this class. " +
              "All classes can share the same prefab until sprites are added on Day 39.")]
