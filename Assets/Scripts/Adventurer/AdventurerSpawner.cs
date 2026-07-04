@@ -226,6 +226,10 @@ public class AdventurerSpawner : MonoBehaviour
         if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
         if (!EntranceDiscovered || InGraceDay) { timer = 0f; return; }
         if (!WaveStageController.AllowAdventurers && !WaveStageController.AllowCommoners) { timer = 0f; return; }
+        // Matched teams hold until the first assessment (staged flow only); the Inspector
+        // and any kill-team arrive via dedicated dispatches meanwhile.
+        if (WaveStageController.Instance != null && WaveStageController.AllowAdventurers
+            && GradeSystem.Instance != null && !GradeSystem.Instance.PlayerHasBeenAssessed) { timer = 0f; return; }
 
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())
@@ -623,6 +627,56 @@ public class AdventurerSpawner : MonoBehaviour
     [ContextMenu("Force Spawn Party Now")]
     public void ForceSpawnParty() { timer = 0f; SpawnParty(); }
     public void ForceSpawnCommonerParty() { timer = 0f; SpawnCommonerParty(); }
+
+    /// <summary>Dispatch the Guild's Inspector (plus a small escort) as a scheduled
+    /// assessment. Driven by InspectorAssessor.</summary>
+    public void DispatchInspectorParty()
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var insp = Def(AdventurerType.Inspector);
+        if (insp == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Inspector));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        SpawnMember(insp, RollTrait(), spawnPos, party, used);
+        int guards = SpawnGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
+
+        SetupOrganize(party, AdventurerType.Inspector, 1 + guards, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(1 + guards);
+    }
+
+    /// <summary>Dispatch a Hero kill-team to investigate a slain Inspector. Returns the
+    /// party so the assessor can watch for its departure.</summary>
+    public AdventurerParty DispatchInvestigationTeam(int guardCount)
+    {
+        if (DungeonEntrance.Instance == null) return null;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return null;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        SpawnMember(heroDef, RollTrait(), spawnPos, party, used);
+
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        if (guardBase != null)
+            for (int i = 0; i < guardCount; i++)
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used);
+
+        SetupOrganize(party, AdventurerType.Hero, 1 + guardCount, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(1 + guardCount);
+        PartyBannerManager.Instance?.ShowBanner(party);
+        return party;
+    }
 
     // ── Live-party restore ──────────────────────────────
     /// <summary>Recreates every in-dungeon party from a mid-raid save. Runs before floor

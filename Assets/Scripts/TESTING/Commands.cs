@@ -264,4 +264,12 @@ public class Commands : MonoBehaviour
         GradeSystem.Instance.Assess();
         Debug.Log($"[Commands] Assessed: {GradeSystem.Instance.CurrentTierName} (rating {GradeSystem.Instance.AssessedRating:0}).");
     }
+
+    [ContextMenu("Test Dispatch Inspector")]
+    void TestDispatchInspector()
+    {
+        if (AdventurerSpawner.Instance == null) { Debug.Log("[Commands] No AdventurerSpawner in scene."); return; }
+        AdventurerSpawner.Instance.DispatchInspectorParty();
+        Debug.Log("[Commands] Inspector dispatched.");
+    }
 }

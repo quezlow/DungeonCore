@@ -69,6 +69,8 @@ public class DungeonSaveData
 
     public GradeSystemSaveData grade;
 
+    public InspectorAssessorSaveData inspectorAssessor;
+
     public BestiarySaveData bestiary;
 }
 

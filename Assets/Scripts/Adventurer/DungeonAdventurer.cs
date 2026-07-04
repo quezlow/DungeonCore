@@ -1428,6 +1428,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             if (party != null) party.notorietyDelta += 5f;
             FactionSystem.Instance?.RegisterKill(type, party != null ? party.Formation : FormationType.None);
             AlignmentSystem.Instance?.OnAdventurerKilled(type, combatClass, state == AdventurerState.Retreating);
+            if (type == AdventurerType.Inspector) InspectorAssessor.Instance?.OnInspectorSlain();
             if (unlocksOnDeath != null
                 && (!unlockRequiresDarkCore || (DungeonCore.Instance != null && DungeonCore.Instance.DungeonType == DungeonType.Dark)))
                 BestiaryState.Instance?.Discover(unlocksOnDeath.monsterName);

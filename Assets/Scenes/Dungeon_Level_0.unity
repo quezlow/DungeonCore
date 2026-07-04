@@ -52496,8 +52496,9 @@ GameObject:
   m_Component:
   - component: {fileID: 2133235185}
   - component: {fileID: 2133235186}
+  - component: {fileID: 2133235187}
   m_Layer: 0
-  m_Name: InspectorEscalationController
+  m_Name: InspectorController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -52534,6 +52535,20 @@ MonoBehaviour:
   reputationDismissThreshold: 25
   dispatchDelaySeconds: 50
   bribeCost: 150
+--- !u!114 &2133235187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2133235184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6ac174eeae3f2c4cb9a98e182c79587, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InspectorAssessor
+  cadenceDays: 7
+  investigationGuards: 3
 --- !u!1 &2133709806
 GameObject:
   m_ObjectHideFlags: 0
@@ -53722,7 +53737,7 @@ MonoBehaviour:
   weightNoble: 1
   weightInspector: 0.8
   heroNotorietyThreshold: 60
-  inspectorEnabled: 1
+  inspectorEnabled: 0
   nobleGuardMin: 2
   nobleGuardMax: 3
   scholarMin: 1
