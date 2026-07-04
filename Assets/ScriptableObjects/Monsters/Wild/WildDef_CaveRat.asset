@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: WildDef_Spider
+  m_Name: WildDef_CaveRat
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Giant Spider
-  icon: {fileID: 3744249878153681198, guid: 3595ba2fbd5594048afc3102bbe2f851, type: 3}
-  prefab: {fileID: 9207189859156101171, guid: 4e6224405df5065488d5cf3db9d823bb, type: 3}
-  capacityCost: 4
-  manaCost: 20
+  monsterName: Cave Rat
+  icon: {fileID: 21300000, guid: 371f5ad8a8772e744a88526eb95932e8, type: 3}
+  prefab: {fileID: 7267283011648284252, guid: 939ae11313253dc47a6a4742df836a91, type: 3}
+  capacityCost: 2
+  manaCost: 10
   requiredTier: 0
   requiredRank: 1
   description: 
   isAquatic: 0
   passiveRegenPerSecond: 1
   regenCooldown: 5
-  wildRegenMultiplier: 2
+  wildRegenMultiplier: 1
   maxStamina: 0
   attackStaminaCost: 0
-  targetPriority: 3
+  targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
   isNecromancer: 0
