@@ -709,6 +709,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                     DungeonCore.Instance?.AddXP(pilgrimXpReward);
                     party.notorietyDelta -= pilgrimNotorietyReduction;
                     FactionSystem.Instance?.RegisterPilgrimage();
+                    AlignmentSystem.Instance?.OnPilgrimage();
                     Debug.Log($"[Adventurer] Pilgrimage complete — Notoriety -{pilgrimNotorietyReduction:0}, +{pilgrimXpReward:0} XP.");
                 }
             }
@@ -717,6 +718,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 // Tribute bearers raise the dungeon's desirability on a peaceful exit.
                 DungeonCore.Instance?.AddReputation(2f);
                 FactionSystem.Instance?.RegisterTribute();
+                AlignmentSystem.Instance?.OnTribute();
             }
             else if (goal == AdventurerGoal.LootAndLeave && carried > 0)
             {
@@ -736,6 +738,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             }
 
             party?.OnMemberResolved(partyMember, true, false, carried);
+            AlignmentSystem.Instance?.OnAdventurerLeftAlive(carried);
 
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
@@ -1417,6 +1420,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             DungeonCore.Instance?.AddNotoriety(5f);
             if (party != null) party.notorietyDelta += 5f;
             FactionSystem.Instance?.RegisterKill(type, party != null ? party.Formation : FormationType.None);
+            AlignmentSystem.Instance?.OnAdventurerKilled(type, combatClass, state == AdventurerState.Retreating);
         }
 
         // A slain Noble triggers family retaliation later (faction system).

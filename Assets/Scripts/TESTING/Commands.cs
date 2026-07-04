@@ -225,4 +225,19 @@ public class Commands : MonoBehaviour
         }
         if (n == 0) Debug.Log("[Commands] No adventurers on floor 0.");
     }
+
+    [ContextMenu("Test Print Alignment")]
+    void TestPrintAlignment()
+    {
+        var al = AlignmentSystem.Instance;
+        if (al == null) { Debug.Log("[Commands] No AlignmentSystem in scene."); return; }
+        string band = al.Alignment <= -20f ? "dark" : al.Alignment >= 20f ? "good" : "neutral";
+        Debug.Log($"[Commands] Alignment: {al.Alignment:0.#} ({band}).");
+    }
+
+    [ContextMenu("Test Shift Alignment Dark (-15)")]
+    void TestShiftDark() => AlignmentSystem.Instance?.Shift(-15f);
+
+    [ContextMenu("Test Shift Alignment Good (+15)")]
+    void TestShiftGood() => AlignmentSystem.Instance?.Shift(15f);
 }

@@ -63,6 +63,8 @@ public class DungeonSaveData
 
     public FactionSystemSaveData factionSystem;
 
+    public AlignmentSaveData alignment;
+
     public BestiarySaveData bestiary;
 }
 
