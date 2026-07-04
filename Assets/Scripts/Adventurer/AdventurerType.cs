@@ -17,6 +17,7 @@ public enum AdventurerType
     Hero,
     Inspector,
     Delver,
+    Commoner,
 }
 
 /// <summary>
@@ -41,6 +42,7 @@ public static class AdventurerTypeInfo
     {
         AdventurerType.TreasureHunter => PartyIntent.Delver,
         AdventurerType.Delver => PartyIntent.Delver,
+        AdventurerType.Commoner => PartyIntent.Pilgrim,
         AdventurerType.Mercenary => PartyIntent.Destroyer,
         AdventurerType.Scholar => PartyIntent.Pilgrim,
         AdventurerType.Pilgrim => PartyIntent.Pilgrim,
@@ -64,6 +66,7 @@ public static class AdventurerTypeInfo
         AdventurerType.Hero => AdventurerGoal.BreachCore,
         AdventurerType.Inspector => AdventurerGoal.ObserveRooms,
         AdventurerType.Delver => AdventurerGoal.Delve,
+        AdventurerType.Commoner => AdventurerGoal.ObserveRooms,
         _ => AdventurerGoal.BreachCore,
     };
 
@@ -83,6 +86,7 @@ public static class AdventurerTypeInfo
         AdventurerType.Hero => FactionId.AdventurersGuild,
         AdventurerType.Inspector => FactionId.AdventurersGuild,
         AdventurerType.Delver => FactionId.AdventurersGuild,
+        AdventurerType.Commoner => FactionId.AdventurersGuild,
         _ => FactionId.AdventurersGuild,
     };
 }

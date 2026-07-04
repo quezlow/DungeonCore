@@ -248,4 +248,12 @@ public class Commands : MonoBehaviour
         HolyOrderStrike.Instance.Fire();
         Debug.Log("[Commands] Holy Order strike dispatched.");
     }
+
+    [ContextMenu("Test Spawn Commoner Party")]
+    void TestSpawnCommonerParty()
+    {
+        if (AdventurerSpawner.Instance == null) { Debug.Log("[Commands] No AdventurerSpawner in scene."); return; }
+        AdventurerSpawner.Instance.ForceSpawnCommonerParty();
+        Debug.Log("[Commands] Commoner party spawned.");
+    }
 }

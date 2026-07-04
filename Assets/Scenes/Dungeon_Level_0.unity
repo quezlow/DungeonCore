@@ -38358,6 +38358,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaveStageController
   animalStageDays: 5
+  commonerStageDays: 4
 --- !u!1 &1559114284
 GameObject:
   m_ObjectHideFlags: 0
@@ -53240,6 +53241,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 709240a6e613b234197daf3e33557a50, type: 2}
   - {fileID: 11400000, guid: e7089f84ef44422449243fa5aa037036, type: 2}
   - {fileID: 11400000, guid: 18c69142d7bc241479840395da90a3a0, type: 2}
+  - {fileID: 11400000, guid: 7e58c93cad57bbe4d94318ea1da34149, type: 2}
   minPartySize: 3
   maxPartySize: 5
   scalePartySizeWithNotoriety: 1
@@ -53280,6 +53282,8 @@ MonoBehaviour:
   inspectorGuardMin: 1
   inspectorGuardMax: 2
   guardDef: {fileID: 0}
+  commonerGroupMin: 1
+  commonerGroupMax: 3
   tributeChestPrefab: {fileID: 6910794033115046792, guid: 1d386c8aef808844680624d505d9e02b, type: 3}
   tributeGoldValue: 20
   cultistTributeGoldValue: 50

@@ -79,6 +79,10 @@ public class AdventurerSpawner : MonoBehaviour
     [Tooltip("Optional dedicated (e.g. high-level) Mercenary-type definition for escort " +
              "guards. Falls back to the Mercenary type asset if unset. Keep it Mercenary-typed.")]
     [SerializeField] private AdventurerDefinition guardDef;
+    [Header("Commoners")]
+    [Tooltip("Smallest / largest loose group of curious commoners per spawn during the commoner stage.")]
+    [Min(1)][SerializeField] private int commonerGroupMin = 1;
+    [Min(1)][SerializeField] private int commonerGroupMax = 3;
 
     [Header("Tribute Bearers")]
     [Tooltip("TributeChest prefab. One member of each Pilgrim or Cultist party " +
@@ -147,7 +151,7 @@ public class AdventurerSpawner : MonoBehaviour
         && DungeonEntrance.Instance != null
         && EntranceDiscovered
         && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight)
-        && WaveStageController.AllowAdventurers;
+        && (WaveStageController.AllowAdventurers || WaveStageController.AllowCommoners);
 
     /// <summary>True when the seeded entrance has been found — or on legacy saves
     /// with a player-placed entrance, which have no seal to break.</summary>
@@ -221,7 +225,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (DungeonEntrance.Instance == null) return;
         if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
         if (!EntranceDiscovered || InGraceDay) { timer = 0f; return; }
-        if (!WaveStageController.AllowAdventurers) { timer = 0f; return; }
+        if (!WaveStageController.AllowAdventurers && !WaveStageController.AllowCommoners) { timer = 0f; return; }
 
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())
@@ -234,7 +238,8 @@ public class AdventurerSpawner : MonoBehaviour
                 return;
             }
             timer = 0f;
-            SpawnParty();
+            if (WaveStageController.AllowCommoners) SpawnCommonerParty();
+            else SpawnParty();
         }
     }
 
@@ -290,6 +295,25 @@ public class AdventurerSpawner : MonoBehaviour
     }
 
     // ── Composition (Day 37) ─────────────────────────────────────
+
+    private void SpawnCommonerParty()
+    {
+        var def = Def(AdventurerType.Commoner);
+        if (def == null) return;
+
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Commoner));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        int n = Random.Range(commonerGroupMin, commonerGroupMax + 1);
+        var used = new Dictionary<CombatClass, int>();
+        for (int i = 0; i < n; i++) SpawnMember(def, RollTrait(), spawnPos, party, used);
+
+        RunStats.Instance?.RecordPartySpawned(n);
+        SetupOrganize(party, AdventurerType.Commoner, n, spawnPos);
+        // Not tracked: no war banner, no return. Just curious folk.
+    }
 
     private AdventurerDefinition Def(AdventurerType t)
     {
@@ -598,6 +622,7 @@ public class AdventurerSpawner : MonoBehaviour
 
     [ContextMenu("Force Spawn Party Now")]
     public void ForceSpawnParty() { timer = 0f; SpawnParty(); }
+    public void ForceSpawnCommonerParty() { timer = 0f; SpawnCommonerParty(); }
 
     // ── Live-party restore ──────────────────────────────
     /// <summary>Recreates every in-dungeon party from a mid-raid save. Runs before floor

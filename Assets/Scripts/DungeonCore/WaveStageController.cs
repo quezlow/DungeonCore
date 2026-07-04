@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum WaveStage { Dormant, Animals, Adventurers }
+public enum WaveStage { Dormant, Animals, Commoners, Adventurers }
 
 /// <summary>
 /// Sequences the assault on a newly-breached dungeon: first the wildlife (the animal
@@ -22,6 +22,8 @@ public class WaveStageController : MonoBehaviour
     [Header("Timing")]
     [Tooltip("In-game days of wildlife-only assault after the entrance is breached, before adventurers begin. 0 = adventurers from the start.")]
     [Min(0)][SerializeField] private int animalStageDays = 5;
+    [Tooltip("In-game days of curious commoners after the animal stage, before proper adventurers begin.")]
+    [Min(0)][SerializeField] private int commonerStageDays = 4;
 
     private WaveStage announced = WaveStage.Dormant;
 
@@ -38,6 +40,8 @@ public class WaveStageController : MonoBehaviour
     // With no controller in the scene, both return true - spawners keep their old behaviour.
     public static bool AllowAnimals => Instance == null || Current == WaveStage.Animals;
     public static bool AllowAdventurers => Instance == null || Current == WaveStage.Adventurers;
+    // Commoners exist only with the controller present - no legacy behaviour to preserve.
+    public static bool AllowCommoners => Instance != null && Current == WaveStage.Commoners;
 
     /// <summary>The current stage, derived fresh from entrance discovery and the day.</summary>
     public static WaveStage Current
@@ -53,8 +57,12 @@ public class WaveStageController : MonoBehaviour
 
             int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
             int breach = cave.discoveredDay >= 0 ? cave.discoveredDay : day;
-            int span = Instance != null ? Instance.animalStageDays : 5;
-            return (day - breach) >= span ? WaveStage.Adventurers : WaveStage.Animals;
+            int animalSpan = Instance != null ? Instance.animalStageDays : 5;
+            int commonerSpan = Instance != null ? Instance.commonerStageDays : 0;
+            int elapsed = day - breach;
+            if (elapsed < animalSpan) return WaveStage.Animals;
+            if (elapsed < animalSpan + commonerSpan) return WaveStage.Commoners;
+            return WaveStage.Adventurers;
         }
     }
 
@@ -77,6 +85,8 @@ public class WaveStageController : MonoBehaviour
 
         if (stage == WaveStage.Animals)
             log.AddAlert("The breach has stirred the deep's wild things. They come to feed. Steel yourself.", pos, floor, AlertCategory.Threat);
+        else if (stage == WaveStage.Commoners)
+            log.AddAlert("Curious folk drift in from the surface - farmers, woodsmen, come to gawk at what stirs below. Easy prey.", pos, floor, AlertCategory.Threat);
         else if (stage == WaveStage.Adventurers)
             log.AddAlert("The surface has heard of us at last. Adventurers approach. The real hunt begins.", pos, floor, AlertCategory.Threat);
     }
