@@ -207,6 +207,7 @@ public class LiveMemberSaveData
     // Roster identity — every member, alive or already resolved.
     public int type;
     public int combatClass;
+    public int affinity;
     public int trait;
     public string name;
     public bool named;

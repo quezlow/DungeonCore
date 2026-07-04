@@ -53219,6 +53219,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1530f9333b38e3244929b04375e0181d, type: 2}
   - {fileID: 11400000, guid: 1b2933e0c5baf3944a15b0086d2072c0, type: 2}
   - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
+  affinityProfiles: {fileID: 11400000, guid: f9fa54e470b5ced4bb2dcfee6f323fcc, type: 2}
   varietyBias: 2
   organizeBaseSeconds: 2.5
   organizePerMember: 1

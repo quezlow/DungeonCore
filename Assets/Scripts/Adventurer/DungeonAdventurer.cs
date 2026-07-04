@@ -199,6 +199,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // Combat class (Day 39) — overlay applied in Initialise
     private CombatClass combatClass = CombatClass.Fighter;
     private CombatClassDefinition classDef;   // kept for class loot on death
+    private DungeonType affinity = DungeonType.None;
+    public DungeonType Affinity => affinity;
 
     // Named-adventurer tracking — this unit's roster record + identity.
     private PartyMember partyMember;
@@ -272,7 +274,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Initialise ────────────────────────────────────────────────
 
-    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null, int returningXp = 0, string returningGrudge = null)
+    public void Initialise(AdventurerDefinition def, BehaviourTrait assignedTrait, AdventurerParty assignedParty, CombatClassDefinition classDef = null, string presetName = null, int returningXp = 0, string returningGrudge = null, DungeonType memberAffinity = DungeonType.None)
     {
         if (def != null)
         {
@@ -316,11 +318,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         displayName = presetName;
 
         ApplyCombatClass(classDef);
+        affinity = memberAffinity;
 
         partyMember = party?.RegisterMember(type, displayName, named);
         if (partyMember != null)
         {
             partyMember.combatClass = combatClass;
+            partyMember.affinity = affinity;
             partyMember.xp = returningXp;
             partyMember.trait = trait;
             ApplyLevelBoost(LevelFromXp(returningXp));

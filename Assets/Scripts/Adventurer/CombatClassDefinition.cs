@@ -19,6 +19,10 @@ public class CombatClassDefinition : ScriptableObject
              "bias down-weights classes already present in the party.")]
     public float spawnWeight = 1f;
 
+    [Header("Affinity")]
+    [Tooltip("This class's affinity lean. Listed affinities are weighted up; unlisted ones keep a base weight of 1, so the lean nudges the roll without excluding.")]
+    public List<AffinityWeight> affinityLean = new();
+
     [Header("Stat Multipliers (overlay on the type's base stats)")]
     public float hpMultiplier = 1f;
     public float moveSpeedMultiplier = 1f;

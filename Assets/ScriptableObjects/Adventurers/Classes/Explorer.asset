@@ -14,12 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombatClassDefinition
   combatClass: 4
   spawnWeight: 1.2
+  affinityLean:
+  - type: 3
+    weight: 3
+  - type: 4
+    weight: 3
   hpMultiplier: 0.9
   moveSpeedMultiplier: 1.5
   attackDamageMultiplier: 0.9
   attackRangeMultiplier: 1
   attackCooldownMultiplier: 1
   detectionRangeMultiplier: 1.2
+  telegraphSeconds: 0
   rangedAttacker: 0
   detectsTraps: 0
   healsAllies: 0

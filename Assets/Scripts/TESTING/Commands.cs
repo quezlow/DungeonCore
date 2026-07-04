@@ -210,4 +210,19 @@ public class Commands : MonoBehaviour
     {
         Debug.Log($"[Commands] Wave stage: {WaveStageController.Current} (animals: {WaveStageController.AllowAnimals}, adventurers: {WaveStageController.AllowAdventurers}).");
     }
+
+    [ContextMenu("Test Print Adventurer Affinities")]
+    void TestPrintAffinities()
+    {
+        var floor = FloorManager.Instance?.GetFloor(0);
+        if (floor?.Entities == null) { Debug.Log("[Commands] No floor."); return; }
+        int n = 0;
+        foreach (var a in floor.Entities.GetAll<DungeonAdventurer>())
+        {
+            if (a == null) continue;
+            Debug.Log($"[Commands] {a.name}: affinity {a.Affinity}.");
+            n++;
+        }
+        if (n == 0) Debug.Log("[Commands] No adventurers on floor 0.");
+    }
 }

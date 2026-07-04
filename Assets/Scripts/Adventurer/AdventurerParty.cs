@@ -125,6 +125,7 @@ public class AdventurerParty
             {
                 type = (int)m.type,
                 combatClass = (int)m.combatClass,
+                affinity = (int)m.affinity,
                 trait = (int)m.trait,
                 name = m.name,
                 named = m.named,
@@ -170,6 +171,7 @@ public class AdventurerParty
         {
             type = (AdventurerType)rec.type,
             combatClass = (CombatClass)rec.combatClass,
+            affinity = (DungeonType)rec.affinity,
             trait = (BehaviourTrait)rec.trait,
             name = rec.name,
             named = rec.named,
@@ -285,6 +287,7 @@ public class PartyMember
 {
     public AdventurerType type;
     public CombatClass combatClass;
+    public DungeonType affinity;
     public BehaviourTrait trait;   // this member's disposition (drives morale)
     public int xp;                 // cumulative kill XP (persisted via TrackedMember)
     public string name;

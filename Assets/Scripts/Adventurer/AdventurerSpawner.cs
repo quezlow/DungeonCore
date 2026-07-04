@@ -96,6 +96,8 @@ public class AdventurerSpawner : MonoBehaviour
              "guards, Hero, Suicidal, Treasure Hunter) roll a class from this list; " +
              "non-combatants (worshippers / observers) stay plain Fighter.")]
     [SerializeField] private List<CombatClassDefinition> combatClasses = new();
+    [Tooltip("Per-faction affinity spreads. Drives each adventurer's rolled affinity.")]
+    [SerializeField] private AffinityProfiles affinityProfiles;
     [Tooltip("How strongly to favour role variety within a party. 0 = pure weighted " +
              "random (repeats common); higher = each class already present is " +
              "down-weighted, so varied parties dominate but odd comps still happen.")]
@@ -381,7 +383,10 @@ public class AdventurerSpawner : MonoBehaviour
         if (string.IsNullOrEmpty(name) && def.named)
             name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
 
-        adventurer.Initialise(def, trait, party, classDef, name, returningXp, returningGrudge);
+        DungeonType memberAffinity = affinityProfiles != null
+            ? affinityProfiles.Roll(AdventurerTypeInfo.FactionOf(def.type), def.type, classDef)
+            : DungeonType.None;
+        adventurer.Initialise(def, trait, party, classDef, name, returningXp, returningGrudge, memberAffinity);
 
         // One bearer per Pilgrim/Cultist party carries the tribute to the core.
         if (party != null && !party.tributeAssigned
@@ -629,7 +634,7 @@ public class AdventurerSpawner : MonoBehaviour
         adventurer.transform.SetParent(floor.transform, true);
 
         var classDef = ClassDefFor((CombatClass)rec.combatClass);
-        adventurer.Initialise(def, (BehaviourTrait)rec.trait, party, classDef, rec.name, rec.xp, rec.returnGrudge);
+        adventurer.Initialise(def, (BehaviourTrait)rec.trait, party, classDef, rec.name, rec.xp, rec.returnGrudge, (DungeonType)rec.affinity);
 
         // Register with the floor now (not in the deferred Start) so the trap-reset pass
         // sees the party and leaves this floor's traps as they were saved.
