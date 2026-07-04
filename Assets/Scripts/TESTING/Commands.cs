@@ -256,4 +256,12 @@ public class Commands : MonoBehaviour
         AdventurerSpawner.Instance.ForceSpawnCommonerParty();
         Debug.Log("[Commands] Commoner party spawned.");
     }
+
+    [ContextMenu("Test Assess Now")]
+    void TestAssessNow()
+    {
+        if (GradeSystem.Instance == null) { Debug.Log("[Commands] No GradeSystem in scene."); return; }
+        GradeSystem.Instance.Assess();
+        Debug.Log($"[Commands] Assessed: {GradeSystem.Instance.CurrentTierName} (rating {GradeSystem.Instance.AssessedRating:0}).");
+    }
 }

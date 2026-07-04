@@ -67,6 +67,8 @@ public class DungeonSaveData
 
     public HolyOrderStrikeSaveData holyOrderStrike;
 
+    public GradeSystemSaveData grade;
+
     public BestiarySaveData bestiary;
 }
 

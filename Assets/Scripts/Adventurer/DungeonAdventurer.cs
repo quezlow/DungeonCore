@@ -1366,11 +1366,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             return;
         }
 
-        // Inspectors file their findings with the Guild on the way out.
+        // Inspectors file their findings with the Guild on the way out, and assess the dungeon.
         if (type == AdventurerType.Inspector)
+        {
             InspectorEscalation.Instance?.ReportFindings(
                 AdventurerDeaths - deathsAtArrival,
                 DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f);
+            GradeSystem.Instance?.Assess();
+        }
         StartRetreat();
     }
 
