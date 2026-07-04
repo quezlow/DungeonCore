@@ -54,7 +54,8 @@ public class AnimalWaveSpawner : MonoBehaviour
     public bool SpawningActive =>
         !PauseController.IsGamePaused
         && DungeonEntrance.Instance != null
-        && EntranceDiscovered;
+        && EntranceDiscovered
+        && WaveStageController.AllowAnimals;
 
     private bool EntranceDiscovered
     {

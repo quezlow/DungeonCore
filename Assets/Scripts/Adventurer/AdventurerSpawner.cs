@@ -144,7 +144,8 @@ public class AdventurerSpawner : MonoBehaviour
         && !transitPaused
         && DungeonEntrance.Instance != null
         && EntranceDiscovered
-        && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight);
+        && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight)
+        && WaveStageController.AllowAdventurers;
 
     /// <summary>True when the seeded entrance has been found — or on legacy saves
     /// with a player-placed entrance, which have no seal to break.</summary>
@@ -218,6 +219,7 @@ public class AdventurerSpawner : MonoBehaviour
         if (DungeonEntrance.Instance == null) return;
         if (DayNightCycle.Instance != null && DayNightCycle.Instance.IsNight) return;
         if (!EntranceDiscovered || InGraceDay) { timer = 0f; return; }
+        if (!WaveStageController.AllowAdventurers) { timer = 0f; return; }
 
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())

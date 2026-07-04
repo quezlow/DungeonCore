@@ -204,4 +204,10 @@ public class Commands : MonoBehaviour
         var all = BestiaryState.Instance.AllDiscovered;
         Debug.Log(all.Count == 0 ? "[Commands] Bestiary empty." : $"[Commands] Discovered: {string.Join(", ", all)}");
     }
+
+    [ContextMenu("Test Print Wave Stage")]
+    void TestPrintWaveStage()
+    {
+        Debug.Log($"[Commands] Wave stage: {WaveStageController.Current} (animals: {WaveStageController.AllowAnimals}, adventurers: {WaveStageController.AllowAdventurers}).");
+    }
 }
