@@ -1126,6 +1126,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentHP = maxHP;
     }
 
+    private bool gradeLeveled;
+    /// <summary>Scale a fresh matched-team member to the dungeon's assessed grade. Applied
+    /// once, post-spawn, on top of the (no-op) base level.</summary>
+    public void ApplyGradeLevel(int level)
+    {
+        if (gradeLeveled || level <= 1) return;
+        gradeLeveled = true;
+        ApplyLevelBoost(level);
+    }
+
     /// <summary>Party morale broke — this member turns and flees, unless already
     /// retreating. Heroes and the Suicidal are filtered out by the caller.</summary>
     public void ForceRetreat()

@@ -18,6 +18,17 @@ public class AdventurerSpawner : MonoBehaviour
     [Header("Party Size")]
     [SerializeField] private int minPartySize = 1;
     [SerializeField] private int maxPartySize = 3;
+    [Header("Grade scaling (matched teams)")]
+    [Tooltip("Assessed rating per +1 adventurer level.")]
+    [Min(1f)][SerializeField] private float gradeRatingPerLevel = 45f;
+    [Tooltip("Assessed rating per +1 team member.")]
+    [Min(1f)][SerializeField] private float gradeRatingPerExtraMember = 120f;
+    [Tooltip("Chance a matched team arrives under-strength (fresh recruits).")]
+    [Range(0f, 1f)][SerializeField] private float gradeUnderStrengthChance = 0.25f;
+    [Tooltip("Levels dropped when a team rolls under-strength.")]
+    [Min(0)][SerializeField] private int gradeUnderStrengthLevelDrop = 2;
+    [Tooltip("Members dropped when a team rolls under-strength.")]
+    [Min(0)][SerializeField] private int gradeUnderStrengthSizeDrop = 1;
     [SerializeField] private bool scalePartySizeWithNotoriety = false;
 
     [Header("Spawn Interval by Notoriety")]
@@ -284,10 +295,28 @@ public class AdventurerSpawner : MonoBehaviour
         RegisterLiveParty(party);
         TrackedPartyRegistry.Instance?.RegisterActive(party);
 
-        int spawned = SpawnComposition(partyType, spawnPos, party);
+        // Grade scaling: a matched team is levelled + sized to the assessed grade, with the
+        // occasional under-strength party. One variance roll drives both level and size.
+        int gradeLevel = 1, extraSize = 0;
+        if (GradeSystem.Instance != null && GradeSystem.Instance.HasBeenAssessed)
+        {
+            float rating = GradeSystem.Instance.AssessedRating;
+            gradeLevel = Mathf.Clamp(1 + Mathf.FloorToInt(rating / Mathf.Max(1f, gradeRatingPerLevel)), 1, LevelTierUtil.MaxFlatLevel);
+            extraSize = Mathf.FloorToInt(rating / Mathf.Max(1f, gradeRatingPerExtraMember));
+            if (Random.value < gradeUnderStrengthChance)
+            {
+                gradeLevel = Mathf.Max(1, gradeLevel - gradeUnderStrengthLevelDrop);
+                extraSize = Mathf.Max(0, extraSize - gradeUnderStrengthSizeDrop);
+            }
+        }
+
+        int spawned = SpawnComposition(partyType, spawnPos, party, extraSize);
         RunStats.Instance?.RecordPartySpawned(spawned);
 
         SetupOrganize(party, partyType, spawned, spawnPos);
+
+        if (gradeLevel > 1)
+            foreach (var m in party.LiveMembers) m.ApplyGradeLevel(gradeLevel);
 
         if (party.tracked) PartyBannerManager.Instance?.ShowBanner(party);
 
@@ -327,7 +356,7 @@ public class AdventurerSpawner : MonoBehaviour
     }
 
     /// <summary>Spawns a party's members for its type. Returns the member count.</summary>
-    private int SpawnComposition(AdventurerType partyType, Vector3 spawnPos, AdventurerParty party)
+    private int SpawnComposition(AdventurerType partyType, Vector3 spawnPos, AdventurerParty party, int extraSize)
     {
         // Day 39 — per-party class tally so the variety bias can favour role spread.
         var used = new Dictionary<CombatClass, int>();
@@ -359,7 +388,7 @@ public class AdventurerSpawner : MonoBehaviour
                     return count;
                 }
             default:
-                return SpawnUniform(partyType, RollPartySize(), spawnPos, party, used);
+                return SpawnUniform(partyType, RollPartySize() + Mathf.Max(0, extraSize), spawnPos, party, used);
         }
     }
 

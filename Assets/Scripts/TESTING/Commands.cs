@@ -272,4 +272,12 @@ public class Commands : MonoBehaviour
         AdventurerSpawner.Instance.DispatchInspectorParty();
         Debug.Log("[Commands] Inspector dispatched.");
     }
+
+    [ContextMenu("Test Spawn Adventurer Party")]
+    void TestSpawnAdventurerParty()
+    {
+        if (AdventurerSpawner.Instance == null) { Debug.Log("[Commands] No AdventurerSpawner in scene."); return; }
+        AdventurerSpawner.Instance.ForceSpawnParty();
+        Debug.Log("[Commands] Adventurer party spawned (grade-scaled if assessed).");
+    }
 }

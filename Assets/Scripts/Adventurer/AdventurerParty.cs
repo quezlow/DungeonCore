@@ -67,6 +67,8 @@ public class AdventurerParty
     public bool hasBanner = false;             // guards one banner per party
     public int bannerColorIndex = -1;          // pinned-pool index (persisted); -1 = intent-coloured
     private readonly List<DungeonAdventurer> live = new();
+    /// <summary>Live instances in this party (read-only) - used to grade-scale a fresh team.</summary>
+    public IReadOnlyList<DungeonAdventurer> LiveMembers => live;
 
     /// <summary>Track a member's live instance (for the banner's lead + majority logic).</summary>
     public void RegisterLive(DungeonAdventurer a) { if (a != null && !live.Contains(a)) live.Add(a); }
