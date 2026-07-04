@@ -66,7 +66,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
-    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore }
+    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade }
     private MonsterState state = MonsterState.Wander;
 
     [Header("Animation")]
@@ -200,11 +200,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private int patrolIndex = 0;
     private Vector3 patrolMoveTarget;
 
-    // DefendCore pathing (DAY 31 PART 3 CLOSE-OUT)
+    // DefendCore pathing
     private List<Vector3> defendCorePath = new();
     private int defendCorePathIndex = 0;
     private float defendCorePathRefreshTimer = 0f;
     private const float DefendCorePathRefreshInterval = 0.5f;
+
+    // Invader pathing - a wild monster that seeks and breaches the core.
+    private bool isInvader;
+    [SerializeField] private float invaderBreachDistance = 1.5f;
+    private List<Vector3> invadePath = new();
+    private int invadePathIndex = 0;
+    private float invadePathRefreshTimer = 0f;
 
     private List<Vector3> attackPath = new();
     private int attackPathIndex = 0;
@@ -229,7 +236,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private Vector3Int wanderPathTargetCell;
 
     public bool IsBoss => bossDefinition != null;
-    public bool IsWild => wildChamberId >= 0;
+    public bool IsWild => wildChamberId >= 0 || isInvader;
     public bool IsVeteran => isVeteran;
     public int PatrolIndex => patrolIndex;
     public int WildChamberId => wildChamberId;
@@ -288,7 +295,17 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         wildDefinition = def;
     }
 
-    /// <summary>DAY 31 PART 3F — Restore HP after wild monster respawn from save.</summary>
+    /// <summary>Sets this monster up as an invader: a chamber-free wild creature that
+    /// paths to the core, fights the dungeon's monsters on the way, and breaches on
+    /// arrival. Call immediately after Instantiate, before the monster's Start runs.</summary>
+    public void InitialiseInvader(FloorRoot floor, MonsterDefinition def)
+    {
+        currentFloor = floor;
+        wildDefinition = def;
+        isInvader = true;
+    }
+
+    /// <summary> Restore HP after wild monster respawn from save.</summary>
     public void SetCurrentHP(float hp)
     {
         currentHP = Mathf.Clamp(hp, 0f, maxHP);
@@ -488,6 +505,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             case MonsterState.DefendCore:
                 TickDefendCore();
                 break;
+            case MonsterState.Invade:
+                TickInvade();
+                break;
         }
     }
 
@@ -498,6 +518,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private MonsterState DetermineDesiredState()
     {
+        // An invader ignores everything and drives for the core.
+        if (isInvader) return MonsterState.Invade;
+
         // Wild monsters always wander (Part 2 behavior preserved).
         if (IsWild) return MonsterState.Wander;
         if (spawner == null) return MonsterState.Wander;
@@ -543,9 +566,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         state = newState;
         if (newState == MonsterState.Wander) { wanderPath.Clear(); PickWanderTarget(); }
         if (newState == MonsterState.Patrol) { patrolPath.Clear(); UpdatePatrolTarget(); }
+        if (newState == MonsterState.Invade) { invadePath.Clear(); invadePathIndex = 0; invadePathRefreshTimer = 0f; }
     }
 
-    // ── Patrol (DAY 31 PART 3D) ───────────────────────────────────
+    // ── Patrol ───────────────────────────────────
 
     private void UpdatePatrolTarget()
     {
@@ -652,6 +676,44 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
             defendCorePathIndex++;
+    }
+
+    // Invader behaviour: always drive for the core, breach on arrival (two-strike,
+    // same as an adventurer), then depart. ScanForHostiles diverts to Attack when a
+    // dungeon monster is in range; combat resumes here after the kill.
+    private void TickInvade()
+    {
+        ScanForHostiles();
+        if (state == MonsterState.Attack) { invadePath.Clear(); return; }
+
+        if (DungeonCore.Instance == null) return;
+        Vector3 corePos = DungeonCore.Instance.transform.position;
+
+        if (Vector2.Distance(transform.position, corePos) <= invaderBreachDistance)
+        {
+            DungeonCore.Instance.DestroyCore();
+            DespawnSilently();
+            return;
+        }
+
+        invadePathRefreshTimer -= Time.deltaTime;
+        bool needsRefresh = invadePath.Count == 0
+                         || invadePathIndex >= invadePath.Count
+                         || invadePathRefreshTimer <= 0f;
+        if (needsRefresh)
+        {
+            invadePath = DungeonPathfinder.FindPath(currentFloor, transform.position, corePos);
+            invadePathIndex = 0;
+            invadePathRefreshTimer = DefendCorePathRefreshInterval;
+        }
+
+        if (invadePath.Count == 0 || invadePathIndex >= invadePath.Count) return;
+
+        Vector3 stepTarget = invadePath[invadePathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            invadePathIndex++;
     }
 
     private void OnWaypointReached()

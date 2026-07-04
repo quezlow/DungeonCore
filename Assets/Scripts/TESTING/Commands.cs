@@ -173,4 +173,19 @@ public class Commands : MonoBehaviour
         Debug.Log($"[Commands] Dungeon rating {r.CurrentRating:0.#} = capacity {r.CapacityInvested():0.#} " +
                   $"+ veterans {r.VeteranBonus():0.#} + day floor {r.DayFloor():0.#}.");
     }
+
+    [Header("Invader Test")]
+    [SerializeField] private MonsterDefinition testInvaderDef;
+
+    [ContextMenu("Test Spawn Invader")]
+    void TestSpawnInvader()
+    {
+        if (testInvaderDef == null || testInvaderDef.prefab == null) { Debug.Log("[Commands] Assign Test Invader Def (a MonsterDefinition with a prefab) first."); return; }
+        var floor = FloorManager.Instance?.GetFloor(0);
+        Vector3 pos = DungeonEntrance.Instance != null ? DungeonEntrance.Instance.SpawnPosition : Vector3.zero;
+        var monster = Instantiate(testInvaderDef.prefab, pos, Quaternion.identity);
+        if (floor != null) monster.transform.SetParent(floor.transform, true);
+        monster.InitialiseInvader(floor, testInvaderDef);
+        Debug.Log($"[Commands] Spawned invader '{testInvaderDef.monsterName}' at the entrance.");
+    }
 }
