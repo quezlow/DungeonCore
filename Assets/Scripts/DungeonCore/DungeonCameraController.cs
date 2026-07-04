@@ -228,6 +228,11 @@ public class DungeonCameraController : MonoBehaviour
     {
         var mouse = Mouse.current;
         if (mouse == null) return;
+
+        // Scroll over any UI element (e.g. the Faction panel's list) belongs to that
+        // element, not the camera - a wheel scroll there must not zoom the view.
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
         float scroll = mouse.scroll.ReadValue().y;
         if (Mathf.Abs(scroll) > 0.01f)
         {
