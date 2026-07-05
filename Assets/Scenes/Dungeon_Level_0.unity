@@ -4796,10 +4796,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceRingRenderer
   ringShader: {fileID: 4800000, guid: 841f3442175200d478a4f1296255fb14, type: 3}
-  sortingLayerName: Shadow
-  sortingOrder: 55
-  washSortingLayerName: AdjacentHighlight
-  washSortingOrder: 45
+  sortingLayerName: 'AdjacentHighlight '
+  sortingOrder: 45
   innerFalloff: 0.35
   outerFalloff: 1.6
   waverAmp: 0.18
@@ -14642,7 +14640,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999896
+  m_Size: 0.9957745
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17577,7 +17575,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0001272315}
+  m_AnchoredPosition: {x: 0, y: 0.00027226223}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278

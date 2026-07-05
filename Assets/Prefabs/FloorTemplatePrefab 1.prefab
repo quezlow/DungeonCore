@@ -193,10 +193,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceRingRenderer
   ringShader: {fileID: 4800000, guid: 841f3442175200d478a4f1296255fb14, type: 3}
-  sortingLayerName: Shadow
-  sortingOrder: 55
-  washSortingLayerName: AdjacentHighlight
-  washSortingOrder: 45
+  sortingLayerName: 'AdjacentHighlight '
+  sortingOrder: 45
   innerFalloff: 0.35
   outerFalloff: 1.6
   waverAmp: 0.18
