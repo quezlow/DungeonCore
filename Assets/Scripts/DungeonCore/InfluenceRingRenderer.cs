@@ -105,6 +105,7 @@ public class InfluenceRingRenderer : MonoBehaviour
     private InfluenceField field;
 
     private GameObject quadGO;
+    private MeshRenderer quadRenderer;
     private Material material;
     private Texture2D fieldTex;
     private Color32[] pixels;
@@ -201,6 +202,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         if (staticUniformsDirty && material != null)
         {
             ApplyStaticUniforms();
+            ApplySorting();
             lastAppliedType = (DungeonType)(-1);   // re-push the ring colour too
             staticUniformsDirty = false;
         }
@@ -304,16 +306,34 @@ public class InfluenceRingRenderer : MonoBehaviour
         mesh.triangles = new[] { 0, 2, 1, 1, 2, 3 };
         mf.sharedMesh = mesh;
 
-        var mr = quadGO.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = material;
-        mr.sortingLayerName = sortingLayerName;
-        mr.sortingOrder = sortingOrder;
-        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        mr.receiveShadows = false;
+        quadRenderer = quadGO.AddComponent<MeshRenderer>();
+        quadRenderer.sharedMaterial = material;
+        quadRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        quadRenderer.receiveShadows = false;
+        ApplySorting();
 
         reachNorm = field.ReachAtLevel(LevelTierUtil.MaxFlatLevel) * 1.1f;
         ApplyStaticUniforms();
         built = true;
+    }
+
+    /// <summary>Pushes the sorting fields to the live renderer. The layer name
+    /// is TRIMMED before use — a single trailing space once made the entire
+    /// ring silently render beneath the world — and a name that resolves to
+    /// nothing warns loudly, because Unity's own fallback to Default is silent
+    /// and silent fallbacks are how bugs hide. Runs at build and again on the
+    /// OnValidate path, so Inspector corrections apply without a restart.</summary>
+    private void ApplySorting()
+    {
+        if (quadRenderer == null) return;
+
+        string layer = sortingLayerName != null ? sortingLayerName.Trim() : "Default";
+        if (SortingLayer.NameToID(layer) == 0 && layer != "Default")
+            Debug.LogWarning($"[InfluenceRingRenderer] Sorting layer '{layer}' does not exist — " +
+                             "Unity falls back to Default and the ring renders beneath the world. " +
+                             "Check the spelling against Project Settings > Tags and Layers.");
+        quadRenderer.sortingLayerName = layer;
+        quadRenderer.sortingOrder = sortingOrder;
     }
 
     private void ApplyStaticUniforms()

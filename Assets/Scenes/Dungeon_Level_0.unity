@@ -4799,7 +4799,7 @@ MonoBehaviour:
   sortingLayerName: AdjacentHighlight
   sortingOrder: 45
   innerFalloff: 0.35
-  outerFalloff: 1.6
+  outerFalloff: 1
   waverAmp: 0.18
   waverScales: {x: 9, y: 3.2}
   waverSpeeds: {x: 0.05, y: 0.11}
@@ -14640,7 +14640,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99988097
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17575,7 +17575,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000036669044}
+  m_AnchoredPosition: {x: 0, y: 0.00016166492}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
