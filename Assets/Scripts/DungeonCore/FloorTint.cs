@@ -42,14 +42,21 @@ public class FloorTint : MonoBehaviour
     [Tooltip("Darkening multiplied onto the fog tint so unrevealed fog sits at the shadowed-" +
              "cavern level it borders instead of standing out bright. Lower until the brightness " +
              "seam at the fog edge disappears (1 = fog keeps the full tint). Pair with " +
-             "DungeonShadow's Unclaimed Light.")]
+             "DungeonShadow's Unclaimed Light. When DungeonShadow's Fog Matches Void is on, " +
+             "the shadow overrides this fog colour with the deep-void tone after Start.")]
     [SerializeField, Range(0f, 1f)] private float fogShadow = 0.5f;
+
+    /// <summary>The tint applied to this floor (override or depth gradient), for
+    /// systems that need to stay depth-coherent — DungeonShadow folds it into
+    /// the void paint, and the fog match inherits it from there.</summary>
+    public Color CurrentTint { get; private set; } = Color.white;
 
     private void Start()
     {
         var floor = GetComponentInParent<FloorRoot>();
         int index = floor != null ? floor.FloorIndex : 0;
         Color tint = TintForFloor(index);
+        CurrentTint = tint;
 
         if (floor != null && floor.Terrain != null)
         {

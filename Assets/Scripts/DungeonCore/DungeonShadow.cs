@@ -26,7 +26,10 @@ using UnityEngine.Tilemaps;
 ///                           the shadow tile PAINTS the void outright (voidBaseColor x
 ///                           light + hue) — the interior cap art is flat black, and
 ///                           darkening black shows nothing. Off, it falls back to the
-///                           darkening overlay for textured interior art.
+///                           darkening overlay for textured interior art. With
+///                           fogMatchesVoid, unexplored fog inherits DeepVoidColor so
+///                           the claim boundary through solid rock stops rendering as
+///                           a two-tone seam; the floor's depth tint folds into both.
 ///
 /// The base (everything except the cursor) is static per cell, recomputed only when the
 /// claimed / mined sets or the moss layout change; the cursor is a cheap per-frame delta
@@ -79,6 +82,10 @@ public class DungeonShadow : MonoBehaviour
     [SerializeField] private bool voidOpaqueFill = true;
     [Tooltip("Fully-lit rock tone for the opaque void paint; the falloff scales it down toward the depths.")]
     [SerializeField] private Color voidBaseColor = new Color(0.16f, 0.14f, 0.13f, 1f);
+    [Tooltip("Unexplored fog inherits the deep-void tone (per core type, per floor tint), erasing " +
+             "the two-tone seam where claimed rock meets unrevealed rock. Requires a bright/white " +
+             "fog tile sprite — fog renders as sprite x colour. Off restores FloorTint's fog colour.")]
+    [SerializeField] private bool fogMatchesVoid = true;
 
     private const float MaxLight = 1f;
     private static readonly Vector3Int[] Dirs4 =
@@ -93,6 +100,7 @@ public class DungeonShadow : MonoBehaviour
     private TileInfluenceManager influence;
     private CaveWallRenderer wallRenderer;
     private InfluenceRingRenderer ring;
+    private FloorTint floorTint;
     private TileBase whiteTile;
     private readonly Dictionary<Vector3Int, float> baseLight = new();
     private readonly Dictionary<Vector3Int, Color> baseTint = new();
@@ -110,6 +118,7 @@ public class DungeonShadow : MonoBehaviour
         influence = floor.TileInfluence;
         wallRenderer = floor.GetComponentInChildren<CaveWallRenderer>(true);
         ring = GetComponent<InfluenceRingRenderer>();
+        floorTint = GetComponent<FloorTint>();
         whiteTile = BuildWhiteTile();
     }
 
@@ -231,6 +240,13 @@ public class DungeonShadow : MonoBehaviour
             shadowTilemap.SetTile(kv.Key, whiteTile);
             shadowTilemap.SetColor(kv.Key, ShadeFor(kv.Key, kv.Value));
         }
+
+        // 6) fog match: unexplored darkness inherits the deep-void tone, so the
+        //    claim boundary through solid rock stops rendering as a two-tone
+        //    seam. Recomputing here means core-type changes and loads track for
+        //    free — any claim refreshes it.
+        if (fogMatchesVoid && floor != null && floor.Terrain != null && floor.Terrain.FogTilemap != null)
+            floor.Terrain.FogTilemap.color = DeepVoidColor;
     }
 
     // BFS from the lit rim caps through claimed solid rock: light falls from each
@@ -310,14 +326,23 @@ public class DungeonShadow : MonoBehaviour
     }
 
     /// <summary>Opaque void colour: base rock tone scaled by the cell's light,
-    /// plus the core-type whisper. Only used when voidOpaqueFill is on — it
-    /// PAINTS the void rather than darkening art that is already black.</summary>
+    /// plus the core-type whisper, all multiplied by the floor's depth tint so
+    /// deep-floor rock cools with its caps. Only used when voidOpaqueFill is
+    /// on — it PAINTS the void rather than darkening art that is already black.</summary>
     private Color VoidColorFor(float light)
-        => new Color(
-            Mathf.Clamp01(voidBaseColor.r * light + voidHueTerm.r),
-            Mathf.Clamp01(voidBaseColor.g * light + voidHueTerm.g),
-            Mathf.Clamp01(voidBaseColor.b * light + voidHueTerm.b),
+    {
+        Color t = floorTint != null ? floorTint.CurrentTint : Color.white;
+        return new Color(
+            Mathf.Clamp01((voidBaseColor.r * light + voidHueTerm.r) * t.r),
+            Mathf.Clamp01((voidBaseColor.g * light + voidHueTerm.g) * t.g),
+            Mathf.Clamp01((voidBaseColor.b * light + voidHueTerm.b) * t.b),
             1f);
+    }
+
+    /// <summary>The plateau tone — what the deepest rock paints as. The fog
+    /// match uses this so unexplored darkness reads as the same stone.</summary>
+    public Color DeepVoidColor => VoidColorFor(voidLightFloor);
+
 
     /// <summary>Shadow colour for a cell: opaque paint for void cells (when
     /// enabled), the classic alpha-darkening overlay for everything else.</summary>

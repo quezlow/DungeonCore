@@ -9,6 +9,12 @@ using UnityEngine.Tilemaps;
 ///   when the floor is first generated. Per-level terrain expansion is removed.
 ///   Floors do not grow within a tier — only the initial radius set at floor
 ///   creation defines the floor's size.
+///
+/// FOG TILE
+///   The fog layer is colour-driven (DungeonShadow's fog match paints it the
+///   deep-void tone). If the Fog Tile slot is empty or the assigned Tile has
+///   no sprite, a solid white tile is built at runtime — recommended: leave
+///   the slot empty and let the colour do the work.
 /// </summary>
 [DefaultExecutionOrder(-10)]
 public class DungeonTerrain : MonoBehaviour
@@ -22,6 +28,9 @@ public class DungeonTerrain : MonoBehaviour
 
     [Header("Tile Assets")]
     [SerializeField] private TileBase floorTile;
+    [Tooltip("Optional. Left empty (recommended with Fog Matches Void), a solid white tile is " +
+             "built at runtime and the fog colour does all the work. Assign custom art only if " +
+             "you also turn DungeonShadow's Fog Matches Void off.")]
     [SerializeField] private TileBase fogTile;
 
     [Header("Fallback Radius")]
@@ -32,6 +41,7 @@ public class DungeonTerrain : MonoBehaviour
     private Vector3Int coreCell;
     private bool initialised = false;
     private FloorRoot myFloor;
+    private Tile runtimeFogTile;
 
     private void Start()
     {
@@ -56,9 +66,37 @@ public class DungeonTerrain : MonoBehaviour
     {
         if (initialised) return;
         initialised = true;
+        EnsureFogTile();
         coreCell = centre;
         currentRadius = RadiusForThisFloor();
         PaintTerrain(coreCell, currentRadius);
+    }
+
+    /// <summary>Fog is colour-driven; the sprite only needs to be solid and
+    /// bright. If the slot is empty or the assigned Tile has no sprite, build a
+    /// solid white tile at runtime so the fog can never silently vanish — an
+    /// empty slot, a sprite-less Tile asset, or a transparent sprite all used
+    /// to render as no fog at all, exposing unexplored terrain.</summary>
+    private void EnsureFogTile()
+    {
+        bool spriteless = fogTile is Tile assigned && assigned.sprite == null;
+        if (fogTile != null && !spriteless) return;
+
+        if (runtimeFogTile == null)
+        {
+            var tex = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+            tex.SetPixel(0, 0, Color.white);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+            runtimeFogTile = ScriptableObject.CreateInstance<Tile>();
+            runtimeFogTile.sprite = sprite;
+            runtimeFogTile.color = Color.white;
+            runtimeFogTile.flags = TileFlags.None;   // the layer colour drives the look
+            runtimeFogTile.name = "RuntimeFogTile";
+        }
+
+        fogTile = runtimeFogTile;
+        Debug.Log("[DungeonTerrain] Fog tile missing or sprite-less — using runtime solid white (colour-driven fog).");
     }
 
     private void PaintTerrain(Vector3Int centre, int radius)

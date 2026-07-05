@@ -21,6 +21,8 @@ using UnityEngine;
 /// first, then the lateral flanks, every cell paying its own time and mana —
 /// a 3-wide dirt corridor takes 3x the duration at the same drain rate.
 /// Flanks never take rivers or gated chambers; only the spine crosses water.
+/// A started rank survives replans, so a moving cursor can never starve the
+/// flanks into a 1-wide shaft.
 ///
 /// Feel rules:
 ///   - Mana empty: the channel stalls (no progress, no drain) and resumes as
@@ -79,6 +81,11 @@ public class InfluenceChannel : MonoBehaviour
     // lateral flanks. bool = spine cell (a stolen spine replans; flanks skip).
     private readonly List<(Vector3Int cell, bool spine)> claimSeq = new List<(Vector3Int, bool)>();
     private readonly HashSet<Vector3Int> seqSeen = new HashSet<Vector3Int>();
+
+    // The rank being claimed right now: one spine cell plus its flanks. Replans
+    // rebuild claimSeq freely, but never touch this — the fix for cursor jitter
+    // discarding pending flanks and leaving 1-wide shafts.
+    private readonly List<(Vector3Int cell, bool spine)> currentRank = new List<(Vector3Int, bool)>();
 
     /// <summary>channelWidth snapped odd (even snaps up) so flanks stay symmetric.</summary>
     private int WidthSnapped => Mathf.Max(1, channelWidth | 1);
@@ -157,6 +164,7 @@ public class InfluenceChannel : MonoBehaviour
     {
         path.Clear();
         claimSeq.Clear();
+        currentRank.Clear();
         HideLine();
     }
 
@@ -185,9 +193,10 @@ public class InfluenceChannel : MonoBehaviour
 
         Vector3Int hover = hoverCell.Value;
         bool hoverClaimed = influence.IsTileClaimed(hover);
+        int pending = currentRank.Count + claimSeq.Count;
 
-        // Done (or moot) with no sweep left — stand down.
-        if (hoverClaimed && claimSeq.Count == 0)
+        // Done (or moot) with nothing left to sweep — stand down.
+        if (hoverClaimed && pending == 0)
         {
             path.Clear();
             HideLine();
@@ -195,11 +204,12 @@ public class InfluenceChannel : MonoBehaviour
         }
 
         // Replan only while the destination is unclaimed; once the hover cell is
-        // ours, any remaining flanks just drain out.
+        // ours, the remaining rank(s) just drain out. Replans rebuild claimSeq —
+        // never currentRank, so a started rank always completes.
         if (!hoverClaimed)
         {
             bool planValid =
-                claimSeq.Count > 0
+                pending > 0
                 && floorIndex == lastFloorIndex
                 && hover == lastHoverCell;
 
@@ -207,28 +217,41 @@ public class InfluenceChannel : MonoBehaviour
             {
                 path.Clear();
                 claimSeq.Clear();
-                HideLine();
-                return;
+                if (currentRank.Count == 0)
+                {
+                    HideLine();
+                    return;
+                }
             }
         }
 
         if (path.Count > 0) DrawLine(influence);
         else HideLine();
 
-        if (!held || claimSeq.Count == 0) return;
+        if (!held) return;
 
-        // Cells someone else already claimed (the creep, usually) cost nothing.
-        while (claimSeq.Count > 0 && influence.IsTileClaimed(claimSeq[0].cell))
-            PopClaimFront();
-        if (claimSeq.Count == 0)
+        // Pull the next rank when the current one is spent, and pop anything the
+        // creep already claimed for free.
+        while (true)
+        {
+            if (currentRank.Count == 0)
+            {
+                RefillRank();
+                if (currentRank.Count == 0) break;
+            }
+            if (!influence.IsTileClaimed(currentRank[0].cell)) break;
+            PopRankFront();
+        }
+
+        if (currentRank.Count == 0)
         {
             progressSeconds = 0f;
             if (path.Count == 0) HideLine();
             return;
         }
 
-        // Progress carries only while the front-of-queue cell (and floor) hold.
-        Vector3Int target = claimSeq[0].cell;
+        // Progress carries only while the front cell (and floor) hold.
+        Vector3Int target = currentRank[0].cell;
         if (target != progressCell || floorIndex != progressFloorIndex)
         {
             progressCell = target;
@@ -244,13 +267,19 @@ public class InfluenceChannel : MonoBehaviour
         progressSeconds += Time.deltaTime;
 
         int safety = 0;
-        while (claimSeq.Count > 0 && safety < 8)
+        while (safety < 8)
         {
-            (Vector3Int cellToClaim, bool isSpine) = claimSeq[0];
+            if (currentRank.Count == 0)
+            {
+                RefillRank();
+                if (currentRank.Count == 0) break;
+            }
+
+            (Vector3Int cellToClaim, bool isSpine) = currentRank[0];
 
             if (influence.IsTileClaimed(cellToClaim))
             {
-                PopClaimFront();   // free — someone else got it
+                PopRankFront();   // free — someone else got it
                 continue;
             }
 
@@ -264,39 +293,57 @@ public class InfluenceChannel : MonoBehaviour
                     // The spine's footing shifted under us — replan next tick.
                     path.Clear();
                     claimSeq.Clear();
+                    currentRank.Clear();
                     HideLine();
                     return;
                 }
-                PopClaimFront();   // a flank we can't have right now — skip it
+                PopRankFront();   // a flank we can't have right now — skip it
                 continue;
             }
 
             influence.ClaimTile(cellToClaim);
             progressSeconds -= need;   // remainder carries into the next cell
-            PopClaimFront();
+            PopRankFront();
             safety++;
 
-            if (claimSeq.Count > 0)
+            if (currentRank.Count > 0)
             {
-                progressCell = claimSeq[0].cell;
+                progressCell = currentRank[0].cell;
                 progressFloorIndex = floorIndex;
             }
         }
 
-        if (claimSeq.Count == 0)
+        if (currentRank.Count == 0 && claimSeq.Count == 0)
         {
-            // Swept through — the tip is ours; next tick stands down.
+            // Swept through — next tick stands down.
             progressSeconds = 0f;
             HideLine();
         }
     }
 
-    private void PopClaimFront()
+    private void PopRankFront()
     {
-        (Vector3Int cell, bool spine) = claimSeq[0];
-        claimSeq.RemoveAt(0);
+        (Vector3Int cell, bool spine) = currentRank[0];
+        currentRank.RemoveAt(0);
         if (spine && path.Count > 0 && path[0] == cell) path.RemoveAt(0);
     }
+
+    /// <summary>Moves the next rank — one spine cell plus its trailing flanks —
+    /// from claimSeq into currentRank. currentRank is immune to replans: cursor
+    /// jitter rebuilds the plan, but a started rank always finishes, so the
+    /// flanks can never be starved into a 1-wide shaft.</summary>
+    private void RefillRank()
+    {
+        if (claimSeq.Count == 0) return;
+        currentRank.Add(claimSeq[0]);
+        claimSeq.RemoveAt(0);
+        while (claimSeq.Count > 0 && !claimSeq[0].spine)
+        {
+            currentRank.Add(claimSeq[0]);
+            claimSeq.RemoveAt(0);
+        }
+    }
+
 
 
     // ── Path search ───────────────────────────────────────────────
