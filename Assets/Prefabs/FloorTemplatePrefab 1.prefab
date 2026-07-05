@@ -1948,7 +1948,7 @@ MonoBehaviour:
   floorTilemap: {fileID: 131661817924871155}
   fogTilemap: {fileID: 8029001582507907639}
   floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
-  fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
+  fogTile: {fileID: 0}
   fallbackRadius: 100
 --- !u!114 &8562864742481699618
 MonoBehaviour:
@@ -2066,9 +2066,9 @@ MonoBehaviour:
   mossTintStrength: 0.15
   voidLightFloor: 0.22
   voidFalloffCells: 4
-  coreHueStrength: 0.12
+  coreHueStrength: 0.015
   voidOpaqueFill: 1
-  voidBaseColor: {r: 0.16, g: 0.14, b: 0.13, a: 1}
+  voidBaseColor: {r: 0.24, g: 0.235, b: 0.23, a: 1}
   fogMatchesVoid: 1
 --- !u!1 &7750912231888544329
 GameObject:

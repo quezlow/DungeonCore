@@ -76,12 +76,12 @@ public class DungeonShadow : MonoBehaviour
     [Tooltip("Cells over which rim light falls to the floor level, then plateaus.")]
     [SerializeField, Min(1)] private int voidFalloffCells = 4;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
-    [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0.12f;
+    [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0.015f;
     [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
              "Required while the interior cap art is flat black; turn off if you ever texture it.")]
     [SerializeField] private bool voidOpaqueFill = true;
     [Tooltip("Fully-lit rock tone for the opaque void paint; the falloff scales it down toward the depths.")]
-    [SerializeField] private Color voidBaseColor = new Color(0.16f, 0.14f, 0.13f, 1f);
+    [SerializeField] private Color voidBaseColor = new Color(0.24f, 0.235f, 0.23f, 1f);
     [Tooltip("Unexplored fog inherits the deep-void tone (per core type, per floor tint), erasing " +
              "the two-tone seam where claimed rock meets unrevealed rock. Requires a bright/white " +
              "fog tile sprite — fog renders as sprite x colour. Off restores FloorTint's fog colour.")]
@@ -117,8 +117,20 @@ public class DungeonShadow : MonoBehaviour
         if (floor == null) { Debug.LogWarning("[DungeonShadow] No FloorRoot in parents — disabling."); enabled = false; return; }
         influence = floor.TileInfluence;
         wallRenderer = floor.GetComponentInChildren<CaveWallRenderer>(true);
+
+        // These may live anywhere under the floor — resolve robustly rather than
+        // assuming a shared GameObject. A silent gold fallback hid a missed ring
+        // reference once (fog and void computed with the wrong core hue); the
+        // warning below makes sure that class of miss can never be quiet again.
         ring = GetComponent<InfluenceRingRenderer>();
+        if (ring == null) ring = GetComponentInParent<InfluenceRingRenderer>();
+        if (ring == null) ring = floor.GetComponentInChildren<InfluenceRingRenderer>(true);
+        if (ring == null)
+            Debug.LogWarning("[DungeonShadow] No InfluenceRingRenderer found under this floor — void and fog hues fall back to gold.");
+
         floorTint = GetComponent<FloorTint>();
+        if (floorTint == null) floorTint = GetComponentInParent<FloorTint>();
+        if (floorTint == null) floorTint = floor.GetComponentInChildren<FloorTint>(true);
         whiteTile = BuildWhiteTile();
     }
 
