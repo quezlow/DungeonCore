@@ -196,7 +196,7 @@ MonoBehaviour:
   sortingLayerName: 'AdjacentHighlight '
   sortingOrder: 45
   innerFalloff: 0.35
-  outerFalloff: 1.6
+  outerFalloff: 1
   waverAmp: 0.18
   waverScales: {x: 9, y: 3.2}
   waverSpeeds: {x: 0.05, y: 0.11}
