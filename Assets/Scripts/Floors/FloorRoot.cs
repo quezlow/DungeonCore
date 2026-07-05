@@ -30,8 +30,9 @@ public class FloorRoot : MonoBehaviour
     [SerializeField] private TerrainFeatureGenerator featureGenerator;
     [SerializeField] private FeatureRevealController featureRevealController;
     [SerializeField] private WildMonsterController wildMonsterController;
-    [SerializeField] private TerrainTypeMap terrainTypeMap;  
+    [SerializeField] private TerrainTypeMap terrainTypeMap;
     [SerializeField] private FloorEntityRegistry entities;
+    [SerializeField] private InfluenceField influenceField;
 
     [Header("Camera Bounds")]
     [SerializeField] private PolygonCollider2D cameraBounds;
@@ -45,8 +46,9 @@ public class FloorRoot : MonoBehaviour
     public TerrainFeatureGenerator FeatureGenerator => featureGenerator;
     public FeatureRevealController FeatureRevealController => featureRevealController;
     public WildMonsterController WildMonsterController => wildMonsterController;
-    public TerrainTypeMap TerrainTypeMap => terrainTypeMap;  
+    public TerrainTypeMap TerrainTypeMap => terrainTypeMap;
     public FloorEntityRegistry Entities => entities;
+    public InfluenceField InfluenceField => influenceField;
     public PolygonCollider2D CameraBounds => cameraBounds;
     public Tilemap HighlightTilemap => highlightTilemap;
 
@@ -111,22 +113,5 @@ public class FloorRoot : MonoBehaviour
                 return terrainTypeMap?.ResistanceTable?.chamberClaimResistance ?? 1f;
         }
         return terrainTypeMap != null ? terrainTypeMap.GetResistance(cell) : 1f;
-    }
-
-    /// <summary>
-    /// Claimable-ring tint for a cell.
-    /// River and (cleared) chamber cells use feature-specific tints;
-    /// otherwise terrain band tint.
-    /// </summary>
-    public Color GetClaimableRingTint(Vector3Int cell)
-    {
-        if (featureGenerator != null && terrainTypeMap != null && terrainTypeMap.ResistanceTable != null)
-        {
-            if (featureGenerator.IsRiver(cell))
-                return terrainTypeMap.ResistanceTable.riverClaimableTint;
-            if (featureGenerator.IsChamber(cell))
-                return terrainTypeMap.ResistanceTable.chamberClaimableTint;
-        }
-        return terrainTypeMap != null ? terrainTypeMap.GetTint(cell) : Color.white;
     }
 }

@@ -19,6 +19,10 @@ using UnityEngine.Tilemaps;
 ///                           from CaveWallRenderer's split sets)
 ///   - cursor             -> within cursorRadius of the cursor the light lerps to 1.0 with
 ///                           a smooth falloff, like a carried light (active floor only)
+///   - void               -> claimed solid rock (the cap interiors) joins the light map:
+///                           light falls from the rim value to voidLightFloor over
+///                           voidFalloffCells, then plateaus across the mass. Deep rock
+///                           takes a faint core-type hue (coreHueStrength).
 ///
 /// The base (everything except the cursor) is static per cell, recomputed only when the
 /// claimed / mined sets or the moss layout change; the cursor is a cheap per-frame delta
@@ -59,6 +63,14 @@ public class DungeonShadow : MonoBehaviour
     [Tooltip("How strong the moss colour cast is. Keep low for a subtle tint.")]
     [SerializeField, Range(0f, 1f)] private float mossTintStrength = 0.15f;
 
+    [Header("Void (claimed rock interior)")]
+    [Tooltip("Darkness floor deep inside claimed rock. Rim light falls to this level.")]
+    [SerializeField, Range(0f, 1f)] private float voidLightFloor = 0.22f;
+    [Tooltip("Cells over which rim light falls to the floor level, then plateaus.")]
+    [SerializeField, Min(1)] private int voidFalloffCells = 4;
+    [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
+    [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0.12f;
+
     private const float MaxLight = 1f;
     private static readonly Vector3Int[] Dirs4 =
         { new Vector3Int(0,1,0), new Vector3Int(0,-1,0), new Vector3Int(1,0,0), new Vector3Int(-1,0,0) };
@@ -71,6 +83,7 @@ public class DungeonShadow : MonoBehaviour
     private FloorRoot floor;
     private TileInfluenceManager influence;
     private CaveWallRenderer wallRenderer;
+    private InfluenceRingRenderer ring;
     private TileBase whiteTile;
     private readonly Dictionary<Vector3Int, float> baseLight = new();
     private readonly Dictionary<Vector3Int, Color> baseTint = new();
@@ -85,6 +98,7 @@ public class DungeonShadow : MonoBehaviour
         if (floor == null) { Debug.LogWarning("[DungeonShadow] No FloorRoot in parents — disabling."); enabled = false; return; }
         influence = floor.TileInfluence;
         wallRenderer = floor.GetComponentInChildren<CaveWallRenderer>(true);
+        ring = GetComponent<InfluenceRingRenderer>();
         whiteTile = BuildWhiteTile();
     }
 
@@ -194,13 +208,85 @@ public class DungeonShadow : MonoBehaviour
                 if (best >= 0f) { baseLight[w] = best; baseTint[w] = bestTint; }
             }
 
-        // 4) paint.
+        // 4) the void: claimed solid rock joins the light map with a rim-to-floor
+        //    falloff, so cap interiors read as tinted dark instead of dead black.
+        ApplyVoidLight();
+
+        // 5) paint.
         foreach (KeyValuePair<Vector3Int, float> kv in baseLight)
         {
             shadowTilemap.SetTile(kv.Key, whiteTile);
             shadowTilemap.SetColor(kv.Key, ColorFor(kv.Value, baseTint[kv.Key]));
         }
     }
+
+    // BFS from the lit rim caps through claimed solid rock: light falls from each
+    // rim cell's (already moss-kissed) value to voidLightFloor over voidFalloffCells,
+    // then plateaus across the rest of the mass. Mirrors CaveWallClassifier's solid
+    // rule — rivers are never rock, and out-of-disc cells can't be claimed. Deep
+    // cells take a faint core-type hue, so a Dark core's stone reads violet-black.
+    // Claimed rock with no lit rim at all (a pushed tendril before any digging)
+    // gets the plateau level directly — your influence in the rock glows faint.
+    private void ApplyVoidLight()
+    {
+        var features = floor != null ? floor.FeatureGenerator : null;
+        Color hue = VoidHue();
+        var deepTint = new Color(hue.r * coreHueStrength, hue.g * coreHueStrength,
+                                 hue.b * coreHueStrength, 1f);
+
+        var queue = new Queue<Vector3Int>();
+        var depth = new Dictionary<Vector3Int, int>();
+        var rimLight = new Dictionary<Vector3Int, float>();
+
+        bool IsVoidRock(Vector3Int c)
+            => influence.IsTileClaimed(c)
+            && !influence.IsTileMined(c)
+            && !(features != null && features.IsRiver(c));
+
+        // Seeds: rim cells already lit by step 3 that are claimed solid rock.
+        foreach (KeyValuePair<Vector3Int, float> kv in baseLight)
+        {
+            if (!IsVoidRock(kv.Key)) continue;
+            depth[kv.Key] = 0;
+            rimLight[kv.Key] = kv.Value;
+            queue.Enqueue(kv.Key);
+        }
+
+        while (queue.Count > 0)
+        {
+            Vector3Int cur = queue.Dequeue();
+            int d = depth[cur];
+            foreach (Vector3Int dir in Dirs4)
+            {
+                Vector3Int n = cur + dir;
+                if (depth.ContainsKey(n) || baseLight.ContainsKey(n)) continue;
+                if (!IsVoidRock(n)) continue;
+
+                int nd = d + 1;
+                depth[n] = nd;
+                rimLight[n] = rimLight[cur];
+
+                float t = Mathf.Clamp01((float)nd / voidFalloffCells);
+                baseLight[n] = Mathf.Max(voidLightFloor, Mathf.Lerp(rimLight[n], voidLightFloor, t));
+                baseTint[n] = deepTint;
+                queue.Enqueue(n);
+            }
+        }
+
+        // Rimless claimed rock (e.g. a channel tendril pushed through undug stone):
+        // no step-3 light to fall from, so it sits at the plateau, faintly hued.
+        foreach (Vector3Int c in influence.ClaimedTiles)
+        {
+            if (baseLight.ContainsKey(c) || !IsVoidRock(c)) continue;
+            baseLight[c] = voidLightFloor;
+            baseTint[c] = deepTint;
+        }
+    }
+
+    private static readonly Color FallbackGold = new Color(0.784f, 0.565f, 0.165f, 1f);
+
+    private Color VoidHue()
+        => ring != null ? ring.CurrentTypeColor : FallbackGold;
 
     // Multi-source BFS over open floor from claimed open cells, capped at breachFadeTiles.
     private Dictionary<Vector3Int, int> BreachDistances()

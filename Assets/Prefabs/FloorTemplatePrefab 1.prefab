@@ -127,6 +127,101 @@ TilemapRenderer:
   m_SortOrder: 0
   m_Mode: 1
   m_DetectChunkCullingBounds: 0
+--- !u!1 &186111394013948423
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6822359792888269589}
+  - component: {fileID: 4835590739512878845}
+  - component: {fileID: 8700903561578186014}
+  m_Layer: 0
+  m_Name: InfluenceFieldController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6822359792888269589
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 186111394013948423}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4528806149538725221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4835590739512878845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 186111394013948423}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e9b9d59fe91edc4aba6768c69bed56a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceField
+  baseReach: 8
+  reachPerLevel: 3
+  fieldDepthMargin: 10
+  ambientInterval: 3
+  surgeInterval: 0.2
+  surgeDuration: 30
+  suppressionFraction: 0.5
+  recoveryUsesSurgeRate: 1
+--- !u!114 &8700903561578186014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 186111394013948423}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34d63dd48913d0a4d878cc62e00e6410, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceRingRenderer
+  ringShader: {fileID: 4800000, guid: 841f3442175200d478a4f1296255fb14, type: 3}
+  sortingLayerName: Shadow
+  sortingOrder: 55
+  innerFalloff: 0.35
+  outerFalloff: 1.6
+  waverAmp: 0.18
+  waverScales: {x: 9, y: 3.2}
+  waverSpeeds: {x: 0.05, y: 0.11}
+  intensity: 1.15
+  pulseSpeed: 1.4
+  pulseAmp: 0.12
+  palette:
+  - type: 0
+    color: {r: 0.784, g: 0.565, b: 0.165, a: 1}
+  - type: 1
+    color: {r: 0.91, g: 0.353, b: 0.165, a: 1}
+  - type: 2
+    color: {r: 0.165, g: 0.659, b: 0.784, a: 1}
+  - type: 3
+    color: {r: 0.722, g: 0.769, b: 0.816, a: 1}
+  - type: 4
+    color: {r: 0.69, g: 0.478, b: 0.212, a: 1}
+  - type: 5
+    color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
+  - type: 6
+    color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
+  overlayStrength: 0.1
+  overlayFadeSpeed: 6
+  sdfRangeCells: 4
+  texturePadding: 2
 --- !u!1 &575972343776861659
 GameObject:
   m_ObjectHideFlags: 0
@@ -1104,8 +1199,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   claimableTilemap: {fileID: 523857414609269515}
-  claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
-  passiveExpansionInterval: 30
   starterRoomRadius: 6
 --- !u!1 &3833865031949414853
 GameObject:
@@ -1896,6 +1989,7 @@ MonoBehaviour:
   wildMonsterController: {fileID: 7821470843430572059}
   terrainTypeMap: {fileID: 3174382948389561711}
   entities: {fileID: 4785951510266918238}
+  influenceField: {fileID: 4835590739512878845}
   cameraBounds: {fileID: 8372535031249889356}
 --- !u!60 &8282947727654970810
 PolygonCollider2D:
@@ -1970,6 +2064,9 @@ MonoBehaviour:
   greenGlow: {r: 0.4, g: 0.85, b: 0.45, a: 1}
   goldGlow: {r: 0.95, g: 0.82, b: 0.45, a: 1}
   mossTintStrength: 0.15
+  voidLightFloor: 0.22
+  voidFalloffCells: 4
+  coreHueStrength: 0.12
 --- !u!1 &7750912231888544329
 GameObject:
   m_ObjectHideFlags: 0
@@ -1999,12 +2096,13 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 894289310546062468}
   - {fileID: 4462958601434109777}
+  - {fileID: 6822359792888269589}
   - {fileID: 8582899845837371000}
+  - {fileID: 6868929771460349194}
   - {fileID: 5545321746528657838}
   - {fileID: 8373826761656577404}
-  - {fileID: 6868929771460349194}
-  - {fileID: 894289310546062468}
   m_Father: {fileID: 6151173212404640898}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8000299455552086567
@@ -2083,6 +2181,15 @@ MonoBehaviour:
   tunnelWobbleChance: 0.3
   tunnelWidth: 4
   tunnelTipWidth: 2
+  entranceTunnelMinLength: 9
+  entranceTunnelMaxLength: 13
+  entranceMouthWidth: 3
+  entranceTipWidth: 2
+  entranceWobbleChance: 0.35
+  entranceOffshootMin: 1
+  entranceOffshootMax: 2
+  entranceOffshootBoxSize: 7
+  entranceApronRun: 4
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:

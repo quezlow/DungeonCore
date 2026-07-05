@@ -173,6 +173,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// Fires for both noisy and silent reveals (the controller spawns regardless).</summary>
     public event Action<int> OnChamberRevealed;
 
+    /// <summary>Fires when a chamber's claim gate opens (all wild monsters
+    /// cleared). InfluenceField subscribes to recompute its cost-distance
+    /// field — cleared chamber cells drop from impassable to normal cost.</summary>
+    public event Action<int> OnChamberCleared;
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -336,6 +341,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (ch == null || ch.cleared) return;
         ch.cleared = true;
         ch.aliveWildCount = 0;
+        OnChamberCleared?.Invoke(chamberId);
     }
 
     /// <summary>True if the cell sits inside a chamber whose claim gate is still closed.</summary>

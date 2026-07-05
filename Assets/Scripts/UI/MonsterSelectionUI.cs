@@ -120,8 +120,8 @@ public class MonsterSelectionUI : MonoBehaviour
 
     public void OnCloseClicked()
     {
-        DungeonBuildController.Instance?.SetMode(BuildMode.Claim);
-        // Hide() is called automatically via HandleModeChanged when mode switches to Claim
+        DungeonBuildController.Instance?.SetMode(BuildMode.None);
+        // Hide() fires via HandleModeChanged when the mode leaves PlaceSpawner.
     }
 
     private void Show()

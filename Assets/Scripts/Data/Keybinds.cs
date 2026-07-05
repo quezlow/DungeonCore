@@ -8,9 +8,10 @@ using UnityEngine.InputSystem;
 /// </summary>
 public enum GameAction
 {
-    Mine, Build, Summon, Claim,
+    Mine, Build, Summon, Push,
     PanUp, PanDown, PanLeft, PanRight,
-    ToggleTraps, ToggleAlerts, AvatarMenu
+    ToggleTraps, ToggleAlerts, AvatarMenu,
+    ToggleInfluenceOverlay
 }
 
 /// <summary>
@@ -28,7 +29,7 @@ public static class Keybinds
         { GameAction.Mine,         Key.M },
         { GameAction.Build,        Key.B },
         { GameAction.Summon,       Key.V },
-        { GameAction.Claim,        Key.C },
+        { GameAction.Push,         Key.C },
         { GameAction.PanUp,        Key.W },
         { GameAction.PanDown,      Key.S },
         { GameAction.PanLeft,      Key.A },
@@ -36,6 +37,7 @@ public static class Keybinds
         { GameAction.ToggleTraps,  Key.T },
         { GameAction.ToggleAlerts, Key.L },
         { GameAction.AvatarMenu,   Key.Tab },
+        { GameAction.ToggleInfluenceOverlay, Key.O },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -58,9 +60,10 @@ public static class Keybinds
     /// <summary>All rebindable actions, in display order.</summary>
     public static readonly GameAction[] All =
     {
-        GameAction.Mine, GameAction.Build, GameAction.Summon, GameAction.Claim,
+        GameAction.Mine, GameAction.Build, GameAction.Summon, GameAction.Push,
         GameAction.PanUp, GameAction.PanDown, GameAction.PanLeft, GameAction.PanRight,
-        GameAction.ToggleTraps, GameAction.ToggleAlerts, GameAction.AvatarMenu
+        GameAction.ToggleTraps, GameAction.ToggleAlerts, GameAction.AvatarMenu,
+        GameAction.ToggleInfluenceOverlay
     };
 
     /// <summary>Display labels for the Controls list.</summary>
@@ -69,7 +72,7 @@ public static class Keybinds
         GameAction.Mine => "Mine",
         GameAction.Build => "Build",
         GameAction.Summon => "Summon",
-        GameAction.Claim => "Claim",
+        GameAction.Push => "Push",
         GameAction.PanUp => "Pan Up",
         GameAction.PanDown => "Pan Down",
         GameAction.PanLeft => "Pan Left",
@@ -77,6 +80,7 @@ public static class Keybinds
         GameAction.ToggleTraps => "Toggle Traps",
         GameAction.ToggleAlerts => "Toggle Alerts",
         GameAction.AvatarMenu => "Avatar Menu",
+        GameAction.ToggleInfluenceOverlay => "Influence Overlay",
         _ => a.ToString()
     };
 

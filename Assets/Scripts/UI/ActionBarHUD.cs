@@ -4,12 +4,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Bottom-centre tabbed action bar.
 ///
-/// THREE FIXED TABS
-///   Mine   [M] — direct action, immediately enters BuildMode.Claim (tile-dig/expand).
+/// FOUR FIXED TABS
+///   Push   [C] — enters BuildMode.Push: hold LMB to channel influence toward the
+///                cursor (constant mana/sec; terrain resistance sets creep speed).
+///   Mine   [M] — enters BuildMode.Mine (tile digging / dig queue).
 ///   Build  [B] — toggles the Build sub-menu panel above the bar.
 ///                Sub-menu entries are data-driven; add PlaceTrap, PlaceFurniture,
 ///                PlaceStairs etc. to the buildEntries list in the Inspector as those
@@ -32,7 +35,8 @@ using UnityEngine.UI;
 ///   Shortcuts live here (not in DungeonBuildController) because tab-open state is a
 ///   UI concern. B and V were confirmed free — DungeonCameraController uses WASD and
 ///   arrow keys exclusively.
-///   M = Mine,  B = Build submenu toggle,  V = Summon toggle,  Esc = back to Mine.
+///   M = Mine,  B = Build submenu toggle,  V = Summon toggle,  C = Push,
+///   Esc = cancel to idle.
 ///
 /// SCENE SETUP  (see wiring notes at the bottom of this file)
 /// </summary>
@@ -41,7 +45,8 @@ public class ActionBarHUD : MonoBehaviour
     // ── Tab buttons (pre-placed in scene, assigned in Inspector) ──
 
     [Header("Tab Buttons")]
-    [SerializeField] private Button claimTabButton;
+    [FormerlySerializedAs("claimTabButton")]
+    [SerializeField] private Button pushTabButton;
     [SerializeField] private Button mineTabButton;
     [SerializeField] private Button buildTabButton;
     [SerializeField] private Button summonTabButton;
@@ -80,7 +85,7 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Internal state ────────────────────────────────────────────
 
-    private enum ActiveTab { None, Mine, Build, Summon, Claim }
+    private enum ActiveTab { None, Mine, Build, Summon, Push }
     private ActiveTab currentTab = ActiveTab.None;
 
     /// <summary>Frame on which Esc was consumed as a cancel. The pause menu checks this
@@ -103,7 +108,7 @@ public class ActionBarHUD : MonoBehaviour
         BuildSubmenuEntries();
         HideBuildPanel();
 
-        claimTabButton?.onClick.AddListener(OnClaimTabClicked);
+        pushTabButton?.onClick.AddListener(OnPushTabClicked);
         mineTabButton?.onClick.AddListener(OnMineTabClicked);
         buildTabButton?.onClick.AddListener(OnBuildTabClicked);
         summonTabButton?.onClick.AddListener(OnSummonTabClicked);
@@ -135,7 +140,7 @@ public class ActionBarHUD : MonoBehaviour
         if (Keybinds.WasPressed(GameAction.Mine)) OnMineTabClicked();
         if (Keybinds.WasPressed(GameAction.Build)) OnBuildTabClicked();
         if (Keybinds.WasPressed(GameAction.Summon)) OnSummonTabClicked();
-        if (Keybinds.WasPressed(GameAction.Claim)) OnClaimTabClicked();
+        if (Keybinds.WasPressed(GameAction.Push)) OnPushTabClicked();
 
         // Esc (cancel) stays hard-bound. Only treat it as a cancel when a tool is
         // active or something is selected; otherwise leave Esc for the pause menu.
@@ -157,7 +162,7 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Tab click handlers ────────────────────────────────────────
 
-    /// <summary>Mine tab: immediate Claim mode, close any open sub-menu.</summary>
+    /// <summary>Mine tab: enter Mine mode, close any open sub-menu.</summary>
     private void OnMineTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
@@ -170,28 +175,28 @@ public class ActionBarHUD : MonoBehaviour
         UpdateTabHighlights();
     }
 
-    private void OnClaimTabClicked()
+    private void OnPushTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
-        DungeonBuildController.Instance.SetMode(BuildMode.Claim);
+        DungeonBuildController.Instance.SetMode(BuildMode.Push);
 
-        // SetMode is a no-op if already Claim (HandleModeChanged won't fire),
+        // SetMode is a no-op if already Push (HandleModeChanged won't fire),
         // so force the visual state explicitly as a fallback.
-        currentTab = ActiveTab.Claim;
+        currentTab = ActiveTab.Push;
         UpdateTabHighlights();
     }
 
-    /// <summary>Build tab: toggle the Build sub-menu. Entering Claim first clears any
-    /// active placement mode (e.g. PlaceSpawner) so mode state stays clean.</summary>
+    /// <summary>Build tab: toggle the Build sub-menu. Dropping to idle (None) first
+    /// clears any active placement mode (e.g. PlaceSpawner) so mode state stays clean.</summary>
     private void OnBuildTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
         bool wasOpen = currentTab == ActiveTab.Build;
 
-        // Step 1 — clear any placement mode. If already Claim this is a no-op and
-        //          HandleModeChanged will NOT fire, so currentTab is unchanged here.
-        DungeonBuildController.Instance.SetMode(BuildMode.Claim);
+        // Step 1 — clear any placement mode back to idle. If already None this is a
+        //          no-op and HandleModeChanged will NOT fire, so currentTab is unchanged.
+        DungeonBuildController.Instance.SetMode(BuildMode.None);
 
         // Step 2 — close the panel regardless (re-opened below if toggling on).
         HideBuildPanel();
@@ -206,7 +211,7 @@ public class ActionBarHUD : MonoBehaviour
         }
         else
         {
-            currentTab = ActiveTab.Claim;
+            currentTab = ActiveTab.None;
             UpdateTabHighlights();
         }
     }
@@ -222,7 +227,7 @@ public class ActionBarHUD : MonoBehaviour
         if (!wasOpen)
             DungeonBuildController.Instance.SetMode(BuildMode.PlaceSpawner);
         else
-            DungeonBuildController.Instance.SetMode(BuildMode.Claim);
+            DungeonBuildController.Instance.SetMode(BuildMode.None);
 
         // HandleModeChanged fires synchronously inside SetMode and sets currentTab +
         // calls UpdateTabHighlights — nothing more needed here.
@@ -255,10 +260,10 @@ public class ActionBarHUD : MonoBehaviour
                 HideBuildPanel();
                 break;
 
-            case BuildMode.Claim:
-                // PHASE 5 — Claim is now its own active mode (formerly the idle default).
-                // Post-placement revert lands here; Claim tab gets highlighted.
-                currentTab = ActiveTab.Claim;
+            case BuildMode.Push:
+                // Push is the influence channel (formerly Claim). Panels now close
+                // to None, so only deliberate tab/hotkey entry lands here.
+                currentTab = ActiveTab.Push;
                 HideBuildPanel();
                 break;
 
@@ -355,7 +360,7 @@ public class ActionBarHUD : MonoBehaviour
 
     private void RefreshShortcutLabels()
     {
-        SetTabLabel(claimTabButton, "CLAIM", GameAction.Claim);
+        SetTabLabel(pushTabButton, "PUSH", GameAction.Push);
         SetTabLabel(mineTabButton, "MINE", GameAction.Mine);
         SetTabLabel(buildTabButton, "BUILD", GameAction.Build);
         SetTabLabel(summonTabButton, "SUMMON", GameAction.Summon);
@@ -370,7 +375,7 @@ public class ActionBarHUD : MonoBehaviour
 
     private void UpdateTabHighlights()
     {
-        SetButtonColor(claimTabButton, currentTab == ActiveTab.Claim);
+        SetButtonColor(pushTabButton, currentTab == ActiveTab.Push);
         SetButtonColor(mineTabButton, currentTab == ActiveTab.Mine);
         SetButtonColor(buildTabButton, currentTab == ActiveTab.Build);
         SetButtonColor(summonTabButton, currentTab == ActiveTab.Summon);

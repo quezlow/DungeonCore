@@ -50,7 +50,9 @@ public class SpawnerSelectionController : MonoBehaviour
     private void HandleModeChanged(BuildMode mode)
     {
         if (KeepSelectionThroughMode(mode)) return;
-        if (mode != BuildMode.Claim) Deselect();
+        // Idle (None) is the select-and-command state — selection persists there.
+        // Entering any tool mode clears it.
+        if (mode != BuildMode.None) Deselect();
     }
 
     private static bool KeepSelectionThroughMode(BuildMode mode)

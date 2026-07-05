@@ -26,8 +26,6 @@ using UnityEngine.Tilemaps;
 ///   - Passive expansion still skips rivers (deliberately expensive, player-
 ///     decision territory). Passive expansion is now probabilistic based on
 ///     terrain resistance.
-///   - Each newly-painted claimable tile is tinted via
-///     FloorRoot.GetClaimableRingTint so terrain resistance reads visually.
 ///
 /// INFLUENCE/MINING DECOUPLING — PHASE 1 (data model split, NO behavior change)
 ///   - Internal field 'ownedTiles' renamed to 'claimedTiles'. A new 'minedTiles'
@@ -50,10 +48,27 @@ using UnityEngine.Tilemaps;
 ///   - NEW events: OnTileMined(Vector3Int), OnClaimedTileCountChanged(int).
 ///     The existing OnTileCountChanged event continues to report MINED count
 ///     for HUD compatibility.
-///   - UnclaimTile and ShrinkInfluenceAroundCore remove from BOTH sets (a mined
-///     cell that isn't claimed makes no sense) and fire both events as needed.
+///   - UnclaimTile removes from BOTH sets (a mined cell that isn't claimed
+///     makes no sense) and fires both events as needed.
 ///   - Save format unchanged from Phase 1 (still v2). Loading a Phase 1 save
 ///     where claimed == mined works correctly because both lists are present.
+///
+/// INFLUENCE FIELD REWORK — SESSION 1 (growth model replaced)
+///   - Random passive expansion removed. Free growth now lives in the floor's
+///     InfluenceField: a per-floor cost-distance field claims the cheapest
+///     frontier cells within the core's level-based reach (ambient creep plus
+///     a level-up surge).
+///   - ShrinkInfluenceAroundCore replaced by UnclaimTilesBatch. Breach recede
+///     is driven by InfluenceField: reach is suppressed on first breach and
+///     recovers across the instability window while the creep regrows the edge.
+///   - New ClaimableTiles read-only view for allocation-free frontier scans.
+///
+/// INFLUENCE FIELD REWORK — SESSION 3 (ring visuals replaced)
+///   - The gold claimable-ring tiles and their resistance tints are retired.
+///     The claimable SET is unchanged — creep, channel, and gating still use
+///     it — but the frontier is now drawn by InfluenceRingRenderer's boundary
+///     shader. claimableTilemap remains solely as the floor's WorldToCell /
+///     CellToWorld coordinate service and never receives tiles.
 /// </summary>
 [DefaultExecutionOrder(0)]
 public class TileInfluenceManager : MonoBehaviour
@@ -61,13 +76,8 @@ public class TileInfluenceManager : MonoBehaviour
     public static TileInfluenceManager Instance { get; private set; }
 
     [Header("Tilemaps")]
+    [Tooltip("Coordinate service only (WorldToCell / CellToWorld). Never receives tiles.")]
     [SerializeField] private Tilemap claimableTilemap;
-
-    [Header("Tile Assets")]
-    [SerializeField] private TileBase claimableTile;
-
-    [Header("Settings")]
-    [SerializeField] private float passiveExpansionInterval = 30f;
 
     [Header("Starter Area")]
     [Tooltip("Radius (cells) of the blob-shaped starter room. ~3 ≈ a 6-wide room.")]
@@ -106,7 +116,6 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Internal ──────────────────────────────────────────────────
 
     private DungeonTerrain terrain;
-    private Coroutine passiveExpansionCoroutine;
 
     private TerrainFeatureGenerator featureGenerator;
     private TerrainFeatureGenerator Features
@@ -174,8 +183,8 @@ public class TileInfluenceManager : MonoBehaviour
             }
             // PHASE 4 — Floor 0 uses the unified ClaimStarterArea path so the
             // starter pattern (3×3 with random mining on the 8 surrounding cells)
-            // is consistent with Floor 2+. ClaimStarterArea calls StartPassiveExpansion
-            // internally.
+            // is consistent with Floor 2+. Free growth is driven by the floor's
+            // InfluenceField component.
             ClaimStarterArea(terrain.CoreCell);
         }
     }
@@ -241,7 +250,6 @@ public class TileInfluenceManager : MonoBehaviour
             claimedTiles.Add(pos);
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
-            claimableTilemap.SetTile(pos, null);
         }
 
         // Expand the claimable ring around the claimed 3×3.
@@ -256,12 +264,10 @@ public class TileInfluenceManager : MonoBehaviour
                 if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
-                PaintClaimableTile(neighbour);
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }
 
-        StartPassiveExpansion();
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
         OnTileCountChanged?.Invoke(minedTiles.Count);
     }
@@ -286,7 +292,6 @@ public class TileInfluenceManager : MonoBehaviour
 
         claimableTiles.Remove(pos);
         terrain?.RevealTile(pos);                                   // claimed cells are visible
-        claimableTilemap.SetTile(pos, null);
 
         // Expand the claimable ring.
         foreach (Vector3Int dir in Neighbours)
@@ -298,7 +303,6 @@ public class TileInfluenceManager : MonoBehaviour
             if (IsBedrock(neighbour)) continue;
 
             claimableTiles.Add(neighbour);
-            PaintClaimableTile(neighbour);
             OnTileBecameClaimable?.Invoke(neighbour);
         }
 
@@ -398,77 +402,36 @@ public class TileInfluenceManager : MonoBehaviour
         if (wasMined) OnTileCountChanged?.Invoke(minedTiles.Count);
     }
 
-    public void ShrinkInfluenceAroundCore(Vector3Int coreCell, float radius)
+    /// <summary>
+    /// Unclaims a batch of cells in one pass: removes each from claimedTiles,
+    /// refogs cells that were never mined, then rebuilds the claimable ring and
+    /// fires the count event once. Used by InfluenceField's breach recede — far
+    /// cheaper than per-cell UnclaimTile, which rebuilds the ring every call.
+    /// Recede shrinks ownership only: a dug tunnel persists, so mined cells
+    /// keep their mined state and stay revealed.
+    /// </summary>
+    public void UnclaimTilesBatch(IReadOnlyCollection<Vector3Int> cells)
     {
-        int cellRadius = Mathf.CeilToInt(radius);
-        var toRemove = new List<Vector3Int>();
+        if (cells == null || cells.Count == 0) return;
 
-        foreach (var cell in claimedTiles)
+        int removed = 0;
+        foreach (Vector3Int cell in cells)
         {
-            if (cell == coreCell) continue;
-            int dx = Mathf.Abs(cell.x - coreCell.x);
-            int dy = Mathf.Abs(cell.y - coreCell.y);
-            if (dx <= cellRadius && dy <= cellRadius)
-                toRemove.Add(cell);
-        }
-
-        if (toRemove.Count == 0) return;
-
-        foreach (var cell in toRemove)
-        {
-            claimedTiles.Remove(cell);
-            // Breach shrinks ownership only. A dug tunnel persists: mined cells keep their
-            // mined state and stay revealed, so only re-fog cells that were never dug.
+            if (!claimedTiles.Remove(cell)) continue;
+            removed++;
             if (!minedTiles.Contains(cell)) terrain?.RefogTile(cell);
         }
 
+        if (removed == 0) return;
+
         RebuildClaimableSet();
-        DungeonCore.Instance?.RemoveClaimedTiles(toRemove.Count);
+        DungeonCore.Instance?.RemoveClaimedTiles(removed);
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
 
-        Debug.Log($"[TileInfluenceManager] Breach shrink unclaimed {toRemove.Count} cell(s); mined tunnels preserved.");
+        Debug.Log($"[TileInfluenceManager] Recede unclaimed {removed} cell(s); mined tunnels preserved.");
     }
 
-    // ── Passive Expansion ─────────────────────────────────────────
-
-    private void StartPassiveExpansion()
-    {
-        if (passiveExpansionCoroutine != null) StopCoroutine(passiveExpansionCoroutine);
-        passiveExpansionCoroutine = StartCoroutine(PassiveExpansionRoutine());
-    }
-
-    private IEnumerator PassiveExpansionRoutine()
-    {
-        while (true)
-        {
-            float elapsed = 0f;
-            while (elapsed < passiveExpansionInterval)
-            {
-                if (!PauseController.IsGamePaused)
-                    elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            if (claimableTiles.Count == 0) continue;
-
-            int index = UnityEngine.Random.Range(0, claimableTiles.Count);
-            Vector3Int target = claimableTiles.ElementAt(index);
-            if (Features != null)
-            {
-                if (Features.IsRiver(target)) continue;
-                if (Features.IsCellInUnclearedChamber(target)) continue;
-            }
-
-            float resistance = 1f;
-            var floor = MyFloor;
-            if (floor != null) resistance = floor.GetClaimCostMultiplier(target);
-            if (resistance > 1f && UnityEngine.Random.value > 1f / resistance) continue;
-
-            // PHASE 2 — passive expansion only claims, never mines.
-            // ClaimTile is already claim-only after Phase 2.
-            ClaimTile(target);
-        }
-    }
+    // ── Bounds ────────────────────────────────────────────────────────
 
     public void OnBoundsExpanded()
     {
@@ -483,7 +446,6 @@ public class TileInfluenceManager : MonoBehaviour
                 if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
-                PaintClaimableTile(neighbour);
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }
@@ -491,28 +453,9 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    private void PaintClaimableTile(Vector3Int cell)
-    {
-        claimableTilemap.SetTile(cell, claimableTile);
-
-        var floor = MyFloor;
-        if (floor == null) return;
-
-        Color tint = floor.GetClaimableRingTint(cell);
-        claimableTilemap.SetTileFlags(cell, TileFlags.None);
-        claimableTilemap.SetColor(cell, tint);
-    }
-
-    public void RepaintClaimableTiles()
-    {
-        foreach (var cell in claimableTiles)
-            PaintClaimableTile(cell);
-    }
-
     private void RebuildClaimableSet()
     {
         claimableTiles.Clear();
-        claimableTilemap.ClearAllTiles();
 
         foreach (Vector3Int owned in claimedTiles)
         {
@@ -525,7 +468,6 @@ public class TileInfluenceManager : MonoBehaviour
                 if (IsBedrock(neighbour)) continue;
 
                 claimableTiles.Add(neighbour);
-                PaintClaimableTile(neighbour);
                 OnTileBecameClaimable?.Invoke(neighbour);
             }
         }
@@ -573,6 +515,7 @@ public class TileInfluenceManager : MonoBehaviour
 
     public IReadOnlyCollection<Vector3Int> ClaimedTiles => claimedTiles;
     public IReadOnlyCollection<Vector3Int> MinedTiles => minedTiles;
+    public IReadOnlyCollection<Vector3Int> ClaimableTiles => claimableTiles;
     public int ClaimedTileCount => claimedTiles.Count;
     public int MinedTileCount => minedTiles.Count;
 

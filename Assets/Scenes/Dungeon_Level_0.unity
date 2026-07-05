@@ -4745,6 +4745,101 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 176043418}
   m_CullTransparentMesh: 1
+--- !u!1 &177169425
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 177169428}
+  - component: {fileID: 177169426}
+  - component: {fileID: 177169427}
+  m_Layer: 0
+  m_Name: InfluenceFieldController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &177169426
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177169425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e9b9d59fe91edc4aba6768c69bed56a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceField
+  baseReach: 8
+  reachPerLevel: 3
+  fieldDepthMargin: 10
+  ambientInterval: 3
+  surgeInterval: 0.2
+  surgeDuration: 30
+  suppressionFraction: 0.5
+  recoveryUsesSurgeRate: 1
+--- !u!114 &177169427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177169425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34d63dd48913d0a4d878cc62e00e6410, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceRingRenderer
+  ringShader: {fileID: 4800000, guid: 841f3442175200d478a4f1296255fb14, type: 3}
+  sortingLayerName: Shadow
+  sortingOrder: 55
+  innerFalloff: 0.35
+  outerFalloff: 1.6
+  waverAmp: 0.18
+  waverScales: {x: 9, y: 3.2}
+  waverSpeeds: {x: 0.05, y: 0.11}
+  intensity: 1.15
+  pulseSpeed: 1.4
+  pulseAmp: 0.12
+  palette:
+  - type: 0
+    color: {r: 0.784, g: 0.565, b: 0.165, a: 1}
+  - type: 1
+    color: {r: 0.91, g: 0.353, b: 0.165, a: 1}
+  - type: 2
+    color: {r: 0.165, g: 0.659, b: 0.784, a: 1}
+  - type: 3
+    color: {r: 0.722, g: 0.769, b: 0.816, a: 1}
+  - type: 4
+    color: {r: 0.69, g: 0.478, b: 0.212, a: 1}
+  - type: 5
+    color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
+  - type: 6
+    color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
+  overlayStrength: 0.1
+  overlayFadeSpeed: 6
+  sdfRangeCells: 4
+  texturePadding: 2
+--- !u!4 &177169428
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 177169425}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1321636149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &178191741
 GameObject:
   m_ObjectHideFlags: 0
@@ -5918,7 +6013,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9199ce81bdf4c841ba08ff03cedd1b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ActionBarHUD
-  claimTabButton: {fileID: 97226182}
+  pushTabButton: {fileID: 97226182}
   mineTabButton: {fileID: 245645598}
   buildTabButton: {fileID: 119784869}
   summonTabButton: {fileID: 1754523867}
@@ -8295,8 +8390,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   claimableTilemap: {fileID: 521119951}
-  claimableTile: {fileID: 11400000, guid: 96222b47399da0f43bd51915a3383030, type: 2}
-  passiveExpansionInterval: 30
   starterRoomRadius: 4
 --- !u!1 &331019469
 GameObject:
@@ -10266,7 +10359,6 @@ MonoBehaviour:
   reputation: 0
   instabilityDuration: 60
   xpPenaltyOnBreach: 50
-  influenceShrinkRadius: 3
   notorietyDecayCooldown: 10
 --- !u!114 &420329711
 MonoBehaviour:
@@ -17382,6 +17474,7 @@ MonoBehaviour:
   wildMonsterController: {fileID: 1848019895}
   terrainTypeMap: {fileID: 1894963497}
   entities: {fileID: 907113554}
+  influenceField: {fileID: 177169426}
   cameraBounds: {fileID: 2117633017}
 --- !u!4 &629551820
 Transform:
@@ -17441,6 +17534,9 @@ MonoBehaviour:
   greenGlow: {r: 0.4, g: 0.85, b: 0.45, a: 1}
   goldGlow: {r: 0.95, g: 0.82, b: 0.45, a: 1}
   mossTintStrength: 0.15
+  voidLightFloor: 0.22
+  voidFalloffCells: 4
+  coreHueStrength: 0.12
 --- !u!1 &632888276
 GameObject:
   m_ObjectHideFlags: 0
@@ -17475,7 +17571,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000009948109}
+  m_AnchoredPosition: {x: 0, y: 0.00018766495}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -32423,13 +32519,14 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 468668986}
+  - {fileID: 1635583173}
+  - {fileID: 907113553}
   - {fileID: 652070176}
+  - {fileID: 177169428}
+  - {fileID: 468668986}
+  - {fileID: 1894963498}
   - {fileID: 328756362}
   - {fileID: 1848019896}
-  - {fileID: 1894963498}
-  - {fileID: 907113553}
-  - {fileID: 1635583173}
   m_Father: {fileID: 629551820}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1323356320
@@ -33344,6 +33441,170 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+--- !u!1 &1353456888
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1353456889}
+  - component: {fileID: 1353456891}
+  - component: {fileID: 1353456890}
+  m_Layer: 0
+  m_Name: InfluenceChannelController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1353456889
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1353456888}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1353456890
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1353456888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcd72e2c62e9f84418aceec6a89dcc30, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InfluenceChannel
+  secondsPerCell: 0.35
+  channelManaPerSecond: 3
+  maxSearchCost: 400
+  maxNodesPerSearch: 20000
+  lineWidth: 0.12
+  lineStartColor: {r: 0.784, g: 0.565, b: 0.165, a: 0.85}
+  lineEndColor: {r: 0.914, g: 0.271, b: 0.376, a: 0.95}
+  lineSortingOrder: 60
+  lineMaterial: {fileID: 0}
+--- !u!120 &1353456891
+LineRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1353456888}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 0
+  m_LightProbeUsage: 0
+  m_ReflectionProbeUsage: 0
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Positions:
+  - {x: 0, y: 0, z: 0}
+  - {x: 0, y: 0, z: 1}
+  m_Parameters:
+    serializedVersion: 3
+    widthMultiplier: 1
+    widthCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0.33333334
+        outWeight: 0.33333334
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    colorGradient:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    numCornerVertices: 0
+    numCapVertices: 0
+    alignment: 0
+    textureMode: 0
+    textureScale: {x: 1, y: 1}
+    shadowBias: 0.5
+    generateLightingData: 0
+  m_UseWorldSpace: 1
+  m_Loop: 0
+  m_ApplyActiveColorSpace: 1
 --- !u!1 &1358279251
 GameObject:
   m_ObjectHideFlags: 0
@@ -53709,6 +53970,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7e58c93cad57bbe4d94318ea1da34149, type: 2}
   minPartySize: 3
   maxPartySize: 5
+  gradeRatingPerLevel: 45
+  gradeRatingPerExtraMember: 120
+  gradeUnderStrengthChance: 0.25
+  gradeUnderStrengthLevelDrop: 2
+  gradeUnderStrengthSizeDrop: 1
   scalePartySizeWithNotoriety: 1
   intervalLow: 30
   intervalMedium: 20
@@ -57368,6 +57634,7 @@ Transform:
   - {fileID: 2098685298}
   - {fileID: 1323356321}
   - {fileID: 1790206127}
+  - {fileID: 1353456889}
   - {fileID: 2133235185}
   - {fileID: 938252450}
   - {fileID: 1831622585}
@@ -57975,7 +58242,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 732b6c6ffdc898945898bc0f19009bab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonBuildController
-  influenceClaimManaCost: 1
   mineManaCost: 5
   entrancePrefab: {fileID: 7987491680190548495, guid: 227989ce1b1ac76489a6becddbaa5d23, type: 3}
   selectedChest: {fileID: 0}

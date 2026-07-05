@@ -7,7 +7,7 @@ using UnityEngine.Serialization;
 
 public enum BuildMode
 {
-    Claim,
+    Push,
     Mine,
     PlaceEntrance,
     PlaceSpawner,
@@ -27,7 +27,7 @@ public class DungeonBuildController : MonoBehaviour
     public static DungeonBuildController Instance { get; private set; }
 
     /// Raised by the marquee selector while a box-select drag is in progress, so
-    /// claim/mine input is suppressed for the duration of the drag.
+    /// push/mine input is suppressed for the duration of the drag.
     public bool SuppressBuildInput { get; set; }
 
     public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
@@ -35,7 +35,6 @@ public class DungeonBuildController : MonoBehaviour
     public void SetSelectedChest(ChestDefinition def) => selectedChest = def;
 
     [Header("Mana Costs")]
-    [SerializeField] private float influenceClaimManaCost = 1f;
     [FormerlySerializedAs("claimManaCost")]
     [SerializeField] private float mineManaCost = 5f;
 
@@ -54,8 +53,6 @@ public class DungeonBuildController : MonoBehaviour
     public event Action<BuildMode> OnModeChanged;
 
     private Camera mainCamera;
-    private Vector3Int dragClaimLastCell;
-    private bool dragClaimActive;
 
     // Feature 3 — mine-target highlight (runtime overlay; no scene setup required).
     [Header("Mine Highlight")]
@@ -170,7 +167,7 @@ public class DungeonBuildController : MonoBehaviour
 
         switch (CurrentMode)
         {
-            case BuildMode.Claim: HandleClaimClick(); break;
+            case BuildMode.Push: HandlePushChannel(); break;
             case BuildMode.Mine: HandleMineInput(); break;
             case BuildMode.PlaceEntrance: HandleEntrancePlacement(); break;
             case BuildMode.PlaceSpawner: HandleSpawnerPlacement(); break;
@@ -187,12 +184,14 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (CurrentMode == mode) return;
         CurrentMode = mode;
-        dragClaimActive = false;
         Debug.Log($"[BuildController] Mode → {mode}");
         OnModeChanged?.Invoke(mode);
     }
 
-    public void SetModeToClaim() => SetMode(BuildMode.Claim);
+    public void SetModeToPush() => SetMode(BuildMode.Push);
+
+    /// <summary>Legacy alias — kept so any Inspector-wired UnityEvents keep working.</summary>
+    public void SetModeToClaim() => SetMode(BuildMode.Push);
     public void SetModeToPlaceEntrance() => SetMode(BuildMode.PlaceEntrance);
     public void SetModeToPlaceSpawner() => SetMode(BuildMode.PlaceSpawner);
     public void SetModeToPlaceChest() => SetMode(BuildMode.PlaceChest);
@@ -208,7 +207,7 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.PlaceCore);
     }
 
-    // ── DAY 31 PART 3D — Patrol / Attack Placement Entry ──────────
+    // ── Patrol / Attack Placement Entry ──────────
 
     public void BeginPatrolPlacement(MonsterSpawner spawner)
     {
@@ -286,35 +285,27 @@ public class DungeonBuildController : MonoBehaviour
         BuildFeedback.Reject(world, reason);
     }
 
-    private void HandleClaimClick()
+    // ── Push (influence channel) ────────────────────────────────
+
+    /// <summary>Per-frame driver for Push mode. Input capture stays here (hover,
+    /// hold, marquee suppression); the channel itself — pathing, progress, mana
+    /// drain, preview line — lives in InfluenceChannel.</summary>
+    private void HandlePushChannel()
     {
-        if (SuppressBuildInput) return;
-        if (!ClaimInputThisFrame(out Vector3Int cell)) return;
-        if (ActiveInfluence == null) return;
+        var channel = InfluenceChannel.Instance;
+        if (channel == null) return;
 
-        // PHASE 5 — Strict claim-only. Mining moved to HandleMineClick (Mine mode).
-        // Click on anything other than a claimable cell is silently ignored.
-        if (!ActiveInfluence.IsTileClaimable(cell)) return;
-
-        var features = ActiveFloor?.FeatureGenerator;
-        if (features != null && features.IsCellInUnclearedChamber(cell))
+        if (SuppressBuildInput)
         {
-            Debug.Log("[BuildController] Cannot claim cavern — clear wild monsters first.");
-            RejectAt(cell, "Clear the wild monsters first");
-            dragClaimActive = false;
+            channel.Tick(ActiveFloor, null, false);
             return;
         }
 
-        float cost = influenceClaimManaCost;
-
-        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(cost))
-        {
-            RejectAt(cell, "Not enough mana");
-            dragClaimActive = false;
-            return;
-        }
-        ActiveInfluence.ClaimTile(cell);
+        bool held = Mouse.current != null && Mouse.current.leftButton.isPressed;
+        Vector3Int? hover = HoverCell(out Vector3Int cell) ? cell : (Vector3Int?)null;
+        channel.Tick(ActiveFloor, hover, held);
     }
+
 
     // ── Mine input: click mines one now · drag queues a swath · Shift+click queues one ──
     private void HandleMineInput()
@@ -407,10 +398,10 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     /// <summary>
-    /// PHASE 2 — Mirror of TileInfluenceManager.MineTile's adjacency check, used by
-    /// HandleClaimClick to decide whether the click would succeed before charging
-    /// mana. Keeping the logic mirrored here means we don't pay (spend mana) and
-    /// then fail silently.
+    /// PHASE 2 — Mirror of TileInfluenceManager.MineTile's adjacency check, used
+    /// by the mine input path to decide whether a dig would succeed before
+    /// charging mana. Keeping the logic mirrored here means we don't pay (spend
+    /// mana) and then fail silently.
     /// </summary>
     private bool CanMineCell(Vector3Int cell)
     {
@@ -1196,31 +1187,6 @@ public class DungeonBuildController : MonoBehaviour
         if (influence == null) return false;
         cell = influence.WorldToCell(worldPos);
         return true;
-    }
-
-    private bool ClaimInputThisFrame(out Vector3Int cell)
-    {
-        cell = default;
-        var mouse = Mouse.current;
-        if (mouse == null) return false;
-        if (mouse.leftButton.wasReleasedThisFrame) dragClaimActive = false;
-
-        bool pressed = mouse.leftButton.wasPressedThisFrame;
-        bool held = mouse.leftButton.isPressed;
-        if (!pressed && !held) return false;
-        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return false;
-        if (mainCamera == null) return false;
-
-        var influence = ActiveInfluence;
-        if (influence == null) return false;
-
-        Vector2 screenPos = mouse.position.ReadValue();
-        Vector3 worldPos = mainCamera.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, 0f));
-        Vector3Int newCell = influence.WorldToCell(worldPos);
-
-        if (pressed) { cell = newCell; dragClaimLastCell = newCell; dragClaimActive = true; return true; }
-        if (held && dragClaimActive && newCell != dragClaimLastCell) { cell = newCell; dragClaimLastCell = newCell; return true; }
-        return false;
     }
 
     // ── Dig-queue processing ──────────────────────────────────────

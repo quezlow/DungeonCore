@@ -157,7 +157,7 @@ public class ChestSelectionUI : MonoBehaviour
 
     public void OnCloseClicked()
     {
-        DungeonBuildController.Instance?.SetMode(BuildMode.Claim);
+        DungeonBuildController.Instance?.SetMode(BuildMode.None);
     }
 
     private void PushSelectionToBuildController()

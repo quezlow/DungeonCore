@@ -1,0 +1,141 @@
+// The ethereal influence ring — built-in render pipeline, unlit, additive.
+//
+// Samples the per-floor field texture written by InfluenceRingRenderer:
+//   R = signed distance to the claimed boundary (0.5 = the boundary itself,
+//       encoded so one cell = 1 / (2 * sdfRangeCells))
+//   G = normalized free-growth cost from InfluenceField (1 = unreachable)
+//
+// Bilinear filtering interpolates the per-cell values into organic curves.
+// Two octaves of scrolling value noise perturb the isoline (the waver — purely
+// cosmetic; gameplay boundaries never move), the band falls off asymmetrically
+// (short into claimed ground, a long soft tail bleeding into the fog), and the
+// whole ring breathes with a gentle pulse. The free-growth overlay fills
+// unclaimed ground whose cost sits within _EffReach — driven per frame from
+// C#, so surges, suppression, and recovery animate with zero texture work.
+//
+// All distance uniforms arrive pre-converted to encoded units by
+// InfluenceRingRenderer; this shader stays unit-dumb.
+Shader "DCR/InfluenceRing"
+{
+    Properties
+    {
+        _FieldTex ("Field (R=sdf, G=reach)", 2D) = "black" {}
+        _RingColor ("Ring Color", Color) = (0.784, 0.565, 0.165, 1)
+        _Intensity ("Intensity", Float) = 1.15
+        _InnerFalloff ("Inner Falloff (encoded)", Float) = 0.044
+        _OuterFalloff ("Outer Falloff (encoded)", Float) = 0.2
+        _WaverAmp ("Waver Amplitude (encoded)", Float) = 0.022
+        _Noise1Scale ("Noise 1 Scale (uv)", Float) = 22
+        _Noise2Scale ("Noise 2 Scale (uv)", Float) = 62
+        _Noise1Speed ("Noise 1 Speed", Float) = 0.05
+        _Noise2Speed ("Noise 2 Speed", Float) = 0.11
+        _PulseSpeed ("Pulse Speed", Float) = 1.4
+        _PulseAmp ("Pulse Amplitude", Range(0, 1)) = 0.12
+        _EffReach ("Effective Reach (normalized)", Range(0, 1)) = 0.2
+        _ReachEdge ("Reach Edge Softness", Float) = 0.02
+        _OverlayStrength ("Overlay Strength", Range(0, 1)) = 0
+    }
+
+    SubShader
+    {
+        Tags { "Queue" = "Transparent" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Blend One One
+        ZWrite Off
+        Cull Off
+        Lighting Off
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+
+            sampler2D _FieldTex;
+            fixed4 _RingColor;
+            float _Intensity;
+            float _InnerFalloff;
+            float _OuterFalloff;
+            float _WaverAmp;
+            float _Noise1Scale;
+            float _Noise2Scale;
+            float _Noise1Speed;
+            float _Noise2Speed;
+            float _PulseSpeed;
+            float _PulseAmp;
+            float _EffReach;
+            float _ReachEdge;
+            float _OverlayStrength;
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            float hash21(float2 p)
+            {
+                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+            }
+
+            // Bilinear value noise, 0..1.
+            float vnoise(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                float2 u = f * f * (3.0 - 2.0 * f);
+                float a = hash21(i);
+                float b = hash21(i + float2(1, 0));
+                float c = hash21(i + float2(0, 1));
+                float d = hash21(i + float2(1, 1));
+                return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 fs = tex2D(_FieldTex, i.uv).rg;
+                float sdf = fs.r;
+
+                // Two scrolling octaves waver the isoline. Cosmetic only.
+                float t = _Time.y;
+                float n1 = vnoise(i.uv * _Noise1Scale + float2(t * _Noise1Speed, t * _Noise1Speed * 0.7));
+                float n2 = vnoise(i.uv * _Noise2Scale - float2(t * _Noise2Speed * 0.6, t * _Noise2Speed));
+                float waver = ((n1 + 0.5 * n2) / 1.5 - 0.5) * 2.0 * _WaverAmp;
+
+                float d = sdf - (0.5 + waver);
+
+                // Asymmetric band: sharp toward claimed ground, long tail into the fog.
+                float inside = saturate(1.0 - d / _InnerFalloff);
+                float outside = saturate(1.0 + d / _OuterFalloff);
+                float band = (d >= 0.0) ? inside : outside;
+                band *= band; // soften the shoulders
+
+                float pulse = 1.0 + _PulseAmp * sin(t * _PulseSpeed);
+                float3 ring = _RingColor.rgb * band * _Intensity * pulse * _RingColor.a;
+
+                // Free-growth overlay: unclaimed ground within effective reach.
+                float inReach = smoothstep(_EffReach + _ReachEdge, _EffReach - _ReachEdge, fs.g);
+                float unclaimedSide = smoothstep(0.5, 0.46, sdf);
+                float3 overlay = _RingColor.rgb * (inReach * unclaimedSide * _OverlayStrength);
+
+                return fixed4(ring + overlay, 1.0);
+            }
+            ENDCG
+        }
+    }
+    Fallback Off
+}

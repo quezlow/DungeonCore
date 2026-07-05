@@ -36,7 +36,6 @@ public class DungeonCore : MonoBehaviour
     [Header("Two-Strike Breach System")]
     [SerializeField] private float instabilityDuration = 60f;
     [SerializeField] private float xpPenaltyOnBreach = 50f;
-    [SerializeField] private float influenceShrinkRadius = 3f;
 
     [Header("Notoriety Decay")]
     [SerializeField] private float notorietyDecayCooldown = 10f;
@@ -419,13 +418,9 @@ public class DungeonCore : MonoBehaviour
             currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
             OnXPChanged?.Invoke(currentXP, XPToNextLevel);
 
-            int coreFloor = FloorManager.Instance != null ? FloorManager.Instance.CoreFloorIndex : 0;
-            var floor = FloorManager.Instance?.GetFloor(coreFloor);
-            if (floor?.TileInfluence != null)
-            {
-                Vector3Int coreCell = floor.TileInfluence.WorldToCell(transform.position);
-                floor.TileInfluence.ShrinkInfluenceAroundCore(coreCell, influenceShrinkRadius);
-            }
+            // Influence recede is handled per floor by InfluenceField, which
+            // subscribes to OnFirstBreach (fired below) and unclaims territory
+            // beyond the suppressed reach on every floor. Mined tunnels persist.
 
             OnFirstBreach?.Invoke();
             OnCoreDestroyed?.Invoke();

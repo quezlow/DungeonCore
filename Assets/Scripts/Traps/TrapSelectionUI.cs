@@ -143,7 +143,7 @@ public class TrapSelectionUI : MonoBehaviour
         if (manaCostLabel != null) manaCostLabel.color = tint;
     }
 
-    public void OnCloseClicked() => DungeonBuildController.Instance?.SetMode(BuildMode.Claim);
+    public void OnCloseClicked() => DungeonBuildController.Instance?.SetMode(BuildMode.None);
 
     private void PushSelectionToBuildController()
     {

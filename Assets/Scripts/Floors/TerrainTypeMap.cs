@@ -82,11 +82,6 @@ public class TerrainTypeMap : MonoBehaviour
 
         generated = true;
 
-        // Repaint any claimable cells that were painted before
-        //          generation completed (Floor 0 startup ordering).
-        var influence = GetComponentInParent<FloorRoot>()?.TileInfluence;
-        influence?.RepaintClaimableTiles();
-
         int sand = 0, stone = 0, granite = 0;
         foreach (var kv in patchOverrides)
         {
