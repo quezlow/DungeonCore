@@ -78,6 +78,9 @@ public class InfluenceRingRenderer : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float overlayStrength = 0.10f;
     [Tooltip("Fade in/out speed of the overlay (per second).")]
     [SerializeField, Min(0.5f)] private float overlayFadeSpeed = 6f;
+    [Tooltip("How much of the wash claimed ground receives. 0 = hard exclusion (territory reads " +
+             "as black cutouts in the reach field); 1 = uniform wash. Softens the claim-boundary contrast.")]
+    [SerializeField, Range(0f, 1f)] private float overlayClaimedLevel = 0.45f;
 
     [Header("Field Encoding")]
     [Tooltip("Cells of signed distance encoded either side of the boundary.")]
@@ -326,6 +329,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_PulseSpeed", pulseSpeed);
         material.SetFloat("_PulseAmp", pulseAmp);
         material.SetFloat("_ReachEdge", 0.75f / reachNorm);
+        material.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
     }
 
     // ── Texture rebuild ───────────────────────────────────────────

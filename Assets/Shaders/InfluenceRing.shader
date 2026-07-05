@@ -34,6 +34,7 @@ Shader "DCR/InfluenceRing"
         _EffReach ("Effective Reach (normalized)", Range(0, 1)) = 0.2
         _ReachEdge ("Reach Edge Softness", Float) = 0.02
         _OverlayStrength ("Overlay Strength", Range(0, 1)) = 0
+        _OverlayClaimedLevel ("Overlay Inside Level", Range(0, 1)) = 0.45
     }
 
     SubShader
@@ -65,7 +66,8 @@ Shader "DCR/InfluenceRing"
             float _PulseAmp;
             float _EffReach;
             float _ReachEdge;
-            float _OverlayStrength;
+          float _OverlayStrength;
+            float _OverlayClaimedLevel;
 
             struct appdata
             {
@@ -129,8 +131,12 @@ Shader "DCR/InfluenceRing"
 
                 // Free-growth overlay: unclaimed ground within effective reach.
                 float inReach = smoothstep(_EffReach + _ReachEdge, _EffReach - _ReachEdge, fs.g);
+                // Claimed ground takes a reduced share of the wash instead of a
+                // hard exclusion, so territory no longer reads as black cutouts
+                // in the reach field. 0 restores the old hard mask; 1 is uniform.
                 float unclaimedSide = smoothstep(0.5, 0.46, sdf);
-                float3 overlay = _RingColor.rgb * (inReach * unclaimedSide * _OverlayStrength);
+                float side = lerp(_OverlayClaimedLevel, 1.0, unclaimedSide);
+                float3 overlay = _RingColor.rgb * (inReach * side * _OverlayStrength);
 
                 return fixed4(ring + overlay, 1.0);
             }
