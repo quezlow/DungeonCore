@@ -4798,6 +4798,8 @@ MonoBehaviour:
   ringShader: {fileID: 4800000, guid: 841f3442175200d478a4f1296255fb14, type: 3}
   sortingLayerName: Shadow
   sortingOrder: 55
+  washSortingLayerName: AdjacentHighlight
+  washSortingOrder: 45
   innerFalloff: 0.35
   outerFalloff: 1.6
   waverAmp: 0.18
@@ -4823,6 +4825,7 @@ MonoBehaviour:
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
   overlayStrength: 0.1
   overlayFadeSpeed: 6
+  overlayClaimedLevel: 0.45
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!4 &177169428
@@ -14639,7 +14642,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9954788
+  m_Size: 0.9999896
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17535,10 +17538,10 @@ MonoBehaviour:
   goldGlow: {r: 0.95, g: 0.82, b: 0.45, a: 1}
   mossTintStrength: 0.15
   voidLightFloor: 0.22
-  voidFalloffCells: 4
-  coreHueStrength: 0.015
+  voidFalloffCells: 1
+  coreHueStrength: 0
   voidOpaqueFill: 1
-  voidBaseColor: {r: 0.24, g: 0.235, b: 0.23, a: 1}
+  voidBaseColor: {r: 0.26666668, g: 0.26666668, b: 0.26666668, a: 1}
   fogMatchesVoid: 1
 --- !u!1 &632888276
 GameObject:
@@ -17574,7 +17577,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00055816025}
+  m_AnchoredPosition: {x: 0, y: 0.0001272315}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278

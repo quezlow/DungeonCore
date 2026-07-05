@@ -41,6 +41,11 @@ public class InfluenceRingRenderer : MonoBehaviour
     [SerializeField] private string sortingLayerName = "Default";
     [Tooltip("Sorting order — anything above the Fog tilemap's order.")]
     [SerializeField] private int sortingOrder = 55;
+    [Tooltip("Layer for the wash quad — above walls, faces, and units, so the O overlay " +
+             "covers everything the eye sees. WorldUI stays clear above it.")]
+    [SerializeField] private string washSortingLayerName = "AdjacentHighlight";
+    [Tooltip("Order on that layer (the retired claimable tilemap sits at 40).")]
+    [SerializeField] private int washSortingOrder = 45;
 
     [Header("Ring Shape (cells)")]
     [Tooltip("Falloff on the claimed side of the boundary.")]
@@ -103,6 +108,8 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private GameObject quadGO;
     private Material material;
+    private GameObject washGO;
+    private Material washMaterial;
     private Texture2D fieldTex;
     private Color32[] pixels;
     private float[] chamferIn;
@@ -169,13 +176,16 @@ public class InfluenceRingRenderer : MonoBehaviour
     {
         Unsubscribe();
         if (quadGO != null) quadGO.SetActive(false);
+        if (washGO != null) washGO.SetActive(false);
     }
 
     private void OnDestroy()
     {
         if (material != null) Destroy(material);
+        if (washMaterial != null) Destroy(washMaterial);
         if (fieldTex != null) Destroy(fieldTex);
         if (quadGO != null) Destroy(quadGO);
+        if (washGO != null) Destroy(washGO);
     }
 
 #if UNITY_EDITOR
@@ -194,6 +204,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         if (!built) return;
 
         if (quadGO != null && !quadGO.activeSelf) quadGO.SetActive(true);
+        if (washGO != null && !washGO.activeSelf) washGO.SetActive(true);
 
         if (staticUniformsDirty && material != null)
         {
@@ -308,6 +319,24 @@ public class InfluenceRingRenderer : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
 
+        // The wash rides its own quad ABOVE walls, faces, and units, so the O
+        // overlay covers everything the eye sees (WorldUI excepted). The ring
+        // band stays on the lower quad so pillars still occlude the boundary.
+        washMaterial = new Material(shader);
+        washMaterial.SetTexture("_FieldTex", fieldTex);
+
+        washGO = new GameObject("InfluenceWashQuad");
+        washGO.transform.SetParent(quadGO.transform.parent, false);
+        washGO.transform.position = quadGO.transform.position;
+        var wmf = washGO.AddComponent<MeshFilter>();
+        wmf.sharedMesh = mesh;
+        var wmr = washGO.AddComponent<MeshRenderer>();
+        wmr.sharedMaterial = washMaterial;
+        wmr.sortingLayerName = washSortingLayerName;
+        wmr.sortingOrder = washSortingOrder;
+        wmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        wmr.receiveShadows = false;
+
         reachNorm = field.ReachAtLevel(LevelTierUtil.MaxFlatLevel) * 1.1f;
         ApplyStaticUniforms();
         built = true;
@@ -315,22 +344,37 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private void ApplyStaticUniforms()
     {
+        ApplyStaticUniformsTo(material);
+        ApplyStaticUniformsTo(washMaterial);
+
+        // Division of labour between the two quads: the LOWER quad draws the
+        // ring band only (walls occlude the boundary correctly); the UPPER quad
+        // draws the wash only, so under O it covers walls, faces, fill, and
+        // units alike — no more black cutouts in the reach field.
+        material.SetFloat("_OverlayStrength", 0f);
+        if (washMaterial != null) washMaterial.SetFloat("_Intensity", 0f);
+    }
+
+    private void ApplyStaticUniformsTo(Material m)
+    {
+        if (m == null) return;
         // Convert cell-space knobs to encoded SDF units (0.5 = boundary,
         // one cell = 1 / (2 * sdfRangeCells)) and to texture-uv noise space.
         float cellToEncoded = 1f / (2f * sdfRangeCells);
-        material.SetFloat("_InnerFalloff", innerFalloff * cellToEncoded);
-        material.SetFloat("_OuterFalloff", outerFalloff * cellToEncoded);
-        material.SetFloat("_WaverAmp", waverAmp * cellToEncoded);
-        material.SetFloat("_Noise1Scale", texSize / Mathf.Max(0.5f, waverScales.x));
-        material.SetFloat("_Noise2Scale", texSize / Mathf.Max(0.5f, waverScales.y));
-        material.SetFloat("_Noise1Speed", waverSpeeds.x);
-        material.SetFloat("_Noise2Speed", waverSpeeds.y);
-        material.SetFloat("_Intensity", intensity);
-        material.SetFloat("_PulseSpeed", pulseSpeed);
-        material.SetFloat("_PulseAmp", pulseAmp);
-        material.SetFloat("_ReachEdge", 0.75f / reachNorm);
-        material.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
+        m.SetFloat("_InnerFalloff", innerFalloff * cellToEncoded);
+        m.SetFloat("_OuterFalloff", outerFalloff * cellToEncoded);
+        m.SetFloat("_WaverAmp", waverAmp * cellToEncoded);
+        m.SetFloat("_Noise1Scale", texSize / Mathf.Max(0.5f, waverScales.x));
+        m.SetFloat("_Noise2Scale", texSize / Mathf.Max(0.5f, waverScales.y));
+        m.SetFloat("_Noise1Speed", waverSpeeds.x);
+        m.SetFloat("_Noise2Speed", waverSpeeds.y);
+        m.SetFloat("_Intensity", intensity);
+        m.SetFloat("_PulseSpeed", pulseSpeed);
+        m.SetFloat("_PulseAmp", pulseAmp);
+        m.SetFloat("_ReachEdge", 0.75f / reachNorm);
+        m.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
     }
+
 
     // ── Texture rebuild ───────────────────────────────────────────
 
@@ -450,16 +494,20 @@ public class InfluenceRingRenderer : MonoBehaviour
         DungeonType type = core != null ? core.DungeonType : DungeonType.None;
         if (type != lastAppliedType)
         {
-            material.SetColor("_RingColor", ColorFor(type));
+            Color c = ColorFor(type);
+            material.SetColor("_RingColor", c);
+            if (washMaterial != null) washMaterial.SetColor("_RingColor", c);
             lastAppliedType = type;
         }
 
-        material.SetFloat("_EffReach", Mathf.Clamp01(field.EffectiveReach / reachNorm));
+        float eff = Mathf.Clamp01(field.EffectiveReach / reachNorm);
+        material.SetFloat("_EffReach", eff);
+        if (washMaterial != null) washMaterial.SetFloat("_EffReach", eff);
 
         bool pushActive = DungeonBuildController.Instance != null
                           && DungeonBuildController.Instance.CurrentMode == BuildMode.Push;
         float target = (overlayToggled || pushActive) ? overlayStrength : 0f;
         overlayCurrent = Mathf.MoveTowards(overlayCurrent, target, overlayFadeSpeed * overlayStrength * Time.deltaTime);
-        material.SetFloat("_OverlayStrength", overlayCurrent);
+        if (washMaterial != null) washMaterial.SetFloat("_OverlayStrength", overlayCurrent);
     }
 }

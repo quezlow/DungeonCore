@@ -74,14 +74,14 @@ public class DungeonShadow : MonoBehaviour
     [Tooltip("Darkness floor deep inside claimed rock. Rim light falls to this level.")]
     [SerializeField, Range(0f, 1f)] private float voidLightFloor = 0.22f;
     [Tooltip("Cells over which rim light falls to the floor level, then plateaus.")]
-    [SerializeField, Min(1)] private int voidFalloffCells = 4;
+    [SerializeField, Min(1)] private int voidFalloffCells = 1;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
-    [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0.015f;
+    [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0f;
     [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
              "Required while the interior cap art is flat black; turn off if you ever texture it.")]
     [SerializeField] private bool voidOpaqueFill = true;
     [Tooltip("Fully-lit rock tone for the opaque void paint; the falloff scales it down toward the depths.")]
-    [SerializeField] private Color voidBaseColor = new Color(0.24f, 0.235f, 0.23f, 1f);
+    [SerializeField] private Color voidBaseColor = new Color(0.267f, 0.267f, 0.267f, 1f);
     [Tooltip("Unexplored fog inherits the deep-void tone (per core type, per floor tint), erasing " +
              "the two-tone seam where claimed rock meets unrevealed rock. Requires a bright/white " +
              "fog tile sprite — fog renders as sprite x colour. Off restores FloorTint's fog colour.")]
