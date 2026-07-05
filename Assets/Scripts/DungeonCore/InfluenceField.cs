@@ -8,7 +8,11 @@ using UnityEngine;
 ///
 /// Maintains a cost-distance field D over the floor: a Dijkstra flood from the
 /// floor's core cell where stepping into a cell costs that cell's terrain
-/// resistance (FloorRoot.GetClaimCostMultiplier). Rim bedrock (minus the
+/// resistance (FloorRoot.GetClaimCostMultiplier). Expansion is 8-directional:
+/// diagonals cost sqrt(2) x the entered cell and never cut a corner past an
+/// impassable cell, so the field radiates round instead of in Manhattan
+/// diamonds. Claimed-set connectivity is untouched — the ring still grows
+/// 4-connected; only the reach geometry rounds. Rim bedrock (minus the
 /// entrance carve, which costs 1x as already-excavated passage) and uncleared
 /// chambers are impassable, so the field respects the rim and the chamber
 /// gates by construction. D depends on terrain only — claimed status never
@@ -85,6 +89,14 @@ public class InfluenceField : MonoBehaviour
     {
         Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right
     };
+
+    private static readonly Vector3Int[] Diagonals =
+    {
+        new Vector3Int(1, 1, 0), new Vector3Int(1, -1, 0),
+        new Vector3Int(-1, 1, 0), new Vector3Int(-1, -1, 0),
+    };
+
+    private const float DiagonalFactor = 1.41421356f;
 
     /// <summary>Fires after the cost-distance field is (re)computed.</summary>
     public event Action OnFieldRecomputed;
@@ -339,6 +351,28 @@ public class InfluenceField : MonoBehaviour
                 float nd = d + step;
                 if (nd >= bound) continue; // depth bound — beyond any conceivable reach
                 if (costDistance.TryGetValue(n, out float old) && old <= nd) continue;
+
+                costDistance[n] = nd;
+                open.Push(nd, n);
+            }
+
+            foreach (Vector3Int dir in Diagonals)
+            {
+                Vector3Int n = cell + dir;
+                float step = GetStepCost(n);
+                if (float.IsPositiveInfinity(step)) continue;
+
+                // No corner cutting: both orthogonal intermediates must be
+                // passable, so the field can't slip through bedrock or gated
+                // chamber corners. (A river corner can be skirted — harmless:
+                // the ring itself still grows 4-connected, so the creep can
+                // never actually cross without a claimed route over the water.)
+                if (float.IsPositiveInfinity(GetStepCost(cell + new Vector3Int(dir.x, 0, 0)))) continue;
+                if (float.IsPositiveInfinity(GetStepCost(cell + new Vector3Int(0, dir.y, 0)))) continue;
+
+                float nd = d + step * DiagonalFactor;
+                if (nd >= bound) continue;
+                if (costDistance.TryGetValue(n, out float old2) && old2 <= nd) continue;
 
                 costDistance[n] = nd;
                 open.Push(nd, n);

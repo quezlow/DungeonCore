@@ -17,6 +17,11 @@ using UnityEngine;
 /// CAN be pushed across — crossing water is exactly the deliberate,
 /// player-paid act this tool exists for.
 ///
+/// The push sweeps channelWidth cells wide: each spine step claims its centre
+/// first, then the lateral flanks, every cell paying its own time and mana —
+/// a 3-wide dirt corridor takes 3x the duration at the same drain rate.
+/// Flanks never take rivers or gated chambers; only the spine crosses water.
+///
 /// Feel rules:
 ///   - Mana empty: the channel stalls (no progress, no drain) and resumes as
 ///     regen catches up — same convention as the dig queue.
@@ -44,6 +49,8 @@ public class InfluenceChannel : MonoBehaviour
     [SerializeField, Min(0.02f)] private float secondsPerCell = 0.35f;
     [Tooltip("Mana drained per second while the channel is actively progressing.")]
     [SerializeField, Min(0f)] private float channelManaPerSecond = 3f;
+    [Tooltip("Cells wide the push claims. Odd values only — even values snap up.")]
+    [SerializeField, Range(1, 7)] private int channelWidth = 3;
 
     [Header("Path Search")]
     [Tooltip("Give up when the cheapest route to the cursor exceeds this total cost.")]
@@ -67,6 +74,14 @@ public class InfluenceChannel : MonoBehaviour
     // Claim-ordered path: [frontier cell .. hover cell]. Element 0 is always a
     // member of the claimable ring while the path is valid.
     private readonly List<Vector3Int> path = new List<Vector3Int>();
+
+    // The full claim order woven from the spine: centre-first ranks with their
+    // lateral flanks. bool = spine cell (a stolen spine replans; flanks skip).
+    private readonly List<(Vector3Int cell, bool spine)> claimSeq = new List<(Vector3Int, bool)>();
+    private readonly HashSet<Vector3Int> seqSeen = new HashSet<Vector3Int>();
+
+    /// <summary>channelWidth snapped odd (even snaps up) so flanks stay symmetric.</summary>
+    private int WidthSnapped => Mathf.Max(1, channelWidth | 1);
     private Vector3Int pathRootClaimedCell;   // claimed anchor the line is rooted at
     private Vector3Int lastHoverCell;
     private int lastFloorIndex = int.MinValue;
@@ -93,7 +108,7 @@ public class InfluenceChannel : MonoBehaviour
 
         line = GetComponent<LineRenderer>();
         line.useWorldSpace = true;
-        line.widthMultiplier = lineWidth;
+        line.widthMultiplier = lineWidth * WidthSnapped;
         line.positionCount = 0;
         line.numCornerVertices = 2;
         line.numCapVertices = 2;
@@ -124,6 +139,13 @@ public class InfluenceChannel : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (line != null) line.widthMultiplier = lineWidth * WidthSnapped;
+    }
+#endif
+
     private void HandleModeChanged(BuildMode mode)
     {
         if (mode != BuildMode.Push) CancelChannel();
@@ -134,6 +156,7 @@ public class InfluenceChannel : MonoBehaviour
     public void CancelChannel()
     {
         path.Clear();
+        claimSeq.Clear();
         HideLine();
     }
 
@@ -149,37 +172,63 @@ public class InfluenceChannel : MonoBehaviour
 
         var influence = floor.TileInfluence;
         var field = floor.InfluenceField;
+        var features = floor.FeatureGenerator;
         int floorIndex = floor.FloorIndex;
 
-        if (hoverCell == null || influence.IsTileClaimed(hoverCell.Value))
+        if (hoverCell == null)
         {
-            // Nothing to push toward — over UI, off-grid, or already ours.
             path.Clear();
+            claimSeq.Clear();
             HideLine();
             return;
         }
 
         Vector3Int hover = hoverCell.Value;
+        bool hoverClaimed = influence.IsTileClaimed(hover);
 
-        bool pathValid =
-            path.Count > 0
-            && floorIndex == lastFloorIndex
-            && hover == lastHoverCell
-            && influence.IsTileClaimable(path[0]);
-
-        if (!pathValid && !TryComputePath(influence, field, hover, floorIndex))
+        // Done (or moot) with no sweep left — stand down.
+        if (hoverClaimed && claimSeq.Count == 0)
         {
             path.Clear();
             HideLine();
             return;
         }
 
-        DrawLine(influence);
+        // Replan only while the destination is unclaimed; once the hover cell is
+        // ours, any remaining flanks just drain out.
+        if (!hoverClaimed)
+        {
+            bool planValid =
+                claimSeq.Count > 0
+                && floorIndex == lastFloorIndex
+                && hover == lastHoverCell;
 
-        if (!held || path.Count == 0) return;
+            if (!planValid && !TryComputePath(influence, field, features, hover, floorIndex))
+            {
+                path.Clear();
+                claimSeq.Clear();
+                HideLine();
+                return;
+            }
+        }
 
-        // Progress carries only while the target cell (and floor) are unchanged.
-        Vector3Int target = path[0];
+        if (path.Count > 0) DrawLine(influence);
+        else HideLine();
+
+        if (!held || claimSeq.Count == 0) return;
+
+        // Cells someone else already claimed (the creep, usually) cost nothing.
+        while (claimSeq.Count > 0 && influence.IsTileClaimed(claimSeq[0].cell))
+            PopClaimFront();
+        if (claimSeq.Count == 0)
+        {
+            progressSeconds = 0f;
+            if (path.Count == 0) HideLine();
+            return;
+        }
+
+        // Progress carries only while the front-of-queue cell (and floor) hold.
+        Vector3Int target = claimSeq[0].cell;
         if (target != progressCell || floorIndex != progressFloorIndex)
         {
             progressCell = target;
@@ -195,39 +244,60 @@ public class InfluenceChannel : MonoBehaviour
         progressSeconds += Time.deltaTime;
 
         int safety = 0;
-        while (path.Count > 0 && safety < 8)
+        while (claimSeq.Count > 0 && safety < 8)
         {
-            target = path[0];
-            float need = secondsPerCell * field.GetStepCost(target);
-            if (progressSeconds < need) break;
+            (Vector3Int cellToClaim, bool isSpine) = claimSeq[0];
 
-            if (!influence.IsTileClaimable(target))
+            if (influence.IsTileClaimed(cellToClaim))
             {
-                // Ring shifted under us (creep or another claim) — replan next tick.
-                path.Clear();
-                HideLine();
-                return;
+                PopClaimFront();   // free — someone else got it
+                continue;
             }
 
-            influence.ClaimTile(target);
-            path.RemoveAt(0);
+            float need = secondsPerCell * field.GetStepCost(cellToClaim);
+            if (progressSeconds < need) break;
+
+            if (!influence.IsTileClaimable(cellToClaim))
+            {
+                if (isSpine)
+                {
+                    // The spine's footing shifted under us — replan next tick.
+                    path.Clear();
+                    claimSeq.Clear();
+                    HideLine();
+                    return;
+                }
+                PopClaimFront();   // a flank we can't have right now — skip it
+                continue;
+            }
+
+            influence.ClaimTile(cellToClaim);
             progressSeconds -= need;   // remainder carries into the next cell
+            PopClaimFront();
             safety++;
 
-            if (path.Count > 0)
+            if (claimSeq.Count > 0)
             {
-                progressCell = path[0];
+                progressCell = claimSeq[0].cell;
                 progressFloorIndex = floorIndex;
             }
         }
 
-        if (path.Count == 0)
+        if (claimSeq.Count == 0)
         {
-            // Arrived — the hover cell is ours now; next tick hides the line.
+            // Swept through — the tip is ours; next tick stands down.
             progressSeconds = 0f;
             HideLine();
         }
     }
+
+    private void PopClaimFront()
+    {
+        (Vector3Int cell, bool spine) = claimSeq[0];
+        claimSeq.RemoveAt(0);
+        if (spine && path.Count > 0 && path[0] == cell) path.RemoveAt(0);
+    }
+
 
     // ── Path search ───────────────────────────────────────────────
 
@@ -235,7 +305,7 @@ public class InfluenceChannel : MonoBehaviour
     /// (cost = InfluenceField.GetStepCost of the entered cell) until the flood
     /// touches claimed territory. The parent chain from that contact point back
     /// to the hover cell is the claim order.</summary>
-    private bool TryComputePath(TileInfluenceManager influence, InfluenceField field, Vector3Int hover, int floorIndex)
+    private bool TryComputePath(TileInfluenceManager influence, InfluenceField field, TerrainFeatureGenerator features, Vector3Int hover, int floorIndex)
     {
         lastHoverCell = hover;
         lastFloorIndex = floorIndex;
@@ -273,6 +343,7 @@ public class InfluenceChannel : MonoBehaviour
                         walk = parent[walk];
                         path.Add(walk);
                     }
+                    BuildClaimSequence(influence, field, features);
                     return true;
                 }
 
@@ -289,6 +360,46 @@ public class InfluenceChannel : MonoBehaviour
             }
         }
         return false;
+    }
+
+    /// <summary>Expands the spine path into the full claim order: each spine cell,
+    /// centre first, then its lateral flanks out to WidthSnapped. Every cell pays
+    /// its own time and mana; flanks never take rivers or gated chambers — width
+    /// is convenience, not a way to buy water by accident.</summary>
+    private void BuildClaimSequence(TileInfluenceManager influence, InfluenceField field, TerrainFeatureGenerator features)
+    {
+        claimSeq.Clear();
+        seqSeen.Clear();
+
+        int half = (WidthSnapped - 1) / 2;
+        Vector3Int prev = pathRootClaimedCell;
+
+        for (int i = 0; i < path.Count; i++)
+        {
+            Vector3Int center = path[i];
+            if (seqSeen.Add(center)) claimSeq.Add((center, true));
+
+            if (half > 0)
+            {
+                Vector3Int dir = center - prev;
+                var perp = new Vector3Int(-dir.y, dir.x, 0);
+                for (int k = 1; k <= half; k++)
+                {
+                    TryAddFlank(center + perp * k, influence, field, features);
+                    TryAddFlank(center - perp * k, influence, field, features);
+                }
+            }
+            prev = center;
+        }
+    }
+
+    private void TryAddFlank(Vector3Int cell, TileInfluenceManager influence, InfluenceField field, TerrainFeatureGenerator features)
+    {
+        if (!seqSeen.Add(cell)) return;
+        if (influence.IsTileClaimed(cell)) return;
+        if (float.IsPositiveInfinity(field.GetStepCost(cell))) return;   // bounds, rim, gated chamber
+        if (features != null && features.IsRiver(cell)) return;          // water stays a spine decision
+        claimSeq.Add((cell, false));
     }
 
     private static readonly Vector3Int[] CellDirs =

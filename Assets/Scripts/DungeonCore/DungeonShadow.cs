@@ -21,8 +21,12 @@ using UnityEngine.Tilemaps;
 ///                           a smooth falloff, like a carried light (active floor only)
 ///   - void               -> claimed solid rock (the cap interiors) joins the light map:
 ///                           light falls from the rim value to voidLightFloor over
-///                           voidFalloffCells, then plateaus across the mass. Deep rock
-///                           takes a faint core-type hue (coreHueStrength).
+///                           voidFalloffCells, then plateaus across the mass, with a
+///                           faint core-type hue (coreHueStrength). With voidOpaqueFill
+///                           the shadow tile PAINTS the void outright (voidBaseColor x
+///                           light + hue) — the interior cap art is flat black, and
+///                           darkening black shows nothing. Off, it falls back to the
+///                           darkening overlay for textured interior art.
 ///
 /// The base (everything except the cursor) is static per cell, recomputed only when the
 /// claimed / mined sets or the moss layout change; the cursor is a cheap per-frame delta
@@ -70,6 +74,11 @@ public class DungeonShadow : MonoBehaviour
     [SerializeField, Min(1)] private int voidFalloffCells = 4;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
     [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0.12f;
+    [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
+             "Required while the interior cap art is flat black; turn off if you ever texture it.")]
+    [SerializeField] private bool voidOpaqueFill = true;
+    [Tooltip("Fully-lit rock tone for the opaque void paint; the falloff scales it down toward the depths.")]
+    [SerializeField] private Color voidBaseColor = new Color(0.16f, 0.14f, 0.13f, 1f);
 
     private const float MaxLight = 1f;
     private static readonly Vector3Int[] Dirs4 =
@@ -87,6 +96,8 @@ public class DungeonShadow : MonoBehaviour
     private TileBase whiteTile;
     private readonly Dictionary<Vector3Int, float> baseLight = new();
     private readonly Dictionary<Vector3Int, Color> baseTint = new();
+    private readonly HashSet<Vector3Int> voidCells = new();
+    private Color voidHueTerm = Color.black;
     private readonly HashSet<Vector3Int> cursorCells = new();
     private int lastMossCount = -1;
     private bool subscribed;
@@ -134,7 +145,7 @@ public class DungeonShadow : MonoBehaviour
             subscribed = false;
         }
         if (shadowTilemap != null) shadowTilemap.ClearAllTiles();
-        baseLight.Clear(); baseTint.Clear(); cursorCells.Clear();
+        baseLight.Clear(); baseTint.Clear(); cursorCells.Clear(); voidCells.Clear();
     }
 
     private void MarkDirty(int _) => dirty = true;
@@ -163,6 +174,7 @@ public class DungeonShadow : MonoBehaviour
         shadowTilemap.ClearAllTiles();
         baseLight.Clear();
         baseTint.Clear();
+        voidCells.Clear();
         cursorCells.Clear();   // tilemap was cleared; the cursor re-applies this frame
 
         // 1) base light on every mined cell: claimed flat, unclaimed with a breach fade.
@@ -212,11 +224,12 @@ public class DungeonShadow : MonoBehaviour
         //    falloff, so cap interiors read as tinted dark instead of dead black.
         ApplyVoidLight();
 
-        // 5) paint.
+        // 5) paint. Void cells paint an OPAQUE colour (the black interior art
+        //    has nothing to darken); everything else keeps the darkening overlay.
         foreach (KeyValuePair<Vector3Int, float> kv in baseLight)
         {
             shadowTilemap.SetTile(kv.Key, whiteTile);
-            shadowTilemap.SetColor(kv.Key, ColorFor(kv.Value, baseTint[kv.Key]));
+            shadowTilemap.SetColor(kv.Key, ShadeFor(kv.Key, kv.Value));
         }
     }
 
@@ -227,12 +240,23 @@ public class DungeonShadow : MonoBehaviour
     // cells take a faint core-type hue, so a Dark core's stone reads violet-black.
     // Claimed rock with no lit rim at all (a pushed tendril before any digging)
     // gets the plateau level directly — your influence in the rock glows faint.
+    // BFS from the lit rim caps through claimed solid rock: light falls from each
+    // rim cell's (already moss-kissed) value to voidLightFloor over voidFalloffCells,
+    // then plateaus across the rest of the mass. Mirrors CaveWallClassifier's solid
+    // rule — rivers are never rock, and out-of-disc cells can't be claimed. Deep
+    // cells take a faint core-type hue, so a Dark core's stone reads violet-black.
+    // Claimed rock with no lit rim at all (a pushed tendril before any digging)
+    // gets the plateau level directly — your influence in the rock glows faint.
+    // Void cells register in voidCells so the paint and cursor passes can render
+    // them OPAQUE (voidOpaqueFill): the interior cap art is flat black, and an
+    // alpha-darkening overlay over black shows nothing.
     private void ApplyVoidLight()
     {
         var features = floor != null ? floor.FeatureGenerator : null;
         Color hue = VoidHue();
-        var deepTint = new Color(hue.r * coreHueStrength, hue.g * coreHueStrength,
-                                 hue.b * coreHueStrength, 1f);
+        voidHueTerm = new Color(hue.r * coreHueStrength, hue.g * coreHueStrength,
+                                hue.b * coreHueStrength, 1f);
+        var deepTint = voidHueTerm;
 
         var queue = new Queue<Vector3Int>();
         var depth = new Dictionary<Vector3Int, int>();
@@ -269,6 +293,7 @@ public class DungeonShadow : MonoBehaviour
                 float t = Mathf.Clamp01((float)nd / voidFalloffCells);
                 baseLight[n] = Mathf.Max(voidLightFloor, Mathf.Lerp(rimLight[n], voidLightFloor, t));
                 baseTint[n] = deepTint;
+                voidCells.Add(n);
                 queue.Enqueue(n);
             }
         }
@@ -280,8 +305,27 @@ public class DungeonShadow : MonoBehaviour
             if (baseLight.ContainsKey(c) || !IsVoidRock(c)) continue;
             baseLight[c] = voidLightFloor;
             baseTint[c] = deepTint;
+            voidCells.Add(c);
         }
     }
+
+    /// <summary>Opaque void colour: base rock tone scaled by the cell's light,
+    /// plus the core-type whisper. Only used when voidOpaqueFill is on — it
+    /// PAINTS the void rather than darkening art that is already black.</summary>
+    private Color VoidColorFor(float light)
+        => new Color(
+            Mathf.Clamp01(voidBaseColor.r * light + voidHueTerm.r),
+            Mathf.Clamp01(voidBaseColor.g * light + voidHueTerm.g),
+            Mathf.Clamp01(voidBaseColor.b * light + voidHueTerm.b),
+            1f);
+
+    /// <summary>Shadow colour for a cell: opaque paint for void cells (when
+    /// enabled), the classic alpha-darkening overlay for everything else.</summary>
+    private Color ShadeFor(Vector3Int cell, float light)
+        => voidOpaqueFill && voidCells.Contains(cell)
+            ? VoidColorFor(light)
+            : ColorFor(light, baseTint[cell]);
+
 
     private static readonly Color FallbackGold = new Color(0.784f, 0.565f, 0.165f, 1f);
 
@@ -340,7 +384,7 @@ public class DungeonShadow : MonoBehaviour
     {
         foreach (Vector3Int c in cursorCells)
             if (baseLight.TryGetValue(c, out float bl))
-                shadowTilemap.SetColor(c, ColorFor(bl, baseTint[c]));
+                shadowTilemap.SetColor(c, ShadeFor(c, bl));
         cursorCells.Clear();
 
         if (cursorRadius <= 0) return;
@@ -360,7 +404,7 @@ public class DungeonShadow : MonoBehaviour
                 float u = Mathf.Clamp01(1f - d / cursorRadius);
                 float f = u * u * (3f - 2f * u);                  // smoothstep falloff
                 float light = Mathf.Lerp(bl, 1f, f);
-                shadowTilemap.SetColor(cell, ColorFor(light, baseTint[cell]));
+                shadowTilemap.SetColor(cell, ShadeFor(cell, light));
                 cursorCells.Add(cell);
             }
     }

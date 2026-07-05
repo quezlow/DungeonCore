@@ -4803,7 +4803,7 @@ MonoBehaviour:
   waverAmp: 0.18
   waverScales: {x: 9, y: 3.2}
   waverSpeeds: {x: 0.05, y: 0.11}
-  intensity: 1.15
+  intensity: 0.35
   pulseSpeed: 1.4
   pulseAmp: 0.12
   palette:
@@ -17537,6 +17537,8 @@ MonoBehaviour:
   voidLightFloor: 0.22
   voidFalloffCells: 4
   coreHueStrength: 0.12
+  voidOpaqueFill: 1
+  voidBaseColor: {r: 0.16, g: 0.14, b: 0.13, a: 1}
 --- !u!1 &632888276
 GameObject:
   m_ObjectHideFlags: 0
@@ -17571,7 +17573,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00018766495}
+  m_AnchoredPosition: {x: 0, y: 0.000032555094}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -33488,6 +33490,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceChannel
   secondsPerCell: 0.35
   channelManaPerSecond: 3
+  channelWidth: 5
   maxSearchCost: 400
   maxNodesPerSearch: 20000
   lineWidth: 0.12

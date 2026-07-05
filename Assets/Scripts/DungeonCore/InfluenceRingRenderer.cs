@@ -102,6 +102,10 @@ public class InfluenceRingRenderer : MonoBehaviour
     private Material material;
     private Texture2D fieldTex;
     private Color32[] pixels;
+    private float[] chamferIn;
+    private float[] chamferOut;
+    private bool[] claimedMask;
+    private bool staticUniformsDirty;
     private Vector3Int texMin;
     private int texSize;
 
@@ -171,6 +175,13 @@ public class InfluenceRingRenderer : MonoBehaviour
         if (quadGO != null) Destroy(quadGO);
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        staticUniformsDirty = true;
+    }
+#endif
+
     private void LateUpdate()
     {
         ResolveAndSubscribe();
@@ -180,6 +191,13 @@ public class InfluenceRingRenderer : MonoBehaviour
         if (!built) return;
 
         if (quadGO != null && !quadGO.activeSelf) quadGO.SetActive(true);
+
+        if (staticUniformsDirty && material != null)
+        {
+            ApplyStaticUniforms();
+            lastAppliedType = (DungeonType)(-1);   // re-push the ring colour too
+            staticUniformsDirty = false;
+        }
 
         if (claimDirty || fieldDirty)
         {
@@ -242,6 +260,9 @@ public class InfluenceRingRenderer : MonoBehaviour
             wrapMode = TextureWrapMode.Clamp,
         };
         pixels = new Color32[texSize * texSize];
+        chamferIn = new float[texSize * texSize];
+        chamferOut = new float[texSize * texSize];
+        claimedMask = new bool[texSize * texSize];
 
         Shader shader = ringShader != null ? ringShader : Shader.Find("DCR/InfluenceRing");
         if (shader == null)
@@ -309,77 +330,101 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     // ── Texture rebuild ───────────────────────────────────────────
 
-    private static readonly Vector3Int[] Dirs4 =
-    {
-        Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right
-    };
-
     private void RebuildTexture()
     {
-        int range = Mathf.CeilToInt(sdfRangeCells);
+        int total = texSize * texSize;
+        float far = sdfRangeCells + 2f;
 
-        // Base fill: R by claimed/unclaimed, G by normalized free-growth cost
-        // (255 = unreachable), refined near the boundary by the BFS below.
+        // Base fill: claimed mask, both chamfer seeds, and G = normalized
+        // free-growth cost (255 = unreachable) straight from the field.
         for (int y = 0; y < texSize; y++)
         {
             int row = y * texSize;
             for (int x = 0; x < texSize; x++)
             {
                 var cell = new Vector3Int(texMin.x + x, texMin.y + y, 0);
-                byte r = influence.IsTileClaimed(cell) ? (byte)255 : (byte)0;
+                bool claimed = influence.IsTileClaimed(cell);
+                int i = row + x;
+                claimedMask[i] = claimed;
+                chamferIn[i] = claimed ? far : 0f;    // distance to unclaimed
+                chamferOut[i] = claimed ? 0f : far;   // distance to claimed
                 byte g = 255;
                 if (field.TryGetCost(cell, out float cost))
                     g = (byte)Mathf.Clamp(Mathf.RoundToInt(255f * Mathf.Clamp01(cost / reachNorm)), 0, 254);
-                pixels[row + x] = new Color32(r, g, 0, 255);
+                pixels[i] = new Color32(0, g, 0, 255);
             }
         }
 
-        // Two-sided BFS from the boundary, capped at sdfRangeCells each way.
-        var dist = new Dictionary<Vector3Int, int>();
-        var queue = new Queue<Vector3Int>();
-        foreach (Vector3Int c in influence.ClaimedTiles)
+        // Two-pass chamfer distance transforms (orthogonal 1.0, diagonal 1.4):
+        // quasi-Euclidean, so the boundary isoline curves instead of the
+        // staircase the old 4-connected BFS (Manhattan distance) produced.
+        Chamfer(chamferIn);
+        Chamfer(chamferOut);
+
+        for (int i = 0; i < total; i++)
         {
-            foreach (Vector3Int d in Dirs4)
-            {
-                if (influence.IsTileClaimed(c + d)) continue;
-                if (!dist.ContainsKey(c)) { dist[c] = 0; queue.Enqueue(c); }
-                Vector3Int n = c + d;
-                if (!dist.ContainsKey(n)) { dist[n] = -1; queue.Enqueue(n); }
-            }
-        }
-        while (queue.Count > 0)
-        {
-            Vector3Int cur = queue.Dequeue();
-            int d = dist[cur];
-            int mag = d >= 0 ? d : -d - 1;
-            if (mag >= range) continue;
-            bool inside = d >= 0;
-            foreach (Vector3Int dir in Dirs4)
-            {
-                Vector3Int n = cur + dir;
-                if (dist.ContainsKey(n)) continue;
-                if (influence.IsTileClaimed(n) != inside) continue;
-                dist[n] = inside ? d + 1 : d - 1;
-                queue.Enqueue(n);
-            }
-        }
-        foreach (KeyValuePair<Vector3Int, int> kv in dist)
-        {
-            int x = kv.Key.x - texMin.x;
-            int y = kv.Key.y - texMin.y;
-            if (x < 0 || y < 0 || x >= texSize || y >= texSize) continue;
-            // Cell-center signed distance: inside d=0 -> +0.5, outside d=-1 -> -0.5,
-            // so the encoded-0.5 isoline sits exactly on the shared cell edge.
-            float signedCells = kv.Value + 0.5f;
-            float enc = 0.5f + signedCells / (2f * sdfRangeCells);
-            int idx = y * texSize + x;
-            Color32 p = pixels[idx];
+            // Boundary calibration matches the old encode: the first claimed
+            // cell sits at +0.5, the first unclaimed at -0.5, so the encoded
+            // 0.5 isoline lands exactly on the shared cell edge.
+            float signedCells = claimedMask[i] ? chamferIn[i] - 0.5f : -(chamferOut[i] - 0.5f);
+            float enc = Mathf.Clamp01(0.5f + signedCells / (2f * sdfRangeCells));
+            Color32 p = pixels[i];
             p.r = (byte)Mathf.Clamp(Mathf.RoundToInt(enc * 255f), 0, 255);
-            pixels[idx] = p;
+            pixels[i] = p;
         }
 
         fieldTex.SetPixels32(pixels);
         fieldTex.Apply(false);
+    }
+
+    /// <summary>In-place two-pass chamfer distance transform over the texture
+    /// grid. Seeds are 0; everything else relaxes toward the nearest seed with
+    /// orthogonal steps at 1.0 and diagonal steps at 1.4.</summary>
+    private void Chamfer(float[] d)
+    {
+        const float Orth = 1f;
+        const float Diag = 1.4f;
+        int s = texSize;
+
+        // Forward: relax from W, N, NW, NE.
+        for (int y = 0; y < s; y++)
+        {
+            int row = y * s;
+            for (int x = 0; x < s; x++)
+            {
+                int i = row + x;
+                float v = d[i];
+                if (x > 0 && d[i - 1] + Orth < v) v = d[i - 1] + Orth;
+                if (y > 0)
+                {
+                    int up = i - s;
+                    if (d[up] + Orth < v) v = d[up] + Orth;
+                    if (x > 0 && d[up - 1] + Diag < v) v = d[up - 1] + Diag;
+                    if (x < s - 1 && d[up + 1] + Diag < v) v = d[up + 1] + Diag;
+                }
+                d[i] = v;
+            }
+        }
+
+        // Backward: relax from E, S, SE, SW.
+        for (int y = s - 1; y >= 0; y--)
+        {
+            int row = y * s;
+            for (int x = s - 1; x >= 0; x--)
+            {
+                int i = row + x;
+                float v = d[i];
+                if (x < s - 1 && d[i + 1] + Orth < v) v = d[i + 1] + Orth;
+                if (y < s - 1)
+                {
+                    int dn = i + s;
+                    if (d[dn] + Orth < v) v = d[dn] + Orth;
+                    if (x < s - 1 && d[dn + 1] + Diag < v) v = d[dn + 1] + Diag;
+                    if (x > 0 && d[dn - 1] + Diag < v) v = d[dn - 1] + Diag;
+                }
+                d[i] = v;
+            }
+        }
     }
 
     // ── Per-frame ─────────────────────────────────────────────────

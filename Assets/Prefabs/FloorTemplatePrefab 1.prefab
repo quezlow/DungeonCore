@@ -200,7 +200,7 @@ MonoBehaviour:
   waverAmp: 0.18
   waverScales: {x: 9, y: 3.2}
   waverSpeeds: {x: 0.05, y: 0.11}
-  intensity: 1.15
+  intensity: 0.35
   pulseSpeed: 1.4
   pulseAmp: 0.12
   palette:
@@ -2067,6 +2067,8 @@ MonoBehaviour:
   voidLightFloor: 0.22
   voidFalloffCells: 4
   coreHueStrength: 0.12
+  voidOpaqueFill: 1
+  voidBaseColor: {r: 0.16, g: 0.14, b: 0.13, a: 1}
 --- !u!1 &7750912231888544329
 GameObject:
   m_ObjectHideFlags: 0
