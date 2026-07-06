@@ -69,6 +69,8 @@ public class DungeonSaveData
 
     public MercenaryContractSaveData mercenaryContract;
 
+    public WildMonsterEventSaveData wildMonsterEvent;
+
     public GradeSystemSaveData grade;
 
     public InspectorAssessorSaveData inspectorAssessor;

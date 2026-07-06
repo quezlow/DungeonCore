@@ -213,6 +213,16 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private int invadePathIndex = 0;
     private float invadePathRefreshTimer = 0f;
 
+    // Hungry-predator (wild-monster event) mode: hunts to sate hunger, then leaves via
+    // the entrance instead of breaching. Set through ConfigureAsPredator.
+    private bool isHungryPredator;
+    private int predatorHungerTarget;
+    private float predatorWoundedFraction;
+    private float predatorGiveUpSeconds;
+    private bool predatorWounded;
+    private bool predatorLeaving;
+    private float predatorNoPreyTimer;
+
     private List<Vector3> attackPath = new();
     private int attackPathIndex = 0;
     private float attackPathRefreshTimer = 0f;
@@ -303,6 +313,34 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentFloor = floor;
         wildDefinition = def;
         isInvader = true;
+    }
+
+    /// <summary>Turns this invader into a hungry predator: it hunts until sated (kills)
+    /// or gives up (no prey in range), then walks back to the entrance and leaves rather
+    /// than breaching. Ever dropping below woundedFraction marks it wounded.</summary>
+    public void ConfigureAsPredator(int hungerTarget, float woundedFraction, float giveUpSeconds)
+    {
+        isHungryPredator = true;
+        predatorHungerTarget = Mathf.Max(1, hungerTarget);
+        predatorWoundedFraction = Mathf.Clamp01(woundedFraction);
+        predatorGiveUpSeconds = Mathf.Max(1f, giveUpSeconds);
+    }
+
+    /// <summary>Multiply this monster's HP, damage, and scale (wild-event escalation).
+    /// Sets currentHP to the new max - call on a fresh spawn, before any HP restore.</summary>
+    public void ApplyStatScale(float hpMult, float dmgMult, float scaleMult)
+    {
+        maxHP *= Mathf.Max(0.01f, hpMult);
+        currentHP = maxHP;
+        attackDamage *= Mathf.Max(0.01f, dmgMult);
+        transform.localScale *= Mathf.Max(0.01f, scaleMult);
+    }
+
+    /// <summary>Restore the predator's wounded / leaving flags after a save load.</summary>
+    public void RestorePredatorState(bool wounded, bool leaving)
+    {
+        predatorWounded = wounded;
+        predatorLeaving = leaving;
     }
 
     /// <summary> Restore HP after wild monster respawn from save.</summary>
@@ -681,16 +719,39 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // Invader behaviour: always drive for the core, breach on arrival (two-strike,
     // same as an adventurer), then depart. ScanForHostiles diverts to Attack when a
     // dungeon monster is in range; combat resumes here after the kill.
+    // Invader behaviour: always drive for the core, breach on arrival (two-strike,
+    // same as an adventurer), then depart. ScanForHostiles diverts to Attack when a
+    // dungeon monster is in range; combat resumes here after the kill.
+    // Invader behaviour: drive for the core, breach on arrival (two-strike, same as an
+    // adventurer), then depart. A hungry predator instead hunts until sated or starved
+    // and then leaves via the entrance without ever breaching. ScanForHostiles diverts
+    // to Attack when prey is in range; the hunt resumes here after the kill.
     private void TickInvade()
     {
+        if (isHungryPredator && predatorLeaving) { TickPredatorLeave(); return; }
+
         ScanForHostiles();
-        if (state == MonsterState.Attack) { invadePath.Clear(); return; }
+        if (state == MonsterState.Attack)
+        {
+            invadePath.Clear();
+            predatorNoPreyTimer = 0f;   // feeding - reset the starve clock
+            return;
+        }
+
+        if (isHungryPredator)
+        {
+            if (killCount >= predatorHungerTarget) { BeginPredatorLeave(sated: true); return; }
+
+            predatorNoPreyTimer += Time.deltaTime;
+            if (predatorNoPreyTimer >= predatorGiveUpSeconds) { BeginPredatorLeave(sated: false); return; }
+        }
 
         if (DungeonCore.Instance == null) return;
         Vector3 corePos = DungeonCore.Instance.transform.position;
 
         if (Vector2.Distance(transform.position, corePos) <= invaderBreachDistance)
         {
+            if (isHungryPredator) { BeginPredatorLeave(sated: false); return; }   // can't eat a rock
             DungeonCore.Instance.DestroyCore();
             DespawnSilently();
             return;
@@ -703,6 +764,51 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (needsRefresh)
         {
             invadePath = DungeonPathfinder.FindPath(currentFloor, transform.position, corePos);
+            invadePathIndex = 0;
+            invadePathRefreshTimer = DefendCorePathRefreshInterval;
+        }
+
+        if (invadePath.Count == 0 || invadePathIndex >= invadePath.Count) return;
+
+        Vector3 stepTarget = invadePath[invadePathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            invadePathIndex++;
+    }
+
+    /// <summary>Sated or starved: abandon the hunt and turn for the exit.</summary>
+    private void BeginPredatorLeave(bool sated)
+    {
+        predatorLeaving = true;
+        target = null;
+        invadePath.Clear();
+        invadePathIndex = 0;
+        invadePathRefreshTimer = 0f;
+        WildMonsterEvent.Instance?.OnPredatorBeganLeaving(sated, predatorWounded);
+    }
+
+    /// <summary>Walk back to the entrance and vanish. The player can still chase and
+    /// wound it here; dropping it below the wounded line prevents its return.</summary>
+    private void TickPredatorLeave()
+    {
+        Vector3 exitPos = DungeonEntrance.Instance != null
+            ? DungeonEntrance.Instance.SpawnPosition : transform.position;
+
+        if (Vector2.Distance(transform.position, exitPos) <= invaderBreachDistance)
+        {
+            WildMonsterEvent.Instance?.OnPredatorDeparted(predatorWounded);
+            DespawnSilently();
+            return;
+        }
+
+        invadePathRefreshTimer -= Time.deltaTime;
+        bool needsRefresh = invadePath.Count == 0
+                         || invadePathIndex >= invadePath.Count
+                         || invadePathRefreshTimer <= 0f;
+        if (needsRefresh)
+        {
+            invadePath = DungeonPathfinder.FindPath(currentFloor, transform.position, exitPos);
             invadePathIndex = 0;
             invadePathRefreshTimer = DefendCorePathRefreshInterval;
         }
@@ -1227,6 +1333,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         lastDamageTime = Time.time;
         pendingHealDisplay = 0f;
         currentHP -= amount;
+        if (isHungryPredator && !predatorWounded && maxHP > 0f && currentHP / maxHP < predatorWoundedFraction)
+            predatorWounded = true;
         statusBars?.SetHP(currentHP, maxHP);
         GetComponent<DamageFlash>()?.Flash();
         if (currentHP <= 0f) Die();
@@ -1397,6 +1505,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public float MaxHP => maxHP;
     public float MonsterXP => monsterXP;
     public int KillCount => killCount;
+    public bool PredatorWounded => predatorWounded;
+    public bool PredatorLeaving => predatorLeaving;
     public float XpToVeteran => xpToVeteran;
 
     /// <summary>This monster's type name (its definition), for grudge matching. Null if unresolved.</summary>

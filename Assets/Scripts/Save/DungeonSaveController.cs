@@ -291,6 +291,9 @@ public class DungeonSaveController : MonoBehaviour
         if (MercenaryContract.Instance != null)
             currentSave.mercenaryContract = MercenaryContract.Instance.GetSaveData();
 
+        if (WildMonsterEvent.Instance != null)
+            currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
+
         if (GradeSystem.Instance != null)
             currentSave.grade = GradeSystem.Instance.GetSaveData();
 
@@ -644,6 +647,7 @@ public class DungeonSaveController : MonoBehaviour
             // Live parties restore first, so a floor reloading with a party keeps its
             // saved trap state — each restored member registers with its floor at once.
             AdventurerSpawner.Instance?.RestoreLiveParties(currentSave.liveParties);
+            WildMonsterEvent.Instance?.RestoreFromSave(currentSave.wildMonsterEvent);
 
             // Pass 4: spawners, chests, furniture, anchors, traps, stairs.
             foreach (var floorData in currentSave.floors)
