@@ -101,6 +101,9 @@ public class FactionPanel : MonoBehaviour
         var tierLabel = FindLabel(row.transform, "TierLabel");
         if (tierLabel != null) tierLabel.text = TierText(tier, fs.MaxTier);
 
+        var statusLabel = FindLabel(row.transform, "StatusLabel");
+        if (statusLabel != null) statusLabel.text = StatusText(f);
+
         var barTf = FindDeep(row.transform, "BarFill");
         var bar = barTf != null ? barTf.GetComponent<Image>() : null;
         if (bar != null)
@@ -113,6 +116,18 @@ public class FactionPanel : MonoBehaviour
         }
 
         spawned.Add(row);
+    }
+
+    /// <summary>Extra per-faction status line. Only the Mercenary Company reports one:
+    /// a loot-outflow gauge, plus the ultimatum countdown when an assault is pending.
+    /// The row prefab needs a "StatusLabel" TMP_Text child; without it this is skipped.</summary>
+    private static string StatusText(FactionId f)
+    {
+        if (f != FactionId.MercenaryCompany) return "";
+        var mc = MercenaryContract.Instance;
+        if (mc == null) return "";
+        string gauge = $"loot out {mc.LootOutThisWindow}/{mc.CurrentThreshold}";
+        return mc.IsUltimatum ? $"Ultimatum: {mc.CountdownRemaining}d - {gauge}" : gauge;
     }
 
     private static string TierText(int tier, int maxTier)

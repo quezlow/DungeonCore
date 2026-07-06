@@ -819,6 +819,37 @@ public class AdventurerSpawner : MonoBehaviour
         PartyBannerManager.Instance?.ShowBanner(party);
     }
 
+    /// <summary>Dispatch a Mercenary Company reprisal: a band of sellswords fronted
+    /// by a Tank, untinted (economic, not ideological - no forced affinity, no ordained
+    /// hero). Fired by MercenaryContract when too much treasure has left the dungeon.</summary>
+    public void DispatchMercenaryAssault(int mercCount)
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var mercDef = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        if (mercDef == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Mercenary));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        var tankClass = ClassDefFor(CombatClass.Tank);
+
+        int total = Mathf.Max(1, mercCount);
+        for (int i = 0; i < total; i++)
+        {
+            // The lead sellsword fronts the band as a Tank; the rest roll their own class.
+            var cls = (i == 0) ? tankClass : null;
+            SpawnMember(mercDef, RollTrait(), spawnPos, party, used, forcedClass: cls);
+        }
+
+        SetupOrganize(party, AdventurerType.Mercenary, total, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(total);
+        PartyBannerManager.Instance?.ShowBanner(party);
+    }
+
     private CombatClassDefinition ClassDefFor(CombatClass c)
     {
         if (combatClasses == null) return null;

@@ -67,6 +67,8 @@ public class DungeonSaveData
 
     public HolyOrderStrikeSaveData holyOrderStrike;
 
+    public MercenaryContractSaveData mercenaryContract;
+
     public GradeSystemSaveData grade;
 
     public InspectorAssessorSaveData inspectorAssessor;

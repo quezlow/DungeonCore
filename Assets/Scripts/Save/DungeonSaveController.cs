@@ -288,6 +288,9 @@ public class DungeonSaveController : MonoBehaviour
         if (HolyOrderStrike.Instance != null)
             currentSave.holyOrderStrike = HolyOrderStrike.Instance.GetSaveData();
 
+        if (MercenaryContract.Instance != null)
+            currentSave.mercenaryContract = MercenaryContract.Instance.GetSaveData();
+
         if (GradeSystem.Instance != null)
             currentSave.grade = GradeSystem.Instance.GetSaveData();
 
@@ -665,6 +668,7 @@ public class DungeonSaveController : MonoBehaviour
             FactionSystem.Instance?.RestoreFromSave(currentSave.factionSystem);
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
+            MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
             GradeSystem.Instance?.RestoreFromSave(currentSave.grade);
             InspectorAssessor.Instance?.RestoreFromSave(currentSave.inspectorAssessor);
             BestiaryState.Instance?.RestoreFromSave(currentSave.bestiary);

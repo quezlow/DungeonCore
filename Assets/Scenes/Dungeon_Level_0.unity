@@ -13350,6 +13350,7 @@ GameObject:
   - component: {fileID: 497126099}
   - component: {fileID: 497126100}
   - component: {fileID: 497126101}
+  - component: {fileID: 497126102}
   m_Layer: 0
   m_Name: AlignmentSystemController
   m_TagString: Untagged
@@ -13412,6 +13413,28 @@ MonoBehaviour:
   rearmDays: 8
   baseGuards: 3
   guardsPerEscalation: 1
+--- !u!114 &497126102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497126098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22ac89e48fdd00b45a91be2bff3d75a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MercenaryContract
+  windowDays: 3
+  baseThreshold: 200
+  ultimatumDays: 3
+  bribeCost: 250
+  quietDaysAfterCancel: 7
+  rearmDaysAfterAssault: 8
+  baseMercs: 3
+  mercsPerEscalation: 2
+  thresholdTightenPerEscalation: 40
+  minThreshold: 60
 --- !u!1 &509774260
 GameObject:
   m_ObjectHideFlags: 0
@@ -33492,7 +33515,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceChannel
   secondsPerCell: 0.35
   channelManaPerSecond: 3
-  channelWidth: 5
+  channelWidth: 7
+  fullWidthReachCells: 4
+  tipStartFraction: 0.65
   maxSearchCost: 400
   maxNodesPerSearch: 20000
   lineWidth: 0.12

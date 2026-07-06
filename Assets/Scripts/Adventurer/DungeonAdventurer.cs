@@ -743,6 +743,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             party?.OnMemberResolved(partyMember, true, false, carried);
             AlignmentSystem.Instance?.OnAdventurerLeftAlive(carried);
+            MercenaryContract.Instance?.RegisterLootExit(carried);
 
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);

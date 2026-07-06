@@ -53,6 +53,12 @@ public class InfluenceChannel : MonoBehaviour
     [SerializeField, Min(0f)] private float channelManaPerSecond = 3f;
     [Tooltip("Cells wide the push claims. Odd values only — even values snap up.")]
     [SerializeField, Range(1, 7)] private int channelWidth = 3;
+    [Tooltip("Reach (in cells) at which the pseudopod base reaches full width. Shorter reaches " +
+             "stay thinner overall; a long reach commits a full-width base. Lower fattens sooner.")]
+    [SerializeField, Min(1)] private int fullWidthReachCells = 6;
+    [Tooltip("Fraction of the arm that holds full width before easing to the rounded tip. Higher " +
+             "gives a fatter arm with a shorter taper; lower gives a longer graceful taper.")]
+    [SerializeField, Range(0f, 0.95f)] private float tipStartFraction = 0.5f;
 
     [Header("Path Search")]
     [Tooltip("Give up when the cheapest route to the cursor exceeds this total cost.")]
@@ -89,6 +95,18 @@ public class InfluenceChannel : MonoBehaviour
 
     /// <summary>channelWidth snapped odd (even snaps up) so flanks stay symmetric.</summary>
     private int WidthSnapped => Mathf.Max(1, channelWidth | 1);
+
+    // Per-spine-cell half-width of the pseudopod (index 0 = anchored base,
+    // last = reaching tip), rebuilt each replan by ComputeHalfProfile.
+    private readonly List<int> halfProfile = new List<int>();
+
+    // Spine cells claimed since the last replan. The path trims from the front
+    // as it claims, so this realigns the width profile to the shrinking path.
+    private int spineClaimedSinceReplan;
+
+    // Preview-line width-curve cache (rebuilt only when the path shape changes).
+    private int lineCurveN = -1;
+    private int lineCurveTrim = -1;
     private Vector3Int pathRootClaimedCell;   // claimed anchor the line is rooted at
     private Vector3Int lastHoverCell;
     private int lastFloorIndex = int.MinValue;
@@ -115,7 +133,7 @@ public class InfluenceChannel : MonoBehaviour
 
         line = GetComponent<LineRenderer>();
         line.useWorldSpace = true;
-        line.widthMultiplier = lineWidth * WidthSnapped;
+        line.widthMultiplier = lineWidth;
         line.positionCount = 0;
         line.numCornerVertices = 2;
         line.numCapVertices = 2;
@@ -149,7 +167,7 @@ public class InfluenceChannel : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (line != null) line.widthMultiplier = lineWidth * WidthSnapped;
+        if (line != null) line.widthMultiplier = lineWidth;
     }
 #endif
 
@@ -325,7 +343,11 @@ public class InfluenceChannel : MonoBehaviour
     {
         (Vector3Int cell, bool spine) = currentRank[0];
         currentRank.RemoveAt(0);
-        if (spine && path.Count > 0 && path[0] == cell) path.RemoveAt(0);
+        if (spine && path.Count > 0 && path[0] == cell)
+        {
+            path.RemoveAt(0);
+            spineClaimedSinceReplan++;
+        }
     }
 
     /// <summary>Moves the next rank — one spine cell plus its trailing flanks —
@@ -357,6 +379,7 @@ public class InfluenceChannel : MonoBehaviour
         lastHoverCell = hover;
         lastFloorIndex = floorIndex;
         path.Clear();
+        spineClaimedSinceReplan = 0;
 
         float hoverCost = field.GetStepCost(hover);
         if (float.IsPositiveInfinity(hoverCost)) return false;
@@ -413,19 +436,25 @@ public class InfluenceChannel : MonoBehaviour
     /// centre first, then its lateral flanks out to WidthSnapped. Every cell pays
     /// its own time and mana; flanks never take rivers or gated chambers — width
     /// is convenience, not a way to buy water by accident.</summary>
+    /// <summary>Expands the spine path into the full claim order: each spine cell
+    /// centre-first, then its lateral flanks out to that cell's profile width.
+    /// The width tapers from an anchored base to a rounded tip (see
+    /// ComputeHalfProfile). Every cell pays its own time and mana; flanks never
+    /// take rivers or gated chambers.</summary>
     private void BuildClaimSequence(TileInfluenceManager influence, InfluenceField field, TerrainFeatureGenerator features)
     {
         claimSeq.Clear();
         seqSeen.Clear();
 
-        int half = (WidthSnapped - 1) / 2;
-        Vector3Int prev = pathRootClaimedCell;
+        ComputeHalfProfile(path.Count);
 
+        Vector3Int prev = pathRootClaimedCell;
         for (int i = 0; i < path.Count; i++)
         {
             Vector3Int center = path[i];
             if (seqSeen.Add(center)) claimSeq.Add((center, true));
 
+            int half = halfProfile[i];
             if (half > 0)
             {
                 Vector3Int dir = center - prev;
@@ -437,6 +466,51 @@ public class InfluenceChannel : MonoBehaviour
                 }
             }
             prev = center;
+        }
+    }
+
+    /// <summary>Builds the pseudopod's per-spine-cell half-width profile: an
+    /// anchored base whose girth grows with reach, easing to a rounded nub at the
+    /// tip. Index 0 is the base (adjacent to claimed rock); the last index is the
+    /// reaching tip. A width-1 push (no flanks possible) yields an all-zero
+    /// profile, i.e. the classic single-file push. Result lives in halfProfile.</summary>
+    private void ComputeHalfProfile(int len)
+    {
+        halfProfile.Clear();
+        if (len <= 0) return;
+
+        int maxHalf = (WidthSnapped - 1) / 2;
+        if (maxHalf <= 0 || len == 1)
+        {
+            for (int i = 0; i < len; i++) halfProfile.Add(0);
+            return;
+        }
+
+        // Base girth grows with reach: a short poke stays thin, a long reach
+        // commits a full-width base.
+        float reachT = Mathf.Clamp01((float)len / Mathf.Max(1, fullWidthReachCells));
+        int baseHalf = Mathf.RoundToInt(maxHalf * reachT);
+        if (baseHalf <= 0)
+        {
+            for (int i = 0; i < len; i++) halfProfile.Add(0);
+            return;
+        }
+
+        // Eased taper: hold the base girth through tipStartFraction, then
+        // smoothstep down toward the tip.
+        for (int i = 0; i < len; i++)
+        {
+            float t = (float)i / (len - 1);
+            float fall = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tipStartFraction, 1f, t));
+            halfProfile.Add(Mathf.RoundToInt(baseHalf * (1f - fall)));
+        }
+
+        // Rounded nub: force a gradual, monotone taper (drop at most one cell per
+        // step) so the tip is a soft cap, never a sudden chop or a lone spike.
+        for (int i = 1; i < len; i++)
+        {
+            if (halfProfile[i] > halfProfile[i - 1]) halfProfile[i] = halfProfile[i - 1];
+            if (halfProfile[i] < halfProfile[i - 1] - 1) halfProfile[i] = halfProfile[i - 1] - 1;
         }
     }
 
@@ -462,6 +536,38 @@ public class InfluenceChannel : MonoBehaviour
         line.SetPosition(0, influence.CellToWorld(pathRootClaimedCell));
         for (int i = 0; i < path.Count; i++)
             line.SetPosition(i + 1, influence.CellToWorld(path[i]));
+
+        UpdateLineWidthCurve();
+    }
+
+    // Tapers the preview line to match the pseudopod: fat at the base end
+    // (param 0), rounded to the tip (param 1). Rebuilt only when the visible path
+    // length or the front-trim changes, to avoid per-frame curve allocation.
+    private void UpdateLineWidthCurve()
+    {
+        int n = path.Count;
+        if (n == lineCurveN && spineClaimedSinceReplan == lineCurveTrim) return;
+        lineCurveN = n;
+        lineCurveTrim = spineClaimedSinceReplan;
+
+        if (halfProfile.Count == 0 || n <= 0)
+        {
+            line.widthCurve = AnimationCurve.Constant(0f, 1f, 1f);
+            return;
+        }
+
+        int total = n + 1;
+        var keys = new Keyframe[total];
+        for (int q = 0; q < total; q++)
+        {
+            int profIdx = Mathf.Clamp(spineClaimedSinceReplan + Mathf.Max(q - 1, 0), 0, halfProfile.Count - 1);
+            float factor = 2f * halfProfile[profIdx] + 1f;
+            float tparam = total > 1 ? (float)q / (total - 1) : 0f;
+            keys[q] = new Keyframe(tparam, factor);
+        }
+        var curve = new AnimationCurve(keys);
+        for (int i = 0; i < curve.length; i++) curve.SmoothTangents(i, 0f);
+        line.widthCurve = curve;
     }
 
     private void HideLine()
