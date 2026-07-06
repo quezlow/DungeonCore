@@ -47,7 +47,7 @@ public static class AdventurerTypeInfo
         AdventurerType.Scholar => PartyIntent.Pilgrim,
         AdventurerType.Pilgrim => PartyIntent.Pilgrim,
         AdventurerType.Suicidal => PartyIntent.Pilgrim,
-        AdventurerType.Noble => PartyIntent.Pilgrim,
+        AdventurerType.Noble => PartyIntent.Delver,
         AdventurerType.Cultist => PartyIntent.GiftGiver,
         AdventurerType.Hero => PartyIntent.Destroyer,
         AdventurerType.Inspector => PartyIntent.Pilgrim,
