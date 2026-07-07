@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: WickDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Wick
+  npcPortrait: {fileID: 3295236706101327806, guid: 5718b13fd11c51e4795773b1921f4427, type: 3}
+  dialogueLines:
+  - She's sulking. Hear that? No, you don't. That's the trouble. She should be turning.
+  - Stripped a tooth in the gearworks and won't say which. I need a spare, and Brona
+    keeps my spares.
+  - There's a crate of mill parts at the smithy. Fetch me the gear and I'll see to
+    the rest.
+  - Bless you. She'll turn again by supper. You'll hear her clear across the plaza.
+  - With these knees? The ladder alone would be the end of me.
+  - No. But it's everyone's bread.
+  - The smithy. Brona's spares crate. She knows the one.
+  - That's her tooth! Give it here. And if you've steady hands, the gearworks could
+    use them once I've set this.
+  autoProgressLines: 0000010001000000
+  endDialogueLines: 0000000100010101
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 1.2
+  choices:
+  - dialogueIndex: 2
+    choices:
+    - I'll get it.
+    - Fix it yourself.
+    nextDialogueIndexes: 0300000004000000
+    givesQuest: 0100
+  - dialogueIndex: 4
+    choices:
+    - Fine, I'll get it.
+    - Not my mill.
+    nextDialogueIndexes: 0300000005000000
+    givesQuest: 0100
+  questInProgressIndex: 6
+  questCompletedIndex: 7
+  quest: {fileID: 11400000, guid: 47d9652dda9e1ba42bd4d57a2039b64e, type: 2}

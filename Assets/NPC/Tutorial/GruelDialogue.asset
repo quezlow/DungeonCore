@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: GruelDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Gruel
+  npcPortrait: {fileID: 3295236706101327806, guid: d08ff7ae87d91614cb296cda330989b0, type: 3}
+  dialogueLines:
+  - Sit anywhere that holds you. Stew's off. That's a kindness, trust me.
+  - Kitchen's bare of turnips and Harl's boy never came. If you're headed westway,
+    three good ones fills the pot.
+  - Ale's on me when you're back. Watered, but on me.
+  - Gossip? Those three in the corner asked after the old paths east. The stone,
+    the caves. Paid in city coin. And the board outside has honest work, if you're
+    collecting.
+  - Door's always open. Hinge is broke.
+  - Three turnips. Harl's rows, or Poll's stall if he's stingy.
+  - Now that's a pot worth stirring. First bowl's yours. Refusal is wise, but noted.
+  autoProgressLines: 00010001000000
+  endDialogueLines: 00000100010101
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 0.88
+  choices:
+  - dialogueIndex: 1
+    choices:
+    - I'll bring turnips.
+    - What's the gossip?
+    nextDialogueIndexes: 0200000003000000
+    givesQuest: 0100
+  - dialogueIndex: 3
+    choices:
+    - I'll bring your turnips.
+    - Thanks.
+    nextDialogueIndexes: 0200000004000000
+    givesQuest: 0100
+  questInProgressIndex: 5
+  questCompletedIndex: 6
+  quest: {fileID: 11400000, guid: d08fd844fb537084cb1418c1eb9b86e4, type: 2}

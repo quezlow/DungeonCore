@@ -195,6 +195,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float observeTimer = 0f;
     private int searchRoomsRemaining = 0;
     private int delveKills = 0;
+    private bool leftSatisfied = false;   // observer finished its tour and departs of its own accord (vs forced flight)
 
     // Combat class (Day 39) — overlay applied in Initialise
     private CombatClass combatClass = CombatClass.Fighter;
@@ -448,7 +449,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             state = AdventurerState.Hunting;
         }
         else if (goal == AdventurerGoal.ObserveRooms)
-            state = PickNextRoom() ? AdventurerState.MovingToRoom : AdventurerState.Retreating;
+        {
+            if (PickNextRoom()) state = AdventurerState.MovingToRoom;
+            else { leftSatisfied = true; state = AdventurerState.Retreating; }
+        }
         else if (scoutRoomsRemaining > 0 && PickRandomRoom())
             state = AdventurerState.MovingToRoom;
         else
@@ -744,6 +748,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             party?.OnMemberResolved(partyMember, true, false, carried);
             AlignmentSystem.Instance?.OnAdventurerLeftAlive(carried);
             MercenaryContract.Instance?.RegisterLootExit(carried);
+            // A noble driven out in flight (not one leaving of its own accord) triggers the family reprisal.
+            if (type == AdventurerType.Noble && !leftSatisfied)
+                NobleRetaliation.Instance?.RegisterNobleFall(displayName);
 
             if (statusBars != null) Destroy(statusBars.gameObject);
             Destroy(gameObject);
@@ -1385,6 +1392,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f);
             GradeSystem.Instance?.Assess();
         }
+        leftSatisfied = true;   // observed its fill and leaves satisfied
         StartRetreat();
     }
 
@@ -1445,9 +1453,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 BestiaryState.Instance?.Discover(unlocksOnDeath.monsterName);
         }
 
-        // A slain Noble triggers family retaliation later (faction system).
+        // A slain Noble's house takes vengeance.
         if (type == AdventurerType.Noble)
-            DungeonCore.Instance?.FlagNobleRetaliation();
+            NobleRetaliation.Instance?.RegisterNobleFall(displayName);
 
         RunStats.Instance?.RecordAdventurerSlain(className);
         lootTable?.Roll(transform.position);
@@ -1850,6 +1858,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         rec.worshipCompleted = worshipCompleted;
         rec.worshipTimer = worshipTimer;
         rec.roomsObserved = roomsObserved;
+        rec.leftSatisfied = leftSatisfied;
         rec.carriedGold = CarriedLootValue;
         rec.tributeValue = tributeValue;
         rec.returnGrudge = returnGrudge;
@@ -1876,6 +1885,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         worshipCompleted = rec.worshipCompleted;
         worshipTimer = rec.worshipTimer;
         roomsObserved = rec.roomsObserved;
+        leftSatisfied = rec.leftSatisfied;
 
         // Settled states resume; mid-action states fall back to advancing.
         state = (AdventurerState)rec.state switch

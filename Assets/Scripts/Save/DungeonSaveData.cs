@@ -71,6 +71,8 @@ public class DungeonSaveData
 
     public WildMonsterEventSaveData wildMonsterEvent;
 
+    public NobleRetaliationSaveData nobleRetaliation;
+
     public GradeSystemSaveData grade;
 
     public InspectorAssessorSaveData inspectorAssessor;
@@ -206,6 +208,7 @@ public class LivePartySaveData
     public int intent;
     public bool tracked;
     public int bannerColorIndex = -1;
+    public string bannerLabelOverride;
     public bool exitBonusApplied;
     public bool tributeAssigned;
     public bool fractured;
@@ -239,6 +242,7 @@ public class LiveMemberSaveData
     public bool worshipCompleted;
     public float worshipTimer;
     public int roomsObserved;
+    public bool leftSatisfied;
     public int carriedGold;
     public int tributeValue;
     public string returnGrudge;

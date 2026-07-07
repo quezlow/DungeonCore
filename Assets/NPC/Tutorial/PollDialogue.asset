@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: PollDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Poll
+  npcPortrait: {fileID: 3295236706101327806, guid: ceff0f5f3014f654990425974b7b1940, type: 3}
+  dialogueLines:
+  - Greens! Fresh as the morning, unlike my sister's junk heap.
+  - First time at market? Coin for goods, goods for coin. The shop behind me handles
+    the fancier trades.
+  - Tell Tally her stall's a foot over the line. She counts everything but that.
+  autoProgressLines: 000000
+  endDialogueLines: 000001
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 1.15
+  choices: []
+  questInProgressIndex: 0
+  questCompletedIndex: 0
+  quest: {fileID: 0}

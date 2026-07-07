@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: Noble
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerDefinition
   className: Noble
-  named: 0
+  named: 1
   type: 5
   overrideTrait: 1
   forcedTrait: 3
+  unlocksOnDeath: {fileID: 0}
+  unlockRequiresDarkCore: 0
   prefab: {fileID: 2173209403938016358, guid: 57302f1fe2f3764489df81c7bbef7890, type: 3}
   maxHP: 30
   moveSpeed: 2

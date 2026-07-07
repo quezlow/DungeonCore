@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: TamDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Fisher Tam
+  npcPortrait: {fileID: 3295236706101327806, guid: 0bb41d079c70aaf4c9dd8663150a513f, type: 3}
+  dialogueLines:
+  - Shh. Not for the fish. For the herons. They judge.
+  - Net's fouled on a snag off the bank. Third time this season. Creek keeps what
+    it likes.
+  - Free it if you're wading anyway. I'll owe you a fish I haven't caught.
+  autoProgressLines: 000000
+  endDialogueLines: 000001
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 1.02
+  choices: []
+  questInProgressIndex: 0
+  questCompletedIndex: 0
+  quest: {fileID: 0}

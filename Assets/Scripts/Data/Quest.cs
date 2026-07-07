@@ -1,7 +1,5 @@
-using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using UnityEditor.SearchService;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Quests/Quest")]
@@ -12,6 +10,9 @@ public class Quest : ScriptableObject
     public string Description;
     public List<QuestObjective> objectives;
     public List<QuestReward> questRewards;
+
+    [Tooltip("Optional Persistence flag written when this quest is handed in.")]
+    public string handInFlag;
 
     private void OnValidate()
     {

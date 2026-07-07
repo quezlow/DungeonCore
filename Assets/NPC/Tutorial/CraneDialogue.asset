@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: CraneDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Father Aldous Crane
+  npcPortrait: {fileID: 3295236706101327806, guid: 5aff1209dcd5f5448bedc691ec29f52d, type: 3}
+  dialogueLines:
+  - Mind the step. I've just polished the plaque, and the water walks where it pleases.
+  - The well? Blessed since before my predecessor's predecessor. We keep it... attended.
+  - The old stone past the gate? A weed with manners. We let it be.
+  - Light a candle if you've a moment. Small flames keep long watches.
+  autoProgressLines: 00000000
+  endDialogueLines: 00000001
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 0.95
+  choices: []
+  questInProgressIndex: 0
+  questCompletedIndex: 0
+  quest: {fileID: 0}

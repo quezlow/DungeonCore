@@ -259,7 +259,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8eda4d59e89d91141a5b9daf94835ab9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  ID: 99
+  ID: 4
   Name: Coin
   quantity: 1
 --- !u!212 &8028279935010571144
@@ -308,7 +308,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1453108971
-  m_SortingLayer: 4
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 670177157, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}

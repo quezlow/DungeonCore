@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 335c62a46f510bf4e8ebab12aecdc620, type: 3}
+  m_Name: NobleNamesRegistry
+  m_EditorClassIdentifier: Assembly-CSharp::NobleNames
+  maleFirstNames:
+  - Aldric
+  - Cedric
+  - Roland
+  - Baldwin
+  - Percival
+  - Tristan
+  - Gareth
+  - Edmund
+  - Reginald
+  - Alaric
+  femaleFirstNames:
+  - Seraphine
+  - Miriel
+  - Rosalind
+  - Guinevere
+  - Eleanor
+  - Isolde
+  - Beatrix
+  - Cordelia
+  - Vivienne
+  - Adelaide
+  houseNames:
+  - Ravenscroft
+  - Duskbane
+  - Thornwood
+  - Grimmond
+  - Ashcroft
+  - Blackmoor
+  - Wolveshire
+  - Greymantle
+  - Hollowell
+  - Stormvale

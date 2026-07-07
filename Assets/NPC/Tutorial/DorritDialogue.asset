@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: DorritDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Dorrit
+  npcPortrait: {fileID: 3295236706101327806, guid: 871957f040a113d44846c37c789e87cd, type: 3}
+  dialogueLines:
+  - Can't stop! He's GETTING AWAY.
+  - Sir Feathers! He bit the priest once. It was the best day. But now he's got my
+    button.
+  - Brass one, off Ma's coat. He's CARRYING it. Get it back? I'll pay a whole copper.
+  - You have to be sneaky. He respects sneaky.
+  - It's a BRASS one. From Ma's COAT.
+  - Fine. Me and him will settle it the old way. Running.
+  - He stops to gloat at the corners. That's when you grab it!
+  - MY BUTTON! You're my second favourite person now. First is still the goose.
+  autoProgressLines: 0000010001000000
+  endDialogueLines: 0000000100010101
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 1.25
+  choices:
+  - dialogueIndex: 2
+    choices:
+    - I'm on it.
+    - It's just a button.
+    nextDialogueIndexes: 0300000004000000
+    givesQuest: 0100
+  - dialogueIndex: 4
+    choices:
+    - Alright, alright.
+    - Good luck.
+    nextDialogueIndexes: 0300000005000000
+    givesQuest: 0100
+  questInProgressIndex: 6
+  questCompletedIndex: 7
+  quest: {fileID: 11400000, guid: 8430c8e972693d14e9aaac5bd6b2080d, type: 2}

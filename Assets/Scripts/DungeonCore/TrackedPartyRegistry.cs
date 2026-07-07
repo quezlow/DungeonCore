@@ -81,6 +81,8 @@ public class TrackedPartyRegistry : MonoBehaviour
     public void RecordResolvedParty(AdventurerParty party)
     {
         if (party == null) return;
+        foreach (var m in party.Members)
+            if (m.type == AdventurerType.Noble) return;   // a slain house sends vengeance, not a returning nemesis
 
         var record = new TrackedParty();
         int survivors = 0;
@@ -136,6 +138,7 @@ public class TrackedPartyRegistry : MonoBehaviour
     public static string LabelFor(AdventurerParty p)
     {
         if (p == null) return "Party";
+        if (!string.IsNullOrEmpty(p.bannerLabelOverride)) return p.bannerLabelOverride;
         foreach (var m in p.Members)
             if (m.named && !string.IsNullOrEmpty(m.name)) return $"{m.name}'s company";
         string t = p.Members.Count > 0 ? p.Members[0].type.ToString() : "Adventurer";

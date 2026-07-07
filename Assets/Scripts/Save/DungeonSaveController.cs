@@ -294,6 +294,9 @@ public class DungeonSaveController : MonoBehaviour
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
 
+        if (NobleRetaliation.Instance != null)
+            currentSave.nobleRetaliation = NobleRetaliation.Instance.GetSaveData();
+
         if (GradeSystem.Instance != null)
             currentSave.grade = GradeSystem.Instance.GetSaveData();
 
@@ -673,6 +676,7 @@ public class DungeonSaveController : MonoBehaviour
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
+            NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             GradeSystem.Instance?.RestoreFromSave(currentSave.grade);
             InspectorAssessor.Instance?.RestoreFromSave(currentSave.inspectorAssessor);
             BestiaryState.Instance?.RestoreFromSave(currentSave.bestiary);

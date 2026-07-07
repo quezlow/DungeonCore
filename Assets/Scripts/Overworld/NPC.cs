@@ -196,5 +196,12 @@ public class NPC : MonoBehaviour, IInteractable
     {
         RewardsController.Instance.GiveQuestReward(quest);
         QuestController.Instance.HandInQuest(quest.questID);
+
+        // Record the hand-in as a prologue flag when the quest declares one.
+        if (!string.IsNullOrEmpty(quest.handInFlag) &&
+            QuestController.Instance.IsQuestHandedIn(quest.questID))
+        {
+            Persistence.SetFlag(quest.handInFlag);
+        }
     }
 }

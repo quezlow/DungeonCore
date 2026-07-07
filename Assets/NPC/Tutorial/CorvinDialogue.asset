@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: CorvinDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Corvin Latch
+  npcPortrait: {fileID: 3295236706101327806, guid: 3a7ce83c8a31a3e49b79f6ab3e0ebd79, type: 3}
+  dialogueLines:
+  - Careful of the stack. That's forty years of what the road coughs up, in order
+    of interest.
+  - You've the look of someone who pokes at things. Excellent. I pay for pokers.
+  - The ground here gives up oddities. Old bone, older stone. If anything strange
+    surfaces, bring it to this desk.
+  - Splendid. Touch nothing else on the way out.
+  - Strange as in wrong for the ground it came from. Teeth where no jaw should be.
+    You'll know it when it unsettles you.
+  - Suit yourself. The ground is patient. It's outlasted better sceptics.
+  - Nothing yet? Try where the earth's been opened. Fresh digging tells old secrets.
+  - A tooth! No, a claw. No. Put it on the desk and touch nothing. This predates
+    the parish. Possibly the language.
+  autoProgressLines: 0000010001000000
+  endDialogueLines: 0000000100010101
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 1.1
+  choices:
+  - dialogueIndex: 2
+    choices:
+    - I'll keep an eye out.
+    - Strange how?
+    nextDialogueIndexes: 0300000004000000
+    givesQuest: 0100
+  - dialogueIndex: 4
+    choices:
+    - I'll keep an eye out.
+    - I'd rather not.
+    nextDialogueIndexes: 0300000005000000
+    givesQuest: 0100
+  questInProgressIndex: 6
+  questCompletedIndex: 7
+  quest: {fileID: 11400000, guid: a91ef63d074146c40acfd1960de83d6a, type: 2}

@@ -90,6 +90,13 @@ public class AdventurerSpawner : MonoBehaviour
     [Tooltip("Optional dedicated (e.g. high-level) Mercenary-type definition for escort " +
              "guards. Falls back to the Mercenary type asset if unset. Keep it Mercenary-typed.")]
     [SerializeField] private AdventurerDefinition guardDef;
+
+    [Header("Noble names + retaliation")]
+    [Tooltip("Name pool for nobles and the vengeance parties their deaths summon.")]
+    [SerializeField] private NobleNames nobleNames;
+    [SerializeField] private int nobleRetaliationBaseGuards = 3;
+    [SerializeField] private int nobleRetaliationGuardsPerLevel = 1;
+    [SerializeField] private int nobleRetaliationMaxGuards = 6;
     [Header("Commoners")]
     [Tooltip("Smallest / largest loose group of curious commoners per spawn during the commoner stage.")]
     [Min(1)][SerializeField] private int commonerGroupMin = 1;
@@ -439,7 +446,12 @@ public class AdventurerSpawner : MonoBehaviour
         var classDef = forcedClass != null ? forcedClass : ResolveCombatClass(def.type, used);
         string name = presetName;
         if (string.IsNullOrEmpty(name) && def.named)
-            name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
+        {
+            if (def.type == AdventurerType.Noble && nobleNames != null)
+                name = nobleNames.Generate();
+            else
+                name = TrackedPartyRegistry.Instance != null ? TrackedPartyRegistry.Instance.GenerateName() : "Champion";
+        }
 
         DungeonType memberAffinity = forcedAffinity != DungeonType.None ? forcedAffinity
             : affinityProfiles != null
@@ -847,6 +859,51 @@ public class AdventurerSpawner : MonoBehaviour
 
         SetupOrganize(party, AdventurerType.Mercenary, total, spawnPos);
         RunStats.Instance?.RecordPartySpawned(total);
+        PartyBannerManager.Instance?.ShowBanner(party);
+    }
+
+    /// <summary>Dispatch a slain noble house's vengeance: a Destroyer party led by a named
+    /// kinsman of the house, backed by a Tank-fronted retinue, scaled by nobles slain this
+    /// run. Fired by NobleRetaliation after the grievance delay.</summary>
+    public void DispatchNobleRetaliation(string house, int level)
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+        party.bannerLabelOverride = $"House {house}";
+
+        var used = new Dictionary<CombatClass, int>();
+
+        // The champion: a named kinsman of the fallen house, leading the reprisal.
+        string championName = nobleNames != null ? nobleNames.GenerateWithHouse(house) : null;
+        SpawnMember(heroDef, RollTrait(), spawnPos, party, used, presetName: championName);
+
+        // Retinue: Tank-fronted guards, more of them the deeper the grudge.
+        int retinue = Mathf.Clamp(
+            nobleRetaliationBaseGuards + (level - 1) * nobleRetaliationGuardsPerLevel,
+            nobleRetaliationBaseGuards, nobleRetaliationMaxGuards);
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        var tankClass = ClassDefFor(CombatClass.Tank);
+        if (guardBase != null)
+            for (int i = 0; i < retinue; i++)
+            {
+                var cls = (i == 0) ? tankClass : null;
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used, forcedClass: cls);
+            }
+
+        // Escalated: a grade level raises every member's stats.
+        int grade = Mathf.Clamp(level, 1, LevelTierUtil.MaxFlatLevel);
+        if (grade > 1)
+            foreach (var m in party.LiveMembers) m.ApplyGradeLevel(grade);
+
+        SetupOrganize(party, AdventurerType.Hero, party.Members.Count, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(party.Members.Count);
         PartyBannerManager.Instance?.ShowBanner(party);
     }
 
