@@ -35,6 +35,7 @@ Shader "DCR/InfluenceRing"
         _ReachEdge ("Reach Edge Softness", Float) = 0.02
         _OverlayStrength ("Overlay Strength", Range(0, 1)) = 0
         _OverlayClaimedLevel ("Overlay Inside Level", Range(0, 1)) = 0.45
+        _OverlayExposedLevel ("Overlay Exposed Level", Range(0, 1)) = 0.22
     }
 
     SubShader
@@ -66,8 +67,9 @@ Shader "DCR/InfluenceRing"
             float _PulseAmp;
             float _EffReach;
             float _ReachEdge;
-          float _OverlayStrength;
+            float _OverlayStrength;
             float _OverlayClaimedLevel;
+            float _OverlayExposedLevel;
 
             struct appdata
             {
@@ -109,7 +111,7 @@ Shader "DCR/InfluenceRing"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float2 fs = tex2D(_FieldTex, i.uv).rg;
+                float3 fs = tex2D(_FieldTex, i.uv).rgb;
                 float sdf = fs.r;
 
                 // Two scrolling octaves waver the isoline. Cosmetic only.
@@ -129,14 +131,18 @@ Shader "DCR/InfluenceRing"
                 float pulse = 1.0 + _PulseAmp * sin(t * _PulseSpeed);
                 float3 ring = _RingColor.rgb * band * _Intensity * pulse * _RingColor.a;
 
-                // Free-growth overlay: unclaimed ground within effective reach.
+                // Free-growth overlay, three tiers:
+                //   unclaimed within reach -> brightest (where creep will fill)
+                //   claimed & safe         -> mid wash (yours, breach-durable)
+                //   claimed & exposed      -> dim wash (yours, but a breach reclaims it)
+                // Unclaimed beyond reach stays dark. Claimed ground is washed
+                // regardless of reach, so pushed territory is no longer a black void.
                 float inReach = smoothstep(_EffReach + _ReachEdge, _EffReach - _ReachEdge, fs.g);
-                // Claimed ground takes a reduced share of the wash instead of a
-                // hard exclusion, so territory no longer reads as black cutouts
-                // in the reach field. 0 restores the old hard mask; 1 is uniform.
                 float unclaimedSide = smoothstep(0.5, 0.46, sdf);
-                float side = lerp(_OverlayClaimedLevel, 1.0, unclaimedSide);
-                float3 overlay = _RingColor.rgb * (inReach * side * _OverlayStrength);
+                float claimedSide = 1.0 - unclaimedSide;
+                float claimedWash = lerp(_OverlayClaimedLevel, _OverlayExposedLevel, fs.b);
+                float wash = lerp(inReach, claimedWash, claimedSide);
+                float3 overlay = _RingColor.rgb * (wash * _OverlayStrength);
 
                 return fixed4(ring + overlay, 1.0);
             }

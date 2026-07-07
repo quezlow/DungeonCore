@@ -268,21 +268,9 @@ public class InfluenceField : MonoBehaviour
         //     inner remainder is durable; only the OUTER FRINGE is reclaimed, so a
         //     breach nibbles what you shoved out rather than swallowing all of it.
         // The push can reach past where the cost-distance field is computed, so the
-        // pushed fringe is measured by straight-line distance from the core.
-        float safeRadius = 0f;
-        if (pushedFringeLost < 1f)
-        {
-            float maxExtentSq = 0f;
-            foreach (Vector3Int cell in influence.ClaimedTiles)
-            {
-                if (cell == coreCell) continue;
-                float dx = cell.x - coreCell.x;
-                float dy = cell.y - coreCell.y;
-                float sq = dx * dx + dy * dy;
-                if (sq > maxExtentSq) maxExtentSq = sq;
-            }
-            safeRadius = (1f - pushedFringeLost) * Mathf.Sqrt(maxExtentSq);
-        }
+        // pushed fringe is measured by straight-line distance from the core. The
+        // radius is shared with the overlay (BreachSafeRadius) so they always agree.
+        float safeRadius = BreachSafeRadius();
         float safeRadiusSq = safeRadius * safeRadius;
 
         recedeScratch.Clear();
@@ -306,6 +294,27 @@ public class InfluenceField : MonoBehaviour
         if (recedeScratch.Count == 0) return;
         influence.UnclaimTilesBatch(recedeScratch);
         Debug.Log($"[InfluenceField] Floor {floor.FloorIndex}: breach recede unclaimed {recedeScratch.Count} cell(s) — auto band beyond reach {reach:0.0}, pushed fringe beyond safe radius {safeRadius:0.0}.");
+    }
+
+    /// <summary>Straight-line radius from the core within which pushed territory
+    /// survives a breach. Beyond it (and beyond the auto-growth reach) is the
+    /// fringe a breach reclaims. The recede and the influence overlay both call
+    /// this, so what you SEE as exposed is exactly what a breach takes.</summary>
+    public float BreachSafeRadius()
+    {
+        if (pushedFringeLost >= 1f || influence == null || floor == null || floor.Terrain == null)
+            return 0f;
+        Vector3Int coreCell = floor.Terrain.CoreCell;
+        float maxExtentSq = 0f;
+        foreach (Vector3Int cell in influence.ClaimedTiles)
+        {
+            if (cell == coreCell) continue;
+            float dx = cell.x - coreCell.x;
+            float dy = cell.y - coreCell.y;
+            float sq = dx * dx + dy * dy;
+            if (sq > maxExtentSq) maxExtentSq = sq;
+        }
+        return (1f - pushedFringeLost) * Mathf.Sqrt(maxExtentSq);
     }
 
     // ── Creep ─────────────────────────────────────────────────────

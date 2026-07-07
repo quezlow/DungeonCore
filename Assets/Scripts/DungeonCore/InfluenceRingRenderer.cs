@@ -84,6 +84,8 @@ public class InfluenceRingRenderer : MonoBehaviour
     [Tooltip("How much of the wash claimed ground receives. 0 = hard exclusion (territory reads " +
              "as black cutouts in the reach field); 1 = uniform wash. Softens the claim-boundary contrast.")]
     [SerializeField, Range(0f, 1f)] private float overlayClaimedLevel = 0.45f;
+    [Tooltip("Wash level for CLAIMED-but-exposed ground — the pushed fringe a breach would reclaim. Kept below the claimed level so it reads as yours but at risk.")]
+    [SerializeField, Range(0f, 1f)] private float overlayExposedLevel = 0.22f;
 
     [Header("Field Encoding")]
     [Tooltip("Cells of signed distance encoded either side of the boundary.")]
@@ -353,6 +355,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_PulseAmp", pulseAmp);
         material.SetFloat("_ReachEdge", 0.75f / reachNorm);
         material.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
+        material.SetFloat("_OverlayExposedLevel", overlayExposedLevel);
     }
 
 
@@ -366,6 +369,14 @@ public class InfluenceRingRenderer : MonoBehaviour
 
         // Base fill: claimed mask, both chamfer seeds, and G = normalized
         // free-growth cost (255 = unreachable) straight from the field.
+        // Breach-safe radius (shared with the recede) and the auto-growth reach:
+        // together they mark the exposed fringe — claimed ground pushed past the
+        // reach and past the safe radius, i.e. exactly what a breach would reclaim.
+        float safeRadius = field.BreachSafeRadius();
+        float safeRadiusSq = safeRadius * safeRadius;
+        float autoReach = field.MaxReach;
+        Vector3Int coreCell = floor.Terrain.CoreCell;
+
         for (int y = 0; y < texSize; y++)
         {
             int row = y * texSize;
@@ -377,10 +388,20 @@ public class InfluenceRingRenderer : MonoBehaviour
                 claimedMask[i] = claimed;
                 chamferIn[i] = claimed ? far : 0f;    // distance to unclaimed
                 chamferOut[i] = claimed ? 0f : far;   // distance to claimed
+                bool hasCost = field.TryGetCost(cell, out float cost);
                 byte g = 255;
-                if (field.TryGetCost(cell, out float cost))
+                if (hasCost)
                     g = (byte)Mathf.Clamp(Mathf.RoundToInt(255f * Mathf.Clamp01(cost / reachNorm)), 0, 254);
-                pixels[i] = new Color32(0, g, 0, 255);
+                // Exposed fringe: claimed, pushed beyond the auto reach, and past
+                // the safe radius (straight-line from the core). Baked into B.
+                byte b = 0;
+                if (claimed && (!hasCost || cost > autoReach))
+                {
+                    float dx = cell.x - coreCell.x;
+                    float dy = cell.y - coreCell.y;
+                    if (dx * dx + dy * dy > safeRadiusSq) b = 255;
+                }
+                pixels[i] = new Color32(0, g, b, 255);
             }
         }
 
