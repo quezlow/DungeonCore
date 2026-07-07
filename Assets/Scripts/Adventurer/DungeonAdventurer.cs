@@ -249,7 +249,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private const float CombatPathRefreshInterval = 0.4f;
 
     private float lastAttackTime;
-    private DungeonMonster combatTarget;
+    private IMonsterTarget combatTarget;
     private DungeonChest chestTarget;
     private EntityStatusBars statusBars;
     private LootTable lootTable;
@@ -886,8 +886,33 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Monster Detection ─────────────────────────────────────────
 
+    /// <summary>The nearest hostile-faction adventurer this one will brawl with inside the
+    /// dungeon (Hero vs Cultist only, for now), or null.</summary>
+    private DungeonAdventurer FindHostileAdventurer()
+    {
+        if (currentFloor?.Entities == null) return null;
+        return currentFloor.Entities.Nearest<DungeonAdventurer>(
+            transform.position, detectionRange,
+            a => a != this && ((IMonsterTarget)a).IsAlive
+                 && FactionRelations.EngagesInsideDungeon(type, a.Type));
+    }
+
     private void ScanForMonsters()
     {
+        // Faction brawl: a Hero and a Cultist are hostile and turn on each other on sight,
+        // whatever else they were doing (a Cultist mid-tribute still defends itself). This is
+        // the only in-dungeon faction fight for now; the rest waits for the procgen forest.
+        if (currentFloor?.Entities != null && FactionRelations.IsDungeonBrawler(type))
+        {
+            var foe = FindHostileAdventurer();
+            if (foe != null)
+            {
+                combatTarget = foe;
+                chestTarget = null;
+                state = AdventurerState.Combat;
+                return;
+            }
+        }
         // Non-combat goals never initiate combat — but a Cowardly observer still
         // flees the moment it sees a monster (e.g. the Noble bolting for the exit).
         if (goal == AdventurerGoal.WorshipCore || goal == AdventurerGoal.ObserveRooms)
@@ -1040,24 +1065,24 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void HandleCombat()
     {
-        if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy)
+        if (combatTarget == null || !combatTarget.IsAlive)
         {
             telegraph?.Cancel();
-            if (goal == AdventurerGoal.Delve && combatTarget != null) delveKills++;
+            if (goal == AdventurerGoal.Delve && combatTarget is DungeonMonster) delveKills++;
             combatTarget = null;
             state = PostCombatState();
             RefreshPath();
             return;
         }
 
-        float dist = Vector2.Distance(transform.position, combatTarget.transform.position);
+        float dist = Vector2.Distance(transform.position, combatTarget.Transform.position);
         if (dist > attackRange)
         {
             telegraph?.Cancel();   // target stepped out of range mid-windup — abort the tell
 
             // Pathfind to the target instead of beelining, so the approach routes
             // around walls and overhangs. Refresh on a timer since the target moves.
-            Vector3 targetPos = combatTarget.transform.position;
+            Vector3 targetPos = combatTarget.Transform.position;
             combatPathRefreshTimer -= Time.deltaTime;
             bool needsRefresh = combatPath.Count == 0
                              || combatPathIndex >= combatPath.Count
@@ -1105,17 +1130,16 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void DealAttackDamage()
     {
-        if (combatTarget == null || !combatTarget.gameObject.activeInHierarchy) return;
+        if (combatTarget == null || !combatTarget.IsAlive) return;
 
-        DamageNumberSpawner.Spawn(attackDamage, combatTarget.transform.position,
+        DamageNumberSpawner.Spawn(attackDamage, combatTarget.Transform.position,
             FloatingDamageNumber.DamageType.MonsterHit);
         animDriver?.OnAttack();
         combatTarget.TakeDamage(attackDamage);
-        if (party != null && party.tracked && partyMember != null
-            && !((IMonsterTarget)combatTarget).IsAlive)
+        if (party != null && party.tracked && partyMember != null && !combatTarget.IsAlive)
             partyMember.xp += Mathf.RoundToInt(xpPerKill);
         if (knockbackForce > 0f && attackDamage >= knockbackMinDamage)
-            ((IMonsterTarget)combatTarget).ApplyKnockback(transform.position, knockbackForce);
+            combatTarget.ApplyKnockback(transform.position, knockbackForce);
     }
 
     /// <summary>Flat level (1..God 1) from a hero's cumulative kill XP. Excess XP beyond the

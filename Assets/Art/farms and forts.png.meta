@@ -14015,8 +14015,8 @@ TextureImporter:
         serializedVersion: 2
         x: 512
         y: 480
-        width: 10
-        height: 12
+        width: 16
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -16084,7 +16084,7 @@ TextureImporter:
         x: 528
         y: 432
         width: 16
-        height: 32
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -30505,6 +30505,28 @@ TextureImporter:
       bones: []
       spriteID: 03193b407f0875b4da7592560234b152
       internalID: -34627746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: farms and forts_657
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 448
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 47266607d614d6847b80276a08fdb5ab
+      internalID: 1325850435
       vertices: []
       indices: 
       edges: []

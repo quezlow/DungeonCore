@@ -1,5 +1,3 @@
-using JetBrains.Annotations;
-using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,17 +10,28 @@ public class ItemDictionary : MonoBehaviour
     {
         itemDictionary = new Dictionary<int, GameObject>();
 
-        //auto increment IDs
+        // Serialised IDs are the single source of truth. List order no longer
+        // matters: entries are validated here, never renumbered.
         for (int i = 0; i < itemPrefabs.Count; i++)
         {
-            if (itemPrefabs[i]  != null)
+            Item item = itemPrefabs[i];
+            if (item == null)
             {
-                itemPrefabs[i].ID = i + 1;
+                Debug.LogError($"ItemDictionary: null entry at index {i} - remove or fill it.");
+                continue;
             }
-        }
-
-        foreach(Item item in itemPrefabs)
-        {
+            if (item.ID <= 0)
+            {
+                Debug.LogError($"ItemDictionary: '{item.Name}' has no valid ID (found {item.ID}). " +
+                               "Set a unique positive ID on the prefab, or re-run the content generator.");
+                continue;
+            }
+            if (itemDictionary.TryGetValue(item.ID, out GameObject holder))
+            {
+                Debug.LogError($"ItemDictionary: duplicate ID {item.ID} - '{item.Name}' collides with " +
+                               $"'{holder.GetComponent<Item>().Name}'. Give one of them a new unique ID.");
+                continue;
+            }
             itemDictionary[item.ID] = item.gameObject;
         }
     }

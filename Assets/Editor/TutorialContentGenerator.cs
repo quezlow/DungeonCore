@@ -689,9 +689,10 @@ public static class TutorialContentGenerator
 
     /// <summary>
     /// Appends any missing tutorial items to the ItemDictionary prefab list,
-    /// then writes each listed prefab's serialised ID to match its list
-    /// position. Append-only: existing entries are never reordered or removed
-    /// (list position defines the item ID everywhere).
+    /// then resolves each entry's ID. Serialised IDs are the single source of
+    /// truth and are never changed once assigned; entries without a valid ID
+    /// receive the next unused one. Append-only: existing entries are never
+    /// reordered or removed.
     /// </summary>
     private static Dictionary<string, int> RegisterItemsAndNormaliseIds()
     {
@@ -718,31 +719,53 @@ public static class TutorialContentGenerator
             dict.itemPrefabs.Add(variant.GetComponent<Item>());
         }
 
-        var ids = new Dictionary<string, int>();
-        var pathsInOrder = new List<string>();
-        for (int i = 0; i < dict.itemPrefabs.Count; i++)
+        // Refuse to build on ambiguous IDs.
+        var seen = new Dictionary<int, string>();
+        foreach (Item entry in dict.itemPrefabs)
         {
-            Item entry = dict.itemPrefabs[i];
+            if (entry == null || entry.ID <= 0) continue;
+            if (seen.TryGetValue(entry.ID, out string other))
+            {
+                Debug.LogError($"TutorialContentGenerator: duplicate item ID {entry.ID} " +
+                               $"('{entry.Name}' vs '{other}'). Fix the prefabs, then re-run. Aborting.");
+                PrefabUtility.UnloadPrefabContents(dictRoot);
+                return null;
+            }
+            seen[entry.ID] = entry.Name;
+        }
+
+        // Existing IDs are kept exactly as serialised; only entries without a
+        // valid ID are given the next unused number and stamped afterwards.
+        var ids = new Dictionary<string, int>();
+        var toStamp = new List<KeyValuePair<string, int>>();
+        var used = new HashSet<int>(seen.Keys);
+        int next = 1;
+        foreach (Item entry in dict.itemPrefabs)
+        {
             if (entry == null) continue;
-            ids[entry.Name] = i + 1;
-            pathsInOrder.Add(AssetDatabase.GetAssetPath(entry));
+            int id = entry.ID;
+            if (id <= 0)
+            {
+                while (used.Contains(next)) next++;
+                id = next;
+                used.Add(id);
+                toStamp.Add(new KeyValuePair<string, int>(AssetDatabase.GetAssetPath(entry), id));
+            }
+            ids[entry.Name] = id;
         }
 
         PrefabUtility.SaveAsPrefabAsset(dictRoot, ItemDictionaryPath);
         PrefabUtility.UnloadPrefabContents(dictRoot);
 
-        // Serialise the position-derived ID into each item prefab so pickups
-        // placed in scenes carry the same ID the dictionary assigns at runtime.
-        for (int i = 0; i < pathsInOrder.Count; i++)
+        foreach (KeyValuePair<string, int> stamp in toStamp)
         {
-            string itemPath = pathsInOrder[i];
-            if (string.IsNullOrEmpty(itemPath)) continue;
-            GameObject itemRoot = PrefabUtility.LoadPrefabContents(itemPath);
+            if (string.IsNullOrEmpty(stamp.Key)) continue;
+            GameObject itemRoot = PrefabUtility.LoadPrefabContents(stamp.Key);
             var comp = itemRoot.GetComponent<Item>();
-            if (comp != null && comp.ID != i + 1)
+            if (comp != null)
             {
-                comp.ID = i + 1;
-                PrefabUtility.SaveAsPrefabAsset(itemRoot, itemPath);
+                comp.ID = stamp.Value;
+                PrefabUtility.SaveAsPrefabAsset(itemRoot, stamp.Key);
             }
             PrefabUtility.UnloadPrefabContents(itemRoot);
         }
