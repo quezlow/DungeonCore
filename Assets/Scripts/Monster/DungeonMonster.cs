@@ -208,6 +208,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // Invader pathing - a wild monster that seeks and breaches the core.
     private bool isInvader;
+    private bool isClimaxInvader;
     [SerializeField] private float invaderBreachDistance = 1.5f;
     private List<Vector3> invadePath = new();
     private int invadePathIndex = 0;
@@ -314,6 +315,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         wildDefinition = def;
         isInvader = true;
     }
+
+    /// <summary>Marks an invader as the endgame climax beast: on breaching the core it is
+    /// flung back to the entrance to charge again (never leaving, never splitting) rather
+    /// than despawning. Call after InitialiseInvader.</summary>
+    public void ConfigureAsClimaxInvader() => isClimaxInvader = true;
 
     /// <summary>Turns this invader into a hungry predator: it hunts until sated (kills)
     /// or gives up (no prey in range), then walks back to the entrance and leaves rather
@@ -726,6 +732,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // adventurer), then depart. A hungry predator instead hunts until sated or starved
     // and then leaves via the entrance without ever breaching. ScanForHostiles diverts
     // to Attack when prey is in range; the hunt resumes here after the kill.
+    private void FlingToEntrance()
+    {
+        if (DungeonEntrance.Instance != null)
+            transform.position = DungeonEntrance.Instance.SpawnPosition;
+        invadePath.Clear();
+        invadePathIndex = 0;
+        invadePathRefreshTimer = 0f;
+    }
+
     private void TickInvade()
     {
         if (isHungryPredator && predatorLeaving) { TickPredatorLeave(); return; }
@@ -753,6 +768,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         {
             if (isHungryPredator) { BeginPredatorLeave(sated: false); return; }   // can't eat a rock
             DungeonCore.Instance.DestroyCore();
+            if (isClimaxInvader)
+            {
+                // The dying core's backlash hurls the beast back to the dungeon mouth; it
+                // never leaves and never splits - it simply charges again.
+                FlingToEntrance();
+                ScreenFlash.Instance?.Flash(new Color(0.75f, 0.05f, 0.05f, 1f), 0.45f);
+                return;
+            }
             DespawnSilently();
             return;
         }

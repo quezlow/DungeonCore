@@ -67,6 +67,7 @@ public class AdventurerParty
     public bool hasBanner = false;             // guards one banner per party
     public int bannerColorIndex = -1;          // pinned-pool index (persisted); -1 = intent-coloured
     public string bannerLabelOverride;         // forces the banner text (e.g. a vengeance "House X"); null = default label
+    public bool isClimax = false;              // the endgame climax host - resolving it ends the trial; never returns as a nemesis
     private readonly List<DungeonAdventurer> live = new();
     /// <summary>Live instances in this party (read-only) - used to grade-scale a fresh team.</summary>
     public IReadOnlyList<DungeonAdventurer> LiveMembers => live;
@@ -118,6 +119,7 @@ public class AdventurerParty
             tracked = tracked,
             bannerColorIndex = bannerColorIndex,
             bannerLabelOverride = bannerLabelOverride,
+            isClimax = isClimax,
             exitBonusApplied = exitBonusApplied,
             tributeAssigned = tributeAssigned,
             fractured = fractured,
@@ -162,6 +164,7 @@ public class AdventurerParty
         tracked = s.tracked;
         bannerColorIndex = s.bannerColorIndex;
         bannerLabelOverride = s.bannerLabelOverride;
+        isClimax = s.isClimax;
         exitBonusApplied = s.exitBonusApplied;
         tributeAssigned = s.tributeAssigned;
         fractured = s.fractured;
@@ -213,6 +216,7 @@ public class AdventurerParty
         if (tracked) TrackedPartyRegistry.Instance?.RecordResolvedParty(this);
         TrackedPartyRegistry.Instance?.DeregisterActive(this);
         DungeonSaveController.Instance?.RequestAutosave();
+        if (isClimax) EndgameClimax.Instance?.OnClimaxThreatResolved();
     }
 
     /// <summary>On full resolution, hand a per-raid record to RunStats for the day-end summary.</summary>

@@ -73,6 +73,8 @@ public class DungeonSaveData
 
     public NobleRetaliationSaveData nobleRetaliation;
 
+    public EndgameClimaxSaveData endgameClimax;
+
     public GradeSystemSaveData grade;
 
     public InspectorAssessorSaveData inspectorAssessor;
@@ -209,6 +211,7 @@ public class LivePartySaveData
     public bool tracked;
     public int bannerColorIndex = -1;
     public string bannerLabelOverride;
+    public bool isClimax;
     public bool exitBonusApplied;
     public bool tributeAssigned;
     public bool fractured;

@@ -15,6 +15,20 @@ public class HolyOrderStrike : MonoBehaviour
 {
     public static HolyOrderStrike Instance { get; private set; }
 
+    public int TimesManifested => timesFired;
+    public int LastManifestDay => lastManifestDay;
+    public float ProfileMatchScore
+    {
+        get
+        {
+            var core = DungeonCore.Instance;
+            if (core == null || notorietyThreshold <= 0f) return 0f;
+            float notoriety01 = Mathf.Clamp01(core.Notoriety / notorietyThreshold);
+            float darkFactor = (AlignmentSystem.Instance != null && AlignmentSystem.Instance.Alignment <= 0f) ? 1f : 0.5f;
+            return notoriety01 * darkFactor;
+        }
+    }
+
     [Header("Trigger (fires when BOTH hold at dawn)")]
     [Tooltip("Notoriety at or above which the Order takes notice.")]
     [SerializeField] private float notorietyThreshold = 60f;
@@ -30,6 +44,7 @@ public class HolyOrderStrike : MonoBehaviour
 
     private int cooldown;     // dawns remaining before it can fire again
     private int timesFired;
+    private int lastManifestDay;
     private bool subscribed;
 
     private void Awake()
@@ -54,6 +69,7 @@ public class HolyOrderStrike : MonoBehaviour
 
     private void OnDawn()
     {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats) return;
         if (cooldown > 0) { cooldown--; return; }
         if (!ConditionMet()) return;
         Fire();
@@ -78,6 +94,7 @@ public class HolyOrderStrike : MonoBehaviour
         FactionSystem.Instance?.RaiseTier(FactionId.HolyOrder);
 
         timesFired++;
+        lastManifestDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
         cooldown = Mathf.Max(1, rearmDays);
 
         AlertsLog.Instance?.AddAlert(
@@ -86,13 +103,14 @@ public class HolyOrderStrike : MonoBehaviour
     }
 
     public HolyOrderStrikeSaveData GetSaveData()
-        => new HolyOrderStrikeSaveData { cooldown = cooldown, timesFired = timesFired };
+    => new HolyOrderStrikeSaveData { cooldown = cooldown, timesFired = timesFired, lastManifestDay = lastManifestDay };
 
     public void RestoreFromSave(HolyOrderStrikeSaveData data)
     {
         if (data == null) return;
         cooldown = data.cooldown;
         timesFired = data.timesFired;
+        lastManifestDay = data.lastManifestDay;
     }
 }
 
@@ -101,4 +119,5 @@ public class HolyOrderStrikeSaveData
 {
     public int cooldown;
     public int timesFired;
+    public int lastManifestDay;
 }

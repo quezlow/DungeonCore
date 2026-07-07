@@ -251,12 +251,16 @@ public class DungeonCore : MonoBehaviour
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
     }
 
+    /// <summary>Re-evaluate whether a level-up is available - called after the endgame
+    /// climax is survived so the Diamond 3 -> God 1 ascension can light up.</summary>
+    public void RefreshLevelUpAvailability() => CheckLevelUp();
+
     private void CheckLevelUp()
     {
         if (LevelUpAvailable) return;
 
         // Diamond 3 → God 1 transition is gated by a TBD special requirement.
-        if (LevelTierUtil.IsDiamondCap(dungeonLevel)) return;
+        if (LevelTierUtil.IsDiamondCap(dungeonLevel) && !(EndgameClimax.Instance != null && EndgameClimax.Instance.Ascended)) return;
 
         if (currentXP >= CalculateXPThreshold(dungeonLevel))
         {
@@ -270,9 +274,9 @@ public class DungeonCore : MonoBehaviour
         if (!LevelUpAvailable) return;
 
         // Block the Diamond 3 → God 1 transition until special requirement is defined.
-        if (LevelTierUtil.IsDiamondCap(dungeonLevel))
+        if (LevelTierUtil.IsDiamondCap(dungeonLevel) && !(EndgameClimax.Instance != null && EndgameClimax.Instance.Ascended))
         {
-            Debug.Log("[DungeonCore] God 1 requires special unlock (TBD).");
+            Debug.Log("[DungeonCore] God 1 (ascension) requires surviving the endgame climax.");
             return;
         }
 

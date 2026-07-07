@@ -81,6 +81,7 @@ public class TrackedPartyRegistry : MonoBehaviour
     public void RecordResolvedParty(AdventurerParty party)
     {
         if (party == null) return;
+        if (party.isClimax) return;                       // the finale's host doesn't return as a nemesis
         foreach (var m in party.Members)
             if (m.type == AdventurerType.Noble) return;   // a slain house sends vengeance, not a returning nemesis
 

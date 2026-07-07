@@ -4783,6 +4783,7 @@ MonoBehaviour:
   surgeDuration: 30
   suppressionFraction: 0.5
   recoveryUsesSurgeRate: 1
+  pushedFringeLost: 0.2
 --- !u!114 &177169427
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4824,6 +4825,7 @@ MonoBehaviour:
   overlayStrength: 0.1
   overlayFadeSpeed: 6
   overlayClaimedLevel: 0.45
+  overlayExposedLevel: 0.22
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!4 &177169428
@@ -13353,6 +13355,8 @@ GameObject:
   - component: {fileID: 497126102}
   - component: {fileID: 497126103}
   - component: {fileID: 497126104}
+  - component: {fileID: 497126106}
+  - component: {fileID: 497126105}
   m_Layer: 0
   m_Name: AlignmentSystemController
   m_TagString: Untagged
@@ -13473,6 +13477,38 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NobleRetaliation
   delayDays: 3
   maxLevel: 4
+--- !u!114 &497126105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497126098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 664c82f295040db44ada6c10d8900c28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenFlash
+--- !u!114 &497126106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497126098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 768af1116167a8b47abb7e55890a0d63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EndgameClimax
+  climaxLevel: 25
+  crusadeGuards: 8
+  armyMercs: 9
+  royalHeroes: 4
+  royalGuards: 4
+  beastHpMult: 3
+  beastDamageMult: 2
+  beastScaleMult: 1.5
 --- !u!1 &509774260
 GameObject:
   m_ObjectHideFlags: 0
@@ -14701,7 +14737,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999539
+  m_Size: 0.9989206
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17636,7 +17672,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00005670244}
+  m_AnchoredPosition: {x: 0, y: 0.000014290753}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278

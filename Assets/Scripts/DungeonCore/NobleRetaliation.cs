@@ -34,12 +34,17 @@ public class NobleRetaliation : MonoBehaviour
     [SerializeField] private int maxLevel = 4;
 
     private int noblesSlainThisRun;
+    private int timesDispatched;
+    private int lastManifestDay;
     private bool hasPending;
     private string pendingHouse;
     private int pendingDueDay;
     private bool subscribed;
 
     public bool VengeancePending => hasPending;
+    public int TimesManifested => timesDispatched;
+    public int LastManifestDay => lastManifestDay;
+    public float ProfileMatchScore => Mathf.Clamp01(noblesSlainThisRun / 3f);
 
     private static Vector3 EntrancePos =>
         DungeonEntrance.Instance != null ? DungeonEntrance.Instance.SpawnPosition : Vector3.zero;
@@ -86,6 +91,7 @@ public class NobleRetaliation : MonoBehaviour
 
     private void OnDawn()
     {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats) return;
         if (!hasPending) return;
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         if (day < pendingDueDay) return;
@@ -97,6 +103,8 @@ public class NobleRetaliation : MonoBehaviour
         string house = pendingHouse;
         int level = Mathf.Clamp(noblesSlainThisRun, 1, Mathf.Max(1, maxLevel));
         hasPending = false;
+        timesDispatched++;
+        lastManifestDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
 
         AdventurerSpawner.Instance?.DispatchNobleRetaliation(house, level);
         DungeonSaveController.Instance?.RequestAutosave();
@@ -117,6 +125,8 @@ public class NobleRetaliation : MonoBehaviour
     public NobleRetaliationSaveData GetSaveData() => new()
     {
         noblesSlainThisRun = noblesSlainThisRun,
+        timesDispatched = timesDispatched,
+        lastManifestDay = lastManifestDay,
         hasPending = hasPending,
         pendingHouse = pendingHouse,
         pendingDueDay = pendingDueDay,
@@ -126,6 +136,8 @@ public class NobleRetaliation : MonoBehaviour
     {
         if (data == null) return;
         noblesSlainThisRun = Mathf.Max(0, data.noblesSlainThisRun);
+        timesDispatched = Mathf.Max(0, data.timesDispatched);
+        lastManifestDay = Mathf.Max(0, data.lastManifestDay);
         hasPending = data.hasPending;
         pendingHouse = data.pendingHouse;
         pendingDueDay = data.pendingDueDay;
@@ -136,6 +148,8 @@ public class NobleRetaliation : MonoBehaviour
 public class NobleRetaliationSaveData
 {
     public int noblesSlainThisRun;
+    public int timesDispatched;
+    public int lastManifestDay;
     public bool hasPending;
     public string pendingHouse;
     public int pendingDueDay;

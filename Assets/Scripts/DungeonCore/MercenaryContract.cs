@@ -53,6 +53,7 @@ public class MercenaryContract : MonoBehaviour
     private int cooldown;      // dawns of quiet before a new ultimatum can issue
     private int countdown;     // dawns remaining in an active ultimatum
     private int timesFired;
+    private int lastManifestDay;
     private bool climaxFlagRaised;
     private readonly List<int> window = new();   // window[0] = today's loot-out
     private bool subscribed;
@@ -66,6 +67,10 @@ public class MercenaryContract : MonoBehaviour
     public bool CanBribe => state == ContractState.Ultimatum;
     public int BribeCost => bribeCost;
     public bool ClimaxFlagRaised => climaxFlagRaised;
+    public int TimesManifested => timesFired;
+    public int LastManifestDay => lastManifestDay;
+    public float ProfileMatchScore =>
+        CurrentThreshold > 0 ? Mathf.Clamp01((float)WindowSum / CurrentThreshold) : 0f;
 
     private int WindowSum
     {
@@ -109,6 +114,7 @@ public class MercenaryContract : MonoBehaviour
 
     private void OnDawn()
     {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats) return;
         Evaluate();
         RotateWindow();
     }
@@ -161,6 +167,7 @@ public class MercenaryContract : MonoBehaviour
 
         climaxFlagRaised = true;   // the endgame remembers a mercenary war was waged here
         timesFired++;
+        lastManifestDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
         state = ContractState.Dormant;
         countdown = 0;
         cooldown = Mathf.Max(1, rearmDaysAfterAssault);
@@ -205,6 +212,7 @@ public class MercenaryContract : MonoBehaviour
         cooldown = cooldown,
         countdown = countdown,
         timesFired = timesFired,
+        lastManifestDay = lastManifestDay,
         climaxFlagRaised = climaxFlagRaised,
         window = new List<int>(window),
     };
@@ -216,6 +224,7 @@ public class MercenaryContract : MonoBehaviour
         cooldown = Mathf.Max(0, data.cooldown);
         countdown = Mathf.Max(0, data.countdown);
         timesFired = Mathf.Max(0, data.timesFired);
+        lastManifestDay = Mathf.Max(0, data.lastManifestDay);
         climaxFlagRaised = data.climaxFlagRaised;
         window.Clear();
         if (data.window != null) window.AddRange(data.window);
@@ -230,6 +239,7 @@ public class MercenaryContractSaveData
     public int cooldown;
     public int countdown;
     public int timesFired;
+    public int lastManifestDay;
     public bool climaxFlagRaised;
     public List<int> window = new();
 }

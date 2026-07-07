@@ -907,6 +907,107 @@ public class AdventurerSpawner : MonoBehaviour
         PartyBannerManager.Instance?.ShowBanner(party);
     }
 
+    /// <summary>The Grand Crusade - the Church climax. A named ordained Paladin leads a
+    /// large host of Paladins (Tank) and Clerics, all Light. Fired by EndgameClimax.</summary>
+    public AdventurerParty DispatchClimaxCrusade(int guardCount)
+    {
+        if (DungeonEntrance.Instance == null) return null;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return null;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        party.isClimax = true;
+        party.bannerLabelOverride = "The Grand Crusade";
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        SpawnMember(heroDef, RollTrait(), spawnPos, party, used, forcedAffinity: DungeonType.Light);
+
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        var tankClass = ClassDefFor(CombatClass.Tank);
+        var clericClass = ClassDefFor(CombatClass.Cleric);
+        if (guardBase != null)
+            for (int i = 0; i < guardCount; i++)
+            {
+                var cls = (i % 2 == 0) ? tankClass : clericClass;
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used,
+                            forcedClass: cls, forcedAffinity: DungeonType.Light);
+            }
+
+        SetupOrganize(party, AdventurerType.Hero, 1 + guardCount, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(1 + guardCount);
+        PartyBannerManager.Instance?.ShowBanner(party);
+        return party;
+    }
+
+    /// <summary>The Iron Host - the Mercenary climax. A large sellsword army with a heavy
+    /// Tank front (every third a Tank). Fired by EndgameClimax.</summary>
+    public AdventurerParty DispatchClimaxArmy(int mercCount)
+    {
+        if (DungeonEntrance.Instance == null) return null;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+        var mercDef = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        if (mercDef == null) return null;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Mercenary));
+        party.isClimax = true;
+        party.bannerLabelOverride = "The Iron Host";
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        var tankClass = ClassDefFor(CombatClass.Tank);
+        int total = Mathf.Max(1, mercCount);
+        for (int i = 0; i < total; i++)
+        {
+            var cls = (i % 3 == 0) ? tankClass : null;
+            SpawnMember(mercDef, RollTrait(), spawnPos, party, used, forcedClass: cls);
+        }
+
+        SetupOrganize(party, AdventurerType.Mercenary, total, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(total);
+        PartyBannerManager.Instance?.ShowBanner(party);
+        return party;
+    }
+
+    /// <summary>The King's Host - the crown's answer for slain nobles. Hero-heavy: several
+    /// named Heroes fronted by a Tank-led royal guard - the largest raw Hero count of the
+    /// climaxes. Fired by EndgameClimax.</summary>
+    public AdventurerParty DispatchClimaxRoyalHost(int heroCount, int guardCount)
+    {
+        if (DungeonEntrance.Instance == null) return null;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return null;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        party.isClimax = true;
+        party.bannerLabelOverride = "The King's Host";
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        int heroes = Mathf.Max(1, heroCount);
+        for (int i = 0; i < heroes; i++)
+            SpawnMember(heroDef, RollTrait(), spawnPos, party, used);
+
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        var tankClass = ClassDefFor(CombatClass.Tank);
+        if (guardBase != null)
+            for (int i = 0; i < guardCount; i++)
+            {
+                var cls = (i == 0) ? tankClass : null;
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used, forcedClass: cls);
+            }
+
+        SetupOrganize(party, AdventurerType.Hero, heroes + guardCount, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(heroes + guardCount);
+        PartyBannerManager.Instance?.ShowBanner(party);
+        return party;
+    }
+
     private CombatClassDefinition ClassDefFor(CombatClass c)
     {
         if (combatClasses == null) return null;

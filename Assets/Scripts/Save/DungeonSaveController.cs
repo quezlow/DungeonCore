@@ -297,6 +297,9 @@ public class DungeonSaveController : MonoBehaviour
         if (NobleRetaliation.Instance != null)
             currentSave.nobleRetaliation = NobleRetaliation.Instance.GetSaveData();
 
+        if (EndgameClimax.Instance != null)
+            currentSave.endgameClimax = EndgameClimax.Instance.GetSaveData();
+
         if (GradeSystem.Instance != null)
             currentSave.grade = GradeSystem.Instance.GetSaveData();
 
@@ -677,6 +680,7 @@ public class DungeonSaveController : MonoBehaviour
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
+            EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);
             GradeSystem.Instance?.RestoreFromSave(currentSave.grade);
             InspectorAssessor.Instance?.RestoreFromSave(currentSave.inspectorAssessor);
             BestiaryState.Instance?.RestoreFromSave(currentSave.bestiary);

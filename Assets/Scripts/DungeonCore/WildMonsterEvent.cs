@@ -49,11 +49,24 @@ public class WildMonsterEvent : MonoBehaviour
     private int cooldown;
     private bool climaxRaised;
     private DungeonMonster livePredator;
+    private int timesEmerged;
+    private int lastManifestDay;
+    private DungeonMonster climaxBeast;
+    private bool climaxBeastActive;
+    private float climaxHpMult = 1f;
+    private float climaxDmgMult = 1f;
+    private float climaxScaleMult = 1f;
     private bool subscribed;
 
     // ── Public reads ──────────────────────────────────────────────
     public bool ClimaxRaised => climaxRaised;
     public bool PredatorActive => livePredator != null;
+    public int TimesManifested => timesEmerged;
+    public int LastManifestDay => lastManifestDay;
+    public bool ClimaxBeastActive => climaxBeastActive;
+    public float ProfileMatchScore =>
+        DungeonRating.Instance != null && ratingThreshold > 0f
+            ? Mathf.Clamp01(DungeonRating.Instance.CurrentRating / ratingThreshold) : 0f;
 
     private static Vector3 EntrancePos =>
         DungeonEntrance.Instance != null ? DungeonEntrance.Instance.SpawnPosition : Vector3.zero;
@@ -82,6 +95,7 @@ public class WildMonsterEvent : MonoBehaviour
 
     private void OnDawn()
     {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats) return;
         if (livePredator != null) return;         // one beast at a time
         if (cooldown > 0) { cooldown--; return; }
         if (DungeonRating.Instance == null) return;
@@ -99,6 +113,8 @@ public class WildMonsterEvent : MonoBehaviour
         if (beast == null) return;
 
         climaxRaised = true;                       // the endgame remembers the beast came
+        timesEmerged++;
+        lastManifestDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
         DungeonSaveController.Instance?.RequestAutosave();
         AlertsLog.Instance?.AddAlert(
             "Something vast has scented your halls, little core, and it hungers. It comes to feed.",
@@ -169,6 +185,43 @@ public class WildMonsterEvent : MonoBehaviour
             EntrancePos, 0, AlertCategory.System);
     }
 
+    /// <summary>Spawn the endgame climax beast: the predator as a max-power invader that
+    /// drives for the core and, on each breach, is flung back to charge again (never
+    /// leaving, never splitting). Distinct from the mid-game predator; only its death ends
+    /// the climax. Fired by EndgameClimax.</summary>
+    public void SpawnClimaxBeast(float hpMult, float dmgMult, float scaleMult)
+    {
+        if (climaxBeast != null) return;
+        var floor = HuntFloor;
+        if (floor == null || predatorDef == null || predatorDef.prefab == null || DungeonEntrance.Instance == null)
+            return;
+
+        climaxHpMult = Mathf.Max(1f, hpMult);
+        climaxDmgMult = Mathf.Max(1f, dmgMult);
+        climaxScaleMult = Mathf.Max(1f, scaleMult);
+
+        var beast = Instantiate(predatorDef.prefab, EntrancePos, Quaternion.identity);
+        beast.transform.SetParent(floor.transform, true);
+        beast.InitialiseInvader(floor, predatorDef);
+        beast.ApplyBossModifiers(predatorDef);
+        beast.ApplyStatScale(climaxHpMult, climaxDmgMult, climaxScaleMult);
+        beast.ConfigureAsClimaxInvader();
+        floor.Entities?.Register(beast);
+        beast.OnDied += HandleClimaxBeastDied;
+        climaxBeast = beast;
+        climaxBeastActive = true;
+    }
+
+    private void HandleClimaxBeastDied(DungeonMonster m)
+    {
+        climaxBeast = null;
+        climaxBeastActive = false;
+        AlertsLog.Instance?.AddAlert(
+            "The great beast falls at last, little core, and the world holds its breath.",
+            EntrancePos, 0, AlertCategory.System);
+        EndgameClimax.Instance?.OnClimaxBeastSlain();
+    }
+
     // ── Save / Load ───────────────────────────────────────────────
 
     public WildMonsterEventSaveData GetSaveData()
@@ -179,6 +232,12 @@ public class WildMonsterEvent : MonoBehaviour
             cooldown = cooldown,
             climaxRaised = climaxRaised,
             predatorActive = livePredator != null,
+            timesEmerged = timesEmerged,
+            lastManifestDay = lastManifestDay,
+            climaxBeastActive = climaxBeastActive,
+            climaxHpMult = climaxHpMult,
+            climaxDmgMult = climaxDmgMult,
+            climaxScaleMult = climaxScaleMult,
         };
         if (livePredator != null)
         {
@@ -200,6 +259,12 @@ public class WildMonsterEvent : MonoBehaviour
         escalationLevel = Mathf.Max(0, data.escalationLevel);
         cooldown = Mathf.Max(0, data.cooldown);
         climaxRaised = data.climaxRaised;
+        timesEmerged = Mathf.Max(0, data.timesEmerged);
+        lastManifestDay = Mathf.Max(0, data.lastManifestDay);
+        climaxHpMult = data.climaxHpMult > 0f ? data.climaxHpMult : 1f;
+        climaxDmgMult = data.climaxDmgMult > 0f ? data.climaxDmgMult : 1f;
+        climaxScaleMult = data.climaxScaleMult > 0f ? data.climaxScaleMult : 1f;
+        if (data.climaxBeastActive) SpawnClimaxBeast(climaxHpMult, climaxDmgMult, climaxScaleMult);
 
         if (!data.predatorActive) return;
         var floor = HuntFloor;
@@ -227,4 +292,10 @@ public class WildMonsterEventSaveData
     public int predatorKills;
     public bool predatorWounded;
     public bool predatorLeaving;
+    public int timesEmerged;
+    public int lastManifestDay;
+    public bool climaxBeastActive;
+    public float climaxHpMult;
+    public float climaxDmgMult;
+    public float climaxScaleMult;
 }
