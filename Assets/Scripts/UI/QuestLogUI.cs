@@ -47,6 +47,9 @@ public class QuestLogUI : MonoBehaviour
     private const int TabActive = 0, TabCompleted = 1, TabNotes = 2;
     private int currentTab = TabActive;
 
+    /// <summary>Frame on which Esc last closed the journal, so the pause menu can ignore that Esc.</summary>
+    public static int LastEscCloseFrame = -1;
+
     private void Start()
     {
         if (activeTabButton != null) activeTabButton.onClick.AddListener(() => SelectTab(TabActive));
@@ -58,9 +61,20 @@ public class QuestLogUI : MonoBehaviour
 
     private void Update()
     {
-        if (Keybinds.IsTextInputActive()) return;   // don't toggle while typing a note
         var kb = Keyboard.current;
-        if (kb != null && kb[toggleKey].wasPressedThisFrame) Toggle();
+        if (kb == null) return;
+
+        // Esc closes the journal whenever it's open (even mid-note), whatever tab is showing.
+        if (kb.escapeKey.wasPressedThisFrame && panel != null && panel.activeSelf)
+        {
+            Toggle();
+            LastEscCloseFrame = Time.frameCount;
+            return;
+        }
+
+        // J toggles, but not while typing a note (so typing "j" into a note doesn't close it).
+        if (Keybinds.IsTextInputActive()) return;
+        if (kb[toggleKey].wasPressedThisFrame) Toggle();
     }
 
     public void Toggle()

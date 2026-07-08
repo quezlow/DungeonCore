@@ -53,6 +53,7 @@ public class MonsterSpawner : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     private MonsterDefinition definition;
     private DungeonMonster spawnedMonster;
+    private string customName;   // player-set name; persists on the spawner across respawns
     private bool capacityHeld;
     private bool transient;          // raised minion: no capacity, no respawn, self-destructs
     private float minionLifetime;    // seconds the raised minion lives (0 = permanent)
@@ -77,6 +78,8 @@ public class MonsterSpawner : MonoBehaviour
     public bool IsBossSpawner => definition is BossVariantDefinition;
     public bool HasLiveMonster => spawnedMonster != null;
     public DungeonMonster SpawnedMonster => spawnedMonster;
+    public string CustomName => customName;
+    public void SetCustomName(string n) => customName = string.IsNullOrWhiteSpace(n) ? null : n.Trim();
     public bool IsRespawning => isRespawning;
     public bool IsBlocked => isBlocked;
     public float RespawnDelay => respawnDelay;

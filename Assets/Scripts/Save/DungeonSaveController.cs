@@ -426,6 +426,7 @@ public class DungeonSaveController : MonoBehaviour
                 hasAttackTarget = s.HasAttackTarget,
                 attackTargetCell = SerializableVector3Int.From(s.AttackTargetCell),
                 allowDefendCore = s.AllowDefendCore,
+                customName = s.CustomName,
             };
 
             // DAY 31 — Capture alive monster state if the spawner has a live monster.
@@ -773,6 +774,8 @@ public class DungeonSaveController : MonoBehaviour
                     s.hasAttackTarget,
                     s.attackTargetCell.ToVector3Int(),
                     s.allowDefendCore);
+
+                if (restoredSpawner != null) restoredSpawner.SetCustomName(s.customName);
 
                 if (restoredSpawner != null && s.hasAliveMonster)
                 {

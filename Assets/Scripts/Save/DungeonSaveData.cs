@@ -148,6 +148,7 @@ public class FloorSaveData
 public class MonsterSpawnerSaveData
 {
     public string monsterName;
+    public string customName;   // player-set monster name (additive; null on old saves)
     public SerializableVector3Int cell;
 
     // DAY 31 PART 3D — Orders.

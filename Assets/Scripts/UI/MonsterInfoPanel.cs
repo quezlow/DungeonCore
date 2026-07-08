@@ -27,6 +27,10 @@ public class MonsterInfoPanel : MonoBehaviour
     [SerializeField] private Toggle followButton;
     private DungeonMonster currentMon;
 
+    [Header("Rename")]
+    [SerializeField] private Button nameButton;         // click the name to rename
+    [SerializeField] private TMP_InputField nameInput;  // hidden until renaming
+
     private void Awake()
     {
         if (panel != null) panel.SetActive(false);
@@ -35,6 +39,38 @@ public class MonsterInfoPanel : MonoBehaviour
             followButton.onValueChanged.AddListener(OnFollowToggled);
             followButton.gameObject.SetActive(false);
         }
+        if (nameButton != null) nameButton.onClick.AddListener(EnterRename);
+        if (nameInput != null)
+        {
+            nameInput.onEndEdit.AddListener(CommitRename);
+            nameInput.gameObject.SetActive(false);
+        }
+    }
+
+    private void EnterRename()
+    {
+        if (currentMon == null || !currentMon.CanRename || nameInput == null) return;
+        nameInput.text = currentMon.CustomName ?? currentMon.TypeName;
+        nameInput.gameObject.SetActive(true);
+        if (nameLabel != null) nameLabel.gameObject.SetActive(false);
+        nameInput.ActivateInputField();
+        nameInput.Select();
+    }
+
+    private void CommitRename(string text)
+    {
+        if (currentMon != null && currentMon.CanRename)
+        {
+            currentMon.Rename(text);
+            DungeonSaveController.Instance?.SaveGame();
+        }
+        ExitRename();
+    }
+
+    private void ExitRename()
+    {
+        if (nameInput != null && nameInput.gameObject.activeSelf) nameInput.gameObject.SetActive(false);
+        if (nameLabel != null && !nameLabel.gameObject.activeSelf) nameLabel.gameObject.SetActive(true);
     }
 
     private void OnFollowToggled(bool on)
@@ -60,7 +96,10 @@ public class MonsterInfoPanel : MonoBehaviour
             followButton.gameObject.SetActive(show);
 
         if (currentMon != null && currentMon != mon)
+        {
             DungeonCameraController.Instance?.ClearFollowTargetIf(currentMon.transform);
+            ExitRename();
+        }
         currentMon = mon;
 
         if (show)

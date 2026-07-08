@@ -1586,10 +1586,23 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             if (bossDefinition != null) return bossDefinition.GetBossTitle();
             var def = IsWild ? wildDefinition : spawner?.Definition;
             string n = def != null ? def.monsterName : "Monster";
-            string full = isVeteran ? $"Veteran {n}" : n;
+            string custom = spawner != null ? spawner.CustomName : null;
+            string full = !string.IsNullOrEmpty(custom) ? custom : (isVeteran ? $"Veteran {n}" : n);
             return string.IsNullOrEmpty(killTitle) ? full : $"{full} — {killTitle}";
         }
     }
+    /// <summary>The player-set name for this monster (persisted on its spawner), or null.</summary>
+    public string CustomName => spawner != null ? spawner.CustomName : null;
+
+    /// <summary>True if this monster can be renamed (spawner-backed, not a boss or wild).</summary>
+    public bool CanRename => spawner != null && bossDefinition == null && !IsWild;
+
+    /// <summary>Rename this monster (empty clears back to its type name). Persists via the spawner.</summary>
+    public void Rename(string newName)
+    {
+        if (spawner != null) spawner.SetCustomName(newName);
+    }
+
     public FloorRoot CurrentFloor => currentFloor;
     public BossVariantDefinition BossDefinition => bossDefinition;
 
