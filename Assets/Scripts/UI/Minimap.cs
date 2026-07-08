@@ -279,15 +279,28 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     {
         if (viewRect == null) return;
         if (!hasPaint || mainCam == null) { if (viewRect.gameObject.activeSelf) viewRect.gameObject.SetActive(false); return; }
-        if (!viewRect.gameObject.activeSelf) viewRect.gameObject.SetActive(true);
 
-        float halfH = mainCam.orthographicSize;
-        float halfW = halfH * mainCam.aspect;
         Vector2 mapSize = mapRect.rect.size;
-        viewRect.sizeDelta = new Vector2(
-            (2f * halfW / worldPerCell) * paintScale / textureSize * mapSize.x,
-            (2f * halfH / worldPerCell) * paintScale / textureSize * mapSize.y);
-        if (WorldToMap(mainCam.transform.position, out Vector2 c)) viewRect.anchoredPosition = c;
+        // View half-extents, in map-local units.
+        float halfW = (mainCam.orthographicSize * mainCam.aspect / worldPerCell) * paintScale / textureSize * mapSize.x;
+        float halfH = (mainCam.orthographicSize / worldPerCell) * paintScale / textureSize * mapSize.y;
+
+        WorldToMap(mainCam.transform.position, out Vector2 c);   // view centre in map-local space
+
+        // Clamp the box to the minimap so it never overflows - e.g. early game, when the camera
+        // sees more than the whole claimed floor. It just fills the map instead of spilling past it.
+        Vector2 half = mapSize * 0.5f;
+        float minX = Mathf.Max(c.x - halfW, -half.x);
+        float maxX = Mathf.Min(c.x + halfW, half.x);
+        float minY = Mathf.Max(c.y - halfH, -half.y);
+        float maxY = Mathf.Min(c.y + halfH, half.y);
+
+        bool visible = maxX > minX && maxY > minY;
+        if (viewRect.gameObject.activeSelf != visible) viewRect.gameObject.SetActive(visible);
+        if (!visible) return;
+
+        viewRect.sizeDelta = new Vector2(maxX - minX, maxY - minY);
+        viewRect.anchoredPosition = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
     }
 
     // -- mapping + interaction ---------------------------------------------------

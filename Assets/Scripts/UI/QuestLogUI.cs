@@ -53,7 +53,7 @@ public class QuestLogUI : MonoBehaviour
         if (completedTabButton != null) completedTabButton.onClick.AddListener(() => SelectTab(TabCompleted));
         if (notesTabButton != null) notesTabButton.onClick.AddListener(() => SelectTab(TabNotes));
         if (panel != null) panel.SetActive(false);
-        TodoListUI.Instance?.SetVisible(false);
+        HideAllPages();
     }
 
     private void Update()
@@ -69,7 +69,17 @@ public class QuestLogUI : MonoBehaviour
         bool show = !panel.activeSelf;
         panel.SetActive(show);
         if (show) SelectTab(currentTab);   // restore last tab and refresh it
-        else TodoListUI.Instance?.SetVisible(false);
+        else HideAllPages();
+    }
+
+    // Deactivate every tab page (and the notes controls) so a closed journal leaves nothing
+    // active. A lingering raycast-target page would otherwise swallow mouse-wheel zoom over it.
+    private void HideAllPages()
+    {
+        if (activePage != null) activePage.SetActive(false);
+        if (completedPage != null) completedPage.SetActive(false);
+        if (notesPage != null) notesPage.SetActive(false);
+        TodoListUI.Instance?.SetVisible(false);
     }
 
     public void SelectTab(int tab)
