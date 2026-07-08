@@ -85,6 +85,7 @@ public class CaveWallDebugOverlay : MonoBehaviour
 
     private void Update()
     {
+        if (Keybinds.IsTextInputActive()) return;   // don't toggle while typing a note/field
         if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame)
             SetVisible(!visible);
     }

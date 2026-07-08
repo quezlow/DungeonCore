@@ -47,8 +47,18 @@ public class QuestLogUI : MonoBehaviour
     private const int TabActive = 0, TabCompleted = 1, TabNotes = 2;
     private int currentTab = TabActive;
 
-    /// <summary>Frame on which Esc last closed the journal, so the pause menu can ignore that Esc.</summary>
-    public static int LastEscCloseFrame = -1;
+    public static QuestLogUI Instance { get; private set; }
+
+    /// <summary>True while the journal panel is open.</summary>
+    public bool IsOpen => panel != null && panel.activeSelf;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) { Destroy(this); return; }
+        Instance = this;
+    }
+
+    private void OnDestroy() { if (Instance == this) Instance = null; }
 
     private void Start()
     {
@@ -61,20 +71,11 @@ public class QuestLogUI : MonoBehaviour
 
     private void Update()
     {
-        var kb = Keyboard.current;
-        if (kb == null) return;
-
-        // Esc closes the journal whenever it's open (even mid-note), whatever tab is showing.
-        if (kb.escapeKey.wasPressedThisFrame && panel != null && panel.activeSelf)
-        {
-            Toggle();
-            LastEscCloseFrame = Time.frameCount;
-            return;
-        }
-
         // J toggles, but not while typing a note (so typing "j" into a note doesn't close it).
+        // Esc-to-close is handled centrally by PauseMenuController (menu > journal > pause).
         if (Keybinds.IsTextInputActive()) return;
-        if (kb[toggleKey].wasPressedThisFrame) Toggle();
+        var kb = Keyboard.current;
+        if (kb != null && kb[toggleKey].wasPressedThisFrame) Toggle();
     }
 
     public void Toggle()
@@ -84,6 +85,14 @@ public class QuestLogUI : MonoBehaviour
         panel.SetActive(show);
         if (show) SelectTab(currentTab);   // restore last tab and refresh it
         else HideAllPages();
+    }
+
+    /// <summary>Close the journal. Called by PauseMenuController so Esc closes it before opening pause.</summary>
+    public void CloseJournal()
+    {
+        if (panel == null || !panel.activeSelf) return;
+        panel.SetActive(false);
+        HideAllPages();
     }
 
     // Deactivate every tab page (and the notes controls) so a closed journal leaves nothing

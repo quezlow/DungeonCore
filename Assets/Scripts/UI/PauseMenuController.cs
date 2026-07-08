@@ -125,8 +125,8 @@ public class PauseMenuController : MonoBehaviour
         if (KeybindControlsUI.IsRebinding) return;
 
         if (IsMenuOpen) Resume();
-        else if (IsIdle() && ActionBarHUD.LastCancelFrame != Time.frameCount
-                 && QuestLogUI.LastEscCloseFrame != Time.frameCount) Open();
+        else if (QuestLogUI.Instance != null && QuestLogUI.Instance.IsOpen) QuestLogUI.Instance.CloseJournal();
+        else if (IsIdle() && ActionBarHUD.LastCancelFrame != Time.frameCount) Open();
     }
 
     private static bool IsIdle()
