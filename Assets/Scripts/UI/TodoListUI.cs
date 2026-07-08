@@ -79,23 +79,50 @@ public class TodoListUI : MonoBehaviour
             var it = item;   // capture for the closures below
             var row = Instantiate(todoItemPrefab, content);
 
-            var check = row.transform.Find("Check")?.GetComponent<Toggle>();
+            var check = row.GetComponentInChildren<Toggle>(true);
             if (check != null)
             {
                 check.SetIsOnWithoutNotify(it.done);
                 check.onValueChanged.AddListener(_ => ToggleItem(it));
             }
 
-            var label = row.transform.Find("Label")?.GetComponent<TMP_Text>();
+            var label = FindLabel(row.transform, check);
             if (label != null)
             {
                 label.text = it.text;
                 label.fontStyle = it.done ? FontStyles.Strikethrough : FontStyles.Normal;
             }
 
-            var del = row.transform.Find("Delete")?.GetComponent<Button>();
+            var del = row.GetComponentInChildren<Button>(true);
             if (del != null) del.onClick.AddListener(() => RemoveItem(it));
         }
+    }
+
+    // The note's own label: prefer a child named "Label", else the first TMP_Text that is not the
+    // toggle's own label. Robust to prefab nesting / renaming.
+    private static TMP_Text FindLabel(Transform row, Toggle check)
+    {
+        var named = row.Find("Label");
+        if (named != null)
+        {
+            var t = named.GetComponent<TMP_Text>();
+            if (t != null) return t;
+        }
+        var texts = row.GetComponentsInChildren<TMP_Text>(true);
+        foreach (var t in texts)
+        {
+            if (check != null && t.transform.IsChildOf(check.transform)) continue;
+            return t;
+        }
+        return texts.Length > 0 ? texts[0] : null;
+    }
+
+    /// <summary>Show/hide the input row + item list. The Notes tab drives this.</summary>
+    public void SetVisible(bool visible)
+    {
+        if (inputField != null) inputField.gameObject.SetActive(visible);
+        if (addButton != null) addButton.gameObject.SetActive(visible);
+        if (content != null) content.gameObject.SetActive(visible);
     }
 
     private void Persist()

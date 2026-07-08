@@ -53,6 +53,7 @@ public class QuestLogUI : MonoBehaviour
         if (completedTabButton != null) completedTabButton.onClick.AddListener(() => SelectTab(TabCompleted));
         if (notesTabButton != null) notesTabButton.onClick.AddListener(() => SelectTab(TabNotes));
         if (panel != null) panel.SetActive(false);
+        TodoListUI.Instance?.SetVisible(false);
     }
 
     private void Update()
@@ -68,6 +69,7 @@ public class QuestLogUI : MonoBehaviour
         bool show = !panel.activeSelf;
         panel.SetActive(show);
         if (show) SelectTab(currentTab);   // restore last tab and refresh it
+        else TodoListUI.Instance?.SetVisible(false);
     }
 
     public void SelectTab(int tab)
@@ -76,6 +78,7 @@ public class QuestLogUI : MonoBehaviour
         if (activePage != null) activePage.SetActive(tab == TabActive);
         if (completedPage != null) completedPage.SetActive(tab == TabCompleted);
         if (notesPage != null) notesPage.SetActive(tab == TabNotes);
+        TodoListUI.Instance?.SetVisible(tab == TabNotes);
 
         Tint(activeTabButton, tab == TabActive);
         Tint(completedTabButton, tab == TabCompleted);

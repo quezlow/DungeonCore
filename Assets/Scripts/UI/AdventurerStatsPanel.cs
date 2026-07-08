@@ -62,7 +62,11 @@ public class AdventurerStatsPanel : MonoBehaviour
         current = adv;
         isOpen = true;
         if (panel != null) panel.SetActive(true);
-        if (followButton != null) followButton.SetIsOnWithoutNotify(false);
+        if (followButton != null)
+        {
+            followButton.gameObject.SetActive(true);
+            followButton.SetIsOnWithoutNotify(false);
+        }
         Refresh();
     }
 
@@ -121,6 +125,7 @@ public class AdventurerStatsPanel : MonoBehaviour
         current = null;
         isOpen = false;
         if (panel != null) panel.SetActive(false);
+        if (followButton != null) followButton.gameObject.SetActive(false);
     }
 
     private void Update()

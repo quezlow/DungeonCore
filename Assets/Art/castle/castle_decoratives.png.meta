@@ -1,0 +1,2210 @@
+fileFormatVersion: 2
+guid: 0f914ab4d3234974792ad7c3cdef362a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -2522927238186655649
+    second: castle_decoratives_0
+  - first:
+      213: -6512920312715653228
+    second: castle_decoratives_1
+  - first:
+      213: -1921047848579953788
+    second: castle_decoratives_2
+  - first:
+      213: -3281495583386424916
+    second: castle_decoratives_3
+  - first:
+      213: 8325976647344075076
+    second: castle_decoratives_4
+  - first:
+      213: -453732641297612517
+    second: castle_decoratives_5
+  - first:
+      213: 2637542295586228568
+    second: castle_decoratives_6
+  - first:
+      213: -3554892866041286680
+    second: castle_decoratives_7
+  - first:
+      213: -9089423206271795564
+    second: castle_decoratives_8
+  - first:
+      213: -4597615313703039657
+    second: castle_decoratives_9
+  - first:
+      213: -4612515645708430666
+    second: castle_decoratives_10
+  - first:
+      213: 6756414684965166916
+    second: castle_decoratives_11
+  - first:
+      213: 7792105532121337459
+    second: castle_decoratives_12
+  - first:
+      213: 8647400083593562387
+    second: castle_decoratives_13
+  - first:
+      213: -6234540246126086739
+    second: castle_decoratives_14
+  - first:
+      213: -4031364237839458465
+    second: castle_decoratives_15
+  - first:
+      213: 1162396428397416408
+    second: castle_decoratives_16
+  - first:
+      213: -6742764929369195665
+    second: castle_decoratives_17
+  - first:
+      213: 4738414839909611502
+    second: castle_decoratives_18
+  - first:
+      213: -6952923386928535178
+    second: castle_decoratives_19
+  - first:
+      213: -6472904524064781694
+    second: castle_decoratives_20
+  - first:
+      213: -5257784997621132299
+    second: castle_decoratives_21
+  - first:
+      213: -1903087996524175630
+    second: castle_decoratives_22
+  - first:
+      213: 8603055439276808468
+    second: castle_decoratives_23
+  - first:
+      213: -553156790229390866
+    second: castle_decoratives_24
+  - first:
+      213: 7227015662487873439
+    second: castle_decoratives_25
+  - first:
+      213: 5884971249683128568
+    second: castle_decoratives_26
+  - first:
+      213: -8363197330313744105
+    second: castle_decoratives_27
+  - first:
+      213: -9032340087145307982
+    second: castle_decoratives_28
+  - first:
+      213: -8153669187473550694
+    second: castle_decoratives_29
+  - first:
+      213: -4987958046303898763
+    second: castle_decoratives_30
+  - first:
+      213: 1050976395113100735
+    second: castle_decoratives_31
+  - first:
+      213: 4765703542746943305
+    second: castle_decoratives_32
+  - first:
+      213: -8483785381700780061
+    second: castle_decoratives_33
+  - first:
+      213: -8210291239104572636
+    second: castle_decoratives_34
+  - first:
+      213: -96998360945381837
+    second: castle_decoratives_35
+  - first:
+      213: 7746701699067423098
+    second: castle_decoratives_36
+  - first:
+      213: -7820752827908710126
+    second: castle_decoratives_37
+  - first:
+      213: -4147819404557000523
+    second: castle_decoratives_38
+  - first:
+      213: -5679068812657768339
+    second: castle_decoratives_39
+  - first:
+      213: -6518057664750006533
+    second: castle_decoratives_40
+  - first:
+      213: 8035422124206901755
+    second: castle_decoratives_41
+  - first:
+      213: 7248497875148410380
+    second: castle_decoratives_42
+  - first:
+      213: -5003156332490220346
+    second: castle_decoratives_43
+  - first:
+      213: -7257306217323401697
+    second: castle_decoratives_44
+  - first:
+      213: 4349047505980581876
+    second: castle_decoratives_45
+  - first:
+      213: 3144507634561456347
+    second: castle_decoratives_46
+  - first:
+      213: 9193680258120443791
+    second: castle_decoratives_47
+  - first:
+      213: 5194496722656218447
+    second: castle_decoratives_48
+  - first:
+      213: 8454701097699811120
+    second: castle_decoratives_49
+  - first:
+      213: 2741902612577074552
+    second: castle_decoratives_50
+  - first:
+      213: 631332524341729864
+    second: castle_decoratives_51
+  - first:
+      213: -4983838052297205626
+    second: castle_decoratives_52
+  - first:
+      213: -5154801015741151760
+    second: castle_decoratives_53
+  - first:
+      213: -4498281591802528420
+    second: castle_decoratives_54
+  - first:
+      213: 1966902583705561255
+    second: castle_decoratives_55
+  - first:
+      213: 1821662567081743340
+    second: castle_decoratives_56
+  - first:
+      213: 132254658673996325
+    second: castle_decoratives_57
+  - first:
+      213: 2888118339540951978
+    second: castle_decoratives_58
+  - first:
+      213: 5422025903099011531
+    second: castle_decoratives_59
+  - first:
+      213: -2775194046160512270
+    second: castle_decoratives_60
+  - first:
+      213: -1828671844158259135
+    second: castle_decoratives_61
+  - first:
+      213: 815079410179873537
+    second: castle_decoratives_62
+  - first:
+      213: 6176520078125403435
+    second: castle_decoratives_63
+  - first:
+      213: -2272919624690988935
+    second: castle_decoratives_64
+  - first:
+      213: 6803471495654291496
+    second: castle_decoratives_65
+  - first:
+      213: -4151611239541120051
+    second: castle_decoratives_66
+  - first:
+      213: -6632045186204879656
+    second: castle_decoratives_67
+  - first:
+      213: -6436295737714014739
+    second: castle_decoratives_68
+  - first:
+      213: 1718256228610815590
+    second: castle_decoratives_69
+  - first:
+      213: 4568516080912280492
+    second: castle_decoratives_70
+  - first:
+      213: -6998299806497152160
+    second: castle_decoratives_71
+  - first:
+      213: -2180675193273996989
+    second: castle_decoratives_72
+  - first:
+      213: -7650428078609700103
+    second: castle_decoratives_73
+  - first:
+      213: -1593210282220843188
+    second: castle_decoratives_74
+  - first:
+      213: -2934689205381146658
+    second: castle_decoratives_75
+  - first:
+      213: 7840608998969875724
+    second: castle_decoratives_76
+  - first:
+      213: 4208509041739704480
+    second: castle_decoratives_77
+  - first:
+      213: 2438030998593415902
+    second: castle_decoratives_78
+  - first:
+      213: -808861153391735859
+    second: castle_decoratives_79
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: castle_decoratives_0
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 463
+        width: 30
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f502abd3b03ccfcd0800000000000000
+      internalID: -2522927238186655649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_1
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 463
+        width: 30
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49f48268b757d95a0800000000000000
+      internalID: -6512920312715653228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_2
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 463
+        width: 34
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48b0ddce8211755e0800000000000000
+      internalID: -1921047848579953788
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_3
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 428
+        width: 66
+        height: 78
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca92d3c2729c572d0800000000000000
+      internalID: -3281495583386424916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_4
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 428
+        width: 66
+        height: 78
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4413429d5afcb8370800000000000000
+      internalID: 8325976647344075076
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_5
+      rect:
+        serializedVersion: 2
+        x: 287
+        y: 433
+        width: 66
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b11c474119404b9f0800000000000000
+      internalID: -453732641297612517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_6
+      rect:
+        serializedVersion: 2
+        x: 368
+        y: 433
+        width: 66
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8594c785ebe6a9420800000000000000
+      internalID: 2637542295586228568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_7
+      rect:
+        serializedVersion: 2
+        x: 463
+        y: 464
+        width: 34
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8efe901e5cb7aaec0800000000000000
+      internalID: -3554892866041286680
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_8
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 423
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49e3af070c1ebd180800000000000000
+      internalID: -9089423206271795564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_9
+      rect:
+        serializedVersion: 2
+        x: 42
+        y: 415
+        width: 10
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75d85dc3b3df130c0800000000000000
+      internalID: -4597615313703039657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_10
+      rect:
+        serializedVersion: 2
+        x: 70
+        y: 415
+        width: 18
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b21e98557d0dffb0800000000000000
+      internalID: -4612515645708430666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_11
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 401
+        width: 34
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44fd494eb5b93cd50800000000000000
+      internalID: 6756414684965166916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_12
+      rect:
+        serializedVersion: 2
+        x: 483
+        y: 401
+        width: 27
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37ec27672be132c60800000000000000
+      internalID: 7792105532121337459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_13
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 359
+        width: 29
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31907456f8cb10870800000000000000
+      internalID: 8647400083593562387
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_14
+      rect:
+        serializedVersion: 2
+        x: 34
+        y: 357
+        width: 27
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da537cb9da67a79a0800000000000000
+      internalID: -6234540246126086739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_15
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 351
+        width: 31
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5f9d53b597bd08c0800000000000000
+      internalID: -4031364237839458465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_16
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 366
+        width: 30
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8df8fca9469a12010800000000000000
+      internalID: 1162396428397416408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_17
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 351
+        width: 33
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6bbcfc7503ec62a0800000000000000
+      internalID: -6742764929369195665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_18
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 366
+        width: 34
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee77043113b32c140800000000000000
+      internalID: 4738414839909611502
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_19
+      rect:
+        serializedVersion: 2
+        x: 223
+        y: 369
+        width: 34
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6796e9b8401428f90800000000000000
+      internalID: -6952923386928535178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_20
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 354
+        width: 33
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28a891a51af9b26a0800000000000000
+      internalID: -6472904524064781694
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_21
+      rect:
+        serializedVersion: 2
+        x: 289
+        y: 369
+        width: 30
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f31a6fc6689807b0800000000000000
+      internalID: -5257784997621132299
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_22
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 354
+        width: 31
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2feddd6dc8fd695e0800000000000000
+      internalID: -1903087996524175630
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_23
+      rect:
+        serializedVersion: 2
+        x: 355
+        y: 298
+        width: 27
+        height: 111
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 41916115751346770800000000000000
+      internalID: 8603055439276808468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_24
+      rect:
+        serializedVersion: 2
+        x: 386
+        y: 362
+        width: 29
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee9284d74dac258f0800000000000000
+      internalID: -553156790229390866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_25
+      rect:
+        serializedVersion: 2
+        x: 421
+        y: 375
+        width: 23
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9726c464748b4460800000000000000
+      internalID: 7227015662487873439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_26
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 295
+        width: 20
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f0efb2fb2e9ba150800000000000000
+      internalID: 5884971249683128568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_27
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 295
+        width: 20
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71177249654ffeb80800000000000000
+      internalID: -8363197330313744105
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_28
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 304
+        width: 20
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b0ee2fcb8ea6a280800000000000000
+      internalID: -9032340087145307982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_29
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 304
+        width: 20
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a925790f21958de80800000000000000
+      internalID: -8153669187473550694
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_30
+      rect:
+        serializedVersion: 2
+        x: 297
+        y: 298
+        width: 46
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 573318f859637cab0800000000000000
+      internalID: -4987958046303898763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_31
+      rect:
+        serializedVersion: 2
+        x: 466
+        y: 337
+        width: 27
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb5790a8671d59e00800000000000000
+      internalID: 1050976395113100735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_32
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 304
+        width: 20
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94f80425f1e232240800000000000000
+      internalID: 4765703542746943305
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_33
+      rect:
+        serializedVersion: 2
+        x: 150
+        y: 304
+        width: 20
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3efb215f42a834a80800000000000000
+      internalID: -8483785381700780061
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_34
+      rect:
+        serializedVersion: 2
+        x: 386
+        y: 311
+        width: 28
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4239ba63e9f2f0e80800000000000000
+      internalID: -8210291239104572636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_35
+      rect:
+        serializedVersion: 2
+        x: 421
+        y: 311
+        width: 23
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33e2e00318467aef0800000000000000
+      internalID: -96998360945381837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_36
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 245
+        width: 97
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7924d9c620d18b60800000000000000
+      internalID: 7746701699067423098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_37
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 251
+        width: 61
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 211ae583dba177390800000000000000
+      internalID: -7820752827908710126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_38
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 245
+        width: 98
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b068e64a3cff66c0800000000000000
+      internalID: -4147819404557000523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_39
+      rect:
+        serializedVersion: 2
+        x: 466
+        y: 279
+        width: 28
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d68c88ef005ef21b0800000000000000
+      internalID: -5679068812657768339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_40
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 206
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfe401b86153b85a0800000000000000
+      internalID: -6518057664750006533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_41
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 206
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf9caa539dd838f60800000000000000
+      internalID: 8035422124206901755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_42
+      rect:
+        serializedVersion: 2
+        x: 264
+        y: 237
+        width: 14
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0e056bc966d79460800000000000000
+      internalID: 7248497875148410380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_43
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 237
+        width: 14
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6cc9c2ec2d7319ab0800000000000000
+      internalID: -5003156332490220346
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_44
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 237
+        width: 14
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1e643a327ed84b90800000000000000
+      internalID: -7257306217323401697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_45
+      rect:
+        serializedVersion: 2
+        x: 403
+        y: 237
+        width: 14
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f765491aabea5c30800000000000000
+      internalID: 4349047505980581876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_46
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 224
+        width: 13
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd81a87880983ab20800000000000000
+      internalID: 3144507634561456347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_47
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 198
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f876acb0c73869f70800000000000000
+      internalID: 9193680258120443791
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_48
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 155
+        width: 61
+        height: 70
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4dcad46f3f861840800000000000000
+      internalID: 5194496722656218447
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_49
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 198
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03f908a7ad1255570800000000000000
+      internalID: 8454701097699811120
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_50
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 191
+        width: 13
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87d3f5f16e13d0620800000000000000
+      internalID: 2741902612577074552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_51
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 191
+        width: 13
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84a1a800691f2c800800000000000000
+      internalID: 631332524341729864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_52
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 191
+        width: 13
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68810ca62b9d5dab0800000000000000
+      internalID: -4983838052297205626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_53
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 191
+        width: 13
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f50de899c77678b0800000000000000
+      internalID: -5154801015741151760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_54
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 173
+        width: 13
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5d7ee4a9b4e291c0800000000000000
+      internalID: -4498281591802528420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_55
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 173
+        width: 12
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a861919a77db4b10800000000000000
+      internalID: 1966902583705561255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_56
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 149
+        width: 97
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce398830478d74910800000000000000
+      internalID: 1821662567081743340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_57
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 149
+        width: 98
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 522772e49ecd5d100800000000000000
+      internalID: 132254658673996325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_58
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 110
+        width: 13
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa321a1f358a41820800000000000000
+      internalID: 2888118339540951978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_59
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 110
+        width: 13
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc1ee2de4d7ee3b40800000000000000
+      internalID: 5422025903099011531
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_60
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 110
+        width: 13
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fad2d7f7b78c79d0800000000000000
+      internalID: -2775194046160512270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_61
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 110
+        width: 13
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 140403e75a04f96e0800000000000000
+      internalID: -1828671844158259135
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_62
+      rect:
+        serializedVersion: 2
+        x: 473
+        y: 128
+        width: 13
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10b9183b76ebf4b00800000000000000
+      internalID: 815079410179873537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_63
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 110
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2d8bb4594867b550800000000000000
+      internalID: 6176520078125403435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_64
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 102
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 978874fc4a7f470e0800000000000000
+      internalID: -2272919624690988935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_65
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 59
+        width: 61
+        height: 70
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82838f96749ca6e50800000000000000
+      internalID: 6803471495654291496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_66
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 102
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc3e1a5e2938266c0800000000000000
+      internalID: -4151611239541120051
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_67
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 110
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d43bed8a0e36f3a0800000000000000
+      internalID: -6632045186204879656
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_68
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 53
+        width: 97
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de50234a02fada6a0800000000000000
+      internalID: -6436295737714014739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_69
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 53
+        width: 98
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 666337bafe878d710800000000000000
+      internalID: 1718256228610815590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_70
+      rect:
+        serializedVersion: 2
+        x: 266
+        y: 10
+        width: 13
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cabaf69ab21a66f30800000000000000
+      internalID: 4568516080912280492
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_71
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 10
+        width: 13
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0636d02976b01ee90800000000000000
+      internalID: -6998299806497152160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_72
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 10
+        width: 13
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 349a566277facb1e0800000000000000
+      internalID: -2180675193273996989
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_73
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 10
+        width: 13
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fa6bca323834d590800000000000000
+      internalID: -7650428078609700103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_74
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 14
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4f0ab380b7c3e9e0800000000000000
+      internalID: -1593210282220843188
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_75
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 6
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed7551367b3e547d0800000000000000
+      internalID: -2934689205381146658
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_76
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 0
+        width: 20
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0d945ed7507fcc60800000000000000
+      internalID: 7840608998969875724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_77
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 0
+        width: 20
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a82ae20da0a76a30800000000000000
+      internalID: 4208509041739704480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_78
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 6
+        width: 66
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eda2d86a640a5d120800000000000000
+      internalID: 2438030998593415902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: castle_decoratives_79
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 14
+        width: 20
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dcb0977011956c4f0800000000000000
+      internalID: -808861153391735859
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      castle_decoratives_0: -2522927238186655649
+      castle_decoratives_1: -6512920312715653228
+      castle_decoratives_10: -4612515645708430666
+      castle_decoratives_11: 6756414684965166916
+      castle_decoratives_12: 7792105532121337459
+      castle_decoratives_13: 8647400083593562387
+      castle_decoratives_14: -6234540246126086739
+      castle_decoratives_15: -4031364237839458465
+      castle_decoratives_16: 1162396428397416408
+      castle_decoratives_17: -6742764929369195665
+      castle_decoratives_18: 4738414839909611502
+      castle_decoratives_19: -6952923386928535178
+      castle_decoratives_2: -1921047848579953788
+      castle_decoratives_20: -6472904524064781694
+      castle_decoratives_21: -5257784997621132299
+      castle_decoratives_22: -1903087996524175630
+      castle_decoratives_23: 8603055439276808468
+      castle_decoratives_24: -553156790229390866
+      castle_decoratives_25: 7227015662487873439
+      castle_decoratives_26: 5884971249683128568
+      castle_decoratives_27: -8363197330313744105
+      castle_decoratives_28: -9032340087145307982
+      castle_decoratives_29: -8153669187473550694
+      castle_decoratives_3: -3281495583386424916
+      castle_decoratives_30: -4987958046303898763
+      castle_decoratives_31: 1050976395113100735
+      castle_decoratives_32: 4765703542746943305
+      castle_decoratives_33: -8483785381700780061
+      castle_decoratives_34: -8210291239104572636
+      castle_decoratives_35: -96998360945381837
+      castle_decoratives_36: 7746701699067423098
+      castle_decoratives_37: -7820752827908710126
+      castle_decoratives_38: -4147819404557000523
+      castle_decoratives_39: -5679068812657768339
+      castle_decoratives_4: 8325976647344075076
+      castle_decoratives_40: -6518057664750006533
+      castle_decoratives_41: 8035422124206901755
+      castle_decoratives_42: 7248497875148410380
+      castle_decoratives_43: -5003156332490220346
+      castle_decoratives_44: -7257306217323401697
+      castle_decoratives_45: 4349047505980581876
+      castle_decoratives_46: 3144507634561456347
+      castle_decoratives_47: 9193680258120443791
+      castle_decoratives_48: 5194496722656218447
+      castle_decoratives_49: 8454701097699811120
+      castle_decoratives_5: -453732641297612517
+      castle_decoratives_50: 2741902612577074552
+      castle_decoratives_51: 631332524341729864
+      castle_decoratives_52: -4983838052297205626
+      castle_decoratives_53: -5154801015741151760
+      castle_decoratives_54: -4498281591802528420
+      castle_decoratives_55: 1966902583705561255
+      castle_decoratives_56: 1821662567081743340
+      castle_decoratives_57: 132254658673996325
+      castle_decoratives_58: 2888118339540951978
+      castle_decoratives_59: 5422025903099011531
+      castle_decoratives_6: 2637542295586228568
+      castle_decoratives_60: -2775194046160512270
+      castle_decoratives_61: -1828671844158259135
+      castle_decoratives_62: 815079410179873537
+      castle_decoratives_63: 6176520078125403435
+      castle_decoratives_64: -2272919624690988935
+      castle_decoratives_65: 6803471495654291496
+      castle_decoratives_66: -4151611239541120051
+      castle_decoratives_67: -6632045186204879656
+      castle_decoratives_68: -6436295737714014739
+      castle_decoratives_69: 1718256228610815590
+      castle_decoratives_7: -3554892866041286680
+      castle_decoratives_70: 4568516080912280492
+      castle_decoratives_71: -6998299806497152160
+      castle_decoratives_72: -2180675193273996989
+      castle_decoratives_73: -7650428078609700103
+      castle_decoratives_74: -1593210282220843188
+      castle_decoratives_75: -2934689205381146658
+      castle_decoratives_76: 7840608998969875724
+      castle_decoratives_77: 4208509041739704480
+      castle_decoratives_78: 2438030998593415902
+      castle_decoratives_79: -808861153391735859
+      castle_decoratives_8: -9089423206271795564
+      castle_decoratives_9: -4597615313703039657
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

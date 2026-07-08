@@ -30,7 +30,11 @@ public class MonsterInfoPanel : MonoBehaviour
     private void Awake()
     {
         if (panel != null) panel.SetActive(false);
-        if (followButton != null) followButton.onValueChanged.AddListener(OnFollowToggled);
+        if (followButton != null)
+        {
+            followButton.onValueChanged.AddListener(OnFollowToggled);
+            followButton.gameObject.SetActive(false);
+        }
     }
 
     private void OnFollowToggled(bool on)
@@ -52,6 +56,8 @@ public class MonsterInfoPanel : MonoBehaviour
 
         bool show = mon != null;
         if (panel != null && panel.activeSelf != show) panel.SetActive(show);
+        if (followButton != null && followButton.gameObject.activeSelf != show)
+            followButton.gameObject.SetActive(show);
 
         if (currentMon != null && currentMon != mon)
             DungeonCameraController.Instance?.ClearFollowTargetIf(currentMon.transform);
