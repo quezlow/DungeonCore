@@ -1,0 +1,936 @@
+fileFormatVersion: 2
+guid: daeedca8d1448034d88dca9069b63e0f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 504306920292140212
+    second: Mill_outside_shadows_0
+  - first:
+      213: -456012787978781553
+    second: Mill_outside_shadows_1
+  - first:
+      213: -8827091335605670396
+    second: Mill_outside_shadows_2
+  - first:
+      213: -3509933468114659147
+    second: Mill_outside_shadows_3
+  - first:
+      213: -5247854330018692221
+    second: Mill_outside_shadows_4
+  - first:
+      213: -7206333106973612390
+    second: Mill_outside_shadows_5
+  - first:
+      213: -6363049550476362316
+    second: Mill_outside_shadows_6
+  - first:
+      213: -2863337758164903251
+    second: Mill_outside_shadows_7
+  - first:
+      213: 2536509665699856867
+    second: Mill_outside_shadows_8
+  - first:
+      213: -6584353498738854122
+    second: Mill_outside_shadows_9
+  - first:
+      213: 3714779712944978628
+    second: Mill_outside_shadows_10
+  - first:
+      213: -3532166402633593634
+    second: Mill_outside_shadows_11
+  - first:
+      213: 5554259995381381364
+    second: Mill_outside_shadows_12
+  - first:
+      213: -7684253844896411414
+    second: Mill_outside_shadows_13
+  - first:
+      213: 3664416964784321391
+    second: Mill_outside_shadows_14
+  - first:
+      213: 442181841238794151
+    second: Mill_outside_shadows_15
+  - first:
+      213: 7569490967655725711
+    second: Mill_outside_shadows_16
+  - first:
+      213: 6489506975207668505
+    second: Mill_outside_shadows_17
+  - first:
+      213: -6327130633554260287
+    second: Mill_outside_shadows_18
+  - first:
+      213: 2703976131222055578
+    second: Mill_outside_shadows_19
+  - first:
+      213: 2365027505483009064
+    second: Mill_outside_shadows_20
+  - first:
+      213: -5363475892607939781
+    second: Mill_outside_shadows_21
+  - first:
+      213: 3993785200430555133
+    second: Mill_outside_shadows_22
+  - first:
+      213: 8817230507432050826
+    second: Mill_outside_shadows_23
+  - first:
+      213: 7020248692346283798
+    second: Mill_outside_shadows_24
+  - first:
+      213: 648054065596320751
+    second: Mill_outside_shadows_25
+  - first:
+      213: -5781766304101520030
+    second: Mill_outside_shadows_26
+  - first:
+      213: -1006916980699481503
+    second: Mill_outside_shadows_27
+  - first:
+      213: 7986538853975039449
+    second: Mill_outside_shadows_28
+  - first:
+      213: -9169143766903547928
+    second: Mill_outside_shadows_29
+  - first:
+      213: 2278244067194903078
+    second: Mill_outside_shadows_30
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 16
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Mill_outside_shadows_0
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 511
+        width: 112
+        height: 235
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b4c8c9d878aff600800000000000000
+      internalID: 504306920292140212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_1
+      rect:
+        serializedVersion: 2
+        x: 154
+        y: 511
+        width: 149
+        height: 235
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8c3d7f09caeba9f0800000000000000
+      internalID: -456012787978781553
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_2
+      rect:
+        serializedVersion: 2
+        x: 331
+        y: 511
+        width: 112
+        height: 235
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40eab4db23fdf7580800000000000000
+      internalID: -8827091335605670396
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_3
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 511
+        width: 149
+        height: 235
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b855cf6b163a4fc0800000000000000
+      internalID: -3509933468114659147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_4
+      rect:
+        serializedVersion: 2
+        x: 639
+        y: 715
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3838d3a8a40eb27b0800000000000000
+      internalID: -5247854330018692221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_5
+      rect:
+        serializedVersion: 2
+        x: 690
+        y: 715
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9663b15836fdfb90800000000000000
+      internalID: -7206333106973612390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_6
+      rect:
+        serializedVersion: 2
+        x: 639
+        y: 683
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4bdb5af8528e1b7a0800000000000000
+      internalID: -6363049550476362316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_7
+      rect:
+        serializedVersion: 2
+        x: 690
+        y: 683
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: daa1e94ca716348d0800000000000000
+      internalID: -2863337758164903251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_8
+      rect:
+        serializedVersion: 2
+        x: 639
+        y: 651
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e182691a1e733320800000000000000
+      internalID: 2536509665699856867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_9
+      rect:
+        serializedVersion: 2
+        x: 690
+        y: 651
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 617f118d06daf94a0800000000000000
+      internalID: -6584353498738854122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_10
+      rect:
+        serializedVersion: 2
+        x: 647
+        y: 575
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4cab9e8977c8d8330800000000000000
+      internalID: 3714779712944978628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_11
+      rect:
+        serializedVersion: 2
+        x: 711
+        y: 575
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edc847bfe593bfec0800000000000000
+      internalID: -3532166402633593634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_12
+      rect:
+        serializedVersion: 2
+        x: 647
+        y: 511
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f8bedeb902b41d40800000000000000
+      internalID: 5554259995381381364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_13
+      rect:
+        serializedVersion: 2
+        x: 12
+        y: 332
+        width: 168
+        height: 168
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae0150b47db0c5590800000000000000
+      internalID: -7684253844896411414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_14
+      rect:
+        serializedVersion: 2
+        x: 204
+        y: 332
+        width: 168
+        height: 168
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6372e680df9ad230800000000000000
+      internalID: 3664416964784321391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_15
+      rect:
+        serializedVersion: 2
+        x: 396
+        y: 332
+        width: 168
+        height: 168
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7af9a25ba02f22600800000000000000
+      internalID: 442181841238794151
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_16
+      rect:
+        serializedVersion: 2
+        x: 596
+        y: 404
+        width: 87
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8ab5a12eeb3c0960800000000000000
+      internalID: 7569490967655725711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_17
+      rect:
+        serializedVersion: 2
+        x: 703
+        y: 404
+        width: 65
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91b3ca8063c5f0a50800000000000000
+      internalID: 6489506975207668505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_18
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 58
+        width: 132
+        height: 241
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ce818b16348138a0800000000000000
+      internalID: -6327130633554260287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_19
+      rect:
+        serializedVersion: 2
+        x: 181
+        y: 159
+        width: 128
+        height: 148
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9a20ae07f3768520800000000000000
+      internalID: 2703976131222055578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_20
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 223
+        width: 34
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82cc75c5cf342d020800000000000000
+      internalID: 2365027505483009064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_21
+      rect:
+        serializedVersion: 2
+        x: 356
+        y: 85
+        width: 184
+        height: 214
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3b8bb3b71b1195b0800000000000000
+      internalID: -5363475892607939781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_22
+      rect:
+        serializedVersion: 2
+        x: 548
+        y: 85
+        width: 184
+        height: 214
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dff10e4da76cc6730800000000000000
+      internalID: 3993785200430555133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_23
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 95
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a80893a4e681d5a70800000000000000
+      internalID: 8817230507432050826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_24
+      rect:
+        serializedVersion: 2
+        x: 226
+        y: 95
+        width: 28
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6176336adfeec6160800000000000000
+      internalID: 7020248692346283798
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_25
+      rect:
+        serializedVersion: 2
+        x: 295
+        y: 95
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: febcd173db95ef800800000000000000
+      internalID: 648054065596320751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_26
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 31
+        width: 50
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26da4b5fd2a03cfa0800000000000000
+      internalID: -5781766304101520030
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_27
+      rect:
+        serializedVersion: 2
+        x: 226
+        y: 31
+        width: 28
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16a39174756b602f0800000000000000
+      internalID: -1006916980699481503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_28
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 37
+        width: 18
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9dd9900f5c2e5de60800000000000000
+      internalID: 7986538853975039449
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_29
+      rect:
+        serializedVersion: 2
+        x: 359
+        y: 47
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e71a3ff258a0c080800000000000000
+      internalID: -9169143766903547928
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_outside_shadows_30
+      rect:
+        serializedVersion: 2
+        x: 407
+        y: 39
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62a1bc098e2fd9f10800000000000000
+      internalID: 2278244067194903078
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Mill_outside_shadows_0: 504306920292140212
+      Mill_outside_shadows_1: -456012787978781553
+      Mill_outside_shadows_10: 3714779712944978628
+      Mill_outside_shadows_11: -3532166402633593634
+      Mill_outside_shadows_12: 5554259995381381364
+      Mill_outside_shadows_13: -7684253844896411414
+      Mill_outside_shadows_14: 3664416964784321391
+      Mill_outside_shadows_15: 442181841238794151
+      Mill_outside_shadows_16: 7569490967655725711
+      Mill_outside_shadows_17: 6489506975207668505
+      Mill_outside_shadows_18: -6327130633554260287
+      Mill_outside_shadows_19: 2703976131222055578
+      Mill_outside_shadows_2: -8827091335605670396
+      Mill_outside_shadows_20: 2365027505483009064
+      Mill_outside_shadows_21: -5363475892607939781
+      Mill_outside_shadows_22: 3993785200430555133
+      Mill_outside_shadows_23: 8817230507432050826
+      Mill_outside_shadows_24: 7020248692346283798
+      Mill_outside_shadows_25: 648054065596320751
+      Mill_outside_shadows_26: -5781766304101520030
+      Mill_outside_shadows_27: -1006916980699481503
+      Mill_outside_shadows_28: 7986538853975039449
+      Mill_outside_shadows_29: -9169143766903547928
+      Mill_outside_shadows_3: -3509933468114659147
+      Mill_outside_shadows_30: 2278244067194903078
+      Mill_outside_shadows_4: -5247854330018692221
+      Mill_outside_shadows_5: -7206333106973612390
+      Mill_outside_shadows_6: -6363049550476362316
+      Mill_outside_shadows_7: -2863337758164903251
+      Mill_outside_shadows_8: 2536509665699856867
+      Mill_outside_shadows_9: -6584353498738854122
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

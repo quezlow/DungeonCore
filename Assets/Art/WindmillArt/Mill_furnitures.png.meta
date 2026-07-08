@@ -1,0 +1,1508 @@
+fileFormatVersion: 2
+guid: acffcb34f427f754b97424814e36ca99
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3461246086627783018
+    second: Mill_furnitures_0
+  - first:
+      213: -5343101379848249412
+    second: Mill_furnitures_1
+  - first:
+      213: -4238737724918105143
+    second: Mill_furnitures_2
+  - first:
+      213: -1431638944343192151
+    second: Mill_furnitures_3
+  - first:
+      213: 508620151876464900
+    second: Mill_furnitures_4
+  - first:
+      213: -741920223717063651
+    second: Mill_furnitures_5
+  - first:
+      213: -5194101622629833292
+    second: Mill_furnitures_6
+  - first:
+      213: 2311358133271777927
+    second: Mill_furnitures_7
+  - first:
+      213: 5017733461297464758
+    second: Mill_furnitures_8
+  - first:
+      213: -4866351034515138621
+    second: Mill_furnitures_9
+  - first:
+      213: -6615339756419063510
+    second: Mill_furnitures_10
+  - first:
+      213: -1454195774986907978
+    second: Mill_furnitures_11
+  - first:
+      213: 487994168374199737
+    second: Mill_furnitures_12
+  - first:
+      213: -6163503915206657155
+    second: Mill_furnitures_13
+  - first:
+      213: -603748722625306266
+    second: Mill_furnitures_14
+  - first:
+      213: 2245304950782891376
+    second: Mill_furnitures_15
+  - first:
+      213: 5063526526574798483
+    second: Mill_furnitures_16
+  - first:
+      213: 2934829143888433616
+    second: Mill_furnitures_17
+  - first:
+      213: 1120302872287824773
+    second: Mill_furnitures_18
+  - first:
+      213: -4637086344154405136
+    second: Mill_furnitures_19
+  - first:
+      213: -4948967021508394049
+    second: Mill_furnitures_20
+  - first:
+      213: 7576262620177314111
+    second: Mill_furnitures_21
+  - first:
+      213: -1029816678956486443
+    second: Mill_furnitures_22
+  - first:
+      213: -758312091954896976
+    second: Mill_furnitures_23
+  - first:
+      213: 3757890129135900038
+    second: Mill_furnitures_24
+  - first:
+      213: -8112784050666167430
+    second: Mill_furnitures_25
+  - first:
+      213: 8221236774871413503
+    second: Mill_furnitures_26
+  - first:
+      213: -1933581657484736028
+    second: Mill_furnitures_27
+  - first:
+      213: -6165985732945381261
+    second: Mill_furnitures_28
+  - first:
+      213: 5503978170843941414
+    second: Mill_furnitures_29
+  - first:
+      213: 4866453027414101869
+    second: Mill_furnitures_30
+  - first:
+      213: 7725106365592476497
+    second: Mill_furnitures_31
+  - first:
+      213: 5184451058197229354
+    second: Mill_furnitures_32
+  - first:
+      213: -7451000241450638753
+    second: Mill_furnitures_33
+  - first:
+      213: -4072140026575336894
+    second: Mill_furnitures_34
+  - first:
+      213: 1292979517489217907
+    second: Mill_furnitures_35
+  - first:
+      213: 2569495176520285106
+    second: Mill_furnitures_36
+  - first:
+      213: -8071148187744893663
+    second: Mill_furnitures_37
+  - first:
+      213: 6481131174514504129
+    second: Mill_furnitures_38
+  - first:
+      213: 1421635947392211663
+    second: Mill_furnitures_39
+  - first:
+      213: -6481942883317585081
+    second: Mill_furnitures_40
+  - first:
+      213: 8499655771568362104
+    second: Mill_furnitures_41
+  - first:
+      213: -1308863618971418965
+    second: Mill_furnitures_42
+  - first:
+      213: -1164025401770044815
+    second: Mill_furnitures_43
+  - first:
+      213: 5276105658230288182
+    second: Mill_furnitures_44
+  - first:
+      213: 5533341799368850760
+    second: Mill_furnitures_45
+  - first:
+      213: -6253986258988894534
+    second: Mill_furnitures_46
+  - first:
+      213: -6638864432406513326
+    second: Mill_furnitures_47
+  - first:
+      213: 1156654760196102876
+    second: Mill_furnitures_48
+  - first:
+      213: 9064277381063972197
+    second: Mill_furnitures_49
+  - first:
+      213: 7956563948369588385
+    second: Mill_furnitures_50
+  - first:
+      213: -1617101298297581421
+    second: Mill_furnitures_51
+  - first:
+      213: -8298283884799899702
+    second: Mill_furnitures_52
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Mill_furnitures_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 437
+        width: 18
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69e075ec50f27ffc0800000000000000
+      internalID: -3461246086627783018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_1
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 437
+        width: 18
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbfde3f9a9d79d5b0800000000000000
+      internalID: -5343101379848249412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_2
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 437
+        width: 23
+        height: 91
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cb753a3f7afc25c0800000000000000
+      internalID: -4238737724918105143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_3
+      rect:
+        serializedVersion: 2
+        x: 105
+        y: 437
+        width: 23
+        height: 91
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ad0fcb17fbc12ce0800000000000000
+      internalID: -1431638944343192151
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_4
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 437
+        width: 22
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 401b336555bfe0700800000000000000
+      internalID: 508620151876464900
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_5
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 437
+        width: 22
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d148aa5cc7b24b5f0800000000000000
+      internalID: -741920223717063651
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_6
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 437
+        width: 22
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b56edff718dae7b0800000000000000
+      internalID: -5194101622629833292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_7
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 437
+        width: 22
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 782df52e9f7931020800000000000000
+      internalID: 2311358133271777927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_8
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 437
+        width: 23
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b50a3a7ff192a540800000000000000
+      internalID: 5017733461297464758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_9
+      rect:
+        serializedVersion: 2
+        x: 298
+        y: 437
+        width: 23
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c7de53648f377cb0800000000000000
+      internalID: -4866351034515138621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_10
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 460
+        width: 66
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a216f168a879134a0800000000000000
+      internalID: -6615339756419063510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_11
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 460
+        width: 34
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6be0806b5a8a1dbe0800000000000000
+      internalID: -1454195774986907978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_12
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 341
+        width: 18
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b508625c14b5c600800000000000000
+      internalID: 487994168374199737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_13
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 341
+        width: 18
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7bb06248d5d67aa0800000000000000
+      internalID: -6163503915206657155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_14
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 341
+        width: 23
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 661a25e4cbd0f97f0800000000000000
+      internalID: -603748722625306266
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_15
+      rect:
+        serializedVersion: 2
+        x: 106
+        y: 341
+        width: 23
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07517d3e4fce82f10800000000000000
+      internalID: 2245304950782891376
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_16
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 341
+        width: 18
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39622475c82454640800000000000000
+      internalID: 5063526526574798483
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_17
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 341
+        width: 18
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d11fe59e8b9ab820800000000000000
+      internalID: 2934829143888433616
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_18
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 341
+        width: 23
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58bc097d68d1c8f00800000000000000
+      internalID: 1120302872287824773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_19
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 341
+        width: 23
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f6acdfc982c5afb0800000000000000
+      internalID: -4637086344154405136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_20
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 341
+        width: 18
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb38ed5f6bcb15bb0800000000000000
+      internalID: -4948967021508394049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_21
+      rect:
+        serializedVersion: 2
+        x: 302
+        y: 341
+        width: 18
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f313db856ba442960800000000000000
+      internalID: 7576262620177314111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_22
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 364
+        width: 66
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d0b60bcf2b55b1f0800000000000000
+      internalID: -1029816678956486443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_23
+      rect:
+        serializedVersion: 2
+        x: 424
+        y: 364
+        width: 49
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bf152a8b2fe975f0800000000000000
+      internalID: -758312091954896976
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_24
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 236
+        width: 65
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 685971c8925b62430800000000000000
+      internalID: 3757890129135900038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_25
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 236
+        width: 66
+        height: 55
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a73a698a3e9996f80800000000000000
+      internalID: -8112784050666167430
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_26
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 236
+        width: 34
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff2b69ce943b71270800000000000000
+      internalID: 8221236774871413503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_27
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 236
+        width: 66
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e949612ab98a25e0800000000000000
+      internalID: -1933581657484736028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_28
+      rect:
+        serializedVersion: 2
+        x: 351
+        y: 236
+        width: 66
+        height: 55
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 378f9a905a40e6aa0800000000000000
+      internalID: -6165985732945381261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_29
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 140
+        width: 65
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62a48ac2cfe026c40800000000000000
+      internalID: 5503978170843941414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_30
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 140
+        width: 66
+        height: 77
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6f442fae3d198340800000000000000
+      internalID: 4866453027414101869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_31
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 140
+        width: 66
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15b9f356f47153b60800000000000000
+      internalID: 7725106365592476497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_32
+      rect:
+        serializedVersion: 2
+        x: 287
+        y: 140
+        width: 66
+        height: 74
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2f6e3fd4ced2f740800000000000000
+      internalID: 5184451058197229354
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_33
+      rect:
+        serializedVersion: 2
+        x: 359
+        y: 140
+        width: 49
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f522cfae1cab89890800000000000000
+      internalID: -7451000241450638753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_34
+      rect:
+        serializedVersion: 2
+        x: 424
+        y: 140
+        width: 49
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24ac350983adc77c0800000000000000
+      internalID: -4072140026575336894
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_35
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 63
+        width: 65
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3710dc9450691f110800000000000000
+      internalID: 1292979517489217907
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_36
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 42
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2bb3290df3ea8a320800000000000000
+      internalID: 2569495176520285106
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_37
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 63
+        width: 66
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1258deb6c758dff80800000000000000
+      internalID: -8071148187744893663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_38
+      rect:
+        serializedVersion: 2
+        x: 112
+        y: 42
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c1b5a7f67a91f950800000000000000
+      internalID: 6481131174514504129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_39
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 32
+        width: 49
+        height: 75
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fca1d3cac5aaab310800000000000000
+      internalID: 1421635947392211663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_40
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 63
+        width: 38
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74beb795a438b06a0800000000000000
+      internalID: -6481942883317585081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_41
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 63
+        width: 38
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8725e6124e7d4f570800000000000000
+      internalID: 8499655771568362104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_42
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 63
+        width: 38
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: baeb6c3297bf5dde0800000000000000
+      internalID: -1308863618971418965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_43
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 63
+        width: 38
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17217f9701d88dfe0800000000000000
+      internalID: -1164025401770044815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_44
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 24
+        width: 33
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63fae34642e783940800000000000000
+      internalID: 5276105658230288182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_45
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 37
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84d7334bc016acc40800000000000000
+      internalID: 5533341799368850760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_46
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 7
+        width: 16
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab6facae1a06539a0800000000000000
+      internalID: -6253986258988894534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_47
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 7
+        width: 16
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2593f6219f30ed3a0800000000000000
+      internalID: -6638864432406513326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_48
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 11
+        width: 34
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdad04d40634d0010800000000000000
+      internalID: 1156654760196102876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_49
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5651de3e048cacd70800000000000000
+      internalID: 9064277381063972197
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_50
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 0
+        width: 16
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a0bf3f51c46b6e60800000000000000
+      internalID: 7956563948369588385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_51
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 0
+        width: 16
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 390562ddfe6ee89e0800000000000000
+      internalID: -1617101298297581421
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mill_furnitures_52
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 0
+        width: 16
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac74721e5c296dc80800000000000000
+      internalID: -8298283884799899702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Mill_furnitures_0: -3461246086627783018
+      Mill_furnitures_1: -5343101379848249412
+      Mill_furnitures_10: -6615339756419063510
+      Mill_furnitures_11: -1454195774986907978
+      Mill_furnitures_12: 487994168374199737
+      Mill_furnitures_13: -6163503915206657155
+      Mill_furnitures_14: -603748722625306266
+      Mill_furnitures_15: 2245304950782891376
+      Mill_furnitures_16: 5063526526574798483
+      Mill_furnitures_17: 2934829143888433616
+      Mill_furnitures_18: 1120302872287824773
+      Mill_furnitures_19: -4637086344154405136
+      Mill_furnitures_2: -4238737724918105143
+      Mill_furnitures_20: -4948967021508394049
+      Mill_furnitures_21: 7576262620177314111
+      Mill_furnitures_22: -1029816678956486443
+      Mill_furnitures_23: -758312091954896976
+      Mill_furnitures_24: 3757890129135900038
+      Mill_furnitures_25: -8112784050666167430
+      Mill_furnitures_26: 8221236774871413503
+      Mill_furnitures_27: -1933581657484736028
+      Mill_furnitures_28: -6165985732945381261
+      Mill_furnitures_29: 5503978170843941414
+      Mill_furnitures_3: -1431638944343192151
+      Mill_furnitures_30: 4866453027414101869
+      Mill_furnitures_31: 7725106365592476497
+      Mill_furnitures_32: 5184451058197229354
+      Mill_furnitures_33: -7451000241450638753
+      Mill_furnitures_34: -4072140026575336894
+      Mill_furnitures_35: 1292979517489217907
+      Mill_furnitures_36: 2569495176520285106
+      Mill_furnitures_37: -8071148187744893663
+      Mill_furnitures_38: 6481131174514504129
+      Mill_furnitures_39: 1421635947392211663
+      Mill_furnitures_4: 508620151876464900
+      Mill_furnitures_40: -6481942883317585081
+      Mill_furnitures_41: 8499655771568362104
+      Mill_furnitures_42: -1308863618971418965
+      Mill_furnitures_43: -1164025401770044815
+      Mill_furnitures_44: 5276105658230288182
+      Mill_furnitures_45: 5533341799368850760
+      Mill_furnitures_46: -6253986258988894534
+      Mill_furnitures_47: -6638864432406513326
+      Mill_furnitures_48: 1156654760196102876
+      Mill_furnitures_49: 9064277381063972197
+      Mill_furnitures_5: -741920223717063651
+      Mill_furnitures_50: 7956563948369588385
+      Mill_furnitures_51: -1617101298297581421
+      Mill_furnitures_52: -8298283884799899702
+      Mill_furnitures_6: -5194101622629833292
+      Mill_furnitures_7: 2311358133271777927
+      Mill_furnitures_8: 5017733461297464758
+      Mill_furnitures_9: -4866351034515138621
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

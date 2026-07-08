@@ -5817,7 +5817,7 @@ GameObject:
   - component: {fileID: 198049948}
   - component: {fileID: 198049949}
   m_Layer: 5
-  m_Name: FilterRow
+  m_Name: TabsRow
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8042,11 +8042,11 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 276071321}
-  - {fileID: 951573191}
   - {fileID: 464420088}
   - {fileID: 1649070918}
   - {fileID: 1496694435}
   - {fileID: 509774261}
+  - {fileID: 951573191}
   - {fileID: 562617508}
   - {fileID: 448064565}
   - {fileID: 579696906}
@@ -16222,7 +16222,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999915
+  m_Size: 0.99993634
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -19340,7 +19340,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00030489315}
+  m_AnchoredPosition: {x: 0, y: 0.00008088889}
   m_SizeDelta: {x: 0, y: 200}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &632888278
@@ -26085,11 +26085,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::QuestLogUI
   panel: {fileID: 1124520165}
   toggleKey: 24
-  content: {fileID: 1671346030}
+  activePage: {fileID: 1462715894}
+  completedPage: {fileID: 174778708}
+  notesPage: {fileID: 1269600046}
+  activeTabButton: {fileID: 253760457}
+  completedTabButton: {fileID: 1427835545}
+  notesTabButton: {fileID: 1634987311}
+  activeContent: {fileID: 1671346030}
+  completedContent: {fileID: 1253242187}
   questEntryPrefab: {fileID: 3777396060651721407, guid: 65b6d2ac8d973f74c9e2a5ff14e8de7b, type: 3}
   objectiveTextPrefab: {fileID: 513067648285359648, guid: f03a1c5f261f53f4cb543b11b08bf889, type: 3}
-  activeHeader: -- Active --
-  completedHeader: -- Completed --
+  selectedTab: {r: 1, g: 1, b: 1, a: 1}
+  unselectedTab: {r: 0.6, g: 0.6, b: 0.6, a: 1}
 --- !u!114 &951573193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26102,7 +26109,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c9d2d4d065f59b645b4744b878d1a0a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TodoListUI
-  content: {fileID: 1671346030}
+  content: {fileID: 133948260}
   todoItemPrefab: {fileID: 3353469558227778310, guid: da433655b832c8a498b1438aa60cd6d1, type: 3}
   inputField: {fileID: 2111426535}
   addButton: {fileID: 1710910160}
@@ -52804,7 +52811,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4997443845208880076, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_Size
-      value: 1
+      value: 0.61904764
       objectReference: {fileID: 0}
     - target: {fileID: 5716503611527018546, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_AnchoredPosition.y
