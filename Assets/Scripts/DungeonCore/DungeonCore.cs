@@ -85,6 +85,18 @@ public class DungeonCore : MonoBehaviour
 
     // ── Public Reads ──────────────────────────────────────────────
     public DungeonType DungeonType => dungeonType;
+
+    /// <summary>The core's signature colour for its type (matches the influence-ring palette).</summary>
+    public Color CoreColor => dungeonType switch
+    {
+        DungeonType.Fire => new Color(0.910f, 0.353f, 0.165f),
+        DungeonType.Water => new Color(0.165f, 0.659f, 0.784f),
+        DungeonType.Air => new Color(0.722f, 0.769f, 0.816f),
+        DungeonType.Earth => new Color(0.690f, 0.478f, 0.212f),
+        DungeonType.Dark => new Color(0.541f, 0.310f, 0.784f),
+        DungeonType.Light => new Color(0.949f, 0.886f, 0.690f),
+        _ => new Color(0.784f, 0.565f, 0.165f),
+    };
     public int DungeonLevel => dungeonLevel;
     public LevelTier CurrentTier => LevelTierUtil.FromFlatLevel(dungeonLevel).tier;
     public int CurrentRank => LevelTierUtil.FromFlatLevel(dungeonLevel).rank;

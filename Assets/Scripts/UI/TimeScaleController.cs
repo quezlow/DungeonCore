@@ -69,6 +69,16 @@ public class TimeScaleController : MonoBehaviour
 
     // ── Public API (wire to UI button OnClick) ────────────────────
 
+    private void Update()
+    {
+        if (PauseMenuController.IsMenuOpen) return;
+        if (Keybinds.IsTextInputActive()) return;
+        if (Keybinds.WasPressed(GameAction.SpeedPause)) SetPaused();
+        else if (Keybinds.WasPressed(GameAction.SpeedNormal)) SetNormal();
+        else if (Keybinds.WasPressed(GameAction.SpeedDouble)) SetDouble();
+        else if (Keybinds.WasPressed(GameAction.SpeedQuintuple)) SetQuintuple();
+    }
+
     public void SetPaused()
     {
         // Use PauseController so the rest of the game knows we're paused

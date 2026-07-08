@@ -20,6 +20,7 @@ public class QuestController : MonoBehaviour
     private QuestUI questUI;
 
     public List<string> handInQuestIDs = new();
+    public List<Quest> handInQuests = new();   // completed quests retained for the Quest Log
 
     private void Awake()
     {
@@ -101,6 +102,7 @@ public class QuestController : MonoBehaviour
         if (quest != null)
         {
             handInQuestIDs.Add(questID);
+            if (quest.quest != null && !handInQuests.Contains(quest.quest)) handInQuests.Add(quest.quest);
             activateQuests.Remove(quest);
             questUI?.UpdateQuestUI();
         }

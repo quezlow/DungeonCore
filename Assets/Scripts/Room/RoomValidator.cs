@@ -41,6 +41,9 @@ public static class RoomValidator
         // Step 1 — flood-fill to find room tiles.
         var roomTiles = FloodFill(anchorCell);
 
+        var coreCheck = CheckCoreConstraints(roomDef, roomTiles, TileInfluenceManager.Instance);
+        if (coreCheck != null) return coreCheck;
+
         // Step 2 — size check.
         if (roomTiles.Count < roomDef.minTileCount)
             return ValidationResult.Fail(
@@ -101,6 +104,9 @@ public static class RoomValidator
                 if (influence.IsTileMined(footprint[i]))
                     roomTiles.Add(footprint[i]);
 
+        var coreCheck = CheckCoreConstraints(roomDef, roomTiles, influence);
+        if (coreCheck != null) return coreCheck;
+
         if (roomTiles.Count < roomDef.minTileCount)
             return ValidationResult.Fail(
                 $"{roomDef.roomName} requires at least {roomDef.minTileCount} tiles " +
@@ -150,6 +156,23 @@ public static class RoomValidator
         }
 
         return false;
+    }
+
+    // Throne Room constraints: an optional max size and an optional "must enclose the core".
+    private static ValidationResult CheckCoreConstraints(
+        RoomDefinition roomDef, HashSet<Vector3Int> roomTiles, TileInfluenceManager influence)
+    {
+        if (roomDef.maxTileCount > 0 && roomTiles.Count > roomDef.maxTileCount)
+            return ValidationResult.Fail(
+                $"{roomDef.roomName} may be at most {roomDef.maxTileCount} tiles (found {roomTiles.Count}).");
+
+        if (roomDef.requiresCore)
+        {
+            if (DungeonCore.Instance == null || influence == null
+                || !roomTiles.Contains(influence.WorldToCell(DungeonCore.Instance.transform.position)))
+                return ValidationResult.Fail($"{roomDef.roomName} must enclose the dungeon core.");
+        }
+        return null;
     }
 
     public static bool WouldBlockDungeon(Vector3Int blockedCell)

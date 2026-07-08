@@ -208,6 +208,7 @@ public class AdventurerParty
         // A slain member may break a combat party's nerve. The fraction needed to
         // break varies with disposition — cowards bolt early, the bold hold on.
         if (!escaped && !breached) CheckMoraleFracture();
+        if (!escaped && !breached) BanterLines.ReactPartyDeath(this, member);
 
         if (resolvedCount < Members.Count || Members.Count == 0) return;
 

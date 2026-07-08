@@ -35,6 +35,9 @@ public class AdventurerStatsPanel : MonoBehaviour
              "returns like a named party. Label and interactability are code-driven.")]
     [SerializeField] private Button pinPartyButton;
 
+    [Tooltip("Optional. Toggles the camera following the inspected adventurer.")]
+    [SerializeField] private Toggle followButton;
+
     private DungeonAdventurer current;
     private bool isOpen;
 
@@ -42,6 +45,7 @@ public class AdventurerStatsPanel : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        if (followButton != null) followButton.onValueChanged.AddListener(OnFollowToggled);
         Hide();
     }
 
@@ -53,10 +57,21 @@ public class AdventurerStatsPanel : MonoBehaviour
         if (adv == null) return;
         if (!UnlockState.IsUnlocked(UnlockState.AdventurerStats)) return;
 
+        if (current != null && current != adv)
+            DungeonCameraController.Instance?.ClearFollowTargetIf(current.transform);
         current = adv;
         isOpen = true;
         if (panel != null) panel.SetActive(true);
+        if (followButton != null) followButton.SetIsOnWithoutNotify(false);
         Refresh();
+    }
+
+    private void OnFollowToggled(bool on)
+    {
+        var cam = DungeonCameraController.Instance;
+        if (cam == null || current == null) return;
+        if (on) cam.SetFollowTarget(current.transform);
+        else cam.ClearFollowTargetIf(current.transform);
     }
 
     public void OnCloseClicked() => Hide();
@@ -102,6 +117,7 @@ public class AdventurerStatsPanel : MonoBehaviour
 
     public void Hide()
     {
+        if (current != null) DungeonCameraController.Instance?.ClearFollowTargetIf(current.transform);
         current = null;
         isOpen = false;
         if (panel != null) panel.SetActive(false);
@@ -112,6 +128,10 @@ public class AdventurerStatsPanel : MonoBehaviour
         if (!isOpen) return;
         if (current == null) { Hide(); return; }   // inspected adventurer despawned
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Hide(); return; }
+        if (followButton != null)
+            followButton.SetIsOnWithoutNotify(
+                DungeonCameraController.Instance != null
+                && DungeonCameraController.Instance.IsFollowing(current.transform));
         Refresh();
     }
 

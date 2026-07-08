@@ -23,6 +23,10 @@ public class DungeonCameraController : MonoBehaviour
     [SerializeField] private float maxZoom = 12f;
     [SerializeField] private float zoomSmoothSpeed = 6f;
 
+    [Header("Follow Settings")]
+    [SerializeField] private float followLerpSpeed = 8f;
+    private Transform followTarget;
+
     [Header("Return to Core")]
     [SerializeField] private float returnDelay = 5f;
     [SerializeField] private float returnSpeed = 4f;
@@ -115,7 +119,8 @@ public class DungeonCameraController : MonoBehaviour
         if (!hasFocus) return;
 
         HandleZoom();
-        HandlePan();
+        if (HandlePan()) ClearFollowTarget();   // manual pan takes control
+        HandleFollow();
         HandleBookmarks();
 
         // DAY 31 — Return-to-core auto-pan disabled per design change.
@@ -136,9 +141,11 @@ public class DungeonCameraController : MonoBehaviour
         // if (isReturning) ReturnToCore();
 
         var lens = cmCam.Lens;
-        lens.OrthographicSize = Mathf.Lerp(lens.OrthographicSize, targetZoom,
+        float prevSize = lens.OrthographicSize;
+        lens.OrthographicSize = Mathf.Lerp(prevSize, targetZoom,
             Time.unscaledDeltaTime * zoomSmoothSpeed);
         cmCam.Lens = lens;
+        ZoomTowardCursor(prevSize, lens.OrthographicSize);
     }
 
     // ── Floor Transition ──────────────────────────────────────────
@@ -294,6 +301,34 @@ public class DungeonCameraController : MonoBehaviour
                 zoom = data[i].zoom
             };
     }
+
+    private void HandleFollow()
+    {
+        if (followTarget == null) return;
+        if (!followTarget.gameObject.activeInHierarchy) { ClearFollowTarget(); return; }
+        Vector3 p = transform.position;
+        Vector3 goal = new Vector3(followTarget.position.x, followTarget.position.y, p.z);
+        transform.position = Vector3.Lerp(p, goal, followLerpSpeed * Time.unscaledDeltaTime);
+    }
+
+    // Keep the world point under the cursor fixed as the zoom size changes (both directions).
+    // Skipped while following, where zoom stays centred on the locked entity.
+    private void ZoomTowardCursor(float prevSize, float newSize)
+    {
+        float delta = prevSize - newSize;
+        if (followTarget != null || Mathf.Abs(delta) < 0.0001f || Screen.height <= 0) return;
+        var mouse = Mouse.current;
+        if (mouse == null) return;
+        Vector2 mp = mouse.position.ReadValue();
+        Vector2 fromCentre = new Vector2(mp.x - Screen.width * 0.5f, mp.y - Screen.height * 0.5f);
+        float worldPerPixel = 2f / Screen.height;   // world units per pixel, per unit of ortho size
+        transform.position += new Vector3(fromCentre.x, fromCentre.y, 0f) * (worldPerPixel * delta);
+    }
+
+    public void SetFollowTarget(Transform t) => followTarget = t;
+    public void ClearFollowTarget() => followTarget = null;
+    public void ClearFollowTargetIf(Transform t) { if (followTarget == t) followTarget = null; }
+    public bool IsFollowing(Transform t) => t != null && followTarget == t;
 
     public void PanTo(Vector3 worldPos)
     {

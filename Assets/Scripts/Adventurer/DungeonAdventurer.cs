@@ -466,6 +466,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (PauseController.IsGamePaused) return;
 
         UpdateTerrainSpeedMultiplier();
+        TrySightCore();
 
         if (slowTimer > 0f)
         {
@@ -910,6 +911,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 combatTarget = foe;
                 chestTarget = null;
                 state = AdventurerState.Combat;
+                TryChargeBark();
                 return;
             }
         }
@@ -939,6 +941,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         combatTarget = nearest;
         chestTarget = null;
         state = AdventurerState.Combat;
+        TryChargeBark();
     }
 
     // ── Chest Detection ───────────────────────────────────────────
@@ -1047,6 +1050,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             combatTarget = prey;
             chestTarget = null;
             state = AdventurerState.Combat;
+            TryChargeBark();
             return;
         }
 
@@ -1839,6 +1843,46 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // ── Public Reads ──────────────────────────────────────────────
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
+    // -- Banter -------------------------------------------------------------------
+    private float lastBarkTime = -999f;
+    [SerializeField] private float barkCooldown = 12f;   // min seconds between this one's lines
+
+    /// <summary>True when this one may pipe up with idle chit-chat (idle, alive, off cooldown).</summary>
+    public bool CanBanter =>
+        gameObject.activeInHierarchy
+        && state != AdventurerState.Combat
+        && state != AdventurerState.Retreating
+        && Time.time - lastBarkTime >= barkCooldown;
+
+    /// <summary>Speak a line above this adventurer's head.</summary>
+    public void Say(string line, Color colour)
+    {
+        if (string.IsNullOrEmpty(line)) return;
+        BarkSpawner.Spawn(transform.position, line, colour);
+        lastBarkTime = Time.time;
+    }
+
+    private void TryChargeBark()
+    {
+        // Rare "charge!" shout when breaking into combat (e.g. Leroy Jenkins).
+        if (Random.value > BanterLines.ChargeEggChance) return;
+        if (Time.time - lastBarkTime < barkCooldown) return;
+        Say(BanterLines.RandomChargeEgg(), BanterLines.Egg);
+    }
+
+    private bool sightedCore;
+
+    private void TrySightCore()
+    {
+        if (sightedCore) return;
+        var core = DungeonCore.Instance;
+        if (core == null) return;
+        float r = BanterLines.CoreSightRange;
+        if ((transform.position - core.transform.position).sqrMagnitude > r * r) return;
+        sightedCore = true;
+        BanterLines.ReactCoreSight(this);
+    }
+
     public AdventurerState State => state;
     public PartyIntent Intent => intent;
     public AdventurerParty Party => party;

@@ -80,6 +80,8 @@ public class DungeonSaveData
     public InspectorAssessorSaveData inspectorAssessor;
 
     public BestiarySaveData bestiary;
+
+    public List<TodoItemSaveData> playerTodos = new();   // player-authored to-do list (quest journal)
 }
 
 [Serializable]
@@ -89,6 +91,13 @@ public class CameraBookmarkSaveData
     public SerializableVector3 pos;
     public int floor;
     public float zoom;
+}
+
+[Serializable]
+public class TodoItemSaveData
+{
+    public string text;
+    public bool done;
 }
 
 [Serializable]

@@ -11,7 +11,8 @@ public enum GameAction
     Mine, Build, Summon, Push,
     PanUp, PanDown, PanLeft, PanRight,
     ToggleTraps, ToggleAlerts, AvatarMenu,
-    ToggleInfluenceOverlay
+    ToggleInfluenceOverlay,
+    SpeedPause, SpeedNormal, SpeedDouble, SpeedQuintuple
 }
 
 /// <summary>
@@ -38,6 +39,10 @@ public static class Keybinds
         { GameAction.ToggleAlerts, Key.L },
         { GameAction.AvatarMenu,   Key.Tab },
         { GameAction.ToggleInfluenceOverlay, Key.O },
+        { GameAction.SpeedPause,      Key.Space },
+        { GameAction.SpeedNormal,     Key.Numpad1 },
+        { GameAction.SpeedDouble,     Key.Numpad2 },
+        { GameAction.SpeedQuintuple,  Key.Numpad5 },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -63,7 +68,8 @@ public static class Keybinds
         GameAction.Mine, GameAction.Build, GameAction.Summon, GameAction.Push,
         GameAction.PanUp, GameAction.PanDown, GameAction.PanLeft, GameAction.PanRight,
         GameAction.ToggleTraps, GameAction.ToggleAlerts, GameAction.AvatarMenu,
-        GameAction.ToggleInfluenceOverlay
+        GameAction.ToggleInfluenceOverlay,
+        GameAction.SpeedPause, GameAction.SpeedNormal, GameAction.SpeedDouble, GameAction.SpeedQuintuple
     };
 
     /// <summary>Display labels for the Controls list.</summary>
@@ -81,6 +87,10 @@ public static class Keybinds
         GameAction.ToggleAlerts => "Toggle Alerts",
         GameAction.AvatarMenu => "Avatar Menu",
         GameAction.ToggleInfluenceOverlay => "Influence Overlay",
+        GameAction.SpeedPause => "Speed: Pause",
+        GameAction.SpeedNormal => "Speed: Normal (1x)",
+        GameAction.SpeedDouble => "Speed: Fast (2x)",
+        GameAction.SpeedQuintuple => "Speed: Fastest (5x)",
         _ => a.ToString()
     };
 

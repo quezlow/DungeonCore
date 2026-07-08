@@ -2,25 +2,34 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Applies RoomDefinition.effects to monsters housed in valid rooms on the active
-/// floor. A spawner counts as "in" a room when its cell falls inside the room's
-/// validated tile set; that spawner's live monster receives the room's effects.
+/// Applies RoomDefinition.effects to the entities in valid rooms on the active floor.
+///   - LairRegen / TrainingXp / MonsterDamageBuff act on monsters whose spawner sits in the room.
+///   - CoreRetaliation zaps adventurers standing in the room (the Throne Room's defence), each
+///     hit drawing a coloured pulse from the core to the attacker.
 ///
-/// v1 scope: active floor only (room validation + cell space are per-active-floor,
-/// matching RoomValidator). Rooms on other floors resume when you switch to them.
+/// v1 scope: active floor only (room validation + cell space are per-active-floor).
 ///
-/// SCENE SETUP: add to a persistent object (e.g. GameController). No wiring.
+/// SCENE SETUP: add to a persistent object (e.g. GameController). No wiring. Pair with a
+/// CorePulse component somewhere for the retaliation pulse visual.
 /// </summary>
 public class RoomEffectController : MonoBehaviour
 {
     [Tooltip("How often effects are applied, in seconds.")]
     [SerializeField, Min(0.05f)] private float tickInterval = 0.5f;
 
+    [Tooltip("How often core retaliation deals damage + fires a pulse, in seconds.")]
+    [SerializeField, Min(0.1f)] private float retaliationInterval = 0.8f;
+
     private float timer;
+    private float lastRetaliationTime;
+    private bool retaliateNow;
 
     private readonly List<RoomAnchor> roomBuf = new();
     private readonly List<MonsterSpawner> spawnerBuf = new();
     private readonly List<DungeonMonster> inRoom = new();
+    private readonly List<DungeonAdventurer> advBuf = new();
+    private readonly HashSet<DungeonMonster> buffedLast = new();
+    private readonly HashSet<DungeonMonster> nowBuffed = new();
 
     private void Update()
     {
@@ -36,16 +45,17 @@ public class RoomEffectController : MonoBehaviour
 
     private void ApplyTick(float dt)
     {
-        var floor = FloorManager.Instance?.ActiveFloor;
-        if (floor?.Entities == null) return;
+        nowBuffed.Clear();
 
+        var floor = FloorManager.Instance?.ActiveFloor;
         var influence = TileInfluenceManager.Instance;
-        if (influence == null) return;
+        if (floor?.Entities == null || influence == null) { ClearStaleBuffs(); return; }
 
         floor.Entities.FillAll(roomBuf);
-        if (roomBuf.Count == 0) return;
+        if (roomBuf.Count == 0) { ClearStaleBuffs(); return; }
 
         floor.Entities.FillAll(spawnerBuf);
+        retaliateNow = Time.time - lastRetaliationTime >= retaliationInterval;
 
         for (int r = 0; r < roomBuf.Count; r++)
         {
@@ -67,14 +77,36 @@ public class RoomEffectController : MonoBehaviour
                 var cell = influence.WorldToCell(sp.transform.position);
                 if (tiles.Contains(cell)) inRoom.Add(sp.SpawnedMonster);
             }
-            if (inRoom.Count == 0) continue;
 
             for (int e = 0; e < def.effects.Count; e++)
             {
                 var fx = def.effects[e];
-                if (fx == null || fx.perSecond <= 0f) continue;
-                float amount = fx.perSecond * dt * anchor.EffectScale;
+                if (fx == null) continue;
 
+                // Core retaliation acts on adventurers in the room (no monsters required).
+                if (fx.type == RoomEffectType.CoreRetaliation)
+                {
+                    if (retaliateNow) ApplyRetaliation(floor, influence, tiles, fx, anchor.EffectScale);
+                    continue;
+                }
+
+                // Damage buff sets a live multiplier on the room's monsters.
+                if (fx.type == RoomEffectType.MonsterDamageBuff)
+                {
+                    float mult = Mathf.Max(1f, fx.perSecond);
+                    for (int m = 0; m < inRoom.Count; m++)
+                    {
+                        var mon = inRoom[m];
+                        if (mon == null) continue;
+                        mon.SetRoomDamageMultiplier(mult);
+                        nowBuffed.Add(mon);
+                    }
+                    continue;
+                }
+
+                // Per-second effects on the room's monsters.
+                if (fx.perSecond <= 0f || inRoom.Count == 0) continue;
+                float amount = fx.perSecond * dt * anchor.EffectScale;
                 for (int m = 0; m < inRoom.Count; m++)
                 {
                     var mon = inRoom[m];
@@ -87,5 +119,41 @@ public class RoomEffectController : MonoBehaviour
                 }
             }
         }
+
+        ClearStaleBuffs();
+        if (retaliateNow) lastRetaliationTime = Time.time;
+    }
+
+    private void ApplyRetaliation(FloorRoot floor, TileInfluenceManager influence,
+                                  HashSet<Vector3Int> tiles, RoomEffect fx, float scale)
+    {
+        if (fx.perSecond <= 0f) return;
+        var core = DungeonCore.Instance;
+        if (core == null) return;
+
+        float amount = fx.perSecond * retaliationInterval * scale;
+        Vector3 corePos = core.transform.position;
+        Color colour = core.CoreColor;
+
+        floor.Entities.FillAll(advBuf);
+        for (int a = 0; a < advBuf.Count; a++)
+        {
+            var adv = advBuf[a];
+            if (adv == null) continue;
+            var cell = influence.WorldToCell(adv.transform.position);
+            if (!tiles.Contains(cell)) continue;
+            adv.TakeDamage(amount);
+            CorePulse.Instance?.Fire(corePos, adv.transform.position, colour);
+        }
+    }
+
+    // Damage buffs are transient: clear the multiplier on any monster no longer in a buffing room.
+    private void ClearStaleBuffs()
+    {
+        foreach (var mon in buffedLast)
+            if (mon != null && !nowBuffed.Contains(mon))
+                mon.SetRoomDamageMultiplier(1f);
+        buffedLast.Clear();
+        foreach (var mon in nowBuffed) buffedLast.Add(mon);
     }
 }

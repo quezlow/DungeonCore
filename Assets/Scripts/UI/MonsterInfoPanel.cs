@@ -23,9 +23,22 @@ public class MonsterInfoPanel : MonoBehaviour
     [SerializeField] private Color veteranColor = new Color(1f, 0.84f, 0.36f, 1f);
     [SerializeField] private Color xpColor = new Color(0.55f, 0.70f, 1f, 1f);
 
+    [Tooltip("Optional. Toggles the camera following the selected monster.")]
+    [SerializeField] private Toggle followButton;
+    private DungeonMonster currentMon;
+
     private void Awake()
     {
         if (panel != null) panel.SetActive(false);
+        if (followButton != null) followButton.onValueChanged.AddListener(OnFollowToggled);
+    }
+
+    private void OnFollowToggled(bool on)
+    {
+        var cam = DungeonCameraController.Instance;
+        if (cam == null || currentMon == null) return;
+        if (on) cam.SetFollowTarget(currentMon.transform);
+        else cam.ClearFollowTargetIf(currentMon.transform);
     }
 
     private void Update()
@@ -39,7 +52,19 @@ public class MonsterInfoPanel : MonoBehaviour
 
         bool show = mon != null;
         if (panel != null && panel.activeSelf != show) panel.SetActive(show);
-        if (show) Refresh(mon);
+
+        if (currentMon != null && currentMon != mon)
+            DungeonCameraController.Instance?.ClearFollowTargetIf(currentMon.transform);
+        currentMon = mon;
+
+        if (show)
+        {
+            Refresh(mon);
+            if (followButton != null)
+                followButton.SetIsOnWithoutNotify(
+                    DungeonCameraController.Instance != null
+                    && DungeonCameraController.Instance.IsFollowing(mon.transform));
+        }
     }
 
     private void Refresh(DungeonMonster mon)

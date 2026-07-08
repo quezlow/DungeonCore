@@ -166,6 +166,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // Terrain & slow
     private float terrainSpeedMultiplier = 1f;
     private float slowMultiplier = 1f;
+    private float roomDamageMultiplier = 1f;   // Throne Room damage buff (1 = none)
     private float slowTimer = 0f;
 
     // Trap step
@@ -374,6 +375,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     /// <summary>Adds HP (clamped to maxHP) with floating heal numbers. Used by
     /// room effects (Lair). No post-damage cooldown — a Lair always mends.</summary>
+    public void SetRoomDamageMultiplier(float m) => roomDamageMultiplier = Mathf.Max(0f, m);
+
     public void Heal(float amount)
     {
         if (amount <= 0f || currentHP >= maxHP) return;
@@ -1135,7 +1138,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         var taunter = currentFloor.Entities.Nearest<DungeonAdventurer>(
             transform.position, detectionRange,
             a => a.IsTaunting && (!sparePilgrims || a.Intent != PartyIntent.Pilgrim));
-        if (taunter != null) { target = taunter; state = MonsterState.Attack; return; }
+        if (taunter != null) { target = taunter; state = MonsterState.Attack; TryTauntBark(); return; }
 
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
@@ -1159,7 +1162,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             candidate => candidate != this && candidate.IsWild != this.IsWild);
         if (m != null) { nearest = m; }
 
-        if (nearest != null) { target = nearest; state = MonsterState.Attack; }
+        if (nearest != null) { target = nearest; state = MonsterState.Attack; TryTauntBark(); }
     }
 
     // ── Class-aware target priority ─────────────────────
@@ -1279,18 +1282,44 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             DealAttackDamage();
     }
 
+    // -- Banter --
+    private float lastBarkTime = -999f;
+    [SerializeField] private float barkCooldown = 14f;
+
+    /// <summary>True when this monster may growl idle chatter (not attacking, alive, off cooldown).</summary>
+    public bool CanBanter =>
+        gameObject.activeInHierarchy
+        && state != MonsterState.Attack
+        && Time.time - lastBarkTime >= barkCooldown;
+
+    public void Say(string line, Color colour)
+    {
+        if (string.IsNullOrEmpty(line)) return;
+        BarkSpawner.Spawn(transform.position, line, colour);
+        lastBarkTime = Time.time;
+    }
+
+    private void TryTauntBark()
+    {
+        // Chance to taunt on locking onto a delver ("fresh meat").
+        if (Random.value > BanterLines.MonsterTauntChance) return;
+        if (Time.time - lastBarkTime < barkCooldown) return;
+        Say(BanterLines.RandomMonsterTaunt(), BanterLines.MonsterBark);
+    }
+
     private void DealAttackDamage()
     {
         if (target == null || !target.IsAlive) return;
 
+        float dmg = attackDamage * roomDamageMultiplier;
         Vector3 targetPos = target.Transform.position;
-        DamageNumberSpawner.Spawn(attackDamage, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
+        DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();
         var advTarget = target as DungeonAdventurer;
-        advTarget?.RecordDamagedBy(TypeName, attackDamage);
-        target.TakeDamage(attackDamage);
+        advTarget?.RecordDamagedBy(TypeName, dmg);
+        target.TakeDamage(dmg);
         var kdef = IsWild ? wildDefinition : spawner?.Definition;
-        if (kdef != null && kdef.knockbackForce > 0f && attackDamage >= kdef.knockbackMinDamage)
+        if (kdef != null && kdef.knockbackForce > 0f && dmg >= kdef.knockbackMinDamage)
             target.ApplyKnockback(transform.position, kdef.knockbackForce);
         if (!target.IsAlive)
         {

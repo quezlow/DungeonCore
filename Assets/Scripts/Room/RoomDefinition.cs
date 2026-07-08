@@ -31,6 +31,12 @@ public class RoomDefinition : ScriptableObject
              "for this room type to validate.")]
     public int minTileCount = 9;
 
+    [Tooltip("Maximum owned tiles allowed (0 = no maximum). The Throne Room uses this to cap its size.")]
+    public int maxTileCount = 0;
+
+    [Tooltip("If true, the room only validates when it encloses the dungeon core cell. Used by the Throne Room.")]
+    public bool requiresCore = false;
+
     [Header("Required Furniture")]
     [Tooltip("Each entry specifies a furniture type and the minimum count required.")]
     public List<FurnitureRequirement> requiredFurniture = new();
@@ -64,8 +70,10 @@ public class RoomDefinition : ScriptableObject
 
 public enum RoomEffectType
 {
-    LairRegen,   // HP per second for monsters whose spawner sits in the room
-    TrainingXp,  // XP per second toward Veteran for those monsters
+    LairRegen,          // HP per second for monsters whose spawner sits in the room
+    TrainingXp,         // XP per second toward Veteran for those monsters
+    MonsterDamageBuff,  // multiplies the attack damage of those monsters (perSecond = multiplier, e.g. 1.5)
+    CoreRetaliation,    // the core zaps adventurers standing in the room (perSecond = damage/sec) + a pulse
 }
 
 [Serializable]
@@ -73,7 +81,9 @@ public class RoomEffect
 {
     public RoomEffectType type = RoomEffectType.LairRegen;
 
-    [Tooltip("Per-second magnitude: HP/sec for LairRegen, XP/sec for TrainingXp.")]
+    [Tooltip("Magnitude. Per-second for LairRegen (HP/sec), TrainingXp (XP/sec) and " +
+             "CoreRetaliation (damage/sec); for MonsterDamageBuff it is the attack-damage " +
+             "multiplier (e.g. 1.5 = +50%).")]
     [Min(0f)]
     public float perSecond = 1f;
 }
