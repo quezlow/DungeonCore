@@ -5,12 +5,13 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Popup panel that appears when the player clicks a placed RoomAnchor.
-/// Lists all available RoomDefinition assets as selectable buttons.
+/// Lists every room type in the RoomDefinitionRegistry as selectable buttons.
 /// Closes when a type is selected or the player clicks elsewhere.
 ///
 /// SETUP
 ///   - Attach to a UI panel in the HUD Canvas. Set it inactive by default.
-///   - Assign roomDefinitions list in Inspector with all RoomDefinition assets.
+///   - Assign the RoomDefinitionRegistry asset (the same one the save
+///     controller uses) to the registry field. Registry order is button order.
 ///   - entryContainer: a VerticalLayoutGroup panel inside this panel.
 ///   - entryButtonPrefab: a Button prefab with a TMP_Text child.
 ///   - currentRoomLabel: a TMP_Text showing the currently assigned room name.
@@ -21,8 +22,8 @@ public class RoomTypePickerUI : MonoBehaviour
     public static RoomTypePickerUI Instance { get; private set; }
 
     [Header("Room Definitions")]
-    [Tooltip("All available room types. Add RoomDefinition assets here.")]
-    [SerializeField] private List<RoomDefinition> roomDefinitions = new();
+    [Tooltip("Single source of truth for room types. Registry order is the button order.")]
+    [SerializeField] private RoomDefinitionRegistry registry;
 
     [Header("UI References")]
     [SerializeField] private Transform    entryContainer;
@@ -101,8 +102,15 @@ public class RoomTypePickerUI : MonoBehaviour
             if (btn != null) Destroy(btn.gameObject);
         spawnedEntries.Clear();
 
-        foreach (var def in roomDefinitions)
+        if (registry == null)
         {
+            Debug.LogError("[RoomTypePickerUI] No RoomDefinitionRegistry assigned.");
+            return;
+        }
+
+        foreach (var def in registry.All)
+        {
+            if (def == null) continue;
             var btn = Instantiate(entryButtonPrefab, entryContainer);
             var label = btn.GetComponentInChildren<TMP_Text>();
             if (label != null) label.text = def.roomName;
