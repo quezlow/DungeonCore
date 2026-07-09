@@ -136,6 +136,11 @@ whatever open space touched the anchor; superseded by designated footprints).
 Auto-detection of rooms from enclosed regions or furniture recipes alone was
 never the shipped model.
 
+**Room type picker (2026-07-09):** `RoomTypePickerUI` reads
+`RoomDefinitionRegistry.All` directly; its separate `roomDefinitions` list is
+removed. Registry order is button order. Adding a room is a single registry
+append -- the picker and name-based save restore can no longer drift.
+
 ## 2. Adventurer Types, Intents and Goals
 
 Status: SHIPPED. Supersedes the roadmap's nine-type intent table (p.13) and
@@ -181,6 +186,13 @@ not the Company's.
 **Rejected:** roadmap's Treasure Hunter = GiftGiver mapping; the interim
 Treasure Hunter = Destroyer remap (superseded when the Delver intent landed);
 Noble as "Mixed" intent (shipped as Delver + ObserveRooms).
+
+**One asset per type (2026-07-09):** `AdventurerSpawner.Def()` returns the
+first list entry matching the enum value, so `adventurerTypes` must hold
+exactly one definition asset per type. Variant assets (GuardDef) live only in
+their dedicated slots (`guardDef`), never in the main list. A shipped bug had
+GuardDef shadowing Mercenary from element 2; repaired by removing it from the
+list.
 
 ## 3. Behaviour Traits and Combat Classes
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ccd40eb3c745964dbc1067f341b9a56, type: 3}
   m_Name: CollectAxe
   m_EditorClassIdentifier: Assembly-CSharp::Quest
-  questID: Cd6c03a17-d8a8-40d6-88cf-db4c742b6a50
+  questID: collect_axe
   questName: CollectAxe
   Description: That man needs me to grab his axe
   objectives:
@@ -28,3 +28,4 @@ MonoBehaviour:
   - type: 0
     rewardID: 4
     amount: 3
+  handInFlag: 

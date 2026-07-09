@@ -59553,7 +59553,6 @@ MonoBehaviour:
   adventurerTypes:
   - {fileID: 11400000, guid: 47852613e229f3345aaaf889ba623b7b, type: 2}
   - {fileID: 11400000, guid: e673ab988d70b45438eb1262002e6243, type: 2}
-  - {fileID: 11400000, guid: fb6ad7fb5df4a154daf5acfc3b0aaafe, type: 2}
   - {fileID: 11400000, guid: 0ef6e03567689ee4294c41f0634f6ecb, type: 2}
   - {fileID: 11400000, guid: ceff0a110f7836848b12a62543b35ae9, type: 2}
   - {fileID: 11400000, guid: 6ca50fe657f5d2f45b75816bf511a004, type: 2}
