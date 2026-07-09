@@ -126,7 +126,9 @@ public class RoomTypePickerUI : MonoBehaviour
     {
         if (def == null) return "";
         var sb = new System.Text.StringBuilder();
-        sb.Append(def.techNodeDescription);
+        Append(sb, def.description);
+        Append(sb, def.effectSummary);
+        Append(sb, def.techNodeDescription);
 
         var footprintSet = new HashSet<Vector3Int>();
         if (targetAnchor != null)
@@ -138,12 +140,26 @@ public class RoomTypePickerUI : MonoBehaviour
                 if (TileInfluenceManager.Instance.IsTileMined(c)) mined++;
 
         bool anyReq = def.minTileCount > 0
+            || def.maxTileCount > 0
+            || def.requiresCore
             || (def.requiredFurniture != null && def.requiredFurniture.Count > 0)
             || def.requiresBossSpawner;
         if (anyReq) sb.Append("\n\n<b>Requires</b>");
 
         if (def.minTileCount > 0)
-            sb.Append($"\n• Size: {mined}/{def.minTileCount}");
+            sb.Append($"\n• Minimum size: {mined}/{def.minTileCount} tiles");
+
+        if (def.maxTileCount > 0)
+            sb.Append($"\n• Maximum size: {mined}/{def.maxTileCount} tiles");
+
+        if (def.requiresCore)
+        {
+            bool enclosesCore = DungeonCore.Instance != null
+                && TileInfluenceManager.Instance != null
+                && footprintSet.Contains(
+                       TileInfluenceManager.Instance.WorldToCell(DungeonCore.Instance.transform.position));
+            sb.Append($"\n• Encloses the dungeon core: {(enclosesCore ? "yes" : "no")}");
+        }
 
         if (def.requiredFurniture != null && def.requiredFurniture.Count > 0)
         {
@@ -165,6 +181,14 @@ public class RoomTypePickerUI : MonoBehaviour
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>Append a paragraph, separated from whatever is already there. Skips empties.</summary>
+    private static void Append(System.Text.StringBuilder sb, string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (sb.Length > 0) sb.Append("\n\n");
+        sb.Append(text);
     }
 
     private void OnEntryClicked(RoomDefinition def)

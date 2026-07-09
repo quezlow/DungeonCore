@@ -13,6 +13,10 @@ MonoBehaviour:
   m_Name: Room_CoreRoom
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Core Chamber
+  description: The seat of your power.
+  effectSummary: 'Monsters here strike harder; the core lashes out at intruders.
+
+'
   validationTintColor: {r: 0.99039507, g: 1, b: 0.0047169924, a: 0.6}
   minTileCount: 9
   maxTileCount: 49

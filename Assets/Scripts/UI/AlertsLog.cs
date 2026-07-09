@@ -116,9 +116,7 @@ public class AlertsLog : MonoBehaviour
     public void ClearHistory()
     {
         history.Clear();
-        foreach (var b in tickerEntries)
-            if (b != null) Destroy(b.gameObject);
-        tickerEntries.Clear();
+        ClearTickerRows();
 
         bool hadUnread = unreadCount > 0;
         unreadCount = 0;
@@ -155,9 +153,7 @@ public class AlertsLog : MonoBehaviour
     {
         // Clear without firing OnHistoryCleared — this is a load, not a player action.
         history.Clear();
-        foreach (var b in tickerEntries)
-            if (b != null) Destroy(b.gameObject);
-        tickerEntries.Clear();
+        ClearTickerRows();
         unreadCount = 0;
 
         if (data != null)
@@ -210,6 +206,24 @@ public class AlertsLog : MonoBehaviour
         }
 
         OnAlertAdded?.Invoke(entry);
+    }
+
+    /// <summary>
+    /// Drop every ticker row. Tracked rows are destroyed, then the container is swept for any
+    /// untracked row-like children, otherwise a cleared ticker can be left showing blank rows.
+    /// </summary>
+    private void ClearTickerRows()
+    {
+        foreach (var b in tickerEntries)
+            if (b != null) Destroy(b.gameObject);
+        tickerEntries.Clear();
+
+        if (tickerContainer == null) return;
+        for (int i = tickerContainer.childCount - 1; i >= 0; i--)
+        {
+            var child = tickerContainer.GetChild(i);
+            if (child.GetComponent<Button>() != null) Destroy(child.gameObject);
+        }
     }
 
     private void AddTickerRow(AlertEntry entry)

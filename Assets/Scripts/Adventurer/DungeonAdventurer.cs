@@ -348,7 +348,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         flavorClassName = profiles.FlavorName(combatClass, affinity);
         if (affinity == DungeonType.None) return;
         var sr = GetComponentInChildren<SpriteRenderer>();
-        if (sr != null) sr.color = Color.Lerp(sr.color, profiles.ColorFor(affinity), profiles.TintStrength);
+        if (sr != null)
+        {
+            // Tint the hue only. An affinity colour saved with alpha < 255 would otherwise
+            // bleed its transparency into the sprite and leave the adventurer see-through.
+            float alpha = sr.color.a;
+            Color tinted = Color.Lerp(sr.color, profiles.ColorFor(affinity), profiles.TintStrength);
+            tinted.a = alpha;
+            sr.color = tinted;
+        }
         GetComponent<DamageFlash>()?.RefreshBaseColors();
     }
 

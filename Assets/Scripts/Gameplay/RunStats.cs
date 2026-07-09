@@ -17,6 +17,7 @@ public class RunStats : MonoBehaviour
     // Cumulative (whole run)
     private readonly Dictionary<string, int> killsByClass = new();
     private int monstersLost;
+    private int wildSlain;
     private int biggestParty;
     private int goldEarned;
     private int maxDayReached = 1;
@@ -26,6 +27,7 @@ public class RunStats : MonoBehaviour
     private int partiesToday;
     private int slainToday;
     private int monstersLostToday;
+    private int wildSlainToday;
     private int goldEarnedToday;
     private float notorietyAtDayStart;
     private readonly List<RaidRecord> raidsToday = new();
@@ -36,6 +38,7 @@ public class RunStats : MonoBehaviour
     public IReadOnlyDictionary<string, int> KillsByClass => killsByClass;
     public int TotalKills { get { int t = 0; foreach (var v in killsByClass.Values) t += v; return t; } }
     public int MonstersLost => monstersLost;
+    public int WildSlain => wildSlain;
     public int BiggestParty => biggestParty;
     public int GoldEarned => goldEarned;
     public int DaysSurvived => maxDayReached;
@@ -49,9 +52,16 @@ public class RunStats : MonoBehaviour
         public int parties;
         public int adventurersSlain;
         public int monstersLost;
+        public int wildSlain;
         public int goldEarned;
         public float notorietyDelta;
         public List<RaidRecord> raids;
+
+        /// <summary>Nothing of note happened today - no raid, no deaths, no gold.</summary>
+        public bool IsEmpty =>
+            parties == 0 && adventurersSlain == 0 && monstersLost == 0
+            && wildSlain == 0 && goldEarned == 0
+            && (raids == null || raids.Count == 0);
     }
 
     // ── Lifecycle ──
@@ -104,6 +114,13 @@ public class RunStats : MonoBehaviour
         monstersLostToday++;
     }
 
+    /// <summary>A wild beast was slain (wild-chamber dweller or invader).</summary>
+    public void RecordWildMonsterSlain()
+    {
+        wildSlain++;
+        wildSlainToday++;
+    }
+
     public void RecordPartySpawned(int size)
     {
         partiesToday++;
@@ -130,6 +147,7 @@ public class RunStats : MonoBehaviour
         partiesToday = 0;
         slainToday = 0;
         monstersLostToday = 0;
+        wildSlainToday = 0;
         goldEarnedToday = 0;
         goldEarnedToday = 0;
         notorietyAtDayStart = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
@@ -145,13 +163,19 @@ public class RunStats : MonoBehaviour
             parties = partiesToday,
             adventurersSlain = slainToday,
             monstersLost = monstersLostToday,
+            wildSlain = wildSlainToday,
             goldEarned = goldEarnedToday,
             notorietyDelta = noto - notorietyAtDayStart,
             raids = new List<RaidRecord>(raidsToday),
         };
         Debug.Log($"[RunStats] Day {summary.day} ended — parties {summary.parties}, " +
                   $"slain {summary.adventurersSlain}, lost {summary.monstersLost}, " +
+                  $"wild {summary.wildSlain}, " +
                   $"gold +{summary.goldEarned}, notoriety Δ {summary.notorietyDelta:0.#}.");
+
+        // A quiet day (nothing breached, nothing died, nothing earned) gets no report.
+        if (summary.IsEmpty) return;
+
         OnDaySummaryReady?.Invoke(summary);
     }
 

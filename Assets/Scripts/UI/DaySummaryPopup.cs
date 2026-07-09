@@ -60,6 +60,7 @@ public class DaySummaryPopup : MonoBehaviour
             bodyLabel.text =
                 $"Parties faced:  {s.parties}\n" +
                 $"Adventurers slain:  {s.adventurersSlain}\n" +
+                $"Wild beasts slain:  {s.wildSlain}\n" +
                 $"Monsters lost:  {s.monstersLost}\n" +
                 $"Gold earned:  +{s.goldEarned}\n" +
                 $"Notoriety:  {noto}";

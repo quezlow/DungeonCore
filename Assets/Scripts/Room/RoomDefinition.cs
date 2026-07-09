@@ -23,6 +23,12 @@ public class RoomDefinition : ScriptableObject
     [Header("Identity")]
     public string roomName = "Room";
 
+    [Tooltip("Flavour / purpose line shown at the top of the room tooltip.")]
+    [TextArea] public string description = "";
+
+    [Tooltip("What this room does mechanically, in plain words. Shown under the description.")]
+    [TextArea] public string effectSummary = "";
+
     [Tooltip("Colour used to tint tiles during the validation flash effect.")]
     public Color validationTintColor = new(0.6f, 1f, 0.6f, 0.6f);
 

@@ -44,6 +44,8 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     [Header("Dot Colours")]
     [SerializeField] private Color adventurerDot = new Color(0.90f, 0.25f, 0.25f);
     [SerializeField] private Color monsterDot = new Color(0.35f, 0.85f, 0.40f);
+    [Tooltip("Wild and invading monsters are hostile, so they read red like adventurers.")]
+    [SerializeField] private Color hostileMonsterDot = new Color(0.90f, 0.25f, 0.25f);
     [SerializeField] private Color coreDot = new Color(1f, 0.82f, 0.25f);
     [SerializeField, Min(2f)] private float dotSize = 5f;
 
@@ -166,7 +168,25 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
             if (c.x > maxX) maxX = c.x;
             if (c.y > maxY) maxY = c.y;
         }
-        minX -= paddingCells; minY -= paddingCells; maxX += paddingCells; maxY += paddingCells;
+        // Centre the map on the core: take a square around the core cell just big enough to
+        // hold every claimed tile. Floors without a core fall back to the plain claimed bounds.
+        var coreForBounds = DungeonCore.Instance;
+        if (coreForBounds != null && OnThisFloor(coreForBounds.transform.position.y))
+        {
+            Vector3Int coreCell = influence.WorldToCell(coreForBounds.transform.position);
+            int radius = 0;
+            radius = Mathf.Max(radius, Mathf.Abs(coreCell.x - minX));
+            radius = Mathf.Max(radius, Mathf.Abs(maxX - coreCell.x));
+            radius = Mathf.Max(radius, Mathf.Abs(coreCell.y - minY));
+            radius = Mathf.Max(radius, Mathf.Abs(maxY - coreCell.y));
+            radius += paddingCells;
+            minX = coreCell.x - radius; maxX = coreCell.x + radius;
+            minY = coreCell.y - radius; maxY = coreCell.y + radius;
+        }
+        else
+        {
+            minX -= paddingCells; minY -= paddingCells; maxX += paddingCells; maxY += paddingCells;
+        }
         paintBoundsMin = new Vector2Int(minX, minY);
         int spanX = maxX - minX + 1, spanY = maxY - minY + 1;
         paintScale = (float)textureSize / Mathf.Max(spanX, spanY);
@@ -240,7 +260,9 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
 
             floor.Entities.FillAll(monBuf);
             for (int i = 0; i < monBuf.Count; i++)
-                if (monBuf[i] != null) used = PlaceDot(used, monBuf[i].transform.position, monsterDot);
+                if (monBuf[i] != null)
+                    used = PlaceDot(used, monBuf[i].transform.position,
+                                    monBuf[i].IsWild ? hostileMonsterDot : monsterDot);
 
             var core = DungeonCore.Instance;
             if (core != null && OnThisFloor(core.transform.position.y))
