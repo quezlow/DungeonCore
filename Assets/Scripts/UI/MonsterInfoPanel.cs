@@ -50,7 +50,7 @@ public class MonsterInfoPanel : MonoBehaviour
     private void EnterRename()
     {
         if (currentMon == null || !currentMon.CanRename || nameInput == null) return;
-        nameInput.text = currentMon.CustomName ?? currentMon.TypeName;
+        nameInput.text = currentMon.CustomName ?? currentMon.BaseName;
         nameInput.gameObject.SetActive(true);
         if (nameLabel != null) nameLabel.gameObject.SetActive(false);
         nameInput.ActivateInputField();

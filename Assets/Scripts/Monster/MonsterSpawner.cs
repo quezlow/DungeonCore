@@ -79,7 +79,11 @@ public class MonsterSpawner : MonoBehaviour
     public bool HasLiveMonster => spawnedMonster != null;
     public DungeonMonster SpawnedMonster => spawnedMonster;
     public string CustomName => customName;
-    public void SetCustomName(string n) => customName = string.IsNullOrWhiteSpace(n) ? null : n.Trim();
+    public void SetCustomName(string n)
+    {
+        customName = string.IsNullOrWhiteSpace(n) ? null : n.Trim();
+        if (spawnedMonster != null) spawnedMonster.RefreshNameplate();   // live update on rename
+    }
     public bool IsRespawning => isRespawning;
     public bool IsBlocked => isBlocked;
     public float RespawnDelay => respawnDelay;

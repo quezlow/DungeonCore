@@ -40,6 +40,12 @@ public class EntityStatusBars : MonoBehaviour
              "Leave unassigned on non-boss-capable entity prefabs.")]
     [SerializeField] private TMP_Text bossLabel;
 
+    [Header("Nameplate Colours")]
+    [Tooltip("Colour of a player-named (non-veteran) monster's name.")]
+    [SerializeField] private Color namedColour = new Color(0.91f, 0.87f, 0.78f, 1f);
+    [Tooltip("Colour of the veteran star and the name beside it.")]
+    [SerializeField] private Color veteranColour = new Color(1f, 0.83f, 0.4f, 1f);
+
     [Header("Intent Label (optional)")]
     [Tooltip("Separate label above the bars used to show a Pilgrim / Gift-Giver / " +
              "Destroyer intent badge once the Oracle Chamber is unlocked. Assign on " +
@@ -61,6 +67,9 @@ public class EntityStatusBars : MonoBehaviour
 
     private Transform trackedEntity;
     private SpriteRenderer trackedSprite;
+    private Color defaultLabelColour = Color.white;   // the prefab's own label colour (boss styling)
+
+    private const string VeteranStar = "\u2605";
 
     // ─────────────────────────────────────────────────────────────
 
@@ -77,7 +86,11 @@ public class EntityStatusBars : MonoBehaviour
 
         if (staminaBar != null) staminaBar.gameObject.SetActive(showStamina);
         if (manaBar != null) manaBar.gameObject.SetActive(showMana);
-        if (bossLabel != null) bossLabel.gameObject.SetActive(false);
+        if (bossLabel != null)
+        {
+            defaultLabelColour = bossLabel.color;   // remember the prefab's boss styling
+            bossLabel.gameObject.SetActive(false);
+        }
         if (intentLabel != null) intentLabel.gameObject.SetActive(false);
     }
 
@@ -173,6 +186,47 @@ public class EntityStatusBars : MonoBehaviour
         {
             bossLabel.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// The monster nameplate. One label, four states:
+    ///   boss    - the custom name if renamed, else the boss title (keeps the prefab's styling)
+    ///   veteran - star + custom name, or star + type name, in veteran gold
+    ///   named   - just the custom name, in the named colour
+    ///   plain   - hidden
+    /// </summary>
+    public void SetMonsterLabel(string bossTitle, bool isVeteran, string customName, string typeName)
+    {
+        if (bossLabel == null) return;
+
+        bool named = !string.IsNullOrEmpty(customName);
+
+        if (!string.IsNullOrEmpty(bossTitle))
+        {
+            bossLabel.color = defaultLabelColour;
+            bossLabel.text = named ? customName : bossTitle;
+            bossLabel.gameObject.SetActive(true);
+            return;
+        }
+
+        if (isVeteran)
+        {
+            string shown = named ? customName : typeName;
+            bossLabel.color = veteranColour;
+            bossLabel.text = string.IsNullOrEmpty(shown) ? VeteranStar : $"{VeteranStar} {shown}";
+            bossLabel.gameObject.SetActive(true);
+            return;
+        }
+
+        if (named)
+        {
+            bossLabel.color = namedColour;
+            bossLabel.text = customName;
+            bossLabel.gameObject.SetActive(true);
+            return;
+        }
+
+        bossLabel.gameObject.SetActive(false);
     }
 
     /// <summary>

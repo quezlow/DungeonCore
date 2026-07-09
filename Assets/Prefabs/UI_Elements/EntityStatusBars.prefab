@@ -799,7 +799,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 3
   m_HorizontalAlignment: 2
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -1328,8 +1328,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4283344850
-  m_fontColor: {r: 0.8235294, g: 0.654902, b: 0.30588236, a: 1}
+    rgba: 4281022912
+  m_fontColor: {r: 0.7529412, g: 0.22352941, b: 0.16862746, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1354,7 +1354,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 3
   m_HorizontalAlignment: 2
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 256
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -1470,8 +1470,11 @@ MonoBehaviour:
   staminaBar: {fileID: 356334324093139777}
   manaBar: {fileID: 3066851980021328341}
   bossLabel: {fileID: 6534509481403353359}
+  namedColour: {r: 0.9490196, g: 0.9098039, b: 0.8352941, a: 1}
+  veteranColour: {r: 0.8235294, g: 0.654902, b: 0.30588236, a: 1}
   intentLabel: {fileID: 7585761408728133245}
   worldOffset: {x: 0, y: 0.7, z: 0}
+  spriteClearance: 0.25
   showStamina: 1
   showMana: 1
 --- !u!1 &7515637644473017958

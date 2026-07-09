@@ -287,7 +287,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             statusBars.SetHP(currentHP, maxHP);
             statusBars.ConfigureResourceBars(maxStamina > 0f, false);
             if (maxStamina > 0f) statusBars.SetStamina(currentStamina, maxStamina);
-            if (bossDefinition != null) statusBars.SetBossLabel(bossDefinition.GetBossTitle());
+            RefreshNameplate();
         }
     }
 
@@ -1376,7 +1376,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (statusBars != null)
         {
             statusBars.SetHP(currentHP, maxHP);
-            statusBars.SetVeteranLabel(true);
+            RefreshNameplate();
         }
     }
 
@@ -1583,10 +1583,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         get
         {
-            if (bossDefinition != null) return bossDefinition.GetBossTitle();
+            string custom = spawner != null ? spawner.CustomName : null;
+            if (bossDefinition != null)
+                return !string.IsNullOrEmpty(custom) ? custom : bossDefinition.GetBossTitle();
             var def = IsWild ? wildDefinition : spawner?.Definition;
             string n = def != null ? def.monsterName : "Monster";
-            string custom = spawner != null ? spawner.CustomName : null;
             string full = !string.IsNullOrEmpty(custom) ? custom : (isVeteran ? $"Veteran {n}" : n);
             return string.IsNullOrEmpty(killTitle) ? full : $"{full} — {killTitle}";
         }
@@ -1594,13 +1595,27 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// <summary>The player-set name for this monster (persisted on its spawner), or null.</summary>
     public string CustomName => spawner != null ? spawner.CustomName : null;
 
-    /// <summary>True if this monster can be renamed (spawner-backed, not a boss or wild).</summary>
-    public bool CanRename => spawner != null && bossDefinition == null && !IsWild;
+    /// <summary>True if this monster can be renamed (spawner-backed, so the name persists).</summary>
+    public bool CanRename => spawner != null && !IsWild;
+
+    /// <summary>What a rename field prefills with: the boss title, or the plain type name.</summary>
+    public string BaseName => bossDefinition != null ? bossDefinition.GetBossTitle() : TypeName;
 
     /// <summary>Rename this monster (empty clears back to its type name). Persists via the spawner.</summary>
     public void Rename(string newName)
     {
-        if (spawner != null) spawner.SetCustomName(newName);
+        if (spawner != null) spawner.SetCustomName(newName);   // spawner refreshes the nameplate
+    }
+
+    /// <summary>Push the current boss / veteran / custom-name state onto the overhead label.</summary>
+    public void RefreshNameplate()
+    {
+        if (statusBars == null) return;
+        statusBars.SetMonsterLabel(
+            bossDefinition != null ? bossDefinition.GetBossTitle() : null,
+            isVeteran,
+            CustomName,
+            TypeName);
     }
 
     public FloorRoot CurrentFloor => currentFloor;
