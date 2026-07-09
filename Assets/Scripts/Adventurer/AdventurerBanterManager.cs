@@ -57,7 +57,7 @@ public class AdventurerBanterManager : MonoBehaviour
         if (monster)
         {
             var growler = monEligible[Random.Range(0, monEligible.Count)];
-            growler.Say(BanterLines.RandomMonsterGrowl(), BanterLines.MonsterBark);
+            growler.Say(BanterLines.RandomGrowl(growler.Voice), BanterLines.MonsterBark);
             return;
         }
 

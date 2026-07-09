@@ -117,30 +117,78 @@ public static class BanterLines
     public static string[] RandomPair() => Pairs.Length == 0 ? null : Pairs[Random.Range(0, Pairs.Length)];
 
     // -- Monsters --
-    public static readonly string[] MonsterGrowls =
+    // -- Monsters: one pool per voice --
+
+    public static readonly string[] BeastGrowls =
     {
-        "...",
         "Grrrrr...",
-        "*hungry rattle*",
         "*a low, wet growl*",
-        "Ssssoft little things...",
-        "*bones shift in the dark*",
-        "Warm... blood... close...",
         "*sniffs the air*",
+        "*teeth click together*",
+        "*claws scrape stone*",
+        "*a hungry whine*",
     };
 
-    public static readonly string[] MonsterTaunts =
+    public static readonly string[] BeastTaunts =
+    {
+        "*shrieks*",
+        "*bares its teeth*",
+        "*a rising snarl*",
+        "*roars*",
+    };
+
+    public static readonly string[] UndeadGrowls =
+    {
+        "...",
+        "*bones creak*",
+        "*a dry rattle*",
+        "*a jaw clacks shut*",
+        "*dust falls from old bones*",
+    };
+
+    public static readonly string[] UndeadTaunts =
+    {
+        "*bones grind*",
+        "Join... us...",
+        "*a hollow rattle*",
+        "Rest... denied...",
+    };
+
+    public static readonly string[] HumanoidGrowls =
+    {
+        "Ssssoft little things...",
+        "Warm... blood... close...",
+        "Another one wanders in.",
+        "Hungry work, this.",
+        "Quiet, down there.",
+    };
+
+    public static readonly string[] HumanoidTaunts =
     {
         "Fresh meat!",
         "Stay a while...",
         "You should not have come.",
         "Mine now.",
-        "*shrieks*",
         "Come closer, little morsel.",
     };
 
-    public static string RandomMonsterGrowl() => Pick(MonsterGrowls);
-    public static string RandomMonsterTaunt() => Pick(MonsterTaunts);
+    /// <summary>An idle growl in this monster's voice. Silent monsters return null.</summary>
+    public static string RandomGrowl(MonsterVoice voice) => voice switch
+    {
+        MonsterVoice.Beast => Pick(BeastGrowls),
+        MonsterVoice.Undead => Pick(UndeadGrowls),
+        MonsterVoice.Humanoid => Pick(HumanoidGrowls),
+        _ => null,
+    };
+
+    /// <summary>A taunt in this monster's voice as it locks on. Silent monsters return null.</summary>
+    public static string RandomTaunt(MonsterVoice voice) => voice switch
+    {
+        MonsterVoice.Beast => Pick(BeastTaunts),
+        MonsterVoice.Undead => Pick(UndeadTaunts),
+        MonsterVoice.Humanoid => Pick(HumanoidTaunts),
+        _ => null,
+    };
 
     // -- Adventurer reactions to moments --
     public static readonly string[] TrapReactions =

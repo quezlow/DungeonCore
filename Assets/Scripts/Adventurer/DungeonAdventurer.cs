@@ -73,6 +73,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Header("Behaviour")]
     [SerializeField] private float retreatThreshold = 0.3f;
 
+    [Tooltip("Commoners are civilians: a monster sighted within this radius sends them fleeing.")]
+    [SerializeField] private float commonerPanicRange = 5f;
+
     [Header("Intent")]
     [Tooltip("Pilgrims move at this fraction of normal speed.")]
     [SerializeField] private float pilgrimSpeedMultiplier = 0.7f;
@@ -283,9 +286,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         if (def != null)
         {
-            maxHP = def.maxHP;
+            maxHP = def.maxHP * CombatBalance.AdventurerHp;
             moveSpeed = def.moveSpeed;
-            attackDamage = def.attackDamage;
+            attackDamage = def.attackDamage * CombatBalance.AdventurerDamage;
             attackRange = def.attackRange;
             attackCooldown = def.attackCooldown;
             knockbackForce = def.knockbackForce;
@@ -494,6 +497,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         if (state != AdventurerState.Retreating && currentHP / maxHP < retreatThreshold)
             StartRetreat();
+
+        // Commoners have no business down here. The first monster they lay eyes on turns them round.
+        if (type == AdventurerType.Commoner
+            && state != AdventurerState.Retreating
+            && currentFloor?.Entities != null
+            && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, commonerPanicRange))
+        {
+            StartRetreat();
+        }
 
         ApplySeparation();
 

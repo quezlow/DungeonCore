@@ -34,6 +34,9 @@ public class MonsterDefinition : ScriptableObject
     public string monsterName = "Monster";
     public Sprite icon;                    // shown in the spawner selection UI
 
+    [Tooltip("How this monster sounds when it barks. Silent monsters never speak or taunt.")]
+    public MonsterVoice voice = MonsterVoice.Beast;
+
     [Header("Prefab")]
     public DungeonMonster prefab;
 
@@ -59,7 +62,12 @@ public class MonsterDefinition : ScriptableObject
              "Reserved for future aquatic creature designs.")]
     public bool isAquatic = false;
 
-    [Header("Passive Regen (DAY 31 PART 3A)")]
+    [Header("Core XP")]
+    [Tooltip("Core XP granted when this beast is slain in the wild. Keep it well below an " +
+         "adventurer's reward (15 by default) - a rat is not a knight.")]
+    [Min(0f)] public float wildCoreXpOnDeath = 5f;
+
+    [Header("Passive Regen")]
     [Tooltip("HP restored per second in Wander/Patrol/Idle states. " +
              "0 = no regen. Boss variants scale this by hpMultiplier.")]
     [Min(0f)] public float passiveRegenPerSecond = 0f;

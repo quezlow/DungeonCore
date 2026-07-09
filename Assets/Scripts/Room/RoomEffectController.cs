@@ -18,7 +18,7 @@ public class RoomEffectController : MonoBehaviour
     [SerializeField, Min(0.05f)] private float tickInterval = 0.5f;
 
     [Tooltip("How often core retaliation deals damage + fires a pulse, in seconds.")]
-    [SerializeField, Min(0.1f)] private float retaliationInterval = 0.8f;
+    [SerializeField, Min(0.1f)] private float retaliationInterval = 0.35f;
 
     private float timer;
     private float lastRetaliationTime;
@@ -140,11 +140,22 @@ public class RoomEffectController : MonoBehaviour
         {
             var adv = advBuf[a];
             if (adv == null) continue;
+            if (IsPeacefulVisitor(adv)) continue;
             var cell = influence.WorldToCell(adv.transform.position);
             if (!tiles.Contains(cell)) continue;
             adv.TakeDamage(amount);
             CorePulse.Instance?.Fire(corePos, adv.transform.position, colour);
         }
+    }
+
+    /// <summary>
+    /// Pilgrims and gift-bearers are spared unless the global stance is Aggressive - the same rule
+    /// the monsters follow, so the core no longer zaps a worshipper mid-prayer.
+    /// </summary>
+    private static bool IsPeacefulVisitor(DungeonAdventurer adv)
+    {
+        if (MonsterAggressionSettings.Global == MonsterAggression.Aggressive) return false;
+        return adv.Intent == PartyIntent.Pilgrim || adv.Intent == PartyIntent.GiftGiver;
     }
 
     // Damage buffs are transient: clear the multiplier on any monster no longer in a buffing room.

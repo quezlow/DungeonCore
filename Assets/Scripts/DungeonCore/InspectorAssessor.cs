@@ -69,14 +69,24 @@ public class InspectorAssessor : MonoBehaviour
         cooldown = cadenceDays;
     }
 
-    private void Dispatch() => AdventurerSpawner.Instance?.DispatchInspectorParty();
+    private void Dispatch()
+    {
+        AdventurerSpawner.Instance?.DispatchInspectorParty();
+        InspectorArrivalPopup.Instance?.Announce();
+    }
 
     /// <summary>Called from an Inspector's death. Take the rank on the backend and send a
     /// kill-team to investigate; the reveal waits for that team to depart.</summary>
     public void OnInspectorSlain()
     {
         GradeSystem.Instance?.AssessBackendOnly();
+        SendKillTeam();
+    }
 
+    /// <summary>Send the Guild's Hero kill-team. Shared by the slain-Inspector response and by a
+    /// defied assessment. One investigation at a time; the grade reveal waits for it to depart.</summary>
+    public void SendKillTeam()
+    {
         if (investigation != null) return;   // one investigation at a time
         investigation = AdventurerSpawner.Instance?.DispatchInvestigationTeam(investigationGuards);
         investigationSeen = false;

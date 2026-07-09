@@ -258,6 +258,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void Awake()
     {
+        // Global balance multipliers, before currentHP is seeded from maxHP.
+        maxHP *= CombatBalance.MonsterHp;
+        attackDamage *= CombatBalance.MonsterDamage;
+
         currentHP = maxHP;
         var rb = GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
@@ -1286,9 +1290,21 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float lastBarkTime = -999f;
     [SerializeField] private float barkCooldown = 14f;
 
-    /// <summary>True when this monster may growl idle chatter (not attacking, alive, off cooldown).</summary>
+    /// <summary>This monster's voice, taken from its definition. No definition means no voice.</summary>
+    public MonsterVoice Voice
+    {
+        get
+        {
+            var vdef = IsWild ? wildDefinition : spawner?.Definition;
+            return vdef != null ? vdef.voice : MonsterVoice.Silent;
+        }
+    }
+
+    /// <summary>True when this monster may growl idle chatter (has a voice, not attacking,
+    /// alive, off cooldown).</summary>
     public bool CanBanter =>
         gameObject.activeInHierarchy
+        && Voice != MonsterVoice.Silent
         && state != MonsterState.Attack
         && Time.time - lastBarkTime >= barkCooldown;
 
@@ -1301,10 +1317,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void TryTauntBark()
     {
-        // Chance to taunt on locking onto a delver ("fresh meat").
+        // Chance to taunt on locking onto a delver ("fresh meat"), in this monster's own voice.
+        if (Voice == MonsterVoice.Silent) return;
         if (Random.value > BanterLines.MonsterTauntChance) return;
         if (Time.time - lastBarkTime < barkCooldown) return;
-        Say(BanterLines.RandomMonsterTaunt(), BanterLines.MonsterBark);
+        Say(BanterLines.RandomTaunt(Voice), BanterLines.MonsterBark);
     }
 
     private void DealAttackDamage()
@@ -1398,7 +1415,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (IsWild && wildDefinition != null)
             BestiaryState.Instance?.Discover(wildDefinition.monsterName);
 
-        if (IsWild) RunStats.Instance?.RecordWildMonsterSlain();
+        if (IsWild)
+        {
+            RunStats.Instance?.RecordWildMonsterSlain();
+            if (wildDefinition != null && wildDefinition.wildCoreXpOnDeath > 0f)
+                DungeonCore.Instance?.AddXP(wildDefinition.wildCoreXpOnDeath);
+        }
 
         currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);

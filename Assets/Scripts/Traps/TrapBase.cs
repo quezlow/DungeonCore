@@ -76,10 +76,18 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
 
     // ── Adventurer Trigger ────────────────────────────────────────
 
+    /// <summary>
+    /// A Defensive dungeon holds its fire: traps stay inert until the stance is raised. Lets the
+    /// player stand everything down for a peaceful visitor without disarming every trap by hand.
+    /// </summary>
+    public static bool TrapsArmed =>
+        MonsterAggressionSettings.Global != MonsterAggression.Defensive;
+
     public void OnAdventurerEntered(DungeonAdventurer adv)
     {
         if (Definition == null) return;
         if (IsDisarmed) return;
+        if (!TrapsArmed) return;
         if (Time.time - lastTriggerTime < Definition.cooldown) return;
 
         lastTriggerTime = Time.time;
@@ -92,6 +100,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
     {
         if (Definition == null || adv == null) return;
         if (IsDisarmed) return;
+        if (!TrapsArmed) return;
         ApplyEffect(adv);
         Debug.Log($"[Trap] {Definition.trapName} triggered externally at {OccupiedCell}.");
     }
