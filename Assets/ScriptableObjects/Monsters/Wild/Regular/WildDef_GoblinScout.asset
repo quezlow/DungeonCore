@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Goblin Scout
   icon: {fileID: 2198011577065013659, guid: 3e197d11c3fb6de40a1e8d2d06eaa7c5, type: 3}
+  voice: 3
   prefab: {fileID: 8588272897021046603, guid: e3a8636654a4f3d4f8f17e97fcfaf889, type: 3}
   capacityCost: 6
   manaCost: 35
@@ -22,6 +23,7 @@ MonoBehaviour:
   requiresDiscovery: 1
   description: 
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 1

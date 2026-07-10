@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SubBossVariantDefinition
   monsterName: Skeleon Sub Boss
   icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  voice: 2
   prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
   capacityCost: 5
   manaCost: 25
   requiredTier: 0
   requiredRank: 5
+  requiresDiscovery: 0
   description: A big skeleton
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5
   wildRegenMultiplier: 0
@@ -29,6 +32,13 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
   telegraphSeconds: 0
   hpMultiplier: 2.5
   damageMultiplier: 2

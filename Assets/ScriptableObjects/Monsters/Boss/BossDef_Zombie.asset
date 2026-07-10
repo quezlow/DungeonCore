@@ -14,11 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
   monsterName: Zombie Boss
   icon: {fileID: 0}
+  voice: 2
   prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
   capacityCost: 7
   manaCost: 10
+  requiredTier: 0
+  requiredRank: 1
+  requiresDiscovery: 0
   description: 
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 0
@@ -27,6 +32,13 @@ MonoBehaviour:
   targetPriority: 3
   knockbackForce: 1
   knockbackMinDamage: 12
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
   telegraphSeconds: 0.5
   bossTitle: Carl
   hpMultiplier: 5

@@ -14,13 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SubBossVariantDefinition
   monsterName: Armored Skeleton Sub Boss
   icon: {fileID: 1941305032766050162, guid: fc2f36fc949a174499bcd702cc12f522, type: 3}
+  voice: 2
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 5
   manaCost: 25
   requiredTier: 0
   requiredRank: 5
+  requiresDiscovery: 0
   description: A larger armored skeleton, but not as large as they can get...
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5
   wildRegenMultiplier: 0
@@ -29,6 +32,13 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
   telegraphSeconds: 0
   hpMultiplier: 2.5
   damageMultiplier: 2

@@ -14,16 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Skeleton
   icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  voice: 2
   prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
   capacityCost: 5
   manaCost: 15
+  requiredTier: 0
+  requiredRank: 1
+  requiresDiscovery: 0
   description: "A reanimated warrior stripped down to bone and instinct. Cheap to
     summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
     Don't expect them to win many fights \u2014 expect them to buy time."
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5
   wildRegenMultiplier: 0
   maxStamina: 0
   attackStaminaCost: 0
   targetPriority: 1
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

@@ -14,13 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Armored Skeleton
   icon: {fileID: 1941305032766050162, guid: fc2f36fc949a174499bcd702cc12f522, type: 3}
+  voice: 2
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 10
   manaCost: 25
+  requiredTier: 0
+  requiredRank: 1
+  requiresDiscovery: 0
   description: "A skeleton given purpose \u2014 and a weapon worth fearing. The extra
     reinforcement comes at a cost, but an armoured skeleton hits hard enough to make
     adventurers reconsider how deep they really want to go."
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5
   wildRegenMultiplier: 0
@@ -29,4 +34,11 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0.6
   knockbackMinDamage: 4
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
   telegraphSeconds: 0.3

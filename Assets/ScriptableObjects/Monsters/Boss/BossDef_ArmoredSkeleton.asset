@@ -14,11 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
   monsterName: Armored Skeleton Boss
   icon: {fileID: 0}
+  voice: 2
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 10
   manaCost: 15
+  requiredTier: 0
+  requiredRank: 1
+  requiresDiscovery: 0
   description: 
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 0
@@ -27,6 +32,13 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 1.2
   knockbackMinDamage: 12
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
   telegraphSeconds: 0.5
   bossTitle: Jimbo
   hpMultiplier: 5

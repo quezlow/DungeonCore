@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Thrall
   icon: {fileID: 3295236706101327806, guid: 8ecd14fd0e401a94f803f52a757630a7, type: 3}
+  voice: 2
   prefab: {fileID: 2221681563463472497, guid: 34d1738b1ec404346bc5b5a3099b9bee, type: 3}
   capacityCost: 5
   manaCost: 25
@@ -22,6 +23,7 @@ MonoBehaviour:
   requiresDiscovery: 1
   description: 
   isAquatic: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5
   wildRegenMultiplier: 0
