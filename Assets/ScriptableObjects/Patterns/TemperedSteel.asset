@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3549710fc2332247a9621582adf03f7, type: 3}
+  m_Name: TemperedSteel
+  m_EditorClassIdentifier: Assembly-CSharp::PatternDefinition
+  id: tempered_steel
+  displayName: Tempered Steel
+  band: 3
+  icon: {fileID: 0}
+  sourceHint: Fine blades of the well-paid.
+  discoveryNote: Fire taught it an edge. We remember the lesson.

@@ -14,12 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombatClassDefinition
   combatClass: 0
   spawnWeight: 3
+  affinityLean: []
   hpMultiplier: 1
   moveSpeedMultiplier: 1
   attackDamageMultiplier: 1
   attackRangeMultiplier: 1
   attackCooldownMultiplier: 1
   detectionRangeMultiplier: 1
+  telegraphSeconds: 0
   rangedAttacker: 0
   detectsTraps: 0
   healsAllies: 0
@@ -36,6 +38,21 @@ MonoBehaviour:
   classLoot:
   - label: Coin Purse
     lootType: 0
-    rarity: 3
+    rarity: 0
+    goldValue: 12
+    weight: 6
+  - label: Soldier's Kit
+    lootType: 0
+    rarity: 1
     goldValue: 12
     weight: 2
+  - label: Officer's Blade
+    lootType: 0
+    rarity: 2
+    goldValue: 12
+    weight: 0.5
+  - label: Champion's Sigil
+    lootType: 0
+    rarity: 3
+    goldValue: 12
+    weight: 0.3

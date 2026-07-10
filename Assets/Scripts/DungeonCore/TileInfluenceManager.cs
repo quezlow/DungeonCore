@@ -313,6 +313,14 @@ public class TileInfluenceManager : MonoBehaviour
             // with claimed, per P3-Q1.
             DungeonCore.Instance?.AddClaimedTiles(1);
             OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
+
+            // Material pattern discovery -- the first live claim of each
+            // terrain type teaches its pattern. Save-restore claims pass
+            // silent and never reach this.
+            if (MyFloor != null && MyFloor.TerrainTypeMap != null)
+                PatternDiscovery.NotifyTerrainClaimed(
+                    MyFloor.TerrainTypeMap.GetTerrainAt(pos),
+                    CellToWorld(pos), MyFloor.FloorIndex);
         }
     }
 

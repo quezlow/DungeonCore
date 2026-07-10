@@ -46,6 +46,21 @@ MonoBehaviour:
   classLoot:
   - label: Coin Purse
     lootType: 0
-    rarity: 4
+    rarity: 0
+    goldValue: 10
+    weight: 6
+  - label: Charged Focus
+    lootType: 0
+    rarity: 1
     goldValue: 10
     weight: 2
+  - label: Arcane Reagents
+    lootType: 0
+    rarity: 2
+    goldValue: 10
+    weight: 0.6
+  - label: Enchanter's Prism
+    lootType: 0
+    rarity: 4
+    goldValue: 10
+    weight: 0.15

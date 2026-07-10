@@ -44,4 +44,14 @@ MonoBehaviour:
     lootType: 0
     rarity: 0
     goldValue: 10
+    weight: 6
+  - label: Heavy Fittings
+    lootType: 0
+    rarity: 1
+    goldValue: 10
     weight: 2
+  - label: Runed Plate
+    lootType: 0
+    rarity: 3
+    goldValue: 10
+    weight: 0.3

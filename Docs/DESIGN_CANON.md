@@ -434,8 +434,9 @@ bakes the exposed flag into the field texture's B channel from
 
 # PART II -- DESIGNED, NOT YET BUILT
 
-Nothing in this part exists in code. Entries record APPROVED design; build
-guides must still verify live source before writing edits.
+Nothing in this part exists in code, with one exception: entry 14 has
+shipped and is recorded as-built in place. Entries record APPROVED design;
+build guides must still verify live source before writing edits.
 
 ## 13. Research Tree (Phase 4.5)
 
@@ -460,13 +461,36 @@ earned"); purchase model as instant point-spend rather than timed projects.
 
 ## 14. Material Pattern System
 
-Decided: boolean discovery flags ("patterns") -- no stockpile, no crafting
-sim; the core reconstitutes materials from mana. Discovery channels: terrain
-first-dig (deterministic), adventurer loot (primary pre-avatar), trader
-purchase (gold sink), avatar-exclusive surface patterns, event rewards.
-Pattern gating concentrates on the Architecture path only. A Pattern Codex
-HUD shows silhouetted unknowns and learned-from notes. Loot books grant nodes
-fully, INCLUDING their pattern requirements.
+Status: SHIPPED (graduated from Part II; recorded as-built in place).
+Verified: 2026-07-09.
+
+As built: boolean discovery flags ("patterns") -- no stockpile, no crafting
+sim; the core reconstitutes materials from mana. Flags live in `UnlockState`
+under a `pattern.` key prefix; definitions are `PatternDefinition`
+ScriptableObjects listed in one `PatternCatalog` asset (18 patterns: 6
+terrain, 8 loot-band, 4 reserved). Live channels: terrain first-claim
+(deterministic, hooked in `TileInfluenceManager.ClaimTile`'s non-silent
+block; Bedrock teaches nothing) and adventurer loot (rolled in
+`DroppedLoot.Absorb` against serialised per-rarity chances
+10/20/35/60/100%; expected drops to finish a band = band size / chance;
+exhausted bands fizzle silently -- the trader stays the designed catch-up
+valve; tribute coin flourishes roll as Common). Trader, avatar and event
+channels are reserved catalog entries only. Learned-from notes persist per
+pattern. Persistence: additive `unlockedKeys` + `patternNotes` on
+`DungeonSaveData`, restored in `DungeonSaveController` with a silent terrain
+catch-up that also heals legacy saves; the existing tech keys ride the same
+field, fulfilling the "persistence lands with Laboratory" promise. The
+Materials HUD panel is now the Pattern Codex (silhouetted unknowns show
+their source hint; the collapsed chip counts discoveries); gold display
+moved to the Level Panel. Class loot assets were re-authored from single
+tint-era entries into weighted rarity ladders (see
+`ScriptableObjects/Adventurers/Classes`). Pattern gating still concentrates
+on the Architecture path only; loot books still grant nodes fully,
+INCLUDING pattern requirements (unchanged, for the tree build).
+
+Key files: `Gameplay/PatternDefinition.cs`, `Gameplay/PatternCatalog.cs`,
+`Gameplay/PatternDiscovery.cs`, `UI/PatternCodexUI.cs`,
+`UI/PatternCodexRow.cs`, `Editor/PatternContentGenerator.cs`.
 
 ## 15. Room Effects v2 and Attractor Rooms
 

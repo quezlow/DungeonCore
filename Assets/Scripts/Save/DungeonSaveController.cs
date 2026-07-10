@@ -191,6 +191,13 @@ public class DungeonSaveController : MonoBehaviour
             }
         }
 
+        // Fresh pattern state -- floor bootstraps may have claimed the
+        // starter area before this ran, so catch the terrain patterns back
+        // up after the reset (silent; the codex starts with them known).
+        UnlockState.ResetAll();
+        PatternDiscovery.ClearNotes();
+        PatternDiscovery.CatchUpTerrain();
+
         AlertsLog.Instance?.ClearHistory();
 
         SaveGame();
@@ -267,6 +274,10 @@ public class DungeonSaveController : MonoBehaviour
 
         if (TodoListUI.Instance != null)
             currentSave.playerTodos = TodoListUI.Instance.GetSaveData();
+
+        currentSave.unlockedKeys =
+            new System.Collections.Generic.List<string>(UnlockState.AllUnlocked);
+        currentSave.patternNotes = PatternDiscovery.GetNotesForSave();
 
         if (RunStats.Instance != null)
             currentSave.runStats = RunStats.Instance.GetSaveData();
@@ -681,6 +692,10 @@ public class DungeonSaveController : MonoBehaviour
             TrackedPartyRegistry.Instance?.RestoreFromSave(currentSave.trackedParties);
             InspectorEscalation.Instance?.RestoreFromSave(currentSave.inspectorEscalation);
             FactionSystem.Instance?.RestoreFromSave(currentSave.factionSystem);
+
+            UnlockState.RestoreFrom(currentSave.unlockedKeys);
+            PatternDiscovery.RestoreNotes(currentSave.patternNotes);
+            PatternDiscovery.CatchUpTerrain();   // heals saves from before the pattern system
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);

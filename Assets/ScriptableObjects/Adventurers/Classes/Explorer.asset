@@ -42,6 +42,16 @@ MonoBehaviour:
   classLoot:
   - label: Coin Purse
     lootType: 0
+    rarity: 0
+    goldValue: 14
+    weight: 6
+  - label: Field Findings
+    lootType: 0
+    rarity: 1
+    goldValue: 14
+    weight: 2
+  - label: Deep Relic
+    lootType: 0
     rarity: 2
-    goldValue: 32
-    weight: 1
+    goldValue: 14
+    weight: 0.6

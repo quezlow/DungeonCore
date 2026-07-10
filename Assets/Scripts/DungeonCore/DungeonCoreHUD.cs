@@ -28,7 +28,8 @@ public class DungeonCoreHUD : MonoBehaviour
     [SerializeField] private float pulseMinAlpha = 0.15f;
     [SerializeField] private float pulseMaxAlpha = 0.40f;
 
-    [Header("Materials Panel")]
+    [Header("Gold")]   // label now sits on the Level Panel status board;
+                       // the old Materials panel is the Pattern Codex
     [SerializeField] private TMP_Text goldValueLabel;
 
     [Header("Capacity")]

@@ -40,6 +40,16 @@ MonoBehaviour:
   classLoot:
   - label: Tithe Coins
     lootType: 0
+    rarity: 0
+    goldValue: 16
+    weight: 6
+  - label: Blessed Token
+    lootType: 0
     rarity: 1
     goldValue: 16
-    weight: 3
+    weight: 2
+  - label: Relic Fragment
+    lootType: 0
+    rarity: 2
+    goldValue: 16
+    weight: 0.5

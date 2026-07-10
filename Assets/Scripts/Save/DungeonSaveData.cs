@@ -82,6 +82,10 @@ public class DungeonSaveData
     public BestiarySaveData bestiary;
 
     public List<TodoItemSaveData> playerTodos = new();   // player-authored to-do list (quest journal)
+
+    // Material pattern system (additive; null/empty on legacy saves)
+    public List<string> unlockedKeys = new();             // UnlockState flags, incl. "pattern." keys
+    public List<PatternNoteSaveData> patternNotes = new();
 }
 
 [Serializable]
@@ -98,6 +102,13 @@ public class TodoItemSaveData
 {
     public string text;
     public bool done;
+}
+
+[Serializable]
+public class PatternNoteSaveData
+{
+    public string key;      // full UnlockState key, e.g. "pattern.rough_stone"
+    public string source;   // learned-from line shown in the codex
 }
 
 [Serializable]

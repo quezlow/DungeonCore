@@ -42,4 +42,14 @@ MonoBehaviour:
     lootType: 0
     rarity: 0
     goldValue: 8
-    weight: 3
+    weight: 6
+  - label: Lifted Trinket
+    lootType: 0
+    rarity: 1
+    goldValue: 8
+    weight: 2
+  - label: Gemmed Ring
+    lootType: 0
+    rarity: 2
+    goldValue: 8
+    weight: 0.5
