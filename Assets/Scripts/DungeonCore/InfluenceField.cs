@@ -71,9 +71,9 @@ public class InfluenceField : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float suppressionFraction = 0.5f;
     [Tooltip("Creep runs at surge rate while the core is unstable, so the receded edge visibly regrows.")]
     [SerializeField] private bool recoveryUsesSurgeRate = true;
-    [Tooltip("Fraction of your PUSHED territory (claimed past the free-growth reach) that a breach " +
-             "reclaims — the outer fringe. The auto-growth zone and the inner remainder of your push " +
-             "stay. 0 = pushes are fully breach-proof; 1 = a breach takes all pushed ground.")]
+    [Tooltip("Fraction of your domain's radial extent that a breach reclaims — the outer rind, " +
+             "measured straight-line from the core. Everything inside it survives, so ground around " +
+             "the core is never lost. 0 = breach-proof; 1 = a breach reclaims the entire domain.")]
     [SerializeField, Range(0f, 1f)] private float pushedFringeLost = 0.2f;
 
     // ── State ─────────────────────────────────────────────────────
@@ -246,30 +246,25 @@ public class InfluenceField : MonoBehaviour
             RecomputeField();
             fieldDirty = false;
         }
-        RecedeBeyondEffectiveReach();
+        RecedeBeyondSafeRadius();
     }
 
     // ── Breach Recede ─────────────────────────────────────────────
 
-    private void RecedeBeyondEffectiveReach()
+    /// <summary>A breach nibbles the outer rind of the domain and nothing else.
+    /// Everything within BreachSafeRadius survives, so ground around the core is
+    /// never reclaimed. The old rule suppressed EffectiveReach and unclaimed the
+    /// band between it and the reach cap — which carved an unclaimed ring around
+    /// the core while pushed territory further out survived. One radial rule
+    /// instead: lose the outer fringe, keep the rest. Reclaimed cells still inside
+    /// the reach cap regrow via creep as EffectiveReach recovers; reclaimed cells
+    /// beyond it were pushed, and stay gone.</summary>
+    private void RecedeBeyondSafeRadius()
     {
         if (influence == null || floor == null || floor.Terrain == null) return;
         if (costDistance.Count == 0) return; // field never computed — never nuke blind
 
-        float reach = EffectiveReach;
-        float autoReach = MaxReach;                    // creep can regrow everything within this
         Vector3Int coreCell = floor.Terrain.CoreCell;
-
-        // Two zones behave differently on a breach:
-        //   - Auto-growth zone (cost-distance within the level's reach): its outer
-        //     band beyond the suppressed reach recedes and then regrows via creep
-        //     as reach recovers — the existing recover-over-time drama, untouched.
-        //   - Pushed territory (claimed past the reach cap by the manual push): the
-        //     inner remainder is durable; only the OUTER FRINGE is reclaimed, so a
-        //     breach nibbles what you shoved out rather than swallowing all of it.
-        // The push can reach past where the cost-distance field is computed, so the
-        // pushed fringe is measured by straight-line distance from the core. The
-        // radius is shared with the overlay (BreachSafeRadius) so they always agree.
         float safeRadius = BreachSafeRadius();
         float safeRadiusSq = safeRadius * safeRadius;
 
@@ -277,15 +272,6 @@ public class InfluenceField : MonoBehaviour
         foreach (Vector3Int cell in influence.ClaimedTiles)
         {
             if (cell == coreCell) continue;
-
-            if (costDistance.TryGetValue(cell, out float d) && d <= autoReach)
-            {
-                // Auto-growth zone: recede only the suppressed outer band (regrows).
-                if (d > reach) recedeScratch.Add(cell);
-                continue;
-            }
-
-            // Pushed beyond the auto zone: keep the inner remainder, take the fringe.
             float ex = cell.x - coreCell.x;
             float ey = cell.y - coreCell.y;
             if (ex * ex + ey * ey > safeRadiusSq) recedeScratch.Add(cell);
@@ -293,13 +279,14 @@ public class InfluenceField : MonoBehaviour
 
         if (recedeScratch.Count == 0) return;
         influence.UnclaimTilesBatch(recedeScratch);
-        Debug.Log($"[InfluenceField] Floor {floor.FloorIndex}: breach recede unclaimed {recedeScratch.Count} cell(s) — auto band beyond reach {reach:0.0}, pushed fringe beyond safe radius {safeRadius:0.0}.");
+        Debug.Log($"[InfluenceField] Floor {floor.FloorIndex}: breach recede unclaimed {recedeScratch.Count} cell(s) beyond safe radius {safeRadius:0.0}.");
     }
 
-    /// <summary>Straight-line radius from the core within which pushed territory
-    /// survives a breach. Beyond it (and beyond the auto-growth reach) is the
-    /// fringe a breach reclaims. The recede and the influence overlay both call
-    /// this, so what you SEE as exposed is exactly what a breach takes.</summary>
+
+    /// <summary>Straight-line radius from the core within which ALL claimed
+    /// territory survives a breach. Beyond it lies the fringe a breach reclaims.
+    /// The recede and the influence overlay both call this, so what you SEE as
+    /// exposed is exactly what a breach takes.</summary>
     public float BreachSafeRadius()
     {
         if (pushedFringeLost >= 1f || influence == null || floor == null || floor.Terrain == null)

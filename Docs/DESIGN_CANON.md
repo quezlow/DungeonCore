@@ -53,6 +53,7 @@ the supersession in one line.
 10. Assault Staging
 11. Tribute and GiftGivers
 12. Ambient Necromancy and Corpses
+12A. Influence Field, Push and Breach Recede
 
 **Part II -- Designed, not yet built**
 13. Research Tree (Phase 4.5)
@@ -389,6 +390,45 @@ existing APIs.
 
 **Key files:** `Monster/Corpse.cs`, `Monster/MonsterDefinition.cs`
 (Necromancy header), `Monster/DungeonMonster.cs`.
+
+---
+
+## 12A. Influence Field, Push and Breach Recede
+
+**As built:** territory is claimed cells on a 4-connected frontier.
+`InfluenceField` floods cost-distance from the core cell (8-directional,
+terrain-weighted) and the ambient creep claims the cheapest claimable cell
+within the level's reach cap (`MaxReach`). Bedrock and uncleared chambers are
+impassable; rivers cost heavily but remain passable.
+
+**Push (`InfluenceChannel`, `BuildMode.Push`):** boundary-pressure inflation,
+not a path. Frontier cells inside the corridor between the core cell and the
+cursor accrue pressure -- strongest on the axis, tapering to the corridor edge,
+and gated at the cursor distance so the swell stops at the cursor rather than
+overshooting. On contact it fills concave notches, pulling the core edge out to
+smooth the shape, then settles. Mana is spent per claimed cell scaled by that
+cell's terrain resistance; the push ignores the reach cap. Off-corridor
+boundary never grows. Superseded: the cheapest-path spine with lateral flanks,
+and its tapered-pseudopod variant.
+
+**Breach recede:** one radial rule. A breach reclaims claimed cells beyond
+`BreachSafeRadius()` -- straight-line from the core, at `1 - pushedFringeLost`
+of the domain's farthest claimed extent (default: outer 20% lost) -- and
+nothing else. Ground around the core is never reclaimed. Reclaimed cells still
+inside the reach cap regrow via creep as `EffectiveReach` recovers; reclaimed
+cells beyond it were pushed, and stay gone. Superseded: the rule that unclaimed
+the band between suppressed reach and the reach cap, which carved an unclaimed
+ring around the core.
+
+**Overlay (`O`):** three tiers, driven from the same radius -- brightest over
+unclaimed ground within reach (where creep will fill), mid over claimed
+breach-durable ground, dim over the exposed fringe. `InfluenceRingRenderer`
+bakes the exposed flag into the field texture's B channel from
+`BreachSafeRadius()`, so what reads as exposed is exactly what a breach takes.
+
+**Key files:** `DungeonCore/InfluenceField.cs`,
+`DungeonCore/InfluenceChannel.cs`, `DungeonCore/TileInfluenceManager.cs`,
+`DungeonCore/InfluenceRingRenderer.cs`, `Shaders/InfluenceRing.shader`.
 
 ---
 

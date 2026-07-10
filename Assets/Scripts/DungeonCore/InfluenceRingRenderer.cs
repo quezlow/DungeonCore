@@ -374,7 +374,6 @@ public class InfluenceRingRenderer : MonoBehaviour
         // reach and past the safe radius, i.e. exactly what a breach would reclaim.
         float safeRadius = field.BreachSafeRadius();
         float safeRadiusSq = safeRadius * safeRadius;
-        float autoReach = field.MaxReach;
         Vector3Int coreCell = floor.Terrain.CoreCell;
 
         for (int y = 0; y < texSize; y++)
@@ -392,10 +391,10 @@ public class InfluenceRingRenderer : MonoBehaviour
                 byte g = 255;
                 if (hasCost)
                     g = (byte)Mathf.Clamp(Mathf.RoundToInt(255f * Mathf.Clamp01(cost / reachNorm)), 0, 254);
-                // Exposed fringe: claimed, pushed beyond the auto reach, and past
-                // the safe radius (straight-line from the core). Baked into B.
+                // Exposed fringe: claimed ground beyond the breach-safe radius —
+                // exactly the cells a breach reclaims. Baked into B.
                 byte b = 0;
-                if (claimed && (!hasCost || cost > autoReach))
+                if (claimed)
                 {
                     float dx = cell.x - coreCell.x;
                     float dy = cell.y - coreCell.y;
