@@ -68,6 +68,9 @@ the supersession in one line.
 20. Why Holy Sites Are Underground
 21. The Buried Age
 
+**Appendix**
+A. Content Registries and Authoring Keys
+
 ---
 
 # PART I -- SHIPPED SYSTEMS
@@ -587,6 +590,46 @@ Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient
 sites are ruins of the faith that venerated cores -- welcoming, with no
 desecration penalty -- whereas Holy Ground is a Church seal, hostile ground.
 Two flavours of sacred underground, one axis of history: deeper is older.
+
+---
+
+# APPENDIX
+
+## A. Content Registries and Authoring Keys
+
+Status: SHIPPED (documentation of as-built behaviour). Verified: 2026-07-09.
+
+**Registry membership** = placeable through its picker + restorable by name on
+load. `DungeonSaveController` restores placed spawners, traps, furniture,
+chests and room assignments via `GetByName` against the five registries.
+Anything the player can place and save must be registered; transient-only
+definitions stay out (event beasts spawned from a component slot, e.g.
+`WildMonsterEvent.predatorDef` / the Ravenous Bear).
+
+**Unified wild/placeable model:** one `MonsterDefinition` serves both roles.
+It sits in the floor template's `TerrainFeatureGenerator.wildMonsterPool`
+(spawns wild) AND in the monster registry with `requiresDiscovery`
+(picker-locked until its own `monsterName` is discovered by slaying it wild).
+Adventurer-granted unlocks reuse the Bestiary channel via `unlocksOnDeath`
+(Commoner -> Thrall, Dark cores only). Discovery, save restore and the picker
+all key on `monsterName`.
+
+**Immutable keys** (save-breaking if renamed after ship): `monsterName`,
+`roomName`, `trapName`, `furnitureName`, `chestName`, `questID`, item `ID`
+ints, and enum ordinals (`AdventurerType`, `CombatClass` persist as ints --
+append new values only, never reorder). Registry list order is free: lookups
+are name-based; order only drives picker presentation.
+
+**Material patterns:** the sixth registry. `PatternCatalog.asset` lists every
+`PatternDefinition`; the save key is the `UnlockState` flag `pattern.`
+(id immutable after ship -- asset filenames free). Band = channel: Terrain is
+deterministic first-claim and code-bound; Common..Legendary join their band's
+loot roll automatically; Reserved is silhouette-only until a future system
+unlocks it. Authored via `Editor/PatternContentGenerator` (single source of
+truth -- regeneration rebuilds the catalog list).
+
+**Authoring reference:** step-by-step recipes live in the Content Authoring
+guide; this appendix records the rules those recipes obey.
 
 ---
 
