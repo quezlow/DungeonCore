@@ -13,9 +13,18 @@ MonoBehaviour:
   m_Name: Room_Barracks
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Barracks
+  description: 
+  effectSummary: 
   validationTintColor: {r: 0.16509432, g: 0.44467837, b: 1, a: 0.6}
   minTileCount: 9
+  maxTileCount: 0
+  requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
   techNodeDescription: This is a barracks. Things sleep here.
+  maxTier: 3
+  upgradeBaseCost: 100
+  effects:
+  - type: 0
+    perSecond: 2

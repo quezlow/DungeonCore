@@ -26,7 +26,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
   bootstrapUnlocked: 0
   upgradeGates:
-  - room: {fileID: 11400000, guid: 42a71e61c39669b42970917702b905e7, type: 2}
+  - room: {fileID: 11400000, guid: 863feb6950bb542448258cf63d73db67, type: 2}
     minTier: 2
   hiddenHint: The beasts could rest easier, given better stone.
   description: Lair upgrades past tier 1. Requires the pattern of Rough Stone.
