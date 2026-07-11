@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: RememberedBones
+  m_Name: RememberedSight
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: skeleton
+  id: status_bars
   overrideKey: 
-  displayName: Remembered Bones
+  displayName: Remembered Sight
   icon: {fileID: 0}
-  path: 2
+  path: 0
   tier: 1
   pointCost: 0
   durationDays: 1
@@ -30,5 +30,6 @@ MonoBehaviour:
   visibilityKey: 
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: Something stirs at the edge of recall.
-  description: The shape of a servant, remembered whole. Skeletons may be placed.
+  hiddenHint: The dark was not always blind.
+  description: The core perceives the vigour of things that move within it. Status
+    bars are shown.

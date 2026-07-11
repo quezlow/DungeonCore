@@ -182,6 +182,14 @@ public class DungeonBuildController : MonoBehaviour
 
     public void SetMode(BuildMode mode)
     {
+        if (mode == BuildMode.PlaceTrap && !UnlockState.IsUnlocked("tech.spike_trap"))
+        {
+            AlertsLog.Instance?.AddAlert(
+                "The shape of iron teeth is not yet remembered.",
+                DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : Vector3.zero,
+                0, AlertCategory.Discovery);
+            return;
+        }
         if (CurrentMode == mode) return;
         CurrentMode = mode;
         Debug.Log($"[BuildController] Mode → {mode}");
@@ -602,6 +610,14 @@ public class DungeonBuildController : MonoBehaviour
     {
         if (spawnerShellPrefab == null) return;
         var def = MonsterSelectionUI.Instance?.Selected;
+        if (def != null && !string.IsNullOrEmpty(def.requiredTechKey)
+            && !UnlockState.IsUnlocked(def.requiredTechKey))
+        {
+            AlertsLog.Instance?.AddAlert(
+                "The core does not yet remember that shape.",
+                transform.position, 0, AlertCategory.Discovery);
+            return;
+        }
         if (def == null) return;
 
         var core = DungeonCore.Instance;

@@ -110,6 +110,8 @@ public class RoomTypePickerUI : MonoBehaviour
 
         foreach (var def in registry.All)
         {
+            if (!string.IsNullOrEmpty(def.requiredTechKey)
+                && !UnlockState.IsUnlocked(def.requiredTechKey)) continue;
             if (def == null) continue;
             var btn = Instantiate(entryButtonPrefab, entryContainer);
             var label = btn.GetComponentInChildren<TMP_Text>();

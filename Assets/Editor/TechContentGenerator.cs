@@ -1,48 +1,191 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Seed generator for the research spine: the two bootstrap nodes plus one
-/// real tier-2 Architecture node proving the full chain (points + pattern
-/// requirement + room-upgrade gate). Idempotent; re-running refreshes text
-/// and re-wires the tree. The roster session will grow this list.
+/// Generator for the research roster: every TechNodeDefinition plus the
+/// TechTree, list-driven and idempotent (re-running refreshes text and
+/// re-wires the tree in generator order -- hand-added nodes fall out, so
+/// fold them in here). Also patches requiredTechKey onto the gated monster
+/// and room definition assets, and the Barracks upgrade gate, so no manual
+/// Inspector drags remain.
 /// </summary>
 public static class TechContentGenerator
 {
     private const string Folder = "Assets/ScriptableObjects/Tech";
-    private const string RoughStonePath = "Assets/ScriptableObjects/Patterns/RoughStone.asset";
+    private const string PatternFolder = "Assets/ScriptableObjects/Patterns";
+    private const string RoomFolder = "Assets/ScriptableObjects/Rooms/Rooms";
+    private const string MonsterFolder = "Assets/ScriptableObjects/Monsters/Regular";
+
+    private static readonly List<TechNodeDefinition> generated = new();
 
     [MenuItem("Dungeon Core/Generate Tech Content")]
     public static void Generate()
     {
         if (!AssetDatabase.IsValidFolder(Folder))
             AssetDatabase.CreateFolder("Assets/ScriptableObjects", "Tech");
+        generated.Clear();
 
-        var skeleton = Define("skeleton", "Remembered Bones", ResearchPath.Bestiary, 1, 0, 1,
+        var n_skeleton = Define("skeleton", "Remembered Bones", ResearchPath.Bestiary, 1, 0, 1,
             "Something stirs at the edge of recall.",
             "The shape of a servant, remembered whole. Skeletons may be placed.");
-        skeleton.bootstrapUnlocked = true;
+        n_skeleton.bootstrapUnlocked = true;
 
-        var spikes = Define("spike_trap", "Remembered Spikes", ResearchPath.Architecture, 1, 0, 1,
+        var n_spike_trap = Define("spike_trap", "Remembered Spikes", ResearchPath.Architecture, 1, 0, 1,
             "A sharpness, half-forgotten.",
             "Iron teeth in the floor, remembered whole. Spike traps may be placed.");
-        spikes.bootstrapUnlocked = true;
+        n_spike_trap.bootstrapUnlocked = true;
 
-        var lairs = Define("deeper_lairs", "Deeper Lairs", ResearchPath.Architecture, 2, 15, 2,
+        var n_status_bars = Define("status_bars", "Remembered Sight", ResearchPath.Observation, 1, 0, 1,
+            "The dark was not always blind.",
+            "The core perceives the vigour of things that move within it. Status bars are shown.");
+        n_status_bars.bootstrapUnlocked = true;
+
+        var n_wave_preview = Define("wave_preview", "Read the Coming Tide", ResearchPath.Observation, 1, 10, 1,
+            "Footsteps, before they fall.",
+            "The next raid announces itself. The wave preview is shown.");
+
+        var n_known_parties = Define("known_parties", "Ledger of the Fallen", ResearchPath.Observation, 2, 15, 1,
+            "Names, kept in the dark.",
+            "A ledger of parties within and nemeses without. Opens with K.");
+
+        var n_adventurer_stats = Define("adventurer_stats", "Study Adventurer Anatomy", ResearchPath.Observation, 2, 15, 2,
+            "What are they, under the armour?",
+            "The measure of an intruder, laid bare. The stats panel is shown.");
+        n_adventurer_stats.overrideKey = "adventurer_stats";
+
+        var n_oracle_intent = Define("oracle_intent", "Whispers of Intent", ResearchPath.Observation, 3, 25, 2,
+            "Why do they come?",
+            "Purpose, read from a stride. Intent badges are shown above intruders.");
+        n_oracle_intent.overrideKey = "oracle_chamber";
+
+        var n_deeper_lairs = Define("deeper_lairs", "Deeper Lairs", ResearchPath.Architecture, 2, 15, 2,
             "The beasts could rest easier, given better stone.",
-            "Lair upgrades past tier 1. Requires the pattern of Rough Stone.");
-        lairs.prerequisites.Clear();
-        lairs.prerequisites.Add(spikes);
-        lairs.patternRequirements.Clear();
-        var roughStone = AssetDatabase.LoadAssetAtPath<PatternDefinition>(RoughStonePath);
-        if (roughStone != null) lairs.patternRequirements.Add(roughStone);
-        else Debug.LogWarning("TechContentGenerator: RoughStone pattern not found; add it to Deeper Lairs by hand.");
-        // upgradeGates: drag the Lair RoomDefinition in the Inspector (see the guide).
+            "Barracks upgrades past tier 1. Requires the pattern of Rough Stone.");
+        n_deeper_lairs.affinity = DungeonType.Earth;
 
-        EditorUtility.SetDirty(skeleton);
-        EditorUtility.SetDirty(spikes);
-        EditorUtility.SetDirty(lairs);
+        var n_consecrant_masonry = Define("consecrant_masonry", "Consecrant Masonry", ResearchPath.Architecture, 2, 15, 2,
+            "Their stone, turned to our purposes.",
+            "Shrines may be built. Requires the pattern of Hallowed Stone.");
+        n_consecrant_masonry.affinity = DungeonType.Light;
 
+        var n_halls_of_war = Define("halls_of_war", "Halls of War", ResearchPath.Architecture, 3, 30, 3,
+            "Iron in the walls, iron in the sleepers.",
+            "Barracks upgrades to tier 3. Requires the pattern of Wrought Iron.");
+
+        var n_deep_foundations = Define("deep_foundations", "Deep Foundations", ResearchPath.Architecture, 3, 30, 3,
+            "Something vast will need somewhere to stand.",
+            "Boss rooms may be built. Requires the pattern of Veined Granite.");
+        n_deep_foundations.affinity = DungeonType.Earth;
+
+        var n_shambling_dead = Define("shambling_dead", "Shambling Dead", ResearchPath.Bestiary, 2, 15, 2,
+            "Flesh remembers slower than bone.",
+            "Zombies may be placed.");
+        n_shambling_dead.affinity = DungeonType.Dark;
+
+        var n_bones_in_iron = Define("bones_in_iron", "Bones in Iron", ResearchPath.Bestiary, 2, 15, 2,
+            "A rattle, heavier than before.",
+            "Armoured skeletons may be placed.");
+
+        var n_whisperer_in_marrow = Define("whisperer_in_marrow", "Whisperer in Marrow", ResearchPath.Bestiary, 3, 35, 3,
+            "The dead learn from those who bless.",
+            "Necromancers may be placed.");
+        n_whisperer_in_marrow.affinity = DungeonType.Dark;
+
+        // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
+        AddPrereq(n_wave_preview, n_status_bars);
+        AddPrereq(n_known_parties, n_wave_preview);
+        AddPrereq(n_adventurer_stats, n_wave_preview);
+        AddPrereq(n_oracle_intent, n_known_parties);
+        AddPrereq(n_oracle_intent, n_adventurer_stats);
+        AddPrereq(n_deeper_lairs, n_spike_trap);
+        AddPattern(n_deeper_lairs, "RoughStone");
+        AddGate(n_deeper_lairs, "Room_Barracks", 2);
+        AddPrereq(n_consecrant_masonry, n_spike_trap);
+        AddPattern(n_consecrant_masonry, "HallowedStone");
+        AddPrereq(n_halls_of_war, n_deeper_lairs);
+        AddPattern(n_halls_of_war, "WroughtIron");
+        AddGate(n_halls_of_war, "Room_Barracks", 3);
+        AddPrereq(n_deep_foundations, n_consecrant_masonry);
+        AddPattern(n_deep_foundations, "VeinedGranite");
+        AddPrereq(n_shambling_dead, n_skeleton);
+        AddPrereq(n_bones_in_iron, n_skeleton);
+        AddPrereq(n_whisperer_in_marrow, n_shambling_dead);
+        AddPrereq(n_whisperer_in_marrow, n_bones_in_iron);
+        n_whisperer_in_marrow.visibility = TechNodeDefinition.VisibilityCondition.KillsOfClass;
+        n_whisperer_in_marrow.visibilityClassName = "Cleric";
+        n_whisperer_in_marrow.visibilityKillCount = 5;
+
+        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties, n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations, n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow });
+
+        // Gate keys on the definitions that consume them.
+        PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");
+        PatchKey(MonsterFolder + "/MonsterDef_Zombie.asset", "tech.shambling_dead");
+        PatchKey(MonsterFolder + "/MonsterDef_ArmoredSkeleton.asset", "tech.bones_in_iron");
+        PatchKey(MonsterFolder + "/MonsterDef_Necromancer.asset", "tech.whisperer_in_marrow");
+        PatchKey(RoomFolder + "/Room_Shrine.asset", "tech.consecrant_masonry");
+        PatchKey(RoomFolder + "/Room_BossRoom.asset", "tech.deep_foundations");
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log($"TechContentGenerator: {generated.Count} nodes wired; gate keys patched.");
+    }
+
+    private static TechNodeDefinition Define(string id, string displayName, ResearchPath path,
+        int tier, int pointCost, int durationDays, string hiddenHint, string description)
+    {
+        string assetPath = $"{Folder}/{displayName.Replace(" ", "").Replace("'", "")}.asset";
+        var node = AssetDatabase.LoadAssetAtPath<TechNodeDefinition>(assetPath);
+        if (node == null)
+        {
+            node = ScriptableObject.CreateInstance<TechNodeDefinition>();
+            AssetDatabase.CreateAsset(node, assetPath);
+        }
+        node.id = id;
+        node.overrideKey = "";
+        node.displayName = displayName;
+        node.path = path;
+        node.tier = tier;
+        node.pointCost = pointCost;
+        node.durationDays = durationDays;
+        node.affinity = DungeonType.None;
+        node.bootstrapUnlocked = false;
+        node.visibility = TechNodeDefinition.VisibilityCondition.Always;
+        node.prerequisites.Clear();
+        node.patternRequirements.Clear();
+        node.upgradeGates.Clear();
+        node.hiddenHint = hiddenHint;
+        node.description = description;
+        EditorUtility.SetDirty(node);
+        generated.Add(node);
+        return node;
+    }
+
+    private static void AddPrereq(TechNodeDefinition node, TechNodeDefinition prereq)
+        => node.prerequisites.Add(prereq);
+
+    private static void AddPattern(TechNodeDefinition node, string patternAssetName)
+    {
+        var pat = AssetDatabase.LoadAssetAtPath<PatternDefinition>(
+            $"{PatternFolder}/{patternAssetName}.asset");
+        if (pat != null) node.patternRequirements.Add(pat);
+        else Debug.LogWarning($"TechContentGenerator: pattern '{patternAssetName}' not found for {node.displayName}.");
+    }
+
+    private static void AddGate(TechNodeDefinition node, string roomAssetName, int minTier)
+    {
+        var room = AssetDatabase.LoadAssetAtPath<RoomDefinition>(
+            $"{RoomFolder}/{roomAssetName}.asset");
+        if (room == null)
+        {
+            Debug.LogWarning($"TechContentGenerator: room '{roomAssetName}' not found for {node.displayName}.");
+            return;
+        }
+        node.upgradeGates.Add(new TechNodeDefinition.RoomUpgradeGate { room = room, minTier = minTier });
+    }
+
+    private static void WireTree(TechNodeDefinition[] order)
+    {
         string treePath = Folder + "/TechTree.asset";
         var tree = AssetDatabase.LoadAssetAtPath<TechTree>(treePath);
         if (tree == null)
@@ -52,36 +195,31 @@ public static class TechContentGenerator
         }
         var so = new SerializedObject(tree);
         var list = so.FindProperty("nodes");
-        list.arraySize = 3;
-        list.GetArrayElementAtIndex(0).objectReferenceValue = skeleton;
-        list.GetArrayElementAtIndex(1).objectReferenceValue = spikes;
-        list.GetArrayElementAtIndex(2).objectReferenceValue = lairs;
+        list.arraySize = order.Length;
+        for (int i = 0; i < order.Length; i++)
+            list.GetArrayElementAtIndex(i).objectReferenceValue = order[i];
         so.ApplyModifiedPropertiesWithoutUndo();
-
         EditorUtility.SetDirty(tree);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        Debug.Log("TechContentGenerator: 3 nodes wired into " + treePath + ".");
+        foreach (var n in order) EditorUtility.SetDirty(n);
     }
 
-    private static TechNodeDefinition Define(string id, string displayName, ResearchPath path,
-        int tier, int pointCost, int durationDays, string hiddenHint, string description)
+    private static void PatchKey(string assetPath, string key)
     {
-        string assetPath = Folder + "/" + displayName.Replace(" ", "") + ".asset";
-        var node = AssetDatabase.LoadAssetAtPath<TechNodeDefinition>(assetPath);
-        if (node == null)
+        var obj = AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);
+        if (obj == null)
         {
-            node = ScriptableObject.CreateInstance<TechNodeDefinition>();
-            AssetDatabase.CreateAsset(node, assetPath);
+            Debug.LogWarning($"TechContentGenerator: asset not found for key patch: {assetPath}");
+            return;
         }
-        node.id = id;
-        node.displayName = displayName;
-        node.path = path;
-        node.tier = tier;
-        node.pointCost = pointCost;
-        node.durationDays = durationDays;
-        node.hiddenHint = hiddenHint;
-        node.description = description;
-        return node;
+        var so = new SerializedObject(obj);
+        var prop = so.FindProperty("requiredTechKey");
+        if (prop == null)
+        {
+            Debug.LogWarning($"TechContentGenerator: no requiredTechKey on {assetPath}");
+            return;
+        }
+        prop.stringValue = key;
+        so.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(obj);
     }
 }

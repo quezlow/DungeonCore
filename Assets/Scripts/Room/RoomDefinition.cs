@@ -61,6 +61,10 @@ public class RoomDefinition : ScriptableObject
              "Displayed in the room label tooltip (Day 25+).")]
     public string techNodeDescription = "";
 
+    [Tooltip("Optional research gate: if set, the room is hidden from the picker "
+           + "until this UnlockState key (usually tech.<node id>) is understood.")]
+    public string requiredTechKey = "";
+
     [Header("Upgrades")]
     [Tooltip("Maximum upgrade tier (1 = no upgrades). Higher tiers scale this room's effects.")]
     [Min(1)] public int maxTier = 3;

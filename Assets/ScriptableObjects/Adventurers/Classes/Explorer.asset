@@ -45,13 +45,22 @@ MonoBehaviour:
     rarity: 0
     goldValue: 14
     weight: 6
+    grantsNode: {fileID: 0}
   - label: Field Findings
     lootType: 0
     rarity: 1
     goldValue: 14
     weight: 2
+    grantsNode: {fileID: 0}
   - label: Deep Relic
     lootType: 0
     rarity: 2
     goldValue: 14
     weight: 0.6
+    grantsNode: {fileID: 0}
+  - label: '"Surveyor''s Folio"'
+    lootType: 1
+    rarity: 3
+    goldValue: 14
+    weight: 0.08
+    grantsNode: {fileID: 11400000, guid: 44b358dc8d73d124a97a86ea60b731aa, type: 2}

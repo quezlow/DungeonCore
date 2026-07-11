@@ -43,13 +43,22 @@ MonoBehaviour:
     rarity: 0
     goldValue: 16
     weight: 6
+    grantsNode: {fileID: 0}
   - label: Blessed Token
     lootType: 0
     rarity: 1
     goldValue: 16
     weight: 2
+    grantsNode: {fileID: 0}
   - label: Relic Fragment
     lootType: 0
     rarity: 2
     goldValue: 16
     weight: 0.5
+    grantsNode: {fileID: 0}
+  - label: '"Litany of Purposes"'
+    lootType: 1
+    rarity: 3
+    goldValue: 16
+    weight: 0.08
+    grantsNode: {fileID: 11400000, guid: b22d0d64b5974d248bc8b86f7cf571a6, type: 2}

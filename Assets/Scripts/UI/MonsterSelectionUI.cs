@@ -106,15 +106,19 @@ public class MonsterSelectionUI : MonoBehaviour
         bool rankLocked = DungeonCore.Instance != null
             && def.RequiredFlatLevel > DungeonCore.Instance.DungeonLevel;
         bool undiscovered = def.requiresDiscovery && !BestiaryState.Discovered(def.monsterName);
+        bool techLocked = !string.IsNullOrEmpty(def.requiredTechKey)
+            && !UnlockState.IsUnlocked(def.requiredTechKey);
 
         if (monsterIcon != null) monsterIcon.sprite = def.icon;
         if (monsterNameLabel != null) monsterNameLabel.text = def.monsterName;
         if (costLabel != null)
             costLabel.text = undiscovered
                 ? "Slay one in the wild to learn it"
-                : rankLocked
-                    ? $"Unlocks at {LevelTierUtil.DisplayName(def.RequiredFlatLevel)}"
-                    : $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
+                : techLocked
+                    ? "The core does not yet remember this shape"
+                    : rankLocked
+                        ? $"Unlocks at {LevelTierUtil.DisplayName(def.RequiredFlatLevel)}"
+                        : $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
         if (descriptionLabel != null) descriptionLabel.text = def.description;
     }
 

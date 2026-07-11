@@ -17,6 +17,7 @@ public class LootTable : MonoBehaviour
     public enum LootType
     {
         Gold,
+        Book,        // grants a research node outright on absorb (gold still pays)
         // Material,   // Phase 2
         // Equipment,  // Phase 2
     }
@@ -37,6 +38,10 @@ public class LootTable : MonoBehaviour
         public int goldValue = 1;
         [Min(0)]
         public float weight = 1f;
+
+        [Tooltip("Book drops only: the research node granted outright on absorb. "
+               + "Ignored unless lootType = Book.")]
+        public TechNodeDefinition grantsNode;
     }
 
     // ── Inspector ─────────────────────────────────────────────────

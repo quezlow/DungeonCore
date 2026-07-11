@@ -21,6 +21,7 @@ MonoBehaviour:
   requiredTier: 0
   requiredRank: 1
   requiresDiscovery: 0
+  requiredTechKey: tech.skeleton
   description: "A reanimated warrior stripped down to bone and instinct. Cheap to
     summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
     Don't expect them to win many fights \u2014 expect them to buy time."

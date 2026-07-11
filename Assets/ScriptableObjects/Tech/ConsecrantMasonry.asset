@@ -10,29 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: DeeperLairs
+  m_Name: ConsecrantMasonry
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: deeper_lairs
+  id: consecrant_masonry
   overrideKey: 
-  displayName: Deeper Lairs
+  displayName: Consecrant Masonry
   icon: {fileID: 0}
   path: 1
   tier: 2
   pointCost: 15
   durationDays: 2
-  affinity: 4
+  affinity: 6
   patternRequirements:
-  - {fileID: 11400000, guid: afaa3c060cbe3674bac2f9be76a0b2da, type: 2}
+  - {fileID: 11400000, guid: f2296f8859fc19449a8f20c3771ea379, type: 2}
   prerequisites:
   - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
   bootstrapUnlocked: 0
-  upgradeGates:
-  - room: {fileID: 11400000, guid: 863feb6950bb542448258cf63d73db67, type: 2}
-    minTier: 2
+  upgradeGates: []
   visibility: 0
   visibilityPattern: {fileID: 0}
   visibilityKey: 
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: The beasts could rest easier, given better stone.
-  description: Barracks upgrades past tier 1. Requires the pattern of Rough Stone.
+  hiddenHint: Their stone, turned to our purposes.
+  description: Shrines may be built. Requires the pattern of Hallowed Stone.

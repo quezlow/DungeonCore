@@ -65,6 +65,7 @@ public class EntityStatusBars : MonoBehaviour
 
     // ── State ─────────────────────────────────────────────────────
 
+    private Canvas barsCanvas;
     private Transform trackedEntity;
     private SpriteRenderer trackedSprite;
     private Color defaultLabelColour = Color.white;   // the prefab's own label colour (boss styling)
@@ -96,6 +97,11 @@ public class EntityStatusBars : MonoBehaviour
 
     private void LateUpdate()
     {
+        // Remembered Sight gate: the whole world-space canvas is the bars.
+        if (barsCanvas == null) barsCanvas = GetComponent<Canvas>();
+        bool sight = UnlockState.IsUnlocked("tech.status_bars");
+        if (barsCanvas != null && barsCanvas.enabled != sight) barsCanvas.enabled = sight;
+        if (!sight) return;
         if (trackedEntity == null) { Destroy(gameObject); return; }
         transform.position = AnchoredPosition();
     }

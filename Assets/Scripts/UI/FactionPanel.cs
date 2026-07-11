@@ -61,7 +61,12 @@ public class FactionPanel : MonoBehaviour
             Toggle();
     }
 
-    public void Toggle() { if (isOpen) Hide(); else Show(); }
+    public void Toggle()
+    {
+        if (isOpen) { Hide(); return; }
+        if (!UnlockState.IsUnlocked("tech.known_parties")) return;
+        Show();
+    }
     public void OnCloseClicked() => Hide();
 
     private void Show() { BuildEntries(); if (panel != null) panel.SetActive(true); isOpen = true; }

@@ -13,9 +13,17 @@ MonoBehaviour:
   m_Name: Room_BossRoom
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Boss Room
+  description: 
+  effectSummary: 
   validationTintColor: {r: 0.5188679, g: 0.031817384, b: 0.056933682, a: 0.6}
   minTileCount: 20
+  maxTileCount: 0
+  requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 1
   techNodeUnlockKey: 
   techNodeDescription: Your boss calls this room home.
+  requiredTechKey: tech.deep_foundations
+  maxTier: 3
+  upgradeBaseCost: 100
+  effects: []

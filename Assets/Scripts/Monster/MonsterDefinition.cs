@@ -53,6 +53,12 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("If true, stays hidden in the build menu until the player has slain one of this type in the wild (Bestiary discovery).")]
     public bool requiresDiscovery = false;
 
+    [Tooltip("Optional research gate: if set, the monster stays locked in the build "
+           + "menu until this UnlockState key (usually tech.<node id>) is understood. "
+           + "Parallel to requiresDiscovery -- research is the regulars' channel, "
+           + "wild discovery its own.")]
+    public string requiredTechKey = "";
+
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;

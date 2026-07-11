@@ -28,7 +28,8 @@ public class WavePreviewHUD : MonoBehaviour
     private void Update()
     {
         var spawner = AdventurerSpawner.Instance;
-        bool visible = spawner != null && spawner.SpawningActive;
+        bool visible = spawner != null && spawner.SpawningActive
+            && UnlockState.IsUnlocked("tech.wave_preview");
 
         if (label != null) label.enabled = visible;
         if (icon != null) icon.enabled = visible;

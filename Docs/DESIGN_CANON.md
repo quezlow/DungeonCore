@@ -501,7 +501,25 @@ plus ceil days), the queued project, and full-refund cancel buttons.
 `ResearchController.OnStateChanged` is static, so the panel updates the
 moment a project starts, queues, cancels or completes; requirement-block
 reasons no longer name undiscovered patterns.
-The node roster is the next session.
+The node roster shipped: 13 nodes (Sorcery still empty). The Bronze-1
+bootstrap trio is restored as nodes -- Remembered Bones, Remembered Spikes
+and Remembered Sight (status bars; supersedes the free-forever note) -- all
+`bootstrapUnlocked`, re-locking behind the tutorial wisp later. Option C
+final mapping: damage numbers, minimap and alerts stay ungated; the ladder
+runs Read the Coming Tide (WavePreviewHUD) -> Ledger of the Fallen
+(KnownPartiesPanel) -> Study Adventurer Anatomy (`adventurer_stats`
+override) -> Whispers of Intent (`oracle_chamber` override; a future Oracle
+room's build-grant becomes an alternate route). No grandfathering: legacy
+saves lose ladder features until researched. Build gating is a
+`requiredTechKey` string on RoomDefinition and MonsterDefinition, filtered
+in RoomTypePickerUI, MonsterSelectionUI and the build controller (spike
+traps gate in SetMode); it is PARALLEL to `requiresDiscovery` --
+research is the regulars' channel, wild discovery (BestiaryState) its own,
+so Thrall stays discovery-gated with no node. Whisperer in Marrow is hidden
+until 5 Cleric kills. Architecture gates: Shrine and Boss Room builds,
+Barracks tiers 2 and 3. The generator is list-driven and also patches the
+gate keys and the Barracks gate onto the consuming assets. Loot books
+shipped (see 17).
 
 ## 14. Material Pattern System
 
@@ -569,6 +587,11 @@ the node. Wisp guide (folds in later): a
 `QuestController.ProgressObjective` increment API enabling `TalkNPC` (hooked
 in `NPC.StartDialogue`) and `Custom` objectives (optional field on
 `FlagInteractable`).
+SHIPPED: `LootType.Book` + `DropEntry.grantsNode`; `DroppedLoot.Absorb`
+calls `GrantNodeFully` (bypasses points, prerequisites and duration; refunds
+if underway) and the gold still pays, so duplicate tomes are never dead
+drops. Three authored tomes: Mage -> Whisperer in Marrow, Cleric ->
+Whispers of Intent, Explorer -> Deep Foundations.
 
 ## 18. Phase 5 Designs
 

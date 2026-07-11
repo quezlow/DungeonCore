@@ -13,9 +13,17 @@ MonoBehaviour:
   m_Name: Room_Shrine
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Shrine
+  description: 
+  effectSummary: 
   validationTintColor: {r: 0.88916004, g: 0.8962264, b: 0.1986917, a: 0.6}
   minTileCount: 9
+  maxTileCount: 0
+  requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
   techNodeDescription: Worship me
+  requiredTechKey: tech.consecrant_masonry
+  maxTier: 3
+  upgradeBaseCost: 100
+  effects: []

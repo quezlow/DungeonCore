@@ -1572,7 +1572,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Vector2 scatter = Random.insideUnitCircle * 0.3f;
         var d = Instantiate(droppedLootPrefab,
             transform.position + new Vector3(scatter.x, scatter.y, 0f), Quaternion.identity);
-        d.Initialise(value, entry.rarity);
+        d.Initialise(value, entry.rarity,
+            entry.lootType == LootTable.LootType.Book ? entry.grantsNode : null);
     }
 
     // ── Trap Helpers ──────────────────────────────────────────────

@@ -21,6 +21,7 @@ MonoBehaviour:
   requiredTier: 1
   requiredRank: 1
   requiresDiscovery: 0
+  requiredTechKey: tech.whisperer_in_marrow
   description: Raises the dead, for a time
   isAquatic: 0
   wildCoreXpOnDeath: 5

@@ -10,25 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: RememberedBones
+  m_Name: WhispererinMarrow
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: skeleton
+  id: whisperer_in_marrow
   overrideKey: 
-  displayName: Remembered Bones
+  displayName: Whisperer in Marrow
   icon: {fileID: 0}
   path: 2
-  tier: 1
-  pointCost: 0
-  durationDays: 1
-  affinity: 0
+  tier: 3
+  pointCost: 35
+  durationDays: 3
+  affinity: 5
   patternRequirements: []
-  prerequisites: []
-  bootstrapUnlocked: 1
+  prerequisites:
+  - {fileID: 11400000, guid: 07a47aa2703cd6b4393976c108cfde80, type: 2}
+  - {fileID: 11400000, guid: c2449c2ef0cd3ba4394993cd012288c1, type: 2}
+  bootstrapUnlocked: 0
   upgradeGates: []
-  visibility: 0
+  visibility: 3
   visibilityPattern: {fileID: 0}
   visibilityKey: 
-  visibilityClassName: 
-  visibilityKillCount: 1
-  hiddenHint: Something stirs at the edge of recall.
-  description: The shape of a servant, remembered whole. Skeletons may be placed.
+  visibilityClassName: Cleric
+  visibilityKillCount: 5
+  hiddenHint: The dead learn from those who bless.
+  description: Necromancers may be placed.

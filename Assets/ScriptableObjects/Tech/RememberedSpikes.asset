@@ -15,6 +15,7 @@ MonoBehaviour:
   id: spike_trap
   overrideKey: 
   displayName: Remembered Spikes
+  icon: {fileID: 0}
   path: 1
   tier: 1
   pointCost: 0
@@ -24,5 +25,10 @@ MonoBehaviour:
   prerequisites: []
   bootstrapUnlocked: 1
   upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
   hiddenHint: A sharpness, half-forgotten.
   description: Iron teeth in the floor, remembered whole. Spike traps may be placed.

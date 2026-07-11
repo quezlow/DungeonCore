@@ -10,29 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: DeeperLairs
+  m_Name: WhispersofIntent
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: deeper_lairs
-  overrideKey: 
-  displayName: Deeper Lairs
+  id: oracle_intent
+  overrideKey: oracle_chamber
+  displayName: Whispers of Intent
   icon: {fileID: 0}
-  path: 1
-  tier: 2
-  pointCost: 15
+  path: 0
+  tier: 3
+  pointCost: 25
   durationDays: 2
-  affinity: 4
-  patternRequirements:
-  - {fileID: 11400000, guid: afaa3c060cbe3674bac2f9be76a0b2da, type: 2}
+  affinity: 0
+  patternRequirements: []
   prerequisites:
-  - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
+  - {fileID: 11400000, guid: e87026786be056e45b360204afcb4671, type: 2}
+  - {fileID: 11400000, guid: 755f6a06e56e53a47839de2709063c1d, type: 2}
   bootstrapUnlocked: 0
-  upgradeGates:
-  - room: {fileID: 11400000, guid: 863feb6950bb542448258cf63d73db67, type: 2}
-    minTier: 2
+  upgradeGates: []
   visibility: 0
   visibilityPattern: {fileID: 0}
   visibilityKey: 
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: The beasts could rest easier, given better stone.
-  description: Barracks upgrades past tier 1. Requires the pattern of Rough Stone.
+  hiddenHint: Why do they come?
+  description: Purpose, read from a stride. Intent badges are shown above intruders.

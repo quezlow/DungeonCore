@@ -49,18 +49,28 @@ MonoBehaviour:
     rarity: 0
     goldValue: 10
     weight: 6
+    grantsNode: {fileID: 0}
   - label: Charged Focus
     lootType: 0
     rarity: 1
     goldValue: 10
     weight: 2
+    grantsNode: {fileID: 0}
   - label: Arcane Reagents
     lootType: 0
     rarity: 2
     goldValue: 10
     weight: 0.6
+    grantsNode: {fileID: 0}
   - label: Enchanter's Prism
     lootType: 0
     rarity: 4
     goldValue: 10
     weight: 0.15
+    grantsNode: {fileID: 0}
+  - label: '"Treatise on Marrow"'
+    lootType: 1
+    rarity: 3
+    goldValue: 10
+    weight: 0.1
+    grantsNode: {fileID: 11400000, guid: 39ae2bb432bf9034c9115bc676278857, type: 2}

@@ -10,29 +10,29 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: DeeperLairs
+  m_Name: HallsofWar
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: deeper_lairs
+  id: halls_of_war
   overrideKey: 
-  displayName: Deeper Lairs
+  displayName: Halls of War
   icon: {fileID: 0}
   path: 1
-  tier: 2
-  pointCost: 15
-  durationDays: 2
-  affinity: 4
+  tier: 3
+  pointCost: 30
+  durationDays: 3
+  affinity: 0
   patternRequirements:
-  - {fileID: 11400000, guid: afaa3c060cbe3674bac2f9be76a0b2da, type: 2}
+  - {fileID: 11400000, guid: 9e73fdad6444b264ab8c29fb74271ecf, type: 2}
   prerequisites:
-  - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
+  - {fileID: 11400000, guid: 6eb5ddd77bc8d8f409da9fcca989aea8, type: 2}
   bootstrapUnlocked: 0
   upgradeGates:
   - room: {fileID: 11400000, guid: 863feb6950bb542448258cf63d73db67, type: 2}
-    minTier: 2
+    minTier: 3
   visibility: 0
   visibilityPattern: {fileID: 0}
   visibilityKey: 
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: The beasts could rest easier, given better stone.
-  description: Barracks upgrades past tier 1. Requires the pattern of Rough Stone.
+  hiddenHint: Iron in the walls, iron in the sleepers.
+  description: Barracks upgrades to tier 3. Requires the pattern of Wrought Iron.
