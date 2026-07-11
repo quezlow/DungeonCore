@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5e6fedc2472449cead18ef23b5cb30d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.2D.Animation.Runtime::UnityEngine.U2D.Animation.SpriteLibrarySourceAsset
+  m_Library:
+  - m_Name: Idle
+    m_Hash: 1008081451
+    m_CategoryList: []
+    m_OverrideEntries:
+    - m_Name: down_stand_0
+      m_Hash: 958635836
+      m_Sprite: {fileID: 3295236706101327806, guid: c7713560c64aa73428542335e392399d, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 3295236706101327806, guid: c7713560c64aa73428542335e392399d, type: 3}
+    - m_Name: left_stand_0
+      m_Hash: 738366335
+      m_Sprite: {fileID: -1364364625225523536, guid: 7d2ef82cb37a6f747898fb98b58a312c, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: -1364364625225523536, guid: 7d2ef82cb37a6f747898fb98b58a312c, type: 3}
+    - m_Name: right_stand_0
+      m_Hash: 470623295
+      m_Sprite: {fileID: 3276750919400320279, guid: 11cf45b47489a2146b4ca5a8c108b279, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 3276750919400320279, guid: 11cf45b47489a2146b4ca5a8c108b279, type: 3}
+    - m_Name: up_stand_0
+      m_Hash: 703810930
+      m_Sprite: {fileID: 1612998355036792017, guid: 72103d8f71ad9e840b7857698d52d60a, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 1612998355036792017, guid: 72103d8f71ad9e840b7857698d52d60a, type: 3}
+    m_FromMain: 0
+    m_EntryOverrideCount: 4
+  - m_Name: Walk
+    m_Hash: 765711723
+    m_CategoryList: []
+    m_OverrideEntries:
+    - m_Name: up_walk2_0
+      m_Hash: 702061768
+      m_Sprite: {fileID: -2464682500813650161, guid: 7c30e332d660a904b9893aba1f4bf8fd, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: -2464682500813650161, guid: 7c30e332d660a904b9893aba1f4bf8fd, type: 3}
+    - m_Name: up_walk1_0
+      m_Hash: 731783825
+      m_Sprite: {fileID: 1435712913558609441, guid: a0d4373f8159cc849bde2756b936bd79, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 1435712913558609441, guid: a0d4373f8159cc849bde2756b936bd79, type: 3}
+    - m_Name: right_walk2_0
+      m_Hash: 472315269
+      m_Sprite: {fileID: 266682994193996978, guid: 5357677627a997b44877a4ffd3cc2c27, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 266682994193996978, guid: 5357677627a997b44877a4ffd3cc2c27, type: 3}
+    - m_Name: right_walk1_0
+      m_Hash: 509627356
+      m_Sprite: {fileID: 2348558125241972927, guid: e66954e20fb89364ba045b5ca5bdafb3, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 2348558125241972927, guid: e66954e20fb89364ba045b5ca5bdafb3, type: 3}
+    - m_Name: left_walk2_0
+      m_Hash: 740901573
+      m_Sprite: {fileID: 435085612499212952, guid: 318208d36d2d4e34aa686effc67ba9f5, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 435085612499212952, guid: 318208d36d2d4e34aa686effc67ba9f5, type: 3}
+    - m_Name: left_walk1_0
+      m_Hash: 779091100
+      m_Sprite: {fileID: 2030389912997841323, guid: 5c51594b7ab7c564e8f4149a2b40c630, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 2030389912997841323, guid: 5c51594b7ab7c564e8f4149a2b40c630, type: 3}
+    - m_Name: down_walk2_0
+      m_Hash: 956845702
+      m_Sprite: {fileID: 4521416333761933560, guid: 1b00b55a3759227449eb869b98daf0b4, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 4521416333761933560, guid: 1b00b55a3759227449eb869b98daf0b4, type: 3}
+    - m_Name: down_walk1_0
+      m_Hash: 995029215
+      m_Sprite: {fileID: 2998599440870542144, guid: 14e76062420cedd4ba24ea3e862b2dd6, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 2998599440870542144, guid: 14e76062420cedd4ba24ea3e862b2dd6, type: 3}
+    m_FromMain: 0
+    m_EntryOverrideCount: 8
+  m_PrimaryLibraryGUID: 
+  m_ModificationHash: 639193792283073799
+  m_Version: 1
