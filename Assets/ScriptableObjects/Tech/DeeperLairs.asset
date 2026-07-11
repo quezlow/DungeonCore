@@ -15,6 +15,7 @@ MonoBehaviour:
   id: deeper_lairs
   overrideKey: 
   displayName: Deeper Lairs
+  icon: {fileID: 0}
   path: 1
   tier: 2
   pointCost: 15
@@ -28,5 +29,10 @@ MonoBehaviour:
   upgradeGates:
   - room: {fileID: 11400000, guid: 863feb6950bb542448258cf63d73db67, type: 2}
     minTier: 2
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
   hiddenHint: The beasts could rest easier, given better stone.
   description: Lair upgrades past tier 1. Requires the pattern of Rough Stone.

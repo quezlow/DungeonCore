@@ -480,9 +480,23 @@ The spine registers `RoomAnchor.UpgradeGate` from per-node `upgradeGates`
 entries. Research points live on `DungeonCore` beside gold and persist in
 `DungeonCoreSaveData`; project state persists additively on
 `DungeonSaveData`. Key files: `Gameplay/TechNodeDefinition.cs`,
-`Gameplay/TechTree.cs`, `Gameplay/ResearchController.cs`,
-`Editor/TechContentGenerator.cs`. Tree UI and the node roster are the next
-sessions.
+Gameplay/TechTree.cs`, `Gameplay/ResearchController.cs`,
+`Editor/TechContentGenerator.cs`.
+
+Tree UI (shipped): RimWorld-style single scrollable canvas
+(`UI/ResearchTreeUI.cs` + `UI/ResearchNodeView.cs`, default key R, Esc-close
+in the PauseMenuController chain, opens while paused -- pause-availability
+audit backlogged). Paths are horizontal lanes (empty paths hidden, so
+Sorcery stays absent), tiers are columns, prerequisite edges are elbow
+connectors drawn only when both endpoints are visible; every node reserves
+its layout slot so reveals never reflow. Node visibility is data-driven on
+`TechNodeDefinition` (Always / PatternKnown / KeyUnlocked / KillsOfClass via
+`RunStats.KillsByClass`); among visible nodes the DK2 name rule holds
+(revealed at one purchase away). Master-detail pane shows the affinity price
+struck against base, duration, and a requirement checklist where an unmet
+pattern shows only its source hint. Header strip carries the active project
+(fill bar, ceil days), the queued project, and full-refund cancel buttons.
+The node roster is the next session.
 
 ## 14. Material Pattern System
 
