@@ -455,9 +455,31 @@ all paths). Core type affinity gives a 50% discount on matching-affinity
 nodes -- points only; pattern requirements are never discounted. Room
 upgrades gate through the existing `RoomAnchor.UpgradeGate` hook.
 
-Pending forks (recommended defaults, not yet approved): Observation
-retro-gating Option C ("what's happening now is free; what's coming next is
-earned"); purchase model as instant point-spend rather than timed projects.
+Forks resolved (spine shipped; see key files below): purchase model is
+TIMED PROJECTS -- spending the points starts the project, which runs
+`durationDays` and completes at dawn (the instant-spend recommendation was
+considered and declined). One active project plus a queue of one; the queued
+project is pre-paid and promotes free. Cancelling (active or queued) refunds
+the full point cost; progress is lost. Observation retro-gating is Option C:
+status bars and damage numbers are free forever (never nodes); the
+researchable intel ladder starts at wave preview (wired in the roster
+session). Income lands at dawn: every valid Library on every floor
+contributes magnitude x tier, ranked largest-first through serialised
+diminishing multipliers (1.0 / 0.5 / 0.25, then a 0.10 floor). Extra
+Libraries beyond the first also speed the ACTIVE project (+10% each, capped
++30% -- income and speed are separate levers). Affinity halves point cost
+only. Bootstrap nodes (Remembered Bones, Remembered Spikes) unlock on new
+game via `bootstrapUnlocked`; they re-lock behind the tutorial wisp when the
+prologue lands. Loot books route through `GrantNodeFully` (bypasses points,
+prerequisites AND duration; refunds if underway). Node keys are
+`tech.<id>` with an `overrideKey` field reserved for the legacy bare keys.
+The spine registers `RoomAnchor.UpgradeGate` from per-node `upgradeGates`
+entries. Research points live on `DungeonCore` beside gold and persist in
+`DungeonCoreSaveData`; project state persists additively on
+`DungeonSaveData`. Key files: `Gameplay/TechNodeDefinition.cs`,
+`Gameplay/TechTree.cs`, `Gameplay/ResearchController.cs`,
+`Editor/TechContentGenerator.cs`. Tree UI and the node roster are the next
+sessions.
 
 ## 14. Material Pattern System
 
@@ -495,8 +517,11 @@ Key files: `Gameplay/PatternDefinition.cs`, `Gameplay/PatternCatalog.cs`,
 ## 15. Room Effects v2 and Attractor Rooms
 
 Decided: Treasury gold cap, Library research-point generation, Spawn Chamber
-respawn behaviour as new room effects. Attractor rooms add weight to
-adventurer-type spawn rolls, summed across all floors: Shrine -> Pilgrims,
+respawn behaviour as new room effects. (Library research-point generation
+shipped early with the research spine -- `RoomEffectType.LibraryResearch`,
+granted at dawn by `ResearchController`, not the per-tick effect loop.)
+Attractor rooms add weight to adventurer-type spawn rolls, 
+summed across all floors: Shrine -> Pilgrims,
 Library -> Scholars, Treasure Vault -> Treasure Hunters, Throne -> Nobles.
 
 Rejected: attractors as hard spawn guarantees (they are additive weights).

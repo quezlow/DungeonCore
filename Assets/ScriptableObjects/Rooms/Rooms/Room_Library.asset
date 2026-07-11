@@ -13,9 +13,18 @@ MonoBehaviour:
   m_Name: Room_Library
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Library
+  description: 
+  effectSummary: 
   validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
-  minTileCount: 9
+  minTileCount: 12
+  maxTileCount: 0
+  requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
   techNodeDescription: Books, books, books...
+  maxTier: 3
+  upgradeBaseCost: 100
+  effects:
+  - type: 4
+    perSecond: 5

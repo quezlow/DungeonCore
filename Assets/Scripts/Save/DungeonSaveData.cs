@@ -86,6 +86,11 @@ public class DungeonSaveData
     // Material pattern system (additive; null/empty on legacy saves)
     public List<string> unlockedKeys = new();             // UnlockState flags, incl. "pattern." keys
     public List<PatternNoteSaveData> patternNotes = new();
+
+    // Research spine (additive; empty/zero on legacy saves)
+    public string activeResearchKey = "";
+    public float activeResearchDaysRemaining;
+    public string queuedResearchKey = "";
 }
 
 [Serializable]

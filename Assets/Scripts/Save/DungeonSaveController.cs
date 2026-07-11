@@ -197,6 +197,8 @@ public class DungeonSaveController : MonoBehaviour
         UnlockState.ResetAll();
         PatternDiscovery.ClearNotes();
         PatternDiscovery.CatchUpTerrain();
+        ResearchController.SeedBootstrap();      // the core remembering: bootstrap nodes
+        ResearchController.Instance?.ResetForNewGame();
 
         AlertsLog.Instance?.ClearHistory();
 
@@ -278,6 +280,8 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.unlockedKeys =
             new System.Collections.Generic.List<string>(UnlockState.AllUnlocked);
         currentSave.patternNotes = PatternDiscovery.GetNotesForSave();
+
+        ResearchController.Instance?.CaptureSaveState(currentSave);
 
         if (RunStats.Instance != null)
             currentSave.runStats = RunStats.Instance.GetSaveData();
@@ -696,6 +700,7 @@ public class DungeonSaveController : MonoBehaviour
             UnlockState.RestoreFrom(currentSave.unlockedKeys);
             PatternDiscovery.RestoreNotes(currentSave.patternNotes);
             PatternDiscovery.CatchUpTerrain();   // heals saves from before the pattern system
+            ResearchController.Instance?.RestoreSaveState(currentSave);
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);

@@ -32,6 +32,9 @@ public class DungeonCoreHUD : MonoBehaviour
                        // the old Materials panel is the Pattern Codex
     [SerializeField] private TMP_Text goldValueLabel;
 
+    [Header("Research")]
+    [SerializeField] private TMP_Text researchValueLabel;
+
     [Header("Capacity")]
     [SerializeField] private TMP_Text capacityLabel;
 
@@ -54,6 +57,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnNotorietyChanged += HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged += HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged += HandleGoldChanged;
+        DungeonCore.Instance.OnResearchChanged += HandleResearchChanged;
         DungeonCore.Instance.OnCapacityChanged += HandleCapacityChanged;
         DungeonCore.Instance.OnManaRegenChanged += HandleManaRegenChanged;
 
@@ -71,6 +75,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnNotorietyChanged -= HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged -= HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged -= HandleGoldChanged;
+        DungeonCore.Instance.OnResearchChanged -= HandleResearchChanged;
         DungeonCore.Instance.OnCapacityChanged -= HandleCapacityChanged;
         DungeonCore.Instance.OnManaRegenChanged -= HandleManaRegenChanged;
     }
@@ -132,6 +137,12 @@ public class DungeonCoreHUD : MonoBehaviour
     {
         if (goldValueLabel != null)
             goldValueLabel.text = "Gold: " + gold.ToString();
+    }
+
+    private void HandleResearchChanged(int points)
+    {
+        if (researchValueLabel != null)
+            researchValueLabel.text = "Research: " + points.ToString();
     }
 
     // ── Level Up Button ───────────────────────────────────────────
@@ -200,6 +211,7 @@ public class DungeonCoreHUD : MonoBehaviour
         HandleReputationChanged(core.Reputation);
         HandleCapacityChanged(core.UsedCapacity, core.MaxCapacity);
         HandleGoldChanged(core.Gold);
+        HandleResearchChanged(core.Research);
 
         if (core.LevelUpAvailable)
             HandleLevelUpAvailable();

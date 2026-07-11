@@ -53,6 +53,7 @@ public class DungeonCore : MonoBehaviour
     private int claimedTileCount = 0;
     private int usedCapacity = 0;
     private int currentGold = 0;
+    private int researchPoints = 0;
 
     /// <summary>
     /// Number of stair-build credits the player has accumulated.
@@ -81,6 +82,7 @@ public class DungeonCore : MonoBehaviour
     public event Action OnCoreStabilised;
     public event Action OnGameOver;
     public event Action<int> OnGoldChanged;
+    public event Action<int> OnResearchChanged;
     public event Action<int> OnStairCreditsChanged;
 
     // ── Public Reads ──────────────────────────────────────────────
@@ -121,6 +123,7 @@ public class DungeonCore : MonoBehaviour
     public float InstabilityTimer => instabilityTimer;
     public float InstabilityDuration => instabilityDuration;
     public int Gold => currentGold;
+    public int Research => researchPoints;
     public int StairCredits => stairCredits;
     public DungeonCoreProgressionTable Progression => progression;
 
@@ -178,6 +181,7 @@ public class DungeonCore : MonoBehaviour
         OnNotorietyChanged?.Invoke(notoriety);
         OnReputationChanged?.Invoke(reputation);
         OnGoldChanged?.Invoke(currentGold);
+        OnResearchChanged?.Invoke(researchPoints);
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
         OnStairCreditsChanged?.Invoke(stairCredits);
     }
@@ -246,6 +250,22 @@ public class DungeonCore : MonoBehaviour
         if (currentGold < cost) return false;
         currentGold -= cost;
         OnGoldChanged?.Invoke(currentGold);
+        return true;
+    }
+
+    public void AddResearch(int amount)
+    {
+        researchPoints += amount;
+        OnResearchChanged?.Invoke(researchPoints);
+    }
+
+    /// <summary>Spends research points if affordable. Returns false (no change) otherwise.</summary>
+    public bool TrySpendResearch(int cost)
+    {
+        if (cost <= 0) return true;
+        if (researchPoints < cost) return false;
+        researchPoints -= cost;
+        OnResearchChanged?.Invoke(researchPoints);
         return true;
     }
 
@@ -456,6 +476,7 @@ public class DungeonCore : MonoBehaviour
             ownedTileCount = 0,
             usedCapacity = this.usedCapacity,
             gold = this.currentGold,
+            researchPoints = this.researchPoints,
             levelUpAvailable = this.LevelUpAvailable,
             isUnstable = this.isUnstable,
             instabilityTimer = this.instabilityTimer,
@@ -477,6 +498,7 @@ public class DungeonCore : MonoBehaviour
         LevelUpAvailable = data.levelUpAvailable;
         usedCapacity = data.usedCapacity;
         currentGold = data.gold;
+        researchPoints = data.researchPoints;
         isUnstable = data.isUnstable;
         instabilityTimer = data.instabilityTimer;
         breachCount = data.breachCount;
@@ -505,5 +527,6 @@ public class DungeonCoreSaveData
     public float instabilityTimer;
     public int breachCount;
     public int gold;
+    public int researchPoints; 
     public int stairCredits;
 }

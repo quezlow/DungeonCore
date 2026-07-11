@@ -80,6 +80,7 @@ public enum RoomEffectType
     TrainingXp,         // XP per second toward Veteran for those monsters
     MonsterDamageBuff,  // multiplies the attack damage of those monsters (perSecond = multiplier, e.g. 1.5)
     CoreRetaliation,    // the core zaps adventurers standing in the room (perSecond = damage/sec) + a pulse
+    LibraryResearch,    // research points per DAY at dawn (handled by ResearchController, not the tick loop)
 }
 
 [Serializable]

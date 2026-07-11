@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: DeeperLairs
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: deeper_lairs
+  overrideKey: 
+  displayName: Deeper Lairs
+  path: 1
+  tier: 2
+  pointCost: 15
+  durationDays: 2
+  affinity: 0
+  patternRequirements:
+  - {fileID: 11400000, guid: afaa3c060cbe3674bac2f9be76a0b2da, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates:
+  - room: {fileID: 11400000, guid: 42a71e61c39669b42970917702b905e7, type: 2}
+    minTier: 2
+  hiddenHint: The beasts could rest easier, given better stone.
+  description: Lair upgrades past tier 1. Requires the pattern of Rough Stone.
