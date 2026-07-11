@@ -57,6 +57,19 @@ public class DayNightCycle : MonoBehaviour
         ? timer / dayDuration
         : timer / nightDuration;
 
+    /// <summary>0..1 through the full dawn-to-dawn cycle (day + night).
+    /// Freezes with the game pause, since the timer does.</summary>
+    public float CycleProgress01
+    {
+        get
+        {
+            float total = dayDuration + nightDuration;
+            if (total <= 0f) return 0f;
+            float elapsed = CurrentPhase == Phase.Day ? timer : dayDuration + timer;
+            return Mathf.Clamp01(elapsed / total);
+        }
+    }
+
     public bool IsDay   => CurrentPhase == Phase.Day;
     public bool IsNight => CurrentPhase == Phase.Night;
 

@@ -97,19 +97,13 @@ public class ResearchTreeUI : MonoBehaviour
     private void OnEnable()
     {
         UnlockState.OnChanged += HandleUnlockChanged;
-        if (ResearchController.Instance != null)
-            ResearchController.Instance.OnStateChanged += HandleResearchState;
-        if (DungeonCore.Instance != null)
-            DungeonCore.Instance.OnResearchChanged += HandlePointsChanged;
+        ResearchController.OnStateChanged += HandleResearchState;
     }
 
     private void OnDisable()
     {
         UnlockState.OnChanged -= HandleUnlockChanged;
-        if (ResearchController.Instance != null)
-            ResearchController.Instance.OnStateChanged -= HandleResearchState;
-        if (DungeonCore.Instance != null)
-            DungeonCore.Instance.OnResearchChanged -= HandlePointsChanged;
+        ResearchController.OnStateChanged -= HandleResearchState;
     }
 
     private void OnDestroy()
@@ -122,6 +116,22 @@ public class ResearchTreeUI : MonoBehaviour
         if (Keybinds.IsTextInputActive()) return;
         var kb = Keyboard.current;
         if (kb != null && kb[toggleKey].wasPressedThisFrame) Toggle();
+        if (IsOpen) UpdateFill();
+    }
+
+    private int lastPoints = -1;
+
+    /// <summary>Per-frame while open: smooth fill, plus a cheap points poll so
+    /// affordability refreshes without a DungeonCore event subscription.</summary>
+    private void UpdateFill()
+    {
+        var rc = ResearchController.Instance;
+        if (progressFill != null)
+            progressFill.fillAmount = rc != null ? rc.ActiveProgress01 : 0f;
+
+        var core = DungeonCore.Instance;
+        int pts = core != null ? core.Research : 0;
+        if (pts != lastPoints) { lastPoints = pts; RefreshDetail(); }
     }
 
     public void Toggle()
@@ -149,7 +159,6 @@ public class ResearchTreeUI : MonoBehaviour
 
     private void HandleUnlockChanged(string key) { if (IsOpen) { Rebuild(); RefreshDetail(); } }
     private void HandleResearchState() { if (IsOpen) { Rebuild(); RefreshStrip(); RefreshDetail(); } }
-    private void HandlePointsChanged(int points) { if (IsOpen) RefreshDetail(); }
 
     // -- Canvas ---------------------------------------------------------------
 

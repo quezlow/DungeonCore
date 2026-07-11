@@ -495,7 +495,12 @@ its layout slot so reveals never reflow. Node visibility is data-driven on
 (revealed at one purchase away). Master-detail pane shows the affinity price
 struck against base, duration, and a requirement checklist where an unmet
 pattern shows only its source hint. Header strip carries the active project
-(fill bar, ceil days), the queued project, and full-refund cancel buttons.
+(the fill bar interpolates through the day via
+`DayNightCycle.CycleProgress01` -- completion itself still lands at dawn --
+plus ceil days), the queued project, and full-refund cancel buttons.
+`ResearchController.OnStateChanged` is static, so the panel updates the
+moment a project starts, queues, cancels or completes; requirement-block
+reasons no longer name undiscovered patterns.
 The node roster is the next session.
 
 ## 14. Material Pattern System

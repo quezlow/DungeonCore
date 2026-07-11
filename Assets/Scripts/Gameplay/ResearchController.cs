@@ -52,12 +52,13 @@ public class ResearchController : MonoBehaviour
     private float activeRemaining;
     private string queuedKey = "";
     private int lastProcessedDay = -1;
+    private float lastSpeed = 1f;   // cached for the intra-day fill
 
     private readonly List<RoomAnchor> roomBuf = new();
     private readonly List<float> contributions = new();
 
     /// <summary>Fired on any project-state change (start, tick, complete, cancel, restore).</summary>
-    public event Action OnStateChanged;
+    public static event Action OnStateChanged;
 
     public TechTree Tree => tree;
     public TechNodeDefinition ActiveNode => tree != null ? tree.GetByKey(activeKey) : null;
@@ -143,8 +144,8 @@ public class ResearchController : MonoBehaviour
     {
         if (string.IsNullOrEmpty(activeKey)) return;
 
-        float speed = 1f + Mathf.Min(speedBonusCap,
-            speedPerExtraLibrary * Mathf.Max(0, libraryCount - 1));
+        float speed = SpeedFor(libraryCount);
+        lastSpeed = speed;
         activeRemaining -= speed;
 
         if (activeRemaining > 0f) { OnStateChanged?.Invoke(); return; }
@@ -169,7 +170,36 @@ public class ResearchController : MonoBehaviour
         if (next == null || UnlockState.IsUnlocked(next.Key)) return;
         activeKey = next.Key;                        // already paid at queue time
         activeRemaining = next.durationDays;
+        RefreshSpeedCache();
         Announce("The core turns its mind to " + next.displayName + ".");
+    }
+
+    private float SpeedFor(int libraryCount)
+        => 1f + Mathf.Min(speedBonusCap,
+            speedPerExtraLibrary * Mathf.Max(0, libraryCount - 1));
+
+    /// <summary>Refreshes the cached project speed from a live library census.
+    /// Display-only; the authoritative tick recomputes at dawn.</summary>
+    public void RefreshSpeedCache()
+    {
+        int libs = CensusLibraries(out _);
+        lastSpeed = SpeedFor(libs);
+    }
+
+    /// <summary>Smooth 0..1 progress of the active project, interpolating the
+    /// current day via DayNightCycle.CycleProgress01. Completion itself still
+    /// lands at dawn -- this is presentation only.</summary>
+    public float ActiveProgress01
+    {
+        get
+        {
+            var node = ActiveNode;
+            if (node == null || node.durationDays <= 0) return 0f;
+            float frac = DayNightCycle.Instance != null
+                ? DayNightCycle.Instance.CycleProgress01 : 0f;
+            float effective = activeRemaining - lastSpeed * frac;
+            return Mathf.Clamp01(1f - effective / node.durationDays);
+        }
     }
 
     // -- Purchases -----------------------------------------------------------
@@ -197,7 +227,7 @@ public class ResearchController : MonoBehaviour
             { reason = "A prior understanding is missing."; return false; }
         foreach (var pat in node.patternRequirements)
             if (pat != null && !UnlockState.IsUnlocked(pat.Key))
-            { reason = "The pattern of " + pat.displayName + " is not yet known."; return false; }
+            { reason = "A required pattern is not yet known."; return false; }
         return true;
     }
 
@@ -225,6 +255,7 @@ public class ResearchController : MonoBehaviour
         {
             activeKey = node.Key;
             activeRemaining = node.durationDays;
+            RefreshSpeedCache();
             Announce("The core turns its mind to " + node.displayName + ".");
         }
         OnStateChanged?.Invoke();
@@ -302,6 +333,7 @@ public class ResearchController : MonoBehaviour
         activeRemaining = save.activeResearchDaysRemaining;
         queuedKey = save.queuedResearchKey ?? "";
         lastProcessedDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : -1;
+        RefreshSpeedCache();
         OnStateChanged?.Invoke();
     }
 
