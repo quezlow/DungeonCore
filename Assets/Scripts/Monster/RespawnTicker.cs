@@ -54,7 +54,7 @@ public class RespawnTicker : MonoBehaviour
             {
                 var s = tickBuf[i];
                 if (s == null) continue;
-                s.TickRespawn(dt);
+                s.TickRespawn(dt * RoomEffectCensus.GetRespawnMultiplier(s));
             }
         }
     }

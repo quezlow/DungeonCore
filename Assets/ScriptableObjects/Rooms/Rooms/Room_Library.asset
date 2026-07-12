@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Room_Library
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Library
-  description: 
-  effectSummary: 
+  description: Shelves of what the dead thought worth keeping.
+  effectSummary: Grants research points at dawn (+5 per day, x tier; each further
+    Library counts for less). Scholars come more often.
   validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
   minTileCount: 12
   maxTileCount: 0
@@ -22,9 +23,14 @@ MonoBehaviour:
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
-  techNodeDescription: Books, books, books...
+  techNodeDescription: 
+  requiredTechKey: 
   maxTier: 3
   upgradeBaseCost: 100
   effects:
   - type: 4
     perSecond: 5
+    attractorTarget: 3
+  - type: 6
+    perSecond: 1
+    attractorTarget: 2

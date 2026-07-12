@@ -57,6 +57,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnNotorietyChanged += HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged += HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged += HandleGoldChanged;
+        RoomEffectCensus.OnCensusChanged += HandleCensusChanged;
         DungeonCore.Instance.OnResearchChanged += HandleResearchChanged;
         DungeonCore.Instance.OnCapacityChanged += HandleCapacityChanged;
         DungeonCore.Instance.OnManaRegenChanged += HandleManaRegenChanged;
@@ -75,6 +76,7 @@ public class DungeonCoreHUD : MonoBehaviour
         DungeonCore.Instance.OnNotorietyChanged -= HandleNotorietyChanged;
         DungeonCore.Instance.OnReputationChanged -= HandleReputationChanged;
         DungeonCore.Instance.OnGoldChanged -= HandleGoldChanged;
+        RoomEffectCensus.OnCensusChanged -= HandleCensusChanged;
         DungeonCore.Instance.OnResearchChanged -= HandleResearchChanged;
         DungeonCore.Instance.OnCapacityChanged -= HandleCapacityChanged;
         DungeonCore.Instance.OnManaRegenChanged -= HandleManaRegenChanged;
@@ -135,8 +137,16 @@ public class DungeonCoreHUD : MonoBehaviour
 
     private void HandleGoldChanged(int gold)
     {
-        if (goldValueLabel != null)
-            goldValueLabel.text = "Gold: " + gold.ToString();
+        if (goldValueLabel == null) return;
+        int cap = RoomEffectCensus.GoldCap;
+        goldValueLabel.text = cap == int.MaxValue
+            ? "Gold: " + gold.ToString()
+            : "Gold: " + gold.ToString() + " / " + cap.ToString();
+    }
+
+    private void HandleCensusChanged()
+    {
+        if (DungeonCore.Instance != null) HandleGoldChanged(DungeonCore.Instance.Gold);
     }
 
     private void HandleResearchChanged(int points)

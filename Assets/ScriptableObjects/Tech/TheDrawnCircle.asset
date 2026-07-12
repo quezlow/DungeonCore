@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: TheDrawnCircle
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: drawn_circle
+  overrideKey: 
+  displayName: The Drawn Circle
+  icon: {fileID: 0}
+  path: 1
+  tier: 2
+  pointCost: 15
+  durationDays: 2
+  affinity: 5
+  patternRequirements:
+  - {fileID: 11400000, guid: 727f00a71ccdd7b45bebc6551e9189fa, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 3e52f025a89c71e41b156da2aff0d0ee, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: Chalk and salt, and older things.
+  description: Ritual Circles may be built. Requires the pattern of Quarry Sand.

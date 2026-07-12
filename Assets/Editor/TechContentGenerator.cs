@@ -92,6 +92,34 @@ public static class TechContentGenerator
             "Necromancers may be placed.");
         n_whisperer_in_marrow.affinity = DungeonType.Dark;
 
+        var n_vaulted_reserves = Define("vaulted_reserves", "Vaulted Reserves", ResearchPath.Architecture, 2, 15, 2,
+            "Somewhere below, room enough for more.",
+            "Treasuries may be built. Requires the pattern of Silverwork.");
+
+        var n_summoning_circle = Define("summoning_circle", "Summoning Circle", ResearchPath.Architecture, 2, 15, 2,
+            "The calling-back, drawn in a ring.",
+            "Spawn Chambers may be built. Requires the pattern of Packed Earth.");
+        n_summoning_circle.affinity = DungeonType.Dark;
+
+        var n_drawn_circle = Define("drawn_circle", "The Drawn Circle", ResearchPath.Architecture, 2, 15, 2,
+            "Chalk and salt, and older things.",
+            "Ritual Circles may be built. Requires the pattern of Quarry Sand.");
+        n_drawn_circle.affinity = DungeonType.Dark;
+
+        var n_proving_grounds = Define("proving_grounds", "Proving Grounds", ResearchPath.Architecture, 3, 30, 3,
+            "Let them bruise, that they may bite.",
+            "Arenas may be built. Requires the pattern of Tempered Steel.");
+
+        var n_whispered_dread = Define("whispered_dread", "Whispered Dread", ResearchPath.Architecture, 3, 30, 3,
+            "What the walls remember, intruders feel.",
+            "Dread Chambers may be built. Requires the pattern of Cured Leather.");
+        n_whispered_dread.affinity = DungeonType.Dark;
+
+        var n_coals_below = Define("coals_below", "Coals Below", ResearchPath.Architecture, 3, 30, 3,
+            "The fire kept, the iron taught.",
+            "Forges may be built. All traps bite harder. Requires the pattern of Wrought Iron.");
+        n_coals_below.affinity = DungeonType.Fire;
+
         // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
         AddPrereq(n_wave_preview, n_status_bars);
         AddPrereq(n_known_parties, n_wave_preview);
@@ -116,7 +144,23 @@ public static class TechContentGenerator
         n_whisperer_in_marrow.visibilityClassName = "Cleric";
         n_whisperer_in_marrow.visibilityKillCount = 5;
 
-        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties, n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations, n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow });
+        AddPrereq(n_vaulted_reserves, n_spike_trap);
+        AddPattern(n_vaulted_reserves, "Silverwork");
+        AddPrereq(n_summoning_circle, n_spike_trap);
+        AddPattern(n_summoning_circle, "PackedEarth");
+        AddPrereq(n_drawn_circle, n_spike_trap);
+        AddPattern(n_drawn_circle, "QuarrySand");
+        AddPrereq(n_proving_grounds, n_deeper_lairs);
+        AddPattern(n_proving_grounds, "TemperedSteel");
+        AddPrereq(n_whispered_dread, n_summoning_circle);
+        AddPattern(n_whispered_dread, "CuredLeather");
+        AddPrereq(n_coals_below, n_deeper_lairs);
+        AddPattern(n_coals_below, "WroughtIron");
+
+        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties, 
+            n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations, 
+            n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle, 
+            n_proving_grounds, n_whispered_dread, n_coals_below });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");
@@ -125,6 +169,12 @@ public static class TechContentGenerator
         PatchKey(MonsterFolder + "/MonsterDef_Necromancer.asset", "tech.whisperer_in_marrow");
         PatchKey(RoomFolder + "/Room_Shrine.asset", "tech.consecrant_masonry");
         PatchKey(RoomFolder + "/Room_BossRoom.asset", "tech.deep_foundations");
+        PatchKey(RoomFolder + "/Room_Treasury.asset", "tech.vaulted_reserves");
+        PatchKey(RoomFolder + "/Room_SpawnChamber.asset", "tech.summoning_circle");
+        PatchKey(RoomFolder + "/Room_RitualCircle.asset", "tech.drawn_circle");
+        PatchKey(RoomFolder + "/Room_Arena.asset", "tech.proving_grounds");
+        PatchKey(RoomFolder + "/Room_DreadChamber.asset", "tech.whispered_dread");
+        PatchKey(RoomFolder + "/Room_Forge.asset", "tech.coals_below");
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

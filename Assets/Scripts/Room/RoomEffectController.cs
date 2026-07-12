@@ -30,6 +30,8 @@ public class RoomEffectController : MonoBehaviour
     private readonly List<DungeonAdventurer> advBuf = new();
     private readonly HashSet<DungeonMonster> buffedLast = new();
     private readonly HashSet<DungeonMonster> nowBuffed = new();
+    private readonly HashSet<DungeonAdventurer> slowedLast = new();
+    private readonly HashSet<DungeonAdventurer> nowSlowed = new();
 
     private void Update()
     {
@@ -46,6 +48,7 @@ public class RoomEffectController : MonoBehaviour
     private void ApplyTick(float dt)
     {
         nowBuffed.Clear();
+        nowSlowed.Clear();
 
         var floor = FloorManager.Instance?.ActiveFloor;
         var influence = TileInfluenceManager.Instance;
@@ -83,10 +86,25 @@ public class RoomEffectController : MonoBehaviour
                 var fx = def.effects[e];
                 if (fx == null) continue;
 
+                // Census-lane and dawn-lane effects are read elsewhere
+                // (RoomEffectCensus, ResearchController, SparringController) --
+                // the tick loop has nothing to do for them.
+                if (fx.type == RoomEffectType.GoldCapBonus || fx.type == RoomEffectType.Attractor
+                    || fx.type == RoomEffectType.RespawnSpeed || fx.type == RoomEffectType.ManaRegen
+                    || fx.type == RoomEffectType.TrapDamage || fx.type == RoomEffectType.LibraryResearch
+                    || fx.type == RoomEffectType.SparringXp) continue;
+
                 // Core retaliation acts on adventurers in the room (no monsters required).
                 if (fx.type == RoomEffectType.CoreRetaliation)
                 {
                     if (retaliateNow) ApplyRetaliation(floor, influence, tiles, fx, anchor.EffectScale);
+                    continue;
+                }
+
+                // Dread: intruders standing in the room move and strike slower.
+                if (fx.type == RoomEffectType.AdventurerSlow)
+                {
+                    ApplyAdventurerSlow(floor, influence, tiles, fx, anchor.EffectScale);
                     continue;
                 }
 
@@ -158,7 +176,30 @@ public class RoomEffectController : MonoBehaviour
         return adv.Intent == PartyIntent.Pilgrim || adv.Intent == PartyIntent.GiftGiver;
     }
 
-    // Damage buffs are transient: clear the multiplier on any monster no longer in a buffing room.
+    /// <summary>
+    /// Dread Chamber: every intruder standing in the room moves and strikes slower.
+    /// Reapplied each tick; ClearStaleBuffs resets anyone who has left.
+    /// </summary>
+    private void ApplyAdventurerSlow(FloorRoot floor, TileInfluenceManager influence,
+                                     HashSet<Vector3Int> tiles, RoomEffect fx, float scale)
+    {
+        if (fx.perSecond <= 0f) return;
+        float mult = Mathf.Clamp(1f - fx.perSecond * scale, 0.5f, 1f);
+
+        floor.Entities.FillAll(advBuf);
+        for (int a = 0; a < advBuf.Count; a++)
+        {
+            var adv = advBuf[a];
+            if (adv == null) continue;
+            var cell = influence.WorldToCell(adv.transform.position);
+            if (!tiles.Contains(cell)) continue;
+            adv.SetRoomSlowMultiplier(mult);
+            nowSlowed.Add(adv);
+        }
+    }
+
+    // Damage buffs and dread slows are transient: clear them from anything no
+    // longer standing in a room that grants them.
     private void ClearStaleBuffs()
     {
         foreach (var mon in buffedLast)
@@ -166,5 +207,11 @@ public class RoomEffectController : MonoBehaviour
                 mon.SetRoomDamageMultiplier(1f);
         buffedLast.Clear();
         foreach (var mon in nowBuffed) buffedLast.Add(mon);
+
+        foreach (var adv in slowedLast)
+            if (adv != null && !nowSlowed.Contains(adv))
+                adv.SetRoomSlowMultiplier(1f);
+        slowedLast.Clear();
+        foreach (var adv in nowSlowed) slowedLast.Add(adv);
     }
 }

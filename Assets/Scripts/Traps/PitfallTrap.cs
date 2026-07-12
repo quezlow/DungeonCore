@@ -13,9 +13,10 @@ public class PitfallTrap : TrapBase
     {
         if (adv == null) return;
 
-        DamageNumberSpawner.Spawn(Definition.damage, adv.transform.position,
+        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
-        adv.TakeDamage(Definition.damage);
+        adv.TakeDamage(dmg);
 
         adv.ApplySlow(Definition.slowMultiplier, Definition.slowDuration);
     }
@@ -24,9 +25,10 @@ public class PitfallTrap : TrapBase
     {
         if (m == null) return;
 
-        DamageNumberSpawner.Spawn(Definition.damage, m.transform.position,
+        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        DamageNumberSpawner.Spawn(dmg, m.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
-        m.TakeDamage(Definition.damage);
+        m.TakeDamage(dmg);
 
         m.ApplySlow(Definition.slowMultiplier, Definition.slowDuration);
     }

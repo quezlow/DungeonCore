@@ -85,6 +85,13 @@ public enum RoomEffectType
     MonsterDamageBuff,  // multiplies the attack damage of those monsters (perSecond = multiplier, e.g. 1.5)
     CoreRetaliation,    // the core zaps adventurers standing in the room (perSecond = damage/sec) + a pulse
     LibraryResearch,    // research points per DAY at dawn (handled by ResearchController, not the tick loop)
+    GoldCapBonus,       // gold capacity added to the global cap (perSecond = capacity, x tier); census lane
+    Attractor,          // spawn-roll weight for one adventurer type (perSecond = weight, x tier); see attractorTarget; census lane
+    RespawnSpeed,       // respawn-speed bonus for spawners standing in the room (perSecond = bonus per tier); census lane
+    SparringXp,         // XP per second granted to sparring pairs by SparringController (perSecond = XP/sec, x tier)
+    AdventurerSlow,     // slows intruders standing in the room (perSecond = fraction removed per tier, e.g. 0.1)
+    ManaRegen,          // mana per second added to the core's regeneration (perSecond = mana/sec, x tier); census lane
+    TrapDamage,         // global trap-damage bonus while valid (perSecond = bonus per tier, e.g. 0.1); census lane
 }
 
 [Serializable]
@@ -92,11 +99,18 @@ public class RoomEffect
 {
     public RoomEffectType type = RoomEffectType.LairRegen;
 
-    [Tooltip("Magnitude. Per-second for LairRegen (HP/sec), TrainingXp (XP/sec) and " +
-             "CoreRetaliation (damage/sec); for MonsterDamageBuff it is the attack-damage " +
-             "multiplier (e.g. 1.5 = +50%).")]
+    [Tooltip("Magnitude. Per-second rates for LairRegen, TrainingXp, CoreRetaliation, " +
+             "SparringXp and ManaRegen; attack-damage multiplier for MonsterDamageBuff " +
+             "(e.g. 1.5); stored capacity for GoldCapBonus; spawn-roll weight for " +
+             "Attractor; per-tier bonus for RespawnSpeed and TrapDamage; slow fraction " +
+             "for AdventurerSlow. Every magnitude scales with room tier except " +
+             "MonsterDamageBuff, which applies flat.")]
     [Min(0f)]
     public float perSecond = 1f;
+
+    [Tooltip("Attractor effects only: the adventurer type this room draws. " +
+             "Ignored by every other effect type.")]
+    public AdventurerType attractorTarget = AdventurerType.Pilgrim;
 }
 
 [Serializable]

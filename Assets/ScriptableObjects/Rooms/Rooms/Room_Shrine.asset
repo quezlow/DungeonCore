@@ -13,17 +13,20 @@ MonoBehaviour:
   m_Name: Room_Shrine
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Shrine
-  description: 
-  effectSummary: 
-  validationTintColor: {r: 0.88916004, g: 0.8962264, b: 0.1986917, a: 0.6}
+  description: An altar to something politely unnamed.
+  effectSummary: Pilgrims come more often, to kneel where kneeling is watched.
+  validationTintColor: {r: 0.85, g: 0.9, b: 1, a: 0.6}
   minTileCount: 9
   maxTileCount: 0
   requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
-  techNodeDescription: Worship me
+  techNodeDescription: 
   requiredTechKey: tech.consecrant_masonry
   maxTier: 3
   upgradeBaseCost: 100
-  effects: []
+  effects:
+  - type: 6
+    perSecond: 1.5
+    attractorTarget: 3

@@ -10,30 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9a73f400152177e4195c007e6eb6bd55, type: 3}
-  m_Name: Room_CoreRoom
+  m_Name: Room_RitualCircle
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
-  roomName: Core Chamber
-  description: The seat of your power.
-  effectSummary: Monsters defending here strike harder (x1.5). The core lashes intruders
-    in the room (4 damage per second, x tier).
-  validationTintColor: {r: 0.99039507, g: 1, b: 0.0047169924, a: 0.6}
+  roomName: Ritual Circle
+  description: Chalk, salt and older things, drawn just so.
+  effectSummary: Adds to the core's mana regeneration (+1 per second per tier).
+  validationTintColor: {r: 0.4, g: 0.8, b: 0.9, a: 0.6}
   minTileCount: 9
-  maxTileCount: 49
-  requiresCore: 1
+  maxTileCount: 0
+  requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
   techNodeDescription: 
-  requiredTechKey: 
+  requiredTechKey: tech.drawn_circle
   maxTier: 3
   upgradeBaseCost: 100
   effects:
-  - type: 2
-    perSecond: 1.5
-    attractorTarget: 3
-  - type: 3
-    perSecond: 4
-    attractorTarget: 3
-  - type: 6
-    perSecond: 0.75
-    attractorTarget: 5
+  - type: 10
+    perSecond: 1
+    attractorTarget: 0

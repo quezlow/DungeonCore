@@ -99,15 +99,16 @@ type). Anchors are `IFloorEntity`s registered with their floor.
 change and after any furniture change): intersect the footprint with
 currently-mined tiles on the ACTIVE floor, then check in order: max tile cap
 and `requiresCore` (Throne Room constraints), `minTileCount`, required
-furniture counts, boss-spawner presence (`requiresBossSpawner`). There is NO
-upper size cap in footprint mode. Validation failures surface via
+furniture counts, boss-spawner presence (`requiresBossSpawner`). There is no
+GLOBAL upper size cap in footprint mode; per-room `maxTileCount` (0 =
+uncapped) is enforced when set -- the Core Chamber caps at 49. Validation failures surface via
 `LastFailReason`; state changes fire `OnRoomValidationChanged` (tint + toast
 systems listen).
 
 **Room types are data:** `RoomDefinition` ScriptableObjects (Create ->
 Dungeon -> Room Definition). New room types need no code. Reference minimums
 from the definition comment: Library 12, Barracks 9, Shrine 9, Oracle Chamber
-12, Boss Room 16 (+ boss spawner). Throne Room uses `requiresCore` (must
+12, Boss Room 20 (+ boss spawner). Throne Room uses `requiresCore` (must
 enclose the core cell) plus `maxTileCount` (size cap) -- it is the room built
 AROUND the core, not a separate prestige hall as the backlog framed it.
 
@@ -484,7 +485,7 @@ Gameplay/TechTree.cs`, `Gameplay/ResearchController.cs`,
 `Editor/TechContentGenerator.cs`.
 
 Tree UI (shipped): RimWorld-style single scrollable canvas
-(`UI/ResearchTreeUI.cs` + `UI/ResearchNodeView.cs`, default key R, Esc-close
+(`Gameplay/ResearchTreeUI.cs` + `Gameplay/ResearchNodeView.cs`, default key R, Esc-close
 in the PauseMenuController chain, opens while paused -- pause-availability
 audit backlogged). Paths are horizontal lanes (empty paths hidden, so
 Sorcery stays absent), tiers are columns, prerequisite edges are elbow
@@ -556,15 +557,63 @@ Key files: `Gameplay/PatternDefinition.cs`, `Gameplay/PatternCatalog.cs`,
 
 ## 15. Room Effects v2 and Attractor Rooms
 
-Decided: Treasury gold cap, Library research-point generation, Spawn Chamber
-respawn behaviour as new room effects. (Library research-point generation
-shipped early with the research spine -- `RoomEffectType.LibraryResearch`,
-granted at dawn by `ResearchController`, not the per-tick effect loop.)
-Attractor rooms add weight to adventurer-type spawn rolls, 
-summed across all floors: Shrine -> Pilgrims,
-Library -> Scholars, Treasure Vault -> Treasure Hunters, Throne -> Nobles.
+Status: SHIPPED (supersedes the decided-not-built entry). Verified: 2026-07-11.
 
-Rejected: attractors as hard spawn guarantees (they are additive weights).
+As built, room effects run in two lanes. The PER-SECOND ENTITY lane
+(LairRegen, TrainingXp, MonsterDamageBuff, CoreRetaliation, AdventurerSlow,
+SparringXp) acts on things standing in rooms and remains ACTIVE FLOOR ONLY:
+`RoomEffectController` handles AdventurerSlow (every intruder in the room --
+pilgrims included, fear is indiscriminate -- moves and strikes at
+`1 - 0.1 x tier`, floored at 0.5; the same multiplier divides attack rate),
+and the new `SparringController` handles SparringXp (idle monsters whose
+spawners sit in the room are paired for bouts: an exchange every 1.5s plays
+the attack/hurt animations, deals real chip damage of `2 x tier` -- never
+striking below 30% max HP -- and grants `perSecond x tier x 1.5` XP to both;
+six exchanges per bout, then a 10s pair rest; bruises persist by design;
+facing flips are deferred because sprite flip interacts with veteran scale).
+MonsterDamageBuff is the one tier-flat magnitude: the controller applies
+`Mathf.Max(1f, perSecond)` as a live multiplier, unscaled by EffectScale.
+The STATE/CENSUS lane (GoldCapBonus, Attractor, RespawnSpeed, ManaRegen,
+TrapDamage) is ALL FLOORS, recounted by the new `RoomEffectCensus` on
+validation and upgrade events plus a 2s heartbeat that also covers load.
+GoldCapBonus: global gold cap = base 500 + `perSecond x tier` per valid
+Treasury (authored 500); incoming gold clamps at the cap with a
+one-per-episode wisp alert; gold already held is never confiscated when the
+cap shrinks. Attractor: the new `RoomEffect.attractorTarget` field names an
+AdventurerType; each valid room adds `perSecond x tier` to that type's
+weight AND to its parent intent's stage, so bonuses survive the two-stage
+roll. Shipped attractors per tier: Shrine -> Pilgrims 1.5, Library ->
+Scholars 1.0, Treasury -> Treasure Hunters 1.5, Core Chamber -> Nobles
+0.75. RespawnSpeed: spawners standing in a valid Spawn Chamber tick at
+`1 + 0.25 x tier`; elsewhere unchanged. ManaRegen: the census sum folds
+into `DungeonCore.CurrentManaRegen` (+1/s x tier per Ritual Circle).
+TrapDamage: every trap hit (and its damage number) multiplies by
+`1 + 0.1 x tier` per valid Forge, summed and capped at +50%.
+
+New rooms (all Architecture-gated; registry appends, names save-immutable):
+Treasury (GoldCapBonus 500 + Attractor 1.5 TreasureHunter, min 9 -- Treasury
+and Treasure Vault are ONE room, the hoard is the bait; supersedes the
+two-room mapping), Spawn Chamber (RespawnSpeed 0.25, min 9), Arena
+(TrainingXp 2 + SparringXp 6, min 16 -- the Arena claims the previously
+orphaned TrainingXp; Barracks stays pure LairRegen and no separate Training
+Hall exists), Dread Chamber (AdventurerSlow 0.1, min 9), Ritual Circle
+(ManaRegen 1, min 9), Forge (TrapDamage 0.1, min 9). Nodes: Vaulted
+Reserves / Summoning Circle / The Drawn Circle (Architecture tier 2,
+patterns Silverwork / Packed Earth / Quarry Sand, prereq Remembered
+Spikes), Proving Grounds / Coals Below (tier 3, Tempered Steel / Wrought
+Iron [reused -- pattern reuse across nodes is legal], prereq Deeper Lairs),
+Whispered Dread (tier 3, Cured Leather, prereq Summoning Circle).
+`RoomEffectType` ordinals are append-only: GoldCapBonus=5, Attractor=6,
+RespawnSpeed=7, SparringXp=8, AdventurerSlow=9, ManaRegen=10, TrapDamage=11.
+
+Key files: `Room/RoomEffectCensus.cs`, `Room/SparringController.cs`,
+`Room/RoomEffectController.cs`, `Room/RoomDefinition.cs`,
+`Adventurer/AdventurerSpawner.cs`, `Monster/RespawnTicker.cs`,
+`Editor/TechContentGenerator.cs`.
+
+Rejected: attractors as hard spawn guarantees (additive weights only); a
+separate Training Hall room (the Arena carries the passive lane); node
+requirements on reserved-band patterns (no live discovery channel exists).
 
 ## 16. Crypt and Deliberate Nemesis Raise
 

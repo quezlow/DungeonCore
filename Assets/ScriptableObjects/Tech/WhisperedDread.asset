@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: WhisperedDread
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: whispered_dread
+  overrideKey: 
+  displayName: Whispered Dread
+  icon: {fileID: 0}
+  path: 1
+  tier: 3
+  pointCost: 30
+  durationDays: 3
+  affinity: 5
+  patternRequirements:
+  - {fileID: 11400000, guid: b1c1b146b663d2342908a990a5e93caf, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 7a44624bd55362046a0ea86107e31206, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: What the walls remember, intruders feel.
+  description: Dread Chambers may be built. Requires the pattern of Cured Leather.

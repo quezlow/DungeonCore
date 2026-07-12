@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Room_Barracks
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Barracks
-  description: 
-  effectSummary: 
+  description: Rough beds for rough sleepers.
+  effectSummary: Monsters whose spawners rest here mend while idle (+2 HP per second,
+    x tier).
   validationTintColor: {r: 0.16509432, g: 0.44467837, b: 1, a: 0.6}
   minTileCount: 9
   maxTileCount: 0
@@ -22,9 +23,11 @@ MonoBehaviour:
   requiredFurniture: []
   requiresBossSpawner: 0
   techNodeUnlockKey: 
-  techNodeDescription: This is a barracks. Things sleep here.
+  techNodeDescription: 
+  requiredTechKey: 
   maxTier: 3
   upgradeBaseCost: 100
   effects:
   - type: 0
     perSecond: 2
+    attractorTarget: 3

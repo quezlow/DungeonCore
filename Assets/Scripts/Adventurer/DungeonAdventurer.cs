@@ -171,6 +171,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
 
+    // Room slow (Dread Chamber): reapplied each effect tick while standing in
+    // the room, reset to 1 by RoomEffectController when the intruder leaves.
+    private float roomSlowMultiplier = 1f;
+
     // ── Terrain speed (DAY 31) ───────────────────────────────────
     private float terrainSpeedMultiplier = 1f;
 
@@ -1139,7 +1143,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         if (telegraph != null && telegraph.IsWinding) return;   // charging — the strike fires on completion
 
-        if (Time.time - lastAttackTime < attackCooldown) return;
+        if (Time.time - lastAttackTime < attackCooldown / roomSlowMultiplier) return;
 
         // Pay the attack's resource cost; if the pool is dry, skip this
         // cycle (cooldown stays elapsed, so it fires the instant regen catches up).
@@ -1793,6 +1797,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (duration > slowTimer) slowTimer = duration;
     }
 
+    /// <summary>
+    /// Dread Chamber slow: multiplies move speed and divides attack rate.
+    /// Clamped so a stray value can never freeze an intruder outright.
+    /// </summary>
+    public void SetRoomSlowMultiplier(float multiplier)
+    {
+        roomSlowMultiplier = Mathf.Clamp(multiplier, 0.25f, 1f);
+    }
+
     // ── IMonsterTarget ────────────────────────────
 
     Transform IMonsterTarget.Transform => transform;
@@ -1994,8 +2007,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         return Mathf.Max(encumbranceFloor, 1f - CarriedLootValue * encumbrancePerGold);
     }
 
-    /// <summary>Move speed after every modifier — trap slow, terrain (fording), and loot encumbrance.</summary>
-    private float EffectiveMoveSpeed => moveSpeed * EncumbranceMultiplier() * slowMultiplier * terrainSpeedMultiplier;
+    /// <summary>Move speed after every modifier -- trap slow, room dread, terrain (fording) and loot encumbrance.</summary>
+    private float EffectiveMoveSpeed => moveSpeed * EncumbranceMultiplier() * slowMultiplier
+                                        * terrainSpeedMultiplier * roomSlowMultiplier;
     /// <summary>Tank taunt — monsters prefer a taunting adventurer as their target.</summary>
     public bool IsTaunting => taunts;
 }

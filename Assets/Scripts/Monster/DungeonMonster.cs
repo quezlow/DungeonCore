@@ -1579,6 +1579,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
+
+    /// <summary>Calm, unengaged and alive -- eligible for Arena sparring.</summary>
+    public bool IsSparReady =>
+        currentHP > 0f && target == null
+        && (state == MonsterState.Idle || state == MonsterState.Wander || state == MonsterState.Patrol);
+
     public float MonsterXP => monsterXP;
     public int KillCount => killCount;
     public bool PredatorWounded => predatorWounded;

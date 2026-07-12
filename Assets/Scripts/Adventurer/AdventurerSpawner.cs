@@ -543,6 +543,21 @@ public class AdventurerSpawner : MonoBehaviour
         float wPilgrim = Mathf.Max(0f, basePilgrim + rep * reputationToPilgrim);
         float wGiftGiver = Mathf.Max(0f, baseGiftGiver + rep * reputationToGiftGiver);
 
+        // Attractor rooms lean on the intent stage too -- otherwise a type bonus
+        // could never lift its type past the intent share rolled here.
+        foreach (AdventurerType t in System.Enum.GetValues(typeof(AdventurerType)))
+        {
+            float bonus = RoomEffectCensus.GetAttractorBonus(t);
+            if (bonus <= 0f) continue;
+            switch (AdventurerTypeInfo.IntentOf(t))
+            {
+                case PartyIntent.Delver: wDelver += bonus; break;
+                case PartyIntent.Destroyer: wDestroyer += bonus; break;
+                case PartyIntent.Pilgrim: wPilgrim += bonus; break;
+                case PartyIntent.GiftGiver: wGiftGiver += bonus; break;
+            }
+        }
+
         float total = wDelver + wDestroyer + wPilgrim + wGiftGiver;
         if (total <= 0f) return PartyIntent.Delver;
 
@@ -585,7 +600,8 @@ public class AdventurerSpawner : MonoBehaviour
     private AdventurerType RollDelverType()
     {
         float wDel = Mathf.Max(0f, weightDelver);
-        float wTH = Mathf.Max(0f, weightTreasureHunter);
+        float wTH = Mathf.Max(0f, weightTreasureHunter)
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter);
         float total = wDel + wTH;
         if (total <= 0f) return AdventurerType.Delver;
         float roll = Random.Range(0f, total);
@@ -602,10 +618,13 @@ public class AdventurerSpawner : MonoBehaviour
 
     private AdventurerType RollPilgrimType()
     {
-        float wPil = Mathf.Max(0f, weightPilgrim);
-        float wSch = Mathf.Max(0f, weightScholar);
+        float wPil = Mathf.Max(0f, weightPilgrim)
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Pilgrim);
+        float wSch = Mathf.Max(0f, weightScholar)
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar);
         float wSui = Mathf.Max(0f, weightSuicidal);
-        float wNob = Mathf.Max(0f, weightNoble);
+        float wNob = Mathf.Max(0f, weightNoble)
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble);
         float wIns = inspectorEnabled ? Mathf.Max(0f, weightInspector) : 0f;
         float total = wPil + wSch + wSui + wNob + wIns;
         if (total <= 0f) return AdventurerType.Pilgrim;

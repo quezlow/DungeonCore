@@ -53,6 +53,9 @@ public class DungeonCore : MonoBehaviour
     private int claimedTileCount = 0;
     private int usedCapacity = 0;
     private int currentGold = 0;
+
+    // Set once per over-cap episode so the clamp alert fires once, not per coin.
+    private bool capClampAnnounced;
     private int researchPoints = 0;
 
     /// <summary>
@@ -105,7 +108,8 @@ public class DungeonCore : MonoBehaviour
     public string LevelDisplayName => LevelTierUtil.DisplayName(dungeonLevel);
     public float CurrentMana => currentMana;
     public float MaxMana => progression.ManaAt(dungeonLevel);
-    public float CurrentManaRegen => baseRegenPerSecond + claimedTileCount * regenPerTile;
+    public float CurrentManaRegen => baseRegenPerSecond + claimedTileCount * regenPerTile
+                                     + RoomEffectCensus.ManaRegenPerSecond;
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
@@ -214,6 +218,12 @@ public class DungeonCore : MonoBehaviour
         OnManaChanged?.Invoke(currentMana, MaxMana);
     }
 
+    /// <summary>Pokes the regen readout after a census change (the rate is a live property).</summary>
+    public void NotifyManaRegenDisplay()
+    {
+        OnManaRegenChanged?.Invoke(CurrentManaRegen);
+    }
+
     public bool SpendMana(float amount)
     {
         if (currentMana < amount) return false;
@@ -239,8 +249,24 @@ public class DungeonCore : MonoBehaviour
 
     public void AddGold(int amount)
     {
-        currentGold += amount;
+        // Treasury cap: incoming gold clamps at the census cap; gold already held
+        // is never confiscated when the cap shrinks (the effective cap floors at
+        // the current holding).
+        int cap = Mathf.Max(RoomEffectCensus.GoldCap, currentGold);
+        int before = currentGold;
+        currentGold = Mathf.Min(currentGold + amount, cap);
+        if (before + amount > cap) AnnounceCapClamp();
+        else if (currentGold < RoomEffectCensus.GoldCap) capClampAnnounced = false;
         OnGoldChanged?.Invoke(currentGold);
+    }
+
+    private void AnnounceCapClamp()
+    {
+        if (capClampAnnounced) return;
+        capClampAnnounced = true;
+        AlertsLog.Instance?.AddAlert(
+            "The hoard presses against its bounds. Coin beyond this is turned away; raise deeper vaults.",
+            transform.position);
     }
 
     /// <summary>Spends gold if affordable. Returns false (no change) if too poor.</summary>
