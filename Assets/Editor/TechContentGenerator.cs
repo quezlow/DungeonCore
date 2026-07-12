@@ -120,6 +120,11 @@ public static class TechContentGenerator
             "Forges may be built. All traps bite harder. Requires the pattern of Wrought Iron.");
         n_coals_below.affinity = DungeonType.Fire;
 
+        var n_waiting_dark = Define("waiting_dark", "The Waiting Dark", ResearchPath.Architecture, 3, 30, 3,
+            "Stone patient enough to hold a name.",
+            "Crypts may be built. The named dead can be kept, and spent. Requires the pattern of Gravegold.");
+        n_waiting_dark.affinity = DungeonType.Dark;
+
         // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
         AddPrereq(n_wave_preview, n_status_bars);
         AddPrereq(n_known_parties, n_wave_preview);
@@ -156,11 +161,13 @@ public static class TechContentGenerator
         AddPattern(n_whispered_dread, "CuredLeather");
         AddPrereq(n_coals_below, n_deeper_lairs);
         AddPattern(n_coals_below, "WroughtIron");
+        AddPrereq(n_waiting_dark, n_summoning_circle);
+        AddPattern(n_waiting_dark, "Gravegold");
 
-        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties, 
-            n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations, 
-            n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle, 
-            n_proving_grounds, n_whispered_dread, n_coals_below });
+        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties,
+            n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
+            n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
+            n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");
@@ -175,6 +182,7 @@ public static class TechContentGenerator
         PatchKey(RoomFolder + "/Room_Arena.asset", "tech.proving_grounds");
         PatchKey(RoomFolder + "/Room_DreadChamber.asset", "tech.whispered_dread");
         PatchKey(RoomFolder + "/Room_Forge.asset", "tech.coals_below");
+        PatchKey(RoomFolder + "/Room_Crypt.asset", "tech.waiting_dark");
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

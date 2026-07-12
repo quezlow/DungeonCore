@@ -92,6 +92,7 @@ public enum RoomEffectType
     AdventurerSlow,     // slows intruders standing in the room (perSecond = fraction removed per tier, e.g. 0.1)
     ManaRegen,          // mana per second added to the core's regeneration (perSecond = mana/sec, x tier); census lane
     TrapDamage,         // global trap-damage bonus while valid (perSecond = bonus per tier, e.g. 0.1); census lane
+    CryptPreservation,  // marker: this room preserves named corpses (read by CryptController; no per-second work)
 }
 
 [Serializable]

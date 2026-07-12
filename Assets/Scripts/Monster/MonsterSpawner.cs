@@ -56,6 +56,7 @@ public class MonsterSpawner : MonoBehaviour
     private string customName;   // player-set name; persists on the spawner across respawns
     private bool capacityHeld;
     private bool transient;          // raised minion: no capacity, no respawn, self-destructs
+    private bool raisedOneLife;      // crypt-raised hero: one life, no respawn; capacity returns on the fall
     private float minionLifetime;    // seconds the raised minion lives (0 = permanent)
 
     private bool isRespawning;
@@ -79,6 +80,15 @@ public class MonsterSpawner : MonoBehaviour
     public bool HasLiveMonster => spawnedMonster != null;
     public DungeonMonster SpawnedMonster => spawnedMonster;
     public string CustomName => customName;
+
+    /// <summary>Transient necromancer minion: never persisted, never respawns.</summary>
+    public bool IsTransient => transient;
+
+    /// <summary>Crypt-raised: exactly one life. Round-trips through saves.</summary>
+    public bool RaisedOneLife => raisedOneLife;
+
+    /// <summary>Restore-path marker; creation goes through InitialiseRaised.</summary>
+    public void MarkRaised() => raisedOneLife = true;
     public void SetCustomName(string n)
     {
         customName = string.IsNullOrWhiteSpace(n) ? null : n.Trim();
@@ -144,6 +154,17 @@ public class MonsterSpawner : MonoBehaviour
         transient = true;
         minionLifetime = lifetime;
         RestoreOrders(SpawnerOrderMode.Wander, null, true, false, default, true);
+    }
+
+    /// <summary>Initialise as a crypt-raised hero: holds capacity like a placed spawner
+    /// and persists in saves, but grants exactly one life -- when its monster falls,
+    /// the spawner destroys itself and the capacity comes home.</summary>
+    public void InitialiseRaised(MonsterDefinition def)
+    {
+        definition = def;
+        capacityHeld = true;
+        raisedOneLife = true;
+        GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
     }
 
     private void Start()
@@ -392,6 +413,16 @@ public class MonsterSpawner : MonoBehaviour
         spawnedMonster = null;
 
         if (transient) { Destroy(gameObject); return; }
+
+        if (raisedOneLife)
+        {
+            AlertsLog.Instance?.AddAlert(
+                (string.IsNullOrEmpty(customName) ? "The risen one" : customName)
+                + " has fallen, and will not rise again.",
+                deathPos, floor != null ? floor.FloorIndex : -1, AlertCategory.Combat);
+            Destroy(gameObject);   // OnDestroy returns the held capacity
+            return;
+        }
 
         isRespawning = true;
         respawnTimer = 0f;

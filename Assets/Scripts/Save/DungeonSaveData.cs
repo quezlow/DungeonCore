@@ -154,6 +154,7 @@ public class FloorSaveData
     public List<MonsterSpawnerSaveData> spawners = new();
     public List<DungeonChestSaveData> chests = new();
     public List<FurnitureSaveData> furniture = new();
+    public List<NamedCorpseSaveData> namedCorpses = new();   // named-hero corpses (additive; null on old saves)
     public List<RoomAnchorSaveData> roomAnchors = new();
     public List<TrapSaveData> traps = new();
     public List<StairsSaveData> stairs = new();
@@ -165,6 +166,7 @@ public class MonsterSpawnerSaveData
 {
     public string monsterName;
     public string customName;   // player-set monster name (additive; null on old saves)
+    public bool raisedOneLife;   // crypt-raised, one life (additive; false on old saves)
     public SerializableVector3Int cell;
 
     // DAY 31 PART 3D — Orders.
@@ -200,6 +202,14 @@ public class FurnitureSaveData
 {
     public string furnitureName;
     public SerializableVector3Int cell;
+}
+
+[Serializable]
+public class NamedCorpseSaveData
+{
+    public string heroName;
+    public SerializableVector3Int cell;   // sarcophagus cell when housed, else where it lies
+    public bool housed;
 }
 
 [Serializable]

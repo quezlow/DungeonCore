@@ -29,6 +29,33 @@ public class Corpse : MonoBehaviour
     private bool claimed;
     public bool Claimed => claimed;
 
+    private bool isNamed;
+    private string heroName;
+    private bool persistent;
+
+    /// <summary>True for a named hero's corpse: exempt from ambient raising and the timed fade.</summary>
+    public bool IsNamed => isNamed;
+
+    /// <summary>The fallen hero's name (named corpses only).</summary>
+    public string HeroName => heroName;
+
+    /// <summary>Marks this as a named hero's corpse. No timed fade, no ambient raise;
+    /// the CryptController owns its fate from here (housed, faded at dawn, or raised).</summary>
+    public void MarkNamed(string name)
+    {
+        isNamed = true;
+        heroName = name;
+        SetLifetime(0f);
+    }
+
+    /// <summary>0 = persist until told otherwise; anything else re-arms the fade timer.</summary>
+    public void SetLifetime(float seconds)
+    {
+        CancelInvoke(nameof(Expire));
+        persistent = seconds <= 0f;
+        if (!persistent) Invoke(nameof(Expire), seconds);
+    }
+
     private void Awake()
     {
         var sr = GetComponentInChildren<SpriteRenderer>();
@@ -45,7 +72,7 @@ public class Corpse : MonoBehaviour
     private void OnEnable() { if (!Active.Contains(this)) Active.Add(this); }
     private void OnDisable() { Active.Remove(this); }
 
-    private void Start() => Invoke(nameof(Expire), lifetime);
+    private void Start() { if (!persistent) Invoke(nameof(Expire), lifetime); }
 
     private void Expire() { if (!claimed) Destroy(gameObject); }
 

@@ -1521,6 +1521,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             var corpse = Instantiate(corpsePrefab, transform.position, Quaternion.identity);
             if (currentFloor != null) corpse.transform.SetParent(currentFloor.transform, true);
+            if (IsNamedHero)
+            {
+                // Named dead do not rot on the timer, and their fall teaches Gravegold.
+                corpse.GetComponent<Corpse>()?.MarkNamed(displayName);
+                PatternDiscovery.NotifyNamedHeroFelled(displayName, transform.position);
+            }
         }
 
         animDriver?.OnDeath();

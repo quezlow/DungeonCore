@@ -375,8 +375,8 @@ alignment **-3** (dark) and raises Cultist standing.
 
 ## 12. Ambient Necromancy and Corpses
 
-Status: SHIPPED (Phase 4). The Crypt / deliberate nemesis raise is NOT built
--- see entry 16. Verified: 2026-07-09.
+Status: SHIPPED (Phase 4; corpse APIs extended by the Crypt build -- see
+entry 16). Verified: 2026-07-12.
 
 Slain adventurers (and, later, humanoid monsters) leave a `Corpse`:
 source-agnostic, registered in a static `Active` list, lingering **20s**
@@ -387,10 +387,11 @@ cooldown **5s**, sustain at most `maxRisen` (**3**) minions at once; a raise
 produces a random pick from `risenDefinitions` (e.g. Skeleton, Zombie) living
 `risenLifetime` (**45s**) before crumbling for good.
 
-**Not in code yet** (belongs to the Crypt design): a corpse-lifetime API
-(`SetLifetime(0)`-style persistence), any named-hero exclusion from ambient
-raising, and deliberate player-initiated raises. Do not reference these as
-existing APIs.
+**Corpse APIs (as built with entry 16):** `SetLifetime(seconds)` (0 =
+persist until told), `MarkNamed(name)` (no timed fade; exempt from ambient
+scans -- `FindRaisableCorpse` skips named), `IsNamed` / `HeroName`. Transient
+spawners are excluded from the save gather (bug fix: a mid-fight save
+previously immortalised 45s minions as permanent spawners on load).
 
 **Key files:** `Monster/Corpse.cs`, `Monster/MonsterDefinition.cs`
 (Necromancy header), `Monster/DungeonMonster.cs`.
@@ -537,8 +538,11 @@ block; Bedrock teaches nothing) and adventurer loot (rolled in
 `DroppedLoot.Absorb` against serialised per-rarity chances
 10/20/35/60/100%; expected drops to finish a band = band size / chance;
 exhausted bands fizzle silently -- the trader stays the designed catch-up
-valve; tribute coin flourishes roll as Common). Trader, avatar and event
-channels are reserved catalog entries only. Learned-from notes persist per
+valve; tribute coin flourishes roll as Common). Trader and avatar
+channels remain reserved catalog entries; the EVENT channel is live for
+Gravegold -- the fall of a named hero teaches it
+(`PatternDiscovery.NotifyNamedHeroFelled`, called from the adventurer death
+path). Learned-from notes persist per
 pattern. Persistence: additive `unlockedKeys` + `patternNotes` on
 `DungeonSaveData`, restored in `DungeonSaveController` with a silent terrain
 catch-up that also heals legacy saves; the existing tech keys ride the same
@@ -617,14 +621,45 @@ requirements on reserved-band patterns (no live discovery channel exists).
 
 ## 16. Crypt and Deliberate Nemesis Raise
 
-Decided: the Crypt room preserves NAMED corpses indefinitely; named hero
-corpses linger until end of raid/day even outside a Crypt; named corpses are
-EXCLUDED from ambient auto-raise; raising a named hero is a deliberate player
-action (click + confirm) costing mana and Hero-tier monster capacity (~25),
-and is permanent once done. Requires new corpse APIs (persistence /
-`SetLifetime(0)`-style, named flags) that do not exist yet -- see entry 12.
-This supersedes the backlog's "Crypt: passive notoriety reduction, requires
-sarcophagi" framing entirely (sarcophagi may remain as furniture flavour).
+Status: SHIPPED. Verified: 2026-07-12.
+
+As built: named-hero corpses (`Corpse.MarkNamed`, set at the adventurer
+death site from `IsNamedHero` + `DisplayName`) never fade on the 20s timer
+and are invisible to ambient necromancy. They lie where they fall until
+dawn; at dawn `CryptController` gathers each into a free sarcophagus inside
+a valid Crypt on any floor (corpses housed in stone whose Crypt has broken
+are evicted first and compete again). No free stone -- the corpse fades for
+good, with a wisp alert. Housed corpses persist indefinitely and across
+saves; unhoused named corpses persist across saves too and still face the
+first dawn after load. Preservation capacity = sarcophagi standing in valid
+Crypts (recipe minimum 2; extra stones add slots).
+
+The raise: clicking a housed corpse (BuildMode.None only) opens
+`CryptRaiseUI` -- name, price, and the contract. Cost: `raiseManaCost`
+(serialized, default 100) + the risen definition's capacity (25 on
+`Monster_RisenHero`), held while it walks, plus 15 notoriety. The raise is
+IRREVERSIBLE and the servant is MORTAL: one life, no respawn, no crumble
+timer. `MonsterSpawner.InitialiseRaised` holds capacity like a placed
+spawner and persists in saves (`raisedOneLife` on `MonsterSpawnerSaveData`);
+on its monster's death the spawner destroys itself and the capacity comes
+home. This refines the decided entry's "permanent once done": the ACTION is
+permanent, the addition is not -- heroes cannot be farmed into a standing
+army. Display name "Risen <hero>" rides the existing spawner CustomName.
+Monster_RisenHero is registered (save restore resolves definitions by name)
+but carries the sentinel key `tech.crypt_raised` that no node grants, so it
+never appears in the build picker.
+
+Research: node `waiting_dark` ("The Waiting Dark", Architecture tier 3,
+30 pts / 3 days, prereq Summoning Circle, pattern Gravegold -- taught by a
+named hero's fall, see entry 14). Room: Crypt, min 9 tiles + 2 Sarcophagus
+furniture, marker effect `CryptPreservation` (ordinal 12, skip-listed in
+the tick loop), maxTier 1. New furniture: Sarcophagus (25 mana, blocks
+pathfinding). This supersedes the backlog's "passive notoriety reduction"
+framing entirely; the sarcophagi survived as the preservation slots.
+
+Key files: `Room/CryptController.cs`, `UI/CryptRaiseUI.cs`,
+`Monster/Corpse.cs`, `Monster/MonsterSpawner.cs`,
+`Gameplay/PatternDiscovery.cs`, `Save/DungeonSaveController.cs`.
 
 ## 17. Discovery Content (Buried Skeletons, Loot Books, Wisp Guide)
 

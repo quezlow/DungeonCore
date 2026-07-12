@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: MonsterDef_Necromancer
+  m_Name: MonsterDef_RisenHero
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Necromancer
-  icon: {fileID: 8223914979737005702, guid: 4397b9d7d4259764aaeac714863c4f8f, type: 3}
-  voice: 3
-  prefab: {fileID: 6444287558482829946, guid: a6d6d21598f44db4782bc36170cc3aa4, type: 3}
-  capacityCost: 30
-  manaCost: 50
-  requiredTier: 1
+  monsterName: Risen Hero
+  icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
+  voice: 2
+  prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}
+  capacityCost: 25
+  manaCost: 15
+  requiredTier: 0
   requiredRank: 1
   requiresDiscovery: 0
-  requiredTechKey: tech.whisperer_in_marrow
-  description: Raises the dead, for a time
+  requiredTechKey: tech.crypt_raised
+  description: A hero, spent.
   isAquatic: 0
   wildCoreXpOnDeath: 5
-  passiveRegenPerSecond: 0
+  passiveRegenPerSecond: 3
   regenCooldown: 5
   wildRegenMultiplier: 0
   maxStamina: 0
@@ -33,14 +33,11 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
-  isNecromancer: 1
+  isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5
   raiseCooldown: 5
   maxRisen: 3
   risenLifetime: 45
-  risenDefinitions:
-  - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
-  - {fileID: 11400000, guid: 5a5166ef10480db4399df78641f7470a, type: 2}
-  - {fileID: 11400000, guid: 673f898506f52ef4ebe921a506ee55d7, type: 2}
+  risenDefinitions: []
   telegraphSeconds: 0

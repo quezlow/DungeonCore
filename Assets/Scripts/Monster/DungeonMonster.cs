@@ -1506,7 +1506,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         for (int i = 0; i < list.Count; i++)
         {
             var c = list[i];
-            if (c == null || c.Claimed) continue;
+            if (c == null || c.Claimed || c.IsNamed) continue;   // the named dead answer only the core
             float d = ((Vector2)(c.transform.position - transform.position)).sqrMagnitude;
             if (d <= bestSqr) { bestSqr = d; best = c; }
         }

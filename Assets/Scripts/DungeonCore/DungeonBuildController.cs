@@ -979,6 +979,20 @@ public class DungeonBuildController : MonoBehaviour
         return spawner;
     }
 
+    /// <summary>Crypt raise: a one-life risen hero at a sarcophagus cell. The caller has
+    /// already paid mana and capacity; the spawner holds the capacity from here.</summary>
+    public MonsterSpawner SpawnRaisedMinion(FloorRoot floor, MonsterDefinition def, Vector3Int cell, string risenName)
+    {
+        if (spawnerShellPrefab == null || def == null) return null;
+        if (floor?.TileInfluence == null) return null;
+        Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
+        var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
+        spawner.transform.SetParent(floor.transform, true);
+        spawner.InitialiseRaised(def);
+        spawner.SetCustomName(risenName);
+        return spawner;
+    }
+
     public void RestoreChest(FloorRoot floor, ChestDefinition def, Vector3Int cell, bool isOpened)
     {
         if (def == null || def.prefab == null) return;

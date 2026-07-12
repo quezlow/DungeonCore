@@ -89,6 +89,19 @@ public class PatternDiscovery : MonoBehaviour
             worldPos, FloorIndexFromWorld(worldPos), announce: true);
     }
 
+    /// <summary>Event channel: the fall of a named hero teaches Gravegold (once).</summary>
+    public static void NotifyNamedHeroFelled(string heroName, Vector3 worldPos)
+    {
+        if (Instance == null || Instance.catalog == null) return;
+        if (DungeonSaveController.IsLoading) return;
+
+        var def = Instance.catalog.GetByKey("gravegold");
+        if (def == null || UnlockState.IsUnlocked(def.Key)) return;
+
+        Instance.Learn(def, "Taken from the fall of " + heroName + ".",
+            worldPos, FloorIndexFromWorld(worldPos), announce: true);
+    }
+
     /// <summary>
     /// Deterministic terrain catch-up: grants the terrain pattern for every
     /// terrain type already inside claimed territory, silently. Runs on new

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a73f400152177e4195c007e6eb6bd55, type: 3}
+  m_Name: Room_Crypt
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  roomName: Crypt
+  description: Stone beds for the notable dead.
+  effectSummary: "Named heroes\u2019 corpses are gathered here at dawn and kept.
+    Click one to raise it - once."
+  validationTintColor: {r: 0.75, g: 0.72, b: 0.65, a: 0.6}
+  minTileCount: 9
+  maxTileCount: 0
+  requiresCore: 0
+  requiredFurniture:
+  - furnitureType: {fileID: 11400000, guid: 92dffa1f92142834aba62221476afa31, type: 2}
+    minimumCount: 2
+  requiresBossSpawner: 0
+  techNodeUnlockKey: 
+  techNodeDescription: 
+  requiredTechKey: tech.waiting_dark
+  maxTier: 1
+  upgradeBaseCost: 100
+  effects:
+  - type: 12
+    perSecond: 1
+    attractorTarget: 9

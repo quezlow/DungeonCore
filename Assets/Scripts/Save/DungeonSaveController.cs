@@ -426,6 +426,7 @@ public class DungeonSaveController : MonoBehaviour
         foreach (var s in floor.GetComponentsInChildren<MonsterSpawner>(true))
         {
             if (s.Definition == null) continue;
+            if (s.IsTransient) continue;   // necromancer minions are moment-creatures; never persist them
 
             // DAY 31 PART 3D — Persist orders.
             var waypoints = new List<SerializableVector3Int>(s.PatrolWaypoints.Count);
@@ -442,6 +443,7 @@ public class DungeonSaveController : MonoBehaviour
                 attackTargetCell = SerializableVector3Int.From(s.AttackTargetCell),
                 allowDefendCore = s.AllowDefendCore,
                 customName = s.CustomName,
+                raisedOneLife = s.RaisedOneLife,
             };
 
             // DAY 31 — Capture alive monster state if the spawner has a live monster.
@@ -479,6 +481,17 @@ public class DungeonSaveController : MonoBehaviour
             {
                 furnitureName = p.Definition.furnitureName,
                 cell = SerializableVector3Int.From(p.OccupiedCell)
+            });
+        }
+
+        foreach (var c in floor.GetComponentsInChildren<Corpse>(true))
+        {
+            if (!c.IsNamed || c.Claimed) continue;
+            data.namedCorpses.Add(new NamedCorpseSaveData
+            {
+                heroName = c.HeroName,
+                cell = SerializableVector3Int.From(floor.TileInfluence.WorldToCell(c.transform.position)),
+                housed = CryptController.Instance != null && CryptController.Instance.IsHoused(c)
             });
         }
 
@@ -796,6 +809,7 @@ public class DungeonSaveController : MonoBehaviour
                     s.allowDefendCore);
 
                 if (restoredSpawner != null) restoredSpawner.SetCustomName(s.customName);
+                if (restoredSpawner != null && s.raisedOneLife) restoredSpawner.MarkRaised();
 
                 if (restoredSpawner != null && s.hasAliveMonster)
                 {
@@ -829,6 +843,10 @@ public class DungeonSaveController : MonoBehaviour
                 DungeonBuildController.Instance.RestoreFurniture(floor, def, f.cell.ToVector3Int());
             }
         }
+
+        if (data.namedCorpses != null)
+            foreach (var nc in data.namedCorpses)
+                CryptController.Instance?.RestoreNamedCorpse(floor, nc.heroName, nc.cell.ToVector3Int(), nc.housed);
 
         if (data.roomAnchors != null)
             foreach (var a in data.roomAnchors)
