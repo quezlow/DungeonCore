@@ -541,6 +541,30 @@ public static class TutorialContentGenerator
             auto = "000",
             end = "001",
         },
+        new DialogueSpec
+        {
+            asset = "BarlowDialogue", npcName = "Barlow", sprite = "npc4_4", pitch = 0.78f,
+            lines = new[]
+            {
+                "Wheat doesn't hurry. Neither do I. We get along.",
+                "All this waits on the mill. Grain one side, bread the other, and Wick's gears in between.",
+                "If you're walking her way, tell her the field said hello. The mill. She's a her. Ask anyone.",
+            },
+            auto = "000",
+            end = "001",
+        },
+        new DialogueSpec
+        {
+            asset = "BarlowMillDialogue", npcName = "Barlow", sprite = "npc4_4", pitch = 0.78f,
+            lines = new[]
+            {
+                "Hear that? Turning. Best sound in the world after rain on a dry month.",
+                "First sacks go up tonight. Bread by week's end, and some of that's your doing, I hear.",
+                "Wheat doesn't hurry. But it does arrive. Remember that, the way things are going.",
+            },
+            auto = "000",
+            end = "001",
+        },
     };
 
     // ── Entry point ──────────────────────────────────────────────────────

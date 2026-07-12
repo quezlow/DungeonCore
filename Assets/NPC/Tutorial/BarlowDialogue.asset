@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 184a3f8e5607a4e4cad98f4c2b16111e, type: 3}
+  m_Name: BarlowDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogue
+  npcName: Barlow
+  npcPortrait: {fileID: 3295236706101327806, guid: 0898b920e75e7a54bbb7300854e297d8, type: 3}
+  dialogueLines:
+  - Wheat doesn't hurry. Neither do I. We get along.
+  - All this waits on the mill. Grain one side, bread the other, and Wick's gears
+    in between.
+  - If you're walking her way, tell her the field said hello. The mill. She's a her.
+    Ask anyone.
+  autoProgressLines: 000000
+  endDialogueLines: 000001
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 8300000, guid: 7681bdf5cab94674b97f809070794f89, type: 3}
+  voicePitch: 0.78
+  choices: []
+  questInProgressIndex: 0
+  questCompletedIndex: 0
+  quest: {fileID: 0}
