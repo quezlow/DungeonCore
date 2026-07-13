@@ -33,6 +33,7 @@ public class MonsterWaypointVisuals : MonoBehaviour
 
     private readonly List<GameObject> waypointMarkers = new();
     private GameObject attackTargetMarker;
+    private GameObject postMarker;
     private bool isVisible;
 
     private void Awake()
@@ -101,6 +102,13 @@ public class MonsterWaypointVisuals : MonoBehaviour
             Vector3 worldPos = influence.CellToWorld(spawner.AttackTargetCell) + markerWorldOffset;
             attackTargetMarker = Instantiate(attackTargetMarkerPrefab, worldPos, Quaternion.identity, transform);
         }
+
+        // Post marker -- programmatic glyph, no prefab wiring needed.
+        if (spawner.HasPost)
+        {
+            Vector3 postPos = influence.CellToWorld(spawner.PostCell) + markerWorldOffset;
+            postMarker = CreatePostMarker(postPos);
+        }
     }
 
     private void HideAll()
@@ -115,6 +123,7 @@ public class MonsterWaypointVisuals : MonoBehaviour
             if (waypointMarkers[i] != null) Destroy(waypointMarkers[i]);
         waypointMarkers.Clear();
         if (attackTargetMarker != null) { Destroy(attackTargetMarker); attackTargetMarker = null; }
+        if (postMarker != null) { Destroy(postMarker); postMarker = null; }
 
         // Defensive — sweep any orphan children that escaped the list-tracked Destroy
         // (handles edge cases where Refresh fires twice in a frame, leaving the previous
@@ -142,6 +151,31 @@ public class MonsterWaypointVisuals : MonoBehaviour
         tmp.alignment = TMPro.TextAlignmentOptions.Center;
         tmp.fontSize = 4f;
         tmp.color = new Color(0.83f, 0.65f, 0.15f, 1f);  // gold accent
+        tmp.fontStyle = TMPro.FontStyles.Bold;
+
+        var mr = marker.GetComponent<MeshRenderer>();
+        if (mr != null)
+        {
+            mr.sortingLayerName = "WorldUI";
+            mr.sortingOrder = 100;
+        }
+
+        return marker;
+    }
+
+    private GameObject CreatePostMarker(Vector3 worldPos)
+    {
+        // Programmatic marker, matching CreateWaypointMarker: a world-space
+        // TextMeshPro glyph needing no prefab or canvas.
+        var marker = new GameObject("PostMarker");
+        marker.transform.SetParent(transform, false);
+        marker.transform.position = worldPos;
+
+        var tmp = marker.AddComponent<TMPro.TextMeshPro>();
+        tmp.text = "P";
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+        tmp.fontSize = 4f;
+        tmp.color = new Color(0.55f, 0.72f, 0.92f, 1f);  // steel blue
         tmp.fontStyle = TMPro.FontStyles.Bold;
 
         var mr = marker.GetComponent<MeshRenderer>();

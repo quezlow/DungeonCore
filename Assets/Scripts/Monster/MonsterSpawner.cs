@@ -46,6 +46,12 @@ public class MonsterSpawner : MonoBehaviour
              "Set from the monster command panel; persists across respawns.")]
     [SerializeField] private MonsterStance aggressionStance = MonsterStance.Inherit;
 
+    [Header("Post")]
+    [Tooltip("When true, the monster wanders around Post Cell instead of the "
+           + "spawner. Respawns walk back to it from the muster room.")]
+    [SerializeField] private bool hasPost = false;
+    [SerializeField] private Vector3Int postCell;
+
     [Header("Selection Visual")]
     [Tooltip("Optional child GameObject (e.g. a ring sprite) toggled on when this spawner is selected.")]
     [SerializeField] private GameObject selectionRing;
@@ -57,6 +63,9 @@ public class MonsterSpawner : MonoBehaviour
     private bool capacityHeld;
     private bool transient;          // raised minion: no capacity, no respawn, self-destructs
     private bool raisedOneLife;      // crypt-raised hero: one life, no respawn; capacity returns on the fall
+    private bool musterGated;        // placed under the muster rule: respawn requires the housing room standing
+    private bool musterBroken;       // one-shot alert latch while the housing room lies broken
+    private FloorRoot cachedFloor;
     private float minionLifetime;    // seconds the raised minion lives (0 = permanent)
 
     private bool isRespawning;
@@ -81,6 +90,15 @@ public class MonsterSpawner : MonoBehaviour
     public DungeonMonster SpawnedMonster => spawnedMonster;
     public string CustomName => customName;
 
+    /// <summary>Floor this spawner stands on (cached; resolves lazily).</summary>
+    public FloorRoot Floor => cachedFloor != null ? cachedFloor : (cachedFloor = GetComponentInParent<FloorRoot>());
+
+    /// <summary>Placed under the muster rule: respawn pauses while the housing room lies broken.</summary>
+    public bool MusterGated => musterGated;
+
+    public bool HasPost => hasPost;
+    public Vector3Int PostCell => postCell;
+
     /// <summary>Transient necromancer minion: never persisted, never respawns.</summary>
     public bool IsTransient => transient;
 
@@ -89,13 +107,24 @@ public class MonsterSpawner : MonoBehaviour
 
     /// <summary>Restore-path marker; creation goes through InitialiseRaised.</summary>
     public void MarkRaised() => raisedOneLife = true;
+
+    /// <summary>Restore-path marker; new placements set this in PlaceSpawner.</summary>
+    public void MarkMusterGated() => musterGated = true;
+
+    /// <summary>Save-load restore of a post without disturbing other orders.</summary>
+    public void RestorePost(Vector3Int cell)
+    {
+        hasPost = true;
+        postCell = cell;
+        OnOrdersChanged?.Invoke();
+    }
     public void SetCustomName(string n)
     {
         customName = string.IsNullOrWhiteSpace(n) ? null : n.Trim();
         if (spawnedMonster != null) spawnedMonster.RefreshNameplate();   // live update on rename
     }
     public bool IsRespawning => isRespawning;
-    public bool IsBlocked => isBlocked;
+    public bool IsBlocked => isBlocked || musterBroken;
     public float RespawnDelay => respawnDelay;
     public float RespawnTimerRemaining => Mathf.Max(0f, respawnDelay - respawnTimer);
     public float RespawnProgress => respawnDelay > 0f ? Mathf.Clamp01(respawnTimer / respawnDelay) : 0f;
@@ -201,10 +230,14 @@ public class MonsterSpawner : MonoBehaviour
         blockCheckTimer -= deltaTime;
         if (blockCheckTimer <= 0f)
         {
-            isBlocked = AnyHostileInBlockRadius();
+            // Floor gate: nothing respawns anywhere on a floor while a
+            // threshold-crossed adventurer walks it. The radius check stays
+            // for wild monsters prowling near the spawner.
+            isBlocked = AnyHostileInBlockRadius() || FloorIntrusion.AnyOnFloor(Floor);
+            UpdateMusterGroundState();
             blockCheckTimer = BLOCK_CHECK_INTERVAL;
         }
-        if (isBlocked) return;
+        if (isBlocked || musterBroken) return;
 
         respawnTimer += deltaTime;
         if (respawnTimer >= respawnDelay)
@@ -312,7 +345,27 @@ public class MonsterSpawner : MonoBehaviour
         patrolWaypoints.Clear();
         patrolLoop = true;
         hasAttackTarget = false;
+        hasPost = false;
         OnOrdersChanged?.Invoke();
+    }
+
+    /// <summary>Order the monster to hold and wander around a cell. Forces
+    /// Wander mode; patrol waypoints are kept but inactive until resumed.</summary>
+    public void SetPost(Vector3Int cell)
+    {
+        hasPost = true;
+        postCell = cell;
+        orderMode = SpawnerOrderMode.Wander;
+        OnOrdersChanged?.Invoke();
+        spawnedMonster?.NotifyPostChanged();
+    }
+
+    public void ClearPost()
+    {
+        if (!hasPost) return;
+        hasPost = false;
+        OnOrdersChanged?.Invoke();
+        spawnedMonster?.NotifyPostChanged();
     }
 
     public void SetAllowDefendCore(bool allow)
@@ -427,6 +480,7 @@ public class MonsterSpawner : MonoBehaviour
         isRespawning = true;
         respawnTimer = 0f;
         isBlocked = false;
+        musterBroken = false;
         blockCheckTimer = 0f;
 
         Debug.Log($"[MonsterSpawner] {definition?.monsterName} died. Respawn in {respawnDelay}s (capacity held).");
@@ -438,9 +492,28 @@ public class MonsterSpawner : MonoBehaviour
         }
     }
 
+    /// <summary>Muster-gated spawners pause respawning while no valid room
+    /// still musters them at their cell. One wisp alert per outage.</summary>
+    private void UpdateMusterGroundState()
+    {
+        if (!musterGated || definition == null) { musterBroken = false; return; }
+        var floor = Floor;
+        if (floor == null || floor.TileInfluence == null) { musterBroken = false; return; }
+
+        Vector3Int cell = floor.TileInfluence.WorldToCell(transform.position);
+        bool grounded = MusterRooms.IsMusterGround(floor, cell, definition, false);
+        if (!grounded && !musterBroken)
+        {
+            AlertsLog.Instance?.AddAlert(
+                definition.monsterName + " cannot return -- its muster ground lies broken.",
+                transform.position, floor.FloorIndex, AlertCategory.Combat);
+        }
+        musterBroken = !grounded;
+    }
+
     private bool AnyHostileInBlockRadius()
     {
-        var myFloor = GetComponentInParent<FloorRoot>();
+        var myFloor = Floor;
         if (myFloor?.Entities == null) return false;
 
         float r = EffectiveBlockRadius;

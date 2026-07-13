@@ -57,7 +57,8 @@ public class SpawnerSelectionController : MonoBehaviour
 
     private static bool KeepSelectionThroughMode(BuildMode mode)
         => mode == BuildMode.PlaceMonsterPatrol
-        || mode == BuildMode.PlaceMonsterAttackTarget;
+        || mode == BuildMode.PlaceMonsterAttackTarget
+        || mode == BuildMode.PlaceMonsterPost;
 
     // ── Single ────────────────────────────────────────────────────
 

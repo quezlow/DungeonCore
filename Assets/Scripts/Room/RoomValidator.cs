@@ -86,7 +86,8 @@ public static class RoomValidator
     /// same size / furniture / boss checks against that set. No upper size cap.
     /// </summary>
     public static ValidationResult Validate(
-        IReadOnlyList<Vector3Int> footprint, RoomDefinition roomDef)
+        IReadOnlyList<Vector3Int> footprint, RoomDefinition roomDef,
+        bool ignoreBossSpawner = false)
     {
         if (roomDef == null)
             return ValidationResult.Fail("No room type assigned.");
@@ -128,7 +129,7 @@ public static class RoomValidator
             }
         }
 
-        if (roomDef.requiresBossSpawner)
+        if (roomDef.requiresBossSpawner && !ignoreBossSpawner)
         {
             if (!HasBossSpawnerInRoom(roomTiles))
                 return ValidationResult.Fail(

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Crypt
   description: Stone beds for the notable dead.
-  effectSummary: "Named heroes\u2019 corpses are gathered here at dawn and kept.
-    Click one to raise it - once."
+  effectSummary: "The undead muster here. Named heroes\u2019 corpses are gathered
+    at dawn and kept - click one to raise it, once. The buried return sooner (+15%
+    respawn speed)."
   validationTintColor: {r: 0.75, g: 0.72, b: 0.65, a: 0.6}
   minTileCount: 9
   maxTileCount: 0
@@ -33,3 +34,8 @@ MonoBehaviour:
   - type: 12
     perSecond: 1
     attractorTarget: 9
+  - type: 7
+    perSecond: 0.15
+    attractorTarget: 9
+  spawnCategories:
+  - 2

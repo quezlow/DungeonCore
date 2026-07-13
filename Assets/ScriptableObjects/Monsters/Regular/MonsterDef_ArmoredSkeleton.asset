@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: MonsterDef_ArmoredSkeleton
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Armored Skeleton
+  category: 2
   icon: {fileID: 1941305032766050162, guid: fc2f36fc949a174499bcd702cc12f522, type: 3}
   voice: 2
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}

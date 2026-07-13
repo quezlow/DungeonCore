@@ -37,6 +37,11 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("How this monster sounds when it barks. Silent monsters never speak or taunt.")]
     public MonsterVoice voice = MonsterVoice.Beast;
 
+    [Tooltip("Broad kind, routing spawner placement to the muster rooms that "
+           + "accept it (RoomDefinition.spawnCategories). Boss variants route "
+           + "to the Boss Room by type and ignore this; sub-bosses follow it.")]
+    public MonsterCategory category = MonsterCategory.Beast;
+
     [Header("Prefab")]
     public DungeonMonster prefab;
 

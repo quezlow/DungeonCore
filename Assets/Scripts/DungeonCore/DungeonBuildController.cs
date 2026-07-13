@@ -19,6 +19,7 @@ public enum BuildMode
     PlaceCore,
     PlaceMonsterPatrol,        
     PlaceMonsterAttackTarget,
+    PlaceMonsterPost,
     None, 
 }
 
@@ -161,6 +162,18 @@ public class DungeonBuildController : MonoBehaviour
             HandleAttackTargetPlacement();
             return;
         }
+        if (CurrentMode == BuildMode.PlaceMonsterPost)
+        {
+            var kb = Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame) { CancelPostPlacement(); return; }
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                CancelPostPlacement();
+                return;
+            }
+            HandlePostPlacement();
+            return;
+        }
 
         // Everything below is gameplay-changing and respects pause.
         if (PauseController.IsGamePaused) return;
@@ -194,6 +207,8 @@ public class DungeonBuildController : MonoBehaviour
         CurrentMode = mode;
         Debug.Log($"[BuildController] Mode → {mode}");
         OnModeChanged?.Invoke(mode);
+        if (mode == BuildMode.PlaceSpawner) RefreshMusterHighlight();
+        else ClearMusterHighlight();
     }
 
     public void SetModeToPush() => SetMode(BuildMode.Push);
@@ -231,6 +246,13 @@ public class DungeonBuildController : MonoBehaviour
         SetMode(BuildMode.PlaceMonsterAttackTarget);
     }
 
+    public void BeginPostPlacement(MonsterSpawner spawner)
+    {
+        if (spawner == null) return;
+        placementSpawner = spawner;
+        SetMode(BuildMode.PlaceMonsterPost);
+    }
+
     private void CommitPatrolPlacement()
     {
         placementSpawner = null;
@@ -239,6 +261,13 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     private void CancelAttackTargetPlacement()
+    {
+        placementSpawner = null;
+        SetMode(BuildMode.None);
+        FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
+    }
+
+    private void CancelPostPlacement()
     {
         placementSpawner = null;
         SetMode(BuildMode.None);
@@ -582,6 +611,37 @@ public class DungeonBuildController : MonoBehaviour
         FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
     }
 
+    // -- Post placement -------------------------------------------------
+
+    private void HandlePostPlacement()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+        if (placementSpawner == null) { SetMode(BuildMode.None); return; }
+        if (!IsCellValidForWaypoint(cell))
+        {
+            RejectAt(cell, "Must be owned or a revealed chamber");
+            return;
+        }
+        if (ActiveInfluence != null && ActiveInfluence.IsUnderOverhang(cell))
+        {
+            RejectAt(cell, "Blocked by a wall overhang");
+            return;
+        }
+        var sel = SpawnerSelectionController.Instance;
+        if (sel != null && sel.Count > 0)
+        {
+            foreach (var s in sel.Selected)
+                if (s != null) s.SetPost(cell);
+        }
+        else
+        {
+            placementSpawner.SetPost(cell);
+        }
+        placementSpawner = null;
+        SetMode(BuildMode.None);
+        FindObjectByType<MonsterCommandUI>()?.OnPlacementCommitted();
+    }
+
     // ── Entrance ──────────────────────────────────────────────────
 
     private void HandleEntrancePlacement()
@@ -601,6 +661,8 @@ public class DungeonBuildController : MonoBehaviour
 
     private void HandleSpawnerPlacement()
     {
+        if (ActiveFloor != lastMusterFloor || MonsterSelectionUI.Instance?.Selected != lastMusterDef)
+            RefreshMusterHighlight();
         if (!LeftClickThisFrame(out Vector3Int cell)) return;
         if (ActiveInfluence == null || !ActiveInfluence.IsTileMined(cell)) return;
         PlaceSpawner(cell);
@@ -630,6 +692,28 @@ public class DungeonBuildController : MonoBehaviour
         if (core.FreeCapacity < def.CapacityCost) { RejectAt(cell, "Monster capacity full"); return; }
         if (core.CurrentMana < def.ManaCost) { RejectAt(cell, "Not enough mana"); return; }
 
+        // Muster rule: new spawners stand only inside a valid room that
+        // accepts the monster's category (bosses: a Boss Room footprint that
+        // validates once its own boss-spawner requirement is set aside).
+        if (!MusterRooms.IsMusterGround(ActiveFloor, cell, def, true))
+        {
+            string rooms = def is BossVariantDefinition
+                ? "Boss Room" : MusterRooms.MusterRoomNames(def.category);
+            bool anyBuilt = MusterRooms.FillEligibleAnchors(ActiveFloor, def, musterAnchorBuf) > 0;
+            RejectAt(cell, string.IsNullOrEmpty(rooms)
+                ? "No muster ground -- designate the Core Chamber"
+                : anyBuilt ? $"Musters only in: {rooms}"
+                           : $"None standing -- build: {rooms}");
+            return;
+        }
+
+        // Floor gate: no placing while intruders walk the active floor.
+        if (FloorIntrusion.AnyOnFloor(ActiveFloor))
+        {
+            RejectAt(cell, "Intruders walk this floor");
+            return;
+        }
+
         core.TrySpendCapacity(def.CapacityCost);
         core.SpendMana(def.ManaCost);
 
@@ -637,6 +721,11 @@ public class DungeonBuildController : MonoBehaviour
         var spawner = Instantiate(spawnerShellPrefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) spawner.transform.SetParent(ActiveFloor.transform, true);
         spawner.Initialise(def);
+        spawner.MarkMusterGated();
+
+        // Placing the boss is what completes a Boss Room -- revalidate so the
+        // room flips valid the moment its spawner stands.
+        if (def is BossVariantDefinition) RevalidateAllAnchors();
         SetMode(BuildMode.None);
     }
 
@@ -678,6 +767,14 @@ public class DungeonBuildController : MonoBehaviour
     private readonly System.Collections.Generic.List<SpriteRenderer> roomPreviewPool = new();
     private Transform roomPreviewParent;
     [SerializeField] private Color roomPreviewColor = new Color(0.83f, 0.65f, 0.15f, 0.35f);
+
+    // Muster-ground highlight while placing a spawner (reuses the preview quads).
+    private readonly System.Collections.Generic.List<SpriteRenderer> musterHighlightPool = new();
+    private readonly System.Collections.Generic.List<RoomAnchor> musterAnchorBuf = new();
+    [SerializeField] private Color musterHighlightColor = new Color(0.83f, 0.65f, 0.15f, 0.22f);
+    private FloorRoot lastMusterFloor;
+    private MonsterDefinition lastMusterDef;
+    private bool musterHighlightActive;
 
     /// Called by RoomAnchor on right-click — re-drag an existing room's footprint.
     public void BeginRoomRedesignate(RoomAnchor anchor)
@@ -843,6 +940,57 @@ public class DungeonBuildController : MonoBehaviour
     private void ClearRoomPreview()
     {
         for (int i = 0; i < roomPreviewPool.Count; i++) roomPreviewPool[i].enabled = false;
+    }
+
+    // -- Muster-ground highlight (PlaceSpawner mode) ---------------------
+
+    /// <summary>Tints every room on the active floor eligible to muster the
+    /// selected monster. Self-heals each frame from HandleSpawnerPlacement:
+    /// repaints when the floor or the picked definition changes.</summary>
+    private void RefreshMusterHighlight()
+    {
+        var def = MonsterSelectionUI.Instance != null ? MonsterSelectionUI.Instance.Selected : null;
+        var floor = ActiveFloor;
+        lastMusterFloor = floor;
+        lastMusterDef = def;
+        musterHighlightActive = true;
+
+        var inf = ActiveInfluence;
+        int j = 0;
+        if (def != null && floor != null && inf != null)
+        {
+            Vector3 o = inf.CellToWorld(Vector3Int.zero);
+            float cw = Mathf.Abs(inf.CellToWorld(Vector3Int.right).x - o.x);
+            float ch = Mathf.Abs(inf.CellToWorld(Vector3Int.up).y - o.y);
+
+            MusterRooms.FillEligibleAnchors(floor, def, musterAnchorBuf);
+            for (int a = 0; a < musterAnchorBuf.Count; a++)
+            {
+                var footprint = musterAnchorBuf[a].Footprint;
+                if (footprint == null) continue;
+                for (int c = 0; c < footprint.Count; c++)
+                {
+                    if (!inf.IsTileMined(footprint[c])) continue;
+                    if (j >= musterHighlightPool.Count) musterHighlightPool.Add(CreateRoomPreviewQuad());
+                    var sr = musterHighlightPool[j++];
+                    Vector3 w = inf.CellToWorld(footprint[c]);
+                    sr.transform.position = new Vector3(w.x, w.y, 0f);
+                    sr.transform.localScale = new Vector3(cw, ch, 1f);
+                    sr.color = musterHighlightColor;
+                    sr.enabled = true;
+                }
+            }
+        }
+        for (; j < musterHighlightPool.Count; j++) musterHighlightPool[j].enabled = false;
+    }
+
+    private void ClearMusterHighlight()
+    {
+        if (!musterHighlightActive) return;
+        musterHighlightActive = false;
+        lastMusterFloor = null;
+        lastMusterDef = null;
+        for (int i = 0; i < musterHighlightPool.Count; i++) musterHighlightPool[i].enabled = false;
     }
 
     private void HandleTrapPlacement()

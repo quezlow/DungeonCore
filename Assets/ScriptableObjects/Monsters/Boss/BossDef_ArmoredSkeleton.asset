@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: BossDef_ArmoredSkeleton
   m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
   monsterName: Armored Skeleton Boss
+  category: 2
   icon: {fileID: 0}
   voice: 2
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}

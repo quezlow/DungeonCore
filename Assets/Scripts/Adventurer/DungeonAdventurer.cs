@@ -423,6 +423,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             Debug.LogWarning("[Adventurer] No FloorRoot in parent — multi-floor traversal will fail.");
         else
             currentFloor.Entities?.Register(this);
+        EvaluateThresholdAtArrival();
 
         if (statusBarsPrefab != null)
         {
@@ -476,10 +477,50 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         RefreshPath();
     }
 
+    // -- Threshold latch ------------------------------------------------
+    // An adventurer freezes a floor's spawner respawns and placement only
+    // once it has stepped out of the entrance cave into the dungeon proper.
+    // Floors below arrive by stairs and latch on arrival; legacy saves with
+    // a player-placed entrance have no tunnel and latch at spawn.
+
+    private bool crossedThreshold;
+    private float thresholdCheckTimer;
+    private const float THRESHOLD_CHECK_INTERVAL = 0.25f;
+
+    /// <summary>True once this adventurer counts against the floor gate
+    /// (FloorIntrusion). Latched; clears only by leaving the registry.</summary>
+    public bool CountsAsIntruder => crossedThreshold;
+
+    private void EvaluateThresholdAtArrival()
+    {
+        if (currentFloor == null) { crossedThreshold = true; return; }
+        if (currentFloor.FloorIndex != 0) { crossedThreshold = true; return; }
+        var features = currentFloor.FeatureGenerator;
+        if (features == null || features.EntranceCave == null) { crossedThreshold = true; return; }
+        var influence = currentFloor.TileInfluence;
+        if (influence == null) { crossedThreshold = true; return; }
+        crossedThreshold = !features.IsEntranceCave(influence.WorldToCell(transform.position));
+    }
+
+    private void TickThresholdLatch()
+    {
+        if (crossedThreshold) return;
+        thresholdCheckTimer -= Time.deltaTime;
+        if (thresholdCheckTimer > 0f) return;
+        thresholdCheckTimer = THRESHOLD_CHECK_INTERVAL;
+
+        var features = currentFloor != null ? currentFloor.FeatureGenerator : null;
+        var influence = currentFloor != null ? currentFloor.TileInfluence : null;
+        if (features == null || influence == null) { crossedThreshold = true; return; }
+        if (!features.IsEntranceCave(influence.WorldToCell(transform.position)))
+            crossedThreshold = true;
+    }
+
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
 
+        TickThresholdLatch();
         UpdateTerrainSpeedMultiplier();
         TrySightCore();
 
@@ -852,6 +893,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         transform.position = matchingStair.transform.position;
         currentFloor = destFloor;
         currentFloor.Entities?.Register(this);
+        crossedThreshold = true;   // arrived by stairs -- already inside
 
         Debug.Log($"[Adventurer] Arrived on floor {destIdx}.");
         state = stateBeforeStairs; stairTarget = null; RefreshPath();

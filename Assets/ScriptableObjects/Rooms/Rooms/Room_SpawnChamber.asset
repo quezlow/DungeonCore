@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Spawn Chamber
   description: A circle drawn for the calling-back of the fallen.
-  effectSummary: Spawners standing here return their dead faster (+25% respawn speed
+  effectSummary: Beasts muster here, and their dead return faster (+25% respawn speed
     per tier).
   validationTintColor: {r: 0.6, g: 0.4, b: 0.9, a: 0.6}
   minTileCount: 9
@@ -31,3 +31,5 @@ MonoBehaviour:
   - type: 7
     perSecond: 0.25
     attractorTarget: 3
+  spawnCategories:
+  - 0

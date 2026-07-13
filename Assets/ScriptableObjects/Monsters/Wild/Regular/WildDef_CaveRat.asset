@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: WildDef_CaveRat
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Cave Rat
+  category: 0
   icon: {fileID: 21300000, guid: 371f5ad8a8772e744a88526eb95932e8, type: 3}
   prefab: {fileID: 7267283011648284252, guid: 939ae11313253dc47a6a4742df836a91, type: 3}
   capacityCost: 2

@@ -30,6 +30,7 @@ public class MonsterCommandUI : MonoBehaviour
     [SerializeField] private Button wanderButton;
     [SerializeField] private Button patrolButton;
     [SerializeField] private Button attackHereButton;
+    [SerializeField] private Button postButton;
     [SerializeField] private Button defendButton;
     [SerializeField] private Button clearOrdersButton;
     [SerializeField] private Button closeButton;
@@ -155,6 +156,8 @@ public class MonsterCommandUI : MonoBehaviour
             baseText = $"Attack-Here at {s.AttackTargetCell.x},{s.AttackTargetCell.y}";
         else if (s.OrderMode == SpawnerOrderMode.Patrol && s.PatrolWaypoints.Count > 0)
             baseText = $"Patrol · {(s.PatrolLoop ? "Loop" : "Hold-at-Final")} · {s.PatrolWaypoints.Count}/{MonsterSpawner.MaxPatrolWaypoints} waypoints";
+        else if (s.HasPost)
+            baseText = $"Posted at {s.PostCell.x},{s.PostCell.y}";
         else
             baseText = "Wander";
 
@@ -194,6 +197,15 @@ public class MonsterCommandUI : MonoBehaviour
     {
         if (current == null) return;
         DungeonBuildController.Instance?.BeginAttackTargetPlacement(current);
+        Hide();
+    }
+
+    /// <summary>Wire the Post button's onClick here. One click on the map
+    /// sets a hold-and-wander point for every selected spawner.</summary>
+    public void OnPostClicked()
+    {
+        if (current == null) return;
+        DungeonBuildController.Instance?.BeginPostPlacement(current);
         Hide();
     }
 

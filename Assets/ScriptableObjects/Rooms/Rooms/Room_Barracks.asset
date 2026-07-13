@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Barracks
   description: Rough beds for rough sleepers.
-  effectSummary: Monsters whose spawners rest here mend while idle (+2 HP per second,
-    x tier).
+  effectSummary: Humanoid servants muster here, and mend while idle (+2 HP per second,
+    x tier). Their dead return sooner (+15% respawn speed per tier).
   validationTintColor: {r: 0.16509432, g: 0.44467837, b: 1, a: 0.6}
   minTileCount: 9
   maxTileCount: 0
@@ -31,3 +31,8 @@ MonoBehaviour:
   - type: 0
     perSecond: 2
     attractorTarget: 3
+  - type: 7
+    perSecond: 0.15
+    attractorTarget: 3
+  spawnCategories:
+  - 1

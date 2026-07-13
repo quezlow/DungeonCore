@@ -59,6 +59,7 @@ the supersession in one line.
 13. Research Tree (Phase 4.5)
 14. Material Pattern System
 15. Room Effects v2 and Attractor Rooms
+15A. Monster Muster (Spawn Rooms, Posts, Floor Gates)
 16. Crypt and Deliberate Nemesis Raise
 17. Discovery Content (Buried Skeletons, Loot Books, Wisp Guide)
 18. Phase 5 Designs
@@ -588,8 +589,9 @@ AdventurerType; each valid room adds `perSecond x tier` to that type's
 weight AND to its parent intent's stage, so bonuses survive the two-stage
 roll. Shipped attractors per tier: Shrine -> Pilgrims 1.5, Library ->
 Scholars 1.0, Treasury -> Treasure Hunters 1.5, Core Chamber -> Nobles
-0.75. RespawnSpeed: spawners standing in a valid Spawn Chamber tick at
-`1 + 0.25 x tier`; elsewhere unchanged. ManaRegen: the census sum folds
+0.75. RespawnSpeed: spawners standing in a valid room carrying the effect
+tick at `1 + perSecond x tier` (Spawn Chamber 0.25; Barracks, Crypt and
+Boss Room 0.15 -- each muster room hastens its own residents; entry 15A). ManaRegen: the census sum folds
 into `DungeonCore.CurrentManaRegen` (+1/s x tier per Ritual Circle).
 TrapDamage: every trap hit (and its damage number) multiplies by
 `1 + 0.1 x tier` per valid Forge, summed and capped at +50%.
@@ -618,6 +620,80 @@ Key files: `Room/RoomEffectCensus.cs`, `Room/SparringController.cs`,
 Rejected: attractors as hard spawn guarantees (additive weights only); a
 separate Training Hall room (the Arena carries the passive lane); node
 requirements on reserved-band patterns (no live discovery channel exists).
+
+## 15A. Monster Muster (Spawn Rooms, Posts, Floor Gates)
+
+Status: SHIPPED. Verified: 2026-07-12.
+
+**Muster rule:** new monster spawners may be placed only inside a VALID
+room whose `RoomDefinition.spawnCategories` contains the monster's
+`MonsterDefinition.category` (`MonsterCategory`, append-only: Beast=0,
+Humanoid=1, Undead=2). Authored map: Core Chamber = all three (the
+universal, research-free ground -- capped at 49 tiles and carrying no
+RespawnSpeed, so real muster rooms outgrow it), Spawn Chamber = Beast,
+Barracks = Humanoid, Crypt = Undead. Bosses (`BossVariantDefinition`)
+route by room type instead: placement is legal in a Boss Room footprint
+that validates once its own boss-spawner requirement is set aside
+(`RoomValidator.Validate(footprint, def, ignoreBossSpawner)`) -- placing
+the boss completes the room, closing the old chicken-and-egg. Sub-bosses
+are not BossVariantDefinitions and follow their base category. Matching
+valid rooms tint gold during PlaceSpawner mode; rejection toasts name the
+muster rooms (distinguishing "none built" from "wrong cell"). Spawners
+saved before this system carry no gate (`musterGated` false) and are
+exempt forever; remove-and-replace is the migration path.
+
+**Room-break rule:** a muster-gated spawner whose cell is no longer
+inside a valid matching room pauses respawning (one wisp alert per
+outage, blocked "!" on the indicator) and resumes when the room stands
+again. Live monsters are unaffected -- adventurers smashing a muster room
+attack production, not the standing army.
+
+**Posts:** `MonsterSpawner` carries an optional post cell (persisted via
+`hasPost`/`postCell` on `MonsterSpawnerSaveData`). The Post button on
+the monster command panel enters `BuildMode.PlaceMonsterPost`
+(Attack-Here flow: Esc/right-click cancels; the commit applies to the
+whole multi-selection); the monster's Wander state anchors on the post
+instead of the spawner, so respawns walk back from the muster room to
+their station. Wander / Clear Orders clears the post. A programmatic
+"P" glyph marks the post while the spawner is selected.
+
+**Floor gates:** spawner respawn ticking and spawner placement are both
+blocked while any threshold-crossed adventurer is on that floor
+(`FloorIntrusion.AnyOnFloor`; surfaces as the blocked "!" indicator).
+The threshold latch (`DungeonAdventurer.CountsAsIntruder`): floor 0
+latches when the adventurer's cell first leaves the entrance-cave cell
+set; floors below latch on stair arrival; legacy player-placed-entrance
+saves latch at spawn. The latch never clears while the adventurer lives
+on the floor. Commoners count; wild animals do not (the 6-unit
+per-spawner radius block is retained beneath the floor gate and still
+covers them).
+
+**Fixed in passing:** `RoomEffectCensus.GetRespawnMultiplier` resolved
+cells via the ACTIVE floor's influence -- garbage for spawners on
+Y-offset floors. Chambers now carry their FloorRoot and the spawner
+resolves against its own cached floor (`MonsterSpawner.Floor`).
+
+**Opening (decided; event not yet built):** the First Blood vignette -- a
+hunter chases a rat into the entrance cave shortly after the breach,
+kills it with an arrow, and the core absorbs the corpse before he
+reaches it, granting `BestiaryState.Discover("Cave Rat")` and giving the
+commoner stage its reason to investigate. Until that session ships, the
+Skeleton bootstrap unlock stays as a testing convenience. The
+discovered-beast channel is otherwise fully shipped: wild definitions
+sit in the placeable registry behind `requiresDiscovery`.
+
+**Key files:** `Monster/MonsterCategory.cs`, `Room/MusterRooms.cs`,
+`Adventurer/FloorIntrusion.cs`, `Monster/MonsterSpawner.cs`,
+`Monster/DungeonMonster.cs`, `DungeonCore/DungeonBuildController.cs`,
+`Room/RoomValidator.cs`, `Room/RoomEffectCensus.cs`,
+`Adventurer/DungeonAdventurer.cs`, `Monster/MonsterWaypointVisuals.cs`.
+
+**Rejected:** soft muster (2x mana anywhere -- undermines the tension);
+a wander-in-this-room order (the post subsumes it and room identity is
+save-fragile); the Crypt as the only undead ground (deadlocks the
+opening); strict four-room mapping without a universal ground (nothing
+placeable before Architecture research); unlatching adventurers who flee
+back into the tunnel (flappy respawn state).
 
 ## 16. Crypt and Deliberate Nemesis Raise
 
@@ -654,7 +730,8 @@ Research: node `waiting_dark` ("The Waiting Dark", Architecture tier 3,
 named hero's fall, see entry 14). Room: Crypt, min 9 tiles + 2 Sarcophagus
 furniture, marker effect `CryptPreservation` (ordinal 12, skip-listed in
 the tick loop), maxTier 1. New furniture: Sarcophagus (25 mana, blocks
-pathfinding). This supersedes the backlog's "passive notoriety reduction"
+pathfinding). The Crypt is also the undead muster ground and carries a
+RespawnSpeed 0.15 effect (entry 15A). This supersedes the backlog's "passive notoriety reduction"
 framing entirely; the sarcophagi survived as the preservation slots.
 
 Key files: `Room/CryptController.cs`, `UI/CryptRaiseUI.cs`,
@@ -676,27 +753,6 @@ calls `GrantNodeFully` (bypasses points, prerequisites and duration; refunds
 if underway) and the gold still pays, so duplicate tomes are never dead
 drops. Three authored tomes: Mage -> Whisperer in Marrow, Cleric ->
 Whispers of Intent, Explorer -> Deep Foundations.
-
-SHIPPED (buried skeletons): two deterministic sites per floor
-(`TerrainTypeMap.GetBuriedSites`, seeded from the floor seed; Stone or
-Granite cells, Chebyshev >= 6 from the core cell, inside the bedrock rim; a
-site swallowed by a pre-carved tunnel is silently lost -- rare, accepted).
-Claiming within two cells of an unfound site makes the wisp murmur once per
-site (`OnTileClaimed`, a new live-claims-only sibling of `OnTileMined`; the
-alert pins the claimed cell, never the site, and names no reward --
-discoveries stay genuine surprises). The dig hook is `OnTileMined`, so only
-live player digs count. The grant is
-`ResearchController.GrantBuriedDiscovery`: lowest-tier locked Bestiary node
-matching the core's affinity, then None-affinity Bestiary (a Dark core today
-walks Shambling Dead -> Whisperer in Marrow -> Bones in Iron), with full
-tome-style bypass; `GrantNodeFully` gained an optional announce line for it.
-An exhausted ladder pays 10 research points per find instead -- never a dead
-dig. Consumed and sensed sites persist per floor
-(`FloorSaveData.consumedBuriedSites` / `sensedBuriedSites`, additive).
-`BuriedRemainsController.GrantExternalDiscovery(worldPos, floorIndex)` is
-the re-entry point entry 18's desecration reward will call. Key files:
-`Gameplay/BuriedRemainsController.cs`, `Floors/TerrainTypeMap.cs`,
-`DungeonCore/TileInfluenceManager.cs`, `Gameplay/ResearchController.cs`.
 
 ## 18. Phase 5 Designs
 

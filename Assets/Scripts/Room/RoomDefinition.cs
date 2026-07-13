@@ -76,6 +76,12 @@ public class RoomDefinition : ScriptableObject
     [Tooltip("Effects applied while this room is valid. Lair = HP regen for the " +
              "room's monsters; Training = XP over time toward Veteran. More types later.")]
     public List<RoomEffect> effects = new();
+
+    [Header("Muster Ground")]
+    [Tooltip("Monster categories whose spawners may be placed in this room. "
+           + "Empty = no monsters muster here. Bosses ignore this and route "
+           + "by requiresBossSpawner instead.")]
+    public List<MonsterCategory> spawnCategories = new();
 }
 
 public enum RoomEffectType

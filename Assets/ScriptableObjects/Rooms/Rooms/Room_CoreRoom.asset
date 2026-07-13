@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Core Chamber
   description: The seat of your power.
-  effectSummary: Monsters defending here strike harder (x1.5). The core lashes intruders
-    in the room (4 damage per second, x tier).
+  effectSummary: Every kind of monster may muster here, at the core's side. Defenders
+    strike harder (x1.5) and the core lashes intruders (4 damage per second, x tier).
   validationTintColor: {r: 0.99039507, g: 1, b: 0.0047169924, a: 0.6}
   minTileCount: 9
   maxTileCount: 49
@@ -37,3 +37,7 @@ MonoBehaviour:
   - type: 6
     perSecond: 0.75
     attractorTarget: 5
+  spawnCategories:
+  - 0
+  - 1
+  - 2

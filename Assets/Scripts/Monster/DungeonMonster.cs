@@ -946,6 +946,28 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // ── Wander ────────────────────────────────────────────────────
 
+    /// <summary>Point the wander state orbits: the player-set post when one
+    /// exists, else the spawn position. Wild monsters never read this.</summary>
+    private Vector3 WanderAnchor
+    {
+        get
+        {
+            if (spawner != null && spawner.HasPost && currentFloor?.TileInfluence != null)
+                return currentFloor.TileInfluence.CellToWorld(spawner.PostCell);
+            return spawnPosition;
+        }
+    }
+
+    /// <summary>Called by the spawner when its post changes so a wandering
+    /// monster re-anchors immediately instead of finishing its old walk.</summary>
+    public void NotifyPostChanged()
+    {
+        if (state != MonsterState.Wander) return;
+        wanderPath.Clear();
+        wanderWaiting = false;
+        PickWanderTarget();
+    }
+
     private void Wander()
     {
         if (wanderWaiting)
@@ -1017,14 +1039,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (IsWild) { PickWildWanderTarget(); return; }
         var influence = currentFloor?.TileInfluence;
-        if (influence == null) { wanderTarget = spawnPosition; return; }
+        Vector3 anchor = WanderAnchor;
+        if (influence == null) { wanderTarget = anchor; return; }
 
         // Enumerate mined cells within wanderRadius of spawn. Builds a complete
         // candidate list, then picks one. Robust against sparse mined areas where
         // random-sample-and-reject would fail (e.g. monster placed near the
         // claimed-not-mined edge of influence, or in the Phase 4 random starter
         // where 30% of nearby cells start as claimed-stone).
-        Vector3Int spawnCell = influence.WorldToCell(spawnPosition);
+        Vector3Int spawnCell = influence.WorldToCell(anchor);
         int cellRadius = Mathf.CeilToInt(wanderRadius);
         float radiusSqr = wanderRadius * wanderRadius;
 
@@ -1038,8 +1061,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
                 // Circular not square — use squared distance for cheap check.
                 Vector3 cellWorld = influence.CellToWorld(cell);
-                float sx = cellWorld.x - spawnPosition.x;
-                float sy = cellWorld.y - spawnPosition.y;
+                float sx = cellWorld.x - anchor.x;
+                float sy = cellWorld.y - anchor.y;
                 if (sx * sx + sy * sy > radiusSqr) continue;
 
                 candidates.Add(cell);
@@ -1048,8 +1071,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (candidates.Count == 0)
         {
-            // Isolated monster — nothing reachable. Hold at spawn.
-            wanderTarget = spawnPosition;
+            // Isolated monster — nothing reachable. Hold at the anchor.
+            wanderTarget = anchor;
             return;
         }
 

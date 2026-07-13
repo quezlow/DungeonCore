@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: BossDef_HungryBear
   m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
   monsterName: Ravenous Bear
+  category: 0
   icon: {fileID: -9116242927022400561, guid: 8648090f015eeca4ea248ef811e417c2, type: 3}
   prefab: {fileID: 6027699923266516027, guid: c3187518769e12941ac20e3f8f34ca7a, type: 3}
   capacityCost: 0

@@ -444,6 +444,9 @@ public class DungeonSaveController : MonoBehaviour
                 allowDefendCore = s.AllowDefendCore,
                 customName = s.CustomName,
                 raisedOneLife = s.RaisedOneLife,
+                hasPost = s.HasPost,
+                postCell = SerializableVector3Int.From(s.PostCell),
+                musterGated = s.MusterGated,
             };
 
             // DAY 31 — Capture alive monster state if the spawner has a live monster.
@@ -494,9 +497,6 @@ public class DungeonSaveController : MonoBehaviour
                 housed = CryptController.Instance != null && CryptController.Instance.IsHoused(c)
             });
         }
-
-        BuriedRemainsController.Instance?.GatherConsumed(floor, data.consumedBuriedSites);
-        BuriedRemainsController.Instance?.GatherSensed(floor, data.sensedBuriedSites);
 
         foreach (var a in floor.GetComponentsInChildren<RoomAnchor>(true))
         {
@@ -813,6 +813,8 @@ public class DungeonSaveController : MonoBehaviour
 
                 if (restoredSpawner != null) restoredSpawner.SetCustomName(s.customName);
                 if (restoredSpawner != null && s.raisedOneLife) restoredSpawner.MarkRaised();
+                if (restoredSpawner != null && s.musterGated) restoredSpawner.MarkMusterGated();
+                if (restoredSpawner != null && s.hasPost) restoredSpawner.RestorePost(s.postCell.ToVector3Int());
 
                 if (restoredSpawner != null && s.hasAliveMonster)
                 {
@@ -850,11 +852,6 @@ public class DungeonSaveController : MonoBehaviour
         if (data.namedCorpses != null)
             foreach (var nc in data.namedCorpses)
                 CryptController.Instance?.RestoreNamedCorpse(floor, nc.heroName, nc.cell.ToVector3Int(), nc.housed);
-
-        if (data.consumedBuriedSites != null)
-            BuriedRemainsController.Instance?.RestoreConsumed(floor, data.consumedBuriedSites);
-        if (data.sensedBuriedSites != null)
-            BuriedRemainsController.Instance?.RestoreSensed(floor, data.sensedBuriedSites);
 
         if (data.roomAnchors != null)
             foreach (var a in data.roomAnchors)

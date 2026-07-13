@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: BossDef_Zombie
   m_EditorClassIdentifier: Assembly-CSharp::BossVariantDefinition
   monsterName: Zombie Boss
+  category: 2
   icon: {fileID: 0}
   voice: 2
   prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}

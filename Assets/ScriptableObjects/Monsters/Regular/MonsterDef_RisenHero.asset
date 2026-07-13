@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: MonsterDef_RisenHero
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Risen Hero
+  category: 2
   icon: {fileID: -3081212464156720553, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
   voice: 2
   prefab: {fileID: 8119340259632022782, guid: 9d53c4c482c1d194e81668defbb1c28a, type: 3}

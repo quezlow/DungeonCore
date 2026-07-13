@@ -118,7 +118,7 @@ public class MonsterSelectionUI : MonoBehaviour
                     ? "The core does not yet remember this shape"
                     : rankLocked
                         ? $"Unlocks at {LevelTierUtil.DisplayName(def.RequiredFlatLevel)}"
-                        : $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}";
+                        : $"Capacity: {def.CapacityCost}   Mana: {def.ManaCost:0}{MusterLine(def)}";
         if (descriptionLabel != null) descriptionLabel.text = def.description;
     }
 
@@ -126,6 +126,14 @@ public class MonsterSelectionUI : MonoBehaviour
     {
         DungeonBuildController.Instance?.SetMode(BuildMode.None);
         // Hide() fires via HandleModeChanged when the mode leaves PlaceSpawner.
+    }
+
+    /// <summary>Where the monster may be placed, appended to the cost line.</summary>
+    private static string MusterLine(MonsterDefinition def)
+    {
+        string rooms = def is BossVariantDefinition
+            ? "Boss Room" : MusterRooms.MusterRoomNames(def.category);
+        return string.IsNullOrEmpty(rooms) ? "" : $"\nMusters in: {rooms}";
     }
 
     private void Show()

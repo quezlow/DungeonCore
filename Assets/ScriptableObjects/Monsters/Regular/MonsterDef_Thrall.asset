@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: MonsterDef_Thrall
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Thrall
+  category: 1
   icon: {fileID: 3295236706101327806, guid: 8ecd14fd0e401a94f803f52a757630a7, type: 3}
   voice: 2
   prefab: {fileID: 2221681563463472497, guid: 34d1738b1ec404346bc5b5a3099b9bee, type: 3}

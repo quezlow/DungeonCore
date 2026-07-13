@@ -25,6 +25,9 @@ public class RoomTypePickerUI : MonoBehaviour
     [Tooltip("Single source of truth for room types. Registry order is the button order.")]
     [SerializeField] private RoomDefinitionRegistry registry;
 
+    /// <summary>The room-type registry this picker lists (read by MusterRooms).</summary>
+    public RoomDefinitionRegistry Registry => registry;
+
     [Header("UI References")]
     [SerializeField] private Transform    entryContainer;
     [SerializeField] private Button       entryButtonPrefab;
