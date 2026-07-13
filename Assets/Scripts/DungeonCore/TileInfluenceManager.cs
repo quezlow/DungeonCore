@@ -101,16 +101,19 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Events ────────────────────────────────────────────────────
 
-    /// <summary>Fires when minedTiles.Count changes. HUD subscribers use this.</summary>
+    /// Fires when minedTiles.Count changes. HUD subscribers use this.</summary>
     public event Action<int> OnTileCountChanged;
 
-    /// <summary>PHASE 2 — Fires when claimedTiles.Count changes.</summary>
+    /// Fires when claimedTiles.Count changes.</summary>
     public event Action<int> OnClaimedTileCountChanged;
 
-    /// <summary>PHASE 2 — Fires per cell newly added to minedTiles.</summary>
+    /// Fires per cell newly added to minedTiles.</summary>
     public event Action<Vector3Int> OnTileMined;
 
-    /// <summary>DAY 31 — Fires whenever a cell enters the claimable ring.</summary>
+    /// Fires per cell newly claimed. Live claims only; save-restore claims are silent.</summary>
+    public event Action<Vector3Int> OnTileClaimed;
+
+    /// Fires whenever a cell enters the claimable ring.</summary>
     public event Action<Vector3Int> OnTileBecameClaimable;
 
     // ── Internal ──────────────────────────────────────────────────
@@ -321,6 +324,8 @@ public class TileInfluenceManager : MonoBehaviour
                 PatternDiscovery.NotifyTerrainClaimed(
                     MyFloor.TerrainTypeMap.GetTerrainAt(pos),
                     CellToWorld(pos), MyFloor.FloorIndex);
+
+            OnTileClaimed?.Invoke(pos);
         }
     }
 

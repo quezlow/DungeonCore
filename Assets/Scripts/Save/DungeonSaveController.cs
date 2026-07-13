@@ -495,6 +495,9 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
+        BuriedRemainsController.Instance?.GatherConsumed(floor, data.consumedBuriedSites);
+        BuriedRemainsController.Instance?.GatherSensed(floor, data.sensedBuriedSites);
+
         foreach (var a in floor.GetComponentsInChildren<RoomAnchor>(true))
         {
             var fp = new List<SerializableVector3Int>(a.Footprint.Count);
@@ -847,6 +850,11 @@ public class DungeonSaveController : MonoBehaviour
         if (data.namedCorpses != null)
             foreach (var nc in data.namedCorpses)
                 CryptController.Instance?.RestoreNamedCorpse(floor, nc.heroName, nc.cell.ToVector3Int(), nc.housed);
+
+        if (data.consumedBuriedSites != null)
+            BuriedRemainsController.Instance?.RestoreConsumed(floor, data.consumedBuriedSites);
+        if (data.sensedBuriedSites != null)
+            BuriedRemainsController.Instance?.RestoreSensed(floor, data.sensedBuriedSites);
 
         if (data.roomAnchors != null)
             foreach (var a in data.roomAnchors)

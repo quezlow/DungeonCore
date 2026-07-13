@@ -290,7 +290,7 @@ public class ResearchController : MonoBehaviour
     /// Loot-book channel: unlocks the node outright, bypassing points,
     /// prerequisites and duration. If it was underway, the spend is refunded.
     /// </summary>
-    public void GrantNodeFully(TechNodeDefinition node)
+    public void GrantNodeFully(TechNodeDefinition node, string announce = null)
     {
         if (node == null || UnlockState.IsUnlocked(node.Key)) return;
         if (node.Key == activeKey)
@@ -305,8 +305,37 @@ public class ResearchController : MonoBehaviour
             DungeonCore.Instance?.AddResearch(CostFor(node));
         }
         UnlockState.Unlock(node.Key);
-        Announce("A tome gives up its secret: " + node.displayName + ".");
+        Announce(announce ?? ("A tome gives up its secret: " + node.displayName + "."));
         OnStateChanged?.Invoke();
+    }
+
+    /// <summary>Buried-remains discovery: unlock the lowest-tier locked Bestiary node
+    /// matching the core's affinity, falling back to None-affinity Bestiary nodes.
+    /// Same bypass rules as a tome. Returns the granted node, or null when the ladder
+    /// is exhausted (the caller pays the consolation).</summary>
+    public TechNodeDefinition GrantBuriedDiscovery(DungeonType coreType)
+    {
+        if (tree == null) return null;
+        TechNodeDefinition best = null;
+        bool bestMatches = false;
+        foreach (var n in tree.Nodes)
+        {
+            if (n == null || n.path != ResearchPath.Bestiary) continue;
+            if (UnlockState.IsUnlocked(n.Key)) continue;
+            bool matches = coreType != DungeonType.None && n.affinity == coreType;
+            if (!matches && n.affinity != DungeonType.None) continue;
+            if (best == null
+                || (matches && !bestMatches)
+                || (matches == bestMatches && (n.tier < best.tier
+                    || (n.tier == best.tier && n.pointCost < best.pointCost))))
+            {
+                best = n;
+                bestMatches = matches;
+            }
+        }
+        if (best == null) return null;
+        GrantNodeFully(best, "Old bones give up their secret: " + best.displayName + ".");
+        return best;
     }
 
     /// <summary>New game: unlocks every bootstrap node silently (the core remembering).</summary>

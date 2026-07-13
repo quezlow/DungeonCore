@@ -155,6 +155,8 @@ public class FloorSaveData
     public List<DungeonChestSaveData> chests = new();
     public List<FurnitureSaveData> furniture = new();
     public List<NamedCorpseSaveData> namedCorpses = new();   // named-hero corpses (additive; null on old saves)
+    public List<SerializableVector3Int> consumedBuriedSites = new();   // buried-remains sites already dug (additive)
+    public List<SerializableVector3Int> sensedBuriedSites = new();     // sites the wisp has murmured about (additive)
     public List<RoomAnchorSaveData> roomAnchors = new();
     public List<TrapSaveData> traps = new();
     public List<StairsSaveData> stairs = new();

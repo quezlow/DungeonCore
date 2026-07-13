@@ -48,6 +48,7 @@ public class TerrainTypeMap : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     private Vector3Int centerCell;
     private int floorRadius;
+    private int storedSeed;             // kept for deterministic on-demand queries (buried sites)
     private float ringOffX, ringOffY;   // per-floor noise offset for the bedrock rim
     private readonly Dictionary<Vector3Int, TerrainType> patchOverrides = new();
     private bool generated;
@@ -65,6 +66,7 @@ public class TerrainTypeMap : MonoBehaviour
     {
         centerCell = center;
         floorRadius = Math.Max(1, radius);
+        storedSeed = floorSeed;
         patchOverrides.Clear();
 
         // Mix seed so terrain patch RNG is decoupled from feature RNG.
@@ -104,6 +106,34 @@ public class TerrainTypeMap : MonoBehaviour
         if (IsBedrock(cell)) return TerrainType.Bedrock;
         if (patchOverrides.TryGetValue(cell, out var t)) return t;
         return ComputeRadialBand(cell);
+    }
+
+    /// <summary>Deterministic buried-remains sites for this floor: cells in Stone or
+    /// Granite, at least minDistFromCenter from the core cell (Chebyshev), inside the
+    /// bedrock rim. Same seed, same floor, same answer -- callers cache and consume.
+    /// A site swallowed by a pre-carved tunnel is silently lost (rare, accepted).</summary>
+    public List<Vector3Int> GetBuriedSites(int count, int minDistFromCenter)
+    {
+        var sites = new List<Vector3Int>();
+        if (!generated || count <= 0) return sites;
+
+        int usable = floorRadius - maxRingThickness;
+        if (usable <= minDistFromCenter) return sites;
+
+        var rng = new System.Random(unchecked(storedSeed ^ 0x0DDB0135));
+        int attempts = 0;
+        while (sites.Count < count && attempts++ < 600)
+        {
+            int dx = rng.Next(-usable, usable + 1);
+            int dy = rng.Next(-usable, usable + 1);
+            if (Math.Max(Math.Abs(dx), Math.Abs(dy)) < minDistFromCenter) continue;
+            var cell = centerCell + new Vector3Int(dx, dy, 0);
+            var t = GetTerrainAt(cell);
+            if (t != TerrainType.Stone && t != TerrainType.Granite) continue;
+            if (sites.Contains(cell)) continue;
+            sites.Add(cell);
+        }
+        return sites;
     }
 
     public float GetResistance(Vector3Int cell)

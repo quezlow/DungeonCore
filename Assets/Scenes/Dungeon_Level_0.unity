@@ -60254,6 +60254,7 @@ GameObject:
   - component: {fileID: 2002678106}
   - component: {fileID: 2002678105}
   - component: {fileID: 2002678107}
+  - component: {fileID: 2002678108}
   m_Layer: 0
   m_Name: RoomEffectController
   m_TagString: Untagged
@@ -60357,6 +60358,22 @@ MonoBehaviour:
   raiseNotoriety: 15
   housedYOffset: 0.15
   clickRadius: 0.75
+--- !u!114 &2002678108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002678101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57c36dd2ea38d8940b8ad4a81f6ce03a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BuriedRemainsController
+  sitesPerFloor: 3
+  minDistFromCenter: 10
+  senseRadius: 4
+  duplicateResearchPoints: 10
 --- !u!1 &2006568198
 GameObject:
   m_ObjectHideFlags: 0

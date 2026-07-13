@@ -677,6 +677,27 @@ if underway) and the gold still pays, so duplicate tomes are never dead
 drops. Three authored tomes: Mage -> Whisperer in Marrow, Cleric ->
 Whispers of Intent, Explorer -> Deep Foundations.
 
+SHIPPED (buried skeletons): two deterministic sites per floor
+(`TerrainTypeMap.GetBuriedSites`, seeded from the floor seed; Stone or
+Granite cells, Chebyshev >= 6 from the core cell, inside the bedrock rim; a
+site swallowed by a pre-carved tunnel is silently lost -- rare, accepted).
+Claiming within two cells of an unfound site makes the wisp murmur once per
+site (`OnTileClaimed`, a new live-claims-only sibling of `OnTileMined`; the
+alert pins the claimed cell, never the site, and names no reward --
+discoveries stay genuine surprises). The dig hook is `OnTileMined`, so only
+live player digs count. The grant is
+`ResearchController.GrantBuriedDiscovery`: lowest-tier locked Bestiary node
+matching the core's affinity, then None-affinity Bestiary (a Dark core today
+walks Shambling Dead -> Whisperer in Marrow -> Bones in Iron), with full
+tome-style bypass; `GrantNodeFully` gained an optional announce line for it.
+An exhausted ladder pays 10 research points per find instead -- never a dead
+dig. Consumed and sensed sites persist per floor
+(`FloorSaveData.consumedBuriedSites` / `sensedBuriedSites`, additive).
+`BuriedRemainsController.GrantExternalDiscovery(worldPos, floorIndex)` is
+the re-entry point entry 18's desecration reward will call. Key files:
+`Gameplay/BuriedRemainsController.cs`, `Floors/TerrainTypeMap.cs`,
+`DungeonCore/TileInfluenceManager.cs`, `Gameplay/ResearchController.cs`.
+
 ## 18. Phase 5 Designs
 
 Decided so far: Holy Ground desecration is designed INTO the Holy Order
