@@ -115,6 +115,7 @@ public class BuriedRemainsController : MonoBehaviour
             AlertsLog.Instance?.AddAlert(
                 "Old bones in old stone -- and a memory still in them.",
                 worldPos, floorIndex, AlertCategory.Discovery);
+            DeedsController.Instance?.NotifyMoment("first_buried");
         }
         else
         {

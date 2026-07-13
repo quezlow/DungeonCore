@@ -186,6 +186,7 @@ public class CryptController : MonoBehaviour
         AlertsLog.Instance?.AddAlert(
             "Risen " + name + " walks again. One life; I intend to spend it.",
             piece.transform.position, FloorIndexOf(piece.gameObject), AlertCategory.Combat);
+        DeedsController.Instance?.NotifyMoment("first_raise");
         return true;
     }
 

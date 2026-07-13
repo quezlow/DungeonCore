@@ -834,6 +834,43 @@ truth -- regeneration rebuilds the catalog list).
 **Authoring reference:** step-by-step recipes live in the Content Authoring
 guide; this appendix records the rules those recipes obey.
 
+
+## 22. Deeds (Diegetic Achievement Layer)
+
+Status: SHIPPED (engine + journal tab). Verified: 2026-07-12.
+
+The chronicle of what the core has done -- the genre-standard achievement
+layer worn as in-fiction record-keeping, reversing the Day 34 rejection of a
+Steam-style meta layer (Brad un-binned it 2026-07-11). Wisp-voiced, surfaced
+as a DEEDS tab in the existing journal (`QuestLogUI`, fourth tab beside
+Active / Completed / Notes -- no new panel, Esc already routes through
+`CloseJournal`). Chronicle only: no mechanical reward at this layer. Earned
+deeds gaining teeth is the Trophy Hall's job (the planned follow-on: earned
+deeds unlock mountable trophy furniture with small stacking effects).
+
+Data: `DeedDefinition` ScriptableObjects (save key `deed.` + id, immutable
+after ship) in a `DeedRegistry`, two flavours. COUNTER deeds watch one run
+metric (a `Metric` enum over RunStats -- kills, losses, wild slain, biggest
+party, gold, days -- plus `UnlockState` prefix counts for `tech.` /
+`pattern.` and distinct valid rooms across floors) against a threshold;
+they sweep once a second and also nudge on `UnlockState.OnChanged` and
+`RoomAnchor.OnRoomValidationChanged`. MOMENT deeds fire from
+`DeedsController.NotifyMoment(id)` calls at their event site; two ship live
+(`first_raise` in the crypt raise path, `first_buried` in the buried-remains
+grant). Moments are never retroactive.
+
+Toasts reuse `AlertCategory.Discovery` and fire only for deeds crossed live.
+First load of an older save reconciles in silence -- `RestoreSave` marks
+already-satisfied counters with no announcement, because history is not an
+event to announce. Earned deeds persist as `DungeonSaveData.earnedDeeds`
+(key + day, additive). Hidden deeds read "???" until earned.
+
+Starter roster: ~16 deeds spanning every counted system (kill tiers, losses,
+wild slain, days survived, gold, party size, research and pattern counts,
+room variety) plus the two moments. Key files:
+`Gameplay/DeedDefinition.cs`, `Gameplay/DeedRegistry.cs`,
+`Gameplay/DeedsController.cs`, `UI/QuestLogUI.cs`.
+
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*

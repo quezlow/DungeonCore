@@ -55,6 +55,8 @@ public class DungeonSaveData
 
     public RunStatsSaveData runStats;
 
+    public List<EarnedDeedSaveData> earnedDeeds = new();   // chronicle (additive; empty on old saves)
+
     public List<TrackedParty> trackedParties = new();
 
     public List<LivePartySaveData> liveParties = new();
@@ -141,6 +143,13 @@ public class ClassKillSaveData
 {
     public string className;
     public int count;
+}
+
+[Serializable]
+public class EarnedDeedSaveData
+{
+    public string key;
+    public int dayEarned;
 }
 
 [Serializable]

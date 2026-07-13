@@ -28,15 +28,18 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private GameObject activePage;
     [SerializeField] private GameObject completedPage;
     [SerializeField] private GameObject notesPage;
+    [SerializeField] private GameObject deedsPage;
 
     [Header("Tab buttons")]
     [SerializeField] private Button activeTabButton;
     [SerializeField] private Button completedTabButton;
     [SerializeField] private Button notesTabButton;
+    [SerializeField] private Button deedsTabButton;
 
     [Header("Quest lists (reuse QuestUI's prefabs)")]
     [SerializeField] private Transform activeContent;
     [SerializeField] private Transform completedContent;
+    [SerializeField] private Transform deedsContent;
     [SerializeField] private GameObject questEntryPrefab;
     [SerializeField] private GameObject objectiveTextPrefab;
 
@@ -44,7 +47,7 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private Color selectedTab = new Color(1f, 1f, 1f, 1f);
     [SerializeField] private Color unselectedTab = new Color(0.6f, 0.6f, 0.6f, 1f);
 
-    private const int TabActive = 0, TabCompleted = 1, TabNotes = 2;
+    private const int TabActive = 0, TabCompleted = 1, TabNotes = 2, TabDeeds = 3;
     private int currentTab = TabActive;
 
     public static QuestLogUI Instance { get; private set; }
@@ -65,6 +68,7 @@ public class QuestLogUI : MonoBehaviour
         if (activeTabButton != null) activeTabButton.onClick.AddListener(() => SelectTab(TabActive));
         if (completedTabButton != null) completedTabButton.onClick.AddListener(() => SelectTab(TabCompleted));
         if (notesTabButton != null) notesTabButton.onClick.AddListener(() => SelectTab(TabNotes));
+        if (deedsTabButton != null) deedsTabButton.onClick.AddListener(() => SelectTab(TabDeeds));
         if (panel != null) panel.SetActive(false);
         HideAllPages();
     }
@@ -102,6 +106,7 @@ public class QuestLogUI : MonoBehaviour
         if (activePage != null) activePage.SetActive(false);
         if (completedPage != null) completedPage.SetActive(false);
         if (notesPage != null) notesPage.SetActive(false);
+        if (deedsPage != null) deedsPage.SetActive(false);
         TodoListUI.Instance?.SetVisible(false);
     }
 
@@ -111,14 +116,17 @@ public class QuestLogUI : MonoBehaviour
         if (activePage != null) activePage.SetActive(tab == TabActive);
         if (completedPage != null) completedPage.SetActive(tab == TabCompleted);
         if (notesPage != null) notesPage.SetActive(tab == TabNotes);
+        if (deedsPage != null) deedsPage.SetActive(tab == TabDeeds);
         TodoListUI.Instance?.SetVisible(tab == TabNotes);
 
         Tint(activeTabButton, tab == TabActive);
         Tint(completedTabButton, tab == TabCompleted);
         Tint(notesTabButton, tab == TabNotes);
+        Tint(deedsTabButton, tab == TabDeeds);
 
         if (tab == TabActive) RebuildActive();
         else if (tab == TabCompleted) RebuildCompleted();
+        else if (tab == TabDeeds) RebuildDeeds();
         // Notes: TodoListUI renders itself.
     }
 
@@ -151,6 +159,31 @@ public class QuestLogUI : MonoBehaviour
             if (q == null) continue;
             var list = MakeEntry(completedContent, q.questName);
             AddLine(list, "Completed");
+        }
+    }
+
+    // The chronicle. Earned deeds show name + day; unearned show the goal, or '???'
+    // when hidden. Order follows the registry.
+    private void RebuildDeeds()
+    {
+        if (!Clear(deedsContent)) return;
+        var dc = DeedsController.Instance;
+        if (dc == null) { MakeEntry(deedsContent, "(the chronicle is empty)"); return; }
+
+        var roster = dc.Roster;
+        if (roster == null || roster.Count == 0) { MakeEntry(deedsContent, "(no deeds defined)"); return; }
+
+        MakeEntry(deedsContent, "Deeds: " + dc.EarnedCount + " / " + roster.Count);
+        for (int i = 0; i < roster.Count; i++)
+        {
+            var d = roster[i];
+            if (d == null) continue;
+            bool earned = dc.IsEarned(d);
+            string title = (!earned && d.hidden) ? "???" : d.deedName;
+            var list = MakeEntry(deedsContent, title);
+            if (earned) AddLine(list, "Done -- day " + dc.EarnedDay(d));
+            else if (!d.hidden) AddLine(list, d.description);
+            else AddLine(list, "A deed yet to be done.");
         }
     }
 

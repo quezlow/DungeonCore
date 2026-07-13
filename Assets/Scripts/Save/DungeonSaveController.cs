@@ -286,6 +286,9 @@ public class DungeonSaveController : MonoBehaviour
         if (RunStats.Instance != null)
             currentSave.runStats = RunStats.Instance.GetSaveData();
 
+        if (DeedsController.Instance != null)
+            currentSave.earnedDeeds = DeedsController.Instance.GatherSave();
+
         if (TrackedPartyRegistry.Instance != null)
         {
             currentSave.trackedParties = TrackedPartyRegistry.Instance.GetSaveData();
@@ -709,6 +712,7 @@ public class DungeonSaveController : MonoBehaviour
             }
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
+            DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);
             TrackedPartyRegistry.Instance?.RestoreFromSave(currentSave.trackedParties);
             InspectorEscalation.Instance?.RestoreFromSave(currentSave.inspectorEscalation);
             FactionSystem.Instance?.RestoreFromSave(currentSave.factionSystem);
