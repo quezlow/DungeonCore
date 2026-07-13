@@ -11,18 +11,18 @@ PrefabInstance:
     - target: {fileID: -2877174841112144069, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: -1765575276793571727, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+      objectReference: {fileID: -7626317903174509653, guid: e7d1e15e86ff3124cacc4c85276aa8e8, type: 3}
     - target: {fileID: -2877174841112144069, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Color.b
-      value: 0.54785776
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -2877174841112144069, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Color.g
-      value: 0.53733534
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -2877174841112144069, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Color.r
-      value: 0.6509434
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3126978134595110622, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Pivot.x
@@ -55,6 +55,14 @@ PrefabInstance:
     - target: {fileID: 3126978134595110622, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_SizeDelta.y
       value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 3126978134595110622, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3126978134595110622, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.8
       objectReference: {fileID: 0}
     - target: {fileID: 3126978134595110622, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_LocalPosition.x
@@ -107,7 +115,7 @@ PrefabInstance:
     - target: {fileID: 3263469693593754980, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: -1765575276793571727, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+      objectReference: {fileID: -7626317903174509653, guid: e7d1e15e86ff3124cacc4c85276aa8e8, type: 3}
     - target: {fileID: 4911005505920448560, guid: b8c107d1cdb16e04fa352ad6aae470ab, type: 3}
       propertyPath: ID
       value: 7

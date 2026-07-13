@@ -1,0 +1,2626 @@
+fileFormatVersion: 2
+guid: 6585afe0dc47a814987aa0178d3b6ed0
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -6842778911399321807
+    second: animals3_shadow_0
+  - first:
+      213: -4475432543455261373
+    second: animals3_shadow_1
+  - first:
+      213: -8997297125030084536
+    second: animals3_shadow_2
+  - first:
+      213: -2157328238143690347
+    second: animals3_shadow_3
+  - first:
+      213: 7862942432039154729
+    second: animals3_shadow_4
+  - first:
+      213: -2768302820341717818
+    second: animals3_shadow_5
+  - first:
+      213: 6802694351686751335
+    second: animals3_shadow_6
+  - first:
+      213: 3161523084803050421
+    second: animals3_shadow_7
+  - first:
+      213: -4489733239793619414
+    second: animals3_shadow_8
+  - first:
+      213: -7660479555866328760
+    second: animals3_shadow_9
+  - first:
+      213: 714302437633791716
+    second: animals3_shadow_10
+  - first:
+      213: 4803305562246621509
+    second: animals3_shadow_11
+  - first:
+      213: 3678857570578444146
+    second: animals3_shadow_12
+  - first:
+      213: -3460053208254749438
+    second: animals3_shadow_13
+  - first:
+      213: -6315323796295351512
+    second: animals3_shadow_14
+  - first:
+      213: -3748760073156878718
+    second: animals3_shadow_15
+  - first:
+      213: 8355180307259323426
+    second: animals3_shadow_16
+  - first:
+      213: -5158333363077249710
+    second: animals3_shadow_17
+  - first:
+      213: -6990344507170799298
+    second: animals3_shadow_18
+  - first:
+      213: 8613795076292515618
+    second: animals3_shadow_19
+  - first:
+      213: 8452408287842333325
+    second: animals3_shadow_20
+  - first:
+      213: 6606076877049429154
+    second: animals3_shadow_21
+  - first:
+      213: 3746435808760717992
+    second: animals3_shadow_22
+  - first:
+      213: -263851960119764063
+    second: animals3_shadow_23
+  - first:
+      213: -8407300193486715857
+    second: animals3_shadow_24
+  - first:
+      213: -2096130197586676848
+    second: animals3_shadow_25
+  - first:
+      213: -1814486503092259259
+    second: animals3_shadow_26
+  - first:
+      213: 827262976796992642
+    second: animals3_shadow_27
+  - first:
+      213: 7548192819718624808
+    second: animals3_shadow_28
+  - first:
+      213: -6903580667318739858
+    second: animals3_shadow_29
+  - first:
+      213: -7144670800214987353
+    second: animals3_shadow_30
+  - first:
+      213: 3826043982068173338
+    second: animals3_shadow_31
+  - first:
+      213: 4257629667835056926
+    second: animals3_shadow_32
+  - first:
+      213: -2304016546781576100
+    second: animals3_shadow_33
+  - first:
+      213: -6193249019351791751
+    second: animals3_shadow_34
+  - first:
+      213: -3364617403637214742
+    second: animals3_shadow_35
+  - first:
+      213: 5089794747002072603
+    second: animals3_shadow_36
+  - first:
+      213: 9040695291251215820
+    second: animals3_shadow_37
+  - first:
+      213: -8469350416286483391
+    second: animals3_shadow_38
+  - first:
+      213: -4700097604049682248
+    second: animals3_shadow_39
+  - first:
+      213: -2541856270469164393
+    second: animals3_shadow_40
+  - first:
+      213: 3668005596441570725
+    second: animals3_shadow_41
+  - first:
+      213: 441266713654173606
+    second: animals3_shadow_42
+  - first:
+      213: -1728634241691115263
+    second: animals3_shadow_43
+  - first:
+      213: 4596993608790876593
+    second: animals3_shadow_44
+  - first:
+      213: 2150047838067400143
+    second: animals3_shadow_45
+  - first:
+      213: -972143856698166580
+    second: animals3_shadow_46
+  - first:
+      213: 2527334313897810619
+    second: animals3_shadow_47
+  - first:
+      213: -43005198190681068
+    second: animals3_shadow_48
+  - first:
+      213: 324036816672108806
+    second: animals3_shadow_49
+  - first:
+      213: 3641672286826025126
+    second: animals3_shadow_50
+  - first:
+      213: -5140723670814471149
+    second: animals3_shadow_51
+  - first:
+      213: 4686082490866870034
+    second: animals3_shadow_52
+  - first:
+      213: 3050006465568447317
+    second: animals3_shadow_53
+  - first:
+      213: -379190619254627400
+    second: animals3_shadow_54
+  - first:
+      213: 7006196436752093370
+    second: animals3_shadow_55
+  - first:
+      213: -4443943322126949727
+    second: animals3_shadow_56
+  - first:
+      213: 5360410969676099738
+    second: animals3_shadow_57
+  - first:
+      213: 173178925071298230
+    second: animals3_shadow_58
+  - first:
+      213: -1842784891810024048
+    second: animals3_shadow_59
+  - first:
+      213: 8061988163202645889
+    second: animals3_shadow_60
+  - first:
+      213: -5828882176464453934
+    second: animals3_shadow_61
+  - first:
+      213: 8710592177488920755
+    second: animals3_shadow_62
+  - first:
+      213: 4984454142035278353
+    second: animals3_shadow_63
+  - first:
+      213: -1507641050789888010
+    second: animals3_shadow_64
+  - first:
+      213: 454110463214095489
+    second: animals3_shadow_65
+  - first:
+      213: 3786266834728503146
+    second: animals3_shadow_66
+  - first:
+      213: -2801238111749075200
+    second: animals3_shadow_67
+  - first:
+      213: 5110658598153803630
+    second: animals3_shadow_68
+  - first:
+      213: 7928367302047004704
+    second: animals3_shadow_69
+  - first:
+      213: 96192970055802526
+    second: animals3_shadow_70
+  - first:
+      213: 8004730739745378604
+    second: animals3_shadow_71
+  - first:
+      213: -3403919615510263082
+    second: animals3_shadow_72
+  - first:
+      213: -8285275325931682493
+    second: animals3_shadow_73
+  - first:
+      213: -2252508617192814830
+    second: animals3_shadow_74
+  - first:
+      213: 9220287340861765076
+    second: animals3_shadow_75
+  - first:
+      213: 3448218107602256506
+    second: animals3_shadow_76
+  - first:
+      213: -4057021075542395828
+    second: animals3_shadow_77
+  - first:
+      213: 1024384649673739072
+    second: animals3_shadow_78
+  - first:
+      213: -7573671312171463204
+    second: animals3_shadow_79
+  - first:
+      213: 3855290602449794313
+    second: animals3_shadow_80
+  - first:
+      213: 4230350721948314641
+    second: animals3_shadow_81
+  - first:
+      213: -4455921210390833241
+    second: animals3_shadow_82
+  - first:
+      213: 1068065575578893226
+    second: animals3_shadow_83
+  - first:
+      213: -4162816962736816479
+    second: animals3_shadow_84
+  - first:
+      213: 1365162763637050872
+    second: animals3_shadow_85
+  - first:
+      213: -5123311486265921536
+    second: animals3_shadow_86
+  - first:
+      213: 108176832558209670
+    second: animals3_shadow_87
+  - first:
+      213: 848630901105418411
+    second: animals3_shadow_88
+  - first:
+      213: 7337912153811814387
+    second: animals3_shadow_89
+  - first:
+      213: -5092864869713264050
+    second: animals3_shadow_90
+  - first:
+      213: -3111844494016423557
+    second: animals3_shadow_91
+  - first:
+      213: 2769489350351554523
+    second: animals3_shadow_92
+  - first:
+      213: -6305706162117601116
+    second: animals3_shadow_93
+  - first:
+      213: -1743902121844857445
+    second: animals3_shadow_94
+  - first:
+      213: 5758918324738322149
+    second: animals3_shadow_95
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: animals3_shadow_0
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 671
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13f528da5d09901a0800000000000000
+      internalID: -6842778911399321807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_1
+      rect:
+        serializedVersion: 2
+        x: 104
+        y: 671
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34d402740d114e1c0800000000000000
+      internalID: -4475432543455261373
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_2
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 671
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84040fb3fed232380800000000000000
+      internalID: -8997297125030084536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_3
+      rect:
+        serializedVersion: 2
+        x: 296
+        y: 671
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 599a68db561af02e0800000000000000
+      internalID: -2157328238143690347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_4
+      rect:
+        serializedVersion: 2
+        x: 392
+        y: 671
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9243a077b78ce1d60800000000000000
+      internalID: 7862942432039154729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_5
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 671
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c4e1d280430599d0800000000000000
+      internalID: -2768302820341717818
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_6
+      rect:
+        serializedVersion: 2
+        x: 584
+        y: 671
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76458db7876086e50800000000000000
+      internalID: 6802694351686751335
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_7
+      rect:
+        serializedVersion: 2
+        x: 680
+        y: 671
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bb02e2ce7cffdb20800000000000000
+      internalID: 3161523084803050421
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_8
+      rect:
+        serializedVersion: 2
+        x: 776
+        y: 671
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2e66d1f76341b1c0800000000000000
+      internalID: -4489733239793619414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_9
+      rect:
+        serializedVersion: 2
+        x: 872
+        y: 671
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 841027f4e6280b590800000000000000
+      internalID: -7660479555866328760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_10
+      rect:
+        serializedVersion: 2
+        x: 968
+        y: 671
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e69b515846b9e900800000000000000
+      internalID: 714302437633791716
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_11
+      rect:
+        serializedVersion: 2
+        x: 1064
+        y: 671
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5492e59b5f4c8a240800000000000000
+      internalID: 4803305562246621509
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_12
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 575
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27fa591187ded0330800000000000000
+      internalID: 3678857570578444146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_13
+      rect:
+        serializedVersion: 2
+        x: 107
+        y: 575
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 205660270fb6bffc0800000000000000
+      internalID: -3460053208254749438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_14
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 575
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8238e30a7767b58a0800000000000000
+      internalID: -6315323796295351512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_15
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 575
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28e1153439ab9fbc0800000000000000
+      internalID: -3748760073156878718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_16
+      rect:
+        serializedVersion: 2
+        x: 395
+        y: 575
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 224f788c83093f370800000000000000
+      internalID: 8355180307259323426
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_17
+      rect:
+        serializedVersion: 2
+        x: 491
+        y: 575
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2550cb4e22be968b0800000000000000
+      internalID: -5158333363077249710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_18
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 575
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e314b7805be4dfe90800000000000000
+      internalID: -6990344507170799298
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_19
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 575
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2279c6aebf85a8770800000000000000
+      internalID: 8613795076292515618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_20
+      rect:
+        serializedVersion: 2
+        x: 779
+        y: 575
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d82f8651e8cfc4570800000000000000
+      internalID: 8452408287842333325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_21
+      rect:
+        serializedVersion: 2
+        x: 875
+        y: 575
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2acf37f4bef7dab50800000000000000
+      internalID: 6606076877049429154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_22
+      rect:
+        serializedVersion: 2
+        x: 971
+        y: 575
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a26cf2c4830ef330800000000000000
+      internalID: 3746435808760717992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_23
+      rect:
+        serializedVersion: 2
+        x: 1067
+        y: 575
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ab55cb4a0c965cf0800000000000000
+      internalID: -263851960119764063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_24
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 479
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f24c62f8405435b80800000000000000
+      internalID: -8407300193486715857
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_25
+      rect:
+        serializedVersion: 2
+        x: 104
+        y: 479
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09370e9e0bc09e2e0800000000000000
+      internalID: -2096130197586676848
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_26
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 479
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 546f1759326a1d6e0800000000000000
+      internalID: -1814486503092259259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_27
+      rect:
+        serializedVersion: 2
+        x: 296
+        y: 479
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28421db5b470b7b00800000000000000
+      internalID: 827262976796992642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_28
+      rect:
+        serializedVersion: 2
+        x: 392
+        y: 479
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8269b73a06190c860800000000000000
+      internalID: 7548192819718624808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_29
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 479
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6c5636b5fd8130a0800000000000000
+      internalID: -6903580667318739858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_30
+      rect:
+        serializedVersion: 2
+        x: 584
+        y: 479
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ad6414e2c709dc90800000000000000
+      internalID: -7144670800214987353
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_31
+      rect:
+        serializedVersion: 2
+        x: 680
+        y: 479
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1ac13efab6d81530800000000000000
+      internalID: 3826043982068173338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_32
+      rect:
+        serializedVersion: 2
+        x: 776
+        y: 479
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e13197000a3261b30800000000000000
+      internalID: 4257629667835056926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_33
+      rect:
+        serializedVersion: 2
+        x: 872
+        y: 479
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c54467c682d7600e0800000000000000
+      internalID: -2304016546781576100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_34
+      rect:
+        serializedVersion: 2
+        x: 968
+        y: 479
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 977000484d82d0aa0800000000000000
+      internalID: -6193249019351791751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_35
+      rect:
+        serializedVersion: 2
+        x: 1064
+        y: 479
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae15b134c4a7e41d0800000000000000
+      internalID: -3364617403637214742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_36
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 383
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1e25b20b5592a640800000000000000
+      internalID: 5089794747002072603
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_37
+      rect:
+        serializedVersion: 2
+        x: 107
+        y: 383
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccd439db770077d70800000000000000
+      internalID: 9040695291251215820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_38
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 383
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14cffee3ba2d67a80800000000000000
+      internalID: -8469350416286483391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_39
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 383
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b044fc9126e5ceb0800000000000000
+      internalID: -4700097604049682248
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_40
+      rect:
+        serializedVersion: 2
+        x: 395
+        y: 383
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7921698703389bcd0800000000000000
+      internalID: -2541856270469164393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_41
+      rect:
+        serializedVersion: 2
+        x: 491
+        y: 383
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ad6b02f7af57e230800000000000000
+      internalID: 3668005596441570725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_42
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 383
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6af9f86fcb1bf1600800000000000000
+      internalID: 441266713654173606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_43
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 383
+        width: 77
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 101ac6dd058a208e0800000000000000
+      internalID: -1728634241691115263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_44
+      rect:
+        serializedVersion: 2
+        x: 779
+        y: 383
+        width: 77
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b1a8bec45dcbcf30800000000000000
+      internalID: 4596993608790876593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_45
+      rect:
+        serializedVersion: 2
+        x: 875
+        y: 383
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcd9a160e1186dd10800000000000000
+      internalID: 2150047838067400143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_46
+      rect:
+        serializedVersion: 2
+        x: 971
+        y: 383
+        width: 77
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc27dee10504282f0800000000000000
+      internalID: -972143856698166580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_47
+      rect:
+        serializedVersion: 2
+        x: 1067
+        y: 383
+        width: 77
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbad8880b25e21320800000000000000
+      internalID: 2527334313897810619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_48
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 290
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 41469560007376ff0800000000000000
+      internalID: -43005198190681068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_49
+      rect:
+        serializedVersion: 2
+        x: 125
+        y: 290
+        width: 38
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 601b3e794c53f7400800000000000000
+      internalID: 324036816672108806
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_50
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 290
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a056a486a1d98230800000000000000
+      internalID: 3641672286826025126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_51
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 287
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31c49a0ee0b78a8b0800000000000000
+      internalID: -5140723670814471149
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_52
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 287
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2172c40923f480140800000000000000
+      internalID: 4686082490866870034
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_53
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 287
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55b1ad688bcc35a20800000000000000
+      internalID: 3050006465568447317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_54
+      rect:
+        serializedVersion: 2
+        x: 596
+        y: 287
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b3ea2d0428dcbaf0800000000000000
+      internalID: -379190619254627400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_55
+      rect:
+        serializedVersion: 2
+        x: 692
+        y: 287
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab0573fe9820b3160800000000000000
+      internalID: 7006196436752093370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_56
+      rect:
+        serializedVersion: 2
+        x: 788
+        y: 287
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a267a2f711f352c0800000000000000
+      internalID: -4443943322126949727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_57
+      rect:
+        serializedVersion: 2
+        x: 881
+        y: 287
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a90b6a15061046a40800000000000000
+      internalID: 5360410969676099738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_58
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 287
+        width: 62
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6be65779051476200800000000000000
+      internalID: 173178925071298230
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_59
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 287
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 095f43687ec1d66e0800000000000000
+      internalID: -1842784891810024048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_60
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 194
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18ff81b258fe1ef60800000000000000
+      internalID: 8061988163202645889
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_61
+      rect:
+        serializedVersion: 2
+        x: 125
+        y: 194
+        width: 38
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2defa321b86ab1fa0800000000000000
+      internalID: -5828882176464453934
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_62
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 194
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b0068a4f6d32e870800000000000000
+      internalID: 8710592177488920755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_63
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 191
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11abc3722a65c2540800000000000000
+      internalID: 4984454142035278353
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_64
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 191
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ff3fdeb378c31be0800000000000000
+      internalID: -1507641050789888010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_65
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 191
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18c0aa07f035d4600800000000000000
+      internalID: 454110463214095489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_66
+      rect:
+        serializedVersion: 2
+        x: 596
+        y: 191
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a67c5dc20a58b8430800000000000000
+      internalID: 3786266834728503146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_67
+      rect:
+        serializedVersion: 2
+        x: 692
+        y: 191
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00f09e967c00029d0800000000000000
+      internalID: -2801238111749075200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_68
+      rect:
+        serializedVersion: 2
+        x: 788
+        y: 191
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e67d047eae4bce640800000000000000
+      internalID: 5110658598153803630
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_69
+      rect:
+        serializedVersion: 2
+        x: 881
+        y: 191
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 028755f0e08370e60800000000000000
+      internalID: 7928367302047004704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_70
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 191
+        width: 62
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9ed0122ffeb55100800000000000000
+      internalID: 96192970055802526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_71
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 191
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c215c296234861f60800000000000000
+      internalID: 8004730739745378604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_72
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 98
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dac689f429d2c0d0800000000000000
+      internalID: -3403919615510263082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_73
+      rect:
+        serializedVersion: 2
+        x: 125
+        y: 98
+        width: 38
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34588830df9c40d80800000000000000
+      internalID: -8285275325931682493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_74
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 98
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21747b2d85b7db0e0800000000000000
+      internalID: -2252508617192814830
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_75
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 95
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d5b81f3c7a05ff70800000000000000
+      internalID: 9220287340861765076
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_76
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 95
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a72c3b379188adf20800000000000000
+      internalID: 3448218107602256506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_77
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 95
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c44b50aa3d092b7c0800000000000000
+      internalID: -4057021075542395828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_78
+      rect:
+        serializedVersion: 2
+        x: 596
+        y: 95
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04b8a255968573e00800000000000000
+      internalID: 1024384649673739072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_79
+      rect:
+        serializedVersion: 2
+        x: 692
+        y: 95
+        width: 50
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdd0470911ae4e690800000000000000
+      internalID: -7573671312171463204
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_80
+      rect:
+        serializedVersion: 2
+        x: 788
+        y: 95
+        width: 50
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 905fbe0706eb08530800000000000000
+      internalID: 3855290602449794313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_81
+      rect:
+        serializedVersion: 2
+        x: 881
+        y: 95
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11ceb09719935ba30800000000000000
+      internalID: 4230350721948314641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_82
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 95
+        width: 62
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a7968384436922c0800000000000000
+      internalID: -4455921210390833241
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_83
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 95
+        width: 62
+        height: 44
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aabf33d6bf782de00800000000000000
+      internalID: 1068065575578893226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_84
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 2
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1aef9172704ba36c0800000000000000
+      internalID: -4162816962736816479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_85
+      rect:
+        serializedVersion: 2
+        x: 125
+        y: 2
+        width: 38
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fd4d23fc4802f210800000000000000
+      internalID: 1365162763637050872
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_86
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 2
+        width: 38
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 000f073095756e8b0800000000000000
+      internalID: -5123311486265921536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_87
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 0
+        width: 50
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68a1f8d8142508100800000000000000
+      internalID: 108176832558209670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_88
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 0
+        width: 50
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba0eecdee41f6cb00800000000000000
+      internalID: 848630901105418411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_89
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 0
+        width: 50
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f789f8d93085d560800000000000000
+      internalID: 7337912153811814387
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_90
+      rect:
+        serializedVersion: 2
+        x: 596
+        y: 0
+        width: 50
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e42cca752628259b0800000000000000
+      internalID: -5092864869713264050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_91
+      rect:
+        serializedVersion: 2
+        x: 692
+        y: 0
+        width: 50
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7955e18be180d4d0800000000000000
+      internalID: -3111844494016423557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_92
+      rect:
+        serializedVersion: 2
+        x: 788
+        y: 0
+        width: 50
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd78ee804e33f6620800000000000000
+      internalID: 2769489350351554523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_93
+      rect:
+        serializedVersion: 2
+        x: 881
+        y: 0
+        width: 62
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a81df497a1ad78a0800000000000000
+      internalID: -6305706162117601116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_94
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 0
+        width: 62
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b952360824a6cc7e0800000000000000
+      internalID: -1743902121844857445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: animals3_shadow_95
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 0
+        width: 62
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5eee38c44b9cbef40800000000000000
+      internalID: 5758918324738322149
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      animals3_shadow_0: -6842778911399321807
+      animals3_shadow_1: -4475432543455261373
+      animals3_shadow_10: 714302437633791716
+      animals3_shadow_11: 4803305562246621509
+      animals3_shadow_12: 3678857570578444146
+      animals3_shadow_13: -3460053208254749438
+      animals3_shadow_14: -6315323796295351512
+      animals3_shadow_15: -3748760073156878718
+      animals3_shadow_16: 8355180307259323426
+      animals3_shadow_17: -5158333363077249710
+      animals3_shadow_18: -6990344507170799298
+      animals3_shadow_19: 8613795076292515618
+      animals3_shadow_2: -8997297125030084536
+      animals3_shadow_20: 8452408287842333325
+      animals3_shadow_21: 6606076877049429154
+      animals3_shadow_22: 3746435808760717992
+      animals3_shadow_23: -263851960119764063
+      animals3_shadow_24: -8407300193486715857
+      animals3_shadow_25: -2096130197586676848
+      animals3_shadow_26: -1814486503092259259
+      animals3_shadow_27: 827262976796992642
+      animals3_shadow_28: 7548192819718624808
+      animals3_shadow_29: -6903580667318739858
+      animals3_shadow_3: -2157328238143690347
+      animals3_shadow_30: -7144670800214987353
+      animals3_shadow_31: 3826043982068173338
+      animals3_shadow_32: 4257629667835056926
+      animals3_shadow_33: -2304016546781576100
+      animals3_shadow_34: -6193249019351791751
+      animals3_shadow_35: -3364617403637214742
+      animals3_shadow_36: 5089794747002072603
+      animals3_shadow_37: 9040695291251215820
+      animals3_shadow_38: -8469350416286483391
+      animals3_shadow_39: -4700097604049682248
+      animals3_shadow_4: 7862942432039154729
+      animals3_shadow_40: -2541856270469164393
+      animals3_shadow_41: 3668005596441570725
+      animals3_shadow_42: 441266713654173606
+      animals3_shadow_43: -1728634241691115263
+      animals3_shadow_44: 4596993608790876593
+      animals3_shadow_45: 2150047838067400143
+      animals3_shadow_46: -972143856698166580
+      animals3_shadow_47: 2527334313897810619
+      animals3_shadow_48: -43005198190681068
+      animals3_shadow_49: 324036816672108806
+      animals3_shadow_5: -2768302820341717818
+      animals3_shadow_50: 3641672286826025126
+      animals3_shadow_51: -5140723670814471149
+      animals3_shadow_52: 4686082490866870034
+      animals3_shadow_53: 3050006465568447317
+      animals3_shadow_54: -379190619254627400
+      animals3_shadow_55: 7006196436752093370
+      animals3_shadow_56: -4443943322126949727
+      animals3_shadow_57: 5360410969676099738
+      animals3_shadow_58: 173178925071298230
+      animals3_shadow_59: -1842784891810024048
+      animals3_shadow_6: 6802694351686751335
+      animals3_shadow_60: 8061988163202645889
+      animals3_shadow_61: -5828882176464453934
+      animals3_shadow_62: 8710592177488920755
+      animals3_shadow_63: 4984454142035278353
+      animals3_shadow_64: -1507641050789888010
+      animals3_shadow_65: 454110463214095489
+      animals3_shadow_66: 3786266834728503146
+      animals3_shadow_67: -2801238111749075200
+      animals3_shadow_68: 5110658598153803630
+      animals3_shadow_69: 7928367302047004704
+      animals3_shadow_7: 3161523084803050421
+      animals3_shadow_70: 96192970055802526
+      animals3_shadow_71: 8004730739745378604
+      animals3_shadow_72: -3403919615510263082
+      animals3_shadow_73: -8285275325931682493
+      animals3_shadow_74: -2252508617192814830
+      animals3_shadow_75: 9220287340861765076
+      animals3_shadow_76: 3448218107602256506
+      animals3_shadow_77: -4057021075542395828
+      animals3_shadow_78: 1024384649673739072
+      animals3_shadow_79: -7573671312171463204
+      animals3_shadow_8: -4489733239793619414
+      animals3_shadow_80: 3855290602449794313
+      animals3_shadow_81: 4230350721948314641
+      animals3_shadow_82: -4455921210390833241
+      animals3_shadow_83: 1068065575578893226
+      animals3_shadow_84: -4162816962736816479
+      animals3_shadow_85: 1365162763637050872
+      animals3_shadow_86: -5123311486265921536
+      animals3_shadow_87: 108176832558209670
+      animals3_shadow_88: 848630901105418411
+      animals3_shadow_89: 7337912153811814387
+      animals3_shadow_9: -7660479555866328760
+      animals3_shadow_90: -5092864869713264050
+      animals3_shadow_91: -3111844494016423557
+      animals3_shadow_92: 2769489350351554523
+      animals3_shadow_93: -6305706162117601116
+      animals3_shadow_94: -1743902121844857445
+      animals3_shadow_95: 5758918324738322149
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

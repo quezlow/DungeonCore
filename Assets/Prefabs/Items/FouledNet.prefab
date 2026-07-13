@@ -149,15 +149,11 @@ GameObject:
   m_Component:
   - component: {fileID: 3832045158832854930}
   - component: {fileID: 7209014287836514223}
-  - component: {fileID: 3675296468452822056}
-  - component: {fileID: 3335628520815522393}
-  - component: {fileID: 885213998461578859}
-  - component: {fileID: 6515600026631694716}
   - component: {fileID: 5069173525652801143}
-  - component: {fileID: 1676934386506257262}
-  - component: {fileID: 2637591708587988200}
+  - component: {fileID: -5841251639397244500}
+  - component: {fileID: 2276393667779620014}
   m_Layer: 5
-  m_Name: WillowBasket
+  m_Name: FouledNet
   m_TagString: Item
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -191,77 +187,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6373838542564344559}
   m_CullTransparentMesh: 1
---- !u!114 &3675296468452822056
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6373838542564344559}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 235839963, guid: 0afb4c7bf99fd324794b67b773ec1a56, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
---- !u!225 &3335628520815522393
-CanvasGroup:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6373838542564344559}
-  m_Enabled: 1
-  m_Alpha: 1
-  m_Interactable: 1
-  m_BlocksRaycasts: 1
-  m_IgnoreParentGroups: 0
---- !u!114 &885213998461578859
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6373838542564344559}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: db35ab72ca04ed44ab0b333fd38f9927, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  minDropDistance: 2
-  maxDropDistance: 3
---- !u!114 &6515600026631694716
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6373838542564344559}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8eda4d59e89d91141a5b9daf94835ab9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  ID: 5
-  Name: Willow Basket
-  quantity: 1
 --- !u!212 &5069173525652801143
 SpriteRenderer:
   serializedVersion: 2
@@ -311,7 +236,7 @@ SpriteRenderer:
   m_SortingLayer: 7
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 235839963, guid: 0afb4c7bf99fd324794b67b773ec1a56, type: 3}
+  m_Sprite: {fileID: 1009853179, guid: ebed59b0b003efb428b80d17d845c420, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -321,8 +246,8 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!58 &1676934386506257262
-CircleCollider2D:
+--- !u!61 &-5841251639397244500
+BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -351,13 +276,23 @@ CircleCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
---- !u!114 &2637591708587988200
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 1, y: 1}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
+--- !u!114 &2276393667779620014
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -366,9 +301,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 6373838542564344559}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 99436f7645073d04aba7152f68ffcfcb, type: 3}
+  m_Script: {fileID: 11500000, guid: ea9ebccff916e8a43acc7ab3174e3740, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BounceEffect
-  bounceHeight: 0.3
-  bounceDuration: 0.4
-  bounceCount: 2
+  m_EditorClassIdentifier: Assembly-CSharp::FlagInteractable
+  flagID: 'flag_smash_crates '
+  singleUse: 1
+  displayName: Crate A
+  portrait: {fileID: 0}
+  narrationLines: []
+  prerequisiteQuest: {fileID: 0}
+  givesQuest: {fileID: 0}
+  onInteracted:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 6373838542564344559}
+        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
+        m_MethodName: SetActive
+        m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
