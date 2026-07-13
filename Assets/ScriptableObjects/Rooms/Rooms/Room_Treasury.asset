@@ -34,3 +34,4 @@ MonoBehaviour:
   - type: 6
     perSecond: 1.5
     attractorTarget: 0
+  spawnCategories: 

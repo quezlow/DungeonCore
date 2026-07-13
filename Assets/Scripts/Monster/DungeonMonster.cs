@@ -167,6 +167,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float terrainSpeedMultiplier = 1f;
     private float slowMultiplier = 1f;
     private float roomDamageMultiplier = 1f;   // Throne Room damage buff (1 = none)
+    private float globalDamageMultiplier = 1f; // Trophy Hall global buff (1 = none); set from census, read at the strike
+    private static float sharedGlobalDamageMultiplier = 1f; // last census value; new monsters adopt it at Start
     private float slowTimer = 0f;
 
     // Trap step
@@ -278,6 +280,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         else
             currentFloor.Entities?.Register(this);
 
+        globalDamageMultiplier = sharedGlobalDamageMultiplier;
         ResolveEffectiveRegen();
         PickWanderTarget();
 
@@ -380,6 +383,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// <summary>Adds HP (clamped to maxHP) with floating heal numbers. Used by
     /// room effects (Lair). No post-damage cooldown — a Lair always mends.</summary>
     public void SetRoomDamageMultiplier(float m) => roomDamageMultiplier = Mathf.Max(0f, m);
+
+    /// <summary>Census pushes the current trophy damage multiplier to every live monster.
+    /// Cached so monsters spawned later adopt it in Start.</summary>
+    public static void PushGlobalDamageMultiplier(float m)
+    {
+        sharedGlobalDamageMultiplier = Mathf.Max(0f, m);
+        var all = FindObjectsByType<DungeonMonster>(FindObjectsSortMode.None);
+        for (int i = 0; i < all.Length; i++) all[i].globalDamageMultiplier = sharedGlobalDamageMultiplier;
+    }
 
     public void Heal(float amount)
     {
@@ -1351,7 +1363,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (target == null || !target.IsAlive) return;
 
-        float dmg = attackDamage * roomDamageMultiplier;
+        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier;
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();

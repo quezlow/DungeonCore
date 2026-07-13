@@ -32,6 +32,9 @@ public class DeedsController : MonoBehaviour
 
     public IReadOnlyList<DeedDefinition> Roster => registry != null ? registry.All : System.Array.Empty<DeedDefinition>();
     public bool IsEarned(DeedDefinition d) => d != null && earnedDay.ContainsKey(d.Key);
+
+    /// <summary>True if the deed with this 'deed.'-prefixed key is earned (trophy gating).</summary>
+    public bool IsEarnedByKey(string key) => !string.IsNullOrEmpty(key) && earnedDay.ContainsKey(key);
     public int EarnedCount => earnedDay.Count;
 
     /// <summary>Day the deed was earned, or -1.</summary>

@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: MonsterDef_Zombie
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Zombie
-  category: 2
   icon: {fileID: 1880763209359424529, guid: d09c18847824cef48a52c321cd3cca3e, type: 3}
   voice: 2
+  category: 2
   prefab: {fileID: 3119627935404932490, guid: ef7c1d207748b17409935fe6931736bc, type: 3}
   capacityCost: 7
   manaCost: 15

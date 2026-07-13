@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Boss Room
   description: A hall built to hold something worse.
-  effectSummary: "Houses the boss spawner - bosses may only be placed here. The
-    heart of a floor\u2019s defence; its boss returns sooner (+15% respawn speed)."
+  effectSummary: "Houses the boss spawner - bosses may only be placed here. The heart
+    of a floor\u2019s defence; its boss returns sooner (+15% respawn speed)."
   validationTintColor: {r: 0.5188679, g: 0.031817384, b: 0.056933682, a: 0.6}
   minTileCount: 20
   maxTileCount: 0
@@ -31,3 +31,4 @@ MonoBehaviour:
   - type: 7
     perSecond: 0.15
     attractorTarget: 3
+  spawnCategories: 

@@ -194,6 +194,7 @@ public class DungeonCore : MonoBehaviour
     {
         if (PauseController.IsGamePaused) return;
         RegenerateMana();
+        AccrueTrophyNotoriety();
         DecayNotoriety();
         TickInstability();
     }
@@ -213,7 +214,9 @@ public class DungeonCore : MonoBehaviour
     private void RegenerateMana()
     {
         if (currentMana >= MaxMana) return;
-        float regen = (baseRegenPerSecond + claimedTileCount * regenPerTile) * Time.deltaTime;
+        // CurrentManaRegen folds in the census mana sum (rooms + trophies); use it
+        // so those effects actually regenerate mana, not just show on the readout.
+        float regen = CurrentManaRegen * Time.deltaTime;
         currentMana = Mathf.Min(currentMana + regen, MaxMana);
         OnManaChanged?.Invoke(currentMana, MaxMana);
     }
@@ -402,6 +405,16 @@ public class DungeonCore : MonoBehaviour
     {
         InspectorFindingsPending = true;
         Debug.Log("[DungeonCore] Inspector departed with findings (escalation path, later).");
+    }
+
+    /// <summary>Displayed trophies can trickle notoriety upward (canon 23). Runs before
+    /// decay each frame; the decay cooldown still governs the downward pull separately.</summary>
+    private void AccrueTrophyNotoriety()
+    {
+        float rate = RoomEffectCensus.NotorietyPerSecond;
+        if (rate <= 0f) return;
+        notoriety += rate * Time.deltaTime;
+        OnNotorietyChanged?.Invoke(notoriety);
     }
 
     private void DecayNotoriety()

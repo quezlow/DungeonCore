@@ -51,11 +51,31 @@ public class FurnitureSelectionUI : MonoBehaviour
 
     // ── Public ────────────────────────────────────────────────────
 
+    // Deed-gated furniture (trophies) only appears once its deed is earned. The
+    // visible list is rebuilt whenever the panel opens.
+    private readonly System.Collections.Generic.List<FurnitureDefinition> visible = new();
+
     /// <summary>The currently selected furniture definition.</summary>
     public FurnitureDefinition Selected =>
-        registry.All != null && registry.All.Count > 0
-            ? registry.All[selectedIndex]
-            : null;
+        visible.Count > 0 ? visible[Mathf.Clamp(selectedIndex, 0, visible.Count - 1)] : null;
+
+    private void RebuildVisible()
+    {
+        visible.Clear();
+        if (registry.All == null) return;
+        for (int i = 0; i < registry.All.Count; i++)
+        {
+            var def = registry.All[i];
+            if (def == null) continue;
+            if (def is TrophyDefinition trophy && !string.IsNullOrEmpty(trophy.requiredDeedKey))
+            {
+                if (DeedsController.Instance == null || !DeedsController.Instance.IsEarnedByKey(trophy.requiredDeedKey))
+                    continue;
+            }
+            visible.Add(def);
+        }
+        if (selectedIndex >= visible.Count) selectedIndex = 0;
+    }
 
     // ─────────────────────────────────────────────────────────────
 
@@ -96,6 +116,8 @@ public class FurnitureSelectionUI : MonoBehaviour
     {
         if (mode == BuildMode.PlaceFurniture)
         {
+            RebuildVisible();
+            RefreshDisplay();
             Show();
             PushSelectionToBuildController();
         }
@@ -112,16 +134,16 @@ public class FurnitureSelectionUI : MonoBehaviour
 
     public void OnPrevClicked()
     {
-        if (registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex - 1 + registry.All.Count) % registry.All.Count;
+        if (visible.Count == 0) return;
+        selectedIndex = (selectedIndex - 1 + visible.Count) % visible.Count;
         RefreshDisplay();
         PushSelectionToBuildController();
     }
 
     public void OnNextClicked()
     {
-        if (registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex + 1) % registry.All.Count;
+        if (visible.Count == 0) return;
+        selectedIndex = (selectedIndex + 1) % visible.Count;
         RefreshDisplay();
         PushSelectionToBuildController();
     }

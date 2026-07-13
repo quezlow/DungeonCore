@@ -871,6 +871,52 @@ room variety) plus the two moments. Key files:
 `Gameplay/DeedDefinition.cs`, `Gameplay/DeedRegistry.cs`,
 `Gameplay/DeedsController.cs`, `UI/QuestLogUI.cs`.
 
+
+## 23. Trophy Hall (Deeds With Teeth)
+
+Status: SHIPPED. Verified: 2026-07-12.
+
+Where earned deeds reach into play (canon 22 gave the chronicle; this gives
+it teeth). A `TrophyDefinition : FurnitureDefinition` is placeable furniture
+gated by an earned deed -- it appears in the build picker only once
+`requiredDeedKey` is earned (`FurnitureSelectionUI` rebuilds a filtered
+visible list on open, asking `DeedsController.IsEarnedByKey`). Trophies may
+be placed anywhere, but contribute their effect ONLY while their cell lies
+in a VALID Trophy Hall: the census gathers Trophy Hall tile sets (the
+`TrophyHousing` marker, RoomEffectType ordinal 13) and, in a furniture pass,
+tests each trophy cell against them -- the same containment idiom as the
+respawn chambers. A trophy's contribution blinks off when its Hall breaks
+and returns when it re-validates (census re-aggregates on
+`OnRoomValidationChanged`); the object persists throughout.
+
+Effects (`TrophyEffectType`, four): MonsterDamage (additive fraction to a
+global monster attack multiplier), ManaRegen (mana/sec into the core's
+regen), TrapDamage (additive fraction to the global trap multiplier),
+Notoriety (a slow upward trickle). Same-type trophies sum, each under a
+census-serialized ceiling (defaults: damage +25%, mana +2/s, notoriety
+0.5/s). MonsterDamage rides a dedicated `globalDamageMultiplier` on
+DungeonMonster -- separate from the Throne room's per-tick
+`roomDamageMultiplier` so they never collide, combined multiplicatively at
+the strike, pushed to all live monsters on census change and adopted by
+new monsters in Start. Trap and mana fold into the existing census
+accumulators; notoriety is a new static the core reads each frame
+(`AccrueTrophyNotoriety`, before decay). No new save schema -- trophies are
+furniture, already persisted.
+
+Room: Trophy Hall, min 9 tiles, maxTier 1, `TrophyHousing` marker, gated by
+research node `hall_of_trophies` ("Hall of Trophies", Architecture tier 2,
+prereq Deeper Lairs, pattern Wrought Iron). Starter roster: six trophies,
+each tied to a shipped milestone deed (sprites author-assigned).
+
+BUG FIX riding this guide: `DungeonCore.RegenerateMana` computed its own
+base rate and ignored `CurrentManaRegen`, so the census mana sum (room
+ManaRegen from Room Effects v2, and now trophies) fed the readout but not
+the actual tick. Now regenerates at the full rate.
+
+Key files: `Room/TrophyDefinition.cs`, `Room/TrophyEffectType.cs`,
+`Room/RoomEffectCensus.cs`, `Monster/DungeonMonster.cs`,
+`DungeonCore/DungeonCore.cs`, `Traps/FurnitureSelectionUI.cs`.
+
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*

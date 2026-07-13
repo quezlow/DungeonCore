@@ -25,11 +25,26 @@ public class RoomEffectCensus : MonoBehaviour
     [Tooltip("Hard ceiling on the summed Forge bonus (0.5 = +50% trap damage at most).")]
     [SerializeField, Min(0f)] private float trapDamageMaxBonus = 0.5f;
 
+    [Tooltip("Hard ceiling on summed trophy monster-damage (0.25 = +25% at most).")]
+    [SerializeField, Min(0f)] private float trophyDamageMaxBonus = 0.25f;
+
+    [Tooltip("Hard ceiling on summed trophy mana regen (mana/sec).")]
+    [SerializeField, Min(0f)] private float trophyManaMax = 2f;
+
+    [Tooltip("Hard ceiling on summed trophy notoriety trickle (notoriety/sec).")]
+    [SerializeField, Min(0f)] private float trophyNotorietyMax = 0.5f;
+
     // -- Static read surface (safe defaults when no census exists) -----------
 
     public static int GoldCap { get; private set; } = int.MaxValue;
     public static float TrapDamageMultiplier { get; private set; } = 1f;
     public static float ManaRegenPerSecond { get; private set; }
+
+    /// <summary>Global monster attack multiplier from displayed trophies (1 = none).</summary>
+    public static float MonsterDamageMultiplier { get; private set; } = 1f;
+
+    /// <summary>Notoriety per second from displayed trophies (a slow trickle).</summary>
+    public static float NotorietyPerSecond { get; private set; }
 
     /// <summary>Fires when cap, trap or mana aggregates change (HUD refresh hook).</summary>
     public static event System.Action OnCensusChanged;
@@ -67,6 +82,8 @@ public class RoomEffectCensus : MonoBehaviour
 
     private float heartbeat;
     private readonly List<RoomAnchor> roomBuf = new();
+    private readonly List<FurniturePiece> furnitureBuf = new();
+    private readonly List<(FloorRoot floor, HashSet<Vector3Int> tiles)> hallTiles = new();
 
     private void OnEnable()
     {
@@ -146,28 +163,71 @@ public class RoomEffectCensus : MonoBehaviour
                             case RoomEffectType.TrapDamage:
                                 trapBonus += f.perSecond * scale;
                                 break;
+                            case RoomEffectType.TrophyHousing:
+                                var hall = anchor.GetRoomTiles();
+                                if (hall != null) hallTiles.Add((floor, hall));
+                                break;
                         }
                     }
                 }
             }
         }
+        // Trophy pass: a trophy contributes only while its cell lies in a valid
+        // Trophy Hall (placed anywhere, counted only when displayed). Same
+        // containment idiom as the respawn chambers above.
+        float trophyDmg = 0f, trophyMana = 0f, trophyNoto = 0f;
+        if (hallTiles.Count > 0 && fm != null)
+        {
+            foreach (var floor in fm.AllFloors)
+            {
+                if (floor?.Entities == null) continue;
+                floor.Entities.FillAll(furnitureBuf);
+                for (int p = 0; p < furnitureBuf.Count; p++)
+                {
+                    var piece = furnitureBuf[p];
+                    if (piece == null || piece.Definition is not TrophyDefinition trophy) continue;
+                    bool displayed = false;
+                    for (int h = 0; h < hallTiles.Count; h++)
+                        if (hallTiles[h].floor == floor && hallTiles[h].tiles.Contains(piece.OccupiedCell))
+                        { displayed = true; break; }
+                    if (!displayed) continue;
+                    switch (trophy.effect)
+                    {
+                        case TrophyEffectType.MonsterDamage: trophyDmg += trophy.magnitude; break;
+                        case TrophyEffectType.ManaRegen: trophyMana += trophy.magnitude; break;
+                        case TrophyEffectType.TrapDamage: trapBonus += trophy.magnitude; break;
+                        case TrophyEffectType.Notoriety: trophyNoto += trophy.magnitude; break;
+                    }
+                }
+            }
+        }
+        mana += Mathf.Min(trophyMana, trophyManaMax);
+        trophyNoto = Mathf.Min(trophyNoto, trophyNotorietyMax);
+        float newDamageMult = 1f + Mathf.Min(trophyDmg, trophyDamageMaxBonus);
 
         float newTrapMult = 1f + Mathf.Min(trapBonus, trapDamageMaxBonus);
 
         // Attractor and chamber lists refresh silently; the change event exists
         // for the HUD readouts, which only show cap, trap and mana aggregates.
         bool changed = cap != GoldCap
-                       || !Mathf.Approximately(newTrapMult, TrapDamageMultiplier)
-                       || !Mathf.Approximately(mana, ManaRegenPerSecond);
+                || !Mathf.Approximately(newTrapMult, TrapDamageMultiplier)
+                || !Mathf.Approximately(mana, ManaRegenPerSecond)
+                || !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier)
+                || !Mathf.Approximately(trophyNoto, NotorietyPerSecond);
 
         GoldCap = cap;
         TrapDamageMultiplier = newTrapMult;
         ManaRegenPerSecond = mana;
+        NotorietyPerSecond = trophyNoto;
+
+        bool damageChanged = !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier);
+        MonsterDamageMultiplier = newDamageMult;
 
         if (changed)
         {
             OnCensusChanged?.Invoke();
             DungeonCore.Instance?.NotifyManaRegenDisplay();
         }
+        if (damageChanged) DungeonMonster.PushGlobalDamageMultiplier(newDamageMult);
     }
 }

@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: HallofTrophies
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: hall_of_trophies
+  overrideKey: 
+  displayName: Hall of Trophies
+  icon: {fileID: 0}
+  path: 1
+  tier: 2
+  pointCost: 15
+  durationDays: 2
+  affinity: 0
+  patternRequirements:
+  - {fileID: 11400000, guid: 9e73fdad6444b264ab8c29fb74271ecf, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 6eb5ddd77bc8d8f409da9fcca989aea8, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: A room for the proof of what I have done.
+  description: The Trophy Hall may be built. Deeds earned in blood can be mounted
+    there, and made to matter.
