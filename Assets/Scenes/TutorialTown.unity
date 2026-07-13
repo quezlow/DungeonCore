@@ -188031,8 +188031,30 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4935290151657552440, guid: 4c37652140af9d8438854cfc5e939790, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5867643198601330294}
   m_SourcePrefab: {fileID: 100100000, guid: 4c37652140af9d8438854cfc5e939790, type: 3}
+--- !u!1 &5867643198601330293 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4935290151657552440, guid: 4c37652140af9d8438854cfc5e939790, type: 3}
+  m_PrefabInstance: {fileID: 5867643198601330292}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5867643198601330294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5867643198601330293}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3d976d9096c84443b8c158667cc9e7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NPCDialogueSwap
+  prerequisiteQuest: {fileID: 11400000, guid: 96f808783be85b747a2347b32d810ea0, type: 2}
+  swappedDialogue: {fileID: 11400000, guid: 4bae6d93fd51ed4448e227881d67c49d, type: 2}
 --- !u!1001 &6281377480984106687
 PrefabInstance:
   m_ObjectHideFlags: 0

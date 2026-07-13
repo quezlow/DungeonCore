@@ -565,6 +565,18 @@ public static class TutorialContentGenerator
             auto = "000",
             end = "001",
         },
+        new DialogueSpec
+        {
+            asset = "MarenAfterDialogue", npcName = "Maren Ashcombe", sprite = "npc2_2", pitch = 1.05f,
+            lines = new[]
+            {
+                "It's working. He's breathing like a person again, not a bellows.",
+                "But the draught took every scrap you brought. He'll need a second handful by nightfall to hold.",
+                "Same rock, just inside. You know the way now. I'd go myself, but he can't be left.",
+            },
+            auto = "000",
+            end = "001",
+        },
     };
 
     // ── Entry point ──────────────────────────────────────────────────────
