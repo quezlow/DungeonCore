@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: old_bones
   m_EditorClassIdentifier: Assembly-CSharp::DeedDefinition
   id: 
-  deedName: Once, and Only Once
-  description: Raise a named hero from the Crypt.
+  deedName: Old Bones
+  description: Unearth what the old stone kept.
   hidden: 1
   kind: 1
   metric: 0
   threshold: 0
-  momentId: first_raise
+  momentId: first_buried

@@ -12,4 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23cdf1fded223f442b579532a98bbdd6, type: 3}
   m_Name: DeedRegistry
   m_EditorClassIdentifier: Assembly-CSharp::DeedRegistry
-  deeds: []
+  deeds:
+  - {fileID: 11400000, guid: 77a23cac78894b5459dbba2473243954, type: 2}
+  - {fileID: 11400000, guid: 5e77a9d4016fa424c81a5edee19a8da0, type: 2}
+  - {fileID: 11400000, guid: d2f0c8cf5ab76194497ba4e0b6196eca, type: 2}
+  - {fileID: 11400000, guid: 82c0f6fd57dfaea41af6868c5d3572d2, type: 2}
+  - {fileID: 11400000, guid: 3e8b914e77bc70341a5c7791045d65d7, type: 2}
+  - {fileID: 11400000, guid: e6248d842e372fb47a1dc93285b9c72e, type: 2}
+  - {fileID: 11400000, guid: 657360200e9945645b1fb082ee89166f, type: 2}
+  - {fileID: 11400000, guid: a3279d70849b4a6439ba242d726e55a8, type: 2}
+  - {fileID: 11400000, guid: 8b98d8ec258383a4ea36650733321905, type: 2}
+  - {fileID: 11400000, guid: 71deadcfeb5c9d7469617d6a28460494, type: 2}
+  - {fileID: 11400000, guid: 16e49541738849145bf72198ef932b17, type: 2}
+  - {fileID: 11400000, guid: 40e13a26888f375478f994b04f667e85, type: 2}
+  - {fileID: 11400000, guid: 7b93d0adef895654ab296558c8df4239, type: 2}
+  - {fileID: 11400000, guid: 69d6b7a0fd28bee4884e18b31eecc264, type: 2}
+  - {fileID: 11400000, guid: 57f4ec7ae3418cc4f9cd4ff1c4eec37f, type: 2}
+  - {fileID: 11400000, guid: f2b2b2158b20d5345a51c1a0c0f2fb9f, type: 2}
+  - {fileID: 11400000, guid: 8ef8ef228baf6fe419972af2d2f4766b, type: 2}
