@@ -11,6 +11,8 @@ public class SaveData
     public List<SceneChestData> allSceneChests = new List<SceneChestData>();
     public List<QuestProgress> questProgressData;
     public List<string> handInQuestIDs;
+    public string sceneName;
+    public List<string> tutorialFlags = new List<string>();
 }
 
 [System.Serializable]

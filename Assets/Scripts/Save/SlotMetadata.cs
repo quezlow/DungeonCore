@@ -18,6 +18,7 @@ public class SlotMetadata
     public int currentDay = 1;
     public string lastPlayedIsoUtc = "";   // DateTime.UtcNow.ToString("o")
     public int saveVersion = 0;            // mirrors DungeonSaveData.saveVersion
+    public string phase = "dungeon";       // "prologue" until the ceremony births the dungeon save
 
     /// <summary>Parsed last-played time, or DateTime.MinValue if unparseable.</summary>
     public DateTime LastPlayedUtc =>

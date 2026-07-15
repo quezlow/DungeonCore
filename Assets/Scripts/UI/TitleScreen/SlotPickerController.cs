@@ -67,7 +67,7 @@ public class SlotPickerController : MonoBehaviour
 
     private void ConfigureForMode(SlotTileView tile)
     {
-        bool hasSave = SlotPaths.SlotHasSave(tile.SlotId);
+        bool hasSave = SlotPaths.SlotHasSave(tile.SlotId) || SlotPaths.SlotHasPrologue(tile.SlotId);
         bool incompatible = tile.IsIncompatible;
 
         if (CurrentMode == Mode.Load)

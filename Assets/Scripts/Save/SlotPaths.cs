@@ -29,8 +29,12 @@ public static class SlotPaths
     public static string MetaPath(int slotId) => Path.Combine(SlotFolder(slotId), "meta.json");
     public static string MetaTmpPath(int slotId) => Path.Combine(SlotFolder(slotId), "meta.json.tmp");
 
+    /// <summary>Prologue checkpoint written by SaveController while the player is still mortal.</summary>
+    public static string ProloguePath(int slotId) => Path.Combine(SlotFolder(slotId), "prologue.json");
+
     public static bool SlotHasSave(int slotId) => File.Exists(SavePath(slotId));
     public static bool SlotHasMeta(int slotId) => File.Exists(MetaPath(slotId));
+    public static bool SlotHasPrologue(int slotId) => File.Exists(ProloguePath(slotId));
     public static bool SlotIsEmpty(int slotId) => !File.Exists(SavePath(slotId)) && !File.Exists(BakPath(slotId));
 
     public static void EnsureSlotFolder(int slotId)
@@ -86,7 +90,7 @@ public static class SlotPaths
         DateTime bestTime = DateTime.MinValue;
         for (int i = MIN_SLOT_ID; i <= MAX_SLOT_ID; i++)
         {
-            if (!SlotHasSave(i)) continue;
+            if (!SlotHasSave(i) && !SlotHasPrologue(i)) continue;
             var meta = ReadMetadata(i);
             if (meta == null) continue;
             if (meta.LastPlayedUtc > bestTime)

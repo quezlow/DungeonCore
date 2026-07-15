@@ -38,9 +38,13 @@ public class SceneLoader : MonoBehaviour
     // Lightweight faded scene load for menu/UI transitions (new game, load slot,
     // reload, exit-to-title, game over). Fades the CURRENT scene to black via its
     // ScreenFader, then loads; the destination scene's SceneBootstrap fades in.
-    // Does NOT save or use spawn points (unlike TransitionToScene).
+    // Does not use spawn points (unlike TransitionToScene). Checkpoints the
+    // overworld save when one exists in the departing scene; in scenes without
+    // a SaveController (title, dungeon) this is a no-op.
     public static async void FadeToScene(string sceneName)
     {
+        SaveController.Instance?.SaveGame();
+
         if (ScreenFader.Instance != null)
             await ScreenFader.Instance.FadeOut();
         SceneManager.LoadScene(sceneName);

@@ -51,7 +51,8 @@ public class SlotTileView : MonoBehaviour
     {
         SlotId = slotId;
         slotNumberLabel.text = $"SLOT {slotId}";
-        Meta = SlotPaths.SlotHasSave(slotId) ? SlotPaths.ReadMetadata(slotId) : null;
+        Meta = (SlotPaths.SlotHasSave(slotId) || SlotPaths.SlotHasPrologue(slotId))
+                  ? SlotPaths.ReadMetadata(slotId) : null;
         IsIncompatible = Meta != null && Meta.saveVersion > DungeonSaveData.CURRENT_VERSION;
         Refresh();
     }
@@ -68,7 +69,7 @@ public class SlotTileView : MonoBehaviour
 
     private void Refresh()
     {
-        bool hasSave = SlotPaths.SlotHasSave(SlotId);
+        bool hasSave = SlotPaths.SlotHasSave(SlotId) || SlotPaths.SlotHasPrologue(SlotId);
 
         emptyState.SetActive(!hasSave);
         filledState.SetActive(hasSave);

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -13,6 +14,10 @@ using UnityEngine.UI;
 public class TitleScreenController : MonoBehaviour
 {
     private const string GAMEPLAY_SCENE = "Dungeon_Level_0";
+    private const string PROLOGUE_SCENE = "TutorialTown";
+
+    [Tooltip("Debug: skip the prologue and use the old type picker straight into the dungeon.")]
+    [SerializeField] private bool skipPrologue = false;
 
     [Header("Top-level UI")]
     [SerializeField] private GameObject mainPanel;
@@ -109,7 +114,7 @@ public class TitleScreenController : MonoBehaviour
     private void HandleLoadSlotChosen(SlotTileView tile)
     {
         if (tile.IsIncompatible) return;
-        if (!SlotPaths.SlotHasSave(tile.SlotId)) return;
+        if (!SlotPaths.SlotHasSave(tile.SlotId) && !SlotPaths.SlotHasPrologue(tile.SlotId)) return;
         LaunchSlot(tile.SlotId);
     }
 
@@ -140,7 +145,8 @@ public class TitleScreenController : MonoBehaviour
             submit: (name) =>
             {
                 pendingDungeonName = name;
-                BeginTypePickPhase();
+                if (skipPrologue) BeginTypePickPhase();
+                else FinalizePrologueNewGame();
             },
             cancel: null);
     }
@@ -160,11 +166,72 @@ public class TitleScreenController : MonoBehaviour
         SceneLoader.FadeToScene(GAMEPLAY_SCENE);
     }
 
+    // The shipped new-game path: no type chosen here. The prologue decides who
+    // you were; the ceremony decides what you become.
+    private void FinalizePrologueNewGame()
+    {
+        SlotPaths.DeleteSlot(pendingSlotId);
+        SaveSlotManager.Instance.BeginNewGame(pendingSlotId, pendingDungeonName, DungeonType.None);
+        Persistence.Clear();
+        WritePrologueMeta(pendingSlotId, pendingDungeonName);
+        SceneLoader.FadeToScene(PROLOGUE_SCENE);
+    }
+
+    private static void WritePrologueMeta(int slotId, string dungeonName)
+    {
+        SlotPaths.EnsureSlotFolder(slotId);
+        var meta = new SlotMetadata
+        {
+            slotId = slotId,
+            dungeonName = string.IsNullOrWhiteSpace(dungeonName) ? "Unnamed Dungeon" : dungeonName.Trim(),
+            dungeonType = DungeonType.None,
+            phase = "prologue",
+            lastPlayedIsoUtc = DateTime.UtcNow.ToString("o")
+        };
+        try
+        {
+            string tmp = SlotPaths.MetaTmpPath(slotId);
+            File.WriteAllText(tmp, JsonUtility.ToJson(meta, prettyPrint: true));
+            if (File.Exists(SlotPaths.MetaPath(slotId)))
+                File.Replace(tmp, SlotPaths.MetaPath(slotId), null);
+            else
+                File.Move(tmp, SlotPaths.MetaPath(slotId));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[TitleScreen] Prologue meta write failed for slot {slotId}: {e.Message}");
+        }
+    }
+
     private void LaunchSlot(int slotId)
     {
         SaveSlotManager.Instance.SetActiveSlot(slotId);
         SaveSlotManager.Instance.ClearPendingNewGame();
-        SceneLoader.FadeToScene(GAMEPLAY_SCENE);
+
+        // A dungeon save always outranks a leftover prologue checkpoint.
+        if (SlotPaths.SlotHasSave(slotId))
+        {
+            SceneLoader.FadeToScene(GAMEPLAY_SCENE);
+            return;
+        }
+
+        SceneLoader.FadeToScene(ResolvePrologueScene(slotId));
+    }
+
+    // Reads the checkpoint's scene name; falls back to the town if unreadable.
+    private static string ResolvePrologueScene(int slotId)
+    {
+        try
+        {
+            var data = JsonUtility.FromJson<SaveData>(File.ReadAllText(SlotPaths.ProloguePath(slotId)));
+            if (data != null && !string.IsNullOrEmpty(data.sceneName))
+                return data.sceneName;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[TitleScreen] Could not read prologue checkpoint for slot {slotId}: {e.Message}");
+        }
+        return PROLOGUE_SCENE;
     }
 
     private void HandleRenameRequested(SlotTileView tile)

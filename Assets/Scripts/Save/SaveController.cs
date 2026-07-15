@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Unity.Cinemachine;
@@ -10,6 +11,7 @@ public class SaveController : MonoBehaviour
     public static SaveController Instance { get; private set; }
 
     private string saveLocation;
+    private int activeSlotId; // 0 = legacy single-file mode (direct scene play)
     private InventoryController inventoryController;
     private HotbarController hotbarController;
     private Chest[] chests;
@@ -31,7 +33,18 @@ public class SaveController : MonoBehaviour
 
     private void InitializeComponents()
     {
-        saveLocation = Path.Combine(Application.persistentDataPath, "SaveData.json");
+        // Slot-aware when launched through the title screen; legacy single-file
+        // fallback when a scene is played directly in the editor.
+        activeSlotId = SaveSlotManager.Instance != null ? SaveSlotManager.Instance.ActiveSlotId : 0;
+        if (activeSlotId >= SlotPaths.MIN_SLOT_ID)
+        {
+            SlotPaths.EnsureSlotFolder(activeSlotId);
+            saveLocation = SlotPaths.ProloguePath(activeSlotId);
+        }
+        else
+        {
+            saveLocation = Path.Combine(Application.persistentDataPath, "SaveData.json");
+        }
         inventoryController = FindAnyObjectByType<InventoryController>();
         hotbarController = FindAnyObjectByType<HotbarController>();
         chests = FindObjectsByType<Chest>();
@@ -48,11 +61,16 @@ public class SaveController : MonoBehaviour
         currentSaveData.hotbarSaveData = hotbarController.GetHotbarItems();
         currentSaveData.questProgressData = QuestController.Instance.activateQuests;
         currentSaveData.handInQuestIDs = QuestController.Instance.handInQuestIDs;
+        currentSaveData.sceneName = SceneManager.GetActiveScene().name;
+        currentSaveData.tutorialFlags = new List<string>(Persistence.AllFlags);
 
         // Update ONLY the current scene's chest data — all other scenes untouched
         UpdateSceneChestData();
 
         File.WriteAllText(saveLocation, JsonUtility.ToJson(currentSaveData));
+
+        if (activeSlotId >= SlotPaths.MIN_SLOT_ID)
+            TouchPrologueMetadata();
     }
 
     public void LoadGame()
@@ -101,6 +119,15 @@ public class SaveController : MonoBehaviour
 
             QuestController.Instance.LoadQuestProgress(currentSaveData.questProgressData);
             QuestController.Instance.handInQuestIDs = currentSaveData.handInQuestIDs;
+
+            // Restore the prologue flag set. Clear first so a same-session
+            // slot switch cannot leak another life's deeds.
+            Persistence.Clear();
+            if (currentSaveData.tutorialFlags != null)
+            {
+                foreach (string flag in currentSaveData.tutorialFlags)
+                    Persistence.SetFlag(flag);
+            }
         }
         else
         {
@@ -115,6 +142,38 @@ public class SaveController : MonoBehaviour
             inventoryController.SetInventoryItems(new List<InventorySaveData>());
             hotbarController.SetHotbarItems(new List<InventorySaveData>());
             MapController_Dynamic.Instance?.GenerateMap();
+        }
+    }
+
+    // Refreshes the slot's meta timestamp so Continue prefers the latest life,
+    // mortal or otherwise. Creates a minimal prologue meta if none exists yet.
+    private void TouchPrologueMetadata()
+    {
+        SlotMetadata meta = SlotPaths.ReadMetadata(activeSlotId);
+        if (meta == null)
+        {
+            meta = new SlotMetadata
+            {
+                slotId = activeSlotId,
+                dungeonName = SaveSlotManager.Instance?.PendingNewGame?.dungeonName ?? "Unnamed Dungeon",
+                dungeonType = DungeonType.None,
+                phase = "prologue"
+            };
+        }
+        meta.lastPlayedIsoUtc = DateTime.UtcNow.ToString("o");
+
+        try
+        {
+            string tmp = SlotPaths.MetaTmpPath(activeSlotId);
+            File.WriteAllText(tmp, JsonUtility.ToJson(meta, prettyPrint: true));
+            if (File.Exists(SlotPaths.MetaPath(activeSlotId)))
+                File.Replace(tmp, SlotPaths.MetaPath(activeSlotId), null);
+            else
+                File.Move(tmp, SlotPaths.MetaPath(activeSlotId));
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[SaveController] Prologue meta write failed: {e.Message}");
         }
     }
 
