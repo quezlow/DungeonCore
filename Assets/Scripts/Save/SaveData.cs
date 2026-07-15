@@ -13,6 +13,7 @@ public class SaveData
     public List<string> handInQuestIDs;
     public string sceneName;
     public List<string> tutorialFlags = new List<string>();
+    public List<SceneInteractableData> allSceneInteractables = new List<SceneInteractableData>();
 }
 
 [System.Serializable]
@@ -20,4 +21,18 @@ public class ChestSaveData
 {
     public string chestID;
     public bool isOpened;
+}
+
+[System.Serializable]
+public class SceneInteractableData
+{
+    public string sceneName;
+    public List<InteractableSaveData> interactables;
+}
+
+[System.Serializable]
+public class InteractableSaveData
+{
+    public string interactableID;
+    public bool used;
 }

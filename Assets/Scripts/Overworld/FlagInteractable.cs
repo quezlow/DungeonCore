@@ -37,10 +37,31 @@ public class FlagInteractable : MonoBehaviour, IInteractable
     [Tooltip("Fires once, on first use - wire sprite swaps, SetActive calls, and so on here.")]
     public UnityEvent onInteracted;
 
+    [Header("Persistence")]
+    [Tooltip("Unique per scene. Leave empty to use the GameObject name.")]
+    [SerializeField] private string interactableID;
+
+    [Tooltip("On restore, re-fire onInteracted so hide-type effects (crate SetActive) reapply. Leave off for spawn-type effects like the spoil heap.")]
+    [SerializeField] private bool fireEventsOnRestore = false;
+
     private bool used;
     private bool isShowing;
     private int lineIndex;
     private DialogueController dialogueUI;
+
+    public string InteractableID =>
+        string.IsNullOrEmpty(interactableID) ? gameObject.name : interactableID;
+
+    public bool Used => used;
+
+    /// <summary>Marks the prop as spent when a save is restored, optionally
+    /// re-firing its effects so hide-type visuals reapply.</summary>
+    public void RestoreUsed()
+    {
+        if (used) return;
+        used = true;
+        if (fireEventsOnRestore) onInteracted?.Invoke();
+    }
 
     private void Start()
     {

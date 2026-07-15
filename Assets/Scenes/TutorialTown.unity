@@ -1409,6 +1409,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 325587878}
     m_Modifications:
+    - target: {fileID: 2276393667779620014, guid: aab98f35222f2654ab8a7c0d75970998, type: 3}
+      propertyPath: fireEventsOnRestore
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3832045158832854930, guid: aab98f35222f2654ab8a7c0d75970998, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -8847,6 +8851,8 @@ MonoBehaviour:
   onInteracted:
     m_PersistentCalls:
       m_Calls: []
+  interactableID: 
+  fireEventsOnRestore: 0
 --- !u!61 &496370058
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -9257,6 +9263,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 325587878}
     m_Modifications:
+    - target: {fileID: 2276393667779620014, guid: 074c68d109fe04345b532d6b3ab37a00, type: 3}
+      propertyPath: fireEventsOnRestore
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3832045158832854930, guid: 074c68d109fe04345b532d6b3ab37a00, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -9759,6 +9769,8 @@ MonoBehaviour:
   onInteracted:
     m_PersistentCalls:
       m_Calls: []
+  interactableID: 
+  fireEventsOnRestore: 0
 --- !u!61 &820544510
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -179769,6 +179781,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 325587878}
     m_Modifications:
+    - target: {fileID: 2276393667779620014, guid: 72e5830c4249c9d4a9691243db027629, type: 3}
+      propertyPath: fireEventsOnRestore
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3832045158832854930, guid: 72e5830c4249c9d4a9691243db027629, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -186478,6 +186494,8 @@ MonoBehaviour:
   onInteracted:
     m_PersistentCalls:
       m_Calls: []
+  interactableID: 
+  fireEventsOnRestore: 0
 --- !u!61 &1997900082
 BoxCollider2D:
   m_ObjectHideFlags: 0

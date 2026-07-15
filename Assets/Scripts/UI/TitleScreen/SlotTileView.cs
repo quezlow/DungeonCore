@@ -110,9 +110,19 @@ public class SlotTileView : MonoBehaviour
         }
 
         nameLabel.text = string.IsNullOrWhiteSpace(Meta.dungeonName) ? "Unnamed Dungeon" : Meta.dungeonName;
-        typeLabel.text = Meta.dungeonType.ToString();
-        levelLabel.text = LevelTierUtil.DisplayName(Meta.dungeonLevel);
-        dayLabel.text = $"Day {Meta.currentDay}";
+
+        if (Meta.phase == "prologue")
+        {
+            typeLabel.text = "In Hollowell";
+            levelLabel.text = "";
+            dayLabel.text = "";
+        }
+        else
+        {
+            typeLabel.text = Meta.dungeonType.ToString();
+            levelLabel.text = LevelTierUtil.DisplayName(Meta.dungeonLevel);
+            dayLabel.text = $"Day {Meta.currentDay}";
+        }
         lastPlayedLabel.text = FormatRelative(Meta.LastPlayedUtc);
     }
 

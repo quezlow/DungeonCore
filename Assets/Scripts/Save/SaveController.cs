@@ -15,6 +15,7 @@ public class SaveController : MonoBehaviour
     private InventoryController inventoryController;
     private HotbarController hotbarController;
     private Chest[] chests;
+    private FlagInteractable[] flagInteractables;
 
     // Kept in memory so saving from one scene doesn't wipe another scene's data
     private SaveData currentSaveData = new SaveData();
@@ -48,6 +49,7 @@ public class SaveController : MonoBehaviour
         inventoryController = FindAnyObjectByType<InventoryController>();
         hotbarController = FindAnyObjectByType<HotbarController>();
         chests = FindObjectsByType<Chest>();
+        flagInteractables = FindObjectsByType<FlagInteractable>();
     }
 
     public void SaveGame()
@@ -66,6 +68,7 @@ public class SaveController : MonoBehaviour
 
         // Update ONLY the current scene's chest data — all other scenes untouched
         UpdateSceneChestData();
+        UpdateSceneInteractableData();
 
         File.WriteAllText(saveLocation, JsonUtility.ToJson(currentSaveData));
 
@@ -116,6 +119,7 @@ public class SaveController : MonoBehaviour
 
             // Load ONLY this scene's chest data
             LoadSceneChestData();
+            LoadSceneInteractableData();
 
             QuestController.Instance.LoadQuestProgress(currentSaveData.questProgressData);
             QuestController.Instance.handInQuestIDs = currentSaveData.handInQuestIDs;
@@ -184,6 +188,8 @@ public class SaveController : MonoBehaviour
 
         if (currentSaveData.allSceneChests == null)
             currentSaveData.allSceneChests = new List<SceneChestData>();
+        if (currentSaveData.allSceneInteractables == null)
+            currentSaveData.allSceneInteractables = new List<SceneInteractableData>();
 
         SceneChestData existing = currentSaveData.allSceneChests
             .Find(s => s.sceneName == sceneName);
@@ -214,6 +220,64 @@ public class SaveController : MonoBehaviour
         if (sceneChests == null) return;
 
         LoadChestStates(sceneChests.chests);
+    }
+
+    // Replaces the current scene's entry in allSceneInteractables, or adds one if missing
+    private void UpdateSceneInteractableData()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+
+        if (currentSaveData.allSceneInteractables == null)
+            currentSaveData.allSceneInteractables = new List<SceneInteractableData>();
+
+        SceneInteractableData existing = currentSaveData.allSceneInteractables
+            .Find(s => s.sceneName == sceneName);
+
+        if (existing != null)
+        {
+            existing.interactables = GetInteractablesState();
+        }
+        else
+        {
+            currentSaveData.allSceneInteractables.Add(new SceneInteractableData
+            {
+                sceneName = sceneName,
+                interactables = GetInteractablesState()
+            });
+        }
+    }
+
+    // Applies saved single-use state for the current scene only
+    private void LoadSceneInteractableData()
+    {
+        string sceneName = SceneManager.GetActiveScene().name;
+
+        SceneInteractableData sceneData = currentSaveData.allSceneInteractables?
+            .Find(s => s.sceneName == sceneName);
+
+        if (sceneData?.interactables == null) return;
+
+        foreach (FlagInteractable prop in flagInteractables)
+        {
+            InteractableSaveData data = sceneData.interactables
+                .Find(i => i.interactableID == prop.InteractableID);
+            if (data != null && data.used)
+                prop.RestoreUsed();
+        }
+    }
+
+    private List<InteractableSaveData> GetInteractablesState()
+    {
+        var states = new List<InteractableSaveData>();
+        foreach (FlagInteractable prop in flagInteractables)
+        {
+            states.Add(new InteractableSaveData
+            {
+                interactableID = prop.InteractableID,
+                used = prop.Used
+            });
+        }
+        return states;
     }
 
     private List<ChestSaveData> GetChestsState()
