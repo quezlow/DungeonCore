@@ -122,6 +122,21 @@ default 3, next tier costs `upgradeBaseCost x currentTier` in gold,
 `Func<RoomDefinition,int,bool>` reserved for the research tree -- currently
 null (no gate).
 
+**TechNode unlock on validation (as built):** a room may GRANT an unlock,
+not just be gated by one. `RoomDefinition.techNodeUnlockKey` (distinct from
+`requiredTechKey`, which gates the room INTO the picker) names the key the
+room grants. On the room's first valid state, `RoomAnchor.Revalidate` calls
+`GrantTechNodeIfAny`: if the key resolves to a `TechNodeDefinition` (via
+`ResearchController.Tree.GetByKey`) it routes through `GrantNodeFully` (wisp
+announce + point refund if the node was mid-research), otherwise it flips
+`UnlockState.Unlock` directly. The grant is PERMANENT -- never re-locked when
+the room breaks or is torn down -- and persists via the existing
+`unlockedKeys` save field (no new schema). Grants are suppressed while
+`DungeonSaveController.IsLoading`, and the `IsUnlocked` guard makes repeated
+validations free. This is the room build-grant the research entry reserved as
+an "alternate route"; the framework ships here, content assignment (Oracle
+Chamber -> `oracle_chamber`) lands with the Oracle work.
+
 **Persistence:** footprints are saved explicitly. Flood-fill-era saves carry
 no footprint and are seeded once via `MigrateFootprintFromFloodFill`.
 
@@ -511,8 +526,10 @@ and Remembered Sight (status bars; supersedes the free-forever note) -- all
 final mapping: damage numbers, minimap and alerts stay ungated; the ladder
 runs Read the Coming Tide (WavePreviewHUD) -> Ledger of the Fallen
 (KnownPartiesPanel) -> Study Adventurer Anatomy (`adventurer_stats`
-override) -> Whispers of Intent (`oracle_chamber` override; a future Oracle
-room's build-grant becomes an alternate route). No grandfathering: legacy
+override) -> Whispers of Intent (`oracle_chamber` override; the Oracle room's
+build-grant is the alternate route -- the grant FRAMEWORK now ships as
+room-granted unlocks, see entry 1, with content assignment landing in the
+Oracle work). No grandfathering: legacy
 saves lose ladder features until researched. Build gating is a
 `requiredTechKey` string on RoomDefinition and MonsterDefinition, filtered
 in RoomTypePickerUI, MonsterSelectionUI and the build controller (spike

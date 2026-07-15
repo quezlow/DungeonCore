@@ -131,6 +131,38 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
 
             OnRoomValidationChanged?.Invoke(this, IsValid);
         }
+
+        // A valid room grants its TechNode unlock (if it carries one). Idempotent
+        // and cheap when there is nothing to grant, so it is safe to call on every
+        // revalidation, including furniture-driven ones.
+        if (IsValid) GrantTechNodeIfAny();
+    }
+
+    /// <summary>
+    /// Grants this room's TechNode unlock the first time it is valid. Permanent:
+    /// never re-locked when the room later breaks. If the key resolves to a tree
+    /// node, routes through the research system (wisp announce + refund if it was
+    /// mid-research); otherwise flips the flag directly. No-op once the key is set,
+    /// so repeated validations are free.
+    /// </summary>
+    private void GrantTechNodeIfAny()
+    {
+        var def = AssignedRoom;
+        if (def == null || string.IsNullOrEmpty(def.techNodeUnlockKey)) return;
+
+        // The save restores unlocks itself; don't re-grant (or re-announce) on load.
+        if (DungeonSaveController.IsLoading) return;
+
+        // Already earned — permanent, nothing to do (covers redesignate and reload).
+        if (UnlockState.IsUnlocked(def.techNodeUnlockKey)) return;
+
+        var rc = ResearchController.Instance;
+        var node = rc != null && rc.Tree != null ? rc.Tree.GetByKey(def.techNodeUnlockKey) : null;
+
+        if (node != null)
+            rc.GrantNodeFully(node, "The chamber yields its secret: " + node.displayName + ".");
+        else
+            UnlockState.Unlock(def.techNodeUnlockKey);
     }
 
     /// <summary>Returns the tiles in this room, or null if not validated.</summary>
