@@ -17755,8 +17755,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 751673977}
   m_HandleRect: {fileID: 751673976}
   m_Direction: 2
-  m_Value: 0.99999785
-  m_Size: 0.7499999
+  m_Value: 0.9999988
+  m_Size: 0.74999994
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -18371,6 +18371,7 @@ MonoBehaviour:
   incomeFloor: 0.1
   speedPerExtraLibrary: 0.1
   speedBonusCap: 0.3
+  pauseWithoutLibrary: 1
 --- !u!1 &548169763
 GameObject:
   m_ObjectHideFlags: 0
@@ -41241,7 +41242,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1698635085}
   m_HandleRect: {fileID: 1698635084}
   m_Direction: 2
-  m_Value: 1
+  m_Value: 0
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -43151,8 +43152,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2122122345}
   m_HandleRect: {fileID: 2122122344}
   m_Direction: 2
-  m_Value: 1.0000229
-  m_Size: 0.99009895
+  m_Value: 1.0000305
+  m_Size: 0.990099
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -48271,6 +48272,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1593361211}
   - component: {fileID: 1593361212}
+  - component: {fileID: 1593361213}
   m_Layer: 0
   m_Name: AdventurerInspectorController
   m_TagString: Untagged
@@ -48305,6 +48307,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c9952645e4e6e844990ef1877fd817a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerInspectController
+--- !u!114 &1593361213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1593361210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6907b870cf30aa4bac98bb1a2e4818e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AdventurerIntentHover
+  hoverPollSeconds: 0.05
 --- !u!1001 &1594578871
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59228,7 +59243,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5716503611527018546, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.000030517578
+      value: 0.0000076293945
       objectReference: {fileID: 0}
     - target: {fileID: 5722302574284986237, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_AnchorMax.x
@@ -59472,7 +59487,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1684197544}
   m_HandleRect: {fileID: 1684197543}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -62449,7 +62464,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1274069045}
   m_HandleRect: {fileID: 1274069044}
   m_Direction: 2
-  m_Value: 0
+  m_Value: 1
   m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -62525,7 +62540,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0005567177}
+  m_AnchoredPosition: {x: 0, y: 0.0009898499}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

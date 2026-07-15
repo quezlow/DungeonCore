@@ -13,25 +13,21 @@ MonoBehaviour:
   m_Name: Room_OracleChamber
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
   roomName: Oracle Chamber
-  description: Shelves of what the dead thought worth keeping.
-  effectSummary: Grants research points at dawn (+5 per day, x tier; each further
-    Library counts for less). Scholars come more often.
+  description: A still, listening dark.
+  effectSummary: "Reads the coming raid \u2014 deeper as it grows."
   validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
   minTileCount: 12
   maxTileCount: 0
   requiresCore: 0
   requiredFurniture: []
   requiresBossSpawner: 0
-  techNodeUnlockKey: 
-  techNodeDescription: 
+  techNodeUnlockKey: oracle_chamber
+  techNodeDescription: Reads the intent of those who enter.
   requiredTechKey: 
   maxTier: 3
-  upgradeBaseCost: 100
+  upgradeBaseCost: 150
   effects:
-  - type: 4
-    perSecond: 5
-    attractorTarget: 3
-  - type: 6
+  - type: 14
     perSecond: 1
-    attractorTarget: 2
+    attractorTarget: 3
   spawnCategories: 
