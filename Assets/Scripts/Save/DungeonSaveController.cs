@@ -204,6 +204,22 @@ public class DungeonSaveController : MonoBehaviour
 
         SaveGame();
 
+        // The prologue checkpoint is consumed the moment the dungeon exists on
+        // disk - from here, Continue always routes below.
+        try
+        {
+            var manager = SaveSlotManager.Instance;
+            if (manager != null)
+            {
+                string prologue = SlotPaths.ProloguePath(manager.ActiveSlotId);
+                if (File.Exists(prologue)) File.Delete(prologue);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[DungeonSaveController] Could not remove prologue checkpoint: {e.Message}");
+        }
+
         SaveSlotManager.Instance?.ClearPendingNewGame();
     }
 

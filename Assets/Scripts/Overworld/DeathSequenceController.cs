@@ -145,12 +145,7 @@ public class DeathSequenceController : MonoBehaviour
 
     private void ProceedToCeremony()
     {
-        // The dungeon type selection ceremony arrives in the next build.
-        // Until then the prologue ends here and returns to the title screen.
-        Debug.Log("DeathSequence: prologue complete. Flags recorded: " +
-                  string.Join(", ", Persistence.AllFlags));
-
-        SceneLoader.FadeToScene("TitleScreen");
+        SceneLoader.FadeToScene("Ceremony");
     }
 
     private void OnDrawGizmos()
