@@ -64,9 +64,19 @@ public class WavePreviewHUD : MonoBehaviour
         int hi = spawner.PredictedMaxPartySize;
         string size = lo == hi ? lo.ToString() : $"{lo}–{hi}";
 
+        string line = $"{prefix} {m}:{s:D2} · {size}";
+
+        // Oracle Chamber: read the coming raid, as deep as the best chamber's tier.
+        int foresight = RoomEffectCensus.ForesightTier;
+        if (foresight > 0)
+        {
+            var forecast = spawner.PredictNextRaid();
+            if (forecast.HasValue) line += "  ·  " + ForesightText(forecast.Value, foresight);
+        }
+
         if (label != null)
         {
-            label.text = $"{prefix} {m}:{s:D2} · {size}";
+            label.text = line;
             label.color = textColour;
         }
     }
@@ -90,4 +100,20 @@ public class WavePreviewHUD : MonoBehaviour
         nemesisLabel.text = $"{TrackedPartyRegistry.LabelFor(soonest)} returns with the dawn.";
         nemesisLabel.color = textColour;
     }
+
+    // Tier 1 reveals intent; tier 2 adds the likely headline type; tier 3 adds the faction.
+    private static string ForesightText(AdventurerSpawner.RaidForecast f, int tier)
+    {
+        if (f.isCommoners) return "commoners";
+        string s = IntentWord(f.intent);
+        if (tier >= 2) s += " · " + f.headlineType;
+        if (tier >= 3) s += " · " + FactionInfo.DisplayName(f.faction);
+        return s;
+    }
+
+    private static string IntentWord(PartyIntent i) => i switch
+    {
+        PartyIntent.GiftGiver => "Gift-Giver",
+        _ => i.ToString(),
+    };
 }

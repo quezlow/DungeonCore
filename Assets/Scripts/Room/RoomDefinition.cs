@@ -100,6 +100,7 @@ public enum RoomEffectType
     TrapDamage,         // global trap-damage bonus while valid (perSecond = bonus per tier, e.g. 0.1); census lane
     CryptPreservation,  // marker: this room preserves named corpses (read by CryptController; no per-second work)
     TrophyHousing,      // marker: trophies standing in this valid room contribute their effect (read by RoomEffectCensus)
+    RaidForesight,      // marker: a valid room reads the coming raid (Oracle Chamber). Room tier sets the depth of the wave-preview forecast (RoomEffectCensus.ForesightTier).
 }
 
 [Serializable]

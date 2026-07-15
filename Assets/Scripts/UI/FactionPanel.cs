@@ -110,6 +110,9 @@ public class FactionPanel : MonoBehaviour
         var statusLabel = FindLabel(row.transform, "StatusLabel");
         if (statusLabel != null) statusLabel.text = StatusText(f);
 
+        var intelLabel = FindLabel(row.transform, "IntelLabel");
+        if (intelLabel != null) intelLabel.text = IntelText(f);
+
         var barTf = FindDeep(row.transform, "BarFill");
         var bar = barTf != null ? barTf.GetComponent<Image>() : null;
         if (bar != null)
@@ -134,6 +137,19 @@ public class FactionPanel : MonoBehaviour
         if (mc == null) return "";
         string gauge = $"loot out {mc.LootOutThisWindow}/{mc.CurrentThreshold}";
         return mc.IsUltimatum ? $"Ultimatum: {mc.CountdownRemaining}d - {gauge}" : gauge;
+    }
+
+    /// <summary>Per-faction intel, revealed once its Study node is researched.
+    /// Encountered-but-unstudied factions show a prompt; the rest stay blank.
+    /// Needs an "IntelLabel" TMP_Text child on the row prefab; skipped without it.</summary>
+    private static string IntelText(FactionId f)
+    {
+        if (!FactionIntel.IntelKnown(f))
+            return FactionIntel.Encountered(f) ? "<i>Unstudied — research to reveal.</i>" : "";
+
+        var pool = FactionSystem.PoolFor(f);
+        string roster = pool != null && pool.Count > 0 ? string.Join(", ", pool) : "—";
+        return FactionIntel.Profile(f) + "\n" + FactionIntel.Tactics(f) + "\nDispatches: " + roster;
     }
 
     private static string TierText(int tier, int maxTier)

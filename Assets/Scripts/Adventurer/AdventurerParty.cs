@@ -105,6 +105,7 @@ public class AdventurerParty
         var m = new PartyMember { type = type, name = name, named = named };
         Members.Add(m);
         if (named) tracked = true;
+        FactionIntel.NotifyEncounter(AdventurerTypeInfo.FactionOf(type)); 
         return m;
     }
 

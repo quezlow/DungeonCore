@@ -47,12 +47,19 @@ public class ResearchController : MonoBehaviour
     [Tooltip("Cap on the total speed bonus.")]
     [SerializeField, Range(0f, 1f)] private float speedBonusCap = 0.30f;
 
+    [Header("Project Continuation")]
+    [Tooltip("If true, the active project stalls at any dawn when no valid Library stands, "
+       + "and resumes when one does. If false, a project runs to completion on banked "
+       + "points regardless of Libraries.")]
+    [SerializeField] private bool pauseWithoutLibrary = true;
+
     // -- Project state (persisted via DungeonSaveController) -----------------
     private string activeKey = "";
     private float activeRemaining;
     private string queuedKey = "";
     private int lastProcessedDay = -1;
     private float lastSpeed = 1f;   // cached for the intra-day fill
+    private bool researchStalled = false;   // display/announce latch; recomputed each dawn
 
     private readonly List<RoomAnchor> roomBuf = new();
     private readonly List<float> contributions = new();
@@ -143,6 +150,23 @@ public class ResearchController : MonoBehaviour
     private void TickActive(int libraryCount)
     {
         if (string.IsNullOrEmpty(activeKey)) return;
+
+        // No library, no progress — the study has nowhere to happen.
+        if (pauseWithoutLibrary && libraryCount <= 0)
+        {
+            if (!researchStalled)
+            {
+                researchStalled = true;
+                Announce("The work stalls — no library stands to sustain it.");
+                OnStateChanged?.Invoke();
+            }
+            return;
+        }
+        if (researchStalled)
+        {
+            researchStalled = false;
+            Announce("Study resumes — a library stands again.");
+        }
 
         float speed = SpeedFor(libraryCount);
         lastSpeed = speed;

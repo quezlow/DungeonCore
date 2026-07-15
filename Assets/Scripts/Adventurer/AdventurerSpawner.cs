@@ -171,6 +171,114 @@ public class AdventurerSpawner : MonoBehaviour
         && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight)
         && (WaveStageController.AllowAdventurers || WaveStageController.AllowCommoners);
 
+    /// <summary>A reading of the next raid: most-likely intent, headline type and
+    /// faction from the CURRENT spawn weights. No RNG consumed. isCommoners is true
+    /// during the commoner stage (no faction wave).</summary>
+    public struct RaidForecast
+    {
+        public PartyIntent intent;
+        public AdventurerType headlineType;
+        public FactionId faction;
+        public bool isCommoners;
+    }
+
+    /// <summary>Side-effect-free forecast for the Oracle Chamber. Null when spawning
+    /// is idle or a party can't currently arrive. Recomputes live as notoriety,
+    /// reputation and attractor rooms change.</summary>
+    public RaidForecast? PredictNextRaid()
+    {
+        if (!SpawningActive || PartyCapReached) return null;
+
+        if (!WaveStageController.AllowAdventurers)
+            return new RaidForecast
+            {
+                intent = AdventurerTypeInfo.IntentOf(AdventurerType.Commoner),
+                headlineType = AdventurerType.Commoner,
+                faction = AdventurerTypeInfo.FactionOf(AdventurerType.Commoner),
+                isCommoners = true,
+            };
+
+        PartyIntent intent = LikeliestIntent();
+        AdventurerType type = LikeliestType(intent);
+        return new RaidForecast
+        {
+            intent = intent,
+            headlineType = type,
+            faction = AdventurerTypeInfo.FactionOf(type),
+            isCommoners = false,
+        };
+    }
+
+    // argmax of the same weights RollIntent() draws from — keep in sync with it.
+    private PartyIntent LikeliestIntent()
+    {
+        float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
+        float rep = DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f;
+
+        float wDelver = Mathf.Max(0f, baseDelver);
+        float wDestroyer = Mathf.Max(0f, baseDestroyer + noto * notorietyToDestroyer);
+        float wPilgrim = Mathf.Max(0f, basePilgrim + rep * reputationToPilgrim);
+        float wGiftGiver = Mathf.Max(0f, baseGiftGiver + rep * reputationToGiftGiver);
+
+        foreach (AdventurerType t in System.Enum.GetValues(typeof(AdventurerType)))
+        {
+            float bonus = RoomEffectCensus.GetAttractorBonus(t);
+            if (bonus <= 0f) continue;
+            switch (AdventurerTypeInfo.IntentOf(t))
+            {
+                case PartyIntent.Delver: wDelver += bonus; break;
+                case PartyIntent.Destroyer: wDestroyer += bonus; break;
+                case PartyIntent.Pilgrim: wPilgrim += bonus; break;
+                case PartyIntent.GiftGiver: wGiftGiver += bonus; break;
+            }
+        }
+
+        PartyIntent best = PartyIntent.Delver; float bestW = wDelver;
+        if (wDestroyer > bestW) { best = PartyIntent.Destroyer; bestW = wDestroyer; }
+        if (wPilgrim > bestW) { best = PartyIntent.Pilgrim; bestW = wPilgrim; }
+        if (wGiftGiver > bestW) { best = PartyIntent.GiftGiver; bestW = wGiftGiver; }
+        return best;
+    }
+
+    // argmax of the within-category weights RollType() draws from — keep in sync.
+    private AdventurerType LikeliestType(PartyIntent intent)
+    {
+        switch (intent)
+        {
+            case PartyIntent.Destroyer:
+                {
+                    float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
+                    float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
+                    float wMerc = Mathf.Max(0f, weightMercenary);
+                    return wHero > wMerc ? AdventurerType.Hero : AdventurerType.Mercenary;
+                }
+            case PartyIntent.Delver:
+                {
+                    float wDel = Mathf.Max(0f, weightDelver);
+                    float wTH = Mathf.Max(0f, weightTreasureHunter)
+                        + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter);
+                    return wTH > wDel ? AdventurerType.TreasureHunter : AdventurerType.Delver;
+                }
+            case PartyIntent.GiftGiver:
+                return AdventurerType.Cultist;
+            default: // Pilgrim
+                {
+                    float wPil = Mathf.Max(0f, weightPilgrim) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Pilgrim);
+                    float wSch = Mathf.Max(0f, weightScholar) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar);
+                    float wSui = Mathf.Max(0f, weightSuicidal);
+                    float wNob = Mathf.Max(0f, weightNoble) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble);
+                    float wIns = inspectorEnabled ? Mathf.Max(0f, weightInspector) : 0f;
+
+                    AdventurerType best = AdventurerType.Pilgrim; float bestW = wPil;
+                    if (wSch > bestW) { best = AdventurerType.Scholar; bestW = wSch; }
+                    if (wSui > bestW) { best = AdventurerType.Suicidal; bestW = wSui; }
+                    if (wNob > bestW) { best = AdventurerType.Noble; bestW = wNob; }
+                    if (wIns > bestW) { best = AdventurerType.Inspector; bestW = wIns; }
+                    return best;
+                }
+        }
+    }
+
     /// <summary>True when the seeded entrance has been found — or on legacy saves
     /// with a player-placed entrance, which have no seal to break.</summary>
     public bool EntranceDiscovered

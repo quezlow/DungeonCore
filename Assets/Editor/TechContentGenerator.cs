@@ -53,11 +53,23 @@ public static class TechContentGenerator
             "What are they, under the armour?",
             "The measure of an intruder, laid bare. The stats panel is shown.");
         n_adventurer_stats.overrideKey = "adventurer_stats";
+        n_adventurer_stats.visibility = TechNodeDefinition.VisibilityCondition.KillsAny;
+        n_adventurer_stats.visibilityKillCount = 1;   // the first fallen intruder reveals it
 
         var n_oracle_intent = Define("oracle_intent", "Whispers of Intent", ResearchPath.Observation, 3, 25, 2,
             "Why do they come?",
             "Purpose, read from a stride. Intent badges are shown above intruders.");
         n_oracle_intent.overrideKey = "oracle_chamber";
+
+        var n_study_holy = Define("study_holy_order", "Study the Holy Order", ResearchPath.Observation, 3, 20, 2,
+    "Why do they hate us so?",
+    "The Church's ways, set down. Their profile and tactics show in the faction panel.");
+        n_study_holy.overrideKey = "faction_intel.holy_order";
+
+        var n_study_merc = Define("study_mercenaries", "Study the Mercenary Company", ResearchPath.Observation, 3, 20, 2,
+            "What do they want?",
+            "The Company's ledger, read. Their profile and tactics show in the faction panel.");
+        n_study_merc.overrideKey = "faction_intel.mercenaries";
 
         var n_deeper_lairs = Define("deeper_lairs", "Deeper Lairs", ResearchPath.Architecture, 2, 15, 2,
             "The beasts could rest easier, given better stone.",
@@ -150,6 +162,12 @@ public static class TechContentGenerator
         AddPrereq(n_bones_in_iron, n_skeleton);
         AddPrereq(n_whisperer_in_marrow, n_shambling_dead);
         AddPrereq(n_whisperer_in_marrow, n_bones_in_iron);
+        AddPrereq(n_study_holy, n_known_parties);
+        n_study_holy.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
+        n_study_holy.visibilityKey = "encounter.holy_order";
+        AddPrereq(n_study_merc, n_known_parties);
+        n_study_merc.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
+        n_study_merc.visibilityKey = "encounter.mercenaries";
         n_whisperer_in_marrow.visibility = TechNodeDefinition.VisibilityCondition.KillsOfClass;
         n_whisperer_in_marrow.visibilityClassName = "Cleric";
         n_whisperer_in_marrow.visibilityKillCount = 5;
@@ -172,7 +190,7 @@ public static class TechContentGenerator
         AddPattern(n_waiting_dark, "Gravegold");
 
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties,
-            n_adventurer_stats, n_oracle_intent, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
+            n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
              n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
             n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark });
 

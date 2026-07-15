@@ -10,26 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
-  m_Name: StudyAdventurerAnatomy
+  m_Name: StudytheMercenaryCompany
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: adventurer_stats
-  overrideKey: adventurer_stats
-  displayName: Study Adventurer Anatomy
+  id: study_mercenaries
+  overrideKey: faction_intel.mercenaries
+  displayName: Study the Mercenary Company
   icon: {fileID: 0}
   path: 0
-  tier: 2
-  pointCost: 15
+  tier: 3
+  pointCost: 20
   durationDays: 2
   affinity: 0
   patternRequirements: []
   prerequisites:
-  - {fileID: 11400000, guid: 482d6aff5842f72468c447a3e9b0a04d, type: 2}
+  - {fileID: 11400000, guid: e87026786be056e45b360204afcb4671, type: 2}
   bootstrapUnlocked: 0
   upgradeGates: []
-  visibility: 4
+  visibility: 2
   visibilityPattern: {fileID: 0}
-  visibilityKey: 
+  visibilityKey: encounter.mercenaries
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: What are they, under the armour?
-  description: The measure of an intruder, laid bare. The stats panel is shown.
+  hiddenHint: What do they want?
+  description: The Company's ledger, read. Their profile and tactics show in the
+    faction panel.

@@ -87,6 +87,7 @@ public class TechNodeDefinition : ScriptableObject
         PatternKnown = 1,   // a material pattern has been discovered
         KeyUnlocked = 2,    // an arbitrary UnlockState key is set
         KillsOfClass = 3,   // RunStats.KillsByClass[name] >= count
+        KillsAny = 4,       // RunStats.TotalKills >= count (any adventurers slain)
     }
 
     /// <summary>Whether the node appears on the tree canvas at all.</summary>
@@ -102,6 +103,9 @@ public class TechNodeDefinition : ScriptableObject
                 if (RunStats.Instance == null || string.IsNullOrEmpty(visibilityClassName)) return false;
                 RunStats.Instance.KillsByClass.TryGetValue(visibilityClassName, out int kills);
                 return kills >= visibilityKillCount;
+            case VisibilityCondition.KillsAny:
+                if (RunStats.Instance == null) return false;
+                return RunStats.Instance.TotalKills >= visibilityKillCount;
             default:
                 return true;
         }

@@ -156,14 +156,19 @@ public class AdventurerStatsPanel : MonoBehaviour
         if (hpFill != null) hpFill.fillAmount = max > 0f ? Mathf.Clamp01(hp / max) : 0f;
 
         if (statsText != null)
+        {
+            string intentLine = UnlockState.IsUnlocked(UnlockState.OracleChamber)
+                ? AdventurerIntentHover.IntentLabel(current.Intent)
+                : "???";
             statsText.text =
                 $"HP        {hp:0} / {max:0}\n" +
                 $"Type      {current.Type}\n" +
                 $"Class     {current.FlavorClassName}\n" +
                 $"Affinity  {current.Affinity}\n" +
-                $"Intent    {current.Intent}\n" +
+                $"Intent    {intentLine}\n" +
                 $"Trait     {current.Trait}\n" +
                 $"Loot      {current.CarriedLootValue}g";
+        }
 
         RefreshPinButton();
     }

@@ -137,6 +137,15 @@ validations free. This is the room build-grant the research entry reserved as
 an "alternate route"; the framework ships here, content assignment (Oracle
 Chamber -> `oracle_chamber`) lands with the Oracle work.
 
+**Oracle Chamber (as built):** the foresight room -- min 12 tiles, maxTier 3,
+one `RaidForesight` marker effect, `techNodeUnlockKey = oracle_chamber` (grants
+intent-reveal on first validation via the build-grant above), `requiredTechKey`
+empty (buildable from the start, like the Library). It is the information room:
+while valid it reads the coming raid in the wave-preview HUD (see entry 15).
+Registered in `RoomDefinitionRegistry`. Supersedes the roadmap/backlog framing
+of the Oracle Chamber as a pure intent-tooltip room -- the tooltip is the
+`oracle_chamber` unlock (entry 2); the room's standing effect is foresight.
+
 **Persistence:** footprints are saved explicitly. Flood-fill-era saves carry
 no footprint and are seeded once via `MigrateFootprintFromFloodFill`.
 
@@ -191,8 +200,18 @@ COMMENT: the enum header still says "nine adventurer TYPES".
 leave; reduces Notoriety on completion), GiftGiver (drop tribute chest near
 entrance on arrival, then behave normally), Destroyer (beeline the core,
 ignore loot), **Delver** (hunt monsters for XP and loot, leave alive).
-GiftGiver is Cultist-only. Intent is hidden until the Oracle Chamber TechNode
-unlock; until then it is hinted through behaviour.
+GiftGiver is Cultist-only. Intent is hidden until the Oracle Chamber unlock
+(`UnlockState.OracleChamber` / node key `oracle_chamber`); until then it is
+hinted through behaviour. As built, the unlock is granted by EITHER route --
+researching Whispers of Intent, or building and validating an Oracle Chamber
+(its `RoomDefinition.techNodeUnlockKey` = `oracle_chamber`, granted on first
+validation via the room build-grant, see entry 1). Once understood, intent is
+revealed in two places, both gated on the same key: a cursor tooltip on
+adventurer hover (`UI/AdventurerIntentHover.cs`, reusing the shared
+TooltipController) and the Intent line of the click inspector
+(`AdventurerStatsPanel`, which reads `???` until unlocked). Labels come from
+`AdventurerIntentHover.IntentLabel`; all four intents are covered
+(Delver included).
 
 **Goals** (drive the state machine independently of intent): WorshipCore,
 LootAndLeave, BreachCore, ObserveRooms, SeekDeath, Delve.
@@ -305,6 +324,19 @@ The player sees a DISPLAYED snapshot refreshed at nightfall
 (`OnNightStarted`) in the Faction Panel; live values keep moving underneath.
 
 **Key files:** `Adventurer/FactionSystem.cs`.
+
+**Faction intel (as built):** each faction is first-seen when a member enters
+(`AdventurerParty.RegisterMember` calls `FactionIntel.NotifyEncounter`, setting
+`encounter.<slug>`). Two Observation-path research nodes -- Study the Holy
+Order (`faction_intel.holy_order`) and Study the Mercenary Company
+(`faction_intel.mercenaries`) -- are KeyUnlocked-visible on those encounter
+flags and prereq'd behind Ledger of the Fallen. Completing one reveals that
+faction's profile, tactics and dispatch roster (`FactionSystem.PoolFor`) as an
+intel block in the existing Faction panel (an `IntelLabel` row child); the
+roadmap's separate "intel panel / profile panel" is served in-panel.
+`FactionIntel` (`Gameplay/FactionIntel.cs`) holds the slugs, keys and text.
+Rejected: stand-alone per-faction windows (the panel already reserves the
+intel slot).
 
 ## 8. Recurring Threat Events
 
@@ -488,7 +520,13 @@ session). Income lands at dawn: every valid Library on every floor
 contributes magnitude x tier, ranked largest-first through serialised
 diminishing multipliers (1.0 / 0.5 / 0.25, then a 0.10 floor). Extra
 Libraries beyond the first also speed the ACTIVE project (+10% each, capped
-+30% -- income and speed are separate levers). Affinity halves point cost
++30% -- income and speed are separate levers). The active project also
+STALLS at any dawn when no valid Library stands (`pauseWithoutLibrary`,
+serialized default on) and resumes when one does, each transition announced
+once; the stall latch is transient. This is the as-built form of the
+roadmap's "research pauses if the Laboratory is destroyed" -- the Library is
+that room. Disabling the toggle restores the decoupled model (projects run to
+completion on banked points regardless of Libraries). Affinity halves point cost
 only. Bootstrap nodes (Remembered Bones, Remembered Spikes) unlock on new
 game via `bootstrapUnlocked`; they re-lock behind the tutorial wisp when the
 prologue lands. Loot books route through `GrantNodeFully` (bypasses points,
@@ -509,8 +547,12 @@ Sorcery stays absent), tiers are columns, prerequisite edges are elbow
 connectors drawn only when both endpoints are visible; every node reserves
 its layout slot so reveals never reflow. Node visibility is data-driven on
 `TechNodeDefinition` (Always / PatternKnown / KeyUnlocked / KillsOfClass via
-`RunStats.KillsByClass`); among visible nodes the DK2 name rule holds
-(revealed at one purchase away). Master-detail pane shows the affinity price
+`RunStats.KillsByClass` / KillsAny via `RunStats.TotalKills`); among visible
+nodes the DK2 name rule holds (revealed at one purchase away). Study
+Adventurer Anatomy is kill-revealed: KillsAny >= 1, so the first fallen
+intruder surfaces it (its Read the Coming Tide prereq still gates the
+research start). This is the as-built form of the roadmap's "kill an
+adventurer to unlock the task." Master-detail pane shows the affinity price
 struck against base, duration, and a requirement checklist where an unmet
 pattern shows only its source hint. Header strip carries the active project
 (the fill bar interpolates through the day via
@@ -519,8 +561,14 @@ plus ceil days), the queued project, and full-refund cancel buttons.
 `ResearchController.OnStateChanged` is static, so the panel updates the
 moment a project starts, queues, cancels or completes; requirement-block
 reasons no longer name undiscovered patterns.
-The node roster shipped: 13 nodes (Sorcery still empty). The Bronze-1
-bootstrap trio is restored as nodes -- Remembered Bones, Remembered Spikes
+The node roster shipped: 13 nodes (Sorcery still empty). Two faction-intel nodes join the Observation path (Study the Holy Order,
+Study the Mercenary Company), each KeyUnlocked-visible on an `encounter.<slug>`
+flag set from the adventurer spawn path -- the generic event-driven task hook:
+an event sets an UnlockState key, a KeyUnlocked node reveals off it, and the
+node's completion key gates the UI. With KillsAny (entry, Day-62 work) the
+reveal conditions are Always / PatternKnown / KeyUnlocked / KillsOfClass /
+KillsAny.
+The Bronze-1 bootstrap trio is restored as nodes -- Remembered Bones, Remembered Spikes
 and Remembered Sight (status bars; supersedes the free-forever note) -- all
 `bootstrapUnlocked`, re-locking behind the tutorial wisp later. Option C
 final mapping: damage numbers, minimap and alerts stay ungated; the ladder
@@ -620,8 +668,17 @@ two-room mapping), Spawn Chamber (RespawnSpeed 0.25, min 9), Arena
 (TrainingXp 2 + SparringXp 6, min 16 -- the Arena claims the previously
 orphaned TrainingXp; Barracks stays pure LairRegen and no separate Training
 Hall exists), Dread Chamber (AdventurerSlow 0.1, min 9), Ritual Circle
-(ManaRegen 1, min 9), Forge (TrapDamage 0.1, min 9). Nodes: Vaulted
-Reserves / Summoning Circle / The Drawn Circle (Architecture tier 2,
+(ManaRegen 1, min 9), Forge (TrapDamage 0.1, min 9). 
+`RaidForesight` (ordinal 14, Oracle Chamber marker) joins the STATE/CENSUS
+lane: `RoomEffectCensus.ForesightTier` holds the highest tier among valid
+rooms carrying it (all floors, `anchor.Tier` not EffectScale), and
+`WavePreviewHUD` reads it to deepen the raid preview -- tier 1 the likely
+intent, tier 2 the headline type, tier 3 the faction. The reading is a
+side-effect-free argmax of the live `AdventurerSpawner` intent/type weights
+(`PredictNextRaid`), never an RNG pre-roll, so it cannot desync actual
+spawns. `RoomEffectType` ordinals remain append-only: ..., TrapDamage=11,
+CryptPreservation=12, TrophyHousing=13, RaidForesight=14.
+Nodes: Vaulted Reserves / Summoning Circle / The Drawn Circle (Architecture tier 2,
 patterns Silverwork / Packed Earth / Quarry Sand, prereq Remembered
 Spikes), Proving Grounds / Coals Below (tier 3, Tempered Steel / Wrought
 Iron [reused -- pattern reuse across nodes is legal], prereq Deeper Lairs),

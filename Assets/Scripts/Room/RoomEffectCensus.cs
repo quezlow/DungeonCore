@@ -40,6 +40,10 @@ public class RoomEffectCensus : MonoBehaviour
     public static float TrapDamageMultiplier { get; private set; } = 1f;
     public static float ManaRegenPerSecond { get; private set; }
 
+    /// <summary>Highest tier among valid rooms carrying RaidForesight (0 = none).
+    /// Drives how deep the wave-preview reading goes.</summary>
+    public static int ForesightTier { get; private set; }
+
     /// <summary>Global monster attack multiplier from displayed trophies (1 = none).</summary>
     public static float MonsterDamageMultiplier { get; private set; } = 1f;
 
@@ -101,6 +105,7 @@ public class RoomEffectCensus : MonoBehaviour
         GoldCap = int.MaxValue;
         TrapDamageMultiplier = 1f;
         ManaRegenPerSecond = 0f;
+        ForesightTier = 0;
         attractor.Clear();
         chambers.Clear();
     }
@@ -122,6 +127,7 @@ public class RoomEffectCensus : MonoBehaviour
         int cap = baseGoldCap;
         float trapBonus = 0f;
         float mana = 0f;
+        int foresight = 0;
         attractor.Clear();
         chambers.Clear();
 
@@ -166,6 +172,9 @@ public class RoomEffectCensus : MonoBehaviour
                             case RoomEffectType.TrophyHousing:
                                 var hall = anchor.GetRoomTiles();
                                 if (hall != null) hallTiles.Add((floor, hall));
+                                break;
+                            case RoomEffectType.RaidForesight:
+                                if (anchor.Tier > foresight) foresight = anchor.Tier;
                                 break;
                         }
                     }
@@ -213,12 +222,14 @@ public class RoomEffectCensus : MonoBehaviour
                 || !Mathf.Approximately(newTrapMult, TrapDamageMultiplier)
                 || !Mathf.Approximately(mana, ManaRegenPerSecond)
                 || !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier)
+                || foresight != ForesightTier
                 || !Mathf.Approximately(trophyNoto, NotorietyPerSecond);
 
         GoldCap = cap;
         TrapDamageMultiplier = newTrapMult;
         ManaRegenPerSecond = mana;
         NotorietyPerSecond = trophyNoto;
+        ForesightTier = foresight;
 
         bool damageChanged = !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier);
         MonsterDamageMultiplier = newDamageMult;
