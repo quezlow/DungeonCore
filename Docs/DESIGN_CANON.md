@@ -68,6 +68,9 @@ the supersession in one line.
 **Part III -- Lore canon**
 20. Why Holy Sites Are Underground
 21. The Buried Age
+22. Deeds
+23. Trophy Hall
+24. Surface World: Procgen Forest Zone
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -991,6 +994,68 @@ Key files: `Room/TrophyDefinition.cs`, `Room/TrophyEffectType.cs`,
 `Room/RoomEffectCensus.cs`, `Monster/DungeonMonster.cs`,
 `DungeonCore/DungeonCore.cs`, `Traps/FurnitureSelectionUI.cs`.
 
+
+## 24. Surface World: Procgen Forest Zone
+
+Status: SHIPPED (Phase 8 substrate). Verified: 2026-07-15.
+
+The dungeon's surface footprint. A deterministic forest zone generated INSIDE
+the `Forest` scene, blending seamlessly into the hand-built forest content. It
+is the sibling of `SurfaceApronGenerator` (canon-adjacent, floor-0 cosmetic
+apron): self-arming, rebuilt identically on every scene load from the run's
+world seed, with NO forest-specific save schema.
+
+**Seed:** reuses `DungeonSaveData.worldSeed` (minted in
+`DungeonSaveController.InitializeNewGame`, restored in `LoadGame`). A plain
+static `RunContext` carries the seed across the scene boundary (set in both
+save paths); `ForestZoneGenerator` salts it (`FOREST_SALT`) so the forest RNG
+stream is independent of the floor streams. Regenerate-on-load, not
+serialize-the-layout. Supersedes any notion of storing forest tiles in the save.
+
+**Topology:** `Dungeon_Level_0` holds the dungeon, the cave mouth, the
+`SurfaceApronGenerator` apron, and the cave-entrance tunnel. A
+`SceneTransitionTrigger` on the tunnel loads the `Forest` scene at the
+`FromDungeonEntrance` spawn point (the avatar's route, later). Procgen and
+hand-built content share the one `Forest` scene with no load between them; the
+only scene load is the tunnel. Until the avatar exists, a dev-only
+`DevForestTravelButton` performs the same `SceneLoader.TransitionToScene`.
+
+**As built (Day 65 substrate):** a grass `Tilemap` with a cleared central road
+from the arrival to the hand-built edge; scattered tree/rock/decor prefabs;
+RESERVED camp zones -- one `camp.main` near the arrival plus up to two
+`camp.sat.N` satellites farther out, each a `CampZoneMarker` with an immutable
+`zoneId`; and inert `ResourceNodeStub`s scattered with a DISTANCE-FROM-ARRIVAL
+rarity gradient (common near, rare far), each carrying an immutable `nodeKey`.
+All geometry, densities, camp counts and the node-type table are data on one
+`ForestZoneProfile` asset. Camp interiors and the road corridor are kept clear
+of scatter and nodes.
+
+**Pre-avatar:** the player only observes. Assault staging stays inside the
+dungeon (canon 10); the forest is representational. Camp survivor tracking is
+flag-based and not physically simulated in the forest.
+
+**Not yet built (next sessions):** camp FORMATION (survivor thresholds via
+completed flags, buildings placed inside a reserved zone), camp EFFECTS
+(Cultist Notoriety, Adventurer spawn-interval, Priest reputation/mana),
+displacement/dissolution, node HARVESTING + depletion (avatar work), and
+surface ruins. The substrate reserves the zones and types those systems bind
+to; `zoneId` and `nodeKey` are immutable save keys.
+
+**Key files:** `Overworld/ForestZoneGenerator.cs`,
+`Overworld/ForestZoneProfile.cs` (+ `ResourceNodeType`),
+`Overworld/CampZoneMarker.cs`, `Overworld/ResourceNodeStub.cs`,
+`Overworld/DevForestTravelButton.cs`, `Save/RunContext.cs`; touches
+`Save/DungeonSaveController.cs` (publishes `RunContext.WorldSeed`). Reuses
+`Save/SceneLoader.cs`, `Save/SpawnPoint(Manager).cs`,
+`Overworld/SceneTransitionTrigger.cs`, `Floors/SurfaceApronGenerator.cs`
+(pattern).
+
+**Rejected:** serializing the forest layout (deterministic regen from the
+existing world seed instead); camps as point anchors (reserved regions, main +
+satellites); nodes clustered or attached only to buildings (scattered with a
+distance-rarity gradient; building-hosted nodes remain a later extension); a
+seamless confiner swap at the dungeon boundary (it is a scene load, matching
+every other doorway).
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*
