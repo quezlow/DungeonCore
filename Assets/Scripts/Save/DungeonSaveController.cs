@@ -637,9 +637,13 @@ public class DungeonSaveController : MonoBehaviour
                 if (floorData.floorIndex == 0)
                 {
                     FloorManager.Instance.SetFloorSeed(0, floorData.floorSeed);
+                    // After the feature-data pass: heal saves that discovered the entrance
+                    // before the scout branch existed.
                     var f0 = FloorManager.Instance.GetFloor(0);
                     if (f0 != null && f0.TerrainTypeMap != null && f0.Terrain != null)
                         f0.TerrainTypeMap.GenerateNew(floorData.floorSeed, f0.Terrain.CoreCell, f0.Terrain.CurrentRadius);
+                    if (f0?.FeatureGenerator != null && f0.FeatureGenerator.IsEntranceDiscovered)
+                        UnlockState.Unlock("event.entrance_discovered");
                     continue;
                 }
                 FloorManager.Instance.RecreateFloorFromSave(

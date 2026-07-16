@@ -71,6 +71,18 @@ public static class TechContentGenerator
             "The Company's ledger, read. Their profile and tactics show in the faction panel.");
         n_study_merc.overrideKey = "faction_intel.mercenaries";
 
+        var n_scout1 = Define("scout_1", "Sight Beyond the Threshold", ResearchPath.Observation, 1, 15, 7,
+    "The wood past the mouth is a blur. It need not stay so.",
+    "Cast the core's sight over the entrance clearing. Scout the near forest as a bounded view.");
+
+        var n_scout2 = Define("scout_2", "Eyes on the Deep Wood", ResearchPath.Observation, 2, 25, 14,
+            "There is more out there than the clearing shows.",
+            "Push the scouting sight deeper — reach the wood's inner camps.");
+
+        var n_scout3 = Define("scout_3", "The Far Marches", ResearchPath.Observation, 3, 40, 21,
+            "The tree line is not the world's edge.",
+            "Extend the sight to the forest's far edge, where it meets the old wood.");
+
         var n_deeper_lairs = Define("deeper_lairs", "Deeper Lairs", ResearchPath.Architecture, 2, 15, 2,
             "The beasts could rest easier, given better stone.",
             "Barracks upgrades past tier 1. Requires the pattern of Rough Stone.");
@@ -172,6 +184,17 @@ public static class TechContentGenerator
         n_whisperer_in_marrow.visibilityClassName = "Cleric";
         n_whisperer_in_marrow.visibilityKillCount = 5;
 
+        n_scout1.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
+        n_scout1.visibilityKey = "event.entrance_discovered";
+
+        AddPrereq(n_scout2, n_scout1);
+        n_scout2.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
+        n_scout2.visibilityKey = "event.entrance_discovered";
+
+        AddPrereq(n_scout3, n_scout2);
+        n_scout3.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
+        n_scout3.visibilityKey = "event.entrance_discovered";
+
         AddPrereq(n_vaulted_reserves, n_spike_trap);
         AddPattern(n_vaulted_reserves, "Silverwork");
         AddPrereq(n_summoning_circle, n_spike_trap);
@@ -192,7 +215,7 @@ public static class TechContentGenerator
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
              n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
-            n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark });
+            n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3 });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");

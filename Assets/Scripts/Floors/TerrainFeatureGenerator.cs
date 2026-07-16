@@ -256,6 +256,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData.entranceCave.discoveredDay < 0)
             featureData.entranceCave.discoveredDay =
                 DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        UnlockState.Unlock("event.entrance_discovered");   // reveals the scout branch
     }
 
     public int GetChamberId(Vector3Int cell)

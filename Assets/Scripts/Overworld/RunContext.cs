@@ -15,4 +15,20 @@ public static class RunContext
         WorldSeed = seed;
         HasWorldSeed = true;
     }
+
+    // --- Surface scouting (set when leaving to scout, read on return) ---
+    public static bool ScoutMode;          // true while a scout trip is in flight
+    public static float ScoutManaBudget;    // mana available at scout start
+    public static float ScoutSpend;         // mana spent this session (applied on return)
+    public static string ScoutReturnScene;   // gameplay scene to return to
+
+    public static void BeginScout(float manaBudget, string returnScene)
+    {
+        ScoutMode = true;
+        ScoutManaBudget = manaBudget;
+        ScoutSpend = 0f;
+        ScoutReturnScene = returnScene;
+    }
+
+    public static void EndScout() { ScoutMode = false; }
 }

@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: TheFarMarches
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: scout_3
+  overrideKey: 
+  displayName: The Far Marches
+  icon: {fileID: 0}
+  path: 0
+  tier: 3
+  pointCost: 40
+  durationDays: 21
+  affinity: 0
+  patternRequirements: []
+  prerequisites:
+  - {fileID: 11400000, guid: 3f6bbff9dc91bdd4dbf2efc875c3d5da, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 2
+  visibilityPattern: {fileID: 0}
+  visibilityKey: event.entrance_discovered
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: The tree line is not the world's edge.
+  description: Extend the sight to the forest's far edge, where it meets the old
+    wood.

@@ -963,6 +963,54 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9dfa5b682dcd46bda6128250e975f58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCamera
+--- !u!1 &1315372822
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1315372823}
+  - component: {fileID: 1315372824}
+  m_Layer: 0
+  m_Name: ScoutController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1315372823
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1315372822}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690650674426040}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1315372824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1315372822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c78c430ac458cfe40bbeb80aea55d863, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoutController
+  profile: {fileID: 11400000, guid: c99e233e2d7a0c0469856c42bf995491, type: 2}
+  originSpawnId: FromDungeonEntrance
+  cameraTarget: {fileID: 1526774952}
+  playerRoot: {fileID: 1526774953}
 --- !u!1 &1346925549
 GameObject:
   m_ObjectHideFlags: 0
@@ -1299,6 +1347,11 @@ PrefabInstance:
 --- !u!4 &1526774952 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 802569540297204268, guid: a1d3e1285cf79994a9471fbd8e28342e, type: 3}
+  m_PrefabInstance: {fileID: 1526774951}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1526774953 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8753081458238104713, guid: a1d3e1285cf79994a9471fbd8e28342e, type: 3}
   m_PrefabInstance: {fileID: 1526774951}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1706725134
@@ -1906,6 +1959,7 @@ Transform:
   - {fileID: 2116985070}
   - {fileID: 3187507138057910124}
   - {fileID: 1810592065781571448}
+  - {fileID: 1315372823}
   - {fileID: 790550401353258927}
   - {fileID: 1672435368555315345}
   - {fileID: 7616670303305884362}
