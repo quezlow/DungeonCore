@@ -55,7 +55,10 @@ public class WispCompanion : MonoBehaviour
 
     private Vector3 spriteHome;
     private readonly HashSet<string> spoken = new();
-    private readonly Queue<string> queue = new();
+    // Queued speech carries the resolved text plus an optional once-id (for the
+    // ambient one-shots). Tutorial lines enqueue text directly with no id.
+    private struct Utterance { public string id; public string text; }
+    private readonly Queue<Utterance> queue = new();
     private bool speaking;
     private bool notorietyHooked;
     private WispPersonality personality;
@@ -222,7 +225,16 @@ public class WispCompanion : MonoBehaviour
         if (line == null) return;
         if (line.once && HasSpoken(id)) return;
 
-        queue.Enqueue(id);
+        queue.Enqueue(new Utterance { id = id, text = line.text });
+        if (!speaking) StartCoroutine(DrainQueue());
+    }
+
+    /// <summary>Speak a line of raw text (the tutorial's path). No once-tracking:
+    /// the TutorialDirector decides what plays and when.</summary>
+    public void SpeakLine(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        queue.Enqueue(new Utterance { text = text });
         if (!speaking) StartCoroutine(DrainQueue());
     }
 
@@ -277,14 +289,17 @@ public class WispCompanion : MonoBehaviour
         speaking = true;
         while (queue.Count > 0)
         {
-            string id = queue.Dequeue();
-            WispScript.Line line = script.Get(id);
-            if (line == null) continue;
+            Utterance u = queue.Dequeue();
+            if (string.IsNullOrEmpty(u.text)) continue;
 
-            // Mark spoken as it is shown, so a mid-line quit still remembers it.
-            if (line.once) spoken.Add(id);
+            // Mark one-shot ids spoken as shown, so a mid-line quit still remembers.
+            if (!string.IsNullOrEmpty(u.id))
+            {
+                WispScript.Line line = script != null ? script.Get(u.id) : null;
+                if (line != null && line.once) spoken.Add(u.id);
+            }
 
-            yield return ShowLine(line.text);
+            yield return ShowLine(u.text);
         }
         yield return HidePanel();
         speaking = false;

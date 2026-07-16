@@ -20,6 +20,8 @@ public class WaveStageController : MonoBehaviour
     public static WaveStageController Instance { get; private set; }
 
     [Header("Timing")]
+    [Tooltip("Quiet days after the breach before the first wild things arrive - breathing room for a new player.")]
+    [Min(0)][SerializeField] private int graceDays = 1;
     [Tooltip("In-game days of wildlife-only assault after the entrance is breached, before adventurers begin. 0 = adventurers from the start.")]
     [Min(0)][SerializeField] private int animalStageDays = 5;
     [Tooltip("In-game days of curious commoners after the animal stage, before proper adventurers begin.")]
@@ -57,9 +59,12 @@ public class WaveStageController : MonoBehaviour
 
             int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
             int breach = cave.discoveredDay >= 0 ? cave.discoveredDay : day;
+            int grace = Instance != null ? Instance.graceDays : 0;
             int animalSpan = Instance != null ? Instance.animalStageDays : 5;
             int commonerSpan = Instance != null ? Instance.commonerStageDays : 0;
             int elapsed = day - breach;
+            if (elapsed < grace) return WaveStage.Dormant;                  // quiet day after the breach
+            elapsed -= grace;
             if (elapsed < animalSpan) return WaveStage.Animals;
             if (elapsed < animalSpan + commonerSpan) return WaveStage.Commoners;
             return WaveStage.Adventurers;

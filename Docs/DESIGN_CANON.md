@@ -532,7 +532,12 @@ that room. Disabling the toggle restores the decoupled model (projects run to
 completion on banked points regardless of Libraries). Affinity halves point cost
 only. Bootstrap nodes (Remembered Bones, Remembered Spikes) unlock on new
 game via `bootstrapUnlocked`; they re-lock behind the tutorial wisp when the
-prologue lands. Loot books route through `GrantNodeFully` (bypasses points,
+prologue lands. **Realised:** the trio's `bootstrapUnlocked` flags are now
+off, and the guided opening (TutorialDirector) grants each in place --
+status_bars when the player first claims, skeleton + spike_trap when the
+first spawner is armed. A completed run persists in
+`DungeonSaveData.tutorialComplete` and never replays; a `skipTutorial`
+toggle grants the trio up front for testing. Loot books route through `GrantNodeFully` (bypasses points,
 prerequisites AND duration; refunds if underway). Node keys are
 `tech.<id>` with an `overrideKey` field reserved for the legacy bare keys.
 The spine registers `RoomAnchor.UpgradeGate` from per-node `upgradeGates`
@@ -571,6 +576,33 @@ an event sets an UnlockState key, a KeyUnlocked node reveals off it, and the
 node's completion key gates the UI. With KillsAny (entry, Day-62 work) the
 reveal conditions are Always / PatternKnown / KeyUnlocked / KillsOfClass /
 KillsAny.
+
+## Guided Opening (TutorialDirector)
+
+**As built:** a soft, event-watched sequence teaches the first-build loop by
+leading the player to dig out the seeded entrance, then house the monster the
+breakthrough vignette hands them. Nothing is locked -- the wisp suggests and
+waits; each beat completes when the player acts, in any order. Beats: (1)
+claim territory -> grants `tech.status_bars`; (2) dig for the entrance -- the
+`EntranceCompass` stays hidden until this beat sets `TutorialDirector.DigPromptGiven`;
+(3) breakthrough -- the `event.entrance_discovered` unlock (fired by
+`MarkEntranceDiscovered`) triggers the First Blood vignette, whose mechanical
+payload is `BestiaryState.Discover("Cave Rat")` (choreography of hunter/arrow/
+absorb is a marked placeholder for its own session); (4) a grace day; (5)
+designate a room, then arm a spawner -- `MonsterSpawner.OnSpawnerArmed` (new)
+plus a prior valid `RoomAnchor.OnRoomValidationChanged` completes it, granting
+`tech.skeleton` + `tech.spike_trap`; (6) research the Ledger of Alarums --
+completes when `tech.alerts` unlocks (soft; the wisp re-prompts); (7) handoff.
+Tutorial lines live in a dedicated `WispTutorialScript` and speak through a new
+`WispCompanion.SpeakLine(text)` raw-text path (the ambient one-shot queue was
+refactored to carry either an id or raw text). The player-built Entrance build
+option is retired from the action bar -- Floor 0's entrance is the seeded
+tunnel, dug to, not placed.
+
+**Grace day:** `WaveStageController` gained a `graceDays` offset (default 1) --
+the wild-animal stage now begins `graceDays` after the breach, not on it, so a
+new player gets a quiet day after the vignette before the first wave.
+
 The Bronze-1 bootstrap trio is restored as nodes -- Remembered Bones, Remembered Spikes
 and Remembered Sight (status bars; supersedes the free-forever note) -- all
 `bootstrapUnlocked`, re-locking behind the tutorial wisp later. Option C

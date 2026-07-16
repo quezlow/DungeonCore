@@ -29,17 +29,17 @@ public static class TechContentGenerator
         var n_skeleton = Define("skeleton", "Remembered Bones", ResearchPath.Bestiary, 1, 0, 1,
             "Something stirs at the edge of recall.",
             "The shape of a servant, remembered whole. Skeletons may be placed.");
-        n_skeleton.bootstrapUnlocked = true;
+        n_skeleton.bootstrapUnlocked = false;   // granted by the tutorial wisp, not on new game
 
         var n_spike_trap = Define("spike_trap", "Remembered Spikes", ResearchPath.Architecture, 1, 0, 1,
             "A sharpness, half-forgotten.",
             "Iron teeth in the floor, remembered whole. Spike traps may be placed.");
-        n_spike_trap.bootstrapUnlocked = true;
+        n_spike_trap.bootstrapUnlocked = false;   // granted by the tutorial wisp, not on new game
 
         var n_status_bars = Define("status_bars", "Remembered Sight", ResearchPath.Observation, 1, 0, 1,
             "The dark was not always blind.",
             "The core perceives the vigour of things that move within it. Status bars are shown.");
-        n_status_bars.bootstrapUnlocked = true;
+        n_status_bars.bootstrapUnlocked = false;   // granted by the tutorial wisp, not on new game
 
         var n_wave_preview = Define("wave_preview", "Read the Coming Tide", ResearchPath.Observation, 1, 10, 1,
             "Footsteps, before they fall.",

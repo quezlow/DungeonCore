@@ -88,6 +88,11 @@ public class MonsterSpawner : MonoBehaviour
     public bool IsBossSpawner => definition is BossVariantDefinition;
     public bool HasLiveMonster => spawnedMonster != null;
     public DungeonMonster SpawnedMonster => spawnedMonster;
+
+    /// <summary>Raised when a spawner receives its monster (placed or respawned).
+    /// The tutorial listens for the first placement.</summary>
+    public static event System.Action<MonsterSpawner> OnSpawnerArmed;
+
     public string CustomName => customName;
 
     /// <summary>Floor this spawner stands on (cached; resolves lazily).</summary>
@@ -428,6 +433,7 @@ public class MonsterSpawner : MonoBehaviour
             spawnedMonster.transform.SetParent(floorRoot.transform, true);
 
         spawnedMonster.Initialise(this);
+        OnSpawnerArmed?.Invoke(this);
         if (transient && spawnedMonster != null) spawnedMonster.SetLifetime(minionLifetime);
         if (SpawnerSelectionController.Instance != null
             && SpawnerSelectionController.Instance.IsSelected(this))

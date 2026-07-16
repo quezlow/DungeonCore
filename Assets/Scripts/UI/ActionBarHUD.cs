@@ -70,7 +70,6 @@ public class ActionBarHUD : MonoBehaviour
     [SerializeField]
     private List<BuildSubmenuEntry> buildEntries = new()
     {
-        new() { label = "Entrance", mode = BuildMode.PlaceEntrance },
         new() { label = "Chest",    mode = BuildMode.PlaceChest    },
         new() { label = "Furniture", mode = BuildMode.PlaceFurniture },
         new() { label = "Room",      mode = BuildMode.PlaceRoomAnchor },

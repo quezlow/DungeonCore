@@ -54,6 +54,7 @@ public class DungeonSaveData
     public int alertUnreadCount = 0;
     public List<string> wispSpokenLines = new();          // tutorial one-shots already heard (additive; empty on old saves)
     public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
+    public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)
 
     public RunStatsSaveData runStats;
 

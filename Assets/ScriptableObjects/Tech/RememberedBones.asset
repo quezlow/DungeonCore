@@ -23,7 +23,7 @@ MonoBehaviour:
   affinity: 0
   patternRequirements: []
   prerequisites: []
-  bootstrapUnlocked: 1
+  bootstrapUnlocked: 0
   upgradeGates: []
   visibility: 0
   visibilityPattern: {fileID: 0}

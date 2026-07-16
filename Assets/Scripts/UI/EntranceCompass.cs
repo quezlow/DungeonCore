@@ -33,6 +33,7 @@ public class EntranceCompass : MonoBehaviour
         var core = DungeonCore.Instance;
 
         bool visible =
+            TutorialDirector.DigPromptGiven &&      // stays hidden until the wisp says to dig
             features != null &&
             features.EntranceCave != null &&
             !features.IsEntranceDiscovered &&

@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a38dbc4d80ebb5d42978640b860fb6ca, type: 3}
+  m_Name: WispTutorialScript
+  m_EditorClassIdentifier: Assembly-CSharp::WispTutorialScript
+  lines:
+  - id: tut_claim
+    text: First, spread. Hold the claim key and press outward - the dark flows where
+      you spend, and every cell of it is yours to build on.
+  - id: tut_dig
+    text: Feel that? Air, moving. There is a way to the surface, buried close. Dig
+      toward it - the pointer marks the bearing. Nothing comes for you until it is
+      open.
+  - id: tut_breach
+    text: Open. The world can see us now - and something already has. Watch.
+  - id: tut_rat_taken
+    text: A hunter's arrow, and a small life spilled at our threshold. The dark takes
+      what the surface discards. It is yours now - your first. Others will have seen
+      the light go out down here; they will come to look.
+  - id: tut_grace
+    text: But not yet. Word travels slowly, and the wild things below are still waking.
+      Use the quiet - there is much to raise before the first of them arrives.
+  - id: tut_room
+    text: Shape the raw dark into purpose. Mark out a room across the ground you
+      have mined, and name what it is for. Then set your new companion within it.
+  - id: tut_research
+    text: One thing more. Open the tree of what the core remembers, and learn the
+      Ledger of Alarums - so that nothing crosses our threshold again without your
+      knowing.
+  - id: tut_done
+    text: 'You have the shape of it now: spread, dig, shape, and watch. The rest
+      is yours to discover. Build well - they are coming, and I would like them to
+      be impressed.'
+  - id: tut_nudge_dig
+    text: The way in is still buried. Follow the pointer - dig toward the moving
+      air.
+  - id: tut_nudge_room
+    text: A room, when you are ready - marked across mined ground, then given a purpose
+      and your companion to hold it.
+  - id: tut_nudge_research
+    text: The Ledger of Alarums still waits in the tree, whenever you would have
+      warning of what comes.
