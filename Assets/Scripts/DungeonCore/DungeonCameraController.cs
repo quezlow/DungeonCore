@@ -272,6 +272,13 @@ public class DungeonCameraController : MonoBehaviour
     /// <summary>Max orthographic size — used by DungeonBoundsUpdater to size minimum bounds.</summary>
     public float MaxZoom => maxZoom;
 
+    /// <summary>Current zoom target - read by scripted moments so they can restore it.</summary>
+    public float TargetZoom => targetZoom;
+
+    /// <summary>Set the zoom target directly (clamped); the usual smoothing carries
+    /// the lens there. Used by scripted moments like the First Blood vignette.</summary>
+    public void NudgeZoom(float size) => targetZoom = Mathf.Clamp(size, minZoom, maxZoom);
+
     // ── Bookmark persistence (per-save) ───────────────────────────
     public struct BookmarkData { public bool set; public Vector3 pos; public int floor; public float zoom; }
 

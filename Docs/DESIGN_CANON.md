@@ -587,9 +587,9 @@ claim territory -> grants `tech.status_bars`; (2) dig for the entrance -- the
 `EntranceCompass` stays hidden until this beat sets `TutorialDirector.DigPromptGiven`;
 (3) breakthrough -- the `event.entrance_discovered` unlock (fired by
 `MarkEntranceDiscovered`) triggers the First Blood vignette, whose mechanical
-payload is `BestiaryState.Discover("Cave Rat")` (choreography of hunter/arrow/
-absorb is a marked placeholder for its own session); (4) a grace day; (5)
-designate a room, then arm a spawner -- `MonsterSpawner.OnSpawnerArmed` (new)
+payload is `BestiaryState.Discover("Cave Rat")` (staged by FirstBloodVignette;
+see the First Blood entry); (4) a grace day; 
+(5) designate a room, then arm a spawner -- `MonsterSpawner.OnSpawnerArmed` (new)
 plus a prior valid `RoomAnchor.OnRoomValidationChanged` completes it, granting
 `tech.skeleton` + `tech.spike_trap`; (6) research the Ledger of Alarums --
 completes when `tech.alerts` unlocks (soft; the wisp re-prompts); (7) handoff.
@@ -793,14 +793,21 @@ cells via the ACTIVE floor's influence -- garbage for spawners on
 Y-offset floors. Chambers now carry their FloorRoot and the spawner
 resolves against its own cached floor (`MonsterSpawner.Floor`).
 
-**Opening (decided; event not yet built):** the First Blood vignette -- a
-hunter chases a rat into the entrance cave shortly after the breach,
-kills it with an arrow, and the core absorbs the corpse before he
-reaches it, granting `BestiaryState.Discover("Cave Rat")` and giving the
-commoner stage its reason to investigate. Until that session ships, the
-Skeleton bootstrap unlock stays as a testing convenience. The
-discovered-beast channel is otherwise fully shipped: wild definitions
-sit in the placeable registry behind `requiresDiscovery`.
+**Opening (built):** the First Blood vignette is `FirstBloodVignette` -- pure
+puppet choreography (runtime SpriteRenderers, no live entities) staged from
+the seeded `EntranceCaveData` (mouthCell -> spawnCell axis), triggered by the
+TutorialDirector's breach step. Beats: rat sprints in, arrow loosed from
+beyond the mouth, kill, corpse pause, absorb (sink/shrink/tint toward the
+core's colour) firing `BestiaryState.Discover("Cave Rat")` at the take,
+hunter arrives late, one floating bark ("Gone? It dropped right here..."),
+exits. The camera glides to the tunnel via SetFollowTarget on a stage anchor
+plus a new `NudgeZoom`/`TargetZoom` API; manual pan breaks the hold natively.
+**This is a scoped exception to the Day-34 dynamic-camera rejection --
+approved for this vignette only, not a general reintroduction.** If the
+vignette is absent, the director's fallback grants the rat directly. The
+Skeleton bootstrap testing convenience is superseded by the tutorial's
+per-step grants. The discovered-beast channel is otherwise fully shipped: 
+wild definitions sit in the placeable registry behind `requiresDiscovery`.
 
 **Key files:** `Monster/MonsterCategory.cs`, `Room/MusterRooms.cs`,
 `Adventurer/FloorIntrusion.cs`, `Monster/MonsterSpawner.cs`,

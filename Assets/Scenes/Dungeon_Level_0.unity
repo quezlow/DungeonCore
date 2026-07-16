@@ -33467,6 +33467,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1056619643}
   - component: {fileID: 1056619644}
+  - component: {fileID: 1056619645}
   m_Layer: 0
   m_Name: TutorialDirector
   m_TagString: Untagged
@@ -33505,6 +33506,35 @@ MonoBehaviour:
   skipTutorial: 0
   openingDelay: 8
   nudgeAfterSeconds: 45
+--- !u!114 &1056619645
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1056619642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dbf59678bd035940b2aaa5c71cea24c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirstBloodVignette
+  ratSprite: {fileID: 21300000, guid: 371f5ad8a8772e744a88526eb95932e8, type: 3}
+  hunterSprite: {fileID: 3295236706101327806, guid: 5e235b71ae2b2e049a705d996ea47675, type: 3}
+  arrowSprite: {fileID: 10915, guid: 0000000000000000f000000000000000, type: 0}
+  sortingLayerName: Player
+  sortingOrder: 5
+  ratRunSpeed: 5
+  arrowSpeed: 16
+  hunterWalkSpeed: 3.2
+  corpsePause: 0.9
+  absorbSeconds: 1.2
+  moveCamera: 1
+  cameraZoom: 6
+  arrowSfx: ArrowLoose
+  deathSfx: RatDeath
+  absorbSfx: CoreAbsorb
+  hunterLine: Gone? It dropped right here...
+  hunterBarkColour: {r: 0.85, g: 0.8, b: 0.7, a: 1}
 --- !u!1 &1070672611
 GameObject:
   m_ObjectHideFlags: 0
@@ -61667,7 +61697,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99994355
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

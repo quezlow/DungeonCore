@@ -81,6 +81,39 @@ public class TutorialDirector : MonoBehaviour
         yield return new WaitForSeconds(openingDelay);
         running = true;
         Hook();
+        ResumeFromState();
+    }
+
+    /// <summary>Enter the sequence at the furthest step the save has already
+    /// satisfied. A mid-tutorial Continue must not deadlock: the persisted
+    /// entrance-discovered unlock never re-fires OnChanged, so the Dig step
+    /// would otherwise wait forever on a resumed save.</summary>
+    private void ResumeFromState()
+    {
+        bool entranceFound = UnlockState.IsUnlocked("event.entrance_discovered");
+
+        bool spawnerArmed = false;
+        foreach (var s in FindObjectsByType<MonsterSpawner>(FindObjectsSortMode.None))
+            if (s != null && s.SpawnedMonster != null) { spawnerArmed = true; break; }
+
+        if (entranceFound && spawnerArmed)
+        {
+            GrantOnce(KeyStatusBars);
+            GrantOnce(KeySkeleton);
+            GrantOnce(KeySpikeTrap);
+            EnterStep(Step.Research);   // its entry guard skips to Done if alerts are already learned
+            return;
+        }
+
+        if (entranceFound)
+        {
+            GrantOnce(KeyStatusBars);
+            foreach (var a in FindObjectsByType<RoomAnchor>(FindObjectsSortMode.None))
+                if (a != null && a.IsValid) { roomDesignated = true; break; }
+            EnterStep(Step.Build);
+            return;
+        }
+
         EnterStep(Step.Claim);
     }
 
@@ -120,6 +153,7 @@ public class TutorialDirector : MonoBehaviour
                 break;
 
             case Step.Research:
+                if (UnlockState.IsUnlocked(KeyAlerts)) { EnterStep(Step.Done); return; }
                 Say("tut_research");
                 break;
 
@@ -212,18 +246,25 @@ public class TutorialDirector : MonoBehaviour
     private IEnumerator RunBreachVignette()
     {
         Say("tut_breach");
-        yield return new WaitForSeconds(3.5f);
+        yield return new WaitForSeconds(1.5f);
 
-        // ---------------------------------------------------------------
-        // VIGNETTE CHOREOGRAPHY - PLACEHOLDER.
-        // A dedicated session authors the visible set piece: a hunter actor
-        // chases a rat into the entrance cave, looses an arrow, and the core
-        // absorbs the corpse a beat before he reaches it. Until then the one
-        // line below is the whole mechanical payload - it grants the first
-        // monster so the build lesson has something to house. Replace this
-        // comment with the staged sequence; keep the Discover call at its end.
-        // ---------------------------------------------------------------
-        BestiaryState.Instance?.Discover("Cave Rat");
+        // The staged set piece: hunter, arrow, and the dark taking the rat.
+        // Discover("Cave Rat") fires inside the vignette at the absorb beat.
+        // If the vignette is absent or cannot stage, fall back to the bare
+        // mechanical grant so the tutorial never stalls.
+        bool vignetteDone = false;
+        bool started = FirstBloodVignette.Instance != null
+            && FirstBloodVignette.Instance.Play(() => vignetteDone = true);
+
+        if (started)
+        {
+            while (!vignetteDone) yield return null;
+        }
+        else
+        {
+            yield return new WaitForSeconds(2.0f);
+            BestiaryState.Instance?.Discover("Cave Rat");
+        }
 
         yield return new WaitForSeconds(1.0f);
         Say("tut_rat_taken");
