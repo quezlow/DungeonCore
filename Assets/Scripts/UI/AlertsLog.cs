@@ -107,8 +107,12 @@ public class AlertsLog : MonoBehaviour
     }
 
     public void AddAlert(string message, Vector3 worldPos, int floorIndex,
-                         AlertCategory category)
+                             AlertCategory category)
     {
+        // Gated behind the Ledger of Alarums research node. Until researched the
+        // core keeps no account: nothing is recorded, tickered, or counted.
+        if (!UnlockState.IsUnlocked("tech.alerts")) return;
+
         var entry = BuildEntry(message, worldPos, floorIndex, category);
         AppendEntry(entry, fromLoad: false);
     }

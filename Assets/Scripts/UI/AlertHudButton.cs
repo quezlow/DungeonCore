@@ -39,12 +39,27 @@ public class AlertHudButton : MonoBehaviour
             AlertsLog.Instance.OnUnreadChanged -= HandleUnreadChanged;
             AlertsLog.Instance.OnUnreadChanged += HandleUnreadChanged;
         }
+
+        UnlockState.OnChanged += HandleUnlockChanged;
+        ApplyGate();
     }
 
     private void OnDisable()
     {
         if (AlertsLog.Instance != null)
             AlertsLog.Instance.OnUnreadChanged -= HandleUnreadChanged;
+        UnlockState.OnChanged -= HandleUnlockChanged;
+    }
+
+    // Gated behind the Ledger of Alarums research node.
+    private void HandleUnlockChanged(string key) => ApplyGate();
+
+    private void ApplyGate()
+    {
+        bool unlocked = UnlockState.IsUnlocked("tech.alerts");
+        if (button != null && button.gameObject.activeSelf != unlocked)
+            button.gameObject.SetActive(unlocked);
+        if (!unlocked && badgeRoot != null) badgeRoot.SetActive(false);
     }
 
     private void Start()

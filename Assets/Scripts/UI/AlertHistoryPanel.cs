@@ -113,6 +113,9 @@ public class AlertHistoryPanel : MonoBehaviour
 
     public void Toggle()
     {
+        // Gated behind the Ledger of Alarums research node: the L hotkey and the
+        // HUD button both route here, so one guard covers both.
+        if (!isOpen && !UnlockState.IsUnlocked("tech.alerts")) return;
         if (isOpen) Hide();
         else Show();
     }

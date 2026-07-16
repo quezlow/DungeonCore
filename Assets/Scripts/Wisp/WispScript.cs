@@ -97,8 +97,13 @@ public class WispScript : ScriptableObject
                 text = "First blood. The dark keeps the receipt - a little stronger now, and a little more known." },
             new Line { id = "first_monster_lost", once = true,
                 text = "One of yours has fallen. They are not endless. Spend them like they matter, and they will matter." },
- new Line { id = "notoriety_spike", once = true,
+            new Line { id = "notoriety_spike", once = true,
                 text = "Word of you is spreading. Bolder things will come now - the quiet days are ending." },
+
+            // Fires on each new material pattern. Not a one-shot: every discovery
+            // earns the nudge, since the codex now lives quietly in the journal.
+            new Line { id = "pattern_learned", once = false,
+                text = "Something new, remembered. It has settled into the codex - look when you like." },
         };
 
         barkSets = new[]

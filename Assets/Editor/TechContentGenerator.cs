@@ -45,7 +45,15 @@ public static class TechContentGenerator
             "Footsteps, before they fall.",
             "The next raid announces itself. The wave preview is shown.");
 
-        var n_known_parties = Define("known_parties", "Ledger of the Fallen", ResearchPath.Observation, 2, 15, 1,
+        var n_minimap = Define("minimap", "Map the Deep Warren", ResearchPath.Observation, 1, 10, 1,
+            "The shape of the dark, held in the mind.",
+            "The core learns the lay of its own halls. The minimap is shown.");
+
+        var n_alerts = Define("alerts", "Ledger of Alarums", ResearchPath.Observation, 1, 10, 1,
+            "Not every disturbance need go unmarked.",
+            "The core keeps a running account of what stirs. Alerts, their ledger, and the ticker are shown.");
+
+                var n_known_parties = Define("known_parties", "Ledger of the Fallen", ResearchPath.Observation, 2, 15, 1,
             "Names, kept in the dark.",
             "A ledger of parties within and nemeses without. Opens with K.");
 
@@ -212,7 +220,7 @@ public static class TechContentGenerator
         AddPrereq(n_waiting_dark, n_summoning_circle);
         AddPattern(n_waiting_dark, "Gravegold");
 
-        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_known_parties,
+        WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_minimap, n_alerts, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
              n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
             n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3 });

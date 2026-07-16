@@ -29679,10 +29679,12 @@ MonoBehaviour:
   completedPage: {fileID: 174778708}
   notesPage: {fileID: 1269600046}
   deedsPage: {fileID: 170990051}
+  patternsPage: {fileID: 0}
   activeTabButton: {fileID: 253760457}
   completedTabButton: {fileID: 1427835545}
   notesTabButton: {fileID: 1634987311}
   deedsTabButton: {fileID: 1832763561}
+  patternsTabButton: {fileID: 0}
   activeContent: {fileID: 1671346030}
   completedContent: {fileID: 1253242187}
   deedsContent: {fileID: 2053538105}
@@ -61433,7 +61435,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9952715
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

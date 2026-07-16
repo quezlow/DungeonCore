@@ -91,13 +91,27 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
             FloorManager.Instance.OnActiveFloorChanged += OnFloorChanged;
         HookFloor();
         dirty = true;
+
+        UnlockState.OnChanged += HandleUnlockChanged;
+        ApplyGate();
     }
 
     private void OnDisable()
     {
         if (FloorManager.Instance != null)
             FloorManager.Instance.OnActiveFloorChanged -= OnFloorChanged;
+        UnlockState.OnChanged -= HandleUnlockChanged;
         UnhookInfluence();
+    }
+
+    // Gated behind the Map the Deep Warren research node. The whole map hides
+    // until the key is set; it appears the moment research completes.
+    private void HandleUnlockChanged(string key) => ApplyGate();
+
+    private void ApplyGate()
+    {
+        bool unlocked = UnlockState.IsUnlocked("tech.minimap");
+        if (body != null && body.activeSelf != unlocked) body.SetActive(unlocked);
     }
 
     private void OnFloorChanged(int _)

@@ -564,7 +564,7 @@ plus ceil days), the queued project, and full-refund cancel buttons.
 `ResearchController.OnStateChanged` is static, so the panel updates the
 moment a project starts, queues, cancels or completes; requirement-block
 reasons no longer name undiscovered patterns.
-The node roster shipped: 13 nodes (Sorcery still empty). Two faction-intel nodes join the Observation path (Study the Holy Order,
+The node roster shipped: 15 nodes (Sorcery still empty). Two faction-intel nodes join the Observation path (Study the Holy Order,
 Study the Mercenary Company), each KeyUnlocked-visible on an `encounter.<slug>`
 flag set from the adventurer spawn path -- the generic event-driven task hook:
 an event sets an UnlockState key, a KeyUnlocked node reveals off it, and the
@@ -574,7 +574,12 @@ KillsAny.
 The Bronze-1 bootstrap trio is restored as nodes -- Remembered Bones, Remembered Spikes
 and Remembered Sight (status bars; supersedes the free-forever note) -- all
 `bootstrapUnlocked`, re-locking behind the tutorial wisp later. Option C
-final mapping: damage numbers, minimap and alerts stay ungated; the ladder
+final mapping: damage numbers stay ungated; minimap and alerts are now each
+gated by a tier-1 Observation node (Map the Deep Warren -> `tech.minimap`
+hides the Minimap body; Ledger of Alarums -> `tech.alerts` gates all three
+alert surfaces -- HUD button, history panel/L hotkey, and the AlertsLog
+ticker at AddAlert, so nothing is recorded until researched). Both are cheap
+early unlocks; no grandfathering, per the ladder rule. The ladder
 runs Read the Coming Tide (WavePreviewHUD) -> Ledger of the Fallen
 (KnownPartiesPanel) -> Study Adventurer Anatomy (`adventurer_stats`
 override) -> Whispers of Intent (`oracle_chamber` override; the Oracle room's
@@ -616,8 +621,14 @@ pattern. Persistence: additive `unlockedKeys` + `patternNotes` on
 `DungeonSaveData`, restored in `DungeonSaveController` with a silent terrain
 catch-up that also heals legacy saves; the existing tech keys ride the same
 field, fulfilling the "persistence lands with Laboratory" promise. The
-Materials HUD panel is now the Pattern Codex (silhouetted unknowns show
-their source hint; the collapsed chip counts discoveries); gold display
+Materials HUD panel became the Pattern Codex (silhouetted unknowns show
+their source hint), then moved off the HUD entirely into the journal as a
+fifth QuestLogUI tab (Active / Completed / Notes / Deeds / Patterns); the
+collapsed HUD chip is retired. PatternCodexUI is unchanged -- it rebuilds on
+its page OnEnable and on UnlockState.OnChanged as before. Discovery feedback
+no longer relies on the (now gated) alert: PatternDiscovery.Learn speaks a
+wisp bark (`pattern_learned`, not a one-shot) as the player-facing feel, and
+still records the alert for the ledger once alerts are unlocked. Gold display
 moved to the Level Panel. Class loot assets were re-authored from single
 tint-era entries into weighted rarity ladders (see
 `ScriptableObjects/Adventurers/Classes`). Pattern gating still concentrates

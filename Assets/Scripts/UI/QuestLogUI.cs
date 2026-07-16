@@ -29,12 +29,15 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private GameObject completedPage;
     [SerializeField] private GameObject notesPage;
     [SerializeField] private GameObject deedsPage;
+    [Tooltip("Hosts PatternCodexUI; this script only shows/hides it.")]
+    [SerializeField] private GameObject patternsPage;
 
     [Header("Tab buttons")]
     [SerializeField] private Button activeTabButton;
     [SerializeField] private Button completedTabButton;
     [SerializeField] private Button notesTabButton;
     [SerializeField] private Button deedsTabButton;
+    [SerializeField] private Button patternsTabButton;
 
     [Header("Quest lists (reuse QuestUI's prefabs)")]
     [SerializeField] private Transform activeContent;
@@ -47,7 +50,7 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private Color selectedTab = new Color(1f, 1f, 1f, 1f);
     [SerializeField] private Color unselectedTab = new Color(0.6f, 0.6f, 0.6f, 1f);
 
-    private const int TabActive = 0, TabCompleted = 1, TabNotes = 2, TabDeeds = 3;
+    private const int TabActive = 0, TabCompleted = 1, TabNotes = 2, TabDeeds = 3, TabPatterns = 4;
     private int currentTab = TabActive;
 
     public static QuestLogUI Instance { get; private set; }
@@ -69,6 +72,7 @@ public class QuestLogUI : MonoBehaviour
         if (completedTabButton != null) completedTabButton.onClick.AddListener(() => SelectTab(TabCompleted));
         if (notesTabButton != null) notesTabButton.onClick.AddListener(() => SelectTab(TabNotes));
         if (deedsTabButton != null) deedsTabButton.onClick.AddListener(() => SelectTab(TabDeeds));
+        if (patternsTabButton != null) patternsTabButton.onClick.AddListener(() => SelectTab(TabPatterns));
         if (panel != null) panel.SetActive(false);
         HideAllPages();
     }
@@ -107,6 +111,7 @@ public class QuestLogUI : MonoBehaviour
         if (completedPage != null) completedPage.SetActive(false);
         if (notesPage != null) notesPage.SetActive(false);
         if (deedsPage != null) deedsPage.SetActive(false);
+        if (patternsPage != null) patternsPage.SetActive(false);
         TodoListUI.Instance?.SetVisible(false);
     }
 
@@ -117,12 +122,14 @@ public class QuestLogUI : MonoBehaviour
         if (completedPage != null) completedPage.SetActive(tab == TabCompleted);
         if (notesPage != null) notesPage.SetActive(tab == TabNotes);
         if (deedsPage != null) deedsPage.SetActive(tab == TabDeeds);
+        if (patternsPage != null) patternsPage.SetActive(tab == TabPatterns);
         TodoListUI.Instance?.SetVisible(tab == TabNotes);
 
         Tint(activeTabButton, tab == TabActive);
         Tint(completedTabButton, tab == TabCompleted);
         Tint(notesTabButton, tab == TabNotes);
         Tint(deedsTabButton, tab == TabDeeds);
+        Tint(patternsTabButton, tab == TabPatterns);
 
         if (tab == TabActive) RebuildActive();
         else if (tab == TabCompleted) RebuildCompleted();

@@ -139,6 +139,11 @@ public class PatternDiscovery : MonoBehaviour
         UnlockState.Unlock(def.Key);
 
         if (!announce) return;
+
+        // The wisp is the player-facing feel of a discovery, independent of the
+        // alert ledger (which is gated behind its own research). The alert stays
+        // as the codex-history record and shows once alerts are unlocked.
+        WispCompanion.Instance?.Speak("pattern_learned");
         AlertsLog.Instance?.AddAlert(
             "A pattern settles into the core: " + def.displayName + ".",
             worldPos, floorIndex, AlertCategory.Discovery);

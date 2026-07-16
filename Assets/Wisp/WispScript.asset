@@ -43,6 +43,10 @@ MonoBehaviour:
     once: 1
     text: Word of you is spreading. Bolder things will come now - the quiet days
       are ending.
+  - id: pattern_learned
+    once: 0
+    text: Something new, remembered. It has settled into the codex - look when you
+      like.
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}
