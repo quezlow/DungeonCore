@@ -1445,8 +1445,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         else animDriver?.OnHurt();
     }
 
+    /// <summary>Raised whenever any dungeon monster is slain. The wisp listens for the first loss.</summary>
+    public static event System.Action OnAnyMonsterSlain;
+
     private void Die()
     {
+        OnAnyMonsterSlain?.Invoke();
         if (IsWild && wildDefinition != null)
             BestiaryState.Instance?.Discover(wildDefinition.monsterName);
 

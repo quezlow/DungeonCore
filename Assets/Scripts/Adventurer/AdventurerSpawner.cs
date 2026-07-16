@@ -390,6 +390,7 @@ public class AdventurerSpawner : MonoBehaviour
 
     private void SpawnParty()
     {
+        DungeonAdventurer.NotifyPartySpawned();
         if (adventurerTypes == null || adventurerTypes.Count == 0)
         {
             Debug.LogError("[AdventurerSpawner] adventurerTypes is empty.");

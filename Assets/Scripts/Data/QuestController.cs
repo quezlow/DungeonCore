@@ -88,6 +88,34 @@ public class QuestController : MonoBehaviour
         questUI?.UpdateQuestUI();
     }
 
+    /// <summary>
+    /// Increment-model objective progress for event facts the inventory recount
+    /// cannot derive - talking to an NPC, tripping a scripted interactable.
+    /// Advances every matching non-CollectItem objective across active quests.
+    /// CollectItem stays inventory-derived in CheckInventoryForQuests.
+    /// </summary>
+    public void ProgressObjective(string objectiveID, int amount = 1)
+    {
+        if (string.IsNullOrEmpty(objectiveID)) return;
+
+        bool changed = false;
+        foreach (QuestProgress quest in activateQuests)
+        {
+            foreach (QuestObjective objective in quest.objectives)
+            {
+                if (objective.type == ObjectiveType.CollectItem) continue;
+                if (objective.objectiveID != objectiveID) continue;
+                if (objective.currentAmount >= objective.requiredAmount) continue;
+
+                objective.currentAmount = Mathf.Min(
+                    objective.currentAmount + amount, objective.requiredAmount);
+                changed = true;
+            }
+        }
+
+        if (changed) questUI?.UpdateQuestUI();
+    }
+
     public bool IsQuestCompleted(string questID)
     {
         QuestProgress quest = activateQuests.Find(q => q.QuestID == questID);

@@ -195,6 +195,25 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Inspector escalation — adventurer deaths witnessed during this unit's visit.
     public static int AdventurerDeaths { get; private set; }
+
+    /// <summary>Raised the first time a party spawns this dungeon session. The wisp listens.</summary>
+    public static event System.Action OnFirstPartySpawned;
+
+    /// <summary>Raised whenever any adventurer is slain. The wisp listens for first blood.</summary>
+    public static event System.Action OnAnyAdventurerSlain;
+
+    private static bool firstPartyAnnounced;
+
+    /// <summary>Called by the spawner when an organic wave enters the dungeon.</summary>
+    public static void NotifyPartySpawned()
+    {
+        if (firstPartyAnnounced) return;
+        firstPartyAnnounced = true;
+        OnFirstPartySpawned?.Invoke();
+    }
+
+    /// <summary>Session reset so a new dungeon re-arms the one-shot announce.</summary>
+    public static void ResetSessionSignals() => firstPartyAnnounced = false;
     private int deathsAtArrival;
     private RoomAnchor roomTarget;
     private readonly HashSet<RoomAnchor> visitedRooms = new();
@@ -1521,9 +1540,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     /// <summary>True for a named Hero — the only kill that earns a monster a title.</summary>
     public bool IsNamedHero => named && type == AdventurerType.Hero;
 
+    /// <summary>True while actively fighting - used to hush ambient banter.</summary>
+    public bool IsInCombat => state == AdventurerState.Combat;
+
     private void Die()
     {
         AdventurerDeaths++;
+        OnAnyAdventurerSlain?.Invoke();
         DropCarriedTribute("fell with the offering");
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
         UnregisterFromFloor(currentFloor);

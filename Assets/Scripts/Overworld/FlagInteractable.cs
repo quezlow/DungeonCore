@@ -44,6 +44,9 @@ public class FlagInteractable : MonoBehaviour, IInteractable
     [Tooltip("On restore, re-fire onInteracted so hide-type effects (crate SetActive) reapply. Leave off for spawn-type effects like the spoil heap.")]
     [SerializeField] private bool fireEventsOnRestore = false;
 
+    [Tooltip("Optional. If set, using this interactable advances a matching Custom quest objective.")]
+    [SerializeField] private string progressesObjectiveID;
+
     private bool used;
     private bool isShowing;
     private int lineIndex;
@@ -93,6 +96,8 @@ public class FlagInteractable : MonoBehaviour, IInteractable
 
         used = true;
         if (!string.IsNullOrEmpty(flagID)) Persistence.SetFlag(flagID);
+        if (!string.IsNullOrEmpty(progressesObjectiveID))
+            QuestController.Instance?.ProgressObjective(progressesObjectiveID);
 
         if (givesQuest != null && QuestController.Instance != null &&
             !QuestController.Instance.IsQuestHandedIn(givesQuest.questID))

@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52866465351238f44895cbba4aee1586, type: 3}
+  m_Name: WispScript
+  m_EditorClassIdentifier: Assembly-CSharp::WispScript
+  lines:
+  - id: arrive_1
+    once: 1
+    text: Down at last. Smaller than I remember - but then, so were you.
+  - id: arrive_mana
+    once: 1
+    text: The orb is your breath. It fills on its own; spending it is the art.
+  - id: arrive_influence
+    once: 1
+    text: That glow along the ground is your reach - your influence. Build only where
+      the dark has spread, and it spreads as you build.
+  - id: arrive_await
+    once: 1
+    text: They do not know you are here yet. They will. When they come, be ready
+      - and be hungry.
+  - id: first_party
+    once: 1
+    text: There. The first of them, come to see what stirs. Let the dungeon introduce
+      itself.
+  - id: first_blood
+    once: 1
+    text: First blood. The dark keeps the receipt - a little stronger now, and a
+      little more known.
+  - id: first_monster_lost
+    once: 1
+    text: One of yours has fallen. They are not endless. Spend them like they matter,
+      and they will matter.
+  - id: notoriety_spike
+    once: 1
+    text: Word of you is spreading. Bolder things will come now - the quiet days
+      are ending.
+  barkSets:
+  - personality: 0
+    tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}
+    barks:
+    - Another hero. I'll alphabetise the bones later.
+    - Oh, they brought a torch. Adorable.
+    - I give this one four rooms. Five, if it prays first.
+    - Look at it, so brave, so briefly.
+    - You could just eat them. I'm only saying.
+    - Bold of them to knock.
+  - personality: 1
+    tint: {r: 0.66, g: 0.48, b: 0.52, a: 1}
+    barks:
+    - They walk in. They do not walk out.
+    - The stone is patient. So are we.
+    - Every one of them feeds the dark a little more.
+    - Flesh is brief. This place is not.
+    - Let them come. Let them stay.
+    - The deep is hungry today.
+  - personality: 2
+    tint: {r: 0.95, g: 0.89, b: 0.69, a: 1}
+    barks:
+    - Ooh, fresh visitors! Let's make an impression.
+    - You're getting good at this. I can tell.
+    - A new one! Quick, look menacing.
+    - I love this part. Do you love this part?
+    - So much to build, and the day's still young!
+    - They came all this way just for us. Sweet, really.
+  - personality: 3
+    tint: {r: 0.78, g: 0.82, b: 0.64, a: 1}
+    barks:
+    - That's a lot of them. That's more than usual, isn't it? Tell me that's usual.
+    - Are the traps set? Tell me the traps are set.
+    - I'm sure it's fine. It's probably fine. Is it fine?
+    - What if this is the one that gets through? What then?
+    - Maybe we build another wall. One more wall never hurt.
+    - I counted them twice. I did not like either number.
+  - personality: 4
+    tint: {r: 0.7, g: 0.5, b: 0.3, a: 1}
+    barks:
+    - More. Bring more.
+    - Warm. They are warm. Good.
+    - Hungry. The dark is hungry.
+    - They run. I like when they run.
+    - Take. Take and keep.
+    - Down. Bring them down.
+  - personality: 5
+    tint: {r: 0.6, g: 0.62, b: 0.7, a: 1}
+    barks:
+    - I have watched a hundred of you rise. You are, so far, above average.
+    - Build your halls. They always fall. That is not a reason to build them poorly.
+    - I knew this dark when it was only a crack in the world.
+    - They think they are the first to come here. They are so rarely the first.
+    - Time is a slow tide. We are the rocks it forgets to move.
+    - I have forgotten more cores than the surface has kings. Do not be forgettable.
+  - personality: 6
+    tint: {r: 0.9, g: 0.84, b: 0.6, a: 1}
+    barks:
+    - They come to be judged. You are the judgment.
+    - I am not worthy to light your halls, and yet you let me. I will not forget
+      it.
+    - Speak, and the dark will shape itself. I have seen it obey you.
+    - Every stone here is a prayer. You are the one who answers.
+    - Let them kneel or let them fall. Both are worship, in the end.
+    - I serve gladly. There is no higher use for a small light than this.

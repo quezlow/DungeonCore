@@ -52,6 +52,8 @@ public class DungeonSaveData
 
     public List<AlertEntrySaveData> alertHistory = new();
     public int alertUnreadCount = 0;
+    public List<string> wispSpokenLines = new();          // tutorial one-shots already heard (additive; empty on old saves)
+    public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
 
     public RunStatsSaveData runStats;
 

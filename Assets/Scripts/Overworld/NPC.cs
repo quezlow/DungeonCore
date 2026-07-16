@@ -6,6 +6,9 @@ using UnityEngine.UI;
 public class NPC : MonoBehaviour, IInteractable
 {
     public NPCDialogue dialogueData;
+
+    [Tooltip("Optional. If set, opening this NPC's dialogue advances a matching TalkNPC quest objective.")]
+    public string talkObjectiveID;
     private DialogueController dialogueUI;
 
     private int dialogueIndex;
@@ -45,7 +48,11 @@ public class NPC : MonoBehaviour, IInteractable
         //Sync with quest data
         SyncQuestState();
 
-        if(questState == QuestState.NotStarted)
+        // Talk-type objectives advance on the conversation opening.
+        if (!string.IsNullOrEmpty(talkObjectiveID))
+            QuestController.Instance?.ProgressObjective(talkObjectiveID);
+
+        if (questState == QuestState.NotStarted)
         {
             dialogueIndex = 0;
         } 

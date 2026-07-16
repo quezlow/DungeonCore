@@ -202,6 +202,7 @@ public class DungeonSaveController : MonoBehaviour
         ResearchController.Instance?.ResetForNewGame();
 
         AlertsLog.Instance?.ClearHistory();
+        DungeonAdventurer.ResetSessionSignals();   // re-arm the wisp's one-shot party announce
 
         SaveGame();
 
@@ -289,6 +290,12 @@ public class DungeonSaveController : MonoBehaviour
         {
             currentSave.alertHistory = AlertsLog.Instance.GetSaveData();
             currentSave.alertUnreadCount = AlertsLog.Instance.GetUnreadCountForSave();
+        }
+
+        if (WispCompanion.Instance != null)
+        {
+            currentSave.wispSpokenLines = WispCompanion.Instance.GetSpokenForSave();
+            currentSave.wispPersonality = WispCompanion.Instance.GetPersonalityForSave();
         }
 
         if (TodoListUI.Instance != null)
@@ -728,6 +735,9 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.alertHistory ?? new System.Collections.Generic.List<AlertEntrySaveData>(),
                 currentSave.alertUnreadCount);
             }
+
+            WispCompanion.Instance?.RestoreSpokenFromSave(currentSave.wispSpokenLines);
+            WispCompanion.Instance?.RestorePersonalityFromSave(currentSave.wispPersonality);
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);
