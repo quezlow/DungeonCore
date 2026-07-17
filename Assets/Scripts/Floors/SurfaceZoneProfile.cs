@@ -67,6 +67,14 @@ public class SurfaceZoneProfile : ScriptableObject
     [Tooltip("In-game day-night cycles for the camera bounds to reach a newly researched band's edge.")]
     [Min(0.05f)] public float creepDays = 1f;
 
+    [Header("City gate (spawned at the deepest band's road end)")]
+    [Tooltip("Optional visual for the gate. Null = invisible trigger only.")]
+    public GameObject gatePrefab;
+    [Tooltip("Trigger collider size in world units.")]
+    public Vector2 gateTriggerSize = new Vector2(4f, 4f);
+    [Tooltip("Cells inward from the gate for the return-arrival marker -- keeps arrivals outside the trigger.")]
+    [Min(1)] public int gateReturnInset = 3;
+
     /// <summary>Deepest authored band edge. Node dist01 normalises against
     /// this, so a type's meaning is fixed in the world regardless of how much
     /// has been researched.</summary>

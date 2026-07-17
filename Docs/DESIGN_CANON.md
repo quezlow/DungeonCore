@@ -1095,6 +1095,18 @@ researched. Node types (`SurfaceNodeType`, immutable `nodeKey`) and camp ids
 are the only save-facing identities; future harvesting and camp formation
 bind to them.
 
+**City gate:** the deepest authored band carries the passage to
+civilisation. When that band paints, the generator raises a gate at the
+road's end (`CityGate`: a trigger into `City` at spawn `FromForestRoad`,
+optional `gatePrefab` visual) plus a default return `SpawnPoint` `FromCity`
+a few cells back down the road, outside the trigger so arrivals cannot
+bounce straight back. The City scene hand-places the counterparts: a default
+`FromForestRoad` spawn and a return trigger to `Dungeon_Level_0` at
+`FromCity`. Return arrivals are completed by the generator itself --
+`SpawnPointManager` runs on the first frame, before the gate can exist, so
+expect its one benign warning per return trip. The wandering merchant's
+future arrival stages through this gate.
+
 **Player interaction:** pre-avatar the player only observes. Assault staging
 stays inside the dungeon (canon 10). A live layer -- adventurers milling at
 camps and gathering at the mouth before walking in together -- is a planned
@@ -1111,7 +1123,9 @@ middle entry re-targets every hand-placed door after it.
 (+ `SurfaceBand`, `SurfaceNodeType`), `Overworld/CampZoneMarker.cs`,
 `Overworld/ResourceNodeStub.cs`; touches `DungeonCore/DungeonBoundsUpdater.cs`
 (surface AABB union + `MarkDirty`), `Save/DungeonSaveController.cs`
-(`RunContext` publish removed), `TESTING/Commands.cs` (scout toggles).
+(`RunContext` publish removed), `TESTING/Commands.cs` (scout toggles),
+`Overworld/SceneTransitionTrigger.cs` and `Save/SpawnPoint.cs` (runtime
+`Configure` initialisers for the gate).
 Supersedes `Floors/SurfaceApronGenerator.cs` (deleted; band 0 replaces it --
 same parameters, freshly hashed layout, acceptable in alpha).
 

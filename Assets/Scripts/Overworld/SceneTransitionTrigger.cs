@@ -23,6 +23,17 @@ public class SceneTransitionTrigger : MonoBehaviour
     [SerializeField] private GameScene targetScene;
     [SerializeField] private string spawnPointID;
 
+    /// <summary>
+    /// Runtime initialiser for generated triggers. Procgen features (the
+    /// city gate at the road's seeded end) sit at seed-dependent positions,
+    /// so their triggers cannot be hand-placed in the scene.
+    /// </summary>
+    public void Configure(GameScene scene, string spawnId)
+    {
+        targetScene = scene;
+        spawnPointID = spawnId;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!collision.CompareTag("Player")) return;

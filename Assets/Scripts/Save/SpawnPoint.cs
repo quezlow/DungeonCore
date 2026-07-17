@@ -22,6 +22,17 @@ public class SpawnPoint : MonoBehaviour
     public string SpawnPointID => spawnPointID;
     public bool IsDefault => isDefault;
 
+    /// <summary>
+    /// Runtime initialiser for generated spawn points. Procgen features (the
+    /// city gate at the road's seeded end) sit at seed-dependent positions,
+    /// so their return markers cannot be hand-placed in the scene.
+    /// </summary>
+    public void Configure(string id, bool asDefault)
+    {
+        spawnPointID = id;
+        isDefault = asDefault;
+    }
+
     public void PlacePlayer()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");

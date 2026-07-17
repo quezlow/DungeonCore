@@ -34,6 +34,12 @@ public class SurfaceZoneGenerator : MonoBehaviour
     [SerializeField] private Transform campParent;
     [SerializeField] private Transform nodeParent;
 
+    [Header("City gate ids")]
+    [Tooltip("Arrival SpawnPoint id inside the City scene.")]
+    [SerializeField] private string citySpawnId = "FromForestRoad";
+    [Tooltip("Id of the return SpawnPoint generated behind the gate.")]
+    [SerializeField] private string returnSpawnId = "FromCity";
+
     // -- floor + anchor state ------------------------------------------------
     private FloorRoot floor;
     private DungeonBoundsUpdater bounds;
@@ -53,6 +59,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
     private float creepRate;
     private int lastDirtyCell = -1;
     private int satCounter;
+    private string pendingSpawnId;
     private readonly HashSet<Vector3Int> roadCells = new HashSet<Vector3Int>();
     private readonly HashSet<Vector3Int> trailCells = new HashSet<Vector3Int>();
     private readonly HashSet<Vector3Int> shoulderCells = new HashSet<Vector3Int>();
@@ -76,7 +83,12 @@ public class SurfaceZoneGenerator : MonoBehaviour
     private void Awake()
     {
         floor = GetComponentInParent<FloorRoot>();
-        if (floor == null || floor.FloorIndex != 0) enabled = false;
+        if (floor == null || floor.FloorIndex != 0) { enabled = false; return; }
+
+        // Snapshot before SpawnPointManager clears it -- the gate's return
+        // spawn cannot exist yet on the frame the scene loads, so that
+        // arrival is completed here once the gate is raised.
+        pendingSpawnId = SceneTransitionData.TargetSpawnPointID;
     }
 
     private void OnEnable() { UnlockState.OnChanged += HandleUnlockChanged; }
@@ -249,6 +261,10 @@ public class SurfaceZoneGenerator : MonoBehaviour
 
         PlaceNodes(bandIndex, band, inner, outer);
         paintedDepth = outer;
+
+        // The deepest authored band carries the passage to civilisation:
+        // the road's end is where the City begins.
+        if (outer == profile.MaxDepth()) SpawnGate(outer);
     }
 
     private void SpawnScatter(Vector3Int cell)
@@ -527,6 +543,54 @@ public class SurfaceZoneGenerator : MonoBehaviour
 
     private static int Chebyshev(Vector3Int a, Vector3Int b)
         => Mathf.Max(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y));
+
+    // -- city gate -----------------------------------------------------------
+
+    private void SpawnGate(int outerDepth)
+    {
+        Vector3Int gateCell = CellAt(roadBearingDeg, outerDepth - 1);
+        GameObject gate;
+        if (profile.gatePrefab != null)
+        {
+            gate = Instantiate(profile.gatePrefab,
+                               floor.TileInfluence.CellToWorld(gateCell),
+                               Quaternion.identity, transform);
+            gate.name = "CityGate";
+        }
+        else
+        {
+            gate = new GameObject("CityGate");
+            gate.transform.SetParent(transform, true);
+            gate.transform.position = floor.TileInfluence.CellToWorld(gateCell);
+        }
+        var col = gate.GetComponent<BoxCollider2D>();
+        if (col == null) col = gate.AddComponent<BoxCollider2D>();
+        col.isTrigger = true;
+        col.size = profile.gateTriggerSize;
+        var trigger = gate.GetComponent<SceneTransitionTrigger>();
+        if (trigger == null) trigger = gate.AddComponent<SceneTransitionTrigger>();
+        trigger.Configure(SceneNames.GameScene.City, citySpawnId);
+
+        // Return marker a few cells back down the road, outside the trigger,
+        // so arriving from the City cannot bounce straight back.
+        Vector3Int retCell = CellAt(roadBearingDeg,
+                                    outerDepth - 1 - profile.gateReturnInset);
+        var ret = new GameObject("CityGateReturnSpawn");
+        ret.transform.SetParent(transform, true);
+        ret.transform.position = floor.TileInfluence.CellToWorld(retCell);
+        var spawn = ret.AddComponent<SpawnPoint>();
+        spawn.Configure(returnSpawnId, asDefault: true);
+
+        // Finish an arrival SpawnPointManager could not perform -- it runs
+        // on the scene's first frame, before this spawn can exist. Harmless
+        // when no Player-tagged object is present.
+        if (pendingSpawnId == returnSpawnId) spawn.PlacePlayer();
+        pendingSpawnId = null;
+
+        Debug.Log($"[SurfaceZoneGenerator] City gate raised at road depth {outerDepth}.");
+    }
+
+    // -- helpers -------------------------------------------------------------
 
     private void MarkBoundsDirty()
     {
