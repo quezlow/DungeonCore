@@ -164,7 +164,6 @@ public class DungeonSaveController : MonoBehaviour
     private void InitializeNewGame()
     {
         WorldSeed = new System.Random().Next();
-        RunContext.SetWorldSeed(WorldSeed);   // publish for surface scenes
 
         // DAY 34 — Apply pending new-game name (type applied in DungeonCore.Awake).
         string dungeonName = "Unnamed Dungeon";
@@ -626,9 +625,7 @@ public class DungeonSaveController : MonoBehaviour
 
             currentSave = data;
 
-            // Stage 4: full restoration (Day 31 logic, unchanged).
             WorldSeed = currentSave.worldSeed;
-            RunContext.SetWorldSeed(WorldSeed);   // publish for surface scenes
             if (currentSave.coreData != null) DungeonCore.Instance.LoadSaveData(currentSave.coreData);
             if (DayNightCycle.Instance != null && currentSave.dayNightData != null)
                 DayNightCycle.Instance.LoadSaveData(currentSave.dayNightData);

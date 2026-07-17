@@ -70,7 +70,7 @@ the supersession in one line.
 21. The Buried Age
 22. Deeds
 23. Trophy Hall
-24. Surface World: Procgen Forest Zone
+24. Surface World: Radial Forest Bands
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -1045,67 +1045,82 @@ Key files: `Room/TrophyDefinition.cs`, `Room/TrophyEffectType.cs`,
 `DungeonCore/DungeonCore.cs`, `Traps/FurnitureSelectionUI.cs`.
 
 
-## 24. Surface World: Procgen Forest Zone
+## 24. Surface World: Radial Forest Bands
 
-Status: SHIPPED (Phase 8 substrate). Verified: 2026-07-15.
+Status: SHIPPED (Phase 8 substrate, radial rework). Verified: 2026-07-16.
 
-The dungeon's surface footprint. A deterministic forest zone generated INSIDE
-the `Forest` scene, blending seamlessly into the hand-built forest content. It
-is the sibling of `SurfaceApronGenerator` (canon-adjacent, floor-0 cosmetic
-apron): self-arming, rebuilt identically on every scene load from the run's
-world seed, with NO forest-specific save schema.
+The dungeon's surface footprint is ONE radial world inside `Dungeon_Level_0`:
+concentric forest bands ring the floor-0 bedrock rim. There is no separate
+surface scene, no scene load, and no hand-built surface content -- the old
+apron is simply band 0 of the forest.
 
-**Seed:** reuses `DungeonSaveData.worldSeed` (minted in
-`DungeonSaveController.InitializeNewGame`, restored in `LoadGame`). A plain
-static `RunContext` carries the seed across the scene boundary (set in both
-save paths); `ForestZoneGenerator` salts it (`FOREST_SALT`) so the forest RNG
-stream is independent of the floor streams. Regenerate-on-load, not
-serialize-the-layout. Supersedes any notion of storing forest tiles in the save.
+**Bands and research:** band 0 (32 cells deep beyond the rim) is always on
+and reproduces the old apron's look. Bands 1-3 reach total depths 45 / 70 /
+100 and are gated by the authored scout chain `tech.scout_1/2/3` (Sight
+Beyond the Threshold, Eyes on the Deep Wood, The Far Marches -- entrance-
+discovery visibility, chained prerequisites). Research IS the cost of sight:
+there is no per-second scouting mana and no scout trip.
 
-**Topology:** `Dungeon_Level_0` holds the dungeon, the cave mouth, the
-`SurfaceApronGenerator` apron, and the cave-entrance tunnel. A
-`SceneTransitionTrigger` on the tunnel loads the `Forest` scene at the
-`FromDungeonEntrance` spawn point (the avatar's route, later). Procgen and
-hand-built content share the one `Forest` scene with no load between them; the
-only scene load is the tunnel. Until the avatar exists, a dev-only
-`DevForestTravelButton` performs the same `SceneLoader.TransitionToScene`.
+**Sight creep:** a newly researched band paints in full the moment its key
+unlocks; the camera bounds then creep outward to the new edge over roughly
+`creepDays` day-night cycles (default 1), on scaled time -- pause halts the
+spread, speed-up hastens it. The creep is monotonic (a chained unlock moves
+the target further out) and unsaved (loading lands at full researched depth).
+`DungeonBoundsUpdater` unions the revealed disc into the floor-0 confiner
+AABB and exposes `MarkDirty()` for the generator.
 
-**As built (Day 65 substrate):** a grass `Tilemap` with a cleared central road
-from the arrival to the hand-built edge; scattered tree/rock/decor prefabs;
-RESERVED camp zones -- one `camp.main` near the arrival plus up to two
-`camp.sat.N` satellites farther out, each a `CampZoneMarker` with an immutable
-`zoneId`; and inert `ResourceNodeStub`s scattered with a DISTANCE-FROM-ARRIVAL
-rarity gradient (common near, rare far), each carrying an immutable `nodeKey`.
-All geometry, densities, camp counts and the node-type table are data on one
-`ForestZoneProfile` asset. Camp interiors and the road corridor are kept clear
-of scatter and nodes.
+**Determinism:** per-cell ground and scatter use a position hash of
+(cell, seed), so unlocking a band never reshuffles ground that already
+exists. Camps, trails, and nodes use per-purpose, per-band salted streams.
+The seed derives from the entrance mouth and bearing (the apron idiom);
+`RunContext` is retired. Nothing on the surface is saved.
 
-**Pre-avatar:** the player only observes. Assault staging stays inside the
-dungeon (canon 10); the forest is representational. Camp survivor tracking is
-flag-based and not physically simulated in the forest.
+**Road and trails:** the pilgrim road continues the seeded cave bearing
+through every band (half-width 2, clearance 3, live values). Satellite camps
+get wobble-walk footpath trails (`trailTile`, falling back to `roadTile`;
+1 cell wide with a 1-cell scatter-free shoulder) that join the nearest point
+of the existing network -- the road or an earlier trail -- so paths branch
+off paths organically. Trails sweep any props beneath them, so live unlocks
+and fresh loads converge on the same world.
 
-**Not yet built (next sessions):** camp FORMATION (survivor thresholds via
-completed flags, buildings placed inside a reserved zone), camp EFFECTS
-(Cultist Notoriety, Adventurer spawn-interval, Priest reputation/mana),
-displacement/dissolution, node HARVESTING + depletion (avatar work), and
-surface ruins. The substrate reserves the zones and types those systems bind
-to; `zoneId` and `nodeKey` are immutable save keys.
+**Camps:** `camp.main` sits on the road in band 1 (depth 38); band 2 adds
+two satellites, band 3 two more (`camp.sat.N`, globally numbered). Minimum
+35-cell and 60-degree bearing separation keeps camps far apart for future
+inter-camp play -- no constant combat outside the dungeon.
 
-**Key files:** `Overworld/ForestZoneGenerator.cs`,
-`Overworld/ForestZoneProfile.cs` (+ `ResourceNodeType`),
-`Overworld/CampZoneMarker.cs`, `Overworld/ResourceNodeStub.cs`,
-`Overworld/DevForestTravelButton.cs`, `Save/RunContext.cs`; touches
-`Save/DungeonSaveController.cs` (publishes `RunContext.WorldSeed`). Reuses
-`Save/SceneLoader.cs`, `Save/SpawnPoint(Manager).cs`,
-`Overworld/SceneTransitionTrigger.cs`, `Floors/SurfaceApronGenerator.cs`
-(pattern).
+**Nodes:** per-band counts on a fixed radial gradient; `dist01` normalises
+against the FULL authored depth, so a type's meaning never stretches --
+exotics live only in the deep ring and simply do not exist until band 3 is
+researched. Node types (`SurfaceNodeType`, immutable `nodeKey`) and camp ids
+are the only save-facing identities; future harvesting and camp formation
+bind to them.
 
-**Rejected:** serializing the forest layout (deterministic regen from the
-existing world seed instead); camps as point anchors (reserved regions, main +
-satellites); nodes clustered or attached only to buildings (scattered with a
-distance-rarity gradient; building-hosted nodes remain a later extension); a
-seamless confiner swap at the dungeon boundary (it is a scene load, matching
-every other doorway).
+**Player interaction:** pre-avatar the player only observes. Assault staging
+stays inside the dungeon (canon 10). A live layer -- adventurers milling at
+camps and gathering at the mouth before walking in together -- is a planned
+follow-on guide, not part of this substrate.
+
+**Retired and deleted:** the `Forest` scene (and its Build Settings entry),
+`ForestZoneGenerator`, `ForestZoneProfile` (+ asset), `DevForestTravelButton`,
+`ScoutHudButton`, `ScoutController`, `ScoutReturnApplier`, `ScoutTierProfile`
+(+ asset), and `RunContext`. `GameScene.Forest` stays in the enum as a
+commented orphan: the enum int-serialises in scene triggers, and removing a
+middle entry re-targets every hand-placed door after it.
+
+**Key files:** `Floors/SurfaceZoneGenerator.cs`, `Floors/SurfaceZoneProfile.cs`
+(+ `SurfaceBand`, `SurfaceNodeType`), `Overworld/CampZoneMarker.cs`,
+`Overworld/ResourceNodeStub.cs`; touches `DungeonCore/DungeonBoundsUpdater.cs`
+(surface AABB union + `MarkDirty`), `Save/DungeonSaveController.cs`
+(`RunContext` publish removed), `TESTING/Commands.cs` (scout toggles).
+Supersedes `Floors/SurfaceApronGenerator.cs` (deleted; band 0 replaces it --
+same parameters, freshly hashed layout, acceptable in alpha).
+
+**Rejected:** a separate Forest scene reached by a tunnel scene-load (one
+radial world instead); hand-built surface content; serializing the layout or
+the creep progress; per-second scout mana (research is the cost); staged
+tile painting during the creep (the confiner hides unrevealed ground, so
+paint instantly and creep only the bounds); removing `GameScene.Forest`
+(the int-shift trap).
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*

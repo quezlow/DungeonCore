@@ -92,6 +92,27 @@ public class Commands : MonoBehaviour
     [ContextMenu("Test Add Notoriety")]
     void TestNotoriety() => DungeonCore.Instance.AddNotoriety(10f);
 
+    [ContextMenu("Test Toggle Scout Tier 1")]
+    void TestToggleScout1()
+    {
+        UnlockState.Toggle("tech.scout_1");
+        Debug.Log($"[Commands] scout_1 unlocked = {UnlockState.IsUnlocked("tech.scout_1")}");
+    }
+
+    [ContextMenu("Test Toggle Scout Tier 2")]
+    void TestToggleScout2()
+    {
+        UnlockState.Toggle("tech.scout_2");
+        Debug.Log($"[Commands] scout_2 unlocked = {UnlockState.IsUnlocked("tech.scout_2")}");
+    }
+
+    [ContextMenu("Test Toggle Scout Tier 3")]
+    void TestToggleScout3()
+    {
+        UnlockState.Toggle("tech.scout_3");
+        Debug.Log($"[Commands] scout_3 unlocked = {UnlockState.IsUnlocked("tech.scout_3")}");
+    }
+
     [ContextMenu("Test Toggle Oracle Chamber Unlock")]
     void TestToggleOracle()
     {

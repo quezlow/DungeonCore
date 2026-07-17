@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// A reserved camp region in the procgen forest. Placed by ForestZoneGenerator.
+/// A reserved camp region on the surface. Placed by SurfaceZoneGenerator.
 /// Carries a stable, immutable id the camp-formation system binds its
 /// survivor-count flags to. Holds no camp state itself.
 /// </summary>

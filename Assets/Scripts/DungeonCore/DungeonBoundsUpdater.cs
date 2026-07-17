@@ -60,6 +60,9 @@ public class DungeonBoundsUpdater : MonoBehaviour
 
     private bool boundsDirty;
 
+    // Floor-0 surface bands: found lazily, read for the AABB union.
+    private SurfaceZoneGenerator surfaceZone;
+
     // Scratch buffer for SetPath — avoids per-recalc allocation.
     private readonly Vector2[] pointBuffer = new Vector2[4];
 
@@ -114,6 +117,10 @@ public class DungeonBoundsUpdater : MonoBehaviour
     // ── Event Handlers ────────────────────────────────────────────
 
     private void HandleTileCountChanged(int _) => boundsDirty = true;
+
+    /// <summary>External dirty hook -- the surface generator calls this when
+    /// research reveals a new band and as the sight-creep advances.</summary>
+    public void MarkDirty() => boundsDirty = true;
 
     // ── Recalculation ─────────────────────────────────────────────
 
@@ -178,6 +185,29 @@ public class DungeonBoundsUpdater : MonoBehaviour
             maxWorldX = maxWorld.x + halfCellX;
             minWorldY = minWorld.y - halfCellY;
             maxWorldY = maxWorld.y + halfCellY;
+        }
+
+        // Floor 0: union with the revealed surface disc so the camera can
+        // pan over researched forest bands (sight-creep widens this over
+        // roughly a day after each unlock).
+        if (myFloor.FloorIndex == 0)
+        {
+            if (surfaceZone == null)
+                surfaceZone = myFloor.GetComponentInChildren<SurfaceZoneGenerator>(true);
+            float revealed = surfaceZone != null ? surfaceZone.RevealedDepthCells : 0f;
+            if (revealed > 0f)
+            {
+                Vector3 span = influence.CellToWorld(new Vector3Int(1, 1, 0))
+                             - influence.CellToWorld(Vector3Int.zero);
+                float cellSize = Mathf.Max(Mathf.Abs(span.x), Mathf.Abs(span.y));
+                Vector3 c = influence.CellToWorld(myFloor.Terrain.CoreCell);
+                float worldR = (myFloor.Terrain.CurrentRadius + revealed + paddingCells)
+                             * cellSize;
+                minWorldX = Mathf.Min(minWorldX, c.x - worldR);
+                maxWorldX = Mathf.Max(maxWorldX, c.x + worldR);
+                minWorldY = Mathf.Min(minWorldY, c.y - worldR);
+                maxWorldY = Mathf.Max(maxWorldY, c.y + worldR);
+            }
         }
 
         // Enforce minimum size by inflating around the AABB centre.

@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d83897eac2fb5b4e9ad87e8576935e7, type: 3}
+  m_Name: SurfaceZoneProfile
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceZoneProfile
+  grassTile: {fileID: 11400000, guid: 676b8faaf7d2ecc4bad72959c30786d0, type: 2}
+  roadTile: {fileID: 11400000, guid: 9ab0c8d2352a0de46a1d1499fa8c8fbc, type: 2}
+  trailTile: {fileID: 11400000, guid: 9ab0c8d2352a0de46a1d1499fa8c8fbc, type: 2}
+  roadHalfWidth: 2
+  roadClearance: 3
+  treeFreeInnerBand: 4
+  treePrefabs:
+  - {fileID: 3907452720261168758, guid: db7352ced3047a74f9de288d566fcb5d, type: 3}
+  - {fileID: 4413558056821991290, guid: 85e8ebc4d242fd541a24cf3e14ffba88, type: 3}
+  - {fileID: 4585162806093087042, guid: 1e07ee75f61f6a749bd7d44aa33bc4da, type: 3}
+  - {fileID: 1357726068694254334, guid: a7b18436052729e4eb9fec44dbe8097d, type: 3}
+  - {fileID: 4069393593609523799, guid: 3972bcbbb8601674d914874c23e110b0, type: 3}
+  rockPrefabs: []
+  decorPrefabs: []
+  bands:
+  - unlockKey: 
+    outerDepth: 32
+    densityInner: 0.02
+    densityOuter: 0.3
+    hasMainCamp: 0
+    satelliteCampCount: 0
+    nodeCount: 3
+  - unlockKey: tech.scout_1
+    outerDepth: 45
+    densityInner: 0.25
+    densityOuter: 0.2
+    hasMainCamp: 1
+    satelliteCampCount: 0
+    nodeCount: 6
+  - unlockKey: tech.scout_2
+    outerDepth: 70
+    densityInner: 0.2
+    densityOuter: 0.15
+    hasMainCamp: 0
+    satelliteCampCount: 2
+    nodeCount: 8
+  - unlockKey: tech.scout_3
+    outerDepth: 100
+    densityInner: 0.15
+    densityOuter: 0.1
+    hasMainCamp: 0
+    satelliteCampCount: 2
+    nodeCount: 10
+  mainCampRadius: 5
+  mainCampRoadDepth: 38
+  satelliteCampRadius: 3.5
+  minCampSeparation: 35
+  minCampBearingDeg: 60
+  nodeTypes:
+  - nodeKey: node.wood
+    displayName: Wood
+    stubPrefab: {fileID: 0}
+    minSpawnDistance01: 0
+    maxSpawnDistance01: 0.6
+    weight: 3
+  - nodeKey: node.stone
+    displayName: Stone
+    stubPrefab: {fileID: 0}
+    minSpawnDistance01: 0
+    maxSpawnDistance01: 0.7
+    weight: 2
+  - nodeKey: node.herb
+    displayName: Herb
+    stubPrefab: {fileID: 0}
+    minSpawnDistance01: 0.4
+    maxSpawnDistance01: 1
+    weight: 2
+  - nodeKey: node.exotic
+    displayName: Exotic
+    stubPrefab: {fileID: 0}
+    minSpawnDistance01: 0.7
+    maxSpawnDistance01: 1
+    weight: 1
+  nodeMinSpacing: 3
+  creepDays: 1
