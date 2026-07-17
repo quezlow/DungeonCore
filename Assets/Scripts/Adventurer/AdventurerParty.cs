@@ -195,6 +195,10 @@ public class AdventurerParty
         resolvedCount++;
     }
 
+    /// <summary>Raised once per member who leaves the dungeon alive. The
+    /// camp-growth layer listens: escapees settle the surface camps.</summary>
+    public static event System.Action<AdventurerParty, PartyMember> MemberEscaped;
+
     /// <summary>Called when a member dies or escapes. When all members have resolved,
     /// a tracked party is recorded for return and the party leaves the active list.</summary>
     public void OnMemberResolved(PartyMember member, bool escaped, bool breached = false, int lootValue = 0)
@@ -205,6 +209,8 @@ public class AdventurerParty
         member.breached = breached;
         member.lootValue = lootValue;
         resolvedCount++;
+
+        if (escaped) MemberEscaped?.Invoke(this, member);
 
         // A slain member may break a combat party's nerve. The fraction needed to
         // break varies with disposition — cowards bolt early, the bold hold on.

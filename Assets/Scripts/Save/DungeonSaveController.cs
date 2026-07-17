@@ -318,6 +318,8 @@ public class DungeonSaveController : MonoBehaviour
         if (TrackedPartyRegistry.Instance != null)
         {
             currentSave.trackedParties = TrackedPartyRegistry.Instance.GetSaveData();
+            if (CampGrowthController.Instance != null)
+                currentSave.campGrowth = CampGrowthController.Instance.GetSaveData();
             currentSave.liveParties = new();
             foreach (var p in TrackedPartyRegistry.Instance.ActiveParties)
                 if (p != null) currentSave.liveParties.Add(p.CaptureSaveState());
@@ -747,6 +749,7 @@ public class DungeonSaveController : MonoBehaviour
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);
             TrackedPartyRegistry.Instance?.RestoreFromSave(currentSave.trackedParties);
+            CampGrowthController.Instance?.RestoreFromSave(currentSave.campGrowth);
             InspectorEscalation.Instance?.RestoreFromSave(currentSave.inspectorEscalation);
             FactionSystem.Instance?.RestoreFromSave(currentSave.factionSystem);
 

@@ -59,6 +59,20 @@ public class SurfaceZoneProfile : ScriptableObject
     [Tooltip("Minimum bearing separation between any two camps, degrees.")]
     [Range(0f, 180f)] public float minCampBearingDeg = 60f;
 
+    [Header("Camp growth tiers (open-ended: add rows for future tiers, e.g. Town)")]
+    public List<CampTierDef> campTiers = new List<CampTierDef>
+    {
+        new CampTierDef { name = "Waystation", growthThreshold = 0,
+                          millerMultiplier = 0.5f },
+        new CampTierDef { name = "Camp", growthThreshold = 8,
+                          millerMultiplier = 1f },
+        new CampTierDef { name = "Settlement", growthThreshold = 20,
+                          millerMultiplier = 1.5f },
+    };
+    [Tooltip("Growth cap for camp.main -- overflow spills to satellites.")]
+    [Min(1)] public int mainGrowthCap = 30;
+    [Min(1)] public int satelliteGrowthCap = 20;
+
     [Header("Resource nodes")]
     public List<SurfaceNodeType> nodeTypes = new List<SurfaceNodeType>();
     [Min(1)] public int nodeMinSpacing = 3;
@@ -115,4 +129,30 @@ public class SurfaceNodeType
     [Range(0f, 1f)] public float minSpawnDistance01 = 0f;
     [Range(0f, 1f)] public float maxSpawnDistance01 = 1f;
     [Min(0.01f)] public float weight = 1f;
+}
+
+/// <summary>
+/// One camp growth tier. The commerce prefab is the tier's narrative anchor
+/// (cart -> stall -> shop -> whatever a future Town row brings) and doubles
+/// as the wandering merchant's eventual dock; it is placed facing the way
+/// home. Props fill the rest of the clearing, position-hashed and stable.
+/// </summary>
+[Serializable]
+public class CampTierDef
+{
+    public string name = "Camp";
+    [Tooltip("Growth needed to reach this tier.")]
+    [Min(0)] public int growthThreshold;
+    [Tooltip("The tier's commerce anchor: cart, market stall, shop...")]
+    public GameObject commercePrefab;
+    public List<CampPropEntry> props = new List<CampPropEntry>();
+    [Tooltip("Scales the surface-life miller counts at this tier.")]
+    [Min(0f)] public float millerMultiplier = 1f;
+}
+
+[Serializable]
+public class CampPropEntry
+{
+    public GameObject prefab;
+    [Min(1)] public int count = 1;
 }

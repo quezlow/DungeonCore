@@ -78,6 +78,10 @@ public class SurfaceZoneGenerator : MonoBehaviour
     /// union follows this; 0 until the generator has armed.</summary>
     public float RevealedDepthCells => armed ? revealedDepth : 0f;
 
+    /// <summary>The authored surface profile, for sibling systems
+    /// (camp growth reads the tier tables).</summary>
+    public SurfaceZoneProfile Profile => profile;
+
     // -- lifecycle -----------------------------------------------------------
 
     private void Awake()

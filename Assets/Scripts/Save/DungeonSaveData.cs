@@ -62,6 +62,8 @@ public class DungeonSaveData
 
     public List<TrackedParty> trackedParties = new();
 
+    public List<CampGrowthSaveData> campGrowth = new();
+
     public List<LivePartySaveData> liveParties = new();
 
     public InspectorEscalationSaveData inspectorEscalation;

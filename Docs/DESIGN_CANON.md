@@ -71,6 +71,7 @@ the supersession in one line.
 22. Deeds
 23. Trophy Hall
 24. Surface World: Radial Forest Bands
+25. Camp Growth
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -1092,7 +1093,8 @@ off paths organically. Trails sweep any props beneath them, so live unlocks
 and fresh loads converge on the same world.
 
 **Camps:** `camp.main` sits on the road in band 1 (depth 38); band 2 adds
-two satellites, band 3 two more (`camp.sat.N`, globally numbered). Minimum
+two satellites, band 3 two more (`camp.sat.N`, globally numbered; growth,
+tiers, and commerce buildout are entry 25). Minimum
 35-cell and 60-degree bearing separation keeps camps far apart for future
 inter-camp play -- no constant combat outside the dungeon.
 
@@ -1151,6 +1153,57 @@ the creep progress; per-second scout mana (research is the cost); staged
 tile painting during the creep (the confiner hides unrevealed ground, so
 paint instantly and creep only the bounds); removing `GameScene.Forest`
 (the int-shift trap).
+
+
+## 25. Camp Growth
+
+Status: SHIPPED (Phase 8). Verified: 2026-07-17.
+
+Survivors settle the surface. Every adventurer who leaves the dungeon alive
+(commoner-stage escapees included) adds one growth to a receiving camp:
+`camp.main` until its cap (30), then satellites in unlock order (cap 20
+each). One event carries all of it -- `AdventurerParty.MemberEscaped`,
+raised from `OnMemberResolved`, the single resolution point every exit path
+shares. Growth is flat (+1 per escape, fled and satisfied alike) and
+accrues to zone ids even before their band is researched: the guild was
+already gathering, so a late-researched camp can reveal mid-tier.
+
+**Tiers** are an open-ended authored list on the surface profile
+(`campTiers`): Waystation (0 -- a lone cart that got wind of a new
+dungeon, a fire ring, bedrolls), Camp (8 -- tents and a market stall),
+Settlement (20 -- a shop, more tents, palisade pieces). A future Town row
+(tavern, houses lining the road, wild-west main street) is one new row
+plus art -- zero code. Each tier defines a **commerce anchor** (cart ->
+stall -> shop), placed facing the way home (dungeon-ward, toward the road
+or trail in) and doubling as the wandering merchant's eventual dock, plus
+a prop table placed position-hashed as LOCAL offsets under the marker
+(stable across loads; retuned camp positions carry their buildings).
+Miller counts from entry 24's surface-life layer scale by the tier's
+`millerMultiplier` (0.5 / 1 / 1.5).
+
+**Persistence:** one additive save block, `campGrowth` on
+`DungeonSaveData` (`{zoneId, growth, factionTallies}`), captured and
+restored beside the tracked-party registry. Buildout is never saved -- it
+rebuilds from ledger + tier tables, silently after a load (wisp barks fire
+only on live tier-ups). Faction tallies are recorded per camp from day one
+via `FactionSystem.FactionForKill`; nothing reads them yet -- they are the
+seam for the identity/effects guide (typed camps, sim pressure, passive
+decay, displacement later still).
+
+**Key files:** `Overworld/CampGrowthController.cs`; touches
+`Adventurer/AdventurerParty.cs` (`MemberEscaped`),
+`Floors/SurfaceZoneProfile.cs` (`CampTierDef`/`CampPropEntry`, caps),
+`Floors/SurfaceZoneGenerator.cs` (`Profile` accessor),
+`Overworld/SurfaceLifeController.cs` (tier-scaled millers),
+`Save/DungeonSaveData.cs` + `Save/DungeonSaveController.cs` (additive
+`campGrowth` block).
+
+**Rejected:** weighting satisfied vs fled escapees (flat +1 is readable;
+revisit with effects); saving buildout layouts (ledger + hash suffices);
+per-survivor pathing to camps (escape is a resolution event, not a walk);
+building camp props into the band generator (tiers change live mid-session,
+generation paints once).
+
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*

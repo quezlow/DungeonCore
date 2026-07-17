@@ -176,6 +176,11 @@ public class SurfaceLifeController : MonoBehaviour
             : (main ? Random.Range(dayMainMin, dayMainMax + 1)
                     : Random.Range(daySatelliteMin, daySatelliteMax + 1));
 
+        // Camp tier scales the crowd: waystations are sparse, settlements busy.
+        if (CampGrowthController.Instance != null)
+            count = Mathf.Max(1, Mathf.RoundToInt(
+                count * CampGrowthController.Instance.MillerMultiplier(marker.ZoneId)));
+
         var list = new List<Puppet>();
         for (int i = 0; i < count; i++)
         {
