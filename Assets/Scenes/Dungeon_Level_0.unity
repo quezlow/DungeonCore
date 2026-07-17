@@ -1063,6 +1063,7 @@ GameObject:
   m_Component:
   - component: {fileID: 34309510}
   - component: {fileID: 34309511}
+  - component: {fileID: 34309512}
   m_Layer: 0
   m_Name: SurfaceZoneGenerator
   m_TagString: Untagged
@@ -1078,12 +1079,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 34309509}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 4987690651016387498}
+  m_Father: {fileID: 1321636149}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &34309511
 MonoBehaviour:
@@ -1104,6 +1105,42 @@ MonoBehaviour:
   nodeParent: {fileID: 1345943169}
   citySpawnId: FromForestRoad
   returnSpawnId: FromCity
+--- !u!114 &34309512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 34309509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 322ab3703b5089840ab6693269fcbf93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceLifeController
+  daySprites:
+  - {fileID: 3295236706101327806, guid: cd3af5707155e914fb92f0d51b4d5de3, type: 3}
+  - {fileID: 3295236706101327806, guid: 0ca91dace51729849a58433e98c061bc, type: 3}
+  - {fileID: 3295236706101327806, guid: 5fb1cff683d18584e91f5a2fd2073d00, type: 3}
+  - {fileID: 3295236706101327806, guid: bbe128b0d2e46f94792afcdb1aea40f4, type: 3}
+  - {fileID: 3295236706101327806, guid: f278d5485b723ab45a76dcb56ce4320e, type: 3}
+  nightWatchSprites:
+  - {fileID: 3295236706101327806, guid: 0dc3b0882fdfa2c47bfebfc446c9aae2, type: 3}
+  - {fileID: 3295236706101327806, guid: 828682c30f0eea94399e9b979c55d370, type: 3}
+  sortingLayerName: Player
+  sortingOrder: 5
+  dayMainMin: 5
+  dayMainMax: 7
+  daySatelliteMin: 3
+  daySatelliteMax: 5
+  nightMainCount: 2
+  nightSatelliteCount: 1
+  wanderSpeed: 1.1
+  campRescanSeconds: 3
+  approachLeadSeconds: 8
+  approachMin: 2
+  approachMax: 3
+  approachWalkSpeed: 2.6
+  mouthLingerTimeout: 12
 --- !u!1001 &38387355
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -40547,6 +40584,7 @@ Transform:
   - {fileID: 1873368288}
   - {fileID: 1345943169}
   - {fileID: 1635583173}
+  - {fileID: 34309510}
   - {fileID: 468668986}
   - {fileID: 1894963498}
   - {fileID: 328756362}
@@ -63248,7 +63286,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0005807444}
+  m_AnchoredPosition: {x: 0, y: 0.00023736944}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -66681,8 +66719,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
   affinityProfiles: {fileID: 11400000, guid: f9fa54e470b5ced4bb2dcfee6f323fcc, type: 2}
   varietyBias: 2
-  organizeBaseSeconds: 2.5
-  organizePerMember: 1
+  organizeBaseSeconds: 4
+  organizePerMember: 0.8
   organizeJitter: 1
 --- !u!1 &737226779995572404
 GameObject:
@@ -70332,7 +70370,6 @@ Transform:
   - {fileID: 790550401661680829}
   - {fileID: 883343522}
   - {fileID: 799155392}
-  - {fileID: 34309510}
   - {fileID: 1241417957}
   - {fileID: 1672435368230136707}
   - {fileID: 1995073985}

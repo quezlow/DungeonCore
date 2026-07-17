@@ -142,9 +142,16 @@ public class AdventurerSpawner : MonoBehaviour
     // occupy a slot, so natural waves hold while a Hero raids.
     private readonly List<AdventurerParty> liveParties = new();
 
+    /// <summary>Raised whenever any spawn path registers a live party -- the
+    /// single choke point every arrival shares. The surface-life layer uses
+    /// it to clear road-approach walkers the moment the real party appears.</summary>
+    public static event System.Action PartyRegistered;
+
     private void RegisterLiveParty(AdventurerParty party)
     {
-        if (party != null) liveParties.Add(party);
+        if (party == null) return;
+        liveParties.Add(party);
+        PartyRegistered?.Invoke();
     }
 
     /// <summary>Parties with at least one member still alive in the dungeon.
@@ -752,7 +759,9 @@ public class AdventurerSpawner : MonoBehaviour
     {
         FormationType formation = FormationFor(partyType);
         party.Formation = formation;
-        if (formation == FormationType.None) return;
+        // Every party takes the muster window now: formations use it to hold
+        // their slots as before, formation-less parties mill loosely at the
+        // mouth, and the whole group advances together at OrganizeEndTime.
 
         // Advance direction: entrance -> core (fallback right).
         Vector2 dir = Vector2.right;

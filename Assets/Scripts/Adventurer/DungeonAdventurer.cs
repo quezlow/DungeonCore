@@ -266,6 +266,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     // Formation — assigned slot to hold during Organizing.
     private Vector3? formationSlot;
 
+    // Loose muster (formation-less parties): drift target near the mouth.
+    private Vector3 musterTarget;
+    private float nextMusterStepTime;
+
     private List<Vector3> currentPath = new();
     private int pathIndex = 0;
 
@@ -458,11 +462,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         UnlockState.OnChanged += HandleUnlockChanged;
         RefreshIntentBadge();
 
-        // Attackers/observers pause at the threshold to form up first;
-        // everyone else (worshippers, Suicidal, Treasure Hunter) advances immediately.
+        // Every fresh party takes the shared muster window at the mouth:
+        // formations hold their slots as before, formation-less parties mill
+        // loosely, and the whole group advances together.
         if (pendingRestore != null)
             ApplyPendingRestore();
-        else if (party != null && party.Formation != FormationType.None)
+        else if (party != null && Time.time < party.OrganizeEndTime)
             BeginOrganizing();
         else
             BeginAdvance();
@@ -472,7 +477,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void BeginOrganizing()
     {
         state = AdventurerState.Organizing;
-        formationSlot = ComputeFormationSlot();
+        // Formations claim a slot; formation-less parties muster loosely
+        // instead (slotless drift handled in HandleOrganizing).
+        formationSlot = party != null && party.Formation != FormationType.None
+            ? ComputeFormationSlot()
+            : (Vector3?)null;
+        musterTarget = transform.position;
+        nextMusterStepTime = 0f;
     }
 
     // Set the post-organize advance state (observer tour / Explorer scout / core).
@@ -1785,9 +1796,39 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (state != AdventurerState.Organizing) return;
 
         if (formationSlot.HasValue)
+        {
             transform.position = Vector2.MoveTowards(
                 transform.position, formationSlot.Value,
                 EffectiveMoveSpeed * Time.deltaTime);
+        }
+        else
+        {
+            // Loose muster: drift between small points near the mouth until
+            // the shared window closes. Candidate steps are validated with
+            // the spawner's own ground check, so nobody strays onto unmined
+            // apron where pathing cannot resolve.
+            if (Time.time >= nextMusterStepTime)
+            {
+                nextMusterStepTime = Time.time + Random.Range(0.8f, 1.8f);
+                Vector3 anchor = DungeonEntrance.Instance != null
+                    ? DungeonEntrance.Instance.SpawnPosition : transform.position;
+                Vector2 drift = Random.insideUnitCircle * 1.6f;
+                Vector3 candidate = anchor + new Vector3(drift.x, drift.y, 0f);
+                var floor0 = FloorManager.Instance?.GetFloor(0);
+                if (floor0 != null && floor0.TileInfluence != null)
+                {
+                    var cell = floor0.TileInfluence.WorldToCell(candidate);
+                    bool ok = floor0.TileInfluence.IsTileMined(cell)
+                        || (floor0.FeatureGenerator != null
+                            && floor0.FeatureGenerator.IsEntranceCave(cell));
+                    if (!ok) candidate = anchor;
+                }
+                musterTarget = candidate;
+            }
+            transform.position = Vector2.MoveTowards(
+                transform.position, musterTarget,
+                EffectiveMoveSpeed * 0.6f * Time.deltaTime);
+        }
 
         // Hold until the whole party has formed up, then advance together.
         if (party == null || Time.time >= party.OrganizeEndTime)

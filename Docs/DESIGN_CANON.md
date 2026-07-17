@@ -409,8 +409,16 @@ entrance is discovered is a grace day -- word spreads overnight and the first
 wave arrives with the next dawn. Matched teams additionally hold until the
 first Guild assessment (see entry 5).
 
+Every party now takes a shared muster window at the mouth before advancing
+together: formations hold their slots as before; formation-less parties mill
+loosely on carved ground (a ~2-4 s entry delay, accepted as telegraphing;
+combat still breaks the muster; restored mid-raid members skip it). The
+cosmetic surface-life layer -- road-approach walkers and camp millers /
+night watch -- is entry 24's `Overworld/SurfaceLifeController.cs`.
+
 **Key files:** `DungeonCore/WaveStageController.cs` (or adjacent manager
-file), `Adventurer/AdventurerSpawner.cs`.
+file), `Adventurer/AdventurerSpawner.cs` (muster window + `PartyRegistered`),
+`Adventurer/DungeonAdventurer.cs` (loose muster drift).
 
 ## 11. Tribute and GiftGivers
 
@@ -1108,9 +1116,17 @@ expect its one benign warning per return trip. The wandering merchant's
 future arrival stages through this gate.
 
 **Player interaction:** pre-avatar the player only observes. Assault staging
-stays inside the dungeon (canon 10). A live layer -- adventurers milling at
-camps and gathering at the mouth before walking in together -- is a planned
-follow-on guide, not part of this substrate.
+stays inside the dungeon (canon 10); the live layer is SHIPPED as theatre.
+`Overworld/SurfaceLifeController.cs` (floor 0, beside the generator) runs
+road-approach walkers (2-3 sprite puppets in the First Blood idiom, spawned
+inside the wave lead window and cleared by the spawner's `PartyRegistered`
+choke-point event; commoner waves included; dispatches bypass the timer and
+get no lead-in; night never plays approaches) and camp millers (day: 5-7 at
+`camp.main`, 3-5 per satellite; night: a small watch of 2 / 1 drawn from
+night-watch sprites, falling back to the day pool; markers re-scanned so
+live band unlocks grow the population). Real parties all take the shared
+muster window now (see entry 10). Nothing in the surface-life layer is
+saved, seeded, or simulated.
 
 **Retired and deleted:** the `Forest` scene (and its Build Settings entry),
 `ForestZoneGenerator`, `ForestZoneProfile` (+ asset), `DevForestTravelButton`,
