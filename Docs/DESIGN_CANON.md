@@ -75,6 +75,7 @@ the supersession in one line.
 
 **Appendix**
 A. Content Registries and Authoring Keys
+B. Sorting Layer Contract
 
 ---
 
@@ -638,6 +639,14 @@ Barracks tiers 2 and 3. The generator is list-driven and also patches the
 gate keys and the Barracks gate onto the consuming assets. Loot books
 shipped (see 17).
 
+**Diegetic one-shot exception:** the alerts gate silences the ledger, not
+the wisp. Feedback a player cannot recover later from a panel -- the
+buried-remains murmur (its sensed flag persists), the buried grant lines,
+and the crypt raise refusals -- speaks through `WispCompanion.SpeakLine`
+(never gated) and only ALSO logs to `AlertsLog`. Repeatable, mechanically
+visible events (housed corpses, raise successes, deed and research
+completions) stay ledger-only.
+
 ## 14. Material Pattern System
 
 Status: SHIPPED (graduated from Part II; recorded as-built in place).
@@ -969,6 +978,31 @@ truth -- regeneration rebuilds the catalog list).
 
 **Authoring reference:** step-by-step recipes live in the Content Authoring
 guide; this appendix records the rules those recipes obey.
+
+
+## B. Sorting Layer Contract
+
+Status: RECORDED after the Phase 3 cleanup regression. Verified: 2026-07-17.
+
+The TagManager order is load-bearing; scripts and prefabs assume it.
+Bottom to top: Default, Ground, Collision, OwnedTiles, Decor, WalkInFront,
+Player, WalkBehind, Shadow, AdjacentHighlight, WorldUI. Identity is the
+uniqueID; list order is the draw order -- reordering the list IS the
+change.
+
+Semantics: every Y-sorting entity (player, NPCs, monsters, adventurers,
+cave faces, surface trees) lives on Player. WalkInFront draws UNDER
+entities -- ground furniture the player walks in front of. WalkBehind
+draws OVER entities -- town canopy and cave wall caps the player walks
+behind (CaveWallFade and CaveWallRenderer assume this). Shadow sits just
+above WalkBehind so darkness covers walls and entities alike
+(DungeonShadow, FogLayer, and the Ceremony Gloom veil, which lives on
+Shadow for exactly this reason). AdjacentHighlight and WorldUI cap the
+world.
+
+The Phase 3 cleanup inverted this order and silently broke cap occlusion,
+fog cover, and the town walk layers for three weeks. Any future layer
+change re-reads this entry first.
 
 
 ## 22. Deeds (Diegetic Achievement Layer)

@@ -147,8 +147,11 @@ public class CryptController : MonoBehaviour
 
         if (!PieceInValidCrypt(piece))
         {
-            AlertsLog.Instance?.AddAlert(
-                "The crypt is broken; the dead will not answer.",
+            // Raise refusals must land even before the alerts research: the
+            // wisp speaks ungated; the ledger keeps the record once learned.
+            const string line = "The crypt is broken; the dead will not answer.";
+            WispCompanion.Instance?.SpeakLine(line);
+            AlertsLog.Instance?.AddAlert(line,
                 piece.transform.position, FloorIndexOf(piece.gameObject), AlertCategory.System);
             return false;
         }
@@ -156,16 +159,18 @@ public class CryptController : MonoBehaviour
         int capCost = risenHeroDefinition.CapacityCost;
         if (!core.TrySpendCapacity(capCost))
         {
-            AlertsLog.Instance?.AddAlert(
-                "No room in my strength for another servant. The dead can wait.",
+            const string line = "No room in my strength for another servant. The dead can wait.";
+            WispCompanion.Instance?.SpeakLine(line);
+            AlertsLog.Instance?.AddAlert(line,
                 piece.transform.position, FloorIndexOf(piece.gameObject), AlertCategory.System);
             return false;
         }
         if (!core.SpendMana(raiseManaCost))
         {
             core.ReturnCapacity(capCost);
-            AlertsLog.Instance?.AddAlert(
-                "Not enough mana to wake what sleeps here.",
+            const string line = "Not enough mana to wake what sleeps here.";
+            WispCompanion.Instance?.SpeakLine(line);
+            AlertsLog.Instance?.AddAlert(line,
                 piece.transform.position, FloorIndexOf(piece.gameObject), AlertCategory.System);
             return false;
         }

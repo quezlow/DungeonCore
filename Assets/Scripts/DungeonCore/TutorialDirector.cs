@@ -92,8 +92,19 @@ public class TutorialDirector : MonoBehaviour
     {
         bool entranceFound = UnlockState.IsUnlocked("event.entrance_discovered");
 
+        // Re-align the session static with the loaded slot: the compass flag
+        // would otherwise leak across a slot swap within one session.
+        DigPromptGiven = entranceFound;
+
+        // The vignette's absorb beat grants the first monster, and the breach
+        // autosave lands just before it. A quit inside that window resumes
+        // past the grant, so re-assert the discovery (idempotent) whenever
+        // the breach is already behind us -- the Build step needs a monster.
+        if (entranceFound)
+            BestiaryState.Instance?.Discover("Cave Rat");
+
         bool spawnerArmed = false;
-        foreach (var s in FindObjectsByType<MonsterSpawner>(FindObjectsSortMode.None))
+        foreach (var s in FindObjectsByType<MonsterSpawner>())
             if (s != null && s.SpawnedMonster != null) { spawnerArmed = true; break; }
 
         if (entranceFound && spawnerArmed)
@@ -108,7 +119,7 @@ public class TutorialDirector : MonoBehaviour
         if (entranceFound)
         {
             GrantOnce(KeyStatusBars);
-            foreach (var a in FindObjectsByType<RoomAnchor>(FindObjectsSortMode.None))
+            foreach (var a in FindObjectsByType<RoomAnchor>())
                 if (a != null && a.IsValid) { roomDesignated = true; break; }
             EnterStep(Step.Build);
             return;

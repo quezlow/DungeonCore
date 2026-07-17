@@ -389,7 +389,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public static void PushGlobalDamageMultiplier(float m)
     {
         sharedGlobalDamageMultiplier = Mathf.Max(0f, m);
-        var all = FindObjectsByType<DungeonMonster>(FindObjectsSortMode.None);
+        var all = FindObjectsByType<DungeonMonster>();
         for (int i = 0; i < all.Length; i++) all[i].globalDamageMultiplier = sharedGlobalDamageMultiplier;
     }
 

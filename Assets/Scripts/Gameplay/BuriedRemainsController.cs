@@ -80,8 +80,13 @@ public class BuriedRemainsController : MonoBehaviour
             felt.Add(site);
             if (spoke) continue;
             spoke = true;
+            // The ledger is research-gated but the sensed flag persists, so a
+            // pre-research whisper would be consumed in silence forever. The
+            // wisp is never gated; the ledger keeps the record once learned.
+            const string murmur = "Something waits in the stone nearby. Dig, and I will remember.";
+            WispCompanion.Instance?.SpeakLine(murmur);
             AlertsLog.Instance?.AddAlert(
-                "Something waits in the stone nearby. Dig, and I will remember.",
+                murmur,
                 floor.TileInfluence.CellToWorld(pos), floor.FloorIndex, AlertCategory.Discovery);
         }
     }
@@ -112,17 +117,17 @@ public class BuriedRemainsController : MonoBehaviour
 
         if (node != null)
         {
-            AlertsLog.Instance?.AddAlert(
-                "Old bones in old stone -- and a memory still in them.",
-                worldPos, floorIndex, AlertCategory.Discovery);
+            const string line = "Old bones in old stone -- and a memory still in them.";
+            WispCompanion.Instance?.SpeakLine(line);
+            AlertsLog.Instance?.AddAlert(line, worldPos, floorIndex, AlertCategory.Discovery);
             DeedsController.Instance?.NotifyMoment("first_buried");
         }
         else
         {
             core?.AddResearch(duplicateResearchPoints);
-            AlertsLog.Instance?.AddAlert(
-                "Bones I already understand. Their patience is worth a little insight.",
-                worldPos, floorIndex, AlertCategory.Discovery);
+            const string line = "Bones I already understand. Their patience is worth a little insight.";
+            WispCompanion.Instance?.SpeakLine(line);
+            AlertsLog.Instance?.AddAlert(line, worldPos, floorIndex, AlertCategory.Discovery);
         }
     }
 

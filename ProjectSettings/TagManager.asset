@@ -57,17 +57,17 @@ TagManager:
   - name: Decor
     uniqueID: 4248949339
     locked: 0
-  - name: Shadow
-    uniqueID: 222428961
-    locked: 0
-  - name: WalkBehind
-    uniqueID: 2152236293
+  - name: WalkInFront
+    uniqueID: 4135154821
     locked: 0
   - name: Player
     uniqueID: 2841858325
     locked: 0
-  - name: WalkInFront
-    uniqueID: 4135154821
+  - name: WalkBehind
+    uniqueID: 2152236293
+    locked: 0
+  - name: Shadow
+    uniqueID: 222428961
     locked: 0
   - name: AdjacentHighlight
     uniqueID: 1073072259
