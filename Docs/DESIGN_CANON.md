@@ -1188,41 +1188,6 @@ tile painting during the creep (the confiner hides unrevealed ground, so
 paint instantly and creep only the bounds); removing `GameScene.Forest`
 (the int-shift trap).
 
-**Crest facade (floor-0 rim):** `DungeonCore/RimFacadeRenderer.cs` (on the
-`RimCaps` tilemap under the floor grid; self-disables off floor 0) paints a
-two-ring landform where the disc meets the forest. Ring 1 takes cap art per
-neighbour mask from a second `CaveWallSheetLayout` asset
-(`Assets/Data/RimFacadeSheetLayout.asset`, sheet `Assets/Art/terrain.png`;
-base slots + the new `crestFill` only -- variety, moss and junction pools are
-ignored), and south-facing cells drape the interior two-slice face idiom
-outward over the grass (cap + upper at cell+S + lower at cell+2S). Ring 2 is
-a grass shoulder (`crestFill`) so the fog skirt has 64px to die across
-instead of feathering over raw floorTile. The skirt swaps each painted band
-cell's fog tile for a runtime-generated white sprite with baked pixel alpha
-(alphaOuter -> alphaMid across ring 1, alphaMid -> 1.0 across ring 2;
-16-orientation rise masks per stage; serialized Smooth or Bayer-4x4 Dither),
-so `DungeonShadow`'s live `FogTilemap.color` (DeepVoidColor) keeps supplying
-the hue -- core type and floor tint flow through untouched. Tilemaps mirror
-the interior trio: RimCaps WalkBehind/0 centre-anchor, RimFaces Player/0 and
-RimFacesBehind Player/-1 bottom-anchor. Band cells that are claimed or
-8-adjacent to mined floor are ceded to `CaveWallRenderer` with their fog
-untouched; with the bedrock ring at min thickness 4 that skip only fires
-along the seeded entrance tunnel, so the breach corners stay cave stone.
-Bedrock min ring thickness is 4 everywhere now (scene floor 0 was 3, the
-floor template prefab was 2; script default and the zero-guard follow): ring
-index is Manhattan distance to out-of-disc, a diagonal 8-step can skip one
-ring, so 4 is the smallest width that keeps the 2-ring crest beyond
-mined-adjacency for good. The surface stays theatre -- no walkability or
-collision change, nothing saved (the band recomputes from the disc each
-session; skirt sprites are runtime-generated).
-
-**Rejected (facade):** painting caps on out-of-disc grass cells (only face
-drapes cross the line); a flat translucent fog band (partial alpha over raw
-floorTile leaks texture -- the grass shoulder exists to prevent exactly
-that); reusing the interior stone sheet for the rim (the crest must read as
-landform, not dungeon wall); clearing fog outright on the band (kills the
-gloom silhouette the surface reads the dungeon by).
-
 
 ## 25. Camp Growth, Identity & Effects
 
