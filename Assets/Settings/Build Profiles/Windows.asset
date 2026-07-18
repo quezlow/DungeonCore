@@ -33,6 +33,9 @@ MonoBehaviour:
     m_path: Assets/Scenes/City.unity
     m_guid: 33571d2ebf979de43a47db5bc3dd0dc6
   - m_enabled: 1
+    m_path: Assets/Scenes/Ceremony.unity
+    m_guid: dfa2ca590083aea4780fe2d15ac16178
+  - m_enabled: 1
     m_path: Assets/Scenes/Interiors.unity
     m_guid: 5cdfba89434eac7428079a7dfc515e84
   - m_enabled: 1
@@ -44,9 +47,6 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/TutorialTown.unity
     m_guid: 2cda990e2423bbf4892e6590ba056729
-  - m_enabled: 1
-    m_path: Assets/Scenes/Ceremony.unity
-    m_guid: dfa2ca590083aea4780fe2d15ac16178
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
