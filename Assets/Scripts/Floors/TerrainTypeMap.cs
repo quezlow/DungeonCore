@@ -40,7 +40,7 @@ public class TerrainTypeMap : MonoBehaviour
     [Header("Bedrock Border Ring (unminable rim)")]
     [Tooltip("The outer rim of the disc is unminable bedrock. Thickness undulates between " +
              "these two values (in cells), seeded per floor for a natural irregular edge.")]
-    [SerializeField, Min(0)] private int minRingThickness = 2;
+    [SerializeField, Min(0)] private int minRingThickness = 4;   // >= 4 keeps the crest facade band beyond 8-neighbour reach of minable rock
     [SerializeField, Min(0)] private int maxRingThickness = 5;
     [Tooltip("How rapidly the rim thickness varies around the perimeter. Higher = more, tighter undulations.")]
     [SerializeField, Min(0.1f)] private float ringNoiseScale = 2.5f;
@@ -198,7 +198,7 @@ public class TerrainTypeMap : MonoBehaviour
         // Guard against the new serialized fields deserializing to 0 on a pre-existing
         // component (so the rim still appears even if the Inspector wasn't touched).
         int lo = minRingThickness, hi = maxRingThickness;
-        if (hi <= 0) { lo = 2; hi = 5; }
+        if (hi <= 0) { lo = 4; hi = 5; }
         float scale = ringNoiseScale > 0f ? ringNoiseScale : 2.5f;
 
         float len = Mathf.Sqrt((float)dx * dx + (float)dy * dy);

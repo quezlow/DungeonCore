@@ -77,6 +77,12 @@ public class CaveWallSheetLayout : ScriptableObject
     public SheetSlot innerNE = S(0, 10);
     public SheetSlot innerNW = S(5, 10);
 
+    // -- Crest fill (rim facade only) --------------------------------
+
+    [Tooltip("Rim facade only: the grass tile painted on the crest shoulder (ring 2) behind the caps. " +
+             "Ignored by the interior cave renderer; leave empty on the interior asset.")]
+    public SheetSlot crestFill = new SheetSlot();
+
     // ── Faces (indexed by CaveFace) ───────────────────────────────
 
     [Tooltip("Upper face slice per face variant. Index 0 (None) is unused.")]
@@ -257,6 +263,7 @@ public class CaveWallSheetLayout : ScriptableObject
         Check(innerSW, "Concave inner SW", true, true);
         Check(innerNE, "Concave inner NE", true, true);
         Check(innerNW, "Concave inner NW", true, true);
+        Check(crestFill, "Crest fill (rim facade)", capPivot: true, required: false);
 
         for (int v = 1; v < 8 && v < faceUpperSlots.Length; v++)
             Check(faceUpperSlots[v], $"Face upper [{FaceLabels[v]}]", capPivot: false, required: true);
