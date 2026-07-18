@@ -9878,6 +9878,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SettingsMenu
       objectReference: {fileID: 0}
+    - target: {fileID: 7157596681292337372, guid: a197c839afff87647baba8f958382a4e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7177879676525825376, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -9896,7 +9900,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7498372750048259471, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.000045776367
+      value: 0.0000076293945
       objectReference: {fileID: 0}
     - target: {fileID: 7508406753035879104, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -10034,22 +10038,6 @@ PrefabInstance:
 --- !u!224 &552587568 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 2186295165447562452, guid: a197c839afff87647baba8f958382a4e, type: 3}
-  m_PrefabInstance: {fileID: 552587567}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &552587569 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 339929984948099272, guid: a197c839afff87647baba8f958382a4e, type: 3}
-  m_PrefabInstance: {fileID: 552587567}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3c3d757b87293be4486381e4673b7755, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SettingsMenuController
---- !u!1 &552587570 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7157596681292337372, guid: a197c839afff87647baba8f958382a4e, type: 3}
   m_PrefabInstance: {fileID: 552587567}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &565827990
@@ -99986,7 +99974,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acfbde9bf052f2646aaf5f125993726d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnPoint
-  spawnPointID: TutorialTown_ShopExit
+  spawnPointID: FromForest
   isDefault: 0
 --- !u!114 &1310450680 stripped
 MonoBehaviour:
@@ -227780,35 +227768,13 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: -1
       addedObject: {fileID: 552587568}
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 5766085413621513975, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 6484360002731607481}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
 --- !u!224 &6484360002731607479 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
   m_PrefabInstance: {fileID: 6484360002731607478}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &6484360002731607480 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5766085413621513975, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
-  m_PrefabInstance: {fileID: 6484360002731607478}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &6484360002731607481
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6484360002731607480}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6e5017e6997152846bb9f1dda5bc8bc9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrologueSettingsHotkey
-  settingsPanel: {fileID: 552587570}
-  settings: {fileID: 552587569}
 --- !u!4 &6568509717401784220
 Transform:
   m_ObjectHideFlags: 0

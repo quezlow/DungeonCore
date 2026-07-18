@@ -134,7 +134,8 @@ public class PauseMenuController : MonoBehaviour
     private static bool IsIdle()
     {
         var build = DungeonBuildController.Instance;
-        if (build == null || build.CurrentMode != BuildMode.None) return false;
+        if (build == null) return true;   // overworld scenes: no build modes, Esc is always free
+        if (build.CurrentMode != BuildMode.None) return false;
         var sel = SpawnerSelectionController.Instance;
         if (sel != null && sel.CurrentSelected != null) return false;
         return true;
@@ -286,7 +287,8 @@ public class PauseMenuController : MonoBehaviour
     // Save
     private void SaveNow()
     {
-        DungeonSaveController.Instance?.SaveGame();
+        if (DungeonSaveController.Instance == null) return;   // overworld: nothing for this button yet
+        DungeonSaveController.Instance.SaveGame();
         if (saveFlashLabel != null) StartCoroutine(FlashMessage("Saved!"));
     }
 
@@ -331,7 +333,10 @@ public class PauseMenuController : MonoBehaviour
 
         RestoreTimeForSceneChange();
         if (toDesktop) Application.Quit();
-        else DungeonSaveController.Instance?.ExitToTitleScreen();
+        else if (DungeonSaveController.Instance != null)
+            DungeonSaveController.Instance.ExitToTitleScreen();
+        else
+            SceneLoader.FadeToScene("TitleScreen");   // overworld: checkpoint rides the fade helper
     }
 
     private static void RestoreTimeForSceneChange()

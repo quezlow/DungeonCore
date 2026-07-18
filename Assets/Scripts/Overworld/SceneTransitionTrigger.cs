@@ -18,6 +18,9 @@
 using UnityEngine;
 using static SceneNames;
 
+// Runs after SpawnPointManager (510) so the arming check in Start sees the
+// player at his PLACED position, not his pre-transition one.
+[DefaultExecutionOrder(530)]
 public class SceneTransitionTrigger : MonoBehaviour
 {
     [SerializeField] private GameScene targetScene;
@@ -34,9 +37,32 @@ public class SceneTransitionTrigger : MonoBehaviour
         spawnPointID = spawnId;
     }
 
+    // A spawn point can place the player already overlapping this trigger
+    // (the interaction circle alone spans 1.5 units). That deferred overlap
+    // must never fire a bounce-back transition: the trigger arms only once
+    // the player has been observed OUTSIDE it after the scene settles.
+    private bool armed = true;
+
+    private void Start()
+    {
+        Physics2D.SyncTransforms();
+        var player = GameObject.FindGameObjectWithTag("Player");
+        var mine = GetComponent<Collider2D>();
+        var pcol = player != null ? player.GetComponent<Collider2D>() : null;
+        if (mine != null && pcol != null && mine.bounds.Intersects(pcol.bounds))
+            armed = false;
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.CompareTag("Player")) armed = true;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!collision.CompareTag("Player")) return;
+        if (!armed) return;
+        if (SceneLoader.IsHandlingTransition) return;
 
         if (SceneLoader.Instance == null)
         {

@@ -428,6 +428,10 @@ PrefabInstance:
       value: CmCam
       objectReference: {fileID: 0}
     - target: {fileID: 6996316350215229638, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
+      propertyPath: Lens.OrthographicSize
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 6996316350215229638, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
       propertyPath: Target.TrackingTarget
       value: 
       objectReference: {fileID: 88890223}
@@ -1140,7 +1144,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acfbde9bf052f2646aaf5f125993726d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnPoint
-  spawnPointID: TutorialTown_ShopExit
+  spawnPointID: FromCaveEntrance
   isDefault: 0
 --- !u!1 &645946212
 GameObject:
@@ -1186,11 +1190,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &736386618 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5766085413621513975, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
-  m_PrefabInstance: {fileID: 1986191352}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &747717283
 GameObject:
   m_ObjectHideFlags: 0
@@ -22346,6 +22345,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SettingsMenu
       objectReference: {fileID: 0}
+    - target: {fileID: 7157596681292337372, guid: a197c839afff87647baba8f958382a4e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7177879676525825376, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -22364,7 +22367,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7498372750048259471, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.0000076293945
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7508406753035879104, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -22502,22 +22505,6 @@ PrefabInstance:
 --- !u!224 &874412172 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 2186295165447562452, guid: a197c839afff87647baba8f958382a4e, type: 3}
-  m_PrefabInstance: {fileID: 874412171}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &874412173 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 339929984948099272, guid: a197c839afff87647baba8f958382a4e, type: 3}
-  m_PrefabInstance: {fileID: 874412171}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3c3d757b87293be4486381e4673b7755, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SettingsMenuController
---- !u!1 &874412174 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7157596681292337372, guid: a197c839afff87647baba8f958382a4e, type: 3}
   m_PrefabInstance: {fileID: 874412171}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &896603079
@@ -64638,6 +64625,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
+      propertyPath: orthographic size
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 3128769030159624796, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_BackGroundColor.b
       value: 0.27058825
       objectReference: {fileID: 0}
@@ -64651,7 +64642,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 49.27442
+      value: 54.239067
       objectReference: {fileID: 0}
     - target: {fileID: 3498255483789591025, guid: 33e8b43254cdf9e4e8f8b587e48ad6cb, type: 3}
       propertyPath: m_LocalPosition.y
@@ -64807,7 +64798,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acfbde9bf052f2646aaf5f125993726d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnPoint
-  spawnPointID: TutorialTown_ShopExit
+  spawnPointID: FromTutorialTown
   isDefault: 1
 --- !u!1 &1522130593
 GameObject:
@@ -64982,20 +64973,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
   m_PrefabInstance: {fileID: 1986191352}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1568699237
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 736386618}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6e5017e6997152846bb9f1dda5bc8bc9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PrologueSettingsHotkey
-  settingsPanel: {fileID: 874412174}
-  settings: {fileID: 874412173}
 --- !u!1 &1663609528
 GameObject:
   m_ObjectHideFlags: 0
@@ -128967,10 +128944,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 444808058565218260, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
       insertIndex: -1
       addedObject: {fileID: 874412172}
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 5766085413621513975, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1568699237}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 44d5b74b336bc504a8ff53693c84ef82, type: 3}
 --- !u!1 &1986191353 stripped
 GameObject:

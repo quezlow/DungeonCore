@@ -39,6 +39,17 @@ public class SpawnPointManager : MonoBehaviour
         //Debug.Log($"Target found: {targetPoint != null}");
         //Debug.Log($"Default found: {defaultPoint != null}");
 
+
+        // The doors were authored against the marker OBJECT names; several
+        // SpawnPoint id fields have since drifted (copy-paste renames). Fall
+        // back to a name match so a drifted id can never strand an arrival
+        // on the scene default.
+        if (targetPoint == null)
+        {
+            foreach (SpawnPoint sp in allSpawnPoints)
+                if (sp.gameObject.name == SceneTransitionData.TargetSpawnPointID) { targetPoint = sp; break; }
+        }
+
         SpawnPoint chosen = targetPoint ?? defaultPoint;
 
         if (chosen != null)
