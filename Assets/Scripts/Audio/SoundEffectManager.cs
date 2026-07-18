@@ -51,6 +51,9 @@ public class SoundEffectManager : MonoBehaviour
 
     public static void PlayVoice(AudioClip audioClip, float pitch = 1f)
     {
+        // Scenes without a SoundEffectManager (or lines without a voice clip)
+        // must not kill the caller's typewriter coroutine with a null throw.
+        if (voiceAudioSource == null || audioClip == null) return;
         voiceAudioSource.pitch = pitch;
         voiceAudioSource.PlayOneShot(audioClip);
     }
