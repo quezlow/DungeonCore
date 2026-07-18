@@ -53,10 +53,12 @@ public class HotbarController : MonoBehaviour
     {
         List<InventorySaveData> hotbarData = new List<InventorySaveData>();
 
+        if (hotbarPanel == null) return hotbarData;   // panel died across a scene change
+
         foreach (Transform slotTransform in hotbarPanel.transform)
         {
             Slot slot = slotTransform.GetComponent<Slot>();
-            if (slot.currentItem != null)
+            if (slot != null && slot.currentItem != null)
             {
                 Item item = slot.currentItem.GetComponent<Item>();
                 hotbarData.Add(new InventorySaveData { itemID = item.ID, slotIndex = slotTransform.GetSiblingIndex() });

@@ -287,9 +287,18 @@ public class PauseMenuController : MonoBehaviour
     // Save
     private void SaveNow()
     {
-        if (DungeonSaveController.Instance == null) return;   // overworld: nothing for this button yet
-        DungeonSaveController.Instance.SaveGame();
-        if (saveFlashLabel != null) StartCoroutine(FlashMessage("Saved!"));
+        if (DungeonSaveController.Instance != null)
+        {
+            DungeonSaveController.Instance.SaveGame();
+            if (saveFlashLabel != null) StartCoroutine(FlashMessage("Saved!"));
+            return;
+        }
+        // Overworld scenes checkpoint through the prologue save instead.
+        if (SaveController.Instance != null)
+        {
+            SaveController.Instance.SaveGame();
+            if (saveFlashLabel != null) StartCoroutine(FlashMessage("Saved!"));
+        }
     }
 
     private void CopySeed()

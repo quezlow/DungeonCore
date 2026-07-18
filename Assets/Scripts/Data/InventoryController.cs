@@ -99,10 +99,12 @@ public class InventoryController : MonoBehaviour
     {
         List<InventorySaveData> invData = new List<InventorySaveData>();
 
+        if (inventoryPanel == null) return invData;   // panel died across a scene change
+
         foreach(Transform slotTransform in inventoryPanel.transform)
         {
             Slot  slot = slotTransform.GetComponent<Slot>();
-            if(slot.currentItem != null)
+            if(slot != null && slot.currentItem != null)
             {
                 Item item = slot.currentItem.GetComponent<Item>();
                 invData.Add(new InventorySaveData 

@@ -43,7 +43,10 @@ public class SceneLoader : MonoBehaviour
     // a SaveController (title, dungeon) this is a no-op.
     public static async void FadeToScene(string sceneName)
     {
-        SaveController.Instance?.SaveGame();
+        // Unity's fake-null: a destroyed controller still passes the ?. check,
+        // so quitting to title left a dead instance that crashed the next load.
+        if (SaveController.Instance != null)
+            SaveController.Instance.SaveGame();
 
         if (ScreenFader.Instance != null)
             await ScreenFader.Instance.FadeOut();
@@ -64,8 +67,9 @@ public class SceneLoader : MonoBehaviour
             if (ScreenFader.Instance != null)
                 await ScreenFader.Instance.FadeOut();
 
-            // Save before leaving
-            SaveController.Instance?.SaveGame();
+            // Save before leaving (Unity-null aware; see FadeToScene)
+            if (SaveController.Instance != null)
+                SaveController.Instance.SaveGame();
 
             // Pass spawn ID to the next scene
             SceneTransitionData.TargetSpawnPointID = spawnPointID;
