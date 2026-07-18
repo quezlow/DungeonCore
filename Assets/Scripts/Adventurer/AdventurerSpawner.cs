@@ -388,11 +388,24 @@ public class AdventurerSpawner : MonoBehaviour
 
     private float CurrentInterval()
     {
-        if (DungeonCore.Instance == null) return intervalLow;
-        float n = DungeonCore.Instance.Notoriety;
-        if (n >= notorietyHighThreshold) return intervalHigh;
-        if (n >= notorietyMediumThreshold) return intervalMedium;
-        return intervalLow;
+        float baseInterval;
+        if (DungeonCore.Instance == null) baseInterval = intervalLow;
+        else
+        {
+            float n = DungeonCore.Instance.Notoriety;
+            if (n >= notorietyHighThreshold) baseInterval = intervalHigh;
+            else if (n >= notorietyMediumThreshold) baseInterval = intervalMedium;
+            else baseInterval = intervalLow;
+        }
+
+        // Guild camps stage adventurers closer: each shaves seconds off the
+        // interval, floored so the pressure never runs away.
+        var camps = CampGrowthController.Instance;
+        if (camps != null)
+            baseInterval = Mathf.Max(
+                baseInterval * camps.GuildIntervalFloorFraction,
+                baseInterval - camps.GuildIntervalReductionSeconds);
+        return baseInterval;
     }
 
     private void SpawnParty()

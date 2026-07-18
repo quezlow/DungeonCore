@@ -73,6 +73,25 @@ public class SurfaceZoneProfile : ScriptableObject
     [Min(1)] public int mainGrowthCap = 30;
     [Min(1)] public int satelliteGrowthCap = 20;
 
+    [Header("Camp identity & effects (tier-scaled, summed across camps)")]
+    [Tooltip("Seconds shaved off the wave interval per tier of each Guild camp.")]
+    [Min(0f)] public float guildIntervalSecondsPerTier = 2f;
+    [Tooltip("Floor on the camp-pressured interval, as a fraction of the base value.")]
+    [Range(0.1f, 1f)] public float guildIntervalFloorFraction = 0.6f;
+    [Tooltip("Notoriety-decay dampening per tier of each Cultist camp (factors multiply).")]
+    [Range(0f, 0.5f)] public float cultistDecayDampenPerTier = 0.15f;
+    [Range(0.05f, 1f)] public float cultistDecayMultiplierMin = 0.4f;
+    [Tooltip("Mana-regen tax per tier of each Holy Order camp.")]
+    [Range(0f, 0.2f)] public float holyManaTaxPerTier = 0.04f;
+    [Range(0f, 0.6f)] public float holyManaTaxCap = 0.2f;
+
+    [Header("Camp decay & framing")]
+    [Tooltip("Days without a settler before a camp starts bleeding growth.")]
+    [Min(1)] public int decayGraceDays = 3;
+    [Min(1)] public int decayPerDay = 1;
+    [Tooltip("Fraction of the next tier's threshold at which its framing appears.")]
+    [Range(0.1f, 1f)] public float framingFraction = 0.7f;
+
     [Header("Resource nodes")]
     public List<SurfaceNodeType> nodeTypes = new List<SurfaceNodeType>();
     [Min(1)] public int nodeMinSpacing = 3;
@@ -146,6 +165,9 @@ public class CampTierDef
     [Tooltip("The tier's commerce anchor: cart, market stall, shop...")]
     public GameObject commercePrefab;
     public List<CampPropEntry> props = new List<CampPropEntry>();
+    [Tooltip("Construction-site look for THIS tier, shown while the previous tier nears the threshold. framingProps[i] frames props[i] and lands at its exact final positions; the commerce framing rises beside the current anchor.")]
+    public GameObject framingCommercePrefab;
+    public List<GameObject> framingProps = new List<GameObject>();
     [Tooltip("Scales the surface-life miller counts at this tier.")]
     [Min(0f)] public float millerMultiplier = 1f;
 }

@@ -113,8 +113,12 @@ public class DungeonCore : MonoBehaviour
     public string LevelDisplayName => LevelTierUtil.DisplayName(dungeonLevel);
     public float CurrentMana => currentMana;
     public float MaxMana => progression.ManaAt(dungeonLevel);
-    public float CurrentManaRegen => baseRegenPerSecond + claimedTileCount * regenPerTile
-                                     + RoomEffectCensus.ManaRegenPerSecond;
+    public float CurrentManaRegen =>
+        (baseRegenPerSecond + claimedTileCount * regenPerTile
+         + RoomEffectCensus.ManaRegenPerSecond)
+        * (CampGrowthController.Instance != null
+            ? CampGrowthController.Instance.HolyManaRegenMultiplier
+            : 1f);
     public float CurrentXP => currentXP;
     public float XPToNextLevel => CalculateXPThreshold(dungeonLevel);
     public float Notoriety => notoriety;
@@ -427,7 +431,12 @@ public class DungeonCore : MonoBehaviour
         if (notoriety <= 0f) return;
         timeSinceLastKill += Time.deltaTime;
         if (timeSinceLastKill < notorietyDecayCooldown) return;
-        notoriety = Mathf.Max(0f, notoriety - notorietyDecayPerSecond * Time.deltaTime);
+        // Cultist camps keep the legend alive: their presence dampens how
+        // fast the dungeon's notoriety fades.
+        float decayRate = notorietyDecayPerSecond;
+        if (CampGrowthController.Instance != null)
+            decayRate *= CampGrowthController.Instance.CultistNotorietyDecayMultiplier;
+        notoriety = Mathf.Max(0f, notoriety - decayRate * Time.deltaTime);
         OnNotorietyChanged?.Invoke(notoriety);
     }
 

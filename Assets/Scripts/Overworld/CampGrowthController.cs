@@ -3,25 +3,40 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Camp growth: survivors settle the surface. Every adventurer who leaves
-/// the dungeon alive (AdventurerParty.MemberEscaped) adds one growth to a
-/// receiving camp -- camp.main until its cap, then satellites in unlock
-/// order. Growth crosses the profile's authored tier thresholds (Waystation
-/// -> Camp -> Settlement -> whatever rows come later, e.g. a Town), and each
-/// tier rebuilds the camp's buildout: the commerce anchor facing the way
-/// home (cart -> stall -> shop; the wandering merchant's eventual dock)
-/// plus the tier's prop table, placed deterministically as LOCAL offsets
-/// under the marker so retuned camp positions carry their buildings along.
+/// Camp growth, identity, and pressure: survivors settle the surface, camps
+/// declare a faction, and settled camps push back on the dungeon sim.
 ///
-/// Faction tallies are recorded per camp from day one; the identity/effects
-/// layer (a later guide) reads them -- nothing else does yet.
+/// GROWTH -- every adventurer who leaves the dungeon alive
+/// (AdventurerParty.MemberEscaped) adds one growth to a receiving camp:
+/// camp.main until its cap, then satellites in unlock order. Growth crosses
+/// the profile's authored tier thresholds (Waystation -> Camp -> Settlement
+/// -> whatever rows come later, e.g. a Town); tiers rebuild the buildout.
 ///
-/// PERSISTENCE: the ledger saves additively (campGrowth on DungeonSaveData,
-/// keyed by the immutable zone ids -- the exact purpose they were reserved
-/// for). Buildout is never saved; it rebuilds from ledger + tier tables.
-/// Growth accrues to zone ids even before their band is researched: the
-/// guild was already gathering, so a late-researched camp can reveal
-/// mid-tier (silently -- barks fire only on live tier-ups).
+/// IDENTITY -- at tier 1+ a camp declares the majority faction of its
+/// recorded settlers (ties break to the Guild; waystations stay neutral).
+/// Sticky: re-evaluated only on tier-up; the banner comes down if decay
+/// drops the camp back to tier 0.
+///
+/// EFFECTS -- queried by the sim, tier-scaled, summed across camps:
+///   Guild camps shave seconds off the wave interval (spawner floor-guarded);
+///   Cultist camps dampen notoriety decay (DungeonCore multiplies);
+///   Holy Order camps tax mana regen (CurrentManaRegen multiplies, capped);
+///   Mercenary camps declare but exert no pressure yet.
+///
+/// DECAY -- on each dawn, a camp with no settlers for the grace period
+/// bleeds growth; tiers drop, buildout and framing recede, floor at zero.
+///
+/// FRAMING -- when growth reaches framingFraction of the NEXT tier's
+/// threshold, that tier's construction-site look appears: framingProps[i]
+/// renders at the exact positions props[i] will take (per-prop position
+/// hashing makes foundation and finished building land identically); the
+/// commerce framing rises beside the current anchor, and the finished
+/// piece takes the anchor spot on tier-up.
+///
+/// PERSISTENCE: one additive block (campGrowth on DungeonSaveData): growth,
+/// per-faction tallies, declared faction, and last-settle day per zone id.
+/// Buildout is never saved; it rebuilds from ledger + tier tables, silently
+/// after a load (barks fire only on live changes).
 ///
 /// SCENE SETUP (floor 0 only):
 ///   Put this beside SurfaceZoneGenerator under the FloorRoot. Nothing to
@@ -39,19 +54,25 @@ public class CampGrowthController : MonoBehaviour
         "Tents now, and a market stall. They mean to stay.",
         "A settlement takes root out there. We are becoming somewhere.",
     };
+    [Tooltip("Spoken when a camp declares its faction. {0} = faction display name.")]
+    [SerializeField]
+    private string identityBarkFormat = "The camp at the wood's edge raises colours -- {0}.";
     [SerializeField] private float rescanSeconds = 3f;
 
     private FloorRoot floor;
     private SurfaceZoneGenerator surface;
     private SurfaceZoneProfile profile;
     private bool armed;
+    private bool daySubscribed;
     private float nextRescan;
     private float barkSuppressedUntil;
     private Vector3 centreWorld;
 
     private readonly Dictionary<string, int> growth = new Dictionary<string, int>();
     private readonly Dictionary<string, int[]> factionTally = new Dictionary<string, int[]>();
-    private readonly Dictionary<string, int> builtTier = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> declaredFaction = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> lastSettleDay = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> builtState = new Dictionary<string, int>();
 
     private static int FactionCount => Enum.GetValues(typeof(FactionId)).Length;
 
@@ -70,11 +91,24 @@ public class CampGrowthController : MonoBehaviour
     }
 
     private void OnEnable() { AdventurerParty.MemberEscaped += HandleEscape; }
-    private void OnDisable() { AdventurerParty.MemberEscaped -= HandleEscape; }
+
+    private void OnDisable()
+    {
+        AdventurerParty.MemberEscaped -= HandleEscape;
+        if (daySubscribed && DayNightCycle.Instance != null)
+            DayNightCycle.Instance.OnDayStarted -= HandleDayStarted;
+        daySubscribed = false;
+    }
 
     private void Update()
     {
         if (!armed) { TryArm(); return; }
+
+        if (!daySubscribed && DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted += HandleDayStarted;
+            daySubscribed = true;
+        }
 
         if (Time.time >= nextRescan)
         {
@@ -91,10 +125,13 @@ public class CampGrowthController : MonoBehaviour
 
         profile = surface.Profile;
         centreWorld = floor.TileInfluence.CellToWorld(floor.Terrain.CoreCell);
-        barkSuppressedUntil = Time.time + 2f;   // reveal existing tiers silently
+        barkSuppressedUntil = Time.time + 2f;   // reveal existing state silently
         armed = true;
         SyncBuildouts();
     }
+
+    private static int Today()
+        => DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
 
     // -- growth --------------------------------------------------------------
 
@@ -105,15 +142,19 @@ public class CampGrowthController : MonoBehaviour
 
         int before = TierOf(zone);
         growth[zone] = GrowthOf(zone) + 1;
+        lastSettleDay[zone] = Today();
         TallyFaction(zone, party, member);
         Debug.Log($"[CampGrowth] A survivor settles at {zone} ({growth[zone]}).");
 
         int after = TierOf(zone);
         if (after > before)
         {
-            SyncBuildouts();
-            Bark(after);
+            Bark(tierUpBarks.Count == 0 ? null
+                : tierUpBarks[Mathf.Clamp(after, 0, tierUpBarks.Count - 1)]);
+            EvaluateIdentity(zone, announce: true);
+            DungeonCore.Instance?.NotifyManaRegenDisplay();
         }
+        SyncBuildouts();
     }
 
     private string ReceivingZone()
@@ -168,7 +209,138 @@ public class CampGrowthController : MonoBehaviour
         return n;
     }
 
+    // -- identity ------------------------------------------------------------
+
+    /// <summary>Declared faction as a FactionId int, or -1 while neutral.</summary>
+    public int DeclaredFactionOf(string zoneId)
+        => declaredFaction.TryGetValue(zoneId, out int f) ? f : -1;
+
+    private void EvaluateIdentity(string zone, bool announce)
+    {
+        if (TierOf(zone) < 1) return;
+        int f = MajorityFaction(zone);
+        if (f < 0) return;
+
+        bool had = declaredFaction.TryGetValue(zone, out int prev);
+        if (had && prev == f) return;
+        declaredFaction[zone] = f;
+
+        if (announce)
+            Bark(string.Format(identityBarkFormat,
+                FactionInfo.DisplayName((FactionId)f)));
+    }
+
+    private int MajorityFaction(string zone)
+    {
+        if (!factionTally.TryGetValue(zone, out var tally)) return -1;
+        int best = -1, bestCount = 0;
+        foreach (var f in FactionInfo.All)
+        {
+            int c = tally[(int)f];
+            if (c > bestCount) { bestCount = c; best = (int)f; }
+        }
+        if (bestCount <= 0) return -1;
+        // Ties break to the Guild when it shares the lead.
+        if (tally[(int)FactionId.AdventurersGuild] == bestCount)
+            return (int)FactionId.AdventurersGuild;
+        return best;
+    }
+
+    // -- effects (queried by the sim; tier-scaled, summed across camps) ------
+
+    public float GuildIntervalFloorFraction
+        => profile != null ? profile.guildIntervalFloorFraction : 0.6f;
+
+    public float GuildIntervalReductionSeconds
+    {
+        get
+        {
+            if (profile == null) return 0f;
+            float s = 0f;
+            foreach (var kv in declaredFaction)
+                if (kv.Value == (int)FactionId.AdventurersGuild)
+                    s += profile.guildIntervalSecondsPerTier * TierOf(kv.Key);
+            return s;
+        }
+    }
+
+    public float CultistNotorietyDecayMultiplier
+    {
+        get
+        {
+            if (profile == null) return 1f;
+            float m = 1f;
+            foreach (var kv in declaredFaction)
+                if (kv.Value == (int)FactionId.Cultists)
+                    m *= Mathf.Max(0f,
+                        1f - profile.cultistDecayDampenPerTier * TierOf(kv.Key));
+            return Mathf.Max(profile.cultistDecayMultiplierMin, m);
+        }
+    }
+
+    public float HolyManaRegenMultiplier
+    {
+        get
+        {
+            if (profile == null) return 1f;
+            float tax = 0f;
+            foreach (var kv in declaredFaction)
+                if (kv.Value == (int)FactionId.HolyOrder)
+                    tax += profile.holyManaTaxPerTier * TierOf(kv.Key);
+            return 1f - Mathf.Min(profile.holyManaTaxCap, tax);
+        }
+    }
+
+    // -- decay ---------------------------------------------------------------
+
+    private void HandleDayStarted()
+    {
+        if (!armed || profile == null) return;
+        int today = Today();
+        bool changed = false;
+
+        var zones = new List<string>(growth.Keys);
+        foreach (var zone in zones)
+        {
+            if (!lastSettleDay.TryGetValue(zone, out int last) || last <= 0)
+            {
+                lastSettleDay[zone] = today;   // unknown (old save): start counting
+                continue;
+            }
+            if (today - last <= profile.decayGraceDays) continue;
+
+            int before = TierOf(zone);
+            growth[zone] = Mathf.Max(0, growth[zone] - profile.decayPerDay);
+            changed = true;
+            if (TierOf(zone) < before && TierOf(zone) == 0)
+                declaredFaction.Remove(zone);   // the banner comes down
+        }
+
+        if (changed)
+        {
+            SyncBuildouts();
+            DungeonCore.Instance?.NotifyManaRegenDisplay();
+        }
+    }
+
     // -- buildout ------------------------------------------------------------
+
+    private bool FramingDue(string zoneId, int tier)
+    {
+        if (profile == null) return false;
+        int next = tier + 1;
+        if (next >= profile.campTiers.Count) return false;
+        int threshold = profile.campTiers[next].growthThreshold;
+        if (threshold <= 0) return false;
+        return GrowthOf(zoneId)
+            >= Mathf.CeilToInt(threshold * profile.framingFraction);
+    }
+
+    private int BuildStateOf(string zoneId)
+    {
+        int tier = TierOf(zoneId);
+        return tier * 2 + (FramingDue(zoneId, tier) ? 1 : 0);
+    }
 
     private void SyncBuildouts()
     {
@@ -177,14 +349,15 @@ public class CampGrowthController : MonoBehaviour
         foreach (var m in markers)
         {
             if (m == null || string.IsNullOrEmpty(m.ZoneId)) continue;
-            int tier = TierOf(m.ZoneId);
-            if (builtTier.TryGetValue(m.ZoneId, out int built) && built == tier) continue;
-            RebuildBuildout(m, tier);
-            builtTier[m.ZoneId] = tier;
+            int state = BuildStateOf(m.ZoneId);
+            if (builtState.TryGetValue(m.ZoneId, out int built) && built == state)
+                continue;
+            RebuildBuildout(m, state);
+            builtState[m.ZoneId] = state;
         }
     }
 
-    private void RebuildBuildout(CampZoneMarker marker, int tier)
+    private void RebuildBuildout(CampZoneMarker marker, int state)
     {
         var old = marker.transform.Find("Buildout");
         if (old != null) Destroy(old.gameObject);
@@ -193,47 +366,92 @@ public class CampGrowthController : MonoBehaviour
         parent.SetParent(marker.transform, false);
 
         if (profile.campTiers.Count == 0) return;
+        int tier = state / 2;
+        bool framing = (state & 1) == 1;
         var def = profile.campTiers[Mathf.Clamp(tier, 0, profile.campTiers.Count - 1)];
-        var rng = new System.Random(StableHash(marker.ZoneId));
         float radius = Mathf.Max(1f, marker.Radius);
 
         // The commerce anchor faces the way home -- roads and trails all run
         // dungeon-ward, so "toward the centre" is toward the path in.
-        Vector3 commerceLocal = Vector3.zero;
+        Vector3 dirHome = (centreWorld - marker.transform.position).normalized;
+        Vector3 commerceLocal = dirHome * (radius * 0.75f);
         if (def.commercePrefab != null)
         {
-            Vector3 dirHome = (centreWorld - marker.transform.position).normalized;
-            commerceLocal = dirHome * (radius * 0.75f);
             var c = Instantiate(def.commercePrefab, parent);
             c.name = "Commerce";
             c.transform.localPosition = commerceLocal;
         }
 
-        foreach (var entry in def.props)
-        {
-            if (entry == null || entry.prefab == null) continue;
-            for (int i = 0; i < entry.count; i++)
-            {
-                Vector3 local;
-                int guard = 12;
-                do
-                {
-                    float ang = (float)(rng.NextDouble() * Math.PI * 2.0);
-                    float r = radius * (0.3f + 0.55f * (float)rng.NextDouble());
-                    local = new Vector3(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r, 0f);
-                } while ((local - commerceLocal).sqrMagnitude < 1.44f && guard-- > 0);
+        PlaceRow(parent, marker.ZoneId, tier, def.props, null, radius, commerceLocal);
 
-                var p = Instantiate(entry.prefab, parent);
-                p.name = entry.prefab.name;
+        if (framing && tier + 1 < profile.campTiers.Count)
+        {
+            var next = profile.campTiers[tier + 1];
+            // Commerce framing rises beside the current anchor; the finished
+            // piece takes the anchor spot on tier-up.
+            if (next.framingCommercePrefab != null)
+            {
+                var perp = new Vector3(-dirHome.y, dirHome.x, 0f);
+                var fc = Instantiate(next.framingCommercePrefab, parent);
+                fc.name = "CommerceFraming";
+                fc.transform.localPosition = commerceLocal + perp * 1.5f;
+            }
+            // Props framing lands at the exact final positions (shared hash).
+            PlaceRow(parent, marker.ZoneId, tier + 1, next.props,
+                     next.framingProps, radius, commerceLocal);
+        }
+    }
+
+    /// <summary>Places one tier's prop rows. With substitutes null, the final
+    /// prefabs render; otherwise substitutes[i] renders IN PLACE OF props[i]
+    /// (skipping null slots) at the identical hashed positions.</summary>
+    private void PlaceRow(Transform parent, string zoneId, int tier,
+                          List<CampPropEntry> rows, List<GameObject> substitutes,
+                          float radius, Vector3 commerceLocal)
+    {
+        if (rows == null) return;
+        for (int entry = 0; entry < rows.Count; entry++)
+        {
+            var row = rows[entry];
+            if (row == null) continue;
+            GameObject prefab = substitutes == null
+                ? row.prefab
+                : (entry < substitutes.Count ? substitutes[entry] : null);
+            if (prefab == null) continue;
+
+            for (int i = 0; i < row.count; i++)
+            {
+                Vector3 local = PropLocal(zoneId, tier, entry, i,
+                                          radius, commerceLocal);
+                var p = Instantiate(prefab, parent);
+                p.name = prefab.name;
                 p.transform.localPosition = local;
             }
         }
     }
 
-    private void Bark(int tier)
+    /// <summary>Deterministic per-prop position: identical inputs give the
+    /// identical spot, so a tier's framing and its finished props coincide
+    /// by construction. Salted retries steer clear of the commerce anchor.</summary>
+    private static Vector3 PropLocal(string zoneId, int tier, int entry, int i,
+                                     float radius, Vector3 commerceLocal)
     {
-        if (Time.time < barkSuppressedUntil || tierUpBarks.Count == 0) return;
-        string line = tierUpBarks[Mathf.Clamp(tier, 0, tierUpBarks.Count - 1)];
+        int zs = StableHash(zoneId);
+        int key = tier * 8191 + entry * 131 + i;
+        Vector3 local = Vector3.zero;
+        for (int k = 0; k < 12; k++)
+        {
+            float ang = Hash01(zs, key, 17 + k) * Mathf.PI * 2f;
+            float r = radius * (0.3f + 0.55f * Hash01(zs, key, 911 + k));
+            local = new Vector3(Mathf.Cos(ang) * r, Mathf.Sin(ang) * r, 0f);
+            if ((local - commerceLocal).sqrMagnitude >= 1.44f) break;
+        }
+        return local;
+    }
+
+    private void Bark(string line)
+    {
+        if (line == null || Time.time < barkSuppressedUntil) return;
         WispCompanion.Instance?.SpeakLine(line);
     }
 
@@ -247,6 +465,19 @@ public class CampGrowthController : MonoBehaviour
         }
     }
 
+    private static float Hash01(int a, int b, int c)
+    {
+        unchecked
+        {
+            uint h = (uint)a * 2246822519u ^ (uint)b * 3266489917u;
+            h ^= (uint)c * 668265263u;
+            h = (h << 13) | (h >> 19);
+            h *= 1274126177u;
+            h ^= h >> 16;
+            return (h & 0xFFFFFF) / 16777216f;
+        }
+    }
+
     // -- persistence ---------------------------------------------------------
 
     public List<CampGrowthSaveData> GetSaveData()
@@ -254,7 +485,13 @@ public class CampGrowthController : MonoBehaviour
         var list = new List<CampGrowthSaveData>();
         foreach (var kv in growth)
         {
-            var rec = new CampGrowthSaveData { zoneId = kv.Key, growth = kv.Value };
+            var rec = new CampGrowthSaveData
+            {
+                zoneId = kv.Key,
+                growth = kv.Value,
+                declaredFaction = DeclaredFactionOf(kv.Key),
+                lastSettleDay = lastSettleDay.TryGetValue(kv.Key, out int d) ? d : 0,
+            };
             if (factionTally.TryGetValue(kv.Key, out var tally))
                 rec.factionTallies = (int[])tally.Clone();
             list.Add(rec);
@@ -266,13 +503,19 @@ public class CampGrowthController : MonoBehaviour
     {
         growth.Clear();
         factionTally.Clear();
-        builtTier.Clear();   // force a silent rebuild at the restored tiers
+        declaredFaction.Clear();
+        lastSettleDay.Clear();
+        builtState.Clear();   // force a silent rebuild at the restored state
         barkSuppressedUntil = Time.time + 2f;
         if (data == null) return;
         foreach (var rec in data)
         {
             if (rec == null || string.IsNullOrEmpty(rec.zoneId)) continue;
             growth[rec.zoneId] = rec.growth;
+            if (rec.declaredFaction >= 0 && rec.declaredFaction < FactionCount)
+                declaredFaction[rec.zoneId] = rec.declaredFaction;
+            if (rec.lastSettleDay > 0)
+                lastSettleDay[rec.zoneId] = rec.lastSettleDay;
             if (rec.factionTallies != null && rec.factionTallies.Length > 0)
             {
                 var tally = new int[FactionCount];
@@ -284,11 +527,15 @@ public class CampGrowthController : MonoBehaviour
     }
 }
 
-/// <summary>Additive save record for one camp's growth ledger.</summary>
+/// <summary>Additive save record for one camp's ledger. Field initialisers
+/// double as old-save defaults (JsonUtility leaves missing fields at their
+/// constructed values): -1 = still neutral, 0 = settle-day unknown.</summary>
 [Serializable]
 public class CampGrowthSaveData
 {
     public string zoneId;
     public int growth;
     public int[] factionTallies;
+    public int declaredFaction = -1;
+    public int lastSettleDay = 0;
 }

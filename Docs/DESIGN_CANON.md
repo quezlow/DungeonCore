@@ -71,7 +71,7 @@ the supersession in one line.
 22. Deeds
 23. Trophy Hall
 24. Surface World: Radial Forest Bands
-25. Camp Growth
+25. Camp Growth, Identity & Effects
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -1189,54 +1189,86 @@ paint instantly and creep only the bounds); removing `GameScene.Forest`
 (the int-shift trap).
 
 
-## 25. Camp Growth
+## 25. Camp Growth, Identity & Effects
 
 Status: SHIPPED (Phase 8). Verified: 2026-07-17.
 
 Survivors settle the surface. Every adventurer who leaves the dungeon alive
 (commoner-stage escapees included) adds one growth to a receiving camp:
 `camp.main` until its cap (30), then satellites in unlock order (cap 20
-each). One event carries all of it -- `AdventurerParty.MemberEscaped`,
-raised from `OnMemberResolved`, the single resolution point every exit path
-shares. Growth is flat (+1 per escape, fled and satisfied alike) and
-accrues to zone ids even before their band is researched: the guild was
-already gathering, so a late-researched camp can reveal mid-tier.
+each). One event carries all of it -- `AdventurerParty.MemberEscaped`
+(party + member), raised from `OnMemberResolved`, the single resolution
+point every exit path shares. Growth is flat (+1 per escape, fled and
+satisfied alike) and accrues to zone ids even before their band is
+researched: the guild was already gathering, so a late-researched camp can
+reveal mid-tier.
 
 **Tiers** are an open-ended authored list on the surface profile
 (`campTiers`): Waystation (0 -- a lone cart that got wind of a new
-dungeon, a fire ring, bedrolls), Camp (8 -- tents and a market stall),
-Settlement (20 -- a shop, more tents, palisade pieces). A future Town row
-(tavern, houses lining the road, wild-west main street) is one new row
-plus art -- zero code. Each tier defines a **commerce anchor** (cart ->
-stall -> shop), placed facing the way home (dungeon-ward, toward the road
-or trail in) and doubling as the wandering merchant's eventual dock, plus
-a prop table placed position-hashed as LOCAL offsets under the marker
-(stable across loads; retuned camp positions carry their buildings).
-Miller counts from entry 24's surface-life layer scale by the tier's
-`millerMultiplier` (0.5 / 1 / 1.5).
+dungeon), Camp (8 -- tents and a market stall), Settlement (20 -- a shop,
+more tents, palisade pieces). A future Town row (tavern, houses lining the
+road) is one new row plus art -- zero code. Each tier defines a **commerce
+anchor** (cart -> stall -> shop), placed facing the way home and doubling
+as the wandering merchant's eventual dock, plus a prop table. Miller
+counts from entry 24 scale by the tier's `millerMultiplier` (0.5 / 1 /
+1.5).
+
+**Framing:** when growth reaches `framingFraction` (0.7) of the NEXT
+tier's threshold, that tier's construction-site look appears --
+`framingProps[i]` renders at the exact positions `props[i]` will take
+(per-prop position hashing: hash of zone/tier/row/index, so foundation and
+finished building coincide by construction). The commerce framing rises
+BESIDE the current anchor and the finished piece takes the anchor spot on
+tier-up (documented exception to framing-in-place). Framing recedes if
+decay pulls growth back under the fraction.
+
+**Identity:** at tier 1+ a camp declares the majority faction of its
+recorded settler tallies (`FactionSystem.FactionForKill` per member; ties
+break to the Guild; waystations stay neutral). Sticky -- re-evaluated only
+on tier-up; the banner comes down if decay drops the camp to tier 0. Wisp
+announces declarations.
+
+**Effects** -- queried by the sim, tier-scaled, summed across camps, all
+numbers profile-serialized:
+Guild camps shave `guildIntervalSecondsPerTier` (2 s) x tier off the wave
+interval, floored at `guildIntervalFloorFraction` (0.6) of the base
+(`AdventurerSpawner.CurrentInterval`). Cultist camps dampen notoriety
+decay x(1 - 0.15 x tier) per camp, factors multiplying, clamped at 0.4
+(`DungeonCore.DecayNotoriety`). Holy Order camps tax mana regen 4% x tier,
+capped at 20% total (`DungeonCore.CurrentManaRegen`; the readout is poked
+via `NotifyManaRegenDisplay` on camp changes). Mercenary camps declare but
+exert no pressure yet.
+
+**Decay:** on each dawn (`DayNightCycle.OnDayStarted` /
+`CurrentDay`), a camp with no settlers for `decayGraceDays` (3) bleeds
+`decayPerDay` (1); tiers drop, buildout and framing recede, floor at zero.
 
 **Persistence:** one additive save block, `campGrowth` on
-`DungeonSaveData` (`{zoneId, growth, factionTallies}`), captured and
-restored beside the tracked-party registry. Buildout is never saved -- it
-rebuilds from ledger + tier tables, silently after a load (wisp barks fire
-only on live tier-ups). Faction tallies are recorded per camp from day one
-via `FactionSystem.FactionForKill`; nothing reads them yet -- they are the
-seam for the identity/effects guide (typed camps, sim pressure, passive
-decay, displacement later still).
+`DungeonSaveData` (`{zoneId, growth, factionTallies, declaredFaction,
+lastSettleDay}`), captured and restored beside the tracked-party registry.
+Field initialisers double as old-save defaults (-1 neutral / 0 unknown
+day). Buildout is never saved -- it rebuilds from ledger + tier tables,
+silently after a load.
 
 **Key files:** `Overworld/CampGrowthController.cs`; touches
 `Adventurer/AdventurerParty.cs` (`MemberEscaped`),
-`Floors/SurfaceZoneProfile.cs` (`CampTierDef`/`CampPropEntry`, caps),
-`Floors/SurfaceZoneGenerator.cs` (`Profile` accessor),
-`Overworld/SurfaceLifeController.cs` (tier-scaled millers),
+`Adventurer/AdventurerSpawner.cs` (`CurrentInterval` camp pressure),
+`DungeonCore/DungeonCore.cs` (`CurrentManaRegen` tax, `DecayNotoriety`
+dampening), `Floors/SurfaceZoneProfile.cs` (tier defs, framing fields,
+effect/decay knobs), `Floors/SurfaceZoneGenerator.cs` (`Profile`
+accessor), `Overworld/SurfaceLifeController.cs` (tier-scaled millers),
 `Save/DungeonSaveData.cs` + `Save/DungeonSaveController.cs` (additive
 `campGrowth` block).
 
-**Rejected:** weighting satisfied vs fled escapees (flat +1 is readable;
-revisit with effects); saving buildout layouts (ledger + hash suffices);
-per-survivor pathing to camps (escape is a resolution event, not a walk);
-building camp props into the band generator (tiers change live mid-session,
-generation paints once).
+**Rejected:** weighting satisfied vs fled escapees (flat +1 is readable);
+saving buildout layouts (ledger + hash suffices); per-survivor pathing to
+camps (escape is a resolution event, not a walk); building camp props into
+the band generator (tiers change live; generation paints once); daily
+faction-standing drift from camps (skipped this pass); Mercenary camp
+pressure (deferred until a mechanic earns it); Holy reputation-drift into
+the escalation system (effects-v2 candidate -- the mana tax ships first);
+commerce framing-in-place (the current anchor occupies the spot; beside-
+then-replace is the accepted exception).
 
 ---
 
