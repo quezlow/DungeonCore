@@ -120,6 +120,8 @@ public class InventoryController : MonoBehaviour
 
     public void SetInventoryItems(List<InventorySaveData> inventorySaveData)
     {
+        if (inventoryPanel == null) return;   // unwired scene: degrade to empty, never kill the restore chain
+
         //clear inventory panel
         foreach(Transform child in inventoryPanel.transform)
         {
@@ -130,6 +132,15 @@ public class InventoryController : MonoBehaviour
         for(int i = 0; i < slotCount; i++)
         {
             Instantiate(slotPrefab, inventoryPanel.transform);
+        }
+
+        // The restore path cannot exist without the dictionary; fail LOUDLY
+        // rather than silently dropping every saved item in this scene.
+        if (itemDictionary == null) itemDictionary = FindAnyObjectByType<ItemDictionary>();
+        if (itemDictionary == null)
+        {
+            Debug.LogError("[InventoryController] No ItemDictionary in this scene -- saved items cannot be restored here.");
+            return;
         }
 
         //populate slots

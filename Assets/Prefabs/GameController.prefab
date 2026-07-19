@@ -50,6 +50,8 @@ MonoBehaviour:
   quintupleButton: {fileID: 0}
   activeColour: {r: 1, g: 0.85, b: 0.2, a: 1}
   inactiveColour: {r: 0.4, g: 0.4, b: 0.4, a: 1}
+  killHitstopSeconds: 0.05
+  bossHitstopSeconds: 0.15
 --- !u!1 &2046709260214391523
 GameObject:
   m_ObjectHideFlags: 0
@@ -88,12 +90,7 @@ Transform:
   - {fileID: 790550401424131695}
   - {fileID: 1773436874716551987}
   - {fileID: 1810592065853361848}
-  - {fileID: 3104286510838390525}
-  - {fileID: 6485789854944131253}
-  - {fileID: 150602188482917472}
   - {fileID: 1672435368493027665}
-  - {fileID: 2455971752002716847}
-  - {fileID: 7616670303234159370}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2890714035007077683
@@ -152,6 +149,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   activateQuests: []
   handInQuestIDs: []
+  handInQuests: []
 --- !u!114 &4548966641455141412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -164,107 +162,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85464fe6516744f4dbfc04287d3522c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
---- !u!1 &4732403301208789128
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6485789854944131253}
-  - component: {fileID: 688774533995585496}
-  m_Layer: 0
-  m_Name: AdventurerSpawnController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6485789854944131253
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4732403301208789128}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4987690650735862136}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &688774533995585496
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4732403301208789128}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4537bf0e0de8864b8336ee33f5ac51d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AdventurerSpawner
-  adventurerTypes: []
-  minPartySize: 3
-  maxPartySize: 5
-  scalePartySizeWithNotoriety: 0
-  intervalLow: 30
-  intervalMedium: 20
-  intervalHigh: 10
-  notorietyMediumThreshold: 25
-  notorietyHighThreshold: 75
-  weightCautious: 2
-  weightBalanced: 4
-  weightAggressive: 2
-  weightCowardly: 1
---- !u!1 &6100787366089016174
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7616670303234159370}
-  - component: {fileID: 1133935243193611633}
-  m_Layer: 0
-  m_Name: TrapRegistry
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7616670303234159370
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6100787366089016174}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4987690650735862136}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1133935243193611633
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6100787366089016174}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60c19c94b55b8cf4baffc3b84bf6549a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TrapRegistry
 --- !u!1 &6179279879697576869
 GameObject:
   m_ObjectHideFlags: 0
@@ -641,57 +538,6 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!1 &7329556478434596498
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3104286510838390525}
-  - component: {fileID: 5972982733310267541}
-  m_Layer: 0
-  m_Name: DungeonBuildController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3104286510838390525
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7329556478434596498}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4987690650735862136}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5972982733310267541
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7329556478434596498}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 732b6c6ffdc898945898bc0f19009bab, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DungeonBuildController
-  claimManaCost: 5
-  entrancePrefab: {fileID: 7987491680190548495, guid: 227989ce1b1ac76489a6becddbaa5d23, type: 3}
-  chestPrefab: {fileID: 0}
-  spawnerShellPrefab: {fileID: 0}
-  roomAnchorPrefab: {fileID: 0}
-  selectedFurniture: {fileID: 0}
-  selectedTrap: {fileID: 0}
 --- !u!1 &7775609364282596168
 GameObject:
   m_ObjectHideFlags: 0
@@ -739,129 +585,6 @@ MonoBehaviour:
   questListContent: {fileID: 0}
   questEntryPrefab: {fileID: 3777396060651721407, guid: 65b6d2ac8d973f74c9e2a5ff14e8de7b, type: 3}
   objectiveTextPrefab: {fileID: 513067648285359648, guid: f03a1c5f261f53f4cb543b11b08bf889, type: 3}
---- !u!1 &7966567736650303348
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2455971752002716847}
-  - component: {fileID: 3727682333640428657}
-  m_Layer: 0
-  m_Name: DungeonSaveController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2455971752002716847
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7966567736650303348}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4987690650735862136}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3727682333640428657
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7966567736650303348}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 39d292b7f8155c449b9de4d52fc34a54, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DungeonSaveController
-  monsterRegistry: {fileID: 11400000, guid: b8bcaf4899d5da64d8e15bf956877f5f, type: 2}
-  furnitureRegistry: {fileID: 0}
-  roomDefRegistry: {fileID: 0}
-  trapRegistry: {fileID: 0}
---- !u!1 &8233158792243165229
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 150602188482917472}
-  - component: {fileID: 6744142766065425049}
-  - component: {fileID: 9049654902039787653}
-  m_Layer: 0
-  m_Name: DamageNumberSpawner
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &150602188482917472
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8233158792243165229}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4987690650735862136}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!223 &6744142766065425049
-Canvas:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8233158792243165229}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_RenderMode: 2
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
-  m_PixelPerfect: 0
-  m_ReceivesEvents: 1
-  m_OverrideSorting: 0
-  m_OverridePixelPerfect: 0
-  m_SortingBucketNormalizedSize: 0
-  m_VertexColorAlwaysGammaSpace: 0
-  m_UseReflectionProbes: 0
-  m_AdditionalShaderChannelsFlag: 0
-  m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
-  m_SortingOrder: 0
-  m_TargetDisplay: 0
---- !u!114 &9049654902039787653
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8233158792243165229}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d7e1aa1be6159c1469c473032e18455a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DamageNumberSpawner
-  prefab: {fileID: 4672789360250072260, guid: c220473d21aab9440bb5c1412ffa6bad, type: 3}
-  spawnYOffset: 0.5
 --- !u!1 &8930791801200083984
 GameObject:
   m_ObjectHideFlags: 0
