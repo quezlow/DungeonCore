@@ -118,7 +118,9 @@ public class SparringController : MonoBehaviour
 
     private void RunExchange(DungeonMonster a, DungeonMonster b, float chip, float xpPerExchange)
     {
-        long key = PairKey(a.GetInstanceID(), b.GetInstanceID());
+        // GetHashCode on UnityEngine.Object returns the instance id and is
+        // not deprecated -- same per-session pair identity, no EntityId churn.
+        long key = PairKey(a.GetHashCode(), b.GetHashCode());
         if (!bouts.TryGetValue(key, out var bout))
         {
             bout = new BoutState();

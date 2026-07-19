@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Runs the prologue's ending: the player walks into the trigger deep in the
@@ -40,6 +41,28 @@ public class DeathSequenceController : MonoBehaviour
 
     private bool fired;
 
+    // A press (interact, confirm, or click) completes the current hold early;
+    // every wait runs on unscaled frame time so no pause policy or load hitch
+    // can strand the sequence on its first page.
+    private static bool AdvancePressed()
+    {
+        var kb = Keyboard.current;
+        var ms = Mouse.current;
+        return (kb != null && (kb.eKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame))
+            || (ms != null && ms.leftButton.wasPressedThisFrame);
+    }
+
+    private System.Collections.IEnumerator HoldOrAdvance(float seconds)
+    {
+        float t = 0f;
+        while (t < seconds)
+        {
+            t += Time.unscaledDeltaTime;
+            if (t > 0.35f && AdvancePressed()) yield break;
+            yield return null;
+        }
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (fired) return;
@@ -77,7 +100,7 @@ public class DeathSequenceController : MonoBehaviour
                     faded = true;
                 }
 
-                yield return new WaitForSeconds(line.holdSeconds);
+                yield return HoldOrAdvance(line.holdSeconds);
             }
 
             ui.SetDialogueText("");
@@ -88,7 +111,7 @@ public class DeathSequenceController : MonoBehaviour
             _ = ScreenFader.Instance.FadeOut(fadeOutSeconds);
 
         // Let the dark settle before the voice speaks.
-        yield return new WaitForSeconds(blackHoldSeconds);
+        yield return HoldOrAdvance(blackHoldSeconds);
 
         yield return RunAwakening();
 
@@ -106,7 +129,7 @@ public class DeathSequenceController : MonoBehaviour
         {
             awakeningText.text = line;
             yield return FadeGroup(0f, 1f);
-            yield return new WaitForSeconds(lineHoldSeconds);
+            yield return HoldOrAdvance(lineHoldSeconds);
             yield return FadeGroup(1f, 0f);
         }
     }
@@ -116,7 +139,7 @@ public class DeathSequenceController : MonoBehaviour
         float t = 0f;
         while (t < lineFadeSeconds)
         {
-            t += Time.deltaTime;
+            t += Time.unscaledDeltaTime;
             awakeningGroup.alpha = Mathf.Lerp(from, to, t / lineFadeSeconds);
             yield return null;
         }

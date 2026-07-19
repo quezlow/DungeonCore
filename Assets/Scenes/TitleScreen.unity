@@ -1945,7 +1945,7 @@ Transform:
   m_GameObject: {fileID: 208164670}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.25914, y: 4.06715, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2425,7 +2425,7 @@ Transform:
   m_GameObject: {fileID: 300721652}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.25914, y: 4.06715, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5776,6 +5776,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 683661577}
   m_CullTransparentMesh: 1
+--- !u!1 &693073609 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8824297458869713092, guid: 20bab4fd13874f44ebd55148b28bbf6f, type: 3}
+  m_PrefabInstance: {fileID: 6467255984074759056}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &712028996
 GameObject:
   m_ObjectHideFlags: 0
@@ -7944,6 +7949,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9085046f02f69544eb97fd06b6048fe2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Toggle
+--- !u!114 &1038301601 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9060927996949760671, guid: 20bab4fd13874f44ebd55148b28bbf6f, type: 3}
+  m_PrefabInstance: {fileID: 6467255984074759056}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
 --- !u!1 &1039346851
 GameObject:
   m_ObjectHideFlags: 0
@@ -10193,7 +10209,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5716503611527018546, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.000030517578
+      value: -0.0000076293945
       objectReference: {fileID: 0}
     - target: {fileID: 5722302574284986237, guid: 1fd2143b193d9d04590e1a0e97dea193, type: 3}
       propertyPath: m_AnchorMax.x
@@ -10539,12 +10555,25 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1924789152451537795, guid: 20bab4fd13874f44ebd55148b28bbf6f, type: 3}
   m_PrefabInstance: {fileID: 6467255984074759056}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 693073609}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e7b0a8b84f387b4796b50cc76ac133e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ConfirmDialog
+--- !u!114 &1572512089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 693073609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b415432dee2524489821cd2c4b98781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfirmHotkey
+  target: {fileID: 1038301601}
 --- !u!1 &1590966160
 GameObject:
   m_ObjectHideFlags: 0
@@ -10809,6 +10838,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1607203275}
   - component: {fileID: 1607203276}
+  - component: {fileID: 1607203277}
   m_Layer: 0
   m_Name: NameDialog
   m_TagString: Untagged
@@ -10853,6 +10883,19 @@ MonoBehaviour:
   inputField: {fileID: 659000989}
   okButton: {fileID: 1663539902}
   cancelButton: {fileID: 36000737}
+--- !u!114 &1607203277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1607203274}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b415432dee2524489821cd2c4b98781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfirmHotkey
+  target: {fileID: 1663539902}
 --- !u!1 &1608172349
 GameObject:
   m_ObjectHideFlags: 0
@@ -12931,7 +12974,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8824297458869713092, guid: 20bab4fd13874f44ebd55148b28bbf6f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1572512089}
   m_SourcePrefab: {fileID: 100100000, guid: 20bab4fd13874f44ebd55148b28bbf6f, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

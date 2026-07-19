@@ -103,9 +103,12 @@ public class NPC : MonoBehaviour, IInteractable
     {
         if (isTyping)
         {
+            // First press fast-forwards the typewriter and stops there, so a
+            // final line can be read before a second press ends the dialogue.
             StopAllCoroutines();
             dialogueUI.SetDialogueText(dialogueData.dialogueLines[dialogueIndex]);
             isTyping = false;
+            return;
         }
 
         dialogueUI.ClearChoices();

@@ -64,7 +64,8 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightMercenary = 3f;       // Destroyer
     [SerializeField] private float weightHero = 1f;            // Destroyer (gated)
     [SerializeField] private float weightTreasureHunter = 3f;  // Delver — loot-focused, doesn't chase the core
-    [SerializeField] private float weightCultist = 1f;         // Gift-Giver
+    // GiftGiver resolves straight to Cultist (the category's only type), so
+    // cultist frequency lives on baseGiftGiver above -- no type weight needed.
     [SerializeField] private float weightPilgrim = 2f;         // Pilgrim
     [SerializeField] private float weightScholar = 1.5f;       // Pilgrim
     [SerializeField] private float weightSuicidal = 0.4f;      // Pilgrim (rare)

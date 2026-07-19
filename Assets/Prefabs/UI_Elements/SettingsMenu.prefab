@@ -168,6 +168,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8055858994147488386}
   - component: {fileID: 3046911541392756662}
+  - component: {fileID: 8106655736486021537}
   m_Layer: 5
   m_Name: QuitDialog
   m_TagString: Untagged
@@ -212,6 +213,19 @@ MonoBehaviour:
   saveQuitButton: {fileID: 3887659111870515788}
   quitButton: {fileID: 6987159539051891105}
   cancelButton: {fileID: 1085653626482475580}
+--- !u!114 &8106655736486021537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 39421862013287291}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b415432dee2524489821cd2c4b98781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfirmHotkey
+  target: {fileID: 3887659111870515788}
 --- !u!1 &136917804483307476
 GameObject:
   m_ObjectHideFlags: 0
@@ -2747,6 +2761,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7149527370764129434}
   - component: {fileID: 8409287728114618984}
+  - component: {fileID: 7409830103428113166}
   m_Layer: 5
   m_Name: NameDialog
   m_TagString: Untagged
@@ -2791,6 +2806,19 @@ MonoBehaviour:
   inputField: {fileID: 4020860194177697724}
   okButton: {fileID: 8281531344542180727}
   cancelButton: {fileID: 4657145194386236890}
+--- !u!114 &7409830103428113166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4037567916280136487}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b415432dee2524489821cd2c4b98781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfirmHotkey
+  target: {fileID: 8281531344542180727}
 --- !u!1 &4051969632458823582
 GameObject:
   m_ObjectHideFlags: 0
@@ -4595,6 +4623,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8269828688118678852}
   - component: {fileID: 4720287474078705148}
+  - component: {fileID: 4338203686110653493}
   m_Layer: 5
   m_Name: LoadConfirm
   m_TagString: Untagged
@@ -4640,6 +4669,19 @@ MonoBehaviour:
   cancelButton: {fileID: 7830885645497187869}
   confirmLabel: {fileID: 8734922441862803540}
   cancelLabel: {fileID: 2271298326064355975}
+--- !u!114 &4338203686110653493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6537239026822862010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b415432dee2524489821cd2c4b98781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ConfirmHotkey
+  target: {fileID: 725375739997721806}
 --- !u!1 &6803632074860591574
 GameObject:
   m_ObjectHideFlags: 0

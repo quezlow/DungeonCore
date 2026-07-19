@@ -12,7 +12,12 @@ public class ScreenFader : MonoBehaviour
     private void Awake()
     {
         if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        else if (Instance != this) Destroy(this);   // duplicate fader: remove the component, never its host object
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     // Core fade. unscaledDeltaTime so it animates even when Time.timeScale is 0
@@ -32,6 +37,7 @@ public class ScreenFader : MonoBehaviour
         float t = 0f;
         while (t < duration)
         {
+            if (canvasGroup == null) return;   // host torn down mid-fade; nothing left to animate
             // Clamp the step: a scene-load hitch can hand one frame a delta
             // larger than the whole duration, collapsing the fade into a
             // single rendered frame (the black pop). Cap it at ~one 30fps
@@ -41,7 +47,7 @@ public class ScreenFader : MonoBehaviour
             if (vcam != null) vcam.PreviousStateIsValid = false;
             await Task.Yield();
         }
-        canvasGroup.alpha = targetAlpha;
+        if (canvasGroup != null) canvasGroup.alpha = targetAlpha;
     }
 
     public async Task FadeIn() { await Fade(0f, fadeDuration); }  // to transparent
