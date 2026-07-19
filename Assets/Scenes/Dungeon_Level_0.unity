@@ -13646,11 +13646,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainFeatureGenerator
   minChambers: 3
   maxChambers: 6
-  minChamberBoxSize: 8
-  maxChamberBoxSize: 14
+  minChamberBoxSize: 12
+  maxChamberBoxSize: 16
   caInitialWallChance: 0.45
   caSmoothingIterations: 4
-  minChamberCellCount: 6
+  minChamberCellCount: 10
   chamberSpacing: 25
   minRivers: 1
   maxRivers: 3
@@ -13662,7 +13662,7 @@ MonoBehaviour:
   maxRiverWidth: 7
   minRiverBank: 1
   maxRiverBank: 3
-  exclusionRadiusFromCenter: 4
+  exclusionRadiusFromCenter: 12
   cavernInnerRadius: 2
   cavernOuterRadius: 3
   cavernMinCells: 10
@@ -43824,7 +43824,7 @@ MonoBehaviour:
   floorTilemap: {fileID: 2016980800}
   fogTilemap: {fileID: 2133985157}
   floorTile: {fileID: 11400000, guid: 74c9413d65178c945a1614ccc2244878, type: 2}
-  fogTile: {fileID: 11400000, guid: dc6e3a9d461e5f84db3acb561d5ad45f, type: 2}
+  fogTile: {fileID: 0}
   fallbackRadius: 100
 --- !u!1 &1640345983
 GameObject:
@@ -52109,7 +52109,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99999434
+  m_Size: 0.99999654
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -54450,7 +54450,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00074274093}
+  m_AnchoredPosition: {x: 0, y: 0.000013563034}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

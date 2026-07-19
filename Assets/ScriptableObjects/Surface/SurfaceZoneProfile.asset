@@ -28,38 +28,71 @@ MonoBehaviour:
   decorPrefabs: []
   bands:
   - unlockKey: 
-    outerDepth: 32
+    outerDepth: 60
     densityInner: 0.02
     densityOuter: 0.3
     hasMainCamp: 0
     satelliteCampCount: 0
     nodeCount: 3
   - unlockKey: tech.scout_1
-    outerDepth: 45
-    densityInner: 0.25
-    densityOuter: 0.2
+    outerDepth: 100
+    densityInner: 0.12
+    densityOuter: 0.06
     hasMainCamp: 1
     satelliteCampCount: 0
-    nodeCount: 6
-  - unlockKey: tech.scout_2
-    outerDepth: 70
-    densityInner: 0.2
-    densityOuter: 0.15
-    hasMainCamp: 0
-    satelliteCampCount: 2
-    nodeCount: 8
-  - unlockKey: tech.scout_3
-    outerDepth: 100
-    densityInner: 0.15
-    densityOuter: 0.1
-    hasMainCamp: 0
-    satelliteCampCount: 2
     nodeCount: 10
+  - unlockKey: tech.scout_2
+    outerDepth: 180
+    densityInner: 0.06
+    densityOuter: 0.035
+    hasMainCamp: 0
+    satelliteCampCount: 2
+    nodeCount: 14
+  - unlockKey: tech.scout_3
+    outerDepth: 260
+    densityInner: 0.035
+    densityOuter: 0.02
+    hasMainCamp: 0
+    satelliteCampCount: 2
+    nodeCount: 18
   mainCampRadius: 5
-  mainCampRoadDepth: 38
+  mainCampRoadDepth: 65
   satelliteCampRadius: 3.5
   minCampSeparation: 35
   minCampBearingDeg: 60
+  campTiers:
+  - name: Waystation
+    growthThreshold: 0
+    commercePrefab: {fileID: 0}
+    props: []
+    framingCommercePrefab: {fileID: 0}
+    framingProps: []
+    millerMultiplier: 0.5
+  - name: Camp
+    growthThreshold: 8
+    commercePrefab: {fileID: 0}
+    props: []
+    framingCommercePrefab: {fileID: 0}
+    framingProps: []
+    millerMultiplier: 1
+  - name: Settlement
+    growthThreshold: 20
+    commercePrefab: {fileID: 0}
+    props: []
+    framingCommercePrefab: {fileID: 0}
+    framingProps: []
+    millerMultiplier: 1.5
+  mainGrowthCap: 30
+  satelliteGrowthCap: 20
+  guildIntervalSecondsPerTier: 2
+  guildIntervalFloorFraction: 0.6
+  cultistDecayDampenPerTier: 0.15
+  cultistDecayMultiplierMin: 0.4
+  holyManaTaxPerTier: 0.04
+  holyManaTaxCap: 0.2
+  decayGraceDays: 3
+  decayPerDay: 1
+  framingFraction: 0.7
   nodeTypes:
   - nodeKey: node.wood
     displayName: Wood
@@ -87,3 +120,6 @@ MonoBehaviour:
     weight: 1
   nodeMinSpacing: 3
   creepDays: 1
+  gatePrefab: {fileID: 0}
+  gateTriggerSize: {x: 4, y: 4}
+  gateReturnInset: 3
