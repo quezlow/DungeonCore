@@ -37,15 +37,15 @@ public class SaveController : MonoBehaviour
         // Slot-aware when launched through the title screen; legacy single-file
         // fallback when a scene is played directly in the editor.
         activeSlotId = SaveSlotManager.Instance != null ? SaveSlotManager.Instance.ActiveSlotId : 0;
-        if (activeSlotId >= SlotPaths.MIN_SLOT_ID)
-        {
-            SlotPaths.EnsureSlotFolder(activeSlotId);
-            saveLocation = SlotPaths.ProloguePath(activeSlotId);
-        }
-        else
-        {
-            saveLocation = Path.Combine(Application.persistentDataPath, "SaveData.json");
-        }
+
+        // Editor direct-play has no SaveSlotManager; use slot 1 rather than a
+        // legacy side file, so dev saves and title-launched saves are the
+        // same files and testing never watches the wrong json.
+        if (activeSlotId < SlotPaths.MIN_SLOT_ID)
+            activeSlotId = SlotPaths.MIN_SLOT_ID;
+
+        SlotPaths.EnsureSlotFolder(activeSlotId);
+        saveLocation = SlotPaths.ProloguePath(activeSlotId);
         inventoryController = FindAnyObjectByType<InventoryController>();
         hotbarController = FindAnyObjectByType<HotbarController>();
         chests = FindObjectsByType<Chest>();
