@@ -23,6 +23,11 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = Vector2.zero;
             animator.SetBool("isWalking", false);
+            // Zero the live input floats too: the walk states key on them, so
+            // a held key would otherwise play the walk cycle in place through
+            // every pause and departure fade (the pre-fade stutter).
+            animator.SetFloat("InputX", 0f);
+            animator.SetFloat("InputY", 0f);
             StopMovementAnimations();
             StopFootsteps();
             return;
@@ -49,6 +54,12 @@ public class PlayerMovement : MonoBehaviour
         }
 
         moveInput = context.ReadValue<Vector2>();
+
+        // While paused (dialogue, menus, departure fades) Update keeps the
+        // floats zeroed; writing held input here would restart the walk
+        // cycle in place mid-fade.
+        if (PauseController.IsGamePaused) return;
+
         animator.SetFloat("InputX", moveInput.x);
         animator.SetFloat("InputY", moveInput.y);
     }

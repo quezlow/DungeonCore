@@ -32,7 +32,11 @@ public class ScreenFader : MonoBehaviour
         float t = 0f;
         while (t < duration)
         {
-            t += Time.unscaledDeltaTime;
+            // Clamp the step: a scene-load hitch can hand one frame a delta
+            // larger than the whole duration, collapsing the fade into a
+            // single rendered frame (the black pop). Cap it at ~one 30fps
+            // frame so the fade always plays its full visual length.
+            t += Mathf.Min(Time.unscaledDeltaTime, 1f / 30f);
             canvasGroup.alpha = Mathf.Lerp(start, targetAlpha, t / duration);
             if (vcam != null) vcam.PreviousStateIsValid = false;
             await Task.Yield();

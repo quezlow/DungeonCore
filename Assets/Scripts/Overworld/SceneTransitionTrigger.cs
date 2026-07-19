@@ -61,6 +61,7 @@ public class SceneTransitionTrigger : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (!collision.CompareTag("Player")) return;
+        if (collision.isTrigger) return;   // only the solid body opens doors -- the interaction circle reaches 1.5 units early
         if (!armed) return;
         if (SceneLoader.IsHandlingTransition) return;
 
