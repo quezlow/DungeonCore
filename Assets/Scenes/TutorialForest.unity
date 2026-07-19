@@ -427,6 +427,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: CmCam
       objectReference: {fileID: 0}
+    - target: {fileID: 1670559100974821147, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
+      propertyPath: CenterOnActivate
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6996316350215229638, guid: 6acde43758cc4694daac6a4085db94cb, type: 3}
       propertyPath: Lens.OrthographicSize
       value: 8
@@ -22367,7 +22371,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7498372750048259471, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -0.0000076293945
       objectReference: {fileID: 0}
     - target: {fileID: 7508406753035879104, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.x

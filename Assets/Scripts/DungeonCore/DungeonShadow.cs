@@ -58,6 +58,17 @@ public class DungeonShadow : MonoBehaviour
     [Tooltip("Cells within this radius of the cursor brighten toward full light (active floor only). 0 disables.")]
     [SerializeField, Min(0)] private int cursorRadius = 4;
 
+    [Header("Cursor Light")]
+    [Tooltip("The DCR/AdditiveSprite shader for the cursor light sprite. Falls back to Shader.Find " +
+             "if unset; assign it so builds include the shader.")]
+    [SerializeField] private Shader cursorLightShader;
+    [Tooltip("Radius of the additive cursor light in cells -- the smooth taper over void. 0 disables the sprite.")]
+    [SerializeField, Min(0f)] private float cursorLightRadius = 4.5f;
+    [Tooltip("Peak brightness of the light at its centre.")]
+    [SerializeField, Range(0f, 1f)] private float cursorLightIntensity = 0.45f;
+    [Tooltip("Light colour. White reads neutral; warm it slightly for a lantern feel.")]
+    [SerializeField] private Color cursorLightColor = Color.white;
+
     [Header("Moss glow")]
     [Tooltip("Moss walls light mined cells within this radius.")]
     [SerializeField, Min(0)] private int mossRadius = 3;
@@ -166,6 +177,7 @@ public class DungeonShadow : MonoBehaviour
             subscribed = false;
         }
         if (shadowTilemap != null) shadowTilemap.ClearAllTiles();
+        HideCursorLight();
         baseLight.Clear(); baseTint.Clear(); cursorCells.Clear(); voidCells.Clear();
     }
 
@@ -415,6 +427,72 @@ public class DungeonShadow : MonoBehaviour
             }
     }
 
+    // -- Cursor light sprite -----------------------------------------
+    // The per-cell cursor pass cannot taper smoothly over void: SetColor is
+    // one flat colour per cell, and the opaque void fill has no art
+    // underneath to carry the gradient, so the smoothstep quantises into
+    // 32px blocks. This additive sprite carries the void taper instead -- a
+    // single radial gradient following the mouse, above the void fill
+    // (Shadow / 5) and below the fog (Shadow / 10), so unexplored ground
+    // still occludes it. Built at runtime like the mine highlight; nothing
+    // to wire in the scene beyond the shader slot.
+
+    private SpriteRenderer cursorLightRenderer;
+    private Texture2D cursorLightTexture;
+
+    private void EnsureCursorLight()
+    {
+        if (cursorLightRenderer != null) return;
+
+        Shader shader = cursorLightShader != null ? cursorLightShader : Shader.Find("DCR/AdditiveSprite");
+        if (shader == null) return;
+
+        const int size = 128;
+        cursorLightTexture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+        Vector2 centre = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
+        float maxR = size * 0.5f;
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float r = Vector2.Distance(new Vector2(x, y), centre) / maxR;
+                float u = Mathf.Clamp01(1f - r);
+                float a = u * u * (3f - 2f * u) * u;   // smoothstep taper, softened shoulder
+                cursorLightTexture.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        cursorLightTexture.Apply();
+
+        var go = new GameObject("CursorLight");
+        go.transform.SetParent(transform, false);
+        cursorLightRenderer = go.AddComponent<SpriteRenderer>();
+        cursorLightRenderer.sprite = Sprite.Create(
+            cursorLightTexture, new Rect(0, 0, size, size),
+            new Vector2(0.5f, 0.5f), size, 0, SpriteMeshType.FullRect);
+        cursorLightRenderer.sharedMaterial = new Material(shader);
+        cursorLightRenderer.sortingLayerName = "Shadow";
+        cursorLightRenderer.sortingOrder = 5;   // above the void fill (0), below the fog (10)
+        cursorLightRenderer.enabled = false;
+    }
+
+    private void UpdateCursorLight(Vector3 world)
+    {
+        if (cursorLightRadius <= 0f) { HideCursorLight(); return; }
+        EnsureCursorLight();
+        if (cursorLightRenderer == null) return;
+
+        cursorLightRenderer.transform.position = new Vector3(world.x, world.y, 0f);
+        cursorLightRenderer.transform.localScale = Vector3.one * (cursorLightRadius * 2f);
+        Color col = cursorLightColor;
+        col.a = cursorLightIntensity;            // the shader multiplies rgb by alpha
+        cursorLightRenderer.color = col;
+        cursorLightRenderer.enabled = true;
+    }
+
+    private void HideCursorLight()
+    {
+        if (cursorLightRenderer != null) cursorLightRenderer.enabled = false;
+    }
+
     // Per-frame: restore the previous cursor cells to base, then brighten cells near the
     // cursor on the active floor. Restoring every frame self-heals after a base recompute.
     private void UpdateCursor()
@@ -424,12 +502,19 @@ public class DungeonShadow : MonoBehaviour
                 shadowTilemap.SetColor(c, ShadeFor(c, bl));
         cursorCells.Clear();
 
-        if (cursorRadius <= 0) return;
-        if (FloorManager.Instance == null || FloorManager.Instance.ActiveFloor != floor) return;
-        if (Camera.main == null || Mouse.current == null) return;
+        if (FloorManager.Instance == null || FloorManager.Instance.ActiveFloor != floor
+            || Camera.main == null || Mouse.current == null)
+        {
+            HideCursorLight();
+            return;
+        }
 
         Vector3 world = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
         Vector3Int center = influence.WorldToCell(world);
+
+        UpdateCursorLight(world);
+
+        if (cursorRadius <= 0) return;
 
         for (int dx = -cursorRadius; dx <= cursorRadius; dx++)
             for (int dy = -cursorRadius; dy <= cursorRadius; dy++)
@@ -438,6 +523,7 @@ public class DungeonShadow : MonoBehaviour
                 if (d > cursorRadius) continue;
                 Vector3Int cell = center + new Vector3Int(dx, dy, 0);
                 if (!baseLight.TryGetValue(cell, out float bl)) continue;
+                if (voidCells.Contains(cell)) continue;   // the additive sprite carries the void taper
                 float u = Mathf.Clamp01(1f - d / cursorRadius);
                 float f = u * u * (3f - 2f * u);                  // smoothstep falloff
                 float light = Mathf.Lerp(bl, 1f, f);
