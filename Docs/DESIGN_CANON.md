@@ -280,7 +280,9 @@ grade-matched teams are live. Verified: 2026-07-09.
 
 **As built:** once the assault reaches the adventurer stage,
 `InspectorAssessor` sends the first Inspector as a herald, then re-sends on a
-fixed cadence (**canon default 7 days**) to re-grade. `GradeSystem` surfaces
+fixed cadence (**canon default 7 days**) to re-grade. On each arrival the
+view glides to the Inspector on unscaled time while the notice holds the
+clock, releasing on dismissal (Day-34 camera lift). `GradeSystem` surfaces
 the hidden `DungeonRating` as a named tier ("Unremarkable" ... "Legendary"),
 snapshotted at each assessment so matched teams face a stable grade.
 Assessment is two-stage: a BACKEND rank (sizes responses and matched teams)
@@ -821,7 +823,8 @@ hunter arrives late, one floating bark ("Gone? It dropped right here..."),
 exits. The camera glides to the tunnel via SetFollowTarget on a stage anchor
 plus a new `NudgeZoom`/`TargetZoom` API; manual pan breaks the hold natively.
 **This is a scoped exception to the Day-34 dynamic-camera rejection --
-approved for this vignette only, not a general reintroduction.** If the
+approved for two scripted prologue beats only (this vignette and the
+death-sequence pan to the slab), not a general reintroduction.** If the
 vignette is absent, the director's fallback grants the rat directly. The
 Skeleton bootstrap testing convenience is superseded by the tutorial's
 per-step grants. The discovered-beast channel is otherwise fully shipped: 

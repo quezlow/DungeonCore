@@ -44,7 +44,13 @@ public class InspectorArrivalPopup : MonoBehaviour
     [Tooltip("Seconds the player gets to stand their monsters down after closing the notice.")]
     [SerializeField, Min(1f)] private float graceSeconds = 30f;
 
+    [Header("Camera")]
+    [Tooltip("Zoom while the view rests on the Inspector; the prior zoom restores on dismissal.")]
+    [SerializeField] private float inspectionZoom = 6f;
+
     private Coroutine grace;
+    private Transform watched;
+    private float priorZoom;
 
     private void Awake()
     {
@@ -71,6 +77,19 @@ public class InspectorArrivalPopup : MonoBehaviour
         if (titleLabel != null) titleLabel.text = title;
         if (bodyLabel != null) bodyLabel.text = string.Format(body, Mathf.RoundToInt(graceSeconds));
 
+        // The follow lerp runs on unscaled time, so the frozen clock itself
+        // carries the glide: the view drifts to the Inspector while the
+        // notice reads. Released on dismissal; a manual pan breaks it early.
+        var cam = DungeonCameraController.Instance;
+        var target = FindLiveInspector();
+        if (target != null && cam != null)
+        {
+            watched = target;
+            priorZoom = cam.TargetZoom;
+            cam.SetFollowTarget(target);
+            cam.NudgeZoom(inspectionZoom);
+        }
+
         panel.SetActive(true);
         TimeScaleController.Instance?.SetPaused();
     }
@@ -79,8 +98,24 @@ public class InspectorArrivalPopup : MonoBehaviour
     public void Dismiss()
     {
         if (panel != null) panel.SetActive(false);
+
+        var cam = DungeonCameraController.Instance;
+        if (watched != null && cam != null)
+        {
+            cam.ClearFollowTargetIf(watched);
+            cam.NudgeZoom(priorZoom);
+        }
+        watched = null;
+
         TimeScaleController.Instance?.SetNormal();
         grace = StartCoroutine(GracePeriod());
+    }
+
+    private static Transform FindLiveInspector()
+    {
+        foreach (var a in FindObjectsByType<DungeonAdventurer>())
+            if (a != null && a.Type == AdventurerType.Inspector) return a.transform;
+        return null;
     }
 
     private IEnumerator GracePeriod()

@@ -28,6 +28,11 @@ public class DeathSequenceController : MonoBehaviour
     [Header("The exchange")]
     [SerializeField] private ExchangeLine[] lines;
 
+    [Header("Camera")]
+    [Tooltip("Empty placed at the delvers by the slab; the view glides here on the rig's own follow damping. Scoped Day-34 exception, mirroring First Blood.")]
+    [SerializeField] private Transform cameraFocus;
+    [SerializeField] private float glideBeatSeconds = 1.1f;
+
     [Tooltip("The fade to black begins this many lines before the end, so the dark arrives mid-sentence.")]
     [SerializeField] private int fadeOnLinesFromEnd = 1;
     [SerializeField] private float fadeOutSeconds = 2.5f;
@@ -80,6 +85,15 @@ public class DeathSequenceController : MonoBehaviour
     private IEnumerator RunSequence()
     {
         PauseController.SetPause(true);
+
+        // Glide the view to the slab so the player can see who is speaking.
+        // One-way: the dark takes the scene before the camera is needed back.
+        if (cameraFocus != null)
+        {
+            var vcam = FindAnyObjectByType<Unity.Cinemachine.CinemachineCamera>();
+            if (vcam != null) vcam.Follow = cameraFocus;
+            yield return HoldOrAdvance(glideBeatSeconds);
+        }
 
         DialogueController ui = DialogueController.Instance;
         bool faded = false;

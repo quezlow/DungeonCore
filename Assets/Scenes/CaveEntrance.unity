@@ -2182,6 +2182,8 @@ MonoBehaviour:
     portrait: {fileID: 3295236706101327806, guid: 4e12a982a183b384ebf5663934cd04c0, type: 3}
     text: Close your eyes. The dark takes care of the rest...
     holdSeconds: 3.5
+  cameraFocus: {fileID: 1853545938}
+  glideBeatSeconds: 1.1
   fadeOnLinesFromEnd: 1
   fadeOutSeconds: 2.5
   awakeningGroup: {fileID: 1198435014}
@@ -2887,7 +2889,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7498372750048259471, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.0000076293945
+      value: -0.000015258789
       objectReference: {fileID: 0}
     - target: {fileID: 7508406753035879104, guid: a197c839afff87647baba8f958382a4e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -7124,6 +7126,37 @@ Tilemap:
     e31: 0
     e32: 0
     e33: 1
+--- !u!1 &1853545937
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1853545938}
+  m_Layer: 0
+  m_Name: 'DeathCameraFocus '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1853545938
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1853545937}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 61.91, y: -7.21, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2023044807
 GameObject:
   m_ObjectHideFlags: 0
@@ -7501,3 +7534,4 @@ SceneRoots:
   - {fileID: 488369372}
   - {fileID: 1198435018}
   - {fileID: 837526118}
+  - {fileID: 1853545938}
