@@ -166,9 +166,11 @@ public class DungeonSaveController : MonoBehaviour
         WorldSeed = new System.Random().Next();
 
         // DAY 34 — Apply pending new-game name (type applied in DungeonCore.Awake).
-        string dungeonName = "Unnamed Dungeon";
+        string dungeonName = SaveSlotManager.Instance != null
+            ? $"Dungeon {SaveSlotManager.Instance.ActiveSlotId}" : "Unnamed Dungeon";
         var pending = SaveSlotManager.Instance?.PendingNewGame;
-        if (pending != null) dungeonName = pending.dungeonName;
+        if (pending != null && !string.IsNullOrWhiteSpace(pending.dungeonName))
+            dungeonName = pending.dungeonName;
         currentSave.dungeonName = dungeonName;
 
         var floor0 = FloorManager.Instance?.GetFloor(0);

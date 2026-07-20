@@ -45,7 +45,10 @@ public class KnownPartiesPanel : MonoBehaviour
         if (PauseController.IsGamePaused) return;
         if (Keybinds.IsTextInputActive()) return;   // don't toggle while typing a note/field
         if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame)
+        {
+            if (!UnlockState.IsUnlocked("tech.known_parties")) return;
             Toggle();
+        }
     }
 
     public void Toggle() { if (isOpen) Hide(); else Show(); }

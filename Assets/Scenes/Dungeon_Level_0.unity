@@ -4133,6 +4133,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 136435628}
+  - component: {fileID: 136435629}
   m_Layer: 5
   m_Name: Alerts
   m_TagString: Untagged
@@ -4161,6 +4162,22 @@ RectTransform:
   m_AnchoredPosition: {x: -1, y: 319}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &136435629
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 136435627}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d8cd9308bfa56a419b1c756535d1ce3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlertHudButton
+  button: {fileID: 1130894154}
+  badgeRoot: {fileID: 522976291}
+  badgeLabel: {fileID: 1998666889}
+  badgeCap: 99
 --- !u!1001 &157624932
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8247,7 +8264,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1530f9333b38e3244929b04375e0181d, type: 2}
   - {fileID: 11400000, guid: 1b2933e0c5baf3944a15b0086d2072c0, type: 2}
   - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
-  toggleKey: 26
+  toggleKey: 30
 --- !u!114 &261399476
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21683,7 +21700,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1004282579
   m_SortingLayer: 10
-  m_SortingOrder: 0
+  m_SortingOrder: 50
   m_MaskInteraction: 0
   m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 0.24705882}
@@ -29071,6 +29088,7 @@ MonoBehaviour:
   arrowSpeed: 16
   hunterWalkSpeed: 3.2
   corpsePause: 0.9
+  paceScale: 1.4
   absorbSeconds: 1.2
   moveCamera: 1
   cameraZoom: 6
@@ -30645,7 +30663,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1130894153}
-  - component: {fileID: 1130894157}
   - component: {fileID: 1130894156}
   - component: {fileID: 1130894155}
   - component: {fileID: 1130894154}
@@ -30758,22 +30775,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1130894152}
   m_CullTransparentMesh: 1
---- !u!114 &1130894157
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1130894152}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4d8cd9308bfa56a419b1c756535d1ce3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AlertHudButton
-  button: {fileID: 1130894154}
-  badgeRoot: {fileID: 522976291}
-  badgeLabel: {fileID: 1998666889}
-  badgeCap: 99
 --- !u!1 &1146560257
 GameObject:
   m_ObjectHideFlags: 0
@@ -33128,7 +33129,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1249681895}
   - component: {fileID: 1249681897}
-  - component: {fileID: 1249681896}
+  - component: {fileID: 1249681899}
+  - component: {fileID: 1249681898}
   m_Layer: 5
   m_Name: MinimapPanel
   m_TagString: Untagged
@@ -33156,36 +33158,6 @@ RectTransform:
   m_AnchoredPosition: {x: -160, y: -295}
   m_SizeDelta: {x: 300, y: 300}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1249681896
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1249681894}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &1249681897
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -33194,6 +33166,62 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1249681894}
   m_CullTransparentMesh: 1
+--- !u!114 &1249681898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249681894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f748b1f1ddf1c04e8024e8c8c7ac7c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Minimap
+  dotLayer: {fileID: 325259266}
+  viewRect: {fileID: 1538790237}
+  floorLabel: {fileID: 1289618434}
+  body: {fileID: 1363507809}
+  textureSize: 220
+  paddingCells: 2
+  rockColour: {r: 0.06, g: 0.06, b: 0.1, a: 1}
+  wallColour: {r: 0.28, g: 0.26, b: 0.34, a: 1}
+  floorColour: {r: 0.62, g: 0.58, b: 0.5, a: 1}
+  roomColour: {r: 0.42, g: 0.34, b: 0.52, a: 1}
+  coreColour: {r: 1, g: 0.82, b: 0.25, a: 1}
+  entranceColour: {r: 0.45, g: 0.8, b: 0.95, a: 1}
+  adventurerDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
+  monsterDot: {r: 0.35, g: 0.85, b: 0.4, a: 1}
+  hostileMonsterDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
+  coreDot: {r: 1, g: 0.82, b: 0.25, a: 1}
+  dotSize: 5
+--- !u!114 &1249681899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249681894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
 --- !u!224 &1253028783 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 152595694565232312, guid: 9bf0e76f05297184992c406d09a8bbd3, type: 3}
@@ -48561,8 +48589,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1829215686}
   - component: {fileID: 1829215689}
-  - component: {fileID: 1829215688}
-  - component: {fileID: 1829215687}
   m_Layer: 5
   m_Name: MapImage
   m_TagString: Untagged
@@ -48590,62 +48616,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1829215687
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1829215685}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f748b1f1ddf1c04e8024e8c8c7ac7c2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Minimap
-  dotLayer: {fileID: 325259266}
-  viewRect: {fileID: 1538790237}
-  floorLabel: {fileID: 1289618434}
-  body: {fileID: 1363507809}
-  textureSize: 220
-  paddingCells: 2
-  rockColour: {r: 0.06, g: 0.06, b: 0.1, a: 1}
-  wallColour: {r: 0.28, g: 0.26, b: 0.34, a: 1}
-  floorColour: {r: 0.62, g: 0.58, b: 0.5, a: 1}
-  roomColour: {r: 0.42, g: 0.34, b: 0.52, a: 1}
-  coreColour: {r: 1, g: 0.82, b: 0.25, a: 1}
-  entranceColour: {r: 0.45, g: 0.8, b: 0.95, a: 1}
-  adventurerDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
-  monsterDot: {r: 0.35, g: 0.85, b: 0.4, a: 1}
-  hostileMonsterDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
-  coreDot: {r: 1, g: 0.82, b: 0.25, a: 1}
-  dotSize: 5
---- !u!114 &1829215688
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1829215685}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 0}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
 --- !u!222 &1829215689
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -52109,7 +52079,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99999654
+  m_Size: 0.9999961
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -54450,7 +54420,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000013563034}
+  m_AnchoredPosition: {x: 0, y: 0.00002894168}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -57324,7 +57294,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventurerSpawner
   adventurerTypes:
-  - {fileID: 11400000, guid: 47852613e229f3345aaaf889ba623b7b, type: 2}
   - {fileID: 11400000, guid: e673ab988d70b45438eb1262002e6243, type: 2}
   - {fileID: 11400000, guid: 0ef6e03567689ee4294c41f0634f6ecb, type: 2}
   - {fileID: 11400000, guid: ceff0a110f7836848b12a62543b35ae9, type: 2}
@@ -57363,7 +57332,7 @@ MonoBehaviour:
   weightMercenary: 3
   weightHero: 1
   weightTreasureHunter: 3
-  weightPilgrim: 2
+  weightPilgrim: 1.2
   weightScholar: 1.5
   weightSuicidal: 0.4
   weightNoble: 1

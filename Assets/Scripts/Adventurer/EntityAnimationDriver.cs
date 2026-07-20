@@ -62,7 +62,11 @@ public class EntityAnimationDriver : MonoBehaviour
         animator.SetFloat(LastInputYHash, lastFacing.y);
     }
 
-    public void OnAttack() { if (animator != null) animator.SetTrigger(AttackHash); }
-    public void OnHurt() { if (animator != null) animator.SetTrigger(HurtHash); }
-    public void OnDeath() { if (animator != null) animator.SetTrigger(DieHash); }
+    // Some civilian prefabs carry an Animator with no controller; a trigger
+    // on those logs a warning per death. Ready checks both.
+    private bool Ready => animator != null && animator.runtimeAnimatorController != null;
+
+    public void OnAttack() { if (Ready) animator.SetTrigger(AttackHash); }
+    public void OnHurt() { if (Ready) animator.SetTrigger(HurtHash); }
+    public void OnDeath() { if (Ready) animator.SetTrigger(DieHash); }
 }

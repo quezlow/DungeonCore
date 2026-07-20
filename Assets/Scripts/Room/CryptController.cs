@@ -272,9 +272,12 @@ public class CryptController : MonoBehaviour
         unhouseScratch.Clear();
         foreach (var kvp in housed)
             if (kvp.Key == null || kvp.Key.Claimed || kvp.Value == null) unhouseScratch.Add(kvp.Key);
+        // The scratch holds DESTROYED keys: Unity's overloaded null made the
+        // old guard skip exactly the entries that needed removing, and the
+        // trailing Remove(null) threw. The references are real C# objects --
+        // remove them directly, no guard.
         for (int i = 0; i < unhouseScratch.Count; i++)
-            if (unhouseScratch[i] != null) housed.Remove(unhouseScratch[i]);
-        housed.Remove(null);
+            housed.Remove(unhouseScratch[i]);
     }
 
     /// <summary>Free sarcophagi standing inside valid Crypts, all floors.</summary>

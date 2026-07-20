@@ -1015,7 +1015,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // flees the moment it sees a monster (e.g. the Noble bolting for the exit).
         if (goal == AdventurerGoal.WorshipCore || goal == AdventurerGoal.ObserveRooms)
         {
-            if (trait == BehaviourTrait.Cowardly && currentFloor?.Entities != null
+            // Worship-bound pilgrims hold their nerve at the sight of monsters;
+            // only harm turns them back. A Cowardly observer still bolts.
+            if (goal == AdventurerGoal.ObserveRooms
+                && trait == BehaviourTrait.Cowardly && currentFloor?.Entities != null
                 && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, detectionRange))
                 StartRetreat();
             return;

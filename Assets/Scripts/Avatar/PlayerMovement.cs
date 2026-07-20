@@ -6,6 +6,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     private Rigidbody2D rb;
     private Vector2 moveInput;
+    private bool wasPaused;
     private Animator animator;
     private bool playingFootsteps = false;
     private float footstepSpeed = 0.5f;
@@ -21,6 +22,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (PauseController.IsGamePaused)
         {
+            wasPaused = true;
             rb.linearVelocity = Vector2.zero;
             animator.SetBool("isWalking", false);
             // Zero the live input floats too: the walk states key on them, so
@@ -31,6 +33,19 @@ public class PlayerMovement : MonoBehaviour
             StopMovementAnimations();
             StopFootsteps();
             return;
+        }
+
+        // First live frame after a pause: a key held straight through a scene
+        // load never re-fires Move, leaving the animator's floats at zero and
+        // the sprite facing wrong. Push the held direction back in once.
+        if (wasPaused)
+        {
+            wasPaused = false;
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                animator.SetFloat("InputX", moveInput.x);
+                animator.SetFloat("InputY", moveInput.y);
+            }
         }
 
         rb.linearVelocity = moveInput * moveSpeed;
@@ -59,6 +74,7 @@ public class PlayerMovement : MonoBehaviour
         // floats zeroed; writing held input here would restart the walk
         // cycle in place mid-fade.
         if (PauseController.IsGamePaused) return;
+        wasPaused = false;
 
         animator.SetFloat("InputX", moveInput.x);
         animator.SetFloat("InputY", moveInput.y);

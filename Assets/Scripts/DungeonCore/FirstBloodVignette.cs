@@ -42,6 +42,8 @@ public class FirstBloodVignette : MonoBehaviour
     [SerializeField] private float hunterWalkSpeed = 3.2f;
     [Tooltip("Seconds the corpse lies still before the dark takes it.")]
     [SerializeField] private float corpsePause = 0.9f;
+    [Tooltip("Scales every beat: waits stretch by this, actor speeds divide by it.")]
+    [SerializeField] private float paceScale = 1.4f;
     [SerializeField] private float absorbSeconds = 1.2f;
 
     [Header("Camera")]
@@ -94,34 +96,42 @@ public class FirstBloodVignette : MonoBehaviour
     {
         playing = true;
 
-        // -- Stage geometry, derived from the seeded tunnel -----------------
+        // -- Stage geometry, core-derived so cell naming can never mirror it --
+        // Outward is ALWAYS away from the core: the surface lies opposite the
+        // heart of the dungeon, whichever of the seeded cells is which.
         Vector3 mouth = floor0.TileInfluence.CellToWorld(cave.mouthCell.ToVector3Int());
-        Vector3 inner = floor0.TileInfluence.CellToWorld(cave.spawnCell.ToVector3Int());
-        Vector3 outward = (mouth - inner).normalized;
+        Vector3 stand = cave.hasSpawnCell
+            ? floor0.TileInfluence.CellToWorld(cave.spawnCell.ToVector3Int()) : mouth;
+        Vector3 corePos = floor0.TileInfluence.CellToWorld(floor0.Terrain.CoreCell);
+        Vector3 outward = ((mouth + stand) * 0.5f - corePos).normalized;
+        Vector3 doorway = Vector3.Distance(mouth, corePos) >= Vector3.Distance(stand, corePos)
+            ? mouth : stand;                              // the true outermost point
+        Vector3 inner = doorway - outward * 3.0f;         // a few steps down the tunnel
 
-        Vector3 ratStart = mouth + outward * 2.5f;      // beyond the mouth, off the carved floor
-        Vector3 killPoint = inner;                      // a few steps down the tunnel
-        Vector3 hunterStop = Vector3.Lerp(mouth, inner, 0.45f);
-        Vector3 arrowStart = mouth + outward * 1.5f;    // loosed from outside, before he is seen
-        bool facingLeft = outward.x > 0f;               // actors move opposite the outward axis
+        Vector3 ratStart = doorway + outward * 2.5f;      // beyond the mouth, off the carved floor
+        Vector3 killPoint = inner;
+        Vector3 hunterStop = Vector3.Lerp(doorway, inner, 0.45f);
+        Vector3 arrowStart = doorway + outward * 1.5f;    // loosed from outside, before he is seen
+        bool facingLeft = outward.x > 0f;                 // actors move opposite the outward axis
 
-        // -- Camera: glide to the tunnel; player pan breaks the hold --------
+        // -- Camera: glide to the tunnel; input is LOCKED for the vignette --
+        DungeonCameraController.InputLocked = true;
         var cam = DungeonCameraController.Instance;
         GameObject anchor = null;
         float priorZoom = 0f;
         if (moveCamera && cam != null)
         {
             anchor = new GameObject("VignetteCameraAnchor");
-            anchor.transform.position = Vector3.Lerp(mouth, inner, 0.5f);
+            anchor.transform.position = Vector3.Lerp(doorway, inner, 0.5f);
             priorZoom = cam.TargetZoom;
             cam.SetFollowTarget(anchor.transform);
             cam.NudgeZoom(cameraZoom);
-            yield return new WaitForSeconds(1.1f);      // let the glide land
+            yield return new WaitForSeconds(1.1f * paceScale);   // let the glide land
         }
 
         // -- The rat, running for its life -----------------------------------
         SpriteRenderer rat = MakePuppet("Vignette_Rat", ratSprite, ratStart, facingLeft);
-        yield return MoveTo(rat.transform, killPoint, ratRunSpeed, hop: true);
+        yield return MoveTo(rat.transform, killPoint, ratRunSpeed / paceScale, hop: true);
 
         // -- The arrow, loosed from beyond the mouth --------------------------
         SoundEffectManager.Play(arrowSfx);
@@ -135,7 +145,7 @@ public class FirstBloodVignette : MonoBehaviour
         // -- The kill ----------------------------------------------------------
         SoundEffectManager.Play(deathSfx);
         rat.transform.rotation = Quaternion.Euler(0f, 0f, facingLeft ? 90f : -90f);
-        yield return new WaitForSeconds(corpsePause);
+        yield return new WaitForSeconds(corpsePause * paceScale);
 
         // -- The dark takes it -------------------------------------------------
         SoundEffectManager.Play(absorbSfx);
@@ -146,19 +156,21 @@ public class FirstBloodVignette : MonoBehaviour
 
         // The one mechanical line: the rat is learned the instant it is taken.
         BestiaryState.Instance?.Discover("Cave Rat");
-        yield return new WaitForSeconds(0.6f);
+        yield return new WaitForSeconds(0.6f * paceScale);
 
         // -- The hunter, a breath too late --------------------------------------
         SpriteRenderer hunter = MakePuppet("Vignette_Hunter", hunterSprite, ratStart, facingLeft);
-        yield return MoveTo(hunter.transform, hunterStop, hunterWalkSpeed, hop: false);
-        yield return new WaitForSeconds(0.8f);
+        yield return MoveTo(hunter.transform, hunterStop, hunterWalkSpeed / paceScale, hop: false);
+        yield return new WaitForSeconds(0.8f * paceScale);
 
         BarkSpawner.Spawn(hunterStop + Vector3.up * 0.8f, hunterLine, hunterBarkColour);
-        yield return new WaitForSeconds(2.2f);
+        yield return new WaitForSeconds(2.2f * paceScale);
 
         FlipPuppet(hunter, !facingLeft);
-        yield return MoveTo(hunter.transform, ratStart + outward * 1.0f, hunterWalkSpeed, hop: false);
+        yield return MoveTo(hunter.transform, ratStart + outward * 1.0f, hunterWalkSpeed / paceScale, hop: false);
         Destroy(hunter.gameObject);
+
+        DungeonCameraController.InputLocked = false;
 
         // -- Release the camera; the view stays on the entrance ------------------
         if (anchor != null && cam != null)

@@ -49,7 +49,7 @@ public static class TechContentGenerator
             "The shape of the dark, held in the mind.",
             "The core learns the lay of its own halls. The minimap is shown.");
 
-        var n_alerts = Define("alerts", "Ledger of Alarums", ResearchPath.Observation, 1, 10, 1,
+        var n_alerts = Define("alerts", "Ledger of Alarums", ResearchPath.Observation, 1, 0, 1,
             "Not every disturbance need go unmarked.",
             "The core keeps a running account of what stirs. Alerts, their ledger, and the ticker are shown.");
 

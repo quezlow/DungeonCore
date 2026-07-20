@@ -73,8 +73,8 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightInspector = 0.8f;     // Pilgrim (conditional)
     [Tooltip("Heroes only appear once Notoriety reaches this threshold.")]
     [SerializeField] private float heroNotorietyThreshold = 60f;
-    [Tooltip("Master switch for Inspector spawns (later gated by the escalation system).")]
-    [SerializeField] private bool inspectorEnabled = true;
+    [Tooltip("Ambient Inspector rolls arrive silently -- no popup, no grace -- and their deaths still summon the kill-team. The assessor's announced cadence is the only sanctioned path.")]
+    [SerializeField] private bool inspectorEnabled = false;
 
     [Header("Party Composition")]
     [Tooltip("Mercenary guards escorting a Noble.")]

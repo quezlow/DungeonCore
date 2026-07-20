@@ -44,7 +44,8 @@ public class DayNightHUD : MonoBehaviour
 
         if (phaseLabel != null)
         {
-            phaseLabel.text = isDay ? "DAY" : "NIGHT";
+            int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
+            phaseLabel.text = (isDay ? "DAY " : "NIGHT ") + day;
             phaseLabel.color = isDay ? dayTextColour : nightTextColour;
         }
 

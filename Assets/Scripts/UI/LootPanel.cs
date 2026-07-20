@@ -34,7 +34,7 @@ public class LootPanel : MonoBehaviour
     [SerializeField] private List<CombatClassDefinition> classes = new();
 
     [Header("Hotkey")]
-    [SerializeField] private Key toggleKey = Key.L;
+    [SerializeField] private Key toggleKey = Key.J;   // L belongs to the alerts ledger
 
     private readonly List<Button> spawnedEntries = new();
     private bool isOpen = false;
@@ -97,9 +97,9 @@ public class LootPanel : MonoBehaviour
             if (e == null) continue;
             int value = Mathf.Max(1, Mathf.RoundToInt(e.goldValue * LootRarity.MultiplierFor(e.rarity)));
             string tag = $"<color={LootRarity.HexFor(e.rarity)}>[{e.rarity}]</color>";
-            parts.Add($"{e.label} {tag} {value}g x{e.weight:0.#}");
+            parts.Add($"{e.label} {tag} {value}g");
         }
-        return string.Join("   -   ", parts);
+        return string.Join("\n", parts);
     }
 
     private void Show() { BuildEntries(); if (panel != null) panel.SetActive(true); isOpen = true; }

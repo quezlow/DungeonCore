@@ -313,10 +313,11 @@ public class WispCompanion : MonoBehaviour
         panel.gameObject.SetActive(true);
         yield return Fade(panel.alpha, 1f);
 
+        // Lines land by time or by the action they ask for -- never by a
+        // stray press. Tutorial integrity outranks impatience.
         float t = 0f;
         while (t < holdSeconds)
         {
-            if (t >= skipGuardSeconds && SkipPressed()) break;
             t += Time.unscaledDeltaTime;
             yield return null;
         }
@@ -342,10 +343,4 @@ public class WispCompanion : MonoBehaviour
         panel.alpha = to;
     }
 
-    private static bool SkipPressed()
-    {
-        bool key = Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame;
-        bool click = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
-        return key || click;
-    }
 }

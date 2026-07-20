@@ -644,7 +644,8 @@ shipped (see 17).
 **Diegetic one-shot exception:** the alerts gate silences the ledger, not
 the wisp. Feedback a player cannot recover later from a panel -- the
 buried-remains murmur (its sensed flag persists), the buried grant lines,
-and the crypt raise refusals -- speaks through `WispCompanion.SpeakLine`
+the crypt raise refusals, and the research stall/resume announcements --
+speaks through `WispCompanion.SpeakLine`
 (never gated) and only ALSO logs to `AlertsLog`. Repeatable, mechanically
 visible events (housed corpses, raise successes, deed and research
 completions) stay ledger-only.
@@ -795,7 +796,9 @@ the monster command panel enters `BuildMode.PlaceMonsterPost`
 whole multi-selection); the monster's Wander state anchors on the post
 instead of the spawner, so respawns walk back from the muster room to
 their station. Wander / Clear Orders clears the post. A programmatic
-"P" glyph marks the post while the spawner is selected.
+"P" glyph marks the post while the spawner is selected. A patrol leg the
+pathfinder cannot reach raises a throttled "no path" bark over the
+monster (BarkSpawner, ~5s cooldown) instead of failing silently.
 
 **Floor gates:** spawner respawn ticking and spawner placement are both
 blocked while any threshold-crossed adventurer is on that floor
@@ -821,10 +824,13 @@ beyond the mouth, kill, corpse pause, absorb (sink/shrink/tint toward the
 core's colour) firing `BestiaryState.Discover("Cave Rat")` at the take,
 hunter arrives late, one floating bark ("Gone? It dropped right here..."),
 exits. The camera glides to the tunnel via SetFollowTarget on a stage anchor
-plus a new `NudgeZoom`/`TargetZoom` API; manual pan breaks the hold natively.
-**This is a scoped exception to the Day-34 dynamic-camera rejection --
-approved for two scripted prologue beats only (this vignette and the
-death-sequence pan to the slab), not a general reintroduction.** If the
+plus a new `NudgeZoom`/`TargetZoom` API; camera input is HARD-LOCKED for the
+vignette's duration (`DungeonCameraController.InputLocked`) -- the beat plays
+uninterrupted. Stage geometry is core-derived (outward = away from the core),
+immune to seeded-cell naming. **Day-34 note: the dynamic-camera rejection is
+lifted (2026-07-19). Scripted camera moments are permitted wherever a beat
+needs one; this vignette, the death-sequence slab pan, and the Inspector
+arrival glide were the first three. The other Day-34 rejections stand.** If the
 vignette is absent, the director's fallback grants the rat directly. The
 Skeleton bootstrap testing convenience is superseded by the tutorial's
 per-step grants. The discovered-beast channel is otherwise fully shipped: 

@@ -245,6 +245,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private List<Vector3> patrolPath = new();
     private int patrolPathIndex = 0;
     private Vector3Int patrolPathTargetCell;
+    private float nextNoPathBark;
     private List<Vector3> wanderPath = new();
     private int wanderPathIndex = 0;
     private Vector3Int wanderPathTargetCell;
@@ -688,8 +689,20 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             patrolPathTargetCell = targetCell;
         }
 
-        // Follow path. If pathfinder found nothing, monster sits — player's waypoint is unreachable.
-        if (patrolPathIndex >= patrolPath.Count) return;
+        // Follow path. If the pathfinder found nothing, the monster sits --
+        // the player's waypoint is unreachable. Say so above its head rather
+        // than letting the order fail silently, throttled so a standing
+        // blockage does not spam.
+        if (patrolPathIndex >= patrolPath.Count)
+        {
+            if (patrolPath.Count == 0 && Time.time >= nextNoPathBark)
+            {
+                nextNoPathBark = Time.time + 5f;
+                BarkSpawner.Spawn(transform.position + Vector3.up * 0.8f,
+                    "no path", new Color(0.95f, 0.45f, 0.4f));
+            }
+            return;
+        }
 
         Vector3 stepTarget = patrolPath[patrolPathIndex];
         transform.position = Vector2.MoveTowards(

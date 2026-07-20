@@ -120,6 +120,37 @@ public class WildMonsterController : MonoBehaviour
         return m.WildDefinition != null ? m.WildDefinition.monsterName : "";
     }
 
+    /// <summary>The largest 4-connected region of the chamber's recorded
+    /// cells. Old saves may carry sealed islets from pre-fix generation;
+    /// everything that spawns or restores stays in the open body.</summary>
+    private List<Vector3Int> OpenChamberCells(ChamberData ch)
+    {
+        var remaining = new HashSet<Vector3Int>();
+        foreach (var sv in ch.cells) remaining.Add(sv.ToVector3Int());
+        var best = new List<Vector3Int>();
+        var region = new List<Vector3Int>();
+        var queue = new Queue<Vector3Int>();
+        while (remaining.Count > 0)
+        {
+            region.Clear();
+            Vector3Int seed = default;
+            foreach (var c0 in remaining) { seed = c0; break; }
+            remaining.Remove(seed);
+            queue.Enqueue(seed);
+            while (queue.Count > 0)
+            {
+                var c = queue.Dequeue();
+                region.Add(c);
+                foreach (var n in new[] {
+                    new Vector3Int(c.x + 1, c.y, 0), new Vector3Int(c.x - 1, c.y, 0),
+                    new Vector3Int(c.x, c.y + 1, 0), new Vector3Int(c.x, c.y - 1, 0) })
+                    if (remaining.Remove(n)) queue.Enqueue(n);
+            }
+            if (region.Count > best.Count) best = new List<Vector3Int>(region);
+        }
+        return best;
+    }
+
     private int RollWildMonsterCount(ChamberData ch)
     {
         int divisor = Mathf.Max(1, features.WildMonsterCellDivisor);
@@ -147,12 +178,17 @@ public class WildMonsterController : MonoBehaviour
         var list = new List<DungeonMonster>(count);
         spawnedPerChamber[ch.id] = list;
 
+        // Saves from before the connectivity fix can carry sealed islets in
+        // ch.cells; confine spawns to the chamber's open body.
+        var openCells = OpenChamberCells(ch);
+        if (openCells.Count == 0) return;
+
         for (int i = 0; i < count; i++)
         {
             MonsterDefinition def = pool[rng.Next(pool.Count)];
             if (def == null || def.prefab == null) continue;
 
-            var spawnCell = ch.cells[rng.Next(ch.cells.Count)].ToVector3Int();
+            var spawnCell = openCells[rng.Next(openCells.Count)];
             Vector3 worldPos = influence.CellToWorld(spawnCell);
 
             var monster = Instantiate(def.prefab, worldPos, Quaternion.identity);
@@ -174,12 +210,18 @@ public class WildMonsterController : MonoBehaviour
         var list = new List<DungeonMonster>(ch.wildMonsters.Count);
         spawnedPerChamber[ch.id] = list;
 
+        var openSnap = OpenChamberCells(ch);
+        var openSet = new HashSet<Vector3Int>(openSnap);
+
         foreach (var snap in ch.wildMonsters)
         {
             var def = LookupWildDefinition(snap.monsterName);
             if (def == null || def.prefab == null) continue;
 
-            Vector3 worldPos = influence.CellToWorld(snap.cell.ToVector3Int());
+            var snapCell = snap.cell.ToVector3Int();
+            if (!openSet.Contains(snapCell) && openSnap.Count > 0)
+                snapCell = openSnap[Mathf.Abs(snapCell.x + snapCell.y) % openSnap.Count];
+            Vector3 worldPos = influence.CellToWorld(snapCell);
             var monster = Instantiate(def.prefab, worldPos, Quaternion.identity);
             monster.transform.SetParent(floor.transform, true);
             monster.InitialiseWild(ch.id, floor, ConvertCellsToList(ch.cells), def);

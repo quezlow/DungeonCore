@@ -12,7 +12,12 @@ public class DungeonCameraController : MonoBehaviour
     [SerializeField] private CinemachineConfiner2D confiner;
 
     [Header("Pan Settings")]
-    [SerializeField] private float keyboardPanSpeed = 8f;
+    [SerializeField] private float keyboardPanSpeed = 16f;
+
+    /// <summary>Hard lock for scripted beats: pan, edge-scroll, drag, and
+    /// zoom all ignore input while set. Follow targets still glide.</summary>
+    public static bool InputLocked;
+
     [SerializeField] private float edgeScrollSpeed = 6f;
     [SerializeField] private float edgeScrollThreshold = 20f;
     [SerializeField] private bool enableEdgeScroll = true;
@@ -180,6 +185,8 @@ public class DungeonCameraController : MonoBehaviour
 
     private bool HandlePan()
     {
+        if (InputLocked) return false;
+
         Vector3 move = Vector3.zero;
         var keyboard = Keyboard.current;
         var mouse = Mouse.current;
@@ -240,7 +247,7 @@ public class DungeonCameraController : MonoBehaviour
         // element, not the camera - a wheel scroll there must not zoom the view.
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
-        float scroll = mouse.scroll.ReadValue().y;
+        float scroll = InputLocked ? 0f : mouse.scroll.ReadValue().y;   // scripted beats own the lens
         if (Mathf.Abs(scroll) > 0.01f)
         {
             targetZoom -= scroll * zoomSpeed;

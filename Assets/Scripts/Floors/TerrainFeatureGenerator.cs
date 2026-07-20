@@ -400,7 +400,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (IsTooCloseToExistingChamber(chamberCentre)) continue;
 
             int boxSize = rng.Next(minChamberBoxSize, maxChamberBoxSize + 1);
-            var cells = RunChamberCA(rng, chamberCentre, boxSize, centerCell, floorRadius);
+            var cells = LargestConnectedRegion(
+                RunChamberCA(rng, chamberCentre, boxSize, centerCell, floorRadius));
 
             if (cells.Count < minChamberCellCount) continue;
 
@@ -412,6 +413,37 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 // aliveWildCount defaults to -1, cleared defaults to false — see ChamberData.
             });
         }
+    }
+
+    /// <summary>Cellular automata can leave disconnected blobs; a sealed islet
+    /// recorded into a chamber's cells later strands wild spawns inside solid
+    /// rock. Keep only the largest 4-connected region.</summary>
+    private static List<Vector3Int> LargestConnectedRegion(List<Vector3Int> cells)
+    {
+        if (cells == null || cells.Count == 0) return cells ?? new List<Vector3Int>();
+        var remaining = new HashSet<Vector3Int>(cells);
+        var best = new List<Vector3Int>();
+        var region = new List<Vector3Int>();
+        var queue = new Queue<Vector3Int>();
+        while (remaining.Count > 0)
+        {
+            region.Clear();
+            Vector3Int seed = default;
+            foreach (var c0 in remaining) { seed = c0; break; }
+            remaining.Remove(seed);
+            queue.Enqueue(seed);
+            while (queue.Count > 0)
+            {
+                var c = queue.Dequeue();
+                region.Add(c);
+                foreach (var n in new[] {
+                    new Vector3Int(c.x + 1, c.y, 0), new Vector3Int(c.x - 1, c.y, 0),
+                    new Vector3Int(c.x, c.y + 1, 0), new Vector3Int(c.x, c.y - 1, 0) })
+                    if (remaining.Remove(n)) queue.Enqueue(n);
+            }
+            if (region.Count > best.Count) best = new List<Vector3Int>(region);
+        }
+        return best;
     }
 
     private bool IsTooCloseToExistingChamber(Vector3Int candidate)
@@ -882,7 +914,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 stem.x + (int)Math.Round(side * reach * perpDx),
                 stem.y + (int)Math.Round(side * reach * perpDy), 0);
 
-            var pocket = RunChamberCA(rng, pocketCentre, entranceOffshootBoxSize, centerCell, floorRadius);
+            var pocket = LargestConnectedRegion(
+                RunChamberCA(rng, pocketCentre, entranceOffshootBoxSize, centerCell, floorRadius));
             if (pocket.Count < 4) continue;
             foreach (var p in pocket) carved.Add(p);
         }

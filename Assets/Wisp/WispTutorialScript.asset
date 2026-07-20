@@ -47,5 +47,5 @@ MonoBehaviour:
     text: A room, when you are ready - marked across mined ground, then given a purpose
       and your companion to hold it.
   - id: tut_nudge_research
-    text: The Ledger of Alarums still waits in the tree, whenever you would have
-      warning of what comes.
+    text: The Ledger of Alarums still waits in the tree - press R when you would
+      have warning of what comes.

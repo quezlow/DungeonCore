@@ -94,6 +94,9 @@ public class AlertHistoryPanel : MonoBehaviour
 
         SetAllFilter();
         Hide();
+
+        // The ledger board starts closed; scene state must not pre-open it.
+        if (panel != null) panel.SetActive(false);
     }
 
     private void OnDestroy()

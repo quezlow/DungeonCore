@@ -210,6 +210,9 @@ public class ResearchController : MonoBehaviour
         lastSpeed = SpeedFor(libs);
     }
 
+    /// <summary>True while an active project has no Library to sustain it.</summary>
+    public bool IsStalled => researchStalled;
+
     /// <summary>Smooth 0..1 progress of the active project, interpolating the
     /// current day via DayNightCycle.CycleProgress01. Completion itself still
     /// lands at dawn -- this is presentation only.</summary>
@@ -219,8 +222,11 @@ public class ResearchController : MonoBehaviour
         {
             var node = ActiveNode;
             if (node == null || node.durationDays <= 0) return 0f;
-            float frac = DayNightCycle.Instance != null
-                ? DayNightCycle.Instance.CycleProgress01 : 0f;
+            // A stalled project must not crawl on the day-cycle blend -- the
+            // bar freezing IS the signal that no study is happening.
+            float frac = researchStalled ? 0f
+                : (DayNightCycle.Instance != null
+                    ? DayNightCycle.Instance.CycleProgress01 : 0f);
             float effective = activeRemaining - lastSpeed * frac;
             return Mathf.Clamp01(1f - effective / node.durationDays);
         }
@@ -415,6 +421,9 @@ public class ResearchController : MonoBehaviour
 
     private void Announce(string message)
     {
+        // Stall and resume are one-shot state changes the player cannot read
+        // back later; the wisp is never gated, the ledger keeps the record.
+        WispCompanion.Instance?.SpeakLine(message);
         Vector3 pos = DungeonCore.Instance != null
             ? DungeonCore.Instance.transform.position : Vector3.zero;
         AlertsLog.Instance?.AddAlert(message, pos, 0, AlertCategory.Discovery);

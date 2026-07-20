@@ -84,6 +84,12 @@ public class SaveSlotManager : MonoBehaviour
     }
 
     public void ClearPendingNewGame() => PendingNewGame = null;
+
+    /// <summary>The prologue path reaches the ceremony with no pending (LaunchSlot
+    /// clears it); the commit rebuilds one here so the chosen type and a name
+    /// always land in the dungeon.</summary>
+    public void SetPendingNewGame(string dungeonName, DungeonType dungeonType) =>
+        PendingNewGame = new PendingNewGameData { dungeonName = dungeonName, dungeonType = dungeonType };
 }
 
 [Serializable]

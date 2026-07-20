@@ -70,7 +70,7 @@ public class EntityStatusBars : MonoBehaviour
     private SpriteRenderer trackedSprite;
     private Color defaultLabelColour = Color.white;   // the prefab's own label colour (boss styling)
 
-    private const string VeteranStar = "\u2605";
+    private const string VeteranStar = "*";   // the HUD font carries no \u2605
 
     // ─────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ public class EntityStatusBars : MonoBehaviour
         if (bossLabel == null) return;
         if (show)
         {
-            bossLabel.text = "★";
+            bossLabel.text = "*";   // the HUD font carries no \u2605
             bossLabel.color = new Color(1f, 0.83f, 0.4f, 1f);  // veteran gold
             bossLabel.gameObject.SetActive(true);
         }

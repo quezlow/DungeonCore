@@ -402,16 +402,24 @@ public class CeremonyController : MonoBehaviour
         yield return Say("Then it is chosen, and it was always going to be you.");
         yield return Say("Down we go - there is so much to build.");
 
+        // Let the last line breathe before the dark takes the scene.
+        yield return new WaitForSeconds(2.0f);
+
         var manager = SaveSlotManager.Instance;
         if (manager != null && manager.PendingNewGame != null)
         {
             manager.PendingNewGame.dungeonType = chosen;
         }
+        else if (manager != null)
+        {
+            // The prologue path arrives with no pending (LaunchSlot clears it).
+            // Build one so the chosen type ALWAYS reaches the core -- this was
+            // the dark-became-fire bug -- and the slot gets a stable name.
+            manager.SetPendingNewGame($"Dungeon {manager.ActiveSlotId}", chosen);
+        }
         else
         {
-            // Direct scene play in the editor: no slot, no pending. The dungeon
-            // will boot with defaults; the shipped path never lands here.
-            Debug.LogWarning("[Ceremony] No pending new game - chosen type not written " +
+            Debug.LogWarning("[Ceremony] No SaveSlotManager - chosen type not written " +
                              "(direct scene play?). Loading the dungeon anyway.");
         }
 
