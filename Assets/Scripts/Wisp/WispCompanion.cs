@@ -25,14 +25,17 @@ public class WispCompanion : MonoBehaviour
     [SerializeField] private float bobSpeed = 2f;
     [SerializeField] private float driftAmplitude = 0.08f;
     [SerializeField] private float driftSpeed = 0.7f;
+    [Header("Roam")]
+    [Tooltip("Slow wander around the home point, in world units, on top of the bob/drift.")]
+    [SerializeField] private float roamRadius = 1.6f;
+    [Tooltip("How quickly the wander re-targets. Lower is lazier.")]
+    [SerializeField] private float roamSpeed = 0.25f;
 
     [Header("Panel")]
     [SerializeField] private CanvasGroup panel;
     [SerializeField] private TMP_Text panelText;
     [SerializeField] private float fadeSeconds = 0.35f;
     [SerializeField] private float holdSeconds = 3.2f;
-    [Tooltip("Ignore skip-presses for this long after a line appears, so the press that dismissed the last one does not skip this one too.")]
-    [SerializeField] private float skipGuardSeconds = 0.3f;
 
     [Header("Opening")]
     [Tooltip("Plays the arrive_* sequence the first time a fresh dungeon loads.")]
@@ -54,6 +57,7 @@ public class WispCompanion : MonoBehaviour
     [SerializeField] private WispScript script;
 
     private Vector3 spriteHome;
+    private float roamSeed;
     private readonly HashSet<string> spoken = new();
     // Queued speech carries the resolved text plus an optional once-id (for the
     // ambient one-shots). Tutorial lines enqueue text directly with no id.
@@ -71,6 +75,7 @@ public class WispCompanion : MonoBehaviour
         else { Destroy(gameObject); return; }
 
         if (floatSprite != null) spriteHome = floatSprite.localPosition;
+        roamSeed = UnityEngine.Random.value * 100f;
         if (panel != null)
         {
             panel.alpha = 0f;
@@ -175,9 +180,13 @@ public class WispCompanion : MonoBehaviour
     private void Update()
     {
         if (floatSprite == null) return;
+        // A slow, lazy wander around home (incommensurate sine axes trace an
+        // open path so it never sits still), with the tight bob/drift on top.
+        float rx = Mathf.Sin(Time.time * roamSpeed + roamSeed) * roamRadius;
+        float ry = Mathf.Sin(Time.time * roamSpeed * 0.73f + roamSeed * 1.7f) * roamRadius * 0.6f;
         float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
         float drift = Mathf.Sin(Time.time * driftSpeed) * driftAmplitude;
-        floatSprite.localPosition = spriteHome + new Vector3(drift, bob, 0f);
+        floatSprite.localPosition = spriteHome + new Vector3(rx + drift, ry + bob, 0f);
 
         TryIdleBark();
     }

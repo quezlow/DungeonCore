@@ -30,7 +30,13 @@ public class SceneBootstrap : MonoBehaviour
         try
         {
             if (ScreenFader.Instance != null)
+            {
+                // The fader arrives at its prefab rest alpha (0); a fresh-start
+                // scene reached via FadeToScene would otherwise fade 0->0 and
+                // pop. Paint black first so FadeIn actually lifts a veil.
+                ScreenFader.Instance.SetBlack();
                 await ScreenFader.Instance.FadeIn();
+            }
         }
         catch (System.Exception e)
         {

@@ -75,6 +75,10 @@ public class CeremonyController : MonoBehaviour
     [SerializeField] private AffinityMapping mapping;
     [SerializeField] private Key senseKey = Key.Space;
     [SerializeField] private float manaHoldSeconds = 1.2f;
+    [Tooltip("Core tint image that swells as the ambient-mana hold fills.")]
+    [SerializeField] private Image coreTintImage;
+    [Tooltip("Scale of the core tint image at a full hold (1 = no growth).")]
+    [SerializeField] private float coreTintHoldScale = 1.3f;
 
     private Vector3 wispRestPosition;
     private bool wispBobbing;
@@ -262,11 +266,17 @@ public class CeremonyController : MonoBehaviour
         while (held < manaHoldSeconds)
         {
             held = SenseHeld() ? held + Time.deltaTime : 0f;
+            float fill01 = Mathf.Clamp01(held / manaHoldSeconds);
             if (manaOrbFill != null)
-                manaOrbFill.fillAmount = Mathf.Clamp01(held / manaHoldSeconds);
+                manaOrbFill.fillAmount = fill01;
+            if (coreTintImage != null)
+                coreTintImage.transform.localScale =
+                    Vector3.one * Mathf.Lerp(1f, coreTintHoldScale, fill01);
             yield return null;
         }
         if (manaOrbFill != null) manaOrbFill.fillAmount = 1f;
+        if (coreTintImage != null)
+            coreTintImage.transform.localScale = Vector3.one * coreTintHoldScale;
     }
 
     // ------------------------------------------------------------------ choice

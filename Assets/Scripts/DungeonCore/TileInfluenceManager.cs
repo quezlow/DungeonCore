@@ -238,6 +238,15 @@ public class TileInfluenceManager : MonoBehaviour
             terrain?.RevealTile(pos);
         }
 
+        // Reveal the 1-cell wall border too, so the cavern's wall caps sit on
+        // revealed ground. Fog left under a cap shows through its transparent
+        // edges as a dark rim (mirrors RevealWithBorder for features).
+        foreach (var pos in roomCells)
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain?.RevealTile(new Vector3Int(pos.x + dx, pos.y + dy, pos.z));
+
         // CLAIM only the central 3×3 — owned territory stays small on every floor.
         // The rest of the cavern is open but unclaimed; the player claims outward into it.
         var claimCells = new List<Vector3Int>
@@ -432,7 +441,9 @@ public class TileInfluenceManager : MonoBehaviour
         {
             if (!claimedTiles.Remove(cell)) continue;
             removed++;
-            if (!minedTiles.Contains(cell)) terrain?.RefogTile(cell);
+            // Breach strips OWNERSHIP only. Every claimed cell was revealed at
+            // claim time; the player has seen it, so it stays lit and simply
+            // returns to claimable. Nothing the player revealed is re-fogged.
         }
 
         if (removed == 0) return;

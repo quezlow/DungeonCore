@@ -15,6 +15,10 @@ public class ScreenFader : MonoBehaviour
         else if (Instance != this) Destroy(this);   // duplicate fader: remove the component, never its host object
     }
 
+    /// <summary>Snap fully opaque with no animation, so a following FadeIn
+    /// lifts a real veil instead of animating 0 -> 0.</summary>
+    public void SetBlack() { if (canvasGroup != null) canvasGroup.alpha = 1f; }
+
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;
