@@ -52,7 +52,6 @@ public class CeremonyController : MonoBehaviour
     [SerializeField] private Transform wispAnchor;
     [SerializeField] private CanvasGroup wispPanel;
     [SerializeField] private TMP_Text wispText;
-    [SerializeField] private float lineHold = 2.8f;
 
     [Header("Facsimile HUD (fades in per beat: move, breathe, reach, pulse)")]
     [SerializeField] private CanvasGroup[] hudPieces = new CanvasGroup[4];
