@@ -278,7 +278,7 @@ public class DungeonCore : MonoBehaviour
         capClampAnnounced = true;
         AlertsLog.Instance?.AddAlert(
             "The hoard presses against its bounds. Coin beyond this is turned away; raise deeper vaults.",
-            transform.position);
+            transform.position, -1, AlertCategory.System);
     }
 
     /// <summary>Spends gold if affordable. Returns false (no change) if too poor.</summary>
