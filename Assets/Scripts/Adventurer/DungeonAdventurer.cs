@@ -1613,7 +1613,6 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         TimeScaleController.Instance?.DoKillHitstop();
 
-        Debug.Log($"[DIAG-CORPSE] {displayName} type={type} named={named} IsNamedHero={IsNamedHero} corpsePrefab={(corpsePrefab != null ? corpsePrefab.name : "NULL")}");   // DIAG-CORPSE
         if (corpsePrefab != null)
         {
             var corpse = Instantiate(corpsePrefab, transform.position, Quaternion.identity);
