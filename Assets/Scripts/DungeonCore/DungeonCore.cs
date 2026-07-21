@@ -40,6 +40,18 @@ public class DungeonCore : MonoBehaviour
     [Header("Notoriety Decay")]
     [SerializeField] private float notorietyDecayCooldown = 10f;
 
+    // Notoriety gain shaping: kills earn less as the legend nears a soft cap, so a
+    // combat-heavy dungeon settles at a plateau instead of racing past every gate.
+    [Header("Notoriety Gain Shaping")]
+    [Tooltip("Base notoriety a single non-suicidal kill earns before soft-cap shaping.")]
+    [SerializeField] private float killNotoriety = 5f;
+    [Tooltip("Soft cap for earned notoriety. Per-kill gain scales toward the minimum " +
+             "fraction as notoriety approaches this. Keep at or above the fast-spawn threshold.")]
+    [SerializeField] private float notorietySoftCap = 100f;
+    [Tooltip("Smallest fraction of a kill's notoriety that still lands once notoriety " +
+             "is at or above the soft cap, so kills never stop mattering entirely.")]
+    [Range(0f, 1f)][SerializeField] private float notorietyMinGainFraction = 0.15f;
+
     private bool isUnstable = false;
     private float instabilityTimer = 0f;
     private int breachCount = 0;
@@ -400,6 +412,20 @@ public class DungeonCore : MonoBehaviour
         notoriety = Mathf.Max(0f, notoriety + amount);
         timeSinceLastKill = 0f;
         OnNotorietyChanged?.Invoke(notoriety);
+    }
+
+    /// <summary>Notoriety earned from a kill, shaped by a soft cap: each kill adds less
+    /// as notoriety approaches the cap, so a combat-heavy dungeon plateaus instead of
+    /// racing past every threshold. Drains, scripted raises and the trophy trickle bypass
+    /// this and call AddNotoriety directly. Returns the amount added (for per-party tallies).</summary>
+    public float AccrueKillNotoriety()
+    {
+        float headroom = notorietySoftCap > 0f
+            ? Mathf.Clamp01(1f - notoriety / notorietySoftCap)
+            : 1f;
+        float gain = killNotoriety * Mathf.Lerp(notorietyMinGainFraction, 1f, headroom);
+        AddNotoriety(gain);
+        return gain;
     }
 
     public void AddReputation(float amount)

@@ -124,7 +124,60 @@ public class FactionPanel : MonoBehaviour
                       : neutralColor;
         }
 
+        // The row prefab positions its labels by fixed offsets, so a long intel
+        // line overprints the next row. Drive the geometry here instead: wrap
+        // the intel text to a set width, measure its rendered height, park it
+        // below the header line, and size the whole row to contain it so the
+        // container's layout stacks rows without overlap.
+        LayoutRow(row, intelLabel);
+
         spawned.Add(row);
+    }
+
+    // Tunables for the code-driven row layout (prefab anchors are ignored).
+    private const float IntelWidth = 520f;      // wrap width for the intel paragraph
+    private const float HeaderHeight = 26f;     // space reserved for name/bar/standing line
+    private const float RowPadding = 10f;       // breathing room beneath the intel text
+
+    /// <summary>Sizes a faction row to its (variable-height) intel text and parks
+    /// the intel block below the header line, so rows never overprint each other
+    /// regardless of the prefab's authored offsets.</summary>
+    private void LayoutRow(GameObject row, TMP_Text intelLabel)
+    {
+        var rowRT = row.GetComponent<RectTransform>();
+        if (rowRT == null) return;
+
+        float intelHeight = 0f;
+        if (intelLabel != null)
+        {
+            var intelRT = intelLabel.rectTransform;
+            intelLabel.enableWordWrapping = true;
+            intelLabel.overflowMode = TextOverflowModes.Overflow;
+
+            // Anchor the intel block top-left of the row and give it a fixed
+            // width; measure the height the wrapped text actually needs.
+            intelRT.anchorMin = new Vector2(0f, 1f);
+            intelRT.anchorMax = new Vector2(0f, 1f);
+            intelRT.pivot = new Vector2(0f, 1f);
+            intelRT.sizeDelta = new Vector2(IntelWidth, intelRT.sizeDelta.y);
+            intelLabel.ForceMeshUpdate();
+            intelHeight = intelLabel.GetPreferredValues(intelLabel.text, IntelWidth, 0f).y;
+            intelRT.sizeDelta = new Vector2(IntelWidth, intelHeight);
+            intelRT.anchoredPosition = new Vector2(10f, -HeaderHeight);
+        }
+
+        float total = HeaderHeight + intelHeight + RowPadding;
+        rowRT.anchorMin = new Vector2(0f, 1f);
+        rowRT.anchorMax = new Vector2(1f, 1f);
+        rowRT.pivot = new Vector2(0.5f, 1f);
+        rowRT.sizeDelta = new Vector2(0f, total);
+
+        // Report the height to any LayoutElement so a container VerticalLayoutGroup
+        // spaces rows correctly; harmless if none is present.
+        var le = row.GetComponent<LayoutElement>();
+        if (le == null) le = row.AddComponent<LayoutElement>();
+        le.minHeight = total;
+        le.preferredHeight = total;
     }
 
     /// <summary>Extra per-faction status line. Only the Mercenary Company reports one:

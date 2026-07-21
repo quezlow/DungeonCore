@@ -49,6 +49,7 @@ the supersession in one line.
 6. Alignment Axis
 7. Factions and Standing
 8. Recurring Threat Events
+8A. Notoriety Model (Gain Shaping, Tier Gates, Decay)
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
 11. Tribute and GiftGivers
@@ -381,6 +382,55 @@ its escalated form is the climax's Empowered Beast face.
 `DungeonCore/MercenaryContract.cs`, `DungeonCore/NobleRetaliation.cs`,
 `DungeonCore/WildMonsterEvent.cs`, dispatch helpers in
 `Adventurer/AdventurerSpawner.cs`.
+
+## 8A. Notoriety Model (Gain Shaping, Tier Gates, Decay)
+
+Status: SHIPPED. Notoriety was a near-monotonic kill counter (+5 flat per
+non-suicidal kill, drained only 0.1/s after a 10s idle) that saturated the
+hardest ambient content within ~15 kills, long before the dungeon's tier
+warranted it. This pass re-couples the difficulty ceiling to progression.
+Verified: 2026-07-20.
+
+**Gain shaping (soft cap).** A kill's notoriety is earned through
+`DungeonCore.AccrueKillNotoriety()` (called from `DungeonAdventurer.Die`),
+which scales the base `killNotoriety` (5) down as notoriety approaches
+`notorietySoftCap` (100), never below `notorietyMinGainFraction` (0.15) of
+the base. Kills near the cap add ~0.75 instead of 5, so the legend plateaus.
+Drains (pilgrim calm, satisfied looters), scripted raises (Crypt +15) and the
+trophy trickle bypass the shaping and call `AddNotoriety` directly. Per-party
+notoriety tallies read the shaped amount `AccrueKillNotoriety` returns.
+
+**Tier gates on the ceiling.** Ambient Heroes now require BOTH the notoriety
+threshold (`heroNotorietyThreshold` 60) AND a dungeon-tier floor
+(`heroTierFloor`/`heroTierRankFloor`, default Silver 4 = mid Silver) via
+`AdventurerSpawner.HeroesUnlocked()`; a sub-mid-Silver dungeon never rolls a
+Hero on kill-count alone. The fastest spawn band (`intervalHigh`) likewise
+requires `fastSpawnTierFloor`/`fastSpawnTierRankFloor` (default Silver 4).
+These gates affect the RANDOM party roll ONLY -- every scripted Hero dispatch
+(Inspector kill-team, Holy Order crusade, Noble retaliation, the Diamond 3
+climax hosts) builds its party directly and ignores the gate, so a slain
+Inspector still summons its kill-team at any tier.
+
+**Decay tuning.** The heat gauge now recedes meaningfully when the dungeon
+lies low: recommended scene values `notorietyDecayPerSecond` 0.4 (was 0.1)
+and `notorietyDecayCooldown` 6s (was 10s), still dampened by Cultist camps
+(canon 25). Structure unchanged; only the magnitudes moved.
+
+**Design forks settled (2026-07-20):** notoriety reads as a receding heat
+gauge (not an accumulating legend); the ceiling is tier-gated; diminishing
+gain plus faster decay via tuning, with no new player-facing sink this pass;
+the trophy trickle stays an uncapped upward pull by design (the player's
+opted-in trade-off). An active drain sink (prisoner/capture release) is the
+noted candidate to revisit if agency over notoriety is wanted later.
+
+**Key files:** `DungeonCore/DungeonCore.cs` (`AccrueKillNotoriety`, gain-
+shaping fields, decay), `Adventurer/AdventurerSpawner.cs` (`HeroesUnlocked`,
+tier-floor fields, interval gate), `Adventurer/DungeonAdventurer.cs` (`Die`
+earns through `AccrueKillNotoriety`).
+
+**Rejected this pass:** flat +5 per kill (superseded by soft-cap shaping);
+pure-notoriety hero/spawn gating (superseded by the tier floors); a buildable
+notoriety sink this session (deferred -- tuning solved the reported problem).
 
 ## 9. Endgame Climax (Diamond 3 Trial)
 

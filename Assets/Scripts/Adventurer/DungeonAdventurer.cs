@@ -1591,8 +1591,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         else
         {
             DungeonCore.Instance?.AddXP(xpOnDeath);
-            DungeonCore.Instance?.AddNotoriety(5f);
-            if (party != null) party.notorietyDelta += 5f;
+            float notoGain = DungeonCore.Instance != null ? DungeonCore.Instance.AccrueKillNotoriety() : 0f;
+            if (party != null) party.notorietyDelta += notoGain;
             FactionSystem.Instance?.RegisterKill(type, party != null ? party.Formation : FormationType.None);
             AlignmentSystem.Instance?.OnAdventurerKilled(type, combatClass, state == AdventurerState.Retreating);
             if (type == AdventurerType.Inspector) InspectorAssessor.Instance?.OnInspectorSlain();

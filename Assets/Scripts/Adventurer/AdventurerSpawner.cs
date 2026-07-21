@@ -37,6 +37,11 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float intervalHigh = 10f;
     [SerializeField] private float notorietyMediumThreshold = 25f;
     [SerializeField] private float notorietyHighThreshold = 75f;
+    [Tooltip("The fastest spawn band (intervalHigh) also requires the dungeon to reach " +
+             "this tier, so a young dungeon never hits max wave rate on notoriety alone.")]
+    [SerializeField] private LevelTier fastSpawnTierFloor = LevelTier.Silver;
+    [Tooltip("Rank within the fast-spawn tier floor (1-based). Silver 4 = mid Silver.")]
+    [Min(1)][SerializeField] private int fastSpawnTierRankFloor = 4;
 
     [Header("Behaviour Trait Weights")]
     [SerializeField] private float weightCautious = 2f;
@@ -73,6 +78,12 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float weightInspector = 0.8f;     // Pilgrim (conditional)
     [Tooltip("Heroes only appear once Notoriety reaches this threshold.")]
     [SerializeField] private float heroNotorietyThreshold = 60f;
+    [Tooltip("Heroes ALSO require the dungeon to reach this tier, so a low-tier dungeon " +
+             "never faces Heroes no matter how many it has slain. Scripted Hero dispatches " +
+             "(kill-teams, crusades, retaliations, the climax) ignore this gate.")]
+    [SerializeField] private LevelTier heroTierFloor = LevelTier.Silver;
+    [Tooltip("Rank within the Hero tier floor (1-based). Silver 4 = mid Silver.")]
+    [Min(1)][SerializeField] private int heroTierRankFloor = 4;
     [Tooltip("Ambient Inspector rolls arrive silently -- no popup, no grace -- and their deaths still summon the kill-team. The assessor's announced cadence is the only sanctioned path.")]
     [SerializeField] private bool inspectorEnabled = false;
 
@@ -264,8 +275,7 @@ public class AdventurerSpawner : MonoBehaviour
         {
             case PartyIntent.Destroyer:
                 {
-                    float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
-                    float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
+                    float wHero = HeroesUnlocked() ? Mathf.Max(0f, weightHero) : 0f;
                     float wMerc = Mathf.Max(0f, weightMercenary);
                     return wHero > wMerc ? AdventurerType.Hero : AdventurerType.Mercenary;
                 }
@@ -403,7 +413,9 @@ public class AdventurerSpawner : MonoBehaviour
         else
         {
             float n = DungeonCore.Instance.Notoriety;
-            if (n >= notorietyHighThreshold) baseInterval = intervalHigh;
+            bool fastUnlocked = DungeonCore.Instance.DungeonLevel
+                >= LevelTierUtil.ToFlatLevel(fastSpawnTierFloor, fastSpawnTierRankFloor);
+            if (n >= notorietyHighThreshold && fastUnlocked) baseInterval = intervalHigh;
             else if (n >= notorietyMediumThreshold) baseInterval = intervalMedium;
             else baseInterval = intervalLow;
         }
@@ -724,10 +736,20 @@ public class AdventurerSpawner : MonoBehaviour
         }
     }
 
+    /// <summary>Heroes require BOTH the notoriety threshold AND a dungeon-tier floor: a
+    /// young dungeon never faces ambient Heroes on kill-count alone. Scripted Hero
+    /// dispatches build their parties directly and never consult this gate.</summary>
+    private bool HeroesUnlocked()
+    {
+        var core = DungeonCore.Instance;
+        if (core == null) return false;
+        if (core.Notoriety < heroNotorietyThreshold) return false;
+        return core.DungeonLevel >= LevelTierUtil.ToFlatLevel(heroTierFloor, heroTierRankFloor);
+    }
+
     private AdventurerType RollDestroyerType()
     {
-        float noto = DungeonCore.Instance != null ? DungeonCore.Instance.Notoriety : 0f;
-        float wHero = noto >= heroNotorietyThreshold ? Mathf.Max(0f, weightHero) : 0f;
+        float wHero = HeroesUnlocked() ? Mathf.Max(0f, weightHero) : 0f;
         float wMerc = Mathf.Max(0f, weightMercenary);
         float total = wMerc + wHero;
         if (total <= 0f) return AdventurerType.Mercenary;
