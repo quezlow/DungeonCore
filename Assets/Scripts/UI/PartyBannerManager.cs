@@ -41,6 +41,8 @@ public class PartyBannerManager : MonoBehaviour
         if (bar == null) return;
 
         var banner = Instantiate(bannerPrefab);
+        // LabelFor reads the members, which are registered by now; a named
+        // champion therefore yields its name rather than a generic party label.
         banner.Initialise(party, bar, TrackedPartyRegistry.LabelFor(party));
         party.hasBanner = true;
     }

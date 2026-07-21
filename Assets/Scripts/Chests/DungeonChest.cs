@@ -77,30 +77,26 @@ public class DungeonChest : MonoBehaviour
         Debug.Log("[DungeonChest] Opened by adventurer.");
     }
 
+    private void OnEnable() => ChestRegistry.Register(this);
+    private void OnDisable() => ChestRegistry.Unregister(this);
+
     public void SetOpened(bool opened)
     {
         IsOpened = opened;
         if (opened && openedSprite != null) spriteRenderer.sprite = openedSprite;
-        openedAt = opened ? Time.time : -1f;   // loaded-open chests restart their countdown
+        openedAt = opened ? Time.time : -1f;
     }
 
-    private void Update()
+    /// <summary>Re-arms the chest: closed sprite, lootable again, and for trap
+    /// variants the trap resets with it. The next Interact rolls fresh loot.
+    /// Called by ChestRegistry when the dungeon empties of raiders, so a chest
+    /// refills between raids rather than on an arbitrary timer.</summary>
+    public void Close()
     {
-        if (!IsOpened || openedAt < 0f) return;
-        float reset = Definition != null ? Definition.resetSeconds : 0f;
-        if (reset <= 0f) return;
-        if (Time.time - openedAt < reset) return;
-        Close();
-    }
-
-    /// <summary>Re-arms the chest: closed sprite, lootable again, and — for trap
-    /// variants — the trap resets with it. The next Interact rolls fresh loot.</summary>
-    private void Close()
-    {
+        if (!IsOpened) return;
         IsOpened = false;
         openedAt = -1f;
         if (closedSprite != null) spriteRenderer.sprite = closedSprite;
-        Debug.Log("[DungeonChest] Chest reset — lootable again.");
     }
 
     public float InteractRadius => interactRadius;

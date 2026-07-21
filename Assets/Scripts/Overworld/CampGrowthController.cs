@@ -452,6 +452,10 @@ public class CampGrowthController : MonoBehaviour
     private void Bark(string line)
     {
         if (line == null || Time.time < barkSuppressedUntil) return;
+        // No word of the camps until the player can SEE them: the surface band
+        // they sit in is revealed by the scout_1 node. Barking earlier narrates
+        // a place still under fog.
+        if (!UnlockState.IsUnlocked("tech.scout_1")) return;
         WispCompanion.Instance?.SpeakLine(line);
     }
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 615c97e95451975438f40d7ebc2a4595, type: 3}
   m_Name: a_full_warband
   m_EditorClassIdentifier: Assembly-CSharp::DeedDefinition
-  id: 
+  id: a_full_warband
   deedName: A Full Warband
   description: Eight came together. None were enough.
   hidden: 1

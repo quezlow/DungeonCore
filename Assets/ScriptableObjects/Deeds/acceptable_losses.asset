@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 615c97e95451975438f40d7ebc2a4595, type: 3}
   m_Name: acceptable_losses
   m_EditorClassIdentifier: Assembly-CSharp::DeedDefinition
-  id: 
+  id: acceptable_losses
   deedName: Acceptable Losses
   description: Ten of my own, given back to the dark.
   hidden: 0

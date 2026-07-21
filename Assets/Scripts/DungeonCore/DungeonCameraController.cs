@@ -12,7 +12,7 @@ public class DungeonCameraController : MonoBehaviour
     [SerializeField] private CinemachineConfiner2D confiner;
 
     [Header("Pan Settings")]
-    [SerializeField] private float keyboardPanSpeed = 16f;
+    [SerializeField] private float keyboardPanSpeed = 28f;
 
     /// <summary>Hard lock for scripted beats: pan, edge-scroll, drag, and
     /// zoom all ignore input while set. Follow targets still glide.</summary>

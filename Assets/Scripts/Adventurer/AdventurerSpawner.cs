@@ -157,11 +157,20 @@ public class AdventurerSpawner : MonoBehaviour
 
     /// <summary>Parties with at least one member still alive in the dungeon.
     /// Prunes finished parties (all dead, fled, or breached) as it counts.</summary>
+    private int lastActiveParties;
+
     public int ActivePartyCount()
     {
         for (int i = liveParties.Count - 1; i >= 0; i--)
             if (liveParties[i] == null || liveParties[i].LiveCount() == 0)
                 liveParties.RemoveAt(i);
+
+        // Edge to zero: the last raiders just left or died. Re-arm every chest
+        // so the next party meets full ones, instead of resetting on a timer.
+        if (liveParties.Count == 0 && lastActiveParties > 0)
+            ChestRegistry.ResetAll();
+        lastActiveParties = liveParties.Count;
+
         return liveParties.Count;
     }
 
@@ -837,6 +846,11 @@ public class AdventurerSpawner : MonoBehaviour
         var used = new Dictionary<CombatClass, int>();
         SpawnMember(insp, RollTrait(), spawnPos, party, used);
         int guards = SpawnGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
+
+        // The Inspector and its escort observe; they never start a monster
+        // fight, though a blow provokes any of them.
+        foreach (var member in party.LiveMembers)
+            member.SetPassiveUnlessProvoked(true);
 
         SetupOrganize(party, AdventurerType.Inspector, 1 + guards, spawnPos);
         RunStats.Instance?.RecordPartySpawned(1 + guards);

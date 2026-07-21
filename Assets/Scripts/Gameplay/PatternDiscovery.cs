@@ -95,7 +95,7 @@ public class PatternDiscovery : MonoBehaviour
         if (Instance == null || Instance.catalog == null) return;
         if (DungeonSaveController.IsLoading) return;
 
-        var def = Instance.catalog.GetByKey("gravegold");
+        var def = Instance.catalog.GetByKey("pattern.gravegold");
         if (def == null || UnlockState.IsUnlocked(def.Key)) return;
 
         Instance.Learn(def, "Taken from the fall of " + heroName + ".",

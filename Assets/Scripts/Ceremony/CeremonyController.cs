@@ -463,7 +463,7 @@ public class CeremonyController : MonoBehaviour
     private IEnumerator Say(string line)
     {
         yield return ShowLine(line);
-        yield return HoldOrSkip(lineHold);
+        yield return WaitForPress();
     }
 
     /// <summary>A line that stays on screen while the player acts on it.</summary>
@@ -477,6 +477,14 @@ public class CeremonyController : MonoBehaviour
         if (wispText != null) wispText.text = line;
         if (wispPanel != null && wispPanel.alpha < 1f)
             yield return FadeCanvas(wispPanel, wispPanel.alpha, 1f, 0.25f);
+    }
+
+    // The sprite's lines advance only on a press -- never on a timer -- so the
+    // player reads at their own pace.
+    private IEnumerator WaitForPress()
+    {
+        yield return null; // swallow the press that carried us into this line
+        while (!AnyKeyPressed()) yield return null;
     }
 
     private IEnumerator HoldOrSkip(float seconds)

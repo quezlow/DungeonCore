@@ -244,6 +244,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private string grudgeMonster;      // running arg-max of damageByType this raid
     private float grudgeDamage;        // damage total behind the current grudge
     private string returnGrudge;       // grudge from a prior visit — biases target choice
+    // Inspector parties observe; they never START a monster fight, but a hit
+    // provokes them (handled in TakeDamage).
+    private bool passiveUnlessProvoked;
+    public void SetPassiveUnlessProvoked(bool v) => passiveUnlessProvoked = v;
 
     private bool healsAllies = false;
     private float healAmount = 6f;
@@ -351,7 +355,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (intent == PartyIntent.Pilgrim)
             moveSpeed *= pilgrimSpeedMultiplier;
 
-        named = def != null && def.named;
+        // A member with a preset name (a returning nemesis champion) is named
+        // even when its base definition is not, so its banner reads the name.
+        named = (def != null && def.named) || !string.IsNullOrEmpty(presetName);
         displayName = presetName;
 
         ApplyCombatClass(classDef);
@@ -573,8 +579,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (state != AdventurerState.Retreating && currentHP / maxHP < retreatThreshold)
             StartRetreat();
 
-        // Commoners have no business down here. The first monster they lay eyes on turns them round.
+        // Commoners have no business down here. The first monster they lay eyes on turns them round --
+        // unless they came to worship, in which case they hold their nerve and only harm turns them.
         if (type == AdventurerType.Commoner
+            && goal != AdventurerGoal.WorshipCore
             && state != AdventurerState.Retreating
             && currentFloor?.Entities != null
             && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, commonerPanicRange))
@@ -1023,6 +1031,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 StartRetreat();
             return;
         }
+
+        // Passive parties (an Inspector and its escort) do not initiate; only a
+        // blow turns them, handled in TakeDamage.
+        if (passiveUnlessProvoked) return;
 
         if (currentFloor?.Entities == null) return;
         DungeonMonster nearest = null;
@@ -1518,6 +1530,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 AdventurerDeaths - deathsAtArrival,
                 DungeonCore.Instance != null ? DungeonCore.Instance.Reputation : 0f);
             GradeSystem.Instance?.Assess();
+            WispCompanion.Instance?.SpeakLine(
+                "The Inspector files its report. The Guild has your measure now -- " +
+                "they will send parties fit to the rank they have given you.");
         }
         leftSatisfied = true;   // observed its fill and leaves satisfied
         StartRetreat();
@@ -1530,6 +1545,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
         GetComponent<DamageFlash>()?.Flash();
+        // A struck passive party stops observing and defends itself.
+        passiveUnlessProvoked = false;
         if (currentHP <= 0f) { Die(); return true; }
         animDriver?.OnHurt();
         return false;
@@ -1596,6 +1613,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         TimeScaleController.Instance?.DoKillHitstop();
 
+        Debug.Log($"[DIAG-CORPSE] {displayName} type={type} named={named} IsNamedHero={IsNamedHero} corpsePrefab={(corpsePrefab != null ? corpsePrefab.name : "NULL")}");   // DIAG-CORPSE
         if (corpsePrefab != null)
         {
             var corpse = Instantiate(corpsePrefab, transform.position, Quaternion.identity);
@@ -1973,13 +1991,17 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         statusBars.SetIntentLabel(IntentDisplayName(), IntentColour());
     }
 
-    private string IntentDisplayName() => intent switch
+    private string IntentDisplayName()
     {
-        PartyIntent.Pilgrim => "Pilgrim",
+        if (type == AdventurerType.Inspector) return "Inspector";
+        return intent switch
+        {
+            PartyIntent.Pilgrim => "Pilgrim",
         PartyIntent.GiftGiver => "Gift-Giver",
-        PartyIntent.Destroyer => "Destroyer",
-        _ => "",
-    };
+            PartyIntent.Destroyer => "Destroyer",
+            _ => "",
+        };
+    }
 
     private Color IntentColour() => intent switch
     {

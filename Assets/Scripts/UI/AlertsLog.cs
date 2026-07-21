@@ -88,6 +88,24 @@ public class AlertsLog : MonoBehaviour
         Instance = this;
     }
 
+    private void OnEnable()
+    {
+        UnlockState.OnChanged += HandleUnlockChanged;
+        ApplyGate();
+    }
+
+    private void OnDisable() => UnlockState.OnChanged -= HandleUnlockChanged;
+
+    private void HandleUnlockChanged(string _) => ApplyGate();
+
+    // The ticker records nothing until researched; it must also stay HIDDEN
+    // until then, rather than showing an empty board.
+    private void ApplyGate()
+    {
+        bool unlocked = UnlockState.IsUnlocked("tech.alerts");
+        if (panel != null && panel.activeSelf != unlocked) panel.SetActive(unlocked);
+    }
+
     private void OnDestroy()
     {
         if (Instance == this) Instance = null;

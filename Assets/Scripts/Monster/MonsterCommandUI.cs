@@ -241,13 +241,16 @@ public class MonsterCommandUI : MonoBehaviour
             return;
         }
 
-        var spawner = current;   // capture: the dialog callback fires later
-        int refund = spawner.Definition != null ? Mathf.RoundToInt(spawner.Definition.ManaCost * 0.5f) : 0;
-        string msg = $"Remove this spawner? Refunds {refund} mana, frees {spawner.CapacityCost} capacity.";
+        var sel = SpawnerSelectionController.Instance;
+        int count = sel != null ? sel.Selected.Count : 1;
+        string msg = count > 1
+            ? $"Remove {count} selected spawners?"
+            : $"Remove this spawner? Refunds {Mathf.RoundToInt((current.Definition != null ? current.Definition.ManaCost : 0) * 0.5f)} mana, frees {current.CapacityCost} capacity.";
+        System.Action doRemove = () => ForEachSelected(s => s.RemoveByPlayer());
         if (confirmDialog != null)
-            confirmDialog.Show(msg, () => spawner.RemoveByPlayer(), null, "Remove", "Cancel");
+            confirmDialog.Show(msg, doRemove, null, "Remove", "Cancel");
         else
-            spawner.RemoveByPlayer();   // fallback if no dialog is wired
+            doRemove();   // fallback if no dialog is wired
     }
 
     public void OnAggressionClicked()

@@ -60,6 +60,10 @@ public class AlertHudButton : MonoBehaviour
         if (button != null && button.gameObject.activeSelf != unlocked)
             button.gameObject.SetActive(unlocked);
         if (!unlocked && badgeRoot != null) badgeRoot.SetActive(false);
+        // On unlock, pull the current unread count at once so the badge is
+        // correct without waiting for the next change event.
+        if (unlocked && AlertsLog.Instance != null)
+            HandleUnreadChanged(AlertsLog.Instance.UnreadCount);
     }
 
     private void Start()

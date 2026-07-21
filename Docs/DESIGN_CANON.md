@@ -282,7 +282,10 @@ grade-matched teams are live. Verified: 2026-07-09.
 `InspectorAssessor` sends the first Inspector as a herald, then re-sends on a
 fixed cadence (**canon default 7 days**) to re-grade. On each arrival the
 view glides to the Inspector on unscaled time while the notice holds the
-clock, releasing on dismissal (Day-34 camera lift). `GradeSystem` surfaces
+clock, releasing on dismissal (Day-34 camera lift). The Inspector and its
+Delver escort are passive: they observe without starting a monster fight,
+though any blow provokes the whole party; on a peaceful departure the wisp
+announces the Guild's ranking. `GradeSystem` surfaces
 the hidden `DungeonRating` as a named tier ("Unremarkable" ... "Legendary"),
 snapshotted at each assessment so matched teams face a stable grade.
 Assessment is two-stage: a BACKEND rank (sizes responses and matched teams)

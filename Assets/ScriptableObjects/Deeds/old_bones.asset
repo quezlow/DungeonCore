@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 615c97e95451975438f40d7ebc2a4595, type: 3}
   m_Name: old_bones
   m_EditorClassIdentifier: Assembly-CSharp::DeedDefinition
-  id: 
+  id: old_bones
   deedName: Old Bones
   description: Unearth what the old stone kept.
   hidden: 1

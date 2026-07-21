@@ -104,8 +104,9 @@ public class WispCompanion : MonoBehaviour
         // The core may come alive a frame or two after us; hook when it exists.
         StartCoroutine(HookNotorietyWhenReady());
 
-        if (playOpeningOnFreshLoad && !HasSpoken("arrive_1"))
-            StartCoroutine(PlayOpening());
+        // The save restore populates 'spoken' a frame or two after Start, so
+        // deciding here would replay the opening every load. Defer one frame.
+        if (playOpeningOnFreshLoad) StartCoroutine(PlayOpeningIfFirstTime());
 
         if (!personalityRolled) RollPersonality();
         nextBarkTime = Time.time + UnityEngine.Random.Range(barkMinInterval, barkMaxInterval);
@@ -194,6 +195,13 @@ public class WispCompanion : MonoBehaviour
     // Ambient personality barks: gentle cadence, hushed during tutorial lines,
     // combat, and pause. Routed through the shared floating-bark spawner so they
     // drift up over the wisp exactly like adventurer chatter.
+    private IEnumerator PlayOpeningIfFirstTime()
+    {
+        yield return null;   // let DungeonSaveController restore spoken lines
+        yield return null;
+        if (!HasSpoken("arrive_1")) StartCoroutine(PlayOpening());
+    }
+
     private void TryIdleBark()
     {
         if (speaking) return;                       // never step on a tutorial line

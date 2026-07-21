@@ -171,6 +171,18 @@ public class QuestController : MonoBehaviour
     public void LoadQuestProgress(List<QuestProgress> savedQuests)
     {
         activateQuests = savedQuests ?? new();
+
+        // JsonUtility cannot serialize the ScriptableObject reference, so each
+        // restored progress carries a rebuilt Quest that lost its real name.
+        // Re-link to the live asset by id so the log shows names, not ids.
+        if (QuestRegistry.Instance != null)
+            foreach (var qp in activateQuests)
+            {
+                if (qp?.quest == null) continue;
+                var asset = QuestRegistry.Instance.ById(qp.quest.questID);
+                if (asset != null) qp.quest = asset;
+            }
+
         CheckInventoryForQuests();
         questUI?.UpdateQuestUI(); // null-safe: scenes without QuestUI won't crash
     }

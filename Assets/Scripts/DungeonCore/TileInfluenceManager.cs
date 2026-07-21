@@ -415,7 +415,8 @@ public class TileInfluenceManager : MonoBehaviour
 
         claimedTiles.Remove(pos);
         if (wasMined) minedTiles.Remove(pos);
-        terrain?.RefogTile(pos);
+        // Revealed ground stays revealed: unclaiming strips ownership only, it
+        // never re-fogs what the player (or the terrain generator) has shown.
 
         RebuildClaimableSet();
 

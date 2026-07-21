@@ -82,6 +82,10 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
         };
         pixels = new Color32[textureSize * textureSize];
         mapImage.texture = texture;
+
+        // The panel's own RawImage (RequireComponent forces one) is the dark
+        // square; the placeholder label reads 'New Text' from the prefab.
+        if (floorLabel != null) floorLabel.text = "";
     }
 
     private void OnEnable()
@@ -112,6 +116,9 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     {
         bool unlocked = UnlockState.IsUnlocked("tech.minimap");
         if (body != null && body.activeSelf != unlocked) body.SetActive(unlocked);
+        // The Minimap sits on the panel root, whose RawImage paints the dark
+        // square regardless of Body; hide the graphic itself until unlocked.
+        if (mapImage != null && mapImage.enabled != unlocked) mapImage.enabled = unlocked;
     }
 
     private void OnFloorChanged(int _)
