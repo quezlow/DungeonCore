@@ -54,12 +54,14 @@ public class PartyBanner : MonoBehaviour
             }
         }
 
-        // The name reads off the ribbon itself: centre the label on the bar's
-        // rendered bounds (pivot-safe) and sort it one step above, so the ribbon
-        // can never sit empty or swallow it.
+        // The label is a child of the banner root at local origin, so it
+        // already rides the ribbon as the root follows the party lead. DO NOT
+        // stamp its world position here -- doing so before the first LateUpdate
+        // decouples it from the moving root, which left the name adrift beside
+        // an empty ribbon. Only its sorting needs setting.
         if (label != null && bar != null)
         {
-            label.transform.position = bar.bounds.center;
+            label.transform.localPosition = Vector3.zero;
             var labelRenderer = label.GetComponent<Renderer>();
             if (labelRenderer != null)
             {
