@@ -97,15 +97,19 @@ public class FirstBloodVignette : MonoBehaviour
         playing = true;
 
         // -- Stage geometry, core-derived so cell naming can never mirror it --
-        // The rat must die AT THE ACTUAL DUNGEON ENTRANCE the player dug -- the
-        // cell in the last stone ring where DungeonEntrance stands -- NOT the
-        // apron spawn point out on the pilgrim road (that stood ~40 units too far
-        // out). Prefer the placed entrance; fall back to the seeded mouth cell.
+        // The rat must die AT THE CAVE OPENING IN THE ROCK. Neither seeded cell
+        // is that: mouthCell is the outermost in-disc cell along the bearing --
+        // the rim of the whole floor disc, out in the grass -- and spawnCell is
+        // the approach start on the pilgrim road, further out still. Staging on
+        // either put the scene up on the road, far from the stone. The opening is
+        // the carved cell nearest the core, so use that when no entrance object
+        // has been placed yet (it has not been, this early in the tutorial).
+        Vector3Int coreCell = floor0.Terrain.CoreCell;
         Vector3Int doorCell = DungeonEntrance.Instance != null
             ? DungeonEntrance.Instance.OccupiedCell
-            : cave.mouthCell.ToVector3Int();
+            : InnermostCaveCell(cave, coreCell);
         Vector3 doorway = floor0.TileInfluence.CellToWorld(doorCell);
-        Vector3 corePos = floor0.TileInfluence.CellToWorld(floor0.Terrain.CoreCell);
+        Vector3 corePos = floor0.TileInfluence.CellToWorld(coreCell);
         // Outward is ALWAYS away from the core: the surface lies opposite the heart.
         Vector3 outward = (doorway - corePos).normalized;
         Vector3 inner = doorway - outward * 3.0f;         // a few steps down the tunnel
@@ -237,5 +241,24 @@ public class FirstBloodVignette : MonoBehaviour
             yield return null;
         }
         Destroy(sr.gameObject);
+    }
+
+    /// <summary>The carved entrance cell closest to the core -- the opening where
+    /// the tunnel meets the dungeon. The seeded mouthCell sits on the disc rim and
+    /// spawnCell out on the road, so neither marks the doorway the player sees.</summary>
+    private static Vector3Int InnermostCaveCell(EntranceCaveData cave, Vector3Int coreCell)
+    {
+        Vector3Int best = cave.mouthCell.ToVector3Int();
+        int bestDist = int.MaxValue;
+        if (cave.cells != null)
+        {
+            foreach (var sv in cave.cells)
+            {
+                var c = sv.ToVector3Int();
+                int d = Mathf.Abs(c.x - coreCell.x) + Mathf.Abs(c.y - coreCell.y);
+                if (d < bestDist) { bestDist = d; best = c; }
+            }
+        }
+        return best;
     }
 }
