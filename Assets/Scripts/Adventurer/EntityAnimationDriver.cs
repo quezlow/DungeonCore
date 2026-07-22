@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -33,40 +34,63 @@ public class EntityAnimationDriver : MonoBehaviour
     private static readonly int HurtHash = Animator.StringToHash("Hurt");
     private static readonly int DieHash = Animator.StringToHash("Die");
 
+    // Which parameters this controller actually declares. Writing one it does
+    // not have makes Unity log a warning PER CALL -- five writes per entity per
+    // frame, each capturing a stack trace when Call Stacks is on, which is what
+    // buried LateUpdate once the dungeon filled with entities.
+    private readonly HashSet<int> declared = new HashSet<int>();
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
         lastPos = transform.position;
+        CacheParameters();
     }
+
+    private void OnEnable() => CacheParameters();
+
+    private void CacheParameters()
+    {
+        declared.Clear();
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        foreach (var param in animator.parameters) declared.Add(param.nameHash);
+    }
+
+    private bool Has(int hash) => declared.Contains(hash);
 
     private void LateUpdate()
     {
-        if (animator == null) return;
+        // Ready, not just non-null: writing a parameter to an Animator with no
+        // controller (or one missing these parameters) makes Unity log a warning
+        // PER CALL. Five writes per entity per frame, each capturing a stack
+        // trace, is what dragged LateUpdate to tens of milliseconds once the
+        // dungeon filled up. The trigger helpers below already guard this way.
+        if (!Ready) return;
 
         Vector2 delta = (Vector2)(transform.position - lastPos);
         lastPos = transform.position;
 
         float speed = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
         bool walking = speed > moveThreshold;
-        animator.SetBool(IsWalkingHash, walking);
+        if (Has(IsWalkingHash)) animator.SetBool(IsWalkingHash, walking);
 
         if (walking)
         {
             Vector2 dir = delta.normalized;
             lastFacing = dir;
-            animator.SetFloat(InputXHash, dir.x);
-            animator.SetFloat(InputYHash, dir.y);
+            if (Has(InputXHash)) animator.SetFloat(InputXHash, dir.x);
+            if (Has(InputYHash)) animator.SetFloat(InputYHash, dir.y);
         }
 
-        animator.SetFloat(LastInputXHash, lastFacing.x);
-        animator.SetFloat(LastInputYHash, lastFacing.y);
+        if (Has(LastInputXHash)) animator.SetFloat(LastInputXHash, lastFacing.x);
+        if (Has(LastInputYHash)) animator.SetFloat(LastInputYHash, lastFacing.y);
     }
 
     // Some civilian prefabs carry an Animator with no controller; a trigger
     // on those logs a warning per death. Ready checks both.
     private bool Ready => animator != null && animator.runtimeAnimatorController != null;
 
-    public void OnAttack() { if (Ready) animator.SetTrigger(AttackHash); }
-    public void OnHurt() { if (Ready) animator.SetTrigger(HurtHash); }
-    public void OnDeath() { if (Ready) animator.SetTrigger(DieHash); }
+    public void OnAttack() { if (Ready && Has(AttackHash)) animator.SetTrigger(AttackHash); }
+    public void OnHurt()   { if (Ready && Has(HurtHash))   animator.SetTrigger(HurtHash); }
+    public void OnDeath()  { if (Ready && Has(DieHash))    animator.SetTrigger(DieHash); }
 }
