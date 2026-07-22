@@ -460,10 +460,9 @@ public class TileInfluenceManager : MonoBehaviour
         {
             if (!claimedTiles.Remove(cell)) continue;
             removed++;
-            // Ownership recedes: a cell only revealed BY the claim returns to the
-            // dark. RefogTile self-guards dug/generator-revealed cells, so tunnels
-            // and exposed caverns stay lit; only ownership-lit ground re-fogs.
-            terrain?.RefogTile(cell);
+            // A breach pulls back INFLUENCE ONLY -- it never re-fogs. What the
+            // core has once seen it keeps; losing ground costs ownership, not
+            // knowledge.
         }
 
         if (removed == 0) return;

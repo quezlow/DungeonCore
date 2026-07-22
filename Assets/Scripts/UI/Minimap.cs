@@ -59,6 +59,10 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     private TileInfluenceManager influence;   // active floor's tiles
     private FloorRoot floor;
     private bool dirty;
+    [Tooltip("Minimum seconds between full repaints. Each one rebuilds the whole " +
+             "texture and re-uploads it, so claiming at speed must not drive it per frame.")]
+    [SerializeField] private float repaintInterval = 0.2f;
+    private float nextRepaintAt;
 
     // paint frame (bounds + scale) shared by the per-frame mapping
     private Vector2Int paintBoundsMin;
@@ -186,10 +190,20 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
 
         // Only clear the flag once a repaint could actually draw something;
         // consuming it on a bailed paint is what stranded the map.
+        // Repainting rebuilds every pixel, walks all claimed tiles and re-uploads
+        // the texture. Push claims continuously, so doing that per frame is what
+        // made a half-claimed floor crawl. Only repaint when the map is actually
+        // on screen, and never faster than repaintInterval; dirty simply waits.
         if (dirty)
         {
-            Repaint();
-            if (influence != null && influence.ClaimedTileCount > 0) dirty = false;
+            bool onScreen = mapImage != null && mapImage.enabled
+                            && (body == null || body.activeInHierarchy);
+            if (onScreen && Time.unscaledTime >= nextRepaintAt)
+            {
+                nextRepaintAt = Time.unscaledTime + Mathf.Max(0.02f, repaintInterval);
+                Repaint();
+                if (influence != null && influence.ClaimedTileCount > 0) dirty = false;
+            }
         }
         UpdateDots();
         UpdateViewRect();

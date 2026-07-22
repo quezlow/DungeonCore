@@ -235,6 +235,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Named-adventurer tracking — this unit's roster record + identity.
     private PartyMember partyMember;
+    [Tooltip("Damage per second the core inflicts on a death-seeker kneeling before it.")]
+    [SerializeField] private float coreRoomBurnPerSecond = 15f;
     private string displayName;
     private bool named;
 
@@ -883,6 +885,20 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 return;
             }
 
+            // Only those who CAME to break the stone break it. Worshippers pray
+            // (handled above) and looters withdraw (handled above); observers and
+            // delvers have seen what they came for and leave. The death-seeking
+            // never retreat -- they stop here and fight whatever finds them.
+            if (goal != AdventurerGoal.BreachCore)
+            {
+                // The death-seeking came to end here, not to break the stone.
+                // They kneel and the core burns them down; everyone else has seen
+                // what they came for and leaves.
+                if (goal == AdventurerGoal.SeekDeath) BeginWorship();
+                else StartRetreat();
+                return;
+            }
+
             Debug.Log("[Adventurer] Reached Core Room — core breach!");
             DungeonCore.Instance?.DestroyCore();
             party?.OnMemberResolved(partyMember, false, true, CarriedLootValue);
@@ -1370,6 +1386,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void HandleWorship()
     {
+        // A death-seeker kneeling at the core is unmade by its presence -- it
+        // never rises or retreats. Pilgrims and cultists pray unharmed.
+        if (goal == AdventurerGoal.SeekDeath)
+        {
+            if (TakeDamage(coreRoomBurnPerSecond * Time.deltaTime)) return;
+            return;
+        }
+
         worshipTimer -= Time.deltaTime;
         if (worshipTimer > 0f) return;
 
