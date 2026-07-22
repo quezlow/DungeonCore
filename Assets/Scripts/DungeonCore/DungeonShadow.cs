@@ -121,6 +121,12 @@ public class DungeonShadow : MonoBehaviour
     private int lastMossCount = -1;
     private bool subscribed;
     private bool dirty;
+    [Tooltip("Minimum seconds between full shadow rebuilds. RecomputeBase clears " +
+             "and repaints the whole tilemap and allocates with the claimed area, " +
+             "so claiming must not drive it every frame -- it was the top GC cost. " +
+             "The cursor light still updates every frame; only the base waits.")]
+    [SerializeField] private float rebuildInterval = 0.1f;
+    private float nextRebuildAt;
 
     private void Awake()
     {
@@ -192,7 +198,16 @@ public class DungeonShadow : MonoBehaviour
         int mc = MossCount();
         if (mc != lastMossCount) { dirty = true; lastMossCount = mc; }
 
-        if (dirty) { RecomputeBase(); dirty = false; }
+        // Throttled: pushing marks this dirty every frame as claimed tiles change,
+        // and RecomputeBase rebuilds the whole tilemap. Coalesce the rebuilds; the
+        // dirty flag simply waits its turn. The cursor light stays per-frame so it
+        // still tracks the mouse smoothly.
+        if (dirty && Time.unscaledTime >= nextRebuildAt)
+        {
+            nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
+            RecomputeBase();
+            dirty = false;
+        }
         UpdateCursor();
     }
 

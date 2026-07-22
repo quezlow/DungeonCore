@@ -246,9 +246,16 @@ public class CaveWallRenderer : MonoBehaviour
 
     private void MarkDirty(int _) => dirty = true;
 
+    [Tooltip("Minimum seconds between full wall rebuilds. RebuildAll repaints every " +
+             "cap and face and scales with claimed area, so claiming must not drive " +
+             "it every frame. The dirty flag simply waits its turn.")]
+    [SerializeField] private float rebuildInterval = 0.1f;
+    private float nextRebuildAt;
+
     private void LateUpdate()
     {
-        if (!dirty) return;
+        if (!dirty || Time.unscaledTime < nextRebuildAt) return;
+        nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
         dirty = false;
         RebuildAll();
     }
