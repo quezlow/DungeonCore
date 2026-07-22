@@ -38,9 +38,17 @@ public class ReachabilityDirector : MonoBehaviour
     [Tooltip("Digging fires many events at once; wait this long after the last one.")]
     [SerializeField] private float recomputeDebounce = 0.25f;
 
+    [Header("Flow")]
+    [Tooltip("Seconds between rings as the wash spreads. Smaller is faster.")]
+    [SerializeField] private float flowRingInterval = 0.035f;
+
     // Per-floor cache of everything reachable from that floor's core cell.
     private readonly Dictionary<FloorRoot, HashSet<Vector3Int>> reachable = new();
     private readonly Dictionary<FloorRoot, Tilemap> overlays = new();
+    // What is currently on each overlay, and the rings still spreading onto it.
+    private readonly Dictionary<FloorRoot, HashSet<Vector3Int>> painted = new();
+    private readonly Dictionary<FloorRoot, Queue<List<Vector3Int>>> flow = new();
+    private float nextFlowStep;
     private readonly HashSet<TileInfluenceManager> hooked = new();
 
     private Tile overlayTile;
@@ -85,7 +93,7 @@ public class ReachabilityDirector : MonoBehaviour
             Recompute();
         }
 
-        if (overlayVisible) Pulse();
+        if (overlayVisible) { AdvanceFlow(); Pulse(); }
     }
 
     /// <summary>Ask for a rebuild shortly; repeated calls collapse into one.</summary>
@@ -187,18 +195,128 @@ public class ReachabilityDirector : MonoBehaviour
             if (kv.Value != null) kv.Value.color = c;
     }
 
+    /// <summary>A cell is only washed once the player has actually SEEN it.
+    /// Natural floor (chamber floors, river banks) is mined from generation, so
+    /// without this the wash would trace routes through undiscovered ground and
+    /// give away rivers and chambers the player has not met yet. Reachability
+    /// itself still counts those cells -- only the painting waits.</summary>
+    private static bool IsRevealed(FloorRoot floor, Vector3Int cell)
+    {
+        var fog = floor.Terrain != null ? floor.Terrain.FogTilemap : null;
+        return fog == null || fog.GetTile(cell) == null;
+    }
+
+    /// <summary>Diffs the wash against what is reachable-and-seen, then lets the
+    /// difference SPREAD rather than snap: new ground is queued into rings by
+    /// step distance from the ground already lit, so a fresh tunnel fills from
+    /// its mouth outward.</summary>
     private void RepaintAll()
     {
         var fm = FloorManager.Instance;
         if (fm == null) return;
+
         foreach (var floor in fm.AllFloors)
         {
             if (floor == null) continue;
             var map = OverlayFor(floor);
             if (map == null) continue;
-            map.ClearAllTiles();
-            if (!reachable.TryGetValue(floor, out var set)) continue;
-            foreach (var cell in set) map.SetTile(cell, overlayTile);
+
+            if (!painted.TryGetValue(floor, out var lit))
+            {
+                lit = new HashSet<Vector3Int>();
+                painted[floor] = lit;
+            }
+
+            var target = new HashSet<Vector3Int>();
+            if (reachable.TryGetValue(floor, out var set))
+                foreach (var cell in set)
+                    if (IsRevealed(floor, cell)) target.Add(cell);
+
+            // Ground that fell out of reach (or back under fog) goes at once --
+            // a warning should never be delayed by an animation.
+            var stale = new List<Vector3Int>();
+            foreach (var cell in lit)
+                if (!target.Contains(cell)) stale.Add(cell);
+            foreach (var cell in stale) { map.SetTile(cell, null); lit.Remove(cell); }
+
+            var fresh = new HashSet<Vector3Int>();
+            foreach (var cell in target)
+                if (!lit.Contains(cell)) fresh.Add(cell);
+
+            flow[floor] = BuildRings(floor, lit, fresh);
+        }
+    }
+
+    /// <summary>Orders new cells into rings by step distance from the lit edge --
+    /// or from the core when nothing is lit yet, so entering Mine mode blooms
+    /// outward from the heart.</summary>
+    private Queue<List<Vector3Int>> BuildRings(
+        FloorRoot floor, HashSet<Vector3Int> lit, HashSet<Vector3Int> fresh)
+    {
+        var rings = new Queue<List<Vector3Int>>();
+        if (fresh.Count == 0) return rings;
+
+        var frontier = new List<Vector3Int>();
+        if (lit.Count > 0)
+        {
+            foreach (var cell in lit) frontier.Add(cell);
+        }
+        else if (floor.Terrain != null)
+        {
+            frontier.Add(floor.Terrain.CoreCell);
+        }
+
+        var pending = new HashSet<Vector3Int>(fresh);
+        var seeds = new List<Vector3Int>(frontier);
+
+        while (pending.Count > 0)
+        {
+            var ring = new List<Vector3Int>();
+            foreach (var seed in seeds)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector3Int n = seed + (i == 0 ? Vector3Int.up
+                                        : i == 1 ? Vector3Int.down
+                                        : i == 2 ? Vector3Int.left : Vector3Int.right);
+                    if (pending.Remove(n)) ring.Add(n);
+                }
+            }
+            if (ring.Count == 0)
+            {
+                // Detached pocket (a chamber joined by a route already lit in a
+                // single step): flush the remainder so nothing is left unpainted.
+                var rest = new List<Vector3Int>(pending);
+                pending.Clear();
+                rings.Enqueue(rest);
+                break;
+            }
+            rings.Enqueue(ring);
+            seeds = ring;
+        }
+        return rings;
+    }
+
+    /// <summary>Paints one ring per interval across every floor.</summary>
+    private void AdvanceFlow()
+    {
+        if (Time.unscaledTime < nextFlowStep) return;
+        nextFlowStep = Time.unscaledTime + Mathf.Max(0.005f, flowRingInterval);
+
+        foreach (var kv in flow)
+        {
+            var floor = kv.Key;
+            var queue = kv.Value;
+            if (queue == null || queue.Count == 0) continue;
+            if (!overlays.TryGetValue(floor, out var map) || map == null) continue;
+            if (!painted.TryGetValue(floor, out var lit)) continue;
+
+            var ring = queue.Dequeue();
+            foreach (var cell in ring)
+            {
+                map.SetTile(cell, overlayTile);
+                lit.Add(cell);
+            }
         }
     }
 
@@ -206,6 +324,8 @@ public class ReachabilityDirector : MonoBehaviour
     {
         foreach (var kv in overlays)
             if (kv.Value != null) kv.Value.ClearAllTiles();
+        painted.Clear();
+        flow.Clear();
     }
 
     /// <summary>The overlay tilemap for a floor, built on first use so no floor
