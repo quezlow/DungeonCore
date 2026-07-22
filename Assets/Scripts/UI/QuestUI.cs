@@ -26,7 +26,10 @@ public class QuestUI : MonoBehaviour
             TMP_Text questNameText = entry.transform.Find("QuestNameText").GetComponent<TMP_Text>();
             Transform objectiveList = entry.transform.Find("ObjectiveList");
 
-            questNameText.text = quest.quest.name;
+            // .name is the Unity Object name -- for a ScriptableObject that is the
+            // asset filename ("tut_basket"), not the authored title. questName holds
+            // the wisp-facing title ("Morning Delivery").
+            questNameText.text = quest.quest.questName;
 
             foreach(var objective in quest.objectives)
             {

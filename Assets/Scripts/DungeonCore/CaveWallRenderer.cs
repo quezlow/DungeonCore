@@ -315,11 +315,12 @@ public class CaveWallRenderer : MonoBehaviour
                 capsTilemap.SetTile(wall, capT); capsTilemap.SetColor(wall, tint);
                 Vector3Int u = wall + S;          // S is open for mask 11
                 if (facesTilemap != null) { facesTilemap.SetTile(u, upperT); facesTilemap.SetColor(u, tint); }
-                // Lower slice only over open ground. Across a 1-cell gap it would land on
-                // the next wall's cap, and faces (Player) draw over caps (WalkBehind) - the
-                // nearer wall must occlude this wall's foot. Rivers stay non-solid, so bank
-                // drapes still paint.
-                if (facesBehindTilemap != null && !classifier.IsSolid(u + S)) { facesBehindTilemap.SetTile(u + S, lowerT); facesBehindTilemap.SetColor(u + S, tint); }
+                // Lower slice paints over open ground AND onto a wall below. Caps sit on
+                // WalkBehind, faces on Player, and WalkBehind draws in front of Player --
+                // so the nearer wall's cap already occludes this wall's foot. Skipping the
+                // solid case (as an earlier guard did, on the belief that faces drew over
+                // caps) simply left the wall bottom missing wherever a wall stood below.
+                if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(u + S, lowerT); facesBehindTilemap.SetColor(u + S, tint); }
                 continue;
             }
 
@@ -341,7 +342,7 @@ public class CaveWallRenderer : MonoBehaviour
             // BELOW entities — a monster at the foot of the wall renders in front of it
             // (its head no longer clips behind the base). The cap and upper slice stay
             // on WalkBehind for the over-the-head occlusion.
-            if (facesBehindTilemap != null && !classifier.IsSolid(upper + S)) { facesBehindTilemap.SetTile(upper + S, faceLowerTiles[v]); facesBehindTilemap.SetColor(upper + S, tint); }
+            if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(upper + S, faceLowerTiles[v]); facesBehindTilemap.SetColor(upper + S, tint); }
         }
     }
 

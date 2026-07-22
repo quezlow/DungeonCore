@@ -6585,7 +6585,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 00a8d889be14aa847838a3e8c4b6c91f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TitleScreenController
-  skipPrologue: 1
+  skipPrologue: 0
   mainPanel: {fileID: 1787366510}
   continueButton: {fileID: 912284334}
   loadGameButton: {fileID: 428733636}
