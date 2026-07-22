@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -1189,11 +1190,30 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public void ClearAggressionOverride() => overrideGlobalAggression = false;
 
+    // ScanForHostiles runs every frame from several states. Its filter lambdas
+    // used to CAPTURE locals (sparePilgrims, this), so C# allocated a fresh
+    // closure per call -- three per scan, per monster, per frame. That churn was
+    // the top GC contributor in the profile. Cache the delegates once and drive
+    // them from these fields, which the scan sets before each query.
+    private bool _scanSparePilgrims;
+    private Predicate<DungeonAdventurer> _taunterPred;
+    private Predicate<DungeonAdventurer> _advPred;
+    private Predicate<DungeonMonster> _hostileMonsterPred;
+
+    private void EnsureScanPredicates()
+    {
+        if (_taunterPred != null) return;
+        _taunterPred = a => a.IsTaunting && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
+        _advPred = a => !_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim;
+        _hostileMonsterPred = candidate => candidate != this && candidate.IsWild != this.IsWild;
+    }
+
     private void ScanForHostiles()
     {
         if (currentFloor?.Entities == null) return;
 
         var aggr = EffectiveAggression;
+        EnsureScanPredicates();
 
         // Defensive monsters stay passive during their normal routine, but still
         // engage when retaliating, defending the core, or under an explicit order.
@@ -1204,13 +1224,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         // Normal and (retaliating) Defensive spare Pilgrims; Aggressive does not.
         bool sparePilgrims = aggr != MonsterAggression.Aggressive;
+        _scanSparePilgrims = sparePilgrims;   // the cached predicates read this
 
         // Tank taunt (minimal): a taunting adventurer in detection range is
         // preferred over the nearest target. FLAG: expand into full class-aware target
         // priority later (the "Class-aware target priority" backlog item).
         var taunter = currentFloor.Entities.Nearest<DungeonAdventurer>(
-            transform.position, detectionRange,
-            a => a.IsTaunting && (!sparePilgrims || a.Intent != PartyIntent.Pilgrim));
+            transform.position, detectionRange, _taunterPred);
         if (taunter != null) { target = taunter; state = MonsterState.Attack; TryTauntBark(); return; }
 
         IMonsterTarget nearest = null;
@@ -1219,8 +1239,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // Day 42 — class-aware target priority. Gather in-range adventurers (minus
         // spared Pilgrims), then pick by the monster's TargetPriority: hard preference,
         // nearest tie-break; Nearest = pure nearest (unchanged default).
-        currentFloor.Entities.WithinRadius(transform.position, detectionRange, _advScanBuf,
-            a => !sparePilgrims || a.Intent != PartyIntent.Pilgrim);
+        currentFloor.Entities.WithinRadius(transform.position, detectionRange, _advScanBuf, _advPred);
         var adv = SelectAdventurer(_advScanBuf, out float advDist);
         if (adv != null)
         {
@@ -1231,8 +1250,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // Wild-vs-player monster targeting stays nearest-based; a closer hostile
         // monster still preempts the chosen adventurer (unchanged behaviour).
         var m = currentFloor.Entities.Nearest<DungeonMonster>(
-            transform.position, nearestDist,
-            candidate => candidate != this && candidate.IsWild != this.IsWild);
+            transform.position, nearestDist, _hostileMonsterPred);
         if (m != null) { nearest = m; }
 
         if (nearest != null) { target = nearest; state = MonsterState.Attack; TryTauntBark(); }
