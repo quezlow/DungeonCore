@@ -236,6 +236,7 @@ public class TileInfluenceManager : MonoBehaviour
         {
             minedTiles.Add(pos);
             terrain?.RevealTile(pos);
+            terrain?.MarkPermanentlyRevealed(pos);
         }
 
         // Reveal the 1-cell wall border too, so the cavern's wall caps sit on
@@ -369,6 +370,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         minedTiles.Add(pos);
+        terrain?.MarkPermanentlyRevealed(pos);   // a dug tunnel is permanent -- a breach never re-fogs it
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
 
@@ -442,9 +444,10 @@ public class TileInfluenceManager : MonoBehaviour
         {
             if (!claimedTiles.Remove(cell)) continue;
             removed++;
-            // Breach strips OWNERSHIP only. Every claimed cell was revealed at
-            // claim time; the player has seen it, so it stays lit and simply
-            // returns to claimable. Nothing the player revealed is re-fogged.
+            // Ownership recedes: a cell only revealed BY the claim returns to the
+            // dark. RefogTile self-guards dug/generator-revealed cells, so tunnels
+            // and exposed caverns stay lit; only ownership-lit ground re-fogs.
+            terrain?.RefogTile(cell);
         }
 
         if (removed == 0) return;

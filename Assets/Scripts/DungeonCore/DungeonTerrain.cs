@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -25,6 +26,13 @@ public class DungeonTerrain : MonoBehaviour
 
     public Tilemap FloorTilemap => floorTilemap;
     public Tilemap FogTilemap => fogTilemap;
+
+    // Cells ever revealed by digging or by the terrain generator are PERMANENT:
+    // a breach that unclaims them must not re-fog them. Ownership-only reveals
+    // (a claimed cell that was never dug) are NOT added here, so they can fog
+    // back when the fringe recedes. RefogTile consults this set.
+    private readonly HashSet<Vector3Int> permanentlyRevealed = new HashSet<Vector3Int>();
+    public void MarkPermanentlyRevealed(Vector3Int pos) => permanentlyRevealed.Add(pos);
 
     [Header("Tile Assets")]
     [SerializeField] private TileBase floorTile;
@@ -115,6 +123,9 @@ public class DungeonTerrain : MonoBehaviour
 
     public void RefogTile(Vector3Int pos)
     {
+        // Never re-fog ground the player dug or the generator exposed; only
+        // ownership-revealed cells return to the dark.
+        if (permanentlyRevealed.Contains(pos)) return;
         if (IsWithinBounds(pos)) fogTilemap.SetTile(pos, fogTile);
     }
 

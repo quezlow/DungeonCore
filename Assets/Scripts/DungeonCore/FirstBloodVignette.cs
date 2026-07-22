@@ -97,15 +97,17 @@ public class FirstBloodVignette : MonoBehaviour
         playing = true;
 
         // -- Stage geometry, core-derived so cell naming can never mirror it --
-        // Outward is ALWAYS away from the core: the surface lies opposite the
-        // heart of the dungeon, whichever of the seeded cells is which.
-        Vector3 mouth = floor0.TileInfluence.CellToWorld(cave.mouthCell.ToVector3Int());
-        Vector3 stand = cave.hasSpawnCell
-            ? floor0.TileInfluence.CellToWorld(cave.spawnCell.ToVector3Int()) : mouth;
+        // The rat must die AT THE ACTUAL DUNGEON ENTRANCE the player dug -- the
+        // cell in the last stone ring where DungeonEntrance stands -- NOT the
+        // apron spawn point out on the pilgrim road (that stood ~40 units too far
+        // out). Prefer the placed entrance; fall back to the seeded mouth cell.
+        Vector3Int doorCell = DungeonEntrance.Instance != null
+            ? DungeonEntrance.Instance.OccupiedCell
+            : cave.mouthCell.ToVector3Int();
+        Vector3 doorway = floor0.TileInfluence.CellToWorld(doorCell);
         Vector3 corePos = floor0.TileInfluence.CellToWorld(floor0.Terrain.CoreCell);
-        Vector3 outward = ((mouth + stand) * 0.5f - corePos).normalized;
-        Vector3 doorway = Vector3.Distance(mouth, corePos) >= Vector3.Distance(stand, corePos)
-            ? mouth : stand;                              // the true outermost point
+        // Outward is ALWAYS away from the core: the surface lies opposite the heart.
+        Vector3 outward = (doorway - corePos).normalized;
         Vector3 inner = doorway - outward * 3.0f;         // a few steps down the tunnel
 
         Vector3 ratStart = doorway + outward * 2.5f;      // beyond the mouth, off the carved floor

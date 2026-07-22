@@ -119,6 +119,9 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
         // The Minimap sits on the panel root, whose RawImage paints the dark
         // square regardless of Body; hide the graphic itself until unlocked.
         if (mapImage != null && mapImage.enabled != unlocked) mapImage.enabled = unlocked;
+        // The texture was last painted while locked (all rock = dark). On unlock,
+        // force a repaint so it shows the claimed territory, not a stale dark fill.
+        if (unlocked) dirty = true;
     }
 
     private void OnFloorChanged(int _)

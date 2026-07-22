@@ -140,6 +140,18 @@ public class TutorialDirector : MonoBehaviour
         {
             case Step.Claim:
                 Say("tut_claim");
+                // If the player beat the prompt and is ALREADY in Push mode (they
+                // started claiming before the wisp spoke, or before Hook ran), the
+                // OnModeChanged transition already fired into the void and will not
+                // repeat. Detect the standing mode here so the tutorial never
+                // deadlocks on an early claimer.
+                if (DungeonBuildController.Instance != null
+                    && DungeonBuildController.Instance.CurrentMode == BuildMode.Push)
+                {
+                    GrantOnce(KeyStatusBars);
+                    EnterStep(Step.Dig);
+                    return;
+                }
                 break;
 
             case Step.Dig:

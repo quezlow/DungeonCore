@@ -310,6 +310,8 @@ public class ActionBarHUD : MonoBehaviour
 
         foreach (var entry in buildEntries)
         {
+            if (!EntryAvailable(entry.mode)) continue;   // hide stairs/relocate until possible
+
             Button btn = Instantiate(submenuEntryPrefab, buildEntryContainer);
             btn.gameObject.SetActive(true);
 
@@ -347,7 +349,35 @@ public class ActionBarHUD : MonoBehaviour
 
     private void ShowBuildPanel()
     {
+        // Rebuild each open so availability re-checks: stairs and relocate only
+        // appear when they are actually possible.
+        RebuildBuildEntries();
         if (buildSubmenuPanel != null) buildSubmenuPanel.SetActive(true);
+    }
+
+    // True when a build entry should be offered right now.
+    private static bool EntryAvailable(BuildMode mode)
+    {
+        var core = DungeonCore.Instance;
+        var fm = FloorManager.Instance;
+        switch (mode)
+        {
+            case BuildMode.PlaceStairs:
+                return core != null && core.StairCredits > 0
+                    && fm != null && !fm.FloorHasDownStair(fm.ActiveFloorIndex);
+            case BuildMode.PlaceCore:
+                return fm != null && fm.CanPlaceCore;
+            default:
+                return true;   // always-available entries
+        }
+    }
+
+    private void RebuildBuildEntries()
+    {
+        foreach (var (_, btn) in spawnedEntries)
+            if (btn != null) Destroy(btn.gameObject);
+        spawnedEntries.Clear();
+        BuildSubmenuEntries();
     }
 
     private void HideBuildPanel()

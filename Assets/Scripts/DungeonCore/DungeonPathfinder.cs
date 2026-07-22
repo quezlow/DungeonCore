@@ -116,9 +116,12 @@ public static class DungeonPathfinder
         costSoFar[start] = 0;
         cameFrom[start] = start;
 
+        int dbgRiverVisited = 0; int dbgExpanded = 0;   // DIAG-RIVER
         while (heap.Count > 0)
         {
             Vector3Int current = heap.Pop();
+            dbgExpanded++;                                                    // DIAG-RIVER
+            if (features != null && features.IsRiver(current)) dbgRiverVisited++;  // DIAG-RIVER
 
             if (current == goal)
                 return ReconstructPath(cameFrom, start, goal, influence);
@@ -157,8 +160,54 @@ public static class DungeonPathfinder
                 }
             }
         }
+        UnityEngine.Debug.Log($"[DIAG-RIVER] Path FAILED start={start} goal={goal} " +   // DIAG-RIVER
+            $"expanded={dbgExpanded} riverCellsVisited={dbgRiverVisited} " +              // DIAG-RIVER
+            $"(riverVisited>0 means it reached the water but could not cross to goal)");  // DIAG-RIVER
 
         return new List<Vector3>();
+    }
+
+    /// <summary>
+    /// The set of cells reachable from a start cell under the SAME passability
+    /// rule the pathfinder uses (mined-and-not-overhung, river, or cave approach).
+    /// A single flood, so callers can pre-filter targets to genuinely reachable
+    /// cells instead of picking one across a river or in a disconnected pocket
+    /// and only discovering it is unreachable after a failed path. Rivers are
+    /// passable here, so a fordable far bank IS included when a ford exists.
+    /// </summary>
+    public static HashSet<Vector3Int> ReachableCells(FloorRoot floor, Vector3 startWorld, int maxCells = 4096)
+    {
+        var result = new HashSet<Vector3Int>();
+        if (floor == null) return result;
+        var influence = floor.TileInfluence;
+        if (influence == null) return result;
+        var features = floor.FeatureGenerator;
+
+        Vector3Int start = influence.WorldToCell(startWorld);
+        var queue = new Queue<Vector3Int>();
+        queue.Enqueue(start);
+        result.Add(start);
+
+        while (queue.Count > 0 && result.Count < maxCells)
+        {
+            Vector3Int current = queue.Dequeue();
+            foreach (var dir in Directions)
+            {
+                Vector3Int next = current + dir;
+                if (result.Contains(next)) continue;
+
+                bool owned = influence.IsTileMined(next);
+                bool underOverhang = influence.IsUnderOverhang(next);
+                bool isRiver = features != null && features.IsRiver(next);
+                bool caveApproach = !owned && features != null && features.IsEntranceCave(next);
+                bool passable = (owned && !underOverhang) || isRiver || caveApproach;
+                if (!passable) continue;
+
+                result.Add(next);
+                queue.Enqueue(next);
+            }
+        }
+        return result;
     }
 
     private static List<Vector3> ReconstructPath(

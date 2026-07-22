@@ -1076,6 +1076,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         int cellRadius = Mathf.CeilToInt(wanderRadius);
         float radiusSqr = wanderRadius * wanderRadius;
 
+        // Only cells reachable FROM WHERE THE MONSTER STANDS are valid targets;
+        // otherwise it picks a mined cell across a river or in a disconnected
+        // pocket, the path comes back empty, and it stalls re-rolling. The flood
+        // crosses rivers, so a genuinely fordable cell still qualifies.
+        var reachable = DungeonPathfinder.ReachableCells(currentFloor, transform.position);
+
         var candidates = new List<Vector3Int>();
         for (int dx = -cellRadius; dx <= cellRadius; dx++)
         {
@@ -1083,6 +1089,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             {
                 Vector3Int cell = spawnCell + new Vector3Int(dx, dy, 0);
                 if (!influence.IsTileMined(cell) || influence.IsUnderOverhang(cell)) continue;
+                if (!reachable.Contains(cell)) continue;   // must be reachable from here, not just mined
 
                 // Circular not square — use squared distance for cheap check.
                 Vector3 cellWorld = influence.CellToWorld(cell);

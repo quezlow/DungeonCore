@@ -27,6 +27,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private int minChamberCellCount = 6;
     [Tooltip("Reject a chamber centre within this many tiles of another chamber's centre.")]
     [SerializeField] private int chamberSpacing = 10;
+    [Tooltip("Keep chambers clear of the outer bedrock rim: chamber centres are drawn " +
+             "from a disc this many cells smaller than the floor radius, so a chamber " +
+             "never opens into the unminable border ring. Cover the max rim thickness " +
+             "plus a chamber's half-extent.")]
+    [SerializeField, Min(0)] private int chamberRimMargin = 10;
 
     // ── Inspector — Rivers ────────────────────────────────────────
 
@@ -394,7 +399,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             attempts++;
 
-            if (!PickRandomCellInDisc(rng, centerCell, floorRadius, exclusionRadiusFromCenter, out var chamberCentre))
+            // Shrink the pick disc so chambers stay inside the bedrock rim. The
+            // rim map is generated AFTER features, so it can't be queried here;
+            // the margin conservatively clears the thickest possible rim.
+            int chamberDisc = Mathf.Max(exclusionRadiusFromCenter + 1, floorRadius - chamberRimMargin);
+            if (!PickRandomCellInDisc(rng, centerCell, chamberDisc, exclusionRadiusFromCenter, out var chamberCentre))
                 continue;
 
             if (IsTooCloseToExistingChamber(chamberCentre)) continue;
@@ -1286,10 +1295,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             var c = sv.ToVector3Int();
             terrain.RevealTile(c);
+            terrain.MarkPermanentlyRevealed(c);   // generator-exposed ground never re-fogs on breach
             for (int dx = -1; dx <= 1; dx++)
                 for (int dy = -1; dy <= 1; dy++)
                     if (dx != 0 || dy != 0)
-                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+                    {
+                        var n = new Vector3Int(c.x + dx, c.y + dy, c.z);
+                        terrain.RevealTile(n);
+                        terrain.MarkPermanentlyRevealed(n);
+                    }
         }
     }
 

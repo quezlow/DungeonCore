@@ -50,6 +50,11 @@ public class DungeonCoreHUD : MonoBehaviour
             return;
         }
 
+        // Carry the ceremony's affinity into the HUD: the mana orb wears the
+        // element's colour chosen at selection.
+        if (manaOrbFill != null)
+            manaOrbFill.color = DungeonCore.ColorFor(DungeonCore.Instance.DungeonType);
+
         DungeonCore.Instance.OnManaChanged += HandleManaChanged;
         DungeonCore.Instance.OnXPChanged += HandleXPChanged;
         DungeonCore.Instance.OnLevelChanged += HandleLevelUp;
@@ -88,6 +93,11 @@ public class DungeonCoreHUD : MonoBehaviour
     {
         float pct = max > 0 ? current / max : 0f;
         manaOrbFill.fillAmount = pct;
+        // Tint here, not once at Start: on load the affinity is restored a beat
+        // after the HUD wakes, so a one-time Start tint shows the default. This
+        // refreshes every mana tick and self-corrects within a frame of load.
+        if (DungeonCore.Instance != null)
+            manaOrbFill.color = DungeonCore.ColorFor(DungeonCore.Instance.DungeonType);
         manaOrbPercent.text = $"{Mathf.RoundToInt(pct * 100)}%";
         manaOrbNumeric.text = $"{Mathf.FloorToInt(current)} / {Mathf.FloorToInt(max)}";
     }
