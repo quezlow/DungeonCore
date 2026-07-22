@@ -120,6 +120,12 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private bool claimDirty = true;
     private bool fieldDirty = true;
+    [Tooltip("Minimum seconds between overlay rebuilds. A rebuild sweeps the whole " +
+             "texture, runs the chamfer passes and re-uploads, and the texture GROWS " +
+             "with claimed area -- so a claim-driven rebuild every frame crawls once " +
+             "a floor is half taken. The overlay is a visual aid; it can lag a beat.")]
+    [SerializeField] private float rebuildInterval = 0.12f;
+    private float nextRebuildAt;
     private bool subscribedInfluence;
     private bool subscribedField;
     private bool built;
@@ -209,8 +215,11 @@ public class InfluenceRingRenderer : MonoBehaviour
             staticUniformsDirty = false;
         }
 
-        if (claimDirty || fieldDirty)
+        // Throttled: claiming marks this dirty on EVERY tile, and the rebuild
+        // cost scales with the claimed area. The flags simply wait their turn.
+        if ((claimDirty || fieldDirty) && Time.unscaledTime >= nextRebuildAt)
         {
+            nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
             RebuildTexture();
             claimDirty = false;
             fieldDirty = false;
