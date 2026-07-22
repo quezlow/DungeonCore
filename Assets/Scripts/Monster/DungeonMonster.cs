@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -1196,9 +1195,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // the top GC contributor in the profile. Cache the delegates once and drive
     // them from these fields, which the scan sets before each query.
     private bool _scanSparePilgrims;
-    private Predicate<DungeonAdventurer> _taunterPred;
-    private Predicate<DungeonAdventurer> _advPred;
-    private Predicate<DungeonMonster> _hostileMonsterPred;
+    private System.Predicate<DungeonAdventurer> _taunterPred;
+    private System.Predicate<DungeonAdventurer> _advPred;
+    private System.Predicate<DungeonMonster> _hostileMonsterPred;
 
     private void EnsureScanPredicates()
     {
