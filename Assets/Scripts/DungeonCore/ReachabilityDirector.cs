@@ -157,6 +157,20 @@ public class ReachabilityDirector : MonoBehaviour
         var fm = FloorManager.Instance;
         if (entrance == null || fm == null) return;
 
+        // Say nothing until the player has actually FOUND the mouth. Before that
+        // the halls are meant to be unjoined -- warning about it is both wrong and
+        // a spoiler, announcing there is an entrance out there to dig toward.
+        // Mirrors the spawners' gate: a floor with no seeded cave counts as
+        // discovered, so hand-built floors are never permanently muted.
+        var features = fm.GetFloor(0) != null ? fm.GetFloor(0).FeatureGenerator : null;
+        if (features != null && features.EntranceCave != null && !features.IsEntranceDiscovered)
+        {
+            // Keep the state unlatched so the first real check after discovery
+            // reports honestly instead of being swallowed as "no change".
+            severedKnown = false;
+            return;
+        }
+
         // The entrance always stands on floor 0; the core may live deeper, in
         // which case the stairs carry the route and this check is not meaningful.
         FloorRoot surface = fm.GetFloor(0);
