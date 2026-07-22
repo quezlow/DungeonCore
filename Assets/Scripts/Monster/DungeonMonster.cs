@@ -1118,6 +1118,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (influence == null || wildChamberCells == null || wildChamberCells.Count == 0)
         { wanderTarget = spawnPosition; return; }
 
+        // Wild monsters branch here BEFORE the tame reachability filter, so they
+        // need their own: a cell adjacent to some far lobe of the chamber (or
+        // across a river) is not somewhere this rat can actually walk. Without
+        // this it targets the unreachable, the path returns empty, and the horde
+        // stalls at the water re-rolling forever.
+        var reachable = DungeonPathfinder.ReachableCells(currentFloor, transform.position);
+
         bool tryOutward = Random.value < wildAggroOutwardChance;
         if (tryOutward)
         {
@@ -1130,6 +1137,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 TryAddAdjacentOwned(cell + Vector3Int.left, influence, seen, adjacentOwned);
                 TryAddAdjacentOwned(cell + Vector3Int.right, influence, seen, adjacentOwned);
             }
+            adjacentOwned.RemoveAll(c => !reachable.Contains(c));
             if (adjacentOwned.Count > 0)
             {
                 var pick = adjacentOwned[Random.Range(0, adjacentOwned.Count)];
@@ -1137,7 +1145,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 return;
             }
         }
-        var chamberPick = wildChamberCells[Random.Range(0, wildChamberCells.Count)];
+
+        // Chamber fallback, also reachability-filtered: a chamber split by a
+        // river has lobes this monster cannot walk to. The flood always contains
+        // the cell the monster stands on, so this list is never empty in practice.
+        var inReach = wildChamberCells.FindAll(c => reachable.Contains(c));
+        var pool = inReach.Count > 0 ? inReach : wildChamberCells;
+        var chamberPick = pool[Random.Range(0, pool.Count)];
         wanderTarget = influence.CellToWorld(chamberPick);
     }
 
