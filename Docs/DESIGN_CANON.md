@@ -1335,3 +1335,24 @@ then-replace is the accepted exception).
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*
+
+### Reachability -- the severed-halls watch and the mine-mode wash
+
+Connectivity is judged by the PATHFINDER'S passability rule (mined-and-not-
+overhung, river, river bank, cave approach), never by "is this cell mined" --
+mined-but-unwalkable cells are the failure players cannot see unaided.
+
+ReachabilityDirector (on the dungeon GameController) floods from each floor's
+core cell after every dig, debounced. If the entrance falls outside floor 0's
+set while the core is on floor 0, it raises an AlertCategory.Threat alert and a
+wisp line, and speaks a relief line when the route returns.
+
+In Mine mode every core-joined cell is washed in a slow pulse; only reachable
+cells are tinted, so absence is the warning. Water and banks are included, which
+teaches that a ford is a real route. The overlay tilemap and its tile are built
+at runtime per floor, so new floors need no wiring.
+
+Rooms are never severed retroactively: nothing removes cells from minedTiles in
+normal play. Regions are instead BORN disconnected -- MarkNaturalFloor adds
+chamber, cavern and river-bank cells with no adjacency requirement, so those are
+walkable islands until a tunnel joins them.

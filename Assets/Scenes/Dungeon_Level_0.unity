@@ -13673,6 +13673,7 @@ MonoBehaviour:
   caSmoothingIterations: 4
   minChamberCellCount: 10
   chamberSpacing: 25
+  chamberRimMargin: 10
   minRivers: 1
   maxRivers: 3
   minRiverControlPoints: 12
@@ -24177,6 +24178,55 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &869256367
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 869256368}
+  - component: {fileID: 869256369}
+  m_Layer: 0
+  m_Name: ReachabilityDirector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &869256368
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869256367}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &869256369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 869256367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c73677513cb9244982ec4e7344ee798, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ReachabilityDirector
+  reachTint: {r: 0.42, g: 0.85, b: 0.62, a: 1}
+  pulseMin: 0.1
+  pulseMax: 0.26
+  pulsePeriod: 2.6
+  recomputeDebounce: 0.25
 --- !u!1 &876656850
 GameObject:
   m_ObjectHideFlags: 0
@@ -24561,7 +24611,7 @@ MonoBehaviour:
   m_fontSizeMin: 16
   m_fontSizeMax: 24
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -52092,7 +52142,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9917034
+  m_Size: 0.9977842
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -54433,7 +54483,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.0005483187}
+  m_AnchoredPosition: {x: 0, y: 0.000035968023}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -60935,6 +60985,7 @@ Transform:
   - {fileID: 1831622585}
   - {fileID: 910183382}
   - {fileID: 1810592065607644266}
+  - {fileID: 869256368}
   - {fileID: 547764597}
   - {fileID: 1100373900}
   - {fileID: 2002678102}

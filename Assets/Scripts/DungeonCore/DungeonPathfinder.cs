@@ -21,6 +21,7 @@ using UnityEngine;
 /// </summary>
 public static class DungeonPathfinder
 {
+
     private static readonly Vector3Int[] Directions =
     {
         Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right
@@ -87,7 +88,10 @@ public static class DungeonPathfinder
         bool river = floor.FeatureGenerator != null && floor.FeatureGenerator.IsRiver(cell);
         bool caveApproach = !owned && floor.FeatureGenerator != null
             && floor.FeatureGenerator.IsEntranceCave(cell);
-        return (owned && !overhang) || river || caveApproach;
+        // Banks are exempt from the overhang rule -- see the note in RunDijkstra.
+        bool bank = floor.FeatureGenerator != null
+            && floor.FeatureGenerator.GetFeatureAt(cell) == FeatureType.RiverBank;
+        return (owned && (!overhang || bank)) || river || caveApproach;
     }
 
     // ── Dijkstra core ────────────────────────────────────────────
@@ -116,12 +120,9 @@ public static class DungeonPathfinder
         costSoFar[start] = 0;
         cameFrom[start] = start;
 
-        int dbgRiverVisited = 0; int dbgExpanded = 0;   // DIAG-RIVER
         while (heap.Count > 0)
         {
             Vector3Int current = heap.Pop();
-            dbgExpanded++;                                                    // DIAG-RIVER
-            if (features != null && features.IsRiver(current)) dbgRiverVisited++;  // DIAG-RIVER
 
             if (current == goal)
                 return ReconstructPath(cameFrom, start, goal, influence);
@@ -145,7 +146,14 @@ public static class DungeonPathfinder
                 // walkable surface ground — never mined, never walled, no drape.
                 bool caveApproach = !owned && features != null && features.IsEntranceCave(next);
 
-                bool passable = (owned && !underOverhang) || isRiver || caveApproach;
+                // A river bank is natural open floor that happens to sit below a
+                // wall face, so the overhang rule (meant for wall-bottom slices)
+                // wrongly discards it -- and rivers carve through rock, so nearly
+                // half of all banks trip it. Excluding them sealed every ford: a
+                // tunnel could reach the bank but never step onto the water.
+                bool isBank = features != null
+                    && features.GetFeatureAt(next) == FeatureType.RiverBank;
+                bool passable = (owned && (!underOverhang || isBank)) || isRiver || caveApproach;
 
                 if (!passable && (next != goal || underOverhang)) continue;
 
@@ -160,9 +168,6 @@ public static class DungeonPathfinder
                 }
             }
         }
-        UnityEngine.Debug.Log($"[DIAG-RIVER] Path FAILED start={start} goal={goal} " +   // DIAG-RIVER
-            $"expanded={dbgExpanded} riverCellsVisited={dbgRiverVisited} " +              // DIAG-RIVER
-            $"(riverVisited>0 means it reached the water but could not cross to goal)");  // DIAG-RIVER
 
         return new List<Vector3>();
     }
@@ -200,7 +205,14 @@ public static class DungeonPathfinder
                 bool underOverhang = influence.IsUnderOverhang(next);
                 bool isRiver = features != null && features.IsRiver(next);
                 bool caveApproach = !owned && features != null && features.IsEntranceCave(next);
-                bool passable = (owned && !underOverhang) || isRiver || caveApproach;
+                // A river bank is natural open floor that happens to sit below a
+                // wall face, so the overhang rule (meant for wall-bottom slices)
+                // wrongly discards it -- and rivers carve through rock, so nearly
+                // half of all banks trip it. Excluding them sealed every ford: a
+                // tunnel could reach the bank but never step onto the water.
+                bool isBank = features != null
+                    && features.GetFeatureAt(next) == FeatureType.RiverBank;
+                bool passable = (owned && (!underOverhang || isBank)) || isRiver || caveApproach;
                 if (!passable) continue;
 
                 result.Add(next);

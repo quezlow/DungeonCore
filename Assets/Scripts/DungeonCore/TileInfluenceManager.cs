@@ -119,6 +119,7 @@ public class TileInfluenceManager : MonoBehaviour
     // ── Internal ──────────────────────────────────────────────────
 
     private DungeonTerrain terrain;
+    private float lastMineRefusalBark = -999f;   // throttles the cannot-dig-there bark
 
     private TerrainFeatureGenerator featureGenerator;
     private TerrainFeatureGenerator Features
@@ -366,7 +367,22 @@ public class TileInfluenceManager : MonoBehaviour
                 if (minedTiles.Contains(pos + dir)) { hasAdjacentMined = true; break; }
                 if (Features != null && Features.IsRiver(pos + dir)) { hasAdjacentMined = true; break; }
             }
-            if (!hasAdjacentMined) return;
+            if (!hasAdjacentMined)
+            {
+                // A silent no-op here once cost a whole session: claimed stone
+                // LOOKS diggable, but a mine-click that does not touch already
+                // carved ground does nothing -- and every later click down the
+                // same chain fails too, leaving a tunnel that is tinted but never
+                // dug. Say so once, throttled, so the break is visible when it
+                // happens rather than surfacing later as entities that will not move.
+                if (Time.unscaledTime - lastMineRefusalBark > 8f)
+                {
+                    lastMineRefusalBark = Time.unscaledTime;
+                    WispCompanion.Instance?.SpeakLine(
+                        "The stone will not yield there -- dig from ground we have already carved.");
+                }
+                return;
+            }
         }
 
         minedTiles.Add(pos);

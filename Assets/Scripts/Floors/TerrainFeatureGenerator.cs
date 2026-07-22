@@ -244,6 +244,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
         => cellLookup.TryGetValue(cell, out var fref) ? fref.type : FeatureType.None;
 
     public bool IsRiver(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.River;
+
+
+
     public bool IsChamber(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.Chamber;
     public bool IsCoreCavern(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.CoreCavern;
     public bool IsReservedCoreFeature(Vector3Int cell) => reservedCoreCells.Contains(cell);
