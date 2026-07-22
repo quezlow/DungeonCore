@@ -196,6 +196,7 @@ public class AdventurerSpawner : MonoBehaviour
         && !transitPaused
         && DungeonEntrance.Instance != null
         && EntranceDiscovered
+        && ReachabilityDirector.RouteToCoreOpen
         && (DayNightCycle.Instance == null || !DayNightCycle.Instance.IsNight)
         && (WaveStageController.AllowAdventurers || WaveStageController.AllowCommoners);
 

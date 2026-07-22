@@ -1356,3 +1356,13 @@ Rooms are never severed retroactively: nothing removes cells from minedTiles in
 normal play. Regions are instead BORN disconnected -- MarkNaturalFloor adds
 chamber, cavern and river-bank cells with no adjacency requirement, so those are
 walkable islands until a tunnel joins them.
+
+
+Waves gate on reachability: AdventurerSpawner holds while
+ReachabilityDirector.RouteToCoreOpen is false, so raiders are never sent at a
+dungeon they cannot enter. The gate is permissive when unknown -- no director,
+or no check yet, both read open -- so a missing watchdog can never stall the
+game. The severed-halls alert explains the silence to the player.
+
+On a peaceful Inspector departure the wisp adds a reminder to re-arm the halls
+before the next parties arrive.

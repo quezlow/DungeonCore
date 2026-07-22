@@ -99,6 +99,14 @@ public class ReachabilityDirector : MonoBehaviour
     /// <summary>Ask for a rebuild shortly; repeated calls collapse into one.</summary>
     public void MarkDirty() => recomputeAt = Time.unscaledTime + recomputeDebounce;
 
+    /// <summary>False ONLY when we have actually checked and found that nothing
+    /// can walk from the mouth to the heart. Unknown, unchecked, or no director
+    /// present all read true, so a missing watchdog can never stall the game.
+    /// Waves gate on this: sending raiders at a dungeon they cannot enter just
+    /// piles them up outside.</summary>
+    public static bool RouteToCoreOpen =>
+        Instance == null || !Instance.severedKnown || !Instance.severed;
+
     /// <summary>True when the cell is joined to its floor's core by a walkable route.</summary>
     public bool IsJoinedToCore(FloorRoot floor, Vector3Int cell)
         => floor != null && reachable.TryGetValue(floor, out var set) && set.Contains(cell);

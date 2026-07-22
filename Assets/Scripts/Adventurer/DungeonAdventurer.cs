@@ -1532,7 +1532,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             GradeSystem.Instance?.Assess();
             WispCompanion.Instance?.SpeakLine(
                 "The Inspector files its report. The Guild has your measure now -- " +
-                "they will send parties fit to the rank they have given you.");
+                "they will send parties fit to the rank they have given you. " +
+                "Set your teeth back in the stone before the next ones come.");
         }
         leftSatisfied = true;   // observed its fill and leaves satisfied
         StartRetreat();

@@ -62,6 +62,8 @@ public class ResearchTreeUI : MonoBehaviour
     [Header("Project Strip")]
     [SerializeField] private TMP_Text activeNameLabel;
     [SerializeField] private Image progressFill;
+    [Tooltip("Shows the active project's progress as a percentage, e.g. '62%'.")]
+    [SerializeField] private TMP_Text progressPercentLabel;
     [SerializeField] private TMP_Text daysLabel;
     [SerializeField] private TMP_Text queuedLabel;
     [SerializeField] private Button cancelActiveButton;
@@ -126,8 +128,13 @@ public class ResearchTreeUI : MonoBehaviour
     private void UpdateFill()
     {
         var rc = ResearchController.Instance;
-        if (progressFill != null)
-            progressFill.fillAmount = rc != null ? rc.ActiveProgress01 : 0f;
+        float p01 = rc != null ? rc.ActiveProgress01 : 0f;
+        if (progressFill != null) progressFill.fillAmount = p01;
+        // The strip reads as a percentage now; the fill stays driven so a bar can
+        // be re-enabled without touching code.
+        if (progressPercentLabel != null)
+            progressPercentLabel.text = rc != null && rc.ActiveNode != null
+                ? Mathf.RoundToInt(p01 * 100f) + "%" : "";
 
         var core = DungeonCore.Instance;
         int pts = core != null ? core.Research : 0;
@@ -427,12 +434,13 @@ public class ResearchTreeUI : MonoBehaviour
         if (activeNameLabel != null)
             activeNameLabel.text = active != null ? active.displayName : "The core's mind is idle.";
 
-        if (progressFill != null)
         {
             float f = 0f;
             if (active != null && active.durationDays > 0)
                 f = Mathf.Clamp01(1f - rc.ActiveDaysRemaining / active.durationDays);
-            progressFill.fillAmount = f;
+            if (progressFill != null) progressFill.fillAmount = f;
+            if (progressPercentLabel != null)
+                progressPercentLabel.text = active != null ? Mathf.RoundToInt(f * 100f) + "%" : "";
         }
 
         if (daysLabel != null)

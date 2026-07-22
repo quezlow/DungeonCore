@@ -54,6 +54,24 @@ public class PartyBanner : MonoBehaviour
             }
         }
 
+        // The banner is a WORLD object (the bar is a SpriteRenderer), but the
+        // label is a TextMeshProUGUI, which only draws through a Canvas. The
+        // prefab's Canvas cannot be set to World Space in the Inspector -- inside
+        // Prefab Mode it reads as nested and Unity hides Render Mode -- and it is
+        // instantiated parentless, so it would come up Screen Space Overlay and
+        // render the banner across the screen. Set it here, where the bar's own
+        // sorting is known, and keep the text one step above the ribbon.
+        var canvas = GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            canvas.renderMode = RenderMode.WorldSpace;
+            if (bar != null)
+            {
+                canvas.sortingLayerID = bar.sortingLayerID;
+                canvas.sortingOrder = bar.sortingOrder + 1;
+            }
+        }
+
         // The label is a child of the banner root at local origin, so it
         // already rides the ribbon as the root follows the party lead. DO NOT
         // stamp its world position here -- doing so before the first LateUpdate
@@ -77,7 +95,18 @@ public class PartyBanner : MonoBehaviour
 
         var lead = party.CurrentLead();
         // Drop once a majority of the party is gone (died or fled), or none remain.
-        if (lead == null || party.LiveCount() * 2 < originalSize) { Destroy(gameObject); return; }
+        // A broken anonymous party stops being worth a banner, but a named
+        // champion's banner is HIS -- losing his escort must not erase it while
+        // he still walks. DisplayName covers named Nobles too, not just Heroes.
+        bool namedAlive = false;
+        foreach (var m in party.LiveMembers)
+            if (m != null && !string.IsNullOrEmpty(m.DisplayName)) { namedAlive = true; break; }
+
+        if (lead == null || (!namedAlive && party.LiveCount() * 2 < originalSize))
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         if (lead != cachedLead)
         {
