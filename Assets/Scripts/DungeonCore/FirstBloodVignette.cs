@@ -105,9 +105,12 @@ public class FirstBloodVignette : MonoBehaviour
         // the carved cell nearest the core, so use that when no entrance object
         // has been placed yet (it has not been, this early in the tutorial).
         Vector3Int coreCell = floor0.Terrain.CoreCell;
-        Vector3Int doorCell = DungeonEntrance.Instance != null
-            ? DungeonEntrance.Instance.OccupiedCell
-            : InnermostCaveCell(cave, coreCell);
+        // The opening in the last ring of stone. mouthCell is the outermost
+        // in-disc cell along the entrance bearing, which IS that opening.
+        // Deliberately NOT DungeonEntrance.Instance: that object stands on the
+        // apron spawn cell out on the road, where parties materialise and walk
+        // in -- preferring it staged the whole scene up in the grass.
+        Vector3Int doorCell = cave.mouthCell.ToVector3Int();
         Vector3 doorway = floor0.TileInfluence.CellToWorld(doorCell);
         Vector3 corePos = floor0.TileInfluence.CellToWorld(coreCell);
         // Outward is ALWAYS away from the core: the surface lies opposite the heart.
@@ -241,24 +244,5 @@ public class FirstBloodVignette : MonoBehaviour
             yield return null;
         }
         Destroy(sr.gameObject);
-    }
-
-    /// <summary>The carved entrance cell closest to the core -- the opening where
-    /// the tunnel meets the dungeon. The seeded mouthCell sits on the disc rim and
-    /// spawnCell out on the road, so neither marks the doorway the player sees.</summary>
-    private static Vector3Int InnermostCaveCell(EntranceCaveData cave, Vector3Int coreCell)
-    {
-        Vector3Int best = cave.mouthCell.ToVector3Int();
-        int bestDist = int.MaxValue;
-        if (cave.cells != null)
-        {
-            foreach (var sv in cave.cells)
-            {
-                var c = sv.ToVector3Int();
-                int d = Mathf.Abs(c.x - coreCell.x) + Mathf.Abs(c.y - coreCell.y);
-                if (d < bestDist) { bestDist = d; best = c; }
-            }
-        }
-        return best;
     }
 }

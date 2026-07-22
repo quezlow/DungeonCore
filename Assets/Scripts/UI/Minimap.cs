@@ -73,8 +73,21 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
 
     private void Awake()
     {
-        mapImage = GetComponent<RawImage>();
-        mapRect = (RectTransform)transform;
+        // This component is meant to live on MapImage, but it sits on the panel
+        // root in the scene. GetComponent then binds to the PANEL's background
+        // RawImage: the map paints there, MapImage's own untextured RawImage
+        // draws on top and hides it, and the dots anchor to the wrong rect.
+        // Resolve the real map surface by name so either placement works.
+        mapImage = null;
+        var mapTf = FindMapSurface(transform);
+        if (mapTf != null) mapImage = mapTf.GetComponent<RawImage>();
+        if (mapImage == null) mapImage = GetComponent<RawImage>();
+        mapRect = (RectTransform)mapImage.transform;
+
+        // If we retargeted, the panel's own RawImage must stop drawing over the
+        // map -- it is the flat dark square the player was left staring at.
+        var ownImage = GetComponent<RawImage>();
+        if (ownImage != null && ownImage != mapImage) ownImage.enabled = false;
         texture = new Texture2D(textureSize, textureSize, TextureFormat.RGBA32, false)
         {
             filterMode = FilterMode.Point,
@@ -116,8 +129,8 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     {
         bool unlocked = UnlockState.IsUnlocked("tech.minimap");
         if (body != null && body.activeSelf != unlocked) body.SetActive(unlocked);
-        // The Minimap sits on the panel root, whose RawImage paints the dark
-        // square regardless of Body; hide the graphic itself until unlocked.
+        // Hide the painted surface itself until unlocked, so no square shows
+        // through while the node is unresearched.
         if (mapImage != null && mapImage.enabled != unlocked) mapImage.enabled = unlocked;
         // The texture was last painted while locked (all rock = dark). On unlock,
         // force a repaint so it shows the claimed territory, not a stale dark fill.
@@ -164,7 +177,20 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
 
     private void LateUpdate()
     {
-        if (dirty) { Repaint(); dirty = false; }
+        // The floor is often not ready when OnEnable runs at scene load, so
+        // HookFloor leaves influence null and the tile-change subscriptions are
+        // never made. Retry until it takes -- otherwise nothing can ever mark the
+        // map dirty again and it stays a flat rock fill until the panel is
+        // toggled by hand.
+        if (influence == null) HookFloor();
+
+        // Only clear the flag once a repaint could actually draw something;
+        // consuming it on a bailed paint is what stranded the map.
+        if (dirty)
+        {
+            Repaint();
+            if (influence != null && influence.ClaimedTileCount > 0) dirty = false;
+        }
         UpdateDots();
         UpdateViewRect();
     }
@@ -383,5 +409,17 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     public void Toggle()
     {
         if (body != null) body.SetActive(!body.activeSelf);
+    }
+
+    /// <summary>Finds the RawImage the map should paint on: a descendant named
+    /// "MapImage" if one exists, otherwise null so the caller falls back to this
+    /// object's own RawImage. Searches inactive children too, since Body starts
+    /// collapsed while the research node is still locked.</summary>
+    private static Transform FindMapSurface(Transform root)
+    {
+        foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            if (t != root && t.name == "MapImage" && t.GetComponent<RawImage>() != null)
+                return t;
+        return null;
     }
 }
