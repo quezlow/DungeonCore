@@ -181,8 +181,28 @@ public class TimeScaleController : MonoBehaviour
     private void SetButtonColour(Button btn, bool isActive)
     {
         if (btn == null) return;
-        var img = btn.GetComponent<Image>();
-        if (img != null)
-            img.color = isActive ? activeColour : inactiveColour;
+        Color c = isActive ? activeColour : inactiveColour;
+
+        // Setting image.color directly does NOT hold: Unity's Selectable rewrites
+        // the target graphic from its ColorBlock on every hover, press, select and
+        // deselect, so a direct tint survives only until the next state change --
+        // which is why the running speed lost its mark the moment you clicked away.
+        // Drive the resting states instead, so the tint IS the button's normal look.
+        var cb = btn.colors;
+        cb.normalColor = c;
+        cb.selectedColor = c;
+        cb.disabledColor = c;
+        cb.highlightedColor = c * 1.15f;   // keep a little hover lift
+        cb.pressedColor = c * 0.85f;
+        btn.colors = cb;
+
+        // The target graphic keeps its own base colour; the ColorBlock multiplies
+        // over it, so leave it white or the two tints compound.
+        var img = btn.targetGraphic as Image;
+        if (img != null) img.color = Color.white;
+
+        // Selectable only re-applies its tint on the next state change; bounce the
+        // component so the new resting colour shows at once rather than on hover.
+        if (btn.isActiveAndEnabled) { btn.enabled = false; btn.enabled = true; }
     }
 }

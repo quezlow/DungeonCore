@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: CollectAxe
   m_EditorClassIdentifier: Assembly-CSharp::Quest
   questID: collect_axe
-  questName: CollectAxe
+  questName: Collect Axe
   Description: That man needs me to grab his axe
   objectives:
   - objectiveID: 3

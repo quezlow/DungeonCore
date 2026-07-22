@@ -2946,7 +2946,6 @@ MonoBehaviour:
   confirmButton: {fileID: 816538108}
   tintSprites:
   - {fileID: 1626002767}
-  - {fileID: 0}
   tintImages:
   - {fileID: 1513959680}
   recolorSeconds: 2
