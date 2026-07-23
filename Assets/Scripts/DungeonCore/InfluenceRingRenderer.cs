@@ -120,11 +120,6 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private bool claimDirty = true;
     private bool fieldDirty = true;
-    [Tooltip("Minimum FRAMES between overlay rebuilds. Frame-based, and matched to " +
-             "the wall and shadow passes so the claimed edge does not update on " +
-             "three different cadences.")]
-    [SerializeField, Min(1)] private int rebuildFrameGap = 2;
-    private int nextRebuildFrame;
     private bool subscribedInfluence;
     private bool subscribedField;
     private bool built;
@@ -214,11 +209,10 @@ public class InfluenceRingRenderer : MonoBehaviour
             staticUniformsDirty = false;
         }
 
-        // Throttled: claiming marks this dirty on EVERY tile, and the rebuild
-        // cost scales with the claimed area. The flags simply wait their turn.
-        if ((claimDirty || fieldDirty) && Time.frameCount >= nextRebuildFrame)
+        // Rebuilt in the same frame as the claim: a deferred overlay leaves the
+        // claimed edge lagging the caps and shading that land beside it.
+        if (claimDirty || fieldDirty)
         {
-            nextRebuildFrame = Time.frameCount + Mathf.Max(1, rebuildFrameGap);
             RebuildTexture();
             claimDirty = false;
             fieldDirty = false;

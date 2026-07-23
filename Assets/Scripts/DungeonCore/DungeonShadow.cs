@@ -122,12 +122,6 @@ public class DungeonShadow : MonoBehaviour
     private bool subscribed;
     private bool dirty;
 
-    [Tooltip("Minimum FRAMES between full rebuilds. Deliberately frame-based: a " +
-             "seconds-based gate is inert once a frame takes longer than the gate, " +
-             "which is exactly when it is needed.")]
-    [SerializeField, Min(1)] private int rebuildFrameGap = 2;
-    private int nextRebuildFrame;
-
     // Scratch collections, reused across rebuilds. These used to be allocated
     // fresh every rebuild and grew with the claimed area, which is where the
     // multi-megabyte per-frame garbage came from.
@@ -215,17 +209,13 @@ public class DungeonShadow : MonoBehaviour
         // before its void shading, which reads as the claim edge flickering.
         // The tick plus DefaultExecutionOrder puts cap and shade in one frame.
         int wallTick = wallRenderer != null ? wallRenderer.RebuildTick : 0;
-        bool wallsRebuilt = wallRenderer != null && wallTick != lastWallTick;
-        if (wallsRebuilt) { dirty = true; lastWallTick = wallTick; }
+        if (wallRenderer != null && wallTick != lastWallTick) { dirty = true; lastWallTick = wallTick; }
 
-        // Frame-gated, not time-gated: at 140 ms frames a 0.1 s gate lets every
-        // single frame through, so it throttled nothing precisely when it mattered.
-        if (dirty && (wallsRebuilt || Time.frameCount >= nextRebuildFrame))
-        {
-            nextRebuildFrame = Time.frameCount + Mathf.Max(1, rebuildFrameGap);
-            RecomputeBase();
-            dirty = false;
-        }
+        // No frame gate. Deferring a rebuild leaves a newly claimed cell showing
+        // raw terrain art until the caps and void shading arrive, which reads as
+        // the claim edge flickering. The rebuild is cheap now, so it lands in the
+        // same frame as the claim, as it did before any throttling existed.
+        if (dirty) { RecomputeBase(); dirty = false; }
 
         UpdateCursor();
     }
