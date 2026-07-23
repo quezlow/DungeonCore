@@ -127,6 +127,7 @@ public class DungeonShadow : MonoBehaviour
              "The cursor light still updates every frame; only the base waits.")]
     [SerializeField] private float rebuildInterval = 0.1f;
     private float nextRebuildAt;
+    [SerializeField] private bool diagSkipCursor;   // DIAG-SHADOW2
 
     private void Awake()
     {
@@ -204,13 +205,13 @@ public class DungeonShadow : MonoBehaviour
         // still tracks the mouse smoothly.
         if (dirty && Time.unscaledTime >= nextRebuildAt)
         {
-            if (Time.frameCount % 60 == 0)   // DIAG-SHADOW: proves the throttle is live
-                Debug.Log($"[DIAG-SHADOW] RecomputeBase running; interval={rebuildInterval:0.###} " +
-                    $"next-now={(nextRebuildAt - Time.unscaledTime):0.###}");
             nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
             RecomputeBase();
             dirty = false;
         }
+
+        // DIAG-SHADOW2: bypass the cursor pass to see if the 2 MB/frame lives here.
+        if (diagSkipCursor) return;
         UpdateCursor();
     }
 
