@@ -121,13 +121,28 @@ public class DungeonShadow : MonoBehaviour
     private int lastMossCount = -1;
     private bool subscribed;
     private bool dirty;
-    [Tooltip("Minimum seconds between full shadow rebuilds. RecomputeBase clears " +
-             "and repaints the whole tilemap and allocates with the claimed area, " +
-             "so claiming must not drive it every frame -- it was the top GC cost. " +
-             "The cursor light still updates every frame; only the base waits.")]
-    [SerializeField] private float rebuildInterval = 0.1f;
-    private float nextRebuildAt;
-    [SerializeField] private bool diagSkipCursor;   // DIAG-SHADOW2
+
+    [Tooltip("Minimum FRAMES between full rebuilds. Deliberately frame-based: a " +
+             "seconds-based gate is inert once a frame takes longer than the gate, " +
+             "which is exactly when it is needed.")]
+    [SerializeField, Min(1)] private int rebuildFrameGap = 2;
+    private int nextRebuildFrame;
+
+    // Scratch collections, reused across rebuilds. These used to be allocated
+    // fresh every rebuild and grew with the claimed area, which is where the
+    // multi-megabyte per-frame garbage came from.
+    private readonly Dictionary<Vector3Int, int> breachDist = new();
+    private readonly Dictionary<Vector3Int, int> voidDepth = new();
+    private readonly Dictionary<Vector3Int, float> voidRim = new();
+    private readonly Queue<Vector3Int> bfsQueue = new();
+    private readonly List<Vector3Int> minedKeysScratch = new();
+    private readonly HashSet<Vector3Int> seenWallsScratch = new();
+    private readonly List<Vector3Int> removeScratch = new();
+
+    // What is currently on the tilemap, so a rebuild can repaint only what moved
+    // instead of clearing and re-setting every cell.
+    private readonly HashSet<Vector3Int> paintedCells = new();
+    private readonly Dictionary<Vector3Int, Color> paintedColor = new();
 
     private void Awake()
     {
@@ -186,6 +201,7 @@ public class DungeonShadow : MonoBehaviour
         if (shadowTilemap != null) shadowTilemap.ClearAllTiles();
         HideCursorLight();
         baseLight.Clear(); baseTint.Clear(); cursorCells.Clear(); voidCells.Clear();
+        paintedCells.Clear(); paintedColor.Clear();
     }
 
     private void MarkDirty(int _) => dirty = true;
@@ -199,19 +215,15 @@ public class DungeonShadow : MonoBehaviour
         int mc = MossCount();
         if (mc != lastMossCount) { dirty = true; lastMossCount = mc; }
 
-        // Throttled: pushing marks this dirty every frame as claimed tiles change,
-        // and RecomputeBase rebuilds the whole tilemap. Coalesce the rebuilds; the
-        // dirty flag simply waits its turn. The cursor light stays per-frame so it
-        // still tracks the mouse smoothly.
-        if (dirty && Time.unscaledTime >= nextRebuildAt)
+        // Frame-gated, not time-gated: at 140 ms frames a 0.1 s gate lets every
+        // single frame through, so it throttled nothing precisely when it mattered.
+        if (dirty && Time.frameCount >= nextRebuildFrame)
         {
-            nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
+            nextRebuildFrame = Time.frameCount + Mathf.Max(1, rebuildFrameGap);
             RecomputeBase();
             dirty = false;
         }
 
-        // DIAG-SHADOW2: bypass the cursor pass to see if the 2 MB/frame lives here.
-        if (diagSkipCursor) return;
         UpdateCursor();
     }
 
@@ -223,14 +235,16 @@ public class DungeonShadow : MonoBehaviour
 
     private void RecomputeBase()
     {
-        shadowTilemap.ClearAllTiles();
+        // No ClearAllTiles: the paint pass below diffs against what is already
+        // drawn, so a rebuild touches only cells that actually changed. Cursor
+        // cells are left alone -- UpdateCursor restores them from baseLight.
         baseLight.Clear();
         baseTint.Clear();
         voidCells.Clear();
-        cursorCells.Clear();   // tilemap was cleared; the cursor re-applies this frame
 
         // 1) base light on every mined cell: claimed flat, unclaimed with a breach fade.
-        Dictionary<Vector3Int, int> dist = BreachDistances();
+        BreachDistances();
+        Dictionary<Vector3Int, int> dist = breachDist;
         foreach (Vector3Int cell in influence.MinedTiles)
         {
             float light;
@@ -255,8 +269,11 @@ public class DungeonShadow : MonoBehaviour
 
         // 3) wall caps (solid cells touching open floor) inherit the brightest adjacent open
         //    cell, so a cavern rim darkens with it. Snapshot keys first — we add walls as we go.
-        var minedKeys = new List<Vector3Int>(baseLight.Keys);
-        var seenWalls = new HashSet<Vector3Int>();
+        minedKeysScratch.Clear();
+        foreach (Vector3Int k in baseLight.Keys) minedKeysScratch.Add(k);
+        var minedKeys = minedKeysScratch;
+        seenWallsScratch.Clear();
+        var seenWalls = seenWallsScratch;
         foreach (Vector3Int open in minedKeys)
             foreach (Vector3Int dir in Dirs8)
             {
@@ -278,10 +295,23 @@ public class DungeonShadow : MonoBehaviour
 
         // 5) paint. Void cells paint an OPAQUE colour (the black interior art
         //    has nothing to darken); everything else keeps the darkening overlay.
+        removeScratch.Clear();
+        foreach (Vector3Int cell in paintedCells)
+            if (!baseLight.ContainsKey(cell)) removeScratch.Add(cell);
+        for (int i = 0; i < removeScratch.Count; i++)
+        {
+            shadowTilemap.SetTile(removeScratch[i], null);
+            paintedCells.Remove(removeScratch[i]);
+            paintedColor.Remove(removeScratch[i]);
+        }
+
         foreach (KeyValuePair<Vector3Int, float> kv in baseLight)
         {
-            shadowTilemap.SetTile(kv.Key, whiteTile);
-            shadowTilemap.SetColor(kv.Key, ShadeFor(kv.Key, kv.Value));
+            Color c = ShadeFor(kv.Key, kv.Value);
+            if (paintedCells.Add(kv.Key)) shadowTilemap.SetTile(kv.Key, whiteTile);
+            else if (paintedColor.TryGetValue(kv.Key, out Color prev) && prev == c) continue;
+            shadowTilemap.SetColor(kv.Key, c);
+            paintedColor[kv.Key] = c;
         }
 
         // 6) fog match: unexplored darkness inherits the deep-void tone, so the
@@ -317,9 +347,9 @@ public class DungeonShadow : MonoBehaviour
                                 hue.b * coreHueStrength, 1f);
         var deepTint = voidHueTerm;
 
-        var queue = new Queue<Vector3Int>();
-        var depth = new Dictionary<Vector3Int, int>();
-        var rimLight = new Dictionary<Vector3Int, float>();
+        var queue = bfsQueue; queue.Clear();
+        var depth = voidDepth; depth.Clear();
+        var rimLight = voidRim; rimLight.Clear();
 
         bool IsVoidRock(Vector3Int c)
             => influence.IsTileClaimed(c)
@@ -353,7 +383,12 @@ public class DungeonShadow : MonoBehaviour
                 baseLight[n] = Mathf.Max(voidLightFloor, Mathf.Lerp(rimLight[n], voidLightFloor, t));
                 baseTint[n] = deepTint;
                 voidCells.Add(n);
-                queue.Enqueue(n);
+
+                // Past voidFalloffCells the curve has already reached voidLightFloor,
+                // so every deeper cell would be handed the identical plateau value --
+                // which the rimless sweep below assigns anyway. Stopping here makes
+                // the flood cover the lit rim band instead of the entire claimed mass.
+                if (nd < voidFalloffCells) queue.Enqueue(n);
             }
         }
 
@@ -401,10 +436,10 @@ public class DungeonShadow : MonoBehaviour
         => ring != null ? ring.CurrentTypeColor : FallbackGold;
 
     // Multi-source BFS over open floor from claimed open cells, capped at breachFadeTiles.
-    private Dictionary<Vector3Int, int> BreachDistances()
+    private void BreachDistances()
     {
-        var dist = new Dictionary<Vector3Int, int>();
-        var queue = new Queue<Vector3Int>();
+        var dist = breachDist; dist.Clear();
+        var queue = bfsQueue; queue.Clear();
         foreach (Vector3Int cell in influence.MinedTiles)
             if (influence.IsTileClaimed(cell)) { dist[cell] = 0; queue.Enqueue(cell); }
         while (queue.Count > 0)
@@ -420,7 +455,6 @@ public class DungeonShadow : MonoBehaviour
                 queue.Enqueue(n);
             }
         }
-        return dist;
     }
 
     // A moss wall lights mined cells within mossRadius, adding mossBoost light and a subtle

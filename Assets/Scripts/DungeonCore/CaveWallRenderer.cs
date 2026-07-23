@@ -246,16 +246,16 @@ public class CaveWallRenderer : MonoBehaviour
 
     private void MarkDirty(int _) => dirty = true;
 
-    [Tooltip("Minimum seconds between full wall rebuilds. RebuildAll repaints every " +
-             "cap and face and scales with claimed area, so claiming must not drive " +
-             "it every frame. The dirty flag simply waits its turn.")]
-    [SerializeField] private float rebuildInterval = 0.1f;
-    private float nextRebuildAt;
+    [Tooltip("Minimum FRAMES between full wall rebuilds. Frame-based on purpose: a " +
+             "seconds-based gate stops gating at all once a frame takes longer than " +
+             "the gate itself, which is precisely when throttling is needed.")]
+    [SerializeField, Min(1)] private int rebuildFrameGap = 2;
+    private int nextRebuildFrame;
 
     private void LateUpdate()
     {
-        if (!dirty || Time.unscaledTime < nextRebuildAt) return;
-        nextRebuildAt = Time.unscaledTime + Mathf.Max(0.02f, rebuildInterval);
+        if (!dirty || Time.frameCount < nextRebuildFrame) return;
+        nextRebuildFrame = Time.frameCount + Mathf.Max(1, rebuildFrameGap);
         dirty = false;
         RebuildAll();
     }
