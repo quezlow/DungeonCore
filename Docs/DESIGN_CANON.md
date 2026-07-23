@@ -1366,3 +1366,22 @@ game. The severed-halls alert explains the silence to the player.
 
 On a peaceful Inspector departure the wisp adds a reminder to re-arm the halls
 before the next parties arrive.
+
+### Claim-edge rendering -- three passes that must stay in step
+
+CaveWallRenderer paints the caps, DungeonShadow shades them, InfluenceRingRenderer
+draws the boundary overlay. All three rebuild in the SAME frame as the claim that
+dirtied them. Do not add a time or frame gate to any of them: a deferred pass
+leaves a newly claimed cell showing raw terrain art until the others catch up,
+which reads as the claim edge flickering. A seconds-based gate is also inert by
+construction, since it stops gating once a frame exceeds the gate.
+
+CaveWallRenderer carries [DefaultExecutionOrder(-50)] so the caps exist before
+the pass that shades them, and exposes RebuildTick; DungeonShadow follows that
+tick so cap and shading always land together.
+
+DungeonShadow.RecomputeBase is allocation-free (all scratch collections are
+reused) and paints by diffing against what is already drawn rather than clearing
+the tilemap. Its void flood stops at voidFalloffCells: beyond that depth the
+curve has reached voidLightFloor, so every deeper cell takes the identical
+plateau value that the rimless sweep assigns anyway.
