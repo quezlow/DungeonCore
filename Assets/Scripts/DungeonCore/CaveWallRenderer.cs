@@ -27,6 +27,9 @@ using UnityEngine.Tilemaps;
 ///                        cap stays on top. No entity stands on a solid cell, so the
 ///                        lower order can't affect the walk-behind.
 /// </summary>
+// Runs before DungeonShadow: the caps must exist before the pass that shades
+// them, or a newly claimed cell shows raw cap art until the shading catches up.
+[DefaultExecutionOrder(-50)]
 [DisallowMultipleComponent]
 public class CaveWallRenderer : MonoBehaviour
 {
@@ -261,8 +264,13 @@ public class CaveWallRenderer : MonoBehaviour
     }
 
     [ContextMenu("Rebuild Walls")]
+    /// <summary>Increments on every rebuild, so the shadow pass can repaint in the
+    /// SAME frame the caps changed rather than on its own independent schedule.</summary>
+    public int RebuildTick { get; private set; }
+
     public void RebuildAll()
     {
+        RebuildTick++;
         if (capsTilemap == null || classifier == null || influence == null
             || capTiles == null || straightCapTiles == null) return;
 

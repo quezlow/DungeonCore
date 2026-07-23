@@ -118,7 +118,7 @@ public class DungeonShadow : MonoBehaviour
     private readonly HashSet<Vector3Int> voidCells = new();
     private Color voidHueTerm = Color.black;
     private readonly HashSet<Vector3Int> cursorCells = new();
-    private int lastMossCount = -1;
+    private int lastWallTick = -1;
     private bool subscribed;
     private bool dirty;
 
@@ -210,14 +210,17 @@ public class DungeonShadow : MonoBehaviour
     {
         if (shadowTilemap == null || influence == null) return;
 
-        // The renderer rebuilds its moss sets in its own LateUpdate; poll the count so the
-        // glow refreshes the moment the walls (re)build, without coupling to its timing.
-        int mc = MossCount();
-        if (mc != lastMossCount) { dirty = true; lastMossCount = mc; }
+        // Follow the wall renderer rather than keeping our own schedule. On
+        // independent gates a newly claimed cell gets its cap a frame or two
+        // before its void shading, which reads as the claim edge flickering.
+        // The tick plus DefaultExecutionOrder puts cap and shade in one frame.
+        int wallTick = wallRenderer != null ? wallRenderer.RebuildTick : 0;
+        bool wallsRebuilt = wallRenderer != null && wallTick != lastWallTick;
+        if (wallsRebuilt) { dirty = true; lastWallTick = wallTick; }
 
         // Frame-gated, not time-gated: at 140 ms frames a 0.1 s gate lets every
         // single frame through, so it throttled nothing precisely when it mattered.
-        if (dirty && Time.frameCount >= nextRebuildFrame)
+        if (dirty && (wallsRebuilt || Time.frameCount >= nextRebuildFrame))
         {
             nextRebuildFrame = Time.frameCount + Mathf.Max(1, rebuildFrameGap);
             RecomputeBase();
@@ -226,9 +229,6 @@ public class DungeonShadow : MonoBehaviour
 
         UpdateCursor();
     }
-
-    private int MossCount()
-        => wallRenderer == null ? 0 : wallRenderer.GreenMossWalls.Count + wallRenderer.GoldMossWalls.Count;
 
     private static Color ColorFor(float light, Color tint)
         => new Color(tint.r, tint.g, tint.b, 1f - Mathf.Clamp01(light));
