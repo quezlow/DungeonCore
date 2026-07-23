@@ -263,11 +263,11 @@ public class CaveWallRenderer : MonoBehaviour
         RebuildAll();
     }
 
-    [ContextMenu("Rebuild Walls")]
     /// <summary>Increments on every rebuild, so the shadow pass can repaint in the
     /// SAME frame the caps changed rather than on its own independent schedule.</summary>
     public int RebuildTick { get; private set; }
 
+    [ContextMenu("Rebuild Walls")]
     public void RebuildAll()
     {
         RebuildTick++;

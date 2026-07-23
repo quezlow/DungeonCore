@@ -120,10 +120,6 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private bool claimDirty = true;
     private bool fieldDirty = true;
-    [Tooltip("Minimum seconds between overlay rebuilds. A rebuild sweeps the whole " +
-             "texture, runs the chamfer passes and re-uploads, and the texture GROWS " +
-             "with claimed area -- so a claim-driven rebuild every frame crawls once " +
-             "a floor is half taken. The overlay is a visual aid; it can lag a beat.")]
     [Tooltip("Minimum FRAMES between overlay rebuilds. Frame-based, and matched to " +
              "the wall and shadow passes so the claimed edge does not update on " +
              "three different cadences.")]
