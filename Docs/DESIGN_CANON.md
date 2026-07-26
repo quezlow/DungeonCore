@@ -1462,3 +1462,16 @@ reused) and paints by diffing against what is already drawn rather than clearing
 the tilemap. Its void flood stops at voidFalloffCells: beyond that depth the
 curve has reached voidLightFloor, so every deeper cell takes the identical
 plateau value that the rimless sweep assigns anyway.
+
+PANEL HOTKEYS
+
+A toggleable panel's hotkey is NOT a private [SerializeField] Key on the panel.
+Add a GameAction to Keybinds.cs (enum, Defaults, All, Label) and read it with
+Keybinds.WasPressed(GameAction.YourToggle) in Update. This gives the panel a
+rebindable entry in the Controls UI and a conflict check, and keeps every
+binding in one place. The text-input guard is inside WasPressed, so do not
+re-check IsTextInputActive in the panel. The five journal-style panels (Loot,
+Quest Log, Known Parties, Factions, Research) are the pattern to copy.
+
+The only components that legitimately keep a private toggleKey are non-panel
+debug/HUD toggles bound to F-keys (CaveWallDebugOverlay, HudToggle).
