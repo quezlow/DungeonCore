@@ -28,7 +28,6 @@ public class KnownPartiesPanel : MonoBehaviour
     [SerializeField] private GameObject entryPrefab;
 
     [Header("Hotkey")]
-    [SerializeField] private Key toggleKey = Key.K;
 
     private readonly List<GameObject> spawned = new();
     private bool isOpen = false;
@@ -43,8 +42,8 @@ public class KnownPartiesPanel : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-        if (Keybinds.IsTextInputActive()) return;   // don't toggle while typing a note/field
-        if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame)
+        // Rebindable through Keybinds/GameAction; text-input guard is inside WasPressed.
+        if (Keybinds.WasPressed(GameAction.ToggleKnownParties))
         {
             if (!UnlockState.IsUnlocked("tech.known_parties")) return;
             Toggle();

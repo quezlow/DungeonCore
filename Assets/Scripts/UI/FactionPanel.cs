@@ -34,7 +34,6 @@ public class FactionPanel : MonoBehaviour
     [SerializeField] private GameObject rowPrefab;
 
     [Header("Hotkey")]
-    [SerializeField] private Key toggleKey = Key.G;
 
     [Header("Standing Bar Colours")]
     [SerializeField] private Color hostileColor = new Color(0.82f, 0.22f, 0.24f);
@@ -56,8 +55,8 @@ public class FactionPanel : MonoBehaviour
     private void Update()
     {
         if (PauseController.IsGamePaused) return;
-        if (Keybinds.IsTextInputActive()) return;   // don't toggle while typing a note/field
-        if (Keyboard.current != null && Keyboard.current[toggleKey].wasPressedThisFrame)
+        // Rebindable through Keybinds/GameAction; text-input guard is inside WasPressed.
+        if (Keybinds.WasPressed(GameAction.ToggleFactions))
             Toggle();
     }
 

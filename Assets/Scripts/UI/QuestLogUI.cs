@@ -22,7 +22,6 @@ public class QuestLogUI : MonoBehaviour
 {
     [Header("Panel")]
     [SerializeField] private GameObject panel;
-    [SerializeField] private Key toggleKey = Key.J;
 
     [Header("Tab pages (shown one at a time)")]
     [SerializeField] private GameObject activePage;
@@ -79,11 +78,9 @@ public class QuestLogUI : MonoBehaviour
 
     private void Update()
     {
-        // J toggles, but not while typing a note (so typing "j" into a note doesn't close it).
+        // Rebindable through Keybinds/GameAction; the text-input guard lives in WasPressed.
         // Esc-to-close is handled centrally by PauseMenuController (menu > journal > pause).
-        if (Keybinds.IsTextInputActive()) return;
-        var kb = Keyboard.current;
-        if (kb != null && kb[toggleKey].wasPressedThisFrame) Toggle();
+        if (Keybinds.WasPressed(GameAction.ToggleQuestLog)) Toggle();
     }
 
     public void Toggle()

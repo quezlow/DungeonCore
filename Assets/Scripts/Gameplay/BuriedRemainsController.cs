@@ -36,12 +36,31 @@ public class BuriedRemainsController : MonoBehaviour
     [SerializeField, Min(0)] private int duplicateResearchPoints = 10;
 
     private readonly HashSet<TileInfluenceManager> hooked = new();
+    // Per-floor handler closures, kept so they can be unsubscribed. A lambda
+    // subscribed inline cannot be removed (no stable reference), which on scene
+    // teardown left this controller reachable from live floor events. Storing
+    // the delegates here makes OnDisable able to detach every one.
+    private readonly Dictionary<TileInfluenceManager, System.Action<Vector3Int>> minedHandlers = new();
+    private readonly Dictionary<TileInfluenceManager, System.Action<Vector3Int>> claimedHandlers = new();
     private readonly Dictionary<int, List<Vector3Int>> siteCache = new();
     private readonly Dictionary<int, HashSet<Vector3Int>> consumed = new();
     private readonly Dictionary<int, HashSet<Vector3Int>> sensed = new();
 
     private void OnEnable() { Instance = this; }
-    private void OnDisable() { if (Instance == this) Instance = null; }
+
+    private void OnDisable()
+    {
+        // Detach every per-floor hook so no closure outlives this controller.
+        foreach (var kv in minedHandlers)
+            if (kv.Key != null) kv.Key.OnTileMined -= kv.Value;
+        foreach (var kv in claimedHandlers)
+            if (kv.Key != null) kv.Key.OnTileClaimed -= kv.Value;
+        minedHandlers.Clear();
+        claimedHandlers.Clear();
+        hooked.Clear();
+
+        if (Instance == this) Instance = null;
+    }
 
     private void Update()
     {
@@ -52,9 +71,16 @@ public class BuriedRemainsController : MonoBehaviour
         {
             if (floor?.TileInfluence == null || hooked.Contains(floor.TileInfluence)) continue;
             var captured = floor;
-            captured.TileInfluence.OnTileMined += pos => HandleMined(captured, pos);
-            captured.TileInfluence.OnTileClaimed += pos => HandleClaimed(captured, pos);
-            hooked.Add(captured.TileInfluence);
+            var infl = captured.TileInfluence;
+            // Named delegates stored per influence manager so OnDisable can detach
+            // them; the captured floor keeps the same closure identity in the map.
+            System.Action<Vector3Int> onMined = pos => HandleMined(captured, pos);
+            System.Action<Vector3Int> onClaimed = pos => HandleClaimed(captured, pos);
+            infl.OnTileMined += onMined;
+            infl.OnTileClaimed += onClaimed;
+            minedHandlers[infl] = onMined;
+            claimedHandlers[infl] = onClaimed;
+            hooked.Add(infl);
         }
     }
 

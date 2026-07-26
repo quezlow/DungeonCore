@@ -35,7 +35,6 @@ public class ResearchTreeUI : MonoBehaviour
 
     [Header("Panel")]
     [SerializeField] private GameObject panel;
-    [SerializeField] private Key toggleKey = Key.R;
 
     [Header("Canvas")]
     [SerializeField] private RectTransform content;
@@ -115,9 +114,8 @@ public class ResearchTreeUI : MonoBehaviour
 
     private void Update()
     {
-        if (Keybinds.IsTextInputActive()) return;
-        var kb = Keyboard.current;
-        if (kb != null && kb[toggleKey].wasPressedThisFrame) Toggle();
+        // Rebindable through Keybinds/GameAction; the text-input guard lives in WasPressed.
+        if (Keybinds.WasPressed(GameAction.ToggleResearch)) Toggle();
         if (IsOpen) UpdateFill();
     }
 

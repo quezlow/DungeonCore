@@ -98,9 +98,24 @@ public class FloorManager : MonoBehaviour
             Debug.LogError("[FloorManager] Floor 1 (index 0) not found.");
         }
 
-        // Re-fire stair-gate notifications when stair credits change.
+        // Re-fire stair-gate notifications when stair credits change. Named handler,
+        // not a lambda, so OnDestroy can detach it -- an inline closure could never
+        // be removed and would stack a fresh invocation on every scene reload that
+        // rebuilt the manager against a surviving DungeonCore. Remove-before-add
+        // keeps it single even if this path is ever re-entered.
         if (DungeonCore.Instance != null)
-            DungeonCore.Instance.OnStairCreditsChanged += _ => OnStairPlacementGateChanged?.Invoke();
+        {
+            DungeonCore.Instance.OnStairCreditsChanged -= HandleStairCreditsChanged;
+            DungeonCore.Instance.OnStairCreditsChanged += HandleStairCreditsChanged;
+        }
+    }
+
+    private void HandleStairCreditsChanged(int _) => OnStairPlacementGateChanged?.Invoke();
+
+    private void OnDestroy()
+    {
+        if (DungeonCore.Instance != null)
+            DungeonCore.Instance.OnStairCreditsChanged -= HandleStairCreditsChanged;
     }
 
     // ── Registration ──────────────────────────────────────────────

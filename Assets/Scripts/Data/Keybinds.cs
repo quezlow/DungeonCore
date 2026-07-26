@@ -12,7 +12,8 @@ public enum GameAction
     PanUp, PanDown, PanLeft, PanRight,
     ToggleTraps, ToggleAlerts, AvatarMenu,
     ToggleInfluenceOverlay,
-    SpeedPause, SpeedNormal, SpeedDouble, SpeedQuintuple
+    SpeedPause, SpeedNormal, SpeedDouble, SpeedQuintuple,
+    ToggleLoot, ToggleQuestLog, ToggleKnownParties, ToggleFactions, ToggleResearch
 }
 
 /// <summary>
@@ -43,6 +44,11 @@ public static class Keybinds
         { GameAction.SpeedNormal,     Key.Numpad1 },
         { GameAction.SpeedDouble,     Key.Numpad2 },
         { GameAction.SpeedQuintuple,  Key.Numpad5 },
+        { GameAction.ToggleLoot,          Key.H },
+        { GameAction.ToggleQuestLog,      Key.J },
+        { GameAction.ToggleKnownParties,  Key.K },
+        { GameAction.ToggleFactions,      Key.G },
+        { GameAction.ToggleResearch,      Key.R },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -69,7 +75,9 @@ public static class Keybinds
         GameAction.PanUp, GameAction.PanDown, GameAction.PanLeft, GameAction.PanRight,
         GameAction.ToggleTraps, GameAction.ToggleAlerts, GameAction.AvatarMenu,
         GameAction.ToggleInfluenceOverlay,
-        GameAction.SpeedPause, GameAction.SpeedNormal, GameAction.SpeedDouble, GameAction.SpeedQuintuple
+        GameAction.SpeedPause, GameAction.SpeedNormal, GameAction.SpeedDouble, GameAction.SpeedQuintuple,
+        GameAction.ToggleLoot, GameAction.ToggleQuestLog, GameAction.ToggleKnownParties,
+        GameAction.ToggleFactions, GameAction.ToggleResearch
     };
 
     /// <summary>Display labels for the Controls list.</summary>
@@ -91,6 +99,11 @@ public static class Keybinds
         GameAction.SpeedNormal => "Speed: Normal (1x)",
         GameAction.SpeedDouble => "Speed: Fast (2x)",
         GameAction.SpeedQuintuple => "Speed: Fastest (5x)",
+        GameAction.ToggleLoot => "Toggle Loot Table",
+        GameAction.ToggleQuestLog => "Toggle Quest Log",
+        GameAction.ToggleKnownParties => "Toggle Known Parties",
+        GameAction.ToggleFactions => "Toggle Factions",
+        GameAction.ToggleResearch => "Toggle Research Tree",
         _ => a.ToString()
     };
 
