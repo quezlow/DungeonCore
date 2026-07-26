@@ -17,14 +17,13 @@ MonoBehaviour:
   displayName: Deep Foundations
   icon: {fileID: 0}
   path: 1
-  tier: 3
-  pointCost: 30
-  durationDays: 3
+  tier: 1
+  pointCost: 10
+  durationDays: 2
   affinity: 4
   patternRequirements:
   - {fileID: 11400000, guid: b1d1b09a9993c0a47a44aed8bfebf9d7, type: 2}
-  prerequisites:
-  - {fileID: 11400000, guid: 0ea82271be647ba4f951705022bfd2c4, type: 2}
+  prerequisites: []
   bootstrapUnlocked: 0
   upgradeGates: []
   visibility: 0

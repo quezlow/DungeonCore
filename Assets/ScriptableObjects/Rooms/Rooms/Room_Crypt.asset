@@ -25,7 +25,7 @@ MonoBehaviour:
   - furnitureType: {fileID: 11400000, guid: 92dffa1f92142834aba62221476afa31, type: 2}
     minimumCount: 2
   requiresBossSpawner: 0
-  techNodeUnlockKey: 
+  techNodeUnlockKey: tech.whisperer_in_marrow
   techNodeDescription: 
   requiredTechKey: tech.waiting_dark
   maxTier: 1
