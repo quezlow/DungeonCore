@@ -20,6 +20,7 @@ public enum BuildMode
     PlaceMonsterPatrol,        
     PlaceMonsterAttackTarget,
     PlaceMonsterPost,
+    Demolish,
     None, 
 }
 
@@ -190,6 +191,7 @@ public class DungeonBuildController : MonoBehaviour
             case BuildMode.PlaceTrap: HandleTrapPlacement(); break;
             case BuildMode.PlaceStairs: HandleStairsPlacement(); break;
             case BuildMode.PlaceCore: HandlePlaceCoreMode(); break;
+            case BuildMode.Demolish: HandleDemolish(); break;
         }
     }
 
@@ -741,6 +743,70 @@ public class DungeonBuildController : MonoBehaviour
         chest.Initialise(selectedChest);
         SetMode(BuildMode.None);
     }
+
+    /// <summary>
+    /// One removal mode for everything the player builds ON the floor: furniture,
+    /// traps and room anchors. Mana refunds follow each type's own rule (half the
+    /// placement cost). Monster spawners are deliberately NOT handled here -- they
+    /// keep their selection-driven removal in MonsterCommandUI, which also frees
+    /// creature capacity and needs its own confirmation.
+    ///
+    /// Priority is furniture, then traps, then the room anchor, so clicking a
+    /// crowded cell removes the thing sitting on top rather than the room beneath it.
+    /// The mode is sticky: it stays armed until the player leaves it, because
+    /// clearing a room means many clicks in a row.
+    /// </summary>
+    private void HandleDemolish()
+    {
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+
+        var floor = ActiveFloor;
+        if (floor == null || floor.Entities == null) return;
+
+        _demolishFurnitureBuf ??= new System.Collections.Generic.List<FurniturePiece>();
+        floor.Entities.FillAll(_demolishFurnitureBuf);
+        for (int i = 0; i < _demolishFurnitureBuf.Count; i++)
+        {
+            var piece = _demolishFurnitureBuf[i];
+            if (piece == null || piece.OccupiedCell != cell) continue;
+            piece.RemoveByPlayer();
+            RevalidateAllAnchors();
+            BuildFeedback.Reject(ActiveInfluence.CellToWorld(cell), "Removed");
+            return;
+        }
+
+        _demolishTrapBuf ??= new System.Collections.Generic.List<TrapBase>();
+        floor.Entities.FillAll(_demolishTrapBuf);
+        for (int i = 0; i < _demolishTrapBuf.Count; i++)
+        {
+            var trap = _demolishTrapBuf[i];
+            if (trap == null || trap.OccupiedCell != cell) continue;
+            trap.RemoveByPlayer();
+            BuildFeedback.Reject(ActiveInfluence.CellToWorld(cell), "Removed");
+            return;
+        }
+
+        _demolishAnchorBuf ??= new System.Collections.Generic.List<RoomAnchor>();
+        floor.Entities.FillAll(_demolishAnchorBuf);
+        for (int i = 0; i < _demolishAnchorBuf.Count; i++)
+        {
+            var anchor = _demolishAnchorBuf[i];
+            if (anchor == null) continue;
+            var fp = anchor.Footprint;
+            bool hit = false;
+            for (int j = 0; j < fp.Count; j++) if (fp[j] == cell) { hit = true; break; }
+            if (!hit) continue;
+            anchor.RemoveByPlayer();
+            BuildFeedback.Reject(ActiveInfluence.CellToWorld(cell), "Room dissolved");
+            return;
+        }
+    }
+
+    private System.Collections.Generic.List<FurniturePiece> _demolishFurnitureBuf;
+    private System.Collections.Generic.List<TrapBase> _demolishTrapBuf;
+    private System.Collections.Generic.List<RoomAnchor> _demolishAnchorBuf;
+
+    public void SetModeToDemolish() => SetMode(BuildMode.Demolish);
 
     private void HandleFurniturePlacement()
     {

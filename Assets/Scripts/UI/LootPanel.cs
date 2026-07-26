@@ -34,7 +34,10 @@ public class LootPanel : MonoBehaviour
     [SerializeField] private List<CombatClassDefinition> classes = new();
 
     [Header("Hotkey")]
-    [SerializeField] private Key toggleKey = Key.J;   // L belongs to the alerts ledger
+    // J belongs to the quest log and L to the alerts ledger. V for valuables.
+    // NOTE: this is a serialized field -- changing the default here does NOT move
+    // an already-saved scene value. Set it on the LootPanel object in the Inspector too.
+    [SerializeField] private Key toggleKey = Key.V;
 
     private readonly List<Button> spawnedEntries = new();
     private bool isOpen = false;

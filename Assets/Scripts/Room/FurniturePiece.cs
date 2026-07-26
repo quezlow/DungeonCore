@@ -26,6 +26,16 @@ public class FurniturePiece : MonoBehaviour, IFloorEntity
         GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
     }
 
+    /// <summary>Player-initiated removal. Refunds half the placement mana, mirroring
+    /// TrapBase.RemoveByPlayer, then destroys the piece. Rooms revalidate from the
+    /// demolish handler, not here, so a multi-piece teardown revalidates once.</summary>
+    public void RemoveByPlayer()
+    {
+        if (Definition != null && DungeonCore.Instance != null)
+            DungeonCore.Instance.AddMana(Definition.manaCost * 0.5f);
+        Destroy(gameObject);
+    }
+
     private void OnDestroy()
     {
         GetComponentInParent<FloorRoot>()?.Entities?.Unregister(this);

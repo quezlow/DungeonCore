@@ -341,8 +341,14 @@ public class DungeonShadow : MonoBehaviour
         var depth = voidDepth; depth.Clear();
         var rimLight = voidRim; rimLight.Clear();
 
+        // Keyed on EVER-claimed, not currently-claimed. A breach recede strips
+        // ownership; it must not strip light. Under the old rule a receded cell
+        // dropped out of baseLight, the diff-paint below removed its shadow tile,
+        // and the flat-black interior cap art underneath showed through -- which
+        // read as the cell being re-fogged even though no fog tile ever moved.
+        // Do not re-key this on IsTileClaimed.
         bool IsVoidRock(Vector3Int c)
-            => influence.IsTileClaimed(c)
+            => influence.WasEverClaimed(c)
             && !influence.IsTileMined(c)
             && !(features != null && features.IsRiver(c));
 
@@ -384,7 +390,7 @@ public class DungeonShadow : MonoBehaviour
 
         // Rimless claimed rock (e.g. a channel tendril pushed through undug stone):
         // no step-3 light to fall from, so it sits at the plateau, faintly hued.
-        foreach (Vector3Int c in influence.ClaimedTiles)
+        foreach (Vector3Int c in influence.EverClaimedTiles)
         {
             if (baseLight.ContainsKey(c) || !IsVoidRock(c)) continue;
             baseLight[c] = voidLightFloor;

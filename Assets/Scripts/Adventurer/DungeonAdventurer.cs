@@ -642,7 +642,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
             case AdventurerState.MovingToRoom:
                 ScanForMonsters();   // non-combat goal; only a Cowardly observer flees
-                if (goal == AdventurerGoal.Delve) ScanForLoot();
+                if (goal == AdventurerGoal.Delve) { ScanForChests(); ScanForLoot(); }
                 if (state != AdventurerState.Combat && state != AdventurerState.Retreating
                     && !MovementHalted)
                     FollowPath();
@@ -1158,7 +1158,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void HandleHunting()
     {
-        // Grab loot underfoot, but never chase chests - that's a Treasure Hunter's job.
+        // Delvers loot what they pass. They do not cross the dungeon for a chest
+        // the way a Treasure Hunter does -- chestDetectionRange keeps the detour
+        // short -- but walking by an open strongbox and ignoring it read as broken.
+        ScanForChests();
+        if (state != AdventurerState.Hunting) return;
         ScanForLoot();
         if (state != AdventurerState.Hunting) return;
 

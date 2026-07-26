@@ -27,12 +27,14 @@ public class DungeonTerrain : MonoBehaviour
     public Tilemap FloorTilemap => floorTilemap;
     public Tilemap FogTilemap => fogTilemap;
 
-    // Cells ever revealed by digging or by the terrain generator are PERMANENT:
-    // a breach that unclaims them must not re-fog them. Ownership-only reveals
-    // (a claimed cell that was never dug) are NOT added here, so they can fog
-    // back when the fringe recedes. RefogTile consults this set.
-    private readonly HashSet<Vector3Int> permanentlyRevealed = new HashSet<Vector3Int>();
-    public void MarkPermanentlyRevealed(Vector3Int pos) => permanentlyRevealed.Add(pos);
+    // FOG IS ONE-WAY. Nothing in normal play puts fog back: what is unfogged
+    // stays unfogged for the run. A breach pulls the influence boundary in and
+    // changes nothing about visibility.
+    //
+    // There was once a RefogTile plus a permanentlyRevealed allowlist guarding
+    // it. Both were dead code -- RefogTile had no callers at all -- and their
+    // presence repeatedly drew fixes for a darkening bug that lives in
+    // DungeonShadow, not here. Do not reintroduce either.
 
     [Header("Tile Assets")]
     [SerializeField] private TileBase floorTile;
@@ -120,14 +122,6 @@ public class DungeonTerrain : MonoBehaviour
     }
 
     public void RevealTile(Vector3Int pos) => fogTilemap.SetTile(pos, null);
-
-    public void RefogTile(Vector3Int pos)
-    {
-        // Never re-fog ground the player dug or the generator exposed; only
-        // ownership-revealed cells return to the dark.
-        if (permanentlyRevealed.Contains(pos)) return;
-        if (IsWithinBounds(pos)) fogTilemap.SetTile(pos, fogTile);
-    }
 
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;

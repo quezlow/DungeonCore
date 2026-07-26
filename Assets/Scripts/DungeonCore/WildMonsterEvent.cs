@@ -37,7 +37,7 @@ public class WildMonsterEvent : MonoBehaviour
     [Tooltip("If HP ever drops below this fraction before it escapes, it leaves wounded and does not return.")]
     [Range(0f, 1f)][SerializeField] private float woundedFraction = 0.4f;
     [Tooltip("Seconds of finding no prey in range before it gives up and leaves unsated.")]
-    [SerializeField] private float giveUpSeconds = 20f;
+    [SerializeField] private float giveUpSeconds = 45f;
 
     [Header("Escalation (per un-wounded escape, capped at Max Level)")]
     [Min(1f)][SerializeField] private float hpPerLevel = 1.4f;

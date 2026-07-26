@@ -288,6 +288,7 @@ public class ActionBarHUD : MonoBehaviour
             case BuildMode.PlaceFurniture:
             case BuildMode.PlaceRoomAnchor:
             case BuildMode.PlaceTrap:
+            case BuildMode.Demolish:
                 currentTab = ActiveTab.Build;
                 break;
 

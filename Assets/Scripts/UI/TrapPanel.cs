@@ -130,12 +130,11 @@ public class TrapPanel : MonoBehaviour
             Vector3 captured = trap.transform.position;
             btn.onClick.AddListener(() => DungeonCameraController.Instance?.PanTo(captured));
 
-            var removeBtn = btn.transform.Find("RemoveButton")?.GetComponent<Button>();
-            if (removeBtn != null)
-            {
-                var capturedTrap = trap;
-                removeBtn.onClick.AddListener(() => capturedTrap.RemoveByPlayer());
-            }
+            // Trap removal now routes through the Demolish build mode alongside
+            // furniture and room anchors, so the panel is read-only. If the entry
+            // prefab still carries a RemoveButton child, hide it rather than wire it.
+            var removeBtn = btn.transform.Find("RemoveButton");
+            if (removeBtn != null) removeBtn.gameObject.SetActive(false);
 
             spawnedEntries.Add(btn);
         }

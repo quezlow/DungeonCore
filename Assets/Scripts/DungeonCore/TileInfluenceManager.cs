@@ -237,7 +237,6 @@ public class TileInfluenceManager : MonoBehaviour
         {
             minedTiles.Add(pos);
             terrain?.RevealTile(pos);
-            terrain?.MarkPermanentlyRevealed(pos);
         }
 
         // Reveal the 1-cell wall border too, so the cavern's wall caps sit on
@@ -262,6 +261,7 @@ public class TileInfluenceManager : MonoBehaviour
         {
             if (claimedTiles.Contains(pos)) continue;
             claimedTiles.Add(pos);
+            everClaimed.Add(pos);
             claimableTiles.Remove(pos);
             terrain?.RevealTile(pos);
         }
@@ -288,6 +288,18 @@ public class TileInfluenceManager : MonoBehaviour
 
     // ── Claim (Phase 2: claim-only, no mining) ────────────────────
 
+    /// <summary>Cells that have EVER been claimed. Additive only -- a breach
+    /// recede removes ownership but never removes membership here. DungeonShadow
+    /// keys its void lighting off this set, which is what stops receded rock from
+    /// dropping to unlit black. See the "breach never darkens" note in canon 12A.</summary>
+    private readonly HashSet<Vector3Int> everClaimed = new HashSet<Vector3Int>();
+
+    /// <summary>True if this cell is or ever was inside the influence field.</summary>
+    public bool WasEverClaimed(Vector3Int pos) => everClaimed.Contains(pos);
+
+    /// <summary>Every cell ever claimed. Read by DungeonShadow's rimless sweep.</summary>
+    public IReadOnlyCollection<Vector3Int> EverClaimedTiles => everClaimed;
+
     public void ClaimTile(Vector3Int pos, bool silent = false)
     {
         if (claimedTiles.Contains(pos)) return;
@@ -302,6 +314,7 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         claimedTiles.Add(pos);
+        everClaimed.Add(pos);   // permanent: a breach takes ownership, never light
         // PHASE 2 — no longer adds to minedTiles. Mining is a separate action.
 
         claimableTiles.Remove(pos);
@@ -386,7 +399,6 @@ public class TileInfluenceManager : MonoBehaviour
         }
 
         minedTiles.Add(pos);
-        terrain?.MarkPermanentlyRevealed(pos);   // a dug tunnel is permanent -- a breach never re-fogs it
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
 
@@ -445,7 +457,7 @@ public class TileInfluenceManager : MonoBehaviour
 
     /// <summary>
     /// Unclaims a batch of cells in one pass: removes each from claimedTiles,
-    /// refogs cells that were never mined, then rebuilds the claimable ring and
+    /// then rebuilds the claimable ring and
     /// fires the count event once. Used by InfluenceField's breach recede — far
     /// cheaper than per-cell UnclaimTile, which rebuilds the ring every call.
     /// Recede shrinks ownership only: a dug tunnel persists, so mined cells
@@ -581,6 +593,7 @@ public class TileInfluenceManager : MonoBehaviour
         {
             claimedTiles = claimedTiles.Select(SerializableVector3Int.From).ToList(),
             minedTiles = minedTiles.Select(SerializableVector3Int.From).ToList(),
+            everClaimedTiles = everClaimed.Select(SerializableVector3Int.From).ToList(),
             ownedTiles = new List<SerializableVector3Int>(),
         };
     }
@@ -589,6 +602,7 @@ public class TileInfluenceManager : MonoBehaviour
     {
         claimedTiles.Clear();
         minedTiles.Clear();
+        everClaimed.Clear();
         claimableTiles.Clear();
         claimableTilemap.ClearAllTiles();
 
@@ -606,6 +620,20 @@ public class TileInfluenceManager : MonoBehaviour
         {
             foreach (var tile in data.minedTiles)
                 minedTiles.Add(tile.ToVector3Int());
+        }
+
+        // Ever-claimed is additive history, not current state, so it is saved in
+        // its own list. Saves written before this field existed have none: fall
+        // back to the restored claim set, which is exactly the pre-breach truth
+        // for any dungeon that has not yet been breached.
+        if (data?.everClaimedTiles != null && data.everClaimedTiles.Count > 0)
+        {
+            foreach (var tile in data.everClaimedTiles)
+                everClaimed.Add(tile.ToVector3Int());
+        }
+        else
+        {
+            foreach (var cell in claimedTiles) everClaimed.Add(cell);
         }
 
         OnClaimedTileCountChanged?.Invoke(claimedTiles.Count);
@@ -626,6 +654,11 @@ public class TileInfluenceSaveData
 
     /// <summary>Cells dug out / walkable / buildable. Subset of claimedTiles.</summary>
     public List<SerializableVector3Int> minedTiles;
+
+    /// <summary>Cells ever inside the influence field. Superset of claimedTiles --
+    /// a breach recede shrinks claimedTiles but never this. Absent in older saves;
+    /// LoadSaveData falls back to claimedTiles when it is null or empty.</summary>
+    public List<SerializableVector3Int> everClaimedTiles;
 }
 
 [Serializable]

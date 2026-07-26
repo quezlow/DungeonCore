@@ -8266,7 +8266,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1530f9333b38e3244929b04375e0181d, type: 2}
   - {fileID: 11400000, guid: 1b2933e0c5baf3944a15b0086d2072c0, type: 2}
   - {fileID: 11400000, guid: b48e8dec27b4f104989b1ccb023122df, type: 2}
-  toggleKey: 40
+  toggleKey: 22
 --- !u!114 &261399476
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33252,6 +33252,7 @@ MonoBehaviour:
   hostileMonsterDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
   coreDot: {r: 1, g: 0.82, b: 0.25, a: 1}
   dotSize: 5
+  repaintInterval: 0.2
 --- !u!114 &1249681899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52282,7 +52283,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9972232
+  m_Size: 0.9999868
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -54623,7 +54624,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000019401872}
+  m_AnchoredPosition: {x: 0, y: -0.000007030185}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -57556,6 +57557,7 @@ MonoBehaviour:
   inspectorGuardMin: 1
   inspectorGuardMax: 2
   guardDef: {fileID: 11400000, guid: fb6ad7fb5df4a154daf5acfc3b0aaafe, type: 2}
+  escortGuardDef: {fileID: 0}
   nobleNames: {fileID: 11400000, guid: 837c964cfcc8e59459770fb32fea7974, type: 2}
   nobleRetaliationBaseGuards: 3
   nobleRetaliationGuardsPerLevel: 1

@@ -60,6 +60,15 @@ public class TributeChest : MonoBehaviour
         }
 
         SoundEffectManager.Play("Chest");
+
+        // The offering used to vanish into the gold counter without a word, so a
+        // player watching the halls never learned the delivery had landed.
+        WispCompanion.Instance?.SpeakLine(
+            "They left an offering at your heart, and it is yours now. " + goldValue + " gold the richer.");
+        AlertsLog.Instance?.AddAlert(
+            "Tribute delivered to the core: " + goldValue + " gold.",
+            transform.position, 0, AlertCategory.System);
+
         Debug.Log($"[TributeChest] Absorbed {goldValue} gold into the core.");
         Destroy(gameObject);
     }

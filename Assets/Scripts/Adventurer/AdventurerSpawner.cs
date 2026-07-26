@@ -102,6 +102,11 @@ public class AdventurerSpawner : MonoBehaviour
     [Tooltip("Optional dedicated (e.g. high-level) Mercenary-type definition for escort " +
              "guards. Falls back to the Mercenary type asset if unset. Keep it Mercenary-typed.")]
     [SerializeField] private AdventurerDefinition guardDef;
+    [Tooltip("Escort muscle for NON-Destroyer parties (Noble, Scholar, Inspector). " +
+             "Keep it Delver-typed: a guard escorting a party that came to study, " +
+             "assess or gawk must not carry the BreachCore goal. Falls back to " +
+             "Guard Def if unset, which restores the old Mercenary behaviour.")]
+    [SerializeField] private AdventurerDefinition escortGuardDef;
 
     [Header("Noble names + retaliation")]
     [Tooltip("Name pool for nobles and the vengeance parties their deaths summon.")]
@@ -528,14 +533,14 @@ public class AdventurerSpawner : MonoBehaviour
                     int count = 0;
                     var noble = Def(AdventurerType.Noble);
                     if (noble != null) { SpawnMember(noble, RollTrait(), spawnPos, party, used); count++; }
-                    count += SpawnGuards(Random.Range(nobleGuardMin, nobleGuardMax + 1), spawnPos, party, used);
+                    count += SpawnEscortGuards(Random.Range(nobleGuardMin, nobleGuardMax + 1), spawnPos, party, used);
                     return count;
                 }
             case AdventurerType.Scholar:
                 {
                     // Passive scholars with a small protective guard.
                     int count = SpawnUniform(AdventurerType.Scholar, Random.Range(scholarMin, scholarMax + 1), spawnPos, party, used);
-                    count += SpawnGuards(Random.Range(scholarGuardMin, scholarGuardMax + 1), spawnPos, party, used);
+                    count += SpawnEscortGuards(Random.Range(scholarGuardMin, scholarGuardMax + 1), spawnPos, party, used);
                     return count;
                 }
             case AdventurerType.Inspector:
@@ -543,7 +548,7 @@ public class AdventurerSpawner : MonoBehaviour
                     int count = 0;
                     var insp = Def(AdventurerType.Inspector);
                     if (insp != null) { SpawnMember(insp, RollTrait(), spawnPos, party, used); count++; }
-                    count += SpawnGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
+                    count += SpawnEscortGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
                     return count;
                 }
             default:
@@ -554,6 +559,19 @@ public class AdventurerSpawner : MonoBehaviour
     private int SpawnUniform(AdventurerType t, int n, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used)
     {
         var def = Def(t);
+        if (def == null) return 0;
+        for (int i = 0; i < n; i++) SpawnMember(def, RollTrait(), spawnPos, party, used);
+        return n;
+    }
+
+    /// <summary>Escort muscle for a party that did NOT come to destroy. Delver-typed,
+    /// so the guards hunt what threatens their charge instead of driving the core.
+    /// Kill attribution is unaffected: FactionForKill already routes escort guards to
+    /// the Guild, and a Delver maps to the Guild anyway.</summary>
+    private int SpawnEscortGuards(int n, Vector3 spawnPos, AdventurerParty party, Dictionary<CombatClass, int> used)
+    {
+        var def = escortGuardDef != null ? escortGuardDef : guardDef;
+        if (def == null) def = Def(AdventurerType.Mercenary);
         if (def == null) return 0;
         for (int i = 0; i < n; i++) SpawnMember(def, RollTrait(), spawnPos, party, used);
         return n;
@@ -868,7 +886,7 @@ public class AdventurerSpawner : MonoBehaviour
 
         var used = new Dictionary<CombatClass, int>();
         SpawnMember(insp, RollTrait(), spawnPos, party, used);
-        int guards = SpawnGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
+        int guards = SpawnEscortGuards(Random.Range(inspectorGuardMin, inspectorGuardMax + 1), spawnPos, party, used);
 
         // The Inspector and its escort observe; they never start a monster
         // fight, though a blow provokes any of them.

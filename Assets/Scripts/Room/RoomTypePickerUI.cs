@@ -85,15 +85,29 @@ public class RoomTypePickerUI : MonoBehaviour
         RefreshUpgrade();
     }
 
+    /// <summary>Single choke point for dismissal. An anchor left without a room
+    /// type is removed rather than stranded: a typeless anchor occupies its
+    /// footprint, blocks overlapping rooms, and can never validate, so there is
+    /// no state in which keeping one is useful.</summary>
     public void Close()
     {
+        var closing = targetAnchor;
         targetAnchor = null;
         if (panel != null) panel.SetActive(false);
+
+        if (closing != null && closing.AssignedRoom == null)
+        {
+            WispCompanion.Instance?.SpeakLine(
+                "Unnamed ground is only ground. I have let it go.");
+            closing.RemoveByPlayer();
+        }
     }
 
     private void OnDeleteClicked()
     {
-        if (targetAnchor != null) targetAnchor.RemoveByPlayer();
+        var doomed = targetAnchor;
+        targetAnchor = null;   // cleared first so Close() does not double-remove
+        if (doomed != null) doomed.RemoveByPlayer();
         Close();
     }
 

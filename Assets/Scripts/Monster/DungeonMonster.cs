@@ -785,12 +785,30 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             return;
         }
 
+        DungeonMonster quarry = null;
         if (isHungryPredator)
         {
             if (killCount >= predatorHungerTarget) { BeginPredatorLeave(sated: true); return; }
 
-            predatorNoPreyTimer += Time.deltaTime;
-            if (predatorNoPreyTimer >= predatorGiveUpSeconds) { BeginPredatorLeave(sated: false); return; }
+            // The beast came to eat, not to break rock. It hunts the nearest
+            // dungeon creature anywhere on the floor and only gives up when the
+            // halls are genuinely empty. The old clock ran whenever it was not
+            // mid-swing, so a long walk across a large dungeon starved it out
+            // before it ever reached anything.
+            quarry = NearestPrey();
+            if (quarry != null) predatorNoPreyTimer = 0f;
+            else
+            {
+                predatorNoPreyTimer += Time.deltaTime;
+                if (predatorNoPreyTimer >= predatorGiveUpSeconds) { BeginPredatorLeave(sated: false); return; }
+            }
+        }
+
+        // A hunting predator walks toward its quarry; everything else drives the core.
+        if (isHungryPredator && quarry != null)
+        {
+            TickPredatorApproach(quarry);
+            return;
         }
 
         if (DungeonCore.Instance == null) return;
@@ -819,6 +837,44 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (needsRefresh)
         {
             invadePath = DungeonPathfinder.FindPath(currentFloor, transform.position, corePos);
+            invadePathIndex = 0;
+            invadePathRefreshTimer = DefendCorePathRefreshInterval;
+        }
+
+        if (invadePath.Count == 0 || invadePathIndex >= invadePath.Count) return;
+
+        Vector3 stepTarget = invadePath[invadePathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            invadePathIndex++;
+    }
+
+    /// <summary>Nearest of the dungeon's OWN creatures on this floor. IsWild covers
+    /// both invaders and chamber wilds, so the beast never hunts itself, another
+    /// invader, or the neutral cave life. Unbounded range: it hunts the whole floor,
+    /// which is the point of it.</summary>
+    private DungeonMonster NearestPrey()
+    {
+        if (currentFloor?.Entities == null) return null;
+        return currentFloor.Entities.Nearest<DungeonMonster>(
+            transform.position, float.MaxValue,
+            m => m != null && m != this && !m.IsWild);
+    }
+
+    /// <summary>Path toward prey. Combat is entered by ScanForHostiles once the
+    /// quarry is inside detection range, exactly as before.</summary>
+    private void TickPredatorApproach(DungeonMonster quarry)
+    {
+        Vector3 preyPos = quarry.transform.position;
+
+        invadePathRefreshTimer -= Time.deltaTime;
+        bool needsRefresh = invadePath.Count == 0
+                         || invadePathIndex >= invadePath.Count
+                         || invadePathRefreshTimer <= 0f;
+        if (needsRefresh)
+        {
+            invadePath = DungeonPathfinder.FindPath(currentFloor, transform.position, preyPos);
             invadePathIndex = 0;
             invadePathRefreshTimer = DefendCorePathRefreshInterval;
         }

@@ -1298,14 +1298,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             var c = sv.ToVector3Int();
             terrain.RevealTile(c);
-            terrain.MarkPermanentlyRevealed(c);   // generator-exposed ground never re-fogs on breach
             for (int dx = -1; dx <= 1; dx++)
                 for (int dy = -1; dy <= 1; dy++)
                     if (dx != 0 || dy != 0)
                     {
                         var n = new Vector3Int(c.x + dx, c.y + dy, c.z);
                         terrain.RevealTile(n);
-                        terrain.MarkPermanentlyRevealed(n);
                     }
         }
     }
