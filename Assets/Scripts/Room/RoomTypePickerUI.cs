@@ -220,7 +220,28 @@ public class RoomTypePickerUI : MonoBehaviour
 
     private void OnEntryClicked(RoomDefinition def)
     {
-        targetAnchor?.SetRoomType(def, announce: true);
+        var anchor = targetAnchor;
+        if (anchor == null) { Close(); return; }
+
+        anchor.SetRoomType(def, announce: true);
+
+        // A type that cannot validate where it was drawn (a Core Room by the
+        // entrance, a room too small for its kind) leaves no stranded anchor:
+        // the toast already told the player it failed, so the footprint is
+        // dissolved rather than left occupying ground it can never use. Boss
+        // rooms validate on size alone here -- the spawner requirement is waived
+        // in RoomAnchor.Revalidate -- so a correctly-sized boss room survives
+        // this check with no spawner yet placed.
+        if (!anchor.IsValid)
+        {
+            targetAnchor = null;   // clear first so Close() does not double-remove
+            WispCompanion.Instance?.SpeakLine(
+                "That shape will not hold what you named it. I have let the ground go.");
+            anchor.RemoveByPlayer();
+            Close();
+            return;
+        }
+
         RefreshLabel();
         RefreshHighlights();
         Close(); // close after selection — the anchor now shows the room label

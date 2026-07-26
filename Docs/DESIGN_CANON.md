@@ -177,6 +177,35 @@ never the shipped model.
 removed. Registry order is button order. Adding a room is a single registry
 append -- the picker and name-based save restore can no longer drift.
 
+**Anchor lifetime (2026-07 smoke-test fix).** A room anchor never persists in an
+unusable state. `RoomTypePickerUI.Close` is the single choke point for every
+dismissal path; an anchor dismissed with no type assigned is destroyed there. An
+anchor given a type that fails validation where it was drawn (a Core Room by the
+entrance, a room under its minimum size) is destroyed in `OnEntryClicked` right
+after the failing `SetRoomType` -- the toast already reported the failure, so no
+stranded footprint is left occupying ground it can never use.
+
+**Boss room spawner circle (2026-07).** The boss spawner can only be placed
+inside a VALID boss room, but a boss room requires the spawner to validate --
+a deadlock. Resolved by waiving the spawner requirement at the anchor:
+`RoomAnchor.Revalidate` passes `ignoreBossSpawner: AssignedRoom.requiresBossSpawner`,
+so a correctly-sized boss room validates on size alone and survives the
+delete-on-invalid check with no spawner yet placed. Driven off the
+`requiresBossSpawner` flag, not the room name, so a second spawner-gated room
+inherits it. The boss room's only effect -- faster boss respawn -- needs no
+separate gating: `RoomEffectCensus.GetRespawnMultiplier` returns the bonus only
+for a spawner standing in the room's tiles, so a spawner-less boss room hastens
+nothing.
+
+**Demolition (2026-07).** One mode, `BuildMode.Demolish`, removes furniture,
+chests, traps and room anchors, priced at half the placement mana (chests refund
+flat regardless of opened state, since they re-arm between raids; room anchors
+cost nothing to place and refund nothing). Priority on a shared cell is
+furniture, then chest, then trap, then the anchor owning the cell. Monster
+spawners are deliberately excluded -- they keep selection-driven removal through
+MonsterCommandUI because removal also returns creature capacity. `TrapPanel` is
+read-only as a result; its former per-entry remove button is retired.
+
 ## 2. Adventurer Types, Intents and Goals
 
 Status: SHIPPED. Supersedes the roadmap's nine-type intent table (p.13) and
@@ -305,6 +334,17 @@ scaling, dispatch helpers).
 
 **Rejected:** bribe-to-cancel as the primary counter (the shipped
 counterplay is reputation/standing and the slay-the-Inspector gamble).
+
+**Escort typing (2026-07 smoke-test fix).** The Inspector's escort is
+Delver-typed via `AdventurerSpawner.escortGuardDef` (the `Escort` asset,
+type Delver), as are Noble and Scholar escorts: a party that came to assess,
+study or gawk does not bring guards carrying the `BreachCore` goal. Destroyer
+dispatches keep Mercenary muscle through the original `guardDef` -- the Hero
+kill-team is unchanged, and the Holy Order strike keeps its own roster. Kill
+attribution is unaffected: `FactionForKill` already routes escort guards to the
+Guild, and a Delver maps there anyway. `escortGuardDef` falls back to `guardDef`
+when unset, so an empty slot degrades to the old Mercenary behaviour rather than
+spawning nothing.
 
 ## 6. Alignment Axis
 
@@ -489,6 +529,11 @@ alignment **-3** (dark) and raises Cultist standing.
 
 **Key files:** `Adventurer/TributeChest.cs`.
 
+**Tribute announce (2026-07 smoke-test fix).** Tribute absorption speaks a wisp
+line and files an `AlertCategory.System` entry at the chest's world position, so
+a delivery landing off-screen is visible. Previously the gold was credited
+silently with only a `Debug.Log`.
+
 ## 12. Ambient Necromancy and Corpses
 
 Status: SHIPPED (Phase 4; corpse APIs extended by the Crypt build -- see
@@ -550,6 +595,22 @@ bakes the exposed flag into the field texture's B channel from
 **Key files:** `DungeonCore/InfluenceField.cs`,
 `DungeonCore/InfluenceChannel.cs`, `DungeonCore/TileInfluenceManager.cs`,
 `DungeonCore/InfluenceRingRenderer.cs`, `Shaders/InfluenceRing.shader`.
+
+**Breach never darkens (2026-07 smoke-test fix).** A recede pulls the influence
+boundary in and changes NOTHING about visibility: what is unfogged stays
+unfogged for the run. DungeonShadow keys its void lighting off
+`TileInfluenceManager.WasEverClaimed` -- an additive set that a recede never
+removes from, persisted as `everClaimedTiles` and falling back to `claimedTiles`
+for saves written before it existed -- NOT off `IsTileClaimed`. Keying it on
+current ownership made a receded cell drop out of `baseLight`, which made the
+diff-paint remove its shadow tile, which exposed the flat-black interior cap
+art beneath -- read by players as the cell re-fogging, though no fog tile ever
+moved. SUPERSEDED AND DELETED: `DungeonTerrain.RefogTile`, its
+`permanentlyRevealed` allowlist, and `MarkPermanentlyRevealed`. `RefogTile` had
+no callers at any point in its life; all three existed only to make the fog
+system look like the cause, and drew several wrong fixes before the real
+mechanism was found. Do not reintroduce them, and do not re-key `IsVoidRock` on
+`IsTileClaimed`.
 
 ---
 
@@ -702,6 +763,22 @@ speaks through `WispCompanion.SpeakLine`
 (never gated) and only ALSO logs to `AlertsLog`. Repeatable, mechanically
 visible events (housed corpses, raise successes, deed and research
 completions) stay ledger-only.
+
+**Boss room tier + Crypt/Necromancer (2026-07 smoke-test fix).** Boss rooms
+(Deep Foundations) sit at Architecture tier 1 with no prerequisites, 10 points
+over 2 days; the Veined Granite pattern requirement is retained and is now the
+sole gate, preserving the one-gating-identity rule for the path. Building a valid
+Crypt grants `tech.whisperer_in_marrow` through `RoomAnchor.GrantTechNodeIfAny`,
+unlocking the Necromancer; Whisperer in Marrow remains researchable on the
+Bestiary path as a second route to the same flag, and the grant no-ops when
+already unlocked, so the routes cannot collide.
+
+**Wild predator hunt (2026-07 smoke-test fix, cross-ref section 15A/wild).** The
+midgame wild predator hunts: it paths to the nearest of the dungeon's own
+creatures (`IsWild` excludes itself, other invaders and chamber wildlife) rather
+than to the core, and its starve clock advances only while no prey exists on the
+floor. Previously it pathed at the core and the clock ran whenever it was not
+mid-swing, so it starved while walking. `giveUpSeconds` default 45.
 
 ## 14. Material Pattern System
 

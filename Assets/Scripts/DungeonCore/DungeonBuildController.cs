@@ -740,7 +740,7 @@ public class DungeonBuildController : MonoBehaviour
         Vector3 worldPos = ActiveInfluence.CellToWorld(cell);
         var chest = Instantiate(selectedChest.prefab, worldPos, Quaternion.identity);
         if (ActiveFloor != null) chest.transform.SetParent(ActiveFloor.transform, true);
-        chest.Initialise(selectedChest);
+        chest.Initialise(selectedChest, cell);
         SetMode(BuildMode.None);
     }
 
@@ -751,8 +751,9 @@ public class DungeonBuildController : MonoBehaviour
     /// keep their selection-driven removal in MonsterCommandUI, which also frees
     /// creature capacity and needs its own confirmation.
     ///
-    /// Priority is furniture, then traps, then the room anchor, so clicking a
-    /// crowded cell removes the thing sitting on top rather than the room beneath it.
+    /// Priority is furniture, then chests, then traps, then the room anchor, so
+    /// clicking a crowded cell removes the thing sitting on top rather than the
+    /// room beneath it.
     /// The mode is sticky: it stays armed until the player leaves it, because
     /// clearing a room means many clicks in a row.
     /// </summary>
@@ -771,6 +772,17 @@ public class DungeonBuildController : MonoBehaviour
             if (piece == null || piece.OccupiedCell != cell) continue;
             piece.RemoveByPlayer();
             RevalidateAllAnchors();
+            BuildFeedback.Reject(ActiveInfluence.CellToWorld(cell), "Removed");
+            return;
+        }
+
+        _demolishChestBuf ??= new System.Collections.Generic.List<DungeonChest>();
+        floor.Entities.FillAll(_demolishChestBuf);
+        for (int i = 0; i < _demolishChestBuf.Count; i++)
+        {
+            var chest = _demolishChestBuf[i];
+            if (chest == null || chest.OccupiedCell != cell) continue;
+            chest.RemoveByPlayer();
             BuildFeedback.Reject(ActiveInfluence.CellToWorld(cell), "Removed");
             return;
         }
@@ -803,6 +815,7 @@ public class DungeonBuildController : MonoBehaviour
     }
 
     private System.Collections.Generic.List<FurniturePiece> _demolishFurnitureBuf;
+    private System.Collections.Generic.List<DungeonChest> _demolishChestBuf;
     private System.Collections.Generic.List<TrapBase> _demolishTrapBuf;
     private System.Collections.Generic.List<RoomAnchor> _demolishAnchorBuf;
 
@@ -1071,7 +1084,7 @@ public class DungeonBuildController : MonoBehaviour
             Vector3 chestWorld = ActiveInfluence.CellToWorld(cell);
             var trapChest = Instantiate(selectedChest.prefab, chestWorld, Quaternion.identity);
             if (ActiveFloor != null) trapChest.transform.SetParent(ActiveFloor.transform, true);
-            trapChest.Initialise(selectedChest);
+            trapChest.Initialise(selectedChest, cell);
             SetMode(BuildMode.None);
             return;
         }
@@ -1214,7 +1227,7 @@ public class DungeonBuildController : MonoBehaviour
         Vector3 worldPos = floor.TileInfluence.CellToWorld(cell);
         var chest = Instantiate(def.prefab, worldPos, Quaternion.identity);
         chest.transform.SetParent(floor.transform, true);
-        chest.Initialise(def);
+        chest.Initialise(def, cell);
         if (isOpened) chest.SetOpened(true);
     }
 

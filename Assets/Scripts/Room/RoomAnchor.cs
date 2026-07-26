@@ -116,7 +116,17 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
             return;
         }
 
-        var result = RoomValidator.Validate(footprint, AssignedRoom);
+        // Boss rooms (and any future spawner-gated room) face a chicken-and-egg:
+        // the boss spawner can only be placed inside a VALID boss room, but the
+        // room will not validate until the spawner is in it. Waive the spawner
+        // requirement at the anchor so the empty room validates on size alone;
+        // the player then places the spawner, and the room's respawn bonus only
+        // applies once a spawner actually stands in its tiles (RoomEffectCensus
+        // keys the multiplier on spawner presence), so a spawner-less boss room
+        // grants nothing to no one in the meantime. Driven off the flag, not the
+        // room name, so a second spawner-gated room would inherit this for free.
+        var result = RoomValidator.Validate(
+            footprint, AssignedRoom, ignoreBossSpawner: AssignedRoom.requiresBossSpawner);
         bool wasValid = IsValid;
 
         IsValid = result.IsValid;

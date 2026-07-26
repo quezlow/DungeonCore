@@ -26,6 +26,10 @@ public class DungeonChest : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
     public bool IsOpened { get; private set; } = false;
     public ChestDefinition Definition { get; private set; }
+
+    /// <summary>The cell this chest sits on. Set by Initialise so the demolish
+    /// mode can match a click to it, the same way furniture and traps do.</summary>
+    public Vector3Int OccupiedCell { get; private set; }
  
     public bool IsTrapChest => Definition != null && Definition.isTrapChest;
 
@@ -43,10 +47,23 @@ public class DungeonChest : MonoBehaviour
     /// <summary>
     /// Called by DungeonBuildController on placement AND by RestoreChest on load.
     /// </summary>
-    public void Initialise(ChestDefinition def)
+    public void Initialise(ChestDefinition def, Vector3Int cell = default)
     {
         Definition = def;
+        OccupiedCell = cell;
         GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+    }
+
+    /// <summary>Player-initiated removal via the demolish mode. Refunds half the
+    /// placement mana regardless of opened state (a chest re-arms between raids,
+    /// so an opened one is mid-cycle rather than consumed), then destroys it.
+    /// No loot is banked: contents are rolled onto the floor on open and carried
+    /// off as CarriableLoot, so the chest object holds no stored value.</summary>
+    public void RemoveByPlayer()
+    {
+        if (Definition != null && DungeonCore.Instance != null)
+            DungeonCore.Instance.AddMana(Definition.manaCost * 0.5f);
+        Destroy(gameObject);
     }
 
     private void OnDestroy()
