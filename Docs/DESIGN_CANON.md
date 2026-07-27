@@ -1506,6 +1506,47 @@ authored surface); a monster projectile system (adventurer-Mage hitscan
 convention holds); mechanical flavour on reskins (deferred as a fork, not
 built).
 
+### 27A. Native Affinity Lines (60 Monsters, Slot Parity)
+
+Status: SHIPPED. Verified: <date of landing>.
+
+Each core type owns ten unique native monsters -- distinct creatures, sprites
+and copy per type, nothing shared but the numbers. Ten rank slots common to all
+six types (B3 Swift Skirmisher/Beast, B5 Resilient Walker/Undead, B7 Line
+Fighter/Humanoid, B9 Heavy Pouncer/Beast, S2 Sentinel/Undead, S4
+Champion/Humanoid, S6 Apex Predator/Beast, G1 Bulwark/Undead, G3
+Warcaster/Humanoid, D1 Terror/Beast). SLOT PARITY IS A RULING: one stat block
+per slot, identical across types -- core choice is balance-neutral; identity
+lives in names, sprites and descriptions only. Gating is pure tier/rank (no
+research, no discovery); `affinityType` + the section-27 picker filter and
+placement gate make the lines native. Categories fixed per slot (Beast 4 /
+Undead 3 / Humanoid 3) so muster balance is identical per core; constructs ride
+Undead per the Obsidian Sentinel precedent, and Light's dead are gilded, not
+rotting. The G3 warcaster uses the mage model at range 3.8 (between Adept 3.6
+and Archon 4.2). Slot niches are offset from the same-rank universal monster --
+native lines complement the universal roster.
+
+Rosters (slot order B3->D1):
+Fire: Magma Hound, Ash Walker, Emberblade, Greater Salamander, Ashbound Warden,
+Ifrit Duelist, Lava Drake, Slagheart Golem, Pyromancer, Cinderwyrm.
+Water: Riptide Skimmer, Drowned One, Brine Reaver, Reef Lurker, Coralbound
+Watcher, Depthsworn Blade, Abyssal Angler, Barnacle Hulk, Tidecaller, Leviathan.
+Air: Gale Harrier, Windshade, Galeblade, Sky Lynx, Zephyr Sentry, Cyclone
+Duelist, Thunder Wyvern, Windcarved Monolith, Stormcaller, Storm Roc.
+Earth: Crystal Skitterer, Clay Shambler, Rootbound Warrior, Granite Boar, Menhir
+Watcher, Crystalguard Champion, Burrowing Horror, Basalt Warden, Geomancer,
+Terravore.
+Dark: Shadow Prowler, Gloom Husk, Duskblade, Nightgaunt, Wraithshell,
+Shadowdancer, Duskmaw Hunter, Umbral Mass, Voidspeaker, Void Maw.
+Light: Sunhound, Lantern-Bearer, Sun Zealot, Radiant Gryphon, Reliquary
+Guardian, Lightsworn Duelist, Blinding Raptor, Censer Golem, Lightbinder,
+Dawnmaw.
+
+**Rejected:** per-type stat identities (bounded elemental tilts considered and
+declined -- balance-neutral ruling holds); ten archetypes with six skins each
+(the reskin route; uniqueness was the ask); research or discovery gating on
+native lines (the automatic channel stays automatic).
+
 ---
 
 *Seeded 2026-07-09 against repo HEAD. Amend via guide chapters only.*
