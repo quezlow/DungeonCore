@@ -38,6 +38,23 @@ using UnityEngine;
 /// Buildout is never saved; it rebuilds from ledger + tier tables, silently
 /// after a load (barks fire only on live changes).
 ///
+/// THE SURFACE WAR (dawn pass, after decay): declared camps within
+/// interactionRange interact. Hostile pairs (profile stance table;
+/// Cultists vs Holy Order by default) may raid -- chance-gated, per-pair
+/// cooldown, at most ONE hostile event per dawn world-wide. Raid strength
+/// = tier x 2 + growth / 10 + roll; the loser bleeds growth, the winner a
+/// little too. A camp raided to zero is DISPLACED: banner down, growth
+/// zeroed, and its tier's ruin layer renders at the same hashed positions
+/// (ruinProps[i] ruins props[i]; the commerce ruin takes the anchor). The
+/// first new settler clears the bones. Kindred (same-faction) pairs run
+/// caravans instead -- growth trickles larger -> smaller and counts as
+/// life -- and a camp decaying to zero with kindred in range migrates a
+/// remnant rather than evaporating. Hostile neighbours also SUPPRESS each
+/// other's effect contributions (per-tier, capped). Declared camps at the
+/// final authored tier raise their faction landmark at the camp centre
+/// (guild hall / church / unholy temple; shared scaffold while the final
+/// tier frames). Cooldowns are transient; ruinedFromTier persists.
+///
 /// SCENE SETUP (floor 0 only):
 ///   Put this beside SurfaceZoneGenerator under the FloorRoot. Nothing to
 ///   wire; it reads the generator's profile and finds camp markers itself.
@@ -57,6 +74,11 @@ public class CampGrowthController : MonoBehaviour
     [Tooltip("Spoken when a camp declares its faction. {0} = faction display name.")]
     [SerializeField]
     private string identityBarkFormat = "The camp at the wood's edge raises colours -- {0}.";
+    [Tooltip("{0}=attacker faction, {1}=defender zone.")]
+    [SerializeField] private string raidBarkFormat = "Smoke over the wood -- {0} raiders fall upon {1}.";
+    [SerializeField] private string displacedBarkFormat = "{1} burns. The {0} have driven them out.";
+    [SerializeField] private string migrationBarkFormat = "The last of {1} take the trail to kin.";
+    [SerializeField] private string bonesBarkFormat = "New hands clear the bones at {1}.";
     [SerializeField] private float rescanSeconds = 3f;
 
     private FloorRoot floor;
@@ -73,6 +95,10 @@ public class CampGrowthController : MonoBehaviour
     private readonly Dictionary<string, int> declaredFaction = new Dictionary<string, int>();
     private readonly Dictionary<string, int> lastSettleDay = new Dictionary<string, int>();
     private readonly Dictionary<string, int> builtState = new Dictionary<string, int>();
+    private readonly Dictionary<string, int> ruinedFromTier = new Dictionary<string, int>();
+    private readonly Dictionary<string, Vector3> markerPos = new Dictionary<string, Vector3>();
+    private readonly Dictionary<string, int> pairCooldownUntil = new Dictionary<string, int>();
+    private float cellSize = 1f;
 
     private static int FactionCount => Enum.GetValues(typeof(FactionId)).Length;
 
@@ -125,6 +151,9 @@ public class CampGrowthController : MonoBehaviour
 
         profile = surface.Profile;
         centreWorld = floor.TileInfluence.CellToWorld(floor.Terrain.CoreCell);
+        cellSize = (floor.TileInfluence.CellToWorld(new Vector3Int(1, 0, 0))
+                    - floor.TileInfluence.CellToWorld(Vector3Int.zero)).magnitude;
+        if (cellSize <= 0f) cellSize = 1f;
         barkSuppressedUntil = Time.time + 2f;   // reveal existing state silently
         armed = true;
         SyncBuildouts();
@@ -142,6 +171,8 @@ public class CampGrowthController : MonoBehaviour
 
         int before = TierOf(zone);
         growth[zone] = GrowthOf(zone) + 1;
+        if (ruinedFromTier.Remove(zone))
+            Bark(string.Format(bonesBarkFormat, "", zone));
         lastSettleDay[zone] = Today();
         TallyFaction(zone, party, member);
         Debug.Log($"[CampGrowth] A survivor settles at {zone} ({growth[zone]}).");
@@ -246,7 +277,22 @@ public class CampGrowthController : MonoBehaviour
         return best;
     }
 
-    // -- effects (queried by the sim; tier-scaled, summed across camps) ------
+    // -- effects (queried by the sim; tier-scaled, summed across camps,
+    // suppressed by hostile neighbours in range) -----------------------------
+
+    private float SuppressionFactor(string zone)
+    {
+        if (profile == null || !declaredFaction.TryGetValue(zone, out int f)) return 1f;
+        float sup = 0f;
+        foreach (var kv in declaredFaction)
+        {
+            if (kv.Key == zone) continue;
+            if (StanceBetween(f, kv.Value) != CampStance.Hostile) continue;
+            if (!InRange(zone, kv.Key)) continue;
+            sup += profile.suppressionPerAttackerTier * TierOf(kv.Key);
+        }
+        return 1f - Mathf.Min(profile.suppressionCap, sup);
+    }
 
     public float GuildIntervalFloorFraction
         => profile != null ? profile.guildIntervalFloorFraction : 0.6f;
@@ -259,7 +305,8 @@ public class CampGrowthController : MonoBehaviour
             float s = 0f;
             foreach (var kv in declaredFaction)
                 if (kv.Value == (int)FactionId.AdventurersGuild)
-                    s += profile.guildIntervalSecondsPerTier * TierOf(kv.Key);
+                    s += profile.guildIntervalSecondsPerTier * TierOf(kv.Key)
+                         * SuppressionFactor(kv.Key);
             return s;
         }
     }
@@ -273,7 +320,8 @@ public class CampGrowthController : MonoBehaviour
             foreach (var kv in declaredFaction)
                 if (kv.Value == (int)FactionId.Cultists)
                     m *= Mathf.Max(0f,
-                        1f - profile.cultistDecayDampenPerTier * TierOf(kv.Key));
+                        1f - profile.cultistDecayDampenPerTier * TierOf(kv.Key)
+                             * SuppressionFactor(kv.Key));
             return Mathf.Max(profile.cultistDecayMultiplierMin, m);
         }
     }
@@ -286,7 +334,8 @@ public class CampGrowthController : MonoBehaviour
             float tax = 0f;
             foreach (var kv in declaredFaction)
                 if (kv.Value == (int)FactionId.HolyOrder)
-                    tax += profile.holyManaTaxPerTier * TierOf(kv.Key);
+                    tax += profile.holyManaTaxPerTier * TierOf(kv.Key)
+                           * SuppressionFactor(kv.Key);
             return 1f - Mathf.Min(profile.holyManaTaxCap, tax);
         }
     }
@@ -310,10 +359,14 @@ public class CampGrowthController : MonoBehaviour
             if (today - last <= profile.decayGraceDays) continue;
 
             int before = TierOf(zone);
+            int remnantIfZero = growth[zone];
             growth[zone] = Mathf.Max(0, growth[zone] - profile.decayPerDay);
             changed = true;
             if (TierOf(zone) < before && TierOf(zone) == 0)
+            {
+                TryMigrate(zone, remnantIfZero, today);
                 declaredFaction.Remove(zone);   // the banner comes down
+            }
         }
 
         if (changed)
@@ -321,6 +374,130 @@ public class CampGrowthController : MonoBehaviour
             SyncBuildouts();
             DungeonCore.Instance?.NotifyManaRegenDisplay();
         }
+
+        RunDawnWar(today);
+    }
+
+    // -- the surface war -----------------------------------------------------
+
+    private CampStance StanceBetween(int fa, int fb)
+    {
+        if (fa == fb) return CampStance.Neutral;   // kindred handled separately
+        foreach (var e in profile.factionStances)
+            if (((int)e.a == fa && (int)e.b == fb) || ((int)e.a == fb && (int)e.b == fa))
+                return e.stance;
+        return CampStance.Neutral;
+    }
+
+    private bool InRange(string za, string zb)
+        => markerPos.TryGetValue(za, out var a) && markerPos.TryGetValue(zb, out var b)
+           && Vector3.Distance(a, b) <= profile.interactionRange * cellSize;
+
+    private List<string> DeclaredZones()
+    {
+        var list = new List<string>();
+        foreach (var kv in declaredFaction)
+            if (TierOf(kv.Key) >= 1 && markerPos.ContainsKey(kv.Key)) list.Add(kv.Key);
+        list.Sort();
+        return list;
+    }
+
+    private void RunDawnWar(int today)
+    {
+        if (profile == null) return;
+        var zones = DeclaredZones();
+        bool hostileFiredToday = false;
+
+        for (int i = 0; i < zones.Count; i++)
+            for (int j = i + 1; j < zones.Count; j++)
+            {
+                string za = zones[i], zb = zones[j];
+                if (!InRange(za, zb)) continue;
+                int fa = declaredFaction[za], fb = declaredFaction[zb];
+
+                if (fa == fb)
+                {
+                    RunCaravan(za, zb, today);
+                    continue;
+                }
+                if (StanceBetween(fa, fb) != CampStance.Hostile) continue;
+                if (hostileFiredToday) continue;
+                string key = za + "|" + zb;
+                if (pairCooldownUntil.TryGetValue(key, out int until) && today < until) continue;
+                if (UnityEngine.Random.value > profile.hostileDawnChance) continue;
+
+                pairCooldownUntil[key] = today + profile.hostilePairCooldownDays;
+                hostileFiredToday = true;
+                ResolveRaid(za, zb);
+            }
+    }
+
+    private float RaidStrength(string zone)
+        => TierOf(zone) * 2f + GrowthOf(zone) / 10f + UnityEngine.Random.Range(0f, 3f);
+
+    private void ResolveRaid(string za, string zb)
+    {
+        string winner, loser;
+        if (RaidStrength(za) >= RaidStrength(zb)) { winner = za; loser = zb; }
+        else { winner = zb; loser = za; }
+
+        SurfaceLifeController.Instance?.PlayCrossing(
+            markerPos[winner], markerPos[loser], 3);
+
+        growth[winner] = Mathf.Max(0, GrowthOf(winner) - profile.raidWinnerGrowthLoss);
+        int loserTierBefore = TierOf(loser);
+        growth[loser] = Mathf.Max(0, GrowthOf(loser) - profile.raidLoserGrowthLoss);
+
+        string attackers = FactionInfo.DisplayName((FactionId)declaredFaction[winner]);
+        if (TierOf(loser) == 0 && loserTierBefore >= 1)
+        {
+            growth[loser] = 0;
+            declaredFaction.Remove(loser);
+            ruinedFromTier[loser] = loserTierBefore;
+            Bark(string.Format(displacedBarkFormat, attackers, loser));
+        }
+        else
+        {
+            Bark(string.Format(raidBarkFormat, attackers, loser));
+        }
+        SyncBuildouts();
+        DungeonCore.Instance?.NotifyManaRegenDisplay();
+    }
+
+    private void RunCaravan(string za, string zb, int today)
+    {
+        if (UnityEngine.Random.value > profile.caravanDawnChance) return;
+        string from = GrowthOf(za) >= GrowthOf(zb) ? za : zb;
+        string to = from == za ? zb : za;
+        if (GrowthOf(from) <= 1) return;
+        int cap = to == "camp.main" ? MainCap() : SatelliteCap();
+        if (GrowthOf(to) >= cap) return;
+
+        growth[from] -= 1;
+        growth[to] = GrowthOf(to) + 1;
+        lastSettleDay[to] = today;   // a caravan counts as life
+        SurfaceLifeController.Instance?.PlayCrossing(markerPos[from], markerPos[to], 2);
+        SyncBuildouts();
+    }
+
+    private void TryMigrate(string dying, int remnant, int today)
+    {
+        if (remnant <= 0) return;
+        if (!declaredFaction.TryGetValue(dying, out int f)) return;
+        string best = null; float bestD = float.MaxValue;
+        foreach (var kv in declaredFaction)
+        {
+            if (kv.Key == dying || kv.Value != f) continue;
+            if (!InRange(dying, kv.Key)) continue;
+            float d = Vector3.Distance(markerPos[dying], markerPos[kv.Key]);
+            if (d < bestD) { bestD = d; best = kv.Key; }
+        }
+        if (best == null) return;
+        int cap = best == "camp.main" ? MainCap() : SatelliteCap();
+        growth[best] = Mathf.Min(cap, GrowthOf(best) + Mathf.Min(2, remnant));
+        lastSettleDay[best] = today;
+        SurfaceLifeController.Instance?.PlayCrossing(markerPos[dying], markerPos[best], 2);
+        Bark(string.Format(migrationBarkFormat, "", dying));
     }
 
     // -- buildout ------------------------------------------------------------
@@ -338,6 +515,9 @@ public class CampGrowthController : MonoBehaviour
 
     private int BuildStateOf(string zoneId)
     {
+        if (GrowthOf(zoneId) == 0
+            && ruinedFromTier.TryGetValue(zoneId, out int rt) && rt > 0)
+            return -rt;   // displaced: render the ruin layer
         int tier = TierOf(zoneId);
         return tier * 2 + (FramingDue(zoneId, tier) ? 1 : 0);
     }
@@ -349,6 +529,7 @@ public class CampGrowthController : MonoBehaviour
         foreach (var m in markers)
         {
             if (m == null || string.IsNullOrEmpty(m.ZoneId)) continue;
+            markerPos[m.ZoneId] = m.transform.position;
             int state = BuildStateOf(m.ZoneId);
             if (builtState.TryGetValue(m.ZoneId, out int built) && built == state)
                 continue;
@@ -366,6 +547,24 @@ public class CampGrowthController : MonoBehaviour
         parent.SetParent(marker.transform, false);
 
         if (profile.campTiers.Count == 0) return;
+
+        if (state < 0)   // ruins of the displaced
+        {
+            var rdef = profile.campTiers[Mathf.Clamp(-state, 0, profile.campTiers.Count - 1)];
+            float rr = Mathf.Max(1f, marker.Radius);
+            Vector3 rHome = (centreWorld - marker.transform.position).normalized;
+            Vector3 rCommerce = rHome * (rr * 0.75f);
+            if (rdef.ruinCommercePrefab != null)
+            {
+                var rc = Instantiate(rdef.ruinCommercePrefab, parent);
+                rc.name = "CommerceRuin";
+                rc.transform.localPosition = rCommerce;
+            }
+            PlaceRow(parent, marker.ZoneId, -state, rdef.props, rdef.ruinProps,
+                     rr, rCommerce);
+            return;
+        }
+
         int tier = state / 2;
         bool framing = (state & 1) == 1;
         var def = profile.campTiers[Mathf.Clamp(tier, 0, profile.campTiers.Count - 1)];
@@ -384,6 +583,18 @@ public class CampGrowthController : MonoBehaviour
 
         PlaceRow(parent, marker.ZoneId, tier, def.props, null, radius, commerceLocal);
 
+        // Final-tier centrepiece: the declared faction's landmark.
+        int last = profile.campTiers.Count - 1;
+        int fac = DeclaredFactionOf(marker.ZoneId);
+        if (tier == last && fac >= 0
+            && fac < profile.factionLandmarkPrefabs.Count
+            && profile.factionLandmarkPrefabs[fac] != null)
+        {
+            var lm = Instantiate(profile.factionLandmarkPrefabs[fac], parent);
+            lm.name = "Landmark";
+            lm.transform.localPosition = Vector3.zero;
+        }
+
         if (framing && tier + 1 < profile.campTiers.Count)
         {
             var next = profile.campTiers[tier + 1];
@@ -399,6 +610,15 @@ public class CampGrowthController : MonoBehaviour
             // Props framing lands at the exact final positions (shared hash).
             PlaceRow(parent, marker.ZoneId, tier + 1, next.props,
                      next.framingProps, radius, commerceLocal);
+            // Scaffold for the coming landmark, at the camp centre.
+            if (tier + 1 == profile.campTiers.Count - 1
+                && DeclaredFactionOf(marker.ZoneId) >= 0
+                && profile.factionLandmarkFramingPrefab != null)
+            {
+                var sc = Instantiate(profile.factionLandmarkFramingPrefab, parent);
+                sc.name = "LandmarkScaffold";
+                sc.transform.localPosition = Vector3.zero;
+            }
         }
     }
 
@@ -495,6 +715,7 @@ public class CampGrowthController : MonoBehaviour
                 growth = kv.Value,
                 declaredFaction = DeclaredFactionOf(kv.Key),
                 lastSettleDay = lastSettleDay.TryGetValue(kv.Key, out int d) ? d : 0,
+                ruinedFromTier = ruinedFromTier.TryGetValue(kv.Key, out int rt) ? rt : 0,
             };
             if (factionTally.TryGetValue(kv.Key, out var tally))
                 rec.factionTallies = (int[])tally.Clone();
@@ -509,6 +730,7 @@ public class CampGrowthController : MonoBehaviour
         factionTally.Clear();
         declaredFaction.Clear();
         lastSettleDay.Clear();
+        ruinedFromTier.Clear();
         builtState.Clear();   // force a silent rebuild at the restored state
         barkSuppressedUntil = Time.time + 2f;
         if (data == null) return;
@@ -520,6 +742,8 @@ public class CampGrowthController : MonoBehaviour
                 declaredFaction[rec.zoneId] = rec.declaredFaction;
             if (rec.lastSettleDay > 0)
                 lastSettleDay[rec.zoneId] = rec.lastSettleDay;
+            if (rec.ruinedFromTier > 0)
+                ruinedFromTier[rec.zoneId] = rec.ruinedFromTier;
             if (rec.factionTallies != null && rec.factionTallies.Length > 0)
             {
                 var tally = new int[FactionCount];
@@ -542,4 +766,5 @@ public class CampGrowthSaveData
     public int[] factionTallies;
     public int declaredFaction = -1;
     public int lastSettleDay = 0;
+    public int ruinedFromTier = 0;
 }

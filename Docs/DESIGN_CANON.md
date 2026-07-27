@@ -73,7 +73,7 @@ the supersession in one line.
 23. Trophy Hall
 24. Surface World: Radial Forest Bands
 25. Camp Growth, Identity & Effects
-26. ???
+26. The Surface War
 27. Bestiary Expansion
 
 **Appendix**
@@ -1294,7 +1294,11 @@ unlocks; the camera bounds then creep outward to the new edge over roughly
 spread, speed-up hastens it. The creep is monotonic (a chained unlock moves
 the target further out) and unsaved (loading lands at full researched depth).
 `DungeonBoundsUpdater` unions the revealed disc into the floor-0 confiner
-AABB and exposes `MarkDirty()` for the generator.
+AABB and exposes `MarkDirty()` for the generator. An edge-fog ring
+(generator-painted tilemap above the props: alpha smoothstepped across
+the last `fogFadeCells` (8) of painted ground, solid for
+`fogSolidMarginCells` (24) past it) hides the unpainted void at every
+band edge and keeps the world's outermost rim misty forever.
 
 **Determinism:** per-cell ground and scatter use a position hash of
 (cell, seed), so unlocking a band never reshuffles ground that already
@@ -1456,7 +1460,60 @@ then-replace is the accepted exception).
 
 ---
 
-## 26. ???
+## 26. The Surface War
+
+Status: SHIPPED (Phase 8). Verified: 2026-07-18.
+
+Camps interact at dawn, after decay -- event-shaped, never an always-on
+skirmish (camp separation throttles frequency; range gates contact). Only
+declared camps with live markers participate; distances compare in cells
+(`interactionRange`, 75). Cross-faction stances are profile data
+(`factionStances`: Cultists vs Holy Order HOSTILE, Guild vs Cultists COLD;
+unlisted pairs neutral; same faction = kindred).
+
+**Raids:** at most ONE hostile event per dawn world-wide; per eligible
+hostile pair, `hostileDawnChance` (0.35) gated by a 2-day per-pair
+cooldown (transient, not saved). Strength = tier x 2 + growth / 10 +
+roll(0-3); the loser bleeds `raidLoserGrowthLoss` (3), the winner
+`raidWinnerGrowthLoss` (1) -- war costs both. A camp raided to tier 0 is
+DISPLACED: banner down, growth zeroed, `ruinedFromTier` recorded
+(additive save field), and the camp renders its tier's RUIN layer --
+`ruinProps[i]` ruins `props[i]` at the identical hashed positions, the
+commerce ruin taking the anchor spot. Natural decay leaves no scar (they
+packed up); ruins are raid-only. The first new settler clears the bones
+(recolonisation, possibly under a new banner). Puppet raiders cross
+between the camps (`SurfaceLifeController.PlayCrossing`).
+
+**Kindred flow:** same-faction pairs in range run caravans
+(`caravanDawnChance` 0.25): one growth moves larger -> smaller, counts as
+life for the recipient's decay clock, puppet porters walk it. A camp
+decaying to zero with kindred in range migrates a remnant (+2, capped)
+instead of evaporating.
+
+**Suppression:** hostile neighbours in range suppress each other's effect
+contributions -- `suppressionPerAttackerTier` (0.2) x attacker tier,
+capped at 0.6 -- applied inside entry 25's three effect queries. The cold
+war in numbers; no new systems.
+
+**Landmarks:** a declared camp at the FINAL authored tier raises its
+faction's centrepiece at the camp centre (the prop ring starts at 0.3r,
+so the heart is free): guild hall / church / unholy temple
+(`factionLandmarkPrefabs`, FactionId order; the Mercenary slot stays
+empty). While the final tier frames (the 70% rule), a shared
+`factionLandmarkFramingPrefab` scaffold stands in its place. Displacement
+razes the landmark with the rest; no bespoke landmark ruin (the temple
+burns first). A future Town row inherits landmark duty automatically.
+
+**Key files:** `Overworld/CampGrowthController.cs` (dawn pass, ruins,
+landmarks), `Floors/SurfaceZoneProfile.cs` (stances, war knobs, ruin and
+landmark fields), `Overworld/SurfaceLifeController.cs` (`PlayCrossing`),
+`Floors/SurfaceZoneGenerator.cs` (edge fog, entry 24). World retune to
+32 / 100 / 180 / 260 with tapered densities is asset data.
+
+**Rejected:** an always-on surface combat sim (event-shaped by design);
+trail-network-only reach (seed-fragile); saving pair cooldowns (transient
+double-raid after reload is acceptable); faction-specific scaffolds (one
+shared timber frame reads for all three); a landmark ruin variant.
 
 ---
 

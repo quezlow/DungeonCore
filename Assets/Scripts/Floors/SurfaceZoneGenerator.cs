@@ -34,6 +34,15 @@ public class SurfaceZoneGenerator : MonoBehaviour
     [SerializeField] private Transform campParent;
     [SerializeField] private Transform nodeParent;
 
+    [Header("Edge fog")]
+    [SerializeField] private Tilemap fogTilemap;
+    [SerializeField] private TileBase fogTile;
+    [Tooltip("Cells of painted ground the fog fades across at the edge.")]
+    [SerializeField, Min(1)] private int fogFadeCells = 8;
+    [Tooltip("Cells of solid fog past the edge, hiding the unpainted void.")]
+    [SerializeField, Min(1)] private int fogSolidMarginCells = 24;
+    [SerializeField] private Color fogColor = new Color(0.05f, 0.06f, 0.10f, 1f);
+
     [Header("City gate ids")]
     [Tooltip("Arrival SpawnPoint id inside the City scene.")]
     [SerializeField] private string citySpawnId = "FromForestRoad";
@@ -161,6 +170,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
             PaintBand(i);
         }
 
+        PaintFogRing(0, paintedDepth);
         revealedDepth = targetDepth = paintedDepth;   // no creep on load
         armed = true;
         MarkBoundsDirty();
@@ -187,6 +197,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
             PaintBand(i);
         }
         if (paintedDepth == before) return;
+        PaintFogRing(before, paintedDepth);
 
         // The new ground exists in full; sight spreads to meet it over
         // roughly creepDays day-night cycles. Monotonic: a chained unlock
@@ -658,6 +669,52 @@ public class SurfaceZoneGenerator : MonoBehaviour
     }
 
     // -- helpers -------------------------------------------------------------
+
+    // -- edge fog ------------------------------------------------------------
+
+    private void PaintFogRing(int oldPaintedDepth, int newPaintedDepth)
+    {
+        if (fogTilemap == null || fogTile == null) return;
+        ClearFogRing(oldPaintedDepth);
+        PaintFogAt(newPaintedDepth);
+    }
+
+    private void PaintFogAt(int paintedOuter)
+    {
+        int innerDepth = Mathf.Max(0, paintedOuter - fogFadeCells);
+        long innerSq = (long)(rim + innerDepth) * (rim + innerDepth);
+        int outerR = rim + paintedOuter + fogSolidMarginCells;
+        long outerSq = (long)outerR * outerR;
+        for (int dx = -outerR; dx <= outerR; dx++)
+            for (int dy = -outerR; dy <= outerR; dy++)
+            {
+                long sq = (long)dx * dx + (long)dy * dy;
+                if (sq <= innerSq || sq > outerSq) continue;
+                float depth = Mathf.Sqrt(sq) - rim;
+                float t = Mathf.Clamp01((depth - innerDepth) / Mathf.Max(1, fogFadeCells));
+                float a = fogColor.a * (t * t * (3f - 2f * t));   // smoothstep
+                var cell = new Vector3Int(center.x + dx, center.y + dy, 0);
+                fogTilemap.SetTile(cell, fogTile);
+                fogTilemap.SetTileFlags(cell, TileFlags.None);
+                fogTilemap.SetColor(cell, new Color(fogColor.r, fogColor.g, fogColor.b, a));
+            }
+    }
+
+    private void ClearFogRing(int paintedOuter)
+    {
+        if (paintedOuter <= 0 || fogTilemap == null) return;
+        int innerDepth = Mathf.Max(0, paintedOuter - fogFadeCells);
+        long innerSq = (long)(rim + innerDepth) * (rim + innerDepth);
+        int outerR = rim + paintedOuter + fogSolidMarginCells;
+        long outerSq = (long)outerR * outerR;
+        for (int dx = -outerR; dx <= outerR; dx++)
+            for (int dy = -outerR; dy <= outerR; dy++)
+            {
+                long sq = (long)dx * dx + (long)dy * dy;
+                if (sq <= innerSq || sq > outerSq) continue;
+                fogTilemap.SetTile(new Vector3Int(center.x + dx, center.y + dy, 0), null);
+            }
+    }
 
     private void MarkBoundsDirty()
     {

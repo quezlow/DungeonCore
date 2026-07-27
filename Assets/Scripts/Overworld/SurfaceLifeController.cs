@@ -88,10 +88,18 @@ public class SurfaceLifeController : MonoBehaviour
 
     // -- lifecycle -----------------------------------------------------------
 
+    public static SurfaceLifeController Instance { get; private set; }
+
     private void Awake()
     {
         floor = GetComponentInParent<FloorRoot>();
-        if (floor == null || floor.FloorIndex != 0) enabled = false;
+        if (floor == null || floor.FloorIndex != 0) { enabled = false; return; }
+        Instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     private void OnEnable() { AdventurerSpawner.PartyRegistered += HandlePartyRegistered; }
@@ -312,6 +320,28 @@ public class SurfaceLifeController : MonoBehaviour
 
     private static bool AtTarget(Puppet p)
         => (p.target - p.sr.transform.position).sqrMagnitude < 0.01f;
+
+    // -- war vignettes --------------------------------------------------------
+
+    /// <summary>Walks a handful of puppets from one point to another and lets
+    /// them vanish on arrival -- raiders and caravans made visible.</summary>
+    public void PlayCrossing(Vector3 from, Vector3 to, int count)
+    {
+        if (!armed) return;
+        for (int i = 0; i < count; i++)
+        {
+            var sprite = PickSprite(false);
+            if (sprite == null) return;
+            Vector2 j = Random.insideUnitCircle * 1.2f;
+            var p = MakePuppet($"Crossing_{i}", sprite,
+                               from + new Vector3(j.x, j.y, 0f));
+            p.isWalker = true;
+            p.speed = wanderSpeed * 2.2f * Random.Range(0.9f, 1.1f);
+            p.target = to + new Vector3(-j.x, -j.y, 0f) * 0.5f;
+            p.arrivedAt = 0f;   // pre-armed: despawn shortly after arrival
+            walkers.Add(p);
+        }
+    }
 
     // -- helpers -------------------------------------------------------------
 

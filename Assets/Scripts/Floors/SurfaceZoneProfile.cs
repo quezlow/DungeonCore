@@ -92,6 +92,31 @@ public class SurfaceZoneProfile : ScriptableObject
     [Tooltip("Fraction of the next tier's threshold at which its framing appears.")]
     [Range(0.1f, 1f)] public float framingFraction = 0.7f;
 
+    [Header("The Surface War (dawn pass; distances in cells)")]
+    [Min(1f)] public float interactionRange = 75f;
+    [Range(0f, 1f)] public float hostileDawnChance = 0.35f;
+    [Min(0)] public int hostilePairCooldownDays = 2;
+    [Min(0)] public int raidLoserGrowthLoss = 3;
+    [Min(0)] public int raidWinnerGrowthLoss = 1;
+    [Range(0f, 1f)] public float caravanDawnChance = 0.25f;
+    [Tooltip("Effect suppression per tier of each hostile neighbour in range.")]
+    [Range(0f, 0.5f)] public float suppressionPerAttackerTier = 0.2f;
+    [Range(0f, 1f)] public float suppressionCap = 0.6f;
+    [Tooltip("Cross-faction stances. Same faction = kindred; unlisted pairs = neutral.")]
+    public List<FactionStanceEntry> factionStances = new List<FactionStanceEntry>
+    {
+        new FactionStanceEntry { a = FactionId.Cultists, b = FactionId.HolyOrder,
+                                 stance = CampStance.Hostile },
+        new FactionStanceEntry { a = FactionId.AdventurersGuild, b = FactionId.Cultists,
+                                 stance = CampStance.Cold },
+    };
+
+    [Header("Faction landmarks (final-tier centrepiece, FactionId order)")]
+    [Tooltip("Guild hall, church, (empty Mercenary slot), unholy temple.")]
+    public List<GameObject> factionLandmarkPrefabs = new List<GameObject>();
+    [Tooltip("Shared scaffold shown at the camp centre while the final tier frames.")]
+    public GameObject factionLandmarkFramingPrefab;
+
     [Header("Resource nodes")]
     public List<SurfaceNodeType> nodeTypes = new List<SurfaceNodeType>();
     [Min(1)] public int nodeMinSpacing = 3;
@@ -168,6 +193,9 @@ public class CampTierDef
     [Tooltip("Construction-site look for THIS tier, shown while the previous tier nears the threshold. framingProps[i] frames props[i] and lands at its exact final positions; the commerce framing rises beside the current anchor.")]
     public GameObject framingCommercePrefab;
     public List<GameObject> framingProps = new List<GameObject>();
+    [Tooltip("Ruined look after a raid displacement. ruinProps[i] ruins props[i] at the same positions; the commerce ruin takes the anchor spot.")]
+    public GameObject ruinCommercePrefab;
+    public List<GameObject> ruinProps = new List<GameObject>();
     [Tooltip("Scales the surface-life miller counts at this tier.")]
     [Min(0f)] public float millerMultiplier = 1f;
 }
@@ -177,4 +205,14 @@ public class CampPropEntry
 {
     public GameObject prefab;
     [Min(1)] public int count = 1;
+}
+
+public enum CampStance { Neutral, Cold, Hostile }
+
+[Serializable]
+public class FactionStanceEntry
+{
+    public FactionId a;
+    public FactionId b;
+    public CampStance stance;
 }
