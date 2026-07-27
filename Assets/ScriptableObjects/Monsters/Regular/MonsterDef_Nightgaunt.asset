@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Nightgaunt
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Nightgaunt
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 4645902898338611448, guid: ffdf01bfdec592b47983b868a2b7ea06, type: 3}
+  capacityCost: 5
+  manaCost: 25
+  requiredTier: 0
+  requiredRank: 9
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 5
+  description: A faceless glider that takes intruders off their feet and off their
+    nerve in one motion.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0.5
+  knockbackMinDamage: 7
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

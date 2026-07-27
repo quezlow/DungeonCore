@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_BurrowingHorror
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Burrowing Horror
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 6985277408798291153, guid: 235e9a8b0c728804588653ebeb12f370, type: 3}
+  capacityCost: 28
+  manaCost: 65
+  requiredTier: 1
+  requiredRank: 6
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 4
+  description: You hear it in the floor before you meet it in the hall. Finds the
+    wounded by the taste of blood in the stone.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 3
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

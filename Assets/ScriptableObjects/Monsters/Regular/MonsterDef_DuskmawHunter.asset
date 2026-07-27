@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: BLANK
+  m_Name: MonsterDef_DuskmawHunter
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Monster
+  monsterName: Duskmaw Hunter
   icon: {fileID: 0}
   voice: 1
   category: 0
-  prefab: {fileID: 0}
-  capacityCost: 5
-  manaCost: 25
-  requiredTier: 0
-  requiredRank: 1
+  prefab: {fileID: 6985277408798291153, guid: 235e9a8b0c728804588653ebeb12f370, type: 3}
+  capacityCost: 28
+  manaCost: 65
+  requiredTier: 1
+  requiredRank: 6
   requiresDiscovery: 0
   requiredTechKey: 
-  affinityType: 0
-  description: 
+  affinityType: 5
+  description: Mostly mouth, entirely intent. It reads a limp at forty paces.
   isAquatic: 0
   minWildFloor: 0
   wildCoreXpOnDeath: 5
@@ -33,7 +33,7 @@ MonoBehaviour:
   wildRegenMultiplier: 0
   maxStamina: 0
   attackStaminaCost: 0
-  targetPriority: 0
+  targetPriority: 3
   knockbackForce: 0
   knockbackMinDamage: 0
   isNecromancer: 0
