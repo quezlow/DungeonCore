@@ -256,6 +256,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 float across = Mathf.Abs(dx * outward.y - dy * outward.x);
                 if (along > 0f && across <= profile.roadClearance) continue;
                 if (trailCells.Contains(cell) || shoulderCells.Contains(cell)) continue;
+                if (OverlapsSurfaceRiver(cell, 0f)) continue;   // nothing grows mid-channel
                 if (InAnyCamp(cell, 0f)) continue;
                 float t = Mathf.InverseLerp(inner, outer, depth);
                 float density = Mathf.Lerp(band.densityInner, band.densityOuter, t);
@@ -288,7 +289,44 @@ public class SurfaceZoneGenerator : MonoBehaviour
 
     private void PlaceMainCamp(int inner, int outer)
     {
-        int depth = Mathf.Clamp(profile.mainCampRoadDepth, inner + 2, outer - 2);
+        int lo = inner + 2, hi = outer - 2;
+        int wanted = Mathf.Clamp(profile.mainCampRoadDepth, lo, hi);
+
+        // The main camp sits ON the road bearing, so unlike a satellite it cannot pick a
+        // new angle -- it can only slide along the road. Search outward then inward from
+        // the authored depth for the first spot clear of water, staying inside this band.
+        // If nothing in the band is clear, the river generator's road-clearance rule was
+        // supposed to have prevented it; place at the authored depth anyway rather than
+        // silently dropping the camp, and log it.
+        int depth = wanted;
+        bool clear = !OverlapsSurfaceRiver(CellAt(roadBearingDeg, depth),
+                                           profile.mainCampRadius + 1f);
+        if (!clear)
+        {
+            for (int step = 1; step <= hi - lo && !clear; step++)
+            {
+                int outAttempt = wanted + step;
+                if (outAttempt <= hi
+                    && !OverlapsSurfaceRiver(CellAt(roadBearingDeg, outAttempt),
+                                             profile.mainCampRadius + 1f))
+                {
+                    depth = outAttempt; clear = true; break;
+                }
+                int inAttempt = wanted - step;
+                if (inAttempt >= lo
+                    && !OverlapsSurfaceRiver(CellAt(roadBearingDeg, inAttempt),
+                                             profile.mainCampRadius + 1f))
+                {
+                    depth = inAttempt; clear = true; break;
+                }
+            }
+        }
+
+        if (!clear)
+            Debug.LogWarning("[SurfaceZoneGenerator] Main camp could not clear the surface " +
+                             "river inside its band; placing at the authored depth. Raise " +
+                             "TerrainFeatureGenerator.roadClearanceDegrees if this recurs.");
+
         Vector3Int cell = CellAt(roadBearingDeg, depth);
         SpawnCamp("camp.main", cell, profile.mainCampRadius, roadBearingDeg);
     }
@@ -328,7 +366,28 @@ public class SurfaceZoneGenerator : MonoBehaviour
         float along = dx * outward.x + dy * outward.y;
         float across = Mathf.Abs(dx * outward.y - dy * outward.x);
         if (along > 0f && across < profile.roadClearance + radius + 1f) return false;
+
+        // And off the water. The river is routed before the surface paints, so it is
+        // always the fixed feature here and the camp is the one that moves.
+        if (OverlapsSurfaceRiver(cell, radius + 1f)) return false;
         return true;
+    }
+
+    /// <summary>True when any cell within `radius` of `cell` is surface river water.</summary>
+    private bool OverlapsSurfaceRiver(Vector3Int cell, float radius)
+    {
+        var features = floor != null ? floor.FeatureGenerator : null;
+        if (features == null) return false;
+
+        int r = Mathf.CeilToInt(radius);
+        for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                if (dx * dx + dy * dy > r * r) continue;
+                if (features.IsSurfaceRiver(new Vector3Int(cell.x + dx, cell.y + dy, 0)))
+                    return true;
+            }
+        return false;
     }
 
     private void SpawnCamp(string id, Vector3Int cell, float radius, float bearingDeg)
@@ -389,6 +448,9 @@ public class SurfaceZoneGenerator : MonoBehaviour
         {
             if (roadCells.Contains(c)) continue;
             if (tile != null) surfaceTilemap.SetTile(c, tile);
+            // Trails give way to water. The ford is the road's business; a footpath just
+            // routes around, so a trail cell that would sit in the river is skipped.
+            if (OverlapsSurfaceRiver(c, 0f)) continue;
             trailCells.Add(c);
             pendingSweep.Add(c);
             for (int ox = -1; ox <= 1; ox++)
@@ -466,6 +528,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
             float across = Mathf.Abs(dx * outward.y - dy * outward.x);
             if (along > 0f && across <= profile.roadClearance) continue;
             if (trailCells.Contains(cell) || shoulderCells.Contains(cell)) continue;
+            if (OverlapsSurfaceRiver(cell, 0f)) continue;   // nothing grows mid-channel
             if (InAnyCamp(cell, 1f)) continue;
             bool tooClose = false;
             foreach (var n in nodeCells)

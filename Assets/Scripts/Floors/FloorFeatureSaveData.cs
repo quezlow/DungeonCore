@@ -37,6 +37,18 @@ public class RiverData
     // Dry floor banks eroded from the river's outer shell (walkable natural floor).
     // Empty on pre-bank saves, which keep behaving as all-water rivers.
     public List<SerializableVector3Int> bankCells = new();
+    // Water cells OUTSIDE the disc: the surface continuation across the forest.
+    // Deliberately separate from `cells` and `bankCells`. IsBedrock returns false
+    // outside the disc, so the MarkNaturalFloor bedrock guard would not filter
+    // these; folding them into bankCells would register thousands of forest cells
+    // as mined dungeon floor, inflating regenPerTile mana and painting the
+    // minimap. Never pass this list to MarkNaturalFloor or the dungeon water
+    // painter. Empty on saves written before the surface extension.
+    public List<SerializableVector3Int> surfaceCells = new();
+    // Cells where the surface river crosses the pilgrim road at a near-square
+    // angle: the ford. Kept so the ford art (and, later, the slow-ford movement
+    // rule) can be applied to exactly these cells.
+    public List<SerializableVector3Int> fordCells = new();
 }
 
 [Serializable]

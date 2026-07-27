@@ -141,6 +141,32 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private Tilemap waterTilemap;
     [SerializeField] private TileBase waterTile;
 
+    [Header("Surface River (floor 0 only)")]
+    [Tooltip("Separate tilemap for the forest stretch of a river, sorting above the " +
+             "surface ground and below units. Kept apart from the dungeon water tilemap " +
+             "so the forest water sprite and its sorting are independent.")]
+    [SerializeField] private Tilemap surfaceWaterTilemap;
+    [Tooltip("Water tile for the forest stretch. Distinct sprite from the cave water.")]
+    [SerializeField] private TileBase surfaceWaterTile;
+    [Tooltip("How far past the rim a river runs, in cells. Match the deepest authored " +
+             "surface band (SurfaceZoneProfile's largest outerDepth) so the river reaches " +
+             "the forest edge. The river is painted in full immediately; the camera is " +
+             "confined to the revealed bands, so the far stretch is simply out of view.")]
+    [SerializeField, Min(0)] private int surfaceRiverDepth = 100;
+    [Tooltip("Minimum angular separation between a river's rim bearing and the pilgrim " +
+             "road bearing. Inside this cone the river would run alongside the road, so " +
+             "its outward bearing is rotated away.")]
+    [SerializeField, Min(0f)] private float roadClearanceDegrees = 25f;
+    [Tooltip("How near to square a road crossing must be to become a ford. Crossings " +
+             "outside this tolerance are avoided by rotating the river away instead.")]
+    [SerializeField, Min(1f)] private float fordSquareToleranceDegrees = 25f;
+    [Tooltip("Minimum river width for a ford. Narrower rivers are steered clear of the " +
+             "road rather than forded.")]
+    [SerializeField, Min(1)] private int minFordWidth = 2;
+    [Tooltip("Half-width of the pilgrim road used for crossing tests. Keep in step with " +
+             "SurfaceZoneProfile.roadHalfWidth.")]
+    [SerializeField, Min(0.5f)] private float roadHalfWidthForFord = 2.5f;
+
     // Water cells of every revealed river, accumulated as water is painted. The cave-wall
     // renderer reads this so a discovered river is framed by caps the moment it appears,
     // even on stretches where water meets rock directly (no banks).
@@ -209,6 +235,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         GenerateRivers(rng, centerCell, floorRadius);
 
         RebuildLookup();
+        PaintAllSurfaceRivers();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated: " +
@@ -226,6 +253,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         UnfogAllRevealedFeatures();
         RepaintRevealedRiverWater();
+        PaintAllSurfaceRivers();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
@@ -570,8 +598,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
             int bankWidth = rng.Next(minRiverBank, maxRiverBank + 1);
             SplitRiverBanks(cells, bankWidth, out var waterCells, out var bankCells);
 
+            // The surface continuation. Floor 0 only: deeper floors have no forest to
+            // flow into. No banks out here -- forest floor is already walkable.
+            var surfaceCells = new HashSet<Vector3Int>();
+            var fordCells = new HashSet<Vector3Int>();
+            if (floor != null && floor.FloorIndex == 0 && surfaceRiverDepth > 0)
+                BuildSurfaceStretch(rng, polyline, width, floorCentre, floorRadius,
+                                    surfaceCells, fordCells);
+
             featureData.rivers.Add(new RiverData
             {
+                surfaceCells = ToSerializableList(surfaceCells),
+                fordCells = ToSerializableList(fordCells),
                 id = featureData.rivers.Count,
                 width = width,
                 polyline = ToSerializable(polyline),
@@ -1012,6 +1050,212 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return polyline;
     }
 
+    /// <summary>
+    /// Routes a river's outward stretch: from its rim end, across the forest, out to
+    /// surfaceRiverDepth past the rim. Two conflicts with the pilgrim road are resolved
+    /// here, in this order:
+    ///
+    ///   1. Running ALONGSIDE the road. If the river's rim bearing sits inside
+    ///      roadClearanceDegrees of the road bearing, the outward bearing is rotated
+    ///      away from the road (whichever side is further) before any routing happens.
+    ///      Two rays leaving the same centre diverge, so adequate angular separation is
+    ///      what stops the two features shadowing each other.
+    ///
+    ///   2. CROSSING the road. Meander can still sweep a river over the road further
+    ///      out. A crossing is allowed -- and recorded as a ford -- only when it is
+    ///      near-square (within fordSquareToleranceDegrees of 90) and the river is at
+    ///      least minFordWidth wide, which is what the ford art needs. Otherwise the
+    ///      candidate is rejected and re-routed on a bearing rotated further from the
+    ///      road; after the attempt budget the river is pushed clear of the road cone
+    ///      entirely and any residual crossing cells are dropped rather than painted as
+    ///      an unartworked crossing.
+    /// </summary>
+    private void BuildSurfaceStretch(
+        System.Random rng, List<Vector3Int> polyline, int width,
+        Vector3Int floorCentre, int floorRadius,
+        HashSet<Vector3Int> surfaceCells, HashSet<Vector3Int> fordCells)
+    {
+        Vector3Int rimEnd = polyline[0];
+        double rimBearing = Math.Atan2(rimEnd.y - floorCentre.y, rimEnd.x - floorCentre.x);
+
+        float roadDeg = featureData?.entranceCave != null
+            ? featureData.entranceCave.angleDegrees
+            : float.NaN;
+        bool haveRoad = !float.IsNaN(roadDeg);
+        double roadRad = haveRoad ? roadDeg * Math.PI / 180.0 : 0.0;
+
+        // Conflict 1: push the outward bearing out of the road cone.
+        double outBearing = rimBearing;
+        if (haveRoad)
+        {
+            double sep = SignedAngleDelta(outBearing, roadRad);
+            double need = roadClearanceDegrees * Math.PI / 180.0;
+            if (Math.Abs(sep) < need)
+                outBearing = roadRad + (sep >= 0 ? need : -need);
+        }
+
+        const int attempts = 6;
+        for (int attempt = 0; attempt < attempts; attempt++)
+        {
+            var line = BuildSurfacePolyline(rng, rimEnd, outBearing,
+                                            floorCentre, floorRadius);
+            if (line.Count < 2) return;
+
+            var painted = PaintSurfaceRiver(line, width, floorCentre, floorRadius);
+            if (painted.Count == 0) return;
+
+            if (!haveRoad)
+            {
+                foreach (var c in painted) surfaceCells.Add(c);
+                return;
+            }
+
+            // Conflict 2: judge every road crossing.
+            bool lastPass = attempt == attempts - 1;
+            var crossing = CollectRoadCrossing(painted, floorCentre, roadRad);
+            if (crossing.Count == 0)
+            {
+                foreach (var c in painted) surfaceCells.Add(c);
+                return;
+            }
+
+            bool square = CrossingIsSquare(line, floorCentre, roadRad);
+            if (square && width >= minFordWidth)
+            {
+                foreach (var c in painted) surfaceCells.Add(c);
+                foreach (var c in crossing) fordCells.Add(c);
+                return;
+            }
+
+            if (lastPass)
+            {
+                // Out of attempts: keep the river but drop the unartworked crossing.
+                foreach (var c in painted)
+                    if (!crossing.Contains(c)) surfaceCells.Add(c);
+                return;
+            }
+
+            // Rotate further from the road and try again.
+            double away = SignedAngleDelta(outBearing, roadRad) >= 0 ? 1.0 : -1.0;
+            outBearing += away * (roadClearanceDegrees * Math.PI / 180.0) * 0.75;
+        }
+    }
+
+    /// <summary>Smallest signed angle from b to a, in radians, wrapped to -PI..PI.</summary>
+    private static double SignedAngleDelta(double a, double b)
+    {
+        double d = a - b;
+        while (d > Math.PI) d -= 2.0 * Math.PI;
+        while (d < -Math.PI) d += 2.0 * Math.PI;
+        return d;
+    }
+
+    /// <summary>Outward centreline, meandering like the cave stretch, stopping once it
+    /// passes surfaceRiverDepth beyond the rim.</summary>
+    private List<Vector3Int> BuildSurfacePolyline(
+        System.Random rng, Vector3Int rimEnd, double bearing,
+        Vector3Int floorCentre, int floorRadius)
+    {
+        double meanderRad = riverMeanderDegrees * Math.PI / 180.0;
+        double limit = floorRadius + surfaceRiverDepth;
+
+        var line = new List<Vector3Int> { rimEnd };
+        double cx = rimEnd.x, cy = rimEnd.y, dir = bearing;
+
+        // Generous step budget: meander means the path is longer than the radial gap.
+        int maxSteps = Mathf.Max(4, (surfaceRiverDepth / Mathf.Max(1, riverSegmentLength)) * 3);
+        for (int i = 0; i < maxSteps; i++)
+        {
+            // Half the cave meander: a forest river should wander, not switchback across
+            // the road repeatedly, and every extra sweep is another crossing to judge.
+            dir += (rng.NextDouble() - 0.5) * meanderRad;
+            cx += Math.Cos(dir) * riverSegmentLength;
+            cy += Math.Sin(dir) * riverSegmentLength;
+
+            var next = new Vector3Int((int)Math.Round(cx), (int)Math.Round(cy), 0);
+            line.Add(next);
+
+            double ddx = cx - floorCentre.x, ddy = cy - floorCentre.y;
+            if (Math.Sqrt(ddx * ddx + ddy * ddy) >= limit) break;
+        }
+        return line;
+    }
+
+    /// <summary>Dilate the outward centreline. Mirrors PaintRiver but keeps only cells
+    /// OUTSIDE the disc, so the dungeon stretch is untouched and the rim itself stays
+    /// solid -- the bedrock band is never watered by this pass.</summary>
+    private HashSet<Vector3Int> PaintSurfaceRiver(
+        List<Vector3Int> line, int width, Vector3Int floorCentre, int floorRadius)
+    {
+        var centreline = new HashSet<Vector3Int>();
+        for (int i = 0; i < line.Count - 1; i++)
+            foreach (var p in BresenhamLine(line[i], line[i + 1]))
+                centreline.Add(p);
+
+        int half = (width - 1) / 2;
+        int extra = (width - 1) - 2 * half;
+
+        var dilated = new HashSet<Vector3Int>();
+        foreach (var c in centreline)
+            for (int dx = -half; dx <= half + extra; dx++)
+                for (int dy = -half; dy <= half + extra; dy++)
+                {
+                    var p = new Vector3Int(c.x + dx, c.y + dy, 0);
+                    if (IsInFloorRadius(p, floorCentre, floorRadius)) continue;   // disc is not ours
+                    dilated.Add(p);
+                }
+        return dilated;
+    }
+
+    /// <summary>Painted cells that lie on the pilgrim road corridor.</summary>
+    private HashSet<Vector3Int> CollectRoadCrossing(
+        HashSet<Vector3Int> painted, Vector3Int floorCentre, double roadRad)
+    {
+        double ox = Math.Cos(roadRad), oy = Math.Sin(roadRad);
+        var hit = new HashSet<Vector3Int>();
+        foreach (var c in painted)
+        {
+            double dx = c.x - floorCentre.x, dy = c.y - floorCentre.y;
+            double along = dx * ox + dy * oy;
+            if (along <= 0) continue;
+            double across = Math.Abs(dx * oy - dy * ox);
+            if (across <= roadHalfWidthForFord) hit.Add(c);
+        }
+        return hit;
+    }
+
+    /// <summary>True when the centreline meets the road near-square. Measured on the
+    /// segment whose midpoint sits closest to the road axis, which is the crossing the
+    /// ford art would have to cover.</summary>
+    private bool CrossingIsSquare(
+        List<Vector3Int> line, Vector3Int floorCentre, double roadRad)
+    {
+        double ox = Math.Cos(roadRad), oy = Math.Sin(roadRad);
+        double bestAcross = double.MaxValue;
+        double bestAngle = 0;
+        bool found = false;
+
+        for (int i = 0; i < line.Count - 1; i++)
+        {
+            double mx = (line[i].x + line[i + 1].x) * 0.5 - floorCentre.x;
+            double my = (line[i].y + line[i + 1].y) * 0.5 - floorCentre.y;
+            if (mx * ox + my * oy <= 0) continue;
+            double across = Math.Abs(mx * oy - my * ox);
+            if (across >= bestAcross) continue;
+
+            bestAcross = across;
+            double sx = line[i + 1].x - line[i].x, sy = line[i + 1].y - line[i].y;
+            if (sx == 0 && sy == 0) continue;
+            bestAngle = Math.Atan2(sy, sx);
+            found = true;
+        }
+        if (!found) return false;
+
+        double delta = Math.Abs(SignedAngleDelta(bestAngle, roadRad)) * 180.0 / Math.PI;
+        if (delta > 90.0) delta = 180.0 - delta;
+        return Math.Abs(delta - 90.0) <= fordSquareToleranceDegrees;
+    }
+
     private HashSet<Vector3Int> PaintRiver(
         List<Vector3Int> polyline, int width,
         Vector3Int floorCentre, int floorRadius)
@@ -1231,6 +1475,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
     }
 
     /// <summary>Paint one river's cells into the water tilemap (real rendering).</summary>
+    private static List<SerializableVector3Int> ToSerializableList(HashSet<Vector3Int> cells)
+    {
+        var list = new List<SerializableVector3Int>(cells.Count);
+        foreach (var c in cells) list.Add(SerializableVector3Int.From(c));
+        return list;
+    }
+
+    /// <summary>Every surface river cell on this floor. Read by SurfaceZoneGenerator so
+    /// camps and trails can steer clear of water.</summary>
+    public bool IsSurfaceRiver(Vector3Int cell) => surfaceRiverCells.Contains(cell);
+
+    /// <summary>True where the surface river crosses the pilgrim road: the ford.</summary>
+    public bool IsFord(Vector3Int cell) => surfaceFordCells.Contains(cell);
+
+    private readonly HashSet<Vector3Int> surfaceRiverCells = new();
+    private readonly HashSet<Vector3Int> surfaceFordCells = new();
+
+    /// <summary>Paints every river's surface stretch and fills the lookup sets. Unlike the
+    /// cave stretch this does NOT wait on discovery: water entering the forest is the
+    /// agreed hint that a river runs somewhere in the rock below. Called on fresh
+    /// generation and on load.</summary>
+    public void PaintAllSurfaceRivers()
+    {
+        surfaceRiverCells.Clear();
+        surfaceFordCells.Clear();
+        if (featureData?.rivers == null) return;
+
+        foreach (var r in featureData.rivers)
+        {
+            if (r.surfaceCells != null)
+                foreach (var sv in r.surfaceCells)
+                {
+                    var c = sv.ToVector3Int();
+                    surfaceRiverCells.Add(c);
+                    if (surfaceWaterTilemap != null && surfaceWaterTile != null)
+                        surfaceWaterTilemap.SetTile(c, surfaceWaterTile);
+                }
+            if (r.fordCells != null)
+                foreach (var sv in r.fordCells) surfaceFordCells.Add(sv.ToVector3Int());
+        }
+    }
+
     private void PaintRiverWater(int riverId)
     {
         if (waterTilemap == null || waterTile == null) return;

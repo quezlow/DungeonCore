@@ -644,6 +644,7 @@ RectTransform:
   - {fileID: 215419048}
   - {fileID: 1590348377}
   - {fileID: 1023079008}
+  - {fileID: 1608417737}
   - {fileID: 528681698}
   - {fileID: 47321877}
   - {fileID: 1415786502}
@@ -3385,6 +3386,10 @@ MonoBehaviour:
   driftAmplitude: 0.08
   driftSpeed: 0.7
   roamRadius: 2
+  exciteSpeedMultiplier: 3.2
+  exciteRadiusMultiplier: 1.5
+  exciteDuration: 4
+  exciteAttackFraction: 0.25
   roamSpeed: 0.25
   panel: {fileID: 176261307}
   panelText: {fileID: 301060677}
@@ -5415,8 +5420,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceField
   baseReach: 8
   reachPerLevel: 3
+  reachPerDay: 1.6
   fieldDepthMargin: 10
-  ambientInterval: 3
+  ambientIntervalDay1: 10
+  ambientIntervalRamped: 0.466
+  ambientRampDays: 100
   surgeInterval: 0.2
   surgeDuration: 30
   suppressionFraction: 0.5
@@ -6600,6 +6608,7 @@ MonoBehaviour:
   summonTabButton: {fileID: 1754523867}
   buildSubmenuPanel: {fileID: 1023079007}
   buildEntryContainer: {fileID: 1023079008}
+  mineEntryContainer: {fileID: 1608417737}
   submenuEntryPrefab: {fileID: 3938589388791077788, guid: 1142012de544fca43bba562f9d6405f8, type: 3}
   buildEntries:
   - label: Chest
@@ -13780,6 +13789,13 @@ MonoBehaviour:
   wildMonsterCellDivisor: 6
   waterTilemap: {fileID: 1113643928}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
+  surfaceWaterTilemap: {fileID: 0}
+  surfaceWaterTile: {fileID: 0}
+  surfaceRiverDepth: 100
+  roadClearanceDegrees: 25
+  fordSquareToleranceDegrees: 25
+  minFordWidth: 2
+  roadHalfWidthForFord: 2.5
   autoPaintDebugOverlay: 1
   debugOverlayTilemap: {fileID: 1163852729}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
@@ -43361,6 +43377,108 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1606790493}
   m_CullTransparentMesh: 1
+--- !u!1 &1608417736
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1608417737}
+  - component: {fileID: 1608417740}
+  - component: {fileID: 1608417739}
+  - component: {fileID: 1608417738}
+  m_Layer: 5
+  m_Name: MineSubmenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1608417737
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608417736}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 25130119}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: 0, y: 190}
+  m_SizeDelta: {x: 700, y: 75}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1608417738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608417736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
+  m_Padding:
+    m_Left: 8
+    m_Right: 8
+    m_Top: 8
+    m_Bottom: 8
+  m_ChildAlignment: 4
+  m_Spacing: 6
+  m_ChildForceExpandWidth: 0
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 1
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
+--- !u!114 &1608417739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608417736}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 21300000, guid: b66fa8fe33f3b364e8aab081b94e43a2, type: 3}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &1608417740
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1608417736}
+  m_CullTransparentMesh: 1
 --- !u!1 &1615292747
 GameObject:
   m_ObjectHideFlags: 0
@@ -52715,7 +52833,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99744385
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -54922,7 +55040,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00090583105}
+  m_AnchoredPosition: {x: 0, y: -0.000018857503}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
