@@ -23,10 +23,12 @@ MonoBehaviour:
   requiredRank: 1
   requiresDiscovery: 0
   requiredTechKey: tech.skeleton
+  affinityType: 0
   description: "A reanimated warrior stripped down to bone and instinct. Cheap to
     summon and easy to replace, skeletons form the backbone of any fledgling dungeon.
     Don't expect them to win many fights \u2014 expect them to buy time."
   isAquatic: 0
+  minWildFloor: 0
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5

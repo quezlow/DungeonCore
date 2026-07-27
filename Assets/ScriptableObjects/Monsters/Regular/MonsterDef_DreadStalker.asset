@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_DreadStalker
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Dread Stalker
+  icon: {fileID: 0}
+  voice: 0
+  category: 0
+  prefab: {fileID: 9092236193772564810, guid: 2d8f1be54f4919a479b11872a415ce0e, type: 3}
+  capacityCost: 60
+  manaCost: 130
+  requiredTier: 2
+  requiredRank: 4
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 0
+  description: You hear the mage stop chanting before you hear the stalker at all.
+    Built to delete a backline and be gone.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 1
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

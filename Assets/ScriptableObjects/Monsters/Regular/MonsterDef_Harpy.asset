@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Harpy
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Harpy
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 3606659310655825585, guid: da943219c14d80c46946aeb9122249f9, type: 3}
+  capacityCost: 22
+  manaCost: 55
+  requiredTier: 1
+  requiredRank: 6
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 0
+  description: Fast, shrill, and spiteful with intent. Harpies dive past the shields
+    to open the cleric first, and a party without its healer is half a party.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 2
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

@@ -124,6 +124,16 @@ public static class TechContentGenerator
             "Necromancers may be placed.");
         n_whisperer_in_marrow.affinity = DungeonType.Dark;
 
+        var n_barrow_oaths = Define("barrow_oaths", "Barrow Oaths", ResearchPath.Bestiary, 3, 35, 3,
+            "Oaths outlast the flesh that swore them.",
+            "Barrow Knights may be placed.");
+        n_barrow_oaths.affinity = DungeonType.Earth;
+
+        var n_litany_of_graves = Define("litany_of_graves", "Litany of Graves", ResearchPath.Bestiary, 4, 60, 4,
+            "The whisper becomes a sermon.",
+            "Deathpriests may be placed.");
+        n_litany_of_graves.affinity = DungeonType.Dark;
+
         var n_vaulted_reserves = Define("vaulted_reserves", "Vaulted Reserves", ResearchPath.Architecture, 2, 15, 2,
             "Somewhere below, room enough for more.",
             "Treasuries may be built. Requires the pattern of Silverwork.");
@@ -182,6 +192,8 @@ public static class TechContentGenerator
         AddPrereq(n_bones_in_iron, n_skeleton);
         AddPrereq(n_whisperer_in_marrow, n_shambling_dead);
         AddPrereq(n_whisperer_in_marrow, n_bones_in_iron);
+        AddPrereq(n_barrow_oaths, n_bones_in_iron);
+        AddPrereq(n_litany_of_graves, n_whisperer_in_marrow);
         AddPrereq(n_study_holy, n_known_parties);
         n_study_holy.visibility = TechNodeDefinition.VisibilityCondition.KeyUnlocked;
         n_study_holy.visibilityKey = "encounter.holy_order";
@@ -222,7 +234,7 @@ public static class TechContentGenerator
 
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_minimap, n_alerts, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
-             n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
+            n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_barrow_oaths, n_litany_of_graves, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
             n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3 });
 
         // Gate keys on the definitions that consume them.
@@ -230,6 +242,8 @@ public static class TechContentGenerator
         PatchKey(MonsterFolder + "/MonsterDef_Zombie.asset", "tech.shambling_dead");
         PatchKey(MonsterFolder + "/MonsterDef_ArmoredSkeleton.asset", "tech.bones_in_iron");
         PatchKey(MonsterFolder + "/MonsterDef_Necromancer.asset", "tech.whisperer_in_marrow");
+        PatchKey(MonsterFolder + "/MonsterDef_BarrowKnight.asset", "tech.barrow_oaths");
+        PatchKey(MonsterFolder + "/MonsterDef_Deathpriest.asset", "tech.litany_of_graves");
         PatchKey(RoomFolder + "/Room_Shrine.asset", "tech.consecrant_masonry");
         PatchKey(RoomFolder + "/Room_BossRoom.asset", "tech.deep_foundations");
         PatchKey(RoomFolder + "/Room_Treasury.asset", "tech.vaulted_reserves");

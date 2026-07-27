@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: WildDef_CaveTroll
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Cave Troll
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 7395350954221493971, guid: e27e76492590e504186021dac4ba568f, type: 3}
+  capacityCost: 26
+  manaCost: 60
+  requiredTier: 1
+  requiredRank: 4
+  requiresDiscovery: 1
+  requiredTechKey: 
+  affinityType: 0
+  description: The deep floors' landlord. Wounds close as fast as they open unless
+    the thing is put down in one sustained push - slay one wild and the core learns
+    the shape.
+  isAquatic: 0
+  minWildFloor: 1
+  wildCoreXpOnDeath: 12
+  passiveRegenPerSecond: 2
+  regenCooldown: 8
+  wildRegenMultiplier: 1
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0.7
+  knockbackMinDamage: 8
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

@@ -33,6 +33,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "plus a chamber's half-extent.")]
     [SerializeField, Min(0)] private int chamberRimMargin = 10;
 
+    [Tooltip("How far in from the disc edge a river runs bank-free, in cells. Where a " +
+             "river crosses the bedrock rim its channel is water wall-to-wall: dry banks " +
+             "there would render as cave wall (banks are RiverBank, not River, so IsSolid " +
+             "treats them as rock) and stand between the cave river and the forest river. " +
+             "Cover the thickest possible rim -- TerrainTypeMap's maxRingThickness, 6 by " +
+             "default -- plus a cell of slack. The rim map is generated AFTER features, so " +
+             "bedrock cannot be queried directly here.")]
+    [SerializeField, Min(0)] private int riverBankRimMargin = 7;
+
     // ── Inspector — Rivers ────────────────────────────────────────
 
     [Header("Rivers")]
@@ -596,7 +605,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
             // Erode the outer shell into dry floor banks; the eroded core stays water.
             int bankWidth = rng.Next(minRiverBank, maxRiverBank + 1);
-            SplitRiverBanks(cells, bankWidth, out var waterCells, out var bankCells);
+            SplitRiverBanks(cells, bankWidth, floorCentre,
+                            Mathf.Max(0, floorRadius - riverBankRimMargin),
+                            out var waterCells, out var bankCells);
 
             // The surface continuation. Floor 0 only: deeper floors have no forest to
             // flow into. No banks out here -- forest floor is already walkable.
@@ -1291,19 +1302,37 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// the next pass would leave no water, so a channel always survives and very thin
     /// rivers simply get no banks. Erosion is symmetric, so both banks share a width.
     /// </summary>
+    /// <summary>
+    /// Splits a river footprint into a water core and dry floor banks by peeling the outer
+    /// shell inward bankWidth times.
+    ///
+    /// Cells at or beyond noBankRadius (measured from floorCentre) are never peeled: where
+    /// the river crosses the bedrock rim the channel stays water wall-to-wall. A dry bank
+    /// there is registered as FeatureType.RiverBank, which IsRiver does not match, so
+    /// CaveWallClassifier.IsSolid treats it as rock and the renderer frames it -- putting a
+    /// wall between the cave river and the forest river. Keeping it water avoids that, and
+    /// reads better besides: a gorge cut through bedrock has no walkable shelf.
+    /// </summary>
     private static void SplitRiverBanks(
         HashSet<Vector3Int> footprint, int bankWidth,
+        Vector3Int floorCentre, int noBankRadius,
         out HashSet<Vector3Int> water, out HashSet<Vector3Int> banks)
     {
         water = new HashSet<Vector3Int>(footprint);
         banks = new HashSet<Vector3Int>();
         var ring = new List<Vector3Int>();
 
+        long noBankSq = (long)noBankRadius * noBankRadius;
+
         for (int k = 0; k < bankWidth; k++)
         {
             ring.Clear();
             foreach (var c in water)
             {
+                // Out in the rim the channel keeps its full width as water.
+                long ddx = c.x - floorCentre.x, ddy = c.y - floorCentre.y;
+                if (noBankRadius > 0 && ddx * ddx + ddy * ddy >= noBankSq) continue;
+
                 bool edge = false;
                 for (int dx = -1; dx <= 1 && !edge; dx++)
                     for (int dy = -1; dy <= 1; dy++)

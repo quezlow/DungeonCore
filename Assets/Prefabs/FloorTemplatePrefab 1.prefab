@@ -2171,6 +2171,7 @@ MonoBehaviour:
   minChamberCellCount: 6
   chamberSpacing: 10
   chamberRimMargin: 10
+  riverBankRimMargin: 7
   minRivers: 1
   maxRivers: 3
   minRiverControlPoints: 12
@@ -2208,6 +2209,7 @@ MonoBehaviour:
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
   - {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
+  - {fileID: 11400000, guid: 58d52f690d9084243b56898f6f829816, type: 2}
   wildMonsterMin: 2
   wildMonsterMax: 6
   wildMonsterCellDivisor: 6

@@ -23,10 +23,12 @@ MonoBehaviour:
   requiredRank: 1
   requiresDiscovery: 0
   requiredTechKey: tech.bones_in_iron
+  affinityType: 0
   description: "A skeleton given purpose \u2014 and a weapon worth fearing. The extra
     reinforcement comes at a cost, but an armoured skeleton hits hard enough to make
     adventurers reconsider how deep they really want to go."
   isAquatic: 0
+  minWildFloor: 0
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5

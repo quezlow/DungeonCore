@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_BarrowKnight
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Barrow Knight
+  icon: {fileID: 0}
+  voice: 2
+  category: 2
+  prefab: {fileID: 6521305296123377141, guid: 0a52c54723cfb6b48b5606b59142258a, type: 3}
+  capacityCost: 24
+  manaCost: 60
+  requiredTier: 1
+  requiredRank: 5
+  requiresDiscovery: 0
+  requiredTechKey: tech.barrow_oaths
+  affinityType: 0
+  description: Sworn steel from a kingdom the maps forgot. Researched, not remembered
+    - the barrow gives up its knights only to a core that asks properly.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 40
+  attackStaminaCost: 8
+  targetPriority: 0
+  knockbackForce: 0.5
+  knockbackMinDamage: 8
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

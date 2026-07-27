@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_DireBat
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Dire Bat
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 1323615749195102433, guid: 63157ac704a7546479416aa83c4ce743, type: 3}
+  capacityCost: 4
+  manaCost: 15
+  requiredTier: 0
+  requiredRank: 2
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 0
+  description: A shriek with wings. Too frail to hold a corridor, fast enough to
+    reach one first - bats bleed a party's attention while heavier things arrive.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

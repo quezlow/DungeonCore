@@ -23,10 +23,12 @@ MonoBehaviour:
   requiredRank: 1
   requiresDiscovery: 0
   requiredTechKey: tech.shambling_dead
+  affinityType: 0
   description: Slow, relentless, and difficult to put down. Zombies absorb punishment
     that would drop a skeleton in seconds, making them ideal for chokepoints and
     doorways. Just don't ask them to catch anything that runs.
   isAquatic: 0
+  minWildFloor: 0
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5

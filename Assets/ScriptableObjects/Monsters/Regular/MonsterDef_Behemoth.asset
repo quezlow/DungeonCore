@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Behemoth
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Behemoth
+  icon: {fileID: 0}
+  voice: 1
+  category: 0
+  prefab: {fileID: 6910478383271677086, guid: 8879cfa4e4c561f43b261d108592242a, type: 3}
+  capacityCost: 160
+  manaCost: 300
+  requiredTier: 3
+  requiredRank: 3
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 0
+  description: The floor plan's final argument. Nothing about a behemoth is subtle,
+    including the bill - but a hero's party breaks on it like water.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 1.5
+  knockbackMinDamage: 14
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0.8

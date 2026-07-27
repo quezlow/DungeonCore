@@ -169,6 +169,20 @@ public class WildMonsterController : MonoBehaviour
             return;
         }
 
+        // Depth banding: a definition below its minimum wild floor never rolls
+        // here, so one shared template pool can carry deep-floor wilds without
+        // them surfacing in floor-0 chambers.
+        var depthPool = new List<MonsterDefinition>(pool.Count);
+        for (int p = 0; p < pool.Count; p++)
+            if (pool[p] != null && floor.FloorIndex >= pool[p].minWildFloor)
+                depthPool.Add(pool[p]);
+        if (depthPool.Count == 0)
+        {
+            ch.aliveWildCount = 0;
+            features.MarkChamberCleared(ch.id);
+            return;
+        }
+
         int floorSeed = FloorManager.Instance != null ? FloorManager.Instance.GetFloorSeed(floor.FloorIndex) : 0;
         var rng = new System.Random(unchecked(floorSeed * 31 + ch.id));
 
@@ -185,7 +199,7 @@ public class WildMonsterController : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            MonsterDefinition def = pool[rng.Next(pool.Count)];
+            MonsterDefinition def = depthPool[rng.Next(depthPool.Count)];
             if (def == null || def.prefab == null) continue;
 
             var spawnCell = openCells[rng.Next(openCells.Count)];

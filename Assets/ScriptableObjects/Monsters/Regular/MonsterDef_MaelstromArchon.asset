@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_MaelstromArchon
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Maelstrom Archon
+  icon: {fileID: 0}
+  voice: 3
+  category: 1
+  prefab: {fileID: 1275702871124272480, guid: ad710519c6d85744ab94b0dd61be8b4c, type: 3}
+  capacityCost: 130
+  manaCost: 260
+  requiredTier: 3
+  requiredRank: 2
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 2
+  description: What an adept becomes if the element does not burn through first.
+    The long windup is the mercy; the reach is not.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 1
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 1

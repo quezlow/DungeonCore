@@ -85,14 +85,22 @@ public class MonsterSelectionUI : MonoBehaviour
     public void OnPrevClicked()
     {
         if (registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex - 1 + registry.All.Count) % registry.All.Count;
+        for (int i = 0; i < registry.All.Count; i++)
+        {
+            selectedIndex = (selectedIndex - 1 + registry.All.Count) % registry.All.Count;
+            if (AffinityAllowed(registry.All[selectedIndex])) break;
+        }
         RefreshDisplay();
     }
 
     public void OnNextClicked()
     {
         if (registry.All == null || registry.All.Count == 0) return;
-        selectedIndex = (selectedIndex + 1) % registry.All.Count;
+        for (int i = 0; i < registry.All.Count; i++)
+        {
+            selectedIndex = (selectedIndex + 1) % registry.All.Count;
+            if (AffinityAllowed(registry.All[selectedIndex])) break;
+        }
         RefreshDisplay();
     }
 
@@ -136,9 +144,28 @@ public class MonsterSelectionUI : MonoBehaviour
         return string.IsNullOrEmpty(rooms) ? "" : $"\nMusters in: {rooms}";
     }
 
+    /// <summary>
+    /// True when the def serves the current core's type. Universal defs always
+    /// pass; a typed def passes only when the core's DungeonType matches, so a
+    /// Fire core never so much as sees the Tide Adept in the picker.
+    /// </summary>
+    private static bool AffinityAllowed(MonsterDefinition def)
+        => def != null
+        && def.AffinityMatches(DungeonCore.Instance != null
+            ? DungeonCore.Instance.DungeonType : DungeonType.None);
+
     private void Show()
     {
         if (panel != null) panel.SetActive(true);
+
+        // Snap off a wrong-affinity selection (e.g. after loading a different
+        // core's save) and refresh lock states that may have changed while the
+        // panel was closed.
+        if (registry.All != null && registry.All.Count > 0
+            && !AffinityAllowed(registry.All[selectedIndex]))
+            OnNextClicked();
+        else
+            RefreshDisplay();
     }
 
     private void Hide()

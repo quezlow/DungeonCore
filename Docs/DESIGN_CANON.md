@@ -73,6 +73,8 @@ the supersession in one line.
 23. Trophy Hall
 24. Surface World: Radial Forest Bands
 25. Camp Growth, Identity & Effects
+26. ???
+27. Bestiary Expansion
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -1451,6 +1453,58 @@ pressure (deferred until a mechanic earns it); Holy reputation-drift into
 the escalation system (effects-v2 candidate -- the mana tax ships first);
 commerce framing-in-place (the current anchor occupies the spot; beside-
 then-replace is the accepted exception).
+
+---
+
+## 26. ???
+
+---
+
+## 27. Bestiary Expansion (Level-Gated Roster, Affinity Reskins, Depth-Banded Wilds)
+
+Status: SHIPPED. Verified: <date of landing>.
+
+**Roster:** 26 new designs (36 definitions) spanning Bronze 2 through Diamond 3,
+1 per rank Bronze 2-10 and 1-2 per rank Silver+, gated by
+`requiredTier`/`requiredRank` (the pre-wired flat-level gate). Level-ups deliver
+monsters automatically -- the core remembering as it grows -- while research keeps
+the specialist branch: Barrow Knight (`tech.barrow_oaths`, Bestiary tier 3, Earth
+affinity, prereq Bones in Iron) and Deathpriest (`tech.litany_of_graves`, Bestiary
+tier 4, Dark affinity, prereq Whisperer in Marrow; the only new active-necromancy
+source, raising Skeleton/Zombie/Ghoul). Both nodes live in TechContentGenerator
+(generator-authoritative). Category spread Beast 8 / Humanoid 8 / Undead 10 keeps
+all three muster rooms relevant through Diamond.
+
+**Affinity reskins:** `MonsterDefinition.affinityType` (DungeonType, None =
+universal). A typed def is HIDDEN from the picker (skip-navigation +
+Show()-snap in MonsterSelectionUI) and rejected at placement
+(`AffinityMatches` gate in DungeonBuildController) when the core's type
+differs -- the player only ever sees their own core's skin. Two six-skin
+families ship: Adept (Silver 3; Cinder/Tide/Gale/Shale/Umbral/Radiant) and
+Archon (Diamond 2; Pyre/Maelstrom/Tempest/Terra/Void/Dawn). Reskins are
+COSMETIC ONLY by ruling -- one stat block per family; per-skin mechanics are a
+future design fork. Skin names are save keys (restore skips the affinity gate
+by design; a save reloads under its own core type).
+
+**Mage model:** ranged monsters follow the adventurer-Mage convention -- large
+attackRange (Adept 3.6, Archon 4.2) plus telegraphSeconds, no projectile
+system.
+
+**Depth-banded wilds:** `MonsterDefinition.minWildFloor` (default 0);
+WildMonsterController filters the shared template pool per floor before the
+seeded chamber roll (restore path untouched). First user: Cave Troll
+(minWildFloor 1, requiresDiscovery, wildRegenMultiplier 1) -- the discovery
+channel's Silver-band entry, placeable at Silver 4 after a wild kill.
+
+**Key files:** `Monster/MonsterDefinition.cs`, `UI/MonsterSelectionUI.cs`,
+`DungeonCore/DungeonBuildController.cs`, `Monster/WildMonsterController.cs`,
+`Editor/TechContentGenerator.cs` (in Assets/Editor).
+
+**Rejected:** shown-but-locked display for wrong-type skins (breaks the reskin
+illusion); per-floor wild pool assets (one shared pool + depth field is the
+authored surface); a monster projectile system (adventurer-Mage hitscan
+convention holds); mechanical flavour on reskins (deferred as a fork, not
+built).
 
 ---
 

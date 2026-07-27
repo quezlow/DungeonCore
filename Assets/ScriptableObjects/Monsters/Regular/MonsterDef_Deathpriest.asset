@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_Deathpriest
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Deathpriest
+  icon: {fileID: 0}
+  voice: 3
+  category: 1
+  prefab: {fileID: 3677393410031653881, guid: 6b4ddd45e6f5347459d929b07c67e9c7, type: 3}
+  capacityCost: 60
+  manaCost: 130
+  requiredTier: 2
+  requiredRank: 2
+  requiresDiscovery: 0
+  requiredTechKey: tech.litany_of_graves
+  affinityType: 0
+  description: Where the necromancer whispers, this one preaches. Every corpse an
+    intruder makes is a congregation waiting - researched deep in the Bestiary path.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 0
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 1
+  raiseRange: 3.5
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 6
+  maxRisen: 4
+  risenLifetime: 45
+  risenDefinitions:
+  - {fileID: 11400000, guid: 5a5166ef10480db4399df78641f7470a, type: 2}
+  - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
+  - {fileID: 11400000, guid: 09b6c74df3aac884da6b81f3de5bc076, type: 2}
+  telegraphSeconds: 0.6

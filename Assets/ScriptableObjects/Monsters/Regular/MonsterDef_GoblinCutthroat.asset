@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
+  m_Name: MonsterDef_GoblinCutthroat
+  m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
+  monsterName: Goblin Cutthroat
+  icon: {fileID: 0}
+  voice: 3
+  category: 1
+  prefab: {fileID: 8579735379990993795, guid: 373f768b8d1364b47913182729d9e4cb, type: 3}
+  capacityCost: 6
+  manaCost: 20
+  requiredTier: 0
+  requiredRank: 4
+  requiresDiscovery: 0
+  requiredTechKey: 
+  affinityType: 0
+  description: Small, vicious, and honest about it. Cutthroats single out whoever
+    is already bleeding - pair them with anything that opens wounds.
+  isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 0
+  regenCooldown: 5
+  wildRegenMultiplier: 0
+  maxStamina: 0
+  attackStaminaCost: 0
+  targetPriority: 3
+  knockbackForce: 0
+  knockbackMinDamage: 0
+  isNecromancer: 0
+  raiseRange: 3
+  raiseChannelSeconds: 1.5
+  raiseCooldown: 5
+  maxRisen: 3
+  risenLifetime: 45
+  risenDefinitions: []
+  telegraphSeconds: 0

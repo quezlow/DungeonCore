@@ -64,6 +64,12 @@ public class MonsterDefinition : ScriptableObject
            + "wild discovery its own.")]
     public string requiredTechKey = "";
 
+    [Header("Affinity")]
+    [Tooltip("If not None, this monster belongs to cores of that type only: it is "
+           + "hidden from the build picker and unplaceable when the core's DungeonType "
+           + "differs. None = universal. Reskin families set one skin per type.")]
+    public DungeonType affinityType = DungeonType.None;
+
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;
@@ -72,6 +78,11 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("DAY 31 — If true, this monster ignores river fording slowdown. " +
              "Reserved for future aquatic creature designs.")]
     public bool isAquatic = false;
+
+    [Tooltip("Lowest floor index on which this definition may roll as a wild spawn. "
+           + "0 = any floor. Lets deeper floors carry stronger wilds from the one "
+           + "shared template pool.")]
+    [Min(0)] public int minWildFloor = 0;
 
     [Header("Core XP")]
     [Tooltip("Core XP granted when this beast is slain in the wild. Keep it well below an " +
@@ -141,4 +152,8 @@ public class MonsterDefinition : ScriptableObject
 
     /// <summary>Flat dungeon level at which this monster unlocks (from requiredTier / requiredRank).</summary>
     public int RequiredFlatLevel => LevelTierUtil.ToFlatLevel(requiredTier, requiredRank);
+
+    /// <summary>True when this monster serves the given core type (None = serves all).</summary>
+    public bool AffinityMatches(DungeonType coreType)
+        => affinityType == DungeonType.None || affinityType == coreType;
 }
