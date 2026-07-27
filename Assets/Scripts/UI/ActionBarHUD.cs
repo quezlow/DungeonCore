@@ -108,7 +108,9 @@ public class ActionBarHUD : MonoBehaviour
         }
 
         BuildSubmenuEntries();
+        BuildMineSubmenuEntries();   // without this the mine sub-menu opens empty
         HideBuildPanel();
+        HideMinePanel();
 
         pushTabButton?.onClick.AddListener(OnPushTabClicked);
         mineTabButton?.onClick.AddListener(OnMineTabClicked);
@@ -168,17 +170,31 @@ public class ActionBarHUD : MonoBehaviour
     private void OnMineTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
+
+        // Mirrors OnBuildTabClicked. Whether the sub-menu is open -- not which tab is
+        // lit -- is the toggle state, because Mine can be entered by hotkey or by a
+        // post-placement revert without the panel ever having opened.
+        bool wasOpen = MinePanelOpen;
+
         HideBuildPanel();
+        HideMinePanel();
+
+        if (wasOpen)
+        {
+            // Toggle OFF: leave mine mode entirely, matching Build's second click.
+            DungeonBuildController.Instance.SetMode(BuildMode.None);
+            currentTab = ActiveTab.None;
+            UpdateTabHighlights();
+            return;
+        }
+
         DungeonBuildController.Instance.SetMode(BuildMode.Mine);
 
         // SetMode is a no-op if already Mine (HandleModeChanged won't fire),
         // so force the visual state explicitly as a fallback.
         currentTab = ActiveTab.Mine;
         UpdateTabHighlights();
-
-        // Clicking Mine while already on Mine toggles the gesture sub-menu shut.
-        if (mineEntryContainer != null)
-            mineEntryContainer.gameObject.SetActive(!mineEntryContainer.gameObject.activeSelf);
+        ShowMinePanel();
     }
 
     /// <summary>Builds the three mine-gesture entries. Mirrors BuildSubmenuEntries;
@@ -208,17 +224,20 @@ public class ActionBarHUD : MonoBehaviour
             {
                 DungeonBuildController.SetMineGesture(captured);
                 DungeonBuildController.Instance?.SetMode(BuildMode.Mine);
-                if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
+                currentTab = ActiveTab.Mine;
+                UpdateTabHighlights();
+                HideMinePanel();
             });
         }
 
-        if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
+        HideMinePanel();
     }
 
     private void OnPushTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
+        HideMinePanel();
         DungeonBuildController.Instance.SetMode(BuildMode.Push);
 
         // SetMode is a no-op if already Push (HandleModeChanged won't fire),
@@ -232,6 +251,7 @@ public class ActionBarHUD : MonoBehaviour
     private void OnBuildTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
+        HideMinePanel();
         bool wasOpen = currentTab == ActiveTab.Build;
 
         // Step 1 — clear any placement mode back to idle. If already None this is a
@@ -263,6 +283,7 @@ public class ActionBarHUD : MonoBehaviour
         bool wasOpen = currentTab == ActiveTab.Summon;
 
         HideBuildPanel(); // close Build panel if it happened to be open
+        HideMinePanel();
 
         if (!wasOpen)
             DungeonBuildController.Instance.SetMode(BuildMode.PlaceSpawner);
@@ -278,6 +299,7 @@ public class ActionBarHUD : MonoBehaviour
     {
         SpawnerSelectionController.Instance?.Deselect();
         HideBuildPanel();
+        HideMinePanel();   // Esc closes the gesture sub-menu with everything else
         DungeonBuildController.Instance.SetMode(BuildMode.None);
         // PHASE 5+ — None is the idle select-and-command state; SetMode above triggers
         // HandleModeChanged, which sets currentTab = ActiveTab.None (no tab lit).
@@ -298,6 +320,7 @@ public class ActionBarHUD : MonoBehaviour
             case BuildMode.None:
                 currentTab = ActiveTab.None;   // idle: select & command, no tab lit
                 HideBuildPanel();
+                HideMinePanel();
                 break;
 
             case BuildMode.Push:
@@ -305,6 +328,7 @@ public class ActionBarHUD : MonoBehaviour
                 // to None, so only deliberate tab/hotkey entry lands here.
                 currentTab = ActiveTab.Push;
                 HideBuildPanel();
+                HideMinePanel();
                 break;
 
             case BuildMode.Mine:                                    
@@ -315,6 +339,7 @@ public class ActionBarHUD : MonoBehaviour
             case BuildMode.PlaceSpawner:
                 currentTab = ActiveTab.Summon;
                 HideBuildPanel();
+                HideMinePanel();
                 break;
 
             case BuildMode.PlaceEntrance:
@@ -340,15 +365,6 @@ public class ActionBarHUD : MonoBehaviour
     }
 
     // ── Build sub-menu construction ───────────────────────────────
-
-    private void BuildMineSubmenuIfNeeded()
-    {
-        if (mineSubmenuBuilt) return;
-        mineSubmenuBuilt = true;
-        BuildMineSubmenuEntries();
-    }
-
-    private bool mineSubmenuBuilt;
 
     private void BuildSubmenuEntries()
     {
@@ -391,6 +407,7 @@ public class ActionBarHUD : MonoBehaviour
         // Close the panel immediately — the player's next click is a placement click,
         // not a further sub-menu interaction.
         HideBuildPanel();
+        HideMinePanel();
 
         // currentTab is set to Build in HandleModeChanged for these modes.
         DungeonBuildController.Instance.SetMode(mode);
@@ -435,6 +452,19 @@ public class ActionBarHUD : MonoBehaviour
     {
         if (buildSubmenuPanel != null) buildSubmenuPanel.SetActive(false);
     }
+
+    private void HideMinePanel()
+    {
+        if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
+    }
+
+    private void ShowMinePanel()
+    {
+        if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(true);
+    }
+
+    private bool MinePanelOpen =>
+        mineEntryContainer != null && mineEntryContainer.gameObject.activeSelf;
 
     // ── Highlight helpers ─────────────────────────────────────────
 
