@@ -82,6 +82,41 @@ public class DungeonBuildController : MonoBehaviour
     private bool mineIsDrag;
     private bool mineShiftAtPress;
 
+    /// <summary>How a mine gesture is interpreted. Chosen from the Mine sub-menu and
+    /// remembered across sessions; Single is the fallback when nothing was ever picked.</summary>
+    public enum MineGesture { Single, Drag, Box }
+
+    private const string MinePrefKey = "DCR.MineGesture";
+    private static MineGesture mineGesture = MineGesture.Single;
+    private static bool mineGestureLoaded;
+
+    public static MineGesture CurrentMineGesture
+    {
+        get
+        {
+            if (!mineGestureLoaded)
+            {
+                int saved = PlayerPrefs.GetInt(MinePrefKey, (int)MineGesture.Single);
+                mineGesture = System.Enum.IsDefined(typeof(MineGesture), saved)
+                    ? (MineGesture)saved : MineGesture.Single;
+                mineGestureLoaded = true;
+            }
+            return mineGesture;
+        }
+    }
+
+    /// <summary>Fires when the mine gesture changes, so the action bar can restyle.</summary>
+    public static event System.Action OnMineGestureChanged;
+
+    public static void SetMineGesture(MineGesture g)
+    {
+        mineGesture = g;
+        mineGestureLoaded = true;
+        PlayerPrefs.SetInt(MinePrefKey, (int)g);
+        PlayerPrefs.Save();
+        OnMineGestureChanged?.Invoke();
+    }
+
     private System.Collections.Generic.List<DungeonStairs> _stairClickBuf;
 
     // DAY 31 PART 3D — Spawner being edited during patrol/attack placement.
@@ -347,6 +382,54 @@ public class DungeonBuildController : MonoBehaviour
 
 
     // ── Mine input: click mines one now · drag queues a swath · Shift+click queues one ──
+    private bool mineBoxPainted;
+
+    /// <summary>Queue every diggable cell in the rectangle spanned by two corners.
+    /// EnqueueDig already rejects anything undiggable, so no filtering is needed here.</summary>
+    private void EnqueueDigBox(Vector3Int a, Vector3Int b)
+    {
+        int x0 = Mathf.Min(a.x, b.x), x1 = Mathf.Max(a.x, b.x);
+        int y0 = Mathf.Min(a.y, b.y), y1 = Mathf.Max(a.y, b.y);
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+                EnqueueDig(new Vector3Int(x, y, a.z));
+    }
+
+    /// <summary>Rectangle preview for Box mode. Reuses the room-drag quad pool and its
+    /// CreateRoomPreviewQuad factory so the two rectangle gestures look identical; only
+    /// the cell filter differs (diggable rock here, mined floor there).</summary>
+    private void PaintMineBoxPreview(Vector3Int a, Vector3Int b)
+    {
+        var inf = ActiveInfluence;
+        if (inf == null) { ClearRoomPreview(); return; }
+
+        Vector3 o = inf.CellToWorld(Vector3Int.zero);
+        float cw = Mathf.Abs(inf.CellToWorld(Vector3Int.right).x - o.x);
+        float ch = Mathf.Abs(inf.CellToWorld(Vector3Int.up).y - o.y);
+
+        int minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
+        int minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
+
+        int j = 0;
+        for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                var cell = new Vector3Int(x, y, a.z);
+                if (inf.IsTileMined(cell)) continue;   // already open: nothing to dig
+                if (j >= roomPreviewPool.Count) roomPreviewPool.Add(CreateRoomPreviewQuad());
+                var sr = roomPreviewPool[j++];
+                Vector3 w = inf.CellToWorld(cell);
+                sr.transform.position = new Vector3(w.x, w.y, 0f);
+                sr.transform.localScale = new Vector3(cw, ch, 1f);
+                sr.color = roomPreviewColor;
+                sr.enabled = true;
+            }
+
+        for (; j < roomPreviewPool.Count; j++) roomPreviewPool[j].enabled = false;
+    }
+
+    private void ClearMineBoxPreview() => ClearRoomPreview();
+
     private void HandleMineInput()
     {
         if (SuppressBuildInput) return;
@@ -373,19 +456,27 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
-        // Held + entered a new cell → it's a drag: queue the press cell, then each new cell.
+        bool boxMode = CurrentMineGesture == MineGesture.Box;
+
+        // Held + entered a new cell. Drag paints along the path; Box only tracks the
+        // opposite corner and previews the rectangle, committing on release.
         if (mineTracking && mouse.leftButton.isPressed)
         {
             if (HoverCell(out Vector3Int c) && c != mineLastCell)
             {
-                if (!mineIsDrag) { mineIsDrag = true; EnqueueDig(minePressCell); }
-                EnqueueDig(c);
+                mineIsDrag = true;
                 mineLastCell = c;
+                if (boxMode) PaintMineBoxPreview(minePressCell, mineLastCell);
+                else
+                {
+                    if (!mineBoxPainted) { mineBoxPainted = true; EnqueueDig(minePressCell); }
+                    EnqueueDig(c);
+                }
             }
             return;
         }
 
-        // Release with no movement → a click: Shift queues one, otherwise mine one now.
+        // Release. A gesture that never moved is a click in every mode.
         if (mineTracking && mouse.leftButton.wasReleasedThisFrame)
         {
             if (!mineIsDrag)
@@ -393,8 +484,14 @@ public class DungeonBuildController : MonoBehaviour
                 if (mineShiftAtPress) EnqueueDig(minePressCell);
                 else MineImmediate(minePressCell);
             }
+            else if (boxMode)
+            {
+                ClearMineBoxPreview();
+                EnqueueDigBox(minePressCell, mineLastCell);
+            }
             mineTracking = false;
             mineIsDrag = false;
+            mineBoxPainted = false;
         }
     }
 

@@ -28,6 +28,16 @@ public class WispCompanion : MonoBehaviour
     [Header("Roam")]
     [Tooltip("Slow wander around the home point, in world units, on top of the bob/drift.")]
     [SerializeField] private float roamRadius = 1.6f;
+    [Header("Excitement")]
+    [Tooltip("Peak roam-speed multiplier when something happens worth reacting to.")]
+    [SerializeField, Min(1f)] private float exciteSpeedMultiplier = 3.2f;
+    [Tooltip("Peak roam-radius multiplier while excited, so it sweeps wider as well as faster.")]
+    [SerializeField, Min(1f)] private float exciteRadiusMultiplier = 1.5f;
+    [Tooltip("Seconds an excitement burst lasts before it has fully settled.")]
+    [SerializeField, Min(0.1f)] private float exciteDuration = 4f;
+    [Tooltip("Fraction of the burst spent winding up; the rest eases back down.")]
+    [SerializeField, Range(0.05f, 0.9f)] private float exciteAttackFraction = 0.25f;
+
     [Tooltip("How quickly the wander re-targets. Lower is lazier.")]
     [SerializeField] private float roamSpeed = 0.25f;
 
@@ -88,6 +98,7 @@ public class WispCompanion : MonoBehaviour
         DungeonAdventurer.OnFirstPartySpawned += HandleFirstParty;
         DungeonAdventurer.OnAnyAdventurerSlain += HandleFirstBlood;
         DungeonMonster.OnAnyMonsterSlain += HandleFirstMonsterLost;
+        SubscribeExcitement();
     }
 
     private void OnDisable()
@@ -97,6 +108,7 @@ public class WispCompanion : MonoBehaviour
         DungeonMonster.OnAnyMonsterSlain -= HandleFirstMonsterLost;
         if (DungeonCore.Instance != null)
             DungeonCore.Instance.OnNotorietyChanged -= HandleNotoriety;
+        UnsubscribeExcitement();
     }
 
     private void Start()
@@ -181,15 +193,73 @@ public class WispCompanion : MonoBehaviour
     private void Update()
     {
         if (floatSprite == null) return;
+
+        // Excitement envelope: 0 at rest, 1 at peak. Attack then decay, both eased,
+        // so a burst never snaps on or off.
+        float excite = 0f;
+        if (Time.time < exciteEndTime)
+        {
+            float total = Mathf.Max(0.01f, exciteEndTime - exciteStartTime);
+            float t = Mathf.Clamp01((Time.time - exciteStartTime) / total);
+            float attack = Mathf.Clamp(exciteAttackFraction, 0.05f, 0.9f);
+            float shape = t < attack
+                ? t / attack
+                : 1f - ((t - attack) / (1f - attack));
+            excite = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(shape)) * exciteIntensity;
+        }
+
+        // Phase accumulates against the CURRENT speed rather than reading Time.time
+        // directly: multiplying a raw Time.time term would jump the sine's phase the
+        // instant the multiplier changed and teleport the sprite.
+        float speedNow = roamSpeed * Mathf.Lerp(1f, exciteSpeedMultiplier, excite);
+        float radiusNow = roamRadius * Mathf.Lerp(1f, exciteRadiusMultiplier, excite);
+        roamPhase += Time.deltaTime * speedNow;
+
         // A slow, lazy wander around home (incommensurate sine axes trace an
         // open path so it never sits still), with the tight bob/drift on top.
-        float rx = Mathf.Sin(Time.time * roamSpeed + roamSeed) * roamRadius;
-        float ry = Mathf.Sin(Time.time * roamSpeed * 0.73f + roamSeed * 1.7f) * roamRadius * 0.6f;
+        float rx = Mathf.Sin(roamPhase + roamSeed) * radiusNow;
+        float ry = Mathf.Sin(roamPhase * 0.73f + roamSeed * 1.7f) * radiusNow * 0.6f;
         float bob = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
         float drift = Mathf.Sin(Time.time * driftSpeed) * driftAmplitude;
         floatSprite.localPosition = spriteHome + new Vector3(rx + drift, ry + bob, 0f);
 
         TryIdleBark();
+    }
+
+    // -- Excitement --
+
+    private float roamPhase;
+    private float exciteStartTime = -1f;
+    private float exciteEndTime = -1f;
+    private float exciteIntensity;
+
+    /// <summary>Temperament weighting for excitement. An Eager or Feral wisp spins up
+    /// readily; Grim, Ancient and Reverent barely stir. Scales the burst rather than
+    /// gating it, so every wisp still reacts to a level-up -- just differently.</summary>
+    private float TemperamentExciteScale() => personality switch
+    {
+        WispPersonality.Eager    => 1.25f,
+        WispPersonality.Feral    => 1.35f,
+        WispPersonality.Nervous  => 1.1f,
+        WispPersonality.Wry      => 0.9f,
+        WispPersonality.Grim     => 0.55f,
+        WispPersonality.Ancient  => 0.4f,
+        WispPersonality.Reverent => 0.5f,
+        _ => 1f
+    };
+
+    /// <summary>Something happened worth reacting to: race around the core for a moment.
+    /// Intensity 0-1 before temperament scaling. A stronger burst overrides a weaker one
+    /// still in flight rather than queueing behind it.</summary>
+    public void Excite(float intensity = 1f)
+    {
+        float scaled = Mathf.Clamp01(intensity) * TemperamentExciteScale();
+        bool active = Time.time < exciteEndTime;
+        if (active && scaled <= exciteIntensity) return;   // keep the bigger reaction
+
+        exciteIntensity = scaled;
+        exciteStartTime = Time.time;
+        exciteEndTime = Time.time + exciteDuration;
     }
 
     // Ambient personality barks: gentle cadence, hushed during tutorial lines,
@@ -248,6 +318,40 @@ public class WispCompanion : MonoBehaviour
 
     /// <summary>Speak a line of raw text (the tutorial's path). No once-tracking:
     /// the TutorialDirector decides what plays and when.</summary>
+    // Excitement hooks. Verified events only: a level-up, the first breach, a slain
+    // monster or adventurer, a party arriving, and a research state change. Kills use
+    // a modest intensity because they are frequent; a level-up is the full reaction.
+    private void SubscribeExcitement()
+    {
+        DungeonMonster.OnAnyMonsterSlain += HandleExciteSmall;
+        DungeonAdventurer.OnAnyAdventurerSlain += HandleExciteSmall;
+        AdventurerSpawner.PartyRegistered += HandleExciteMedium;
+        ResearchController.OnStateChanged += HandleExciteMedium;
+        if (DungeonCore.Instance != null)
+        {
+            DungeonCore.Instance.OnLevelUp += HandleExciteLevel;
+            DungeonCore.Instance.OnFirstBreach += HandleExciteBig;
+        }
+    }
+
+    private void UnsubscribeExcitement()
+    {
+        DungeonMonster.OnAnyMonsterSlain -= HandleExciteSmall;
+        DungeonAdventurer.OnAnyAdventurerSlain -= HandleExciteSmall;
+        AdventurerSpawner.PartyRegistered -= HandleExciteMedium;
+        ResearchController.OnStateChanged -= HandleExciteMedium;
+        if (DungeonCore.Instance != null)
+        {
+            DungeonCore.Instance.OnLevelUp -= HandleExciteLevel;
+            DungeonCore.Instance.OnFirstBreach -= HandleExciteBig;
+        }
+    }
+
+    private void HandleExciteSmall() => Excite(0.45f);
+    private void HandleExciteMedium() => Excite(0.7f);
+    private void HandleExciteBig() => Excite(1f);
+    private void HandleExciteLevel(int _) => Excite(1f);
+
     public void SpeakLine(string text)
     {
         if (string.IsNullOrEmpty(text)) return;

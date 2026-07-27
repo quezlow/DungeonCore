@@ -120,7 +120,10 @@ public class MonsterCommandUI : MonoBehaviour
 
         int selCount = SpawnerSelectionController.Instance != null
             ? SpawnerSelectionController.Instance.Count : 1;
-        if (patrolButton != null) patrolButton.interactable = selCount <= 1;
+        // Patrol is a researched control affordance (Observation path). One spawner
+        // at a time, and only once the core remembers how to set a route.
+        bool patrolKnown = UnlockState.IsUnlocked("tech.patrol_orders");
+        if (patrolButton != null) patrolButton.interactable = patrolKnown && selCount <= 1;
 
         if (monsterNameLabel != null)
             monsterNameLabel.text = selCount > 1
@@ -184,6 +187,12 @@ public class MonsterCommandUI : MonoBehaviour
 
     public void OnPatrolClicked()
     {
+        if (!UnlockState.IsUnlocked("tech.patrol_orders"))
+        {
+            WispCompanion.Instance?.SpeakLine(
+                "I cannot hold a route in mind yet. Study the halls first.");
+            return;
+        }
         if (current == null) return;
         current.SetOrderMode(SpawnerOrderMode.Patrol);
         DungeonBuildController.Instance?.BeginPatrolPlacement(current);

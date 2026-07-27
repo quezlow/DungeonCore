@@ -60,6 +60,9 @@ public class ActionBarHUD : MonoBehaviour
 
     [Tooltip("Parent transform inside the Build panel with a HorizontalLayoutGroup.")]
     [SerializeField] private Transform buildEntryContainer;
+    [Tooltip("Container for the Mine gesture sub-menu (Single / Drag / Box). Entries are " +
+             "instantiated at runtime from submenuEntryPrefab, exactly like the Build sub-menu.")]
+    [SerializeField] private Transform mineEntryContainer;
 
     [Tooltip("Button prefab: Button component + TMP_Text child for the label.")]
     [SerializeField] private Button submenuEntryPrefab;
@@ -172,6 +175,44 @@ public class ActionBarHUD : MonoBehaviour
         // so force the visual state explicitly as a fallback.
         currentTab = ActiveTab.Mine;
         UpdateTabHighlights();
+
+        // Clicking Mine while already on Mine toggles the gesture sub-menu shut.
+        if (mineEntryContainer != null)
+            mineEntryContainer.gameObject.SetActive(!mineEntryContainer.gameObject.activeSelf);
+    }
+
+    /// <summary>Builds the three mine-gesture entries. Mirrors BuildSubmenuEntries;
+    /// the selected gesture is remembered in PlayerPrefs by the build controller, so
+    /// the sub-menu only has to reflect it.</summary>
+    private void BuildMineSubmenuEntries()
+    {
+        if (mineEntryContainer == null || submenuEntryPrefab == null) return;
+
+        var gestures = new[]
+        {
+            (DungeonBuildController.MineGesture.Single, "Single"),
+            (DungeonBuildController.MineGesture.Drag,   "Drag"),
+            (DungeonBuildController.MineGesture.Box,    "Box"),
+        };
+
+        foreach (var (gesture, label) in gestures)
+        {
+            Button btn = Instantiate(submenuEntryPrefab, mineEntryContainer);
+            btn.gameObject.SetActive(true);
+
+            var text = btn.GetComponentInChildren<TMP_Text>();
+            if (text != null) text.text = label;
+
+            var captured = gesture;
+            btn.onClick.AddListener(() =>
+            {
+                DungeonBuildController.SetMineGesture(captured);
+                DungeonBuildController.Instance?.SetMode(BuildMode.Mine);
+                if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
+            });
+        }
+
+        if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
     }
 
     private void OnPushTabClicked()
@@ -299,6 +340,15 @@ public class ActionBarHUD : MonoBehaviour
     }
 
     // ── Build sub-menu construction ───────────────────────────────
+
+    private void BuildMineSubmenuIfNeeded()
+    {
+        if (mineSubmenuBuilt) return;
+        mineSubmenuBuilt = true;
+        BuildMineSubmenuEntries();
+    }
+
+    private bool mineSubmenuBuilt;
 
     private void BuildSubmenuEntries()
     {

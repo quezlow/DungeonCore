@@ -426,12 +426,22 @@ public class TileInfluenceManager : MonoBehaviour
     /// ring; fires OnTileCountChanged once if anything changed so the wall
     /// renderer rebuilds.
     /// </summary>
+    /// <summary>Registers pre-existing open ground as walkable (mined) but unclaimed.
+    /// Bedrock is filtered out: a river's dry banks can fall inside the rim, and
+    /// without this guard those cells became pre-mined walkable floor punching a
+    /// second, unintended entrance straight through the sealed border. The claim-side
+    /// IsBedrock guard could never catch it because pre-mined ground never needs
+    /// claiming. Entrance-cave cells are exempt inside IsBedrock, so the real tunnel
+    /// through the rim still registers.</summary>
     public void MarkNaturalFloor(IEnumerable<Vector3Int> cells)
     {
         if (cells == null) return;
         bool any = false;
         foreach (var cell in cells)
+        {
+            if (IsBedrock(cell)) continue;   // never open a hole in the rim
             if (minedTiles.Add(cell)) any = true;
+        }
         if (any) OnTileCountChanged?.Invoke(minedTiles.Count);
     }
 
