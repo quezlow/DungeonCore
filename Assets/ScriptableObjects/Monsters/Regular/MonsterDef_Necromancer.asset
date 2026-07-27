@@ -46,4 +46,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
   - {fileID: 11400000, guid: 5a5166ef10480db4399df78641f7470a, type: 2}
   - {fileID: 11400000, guid: 673f898506f52ef4ebe921a506ee55d7, type: 2}
-  telegraphSeconds: 0
+  telegraphSeconds: 0.7
