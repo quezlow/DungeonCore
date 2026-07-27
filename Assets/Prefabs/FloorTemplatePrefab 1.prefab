@@ -174,13 +174,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InfluenceField
   baseReach: 8
   reachPerLevel: 3
+  reachPerDay: 1.6
   fieldDepthMargin: 10
-  ambientInterval: 3
+  ambientIntervalDay1: 10
+  ambientIntervalRamped: 0.466
+  ambientRampDays: 100
   surgeInterval: 0.2
   surgeDuration: 30
   suppressionFraction: 0.5
   recoveryUsesSurgeRate: 1
-  pushedFringeLost: 0.2
+  pushedFringeLost: 0.08
 --- !u!114 &8700903561578186014
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2167,6 +2170,7 @@ MonoBehaviour:
   caSmoothingIterations: 4
   minChamberCellCount: 6
   chamberSpacing: 10
+  chamberRimMargin: 10
   minRivers: 1
   maxRivers: 3
   minRiverControlPoints: 12
@@ -2209,6 +2213,13 @@ MonoBehaviour:
   wildMonsterCellDivisor: 6
   waterTilemap: {fileID: 2255533193577490305}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
+  surfaceWaterTilemap: {fileID: 0}
+  surfaceWaterTile: {fileID: 0}
+  surfaceRiverDepth: 100
+  roadClearanceDegrees: 25
+  fordSquareToleranceDegrees: 25
+  minFordWidth: 2
+  roadHalfWidthForFord: 2.5
   autoPaintDebugOverlay: 1
   debugOverlayTilemap: {fileID: 1010576848703588748}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}

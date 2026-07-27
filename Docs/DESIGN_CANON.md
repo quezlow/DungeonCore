@@ -567,11 +567,36 @@ previously immortalised 45s minions as permanent spawners on load).
 
 ## 12A. Influence Field, Push and Breach Recede
 
-**As built:** territory is claimed cells on a 4-connected frontier.
-`InfluenceField` floods cost-distance from the core cell (8-directional,
-terrain-weighted) and the ambient creep claims the cheapest claimable cell
-within the level's reach cap (`MaxReach`). Bedrock and uncleared chambers are
-impassable; rivers cost heavily but remain passable.
+Free growth (the time-extended cap model):
+  - Reach R = baseReach + (dungeonLevel - 1) * reachPerLevel + (day - 1) * reachPerDay.
+    The day term is what makes the cap NON-TERMINAL: growth no longer idles
+    forever at a level ceiling, and given time influence covers a whole floor.
+    reachPerDay 1.6 keeps R tracking just ahead of the creep frontier (~168 vs a
+    ~172 frontier cost at day 100) so the overlay fringe stays a band, not a halo.
+    The day term is NOT privileged: a breach suppresses it with the rest of R.
+  - Ambient creep claims the CHEAPEST claimable-ring cell with D within R.
+    Its rate ramps linearly in CLAIMS PER SECOND (not interval) from 0.1/sec on
+    day 1 to 2.14/sec by day 100, averaging 1.12/sec -- which fills floor 0's
+    ~26,900 claimable cells in about 100 days. Interval-lerping was rejected: it
+    sits near the slow end too long and would need ~7,700 claims/sec to total the
+    same. The rate is FIXED across floors, so larger deep floors fill
+    proportionally slower and floor 4 (radius 600, ~1M cells) never fully does.
+  - On a confirmed level-up the creep sprints for surgeDuration.
+  - Creep never claims river cells; bedrock and uncleared chambers are infinite
+    step cost, so the fill is "everything reachable inside the rim, except rivers
+    and sealed chambers".
+  - SUPERSEDED: the Dijkstra bound was ReachAtLevel(MaxFlatLevel) + margin, which
+    hard-stopped growth at 93 cost units regardless of rate -- with a rim at ~172
+    the floor could never fill at any speed. The bound is now
+    EffectiveReach + fieldDepthMargin, re-dirtying as reach grows. Bedrock's
+    infinite cost terminates the search at the rim anyway.
+  - A fully claimed floor is a fully UNFOGGED floor: ClaimTile reveals, so late
+    omniscience is the accepted reward for surviving. everClaimed likewise grows
+    to the floor, lighting all void rock -- working as designed.
+
+Breach recede: pushedFringeLost is 0.08 (was 0.2). Twenty percent of radial
+extent was tuned against a small domain and would strip a ~19-cell rind from a
+filled floor; 8% gives ~7-8 cells, still a real bite.
 
 **Push (`InfluenceChannel`, `BuildMode.Push`):** boundary-pressure inflation,
 not a path. Frontier cells inside the corridor between the core cell and the
