@@ -52,6 +52,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Monster_Necromancer Variant
       objectReference: {fileID: 0}
+    - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: maxHP
+      value: 40
+      objectReference: {fileID: 0}
+    - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: attackRange
+      value: 2.8
+      objectReference: {fileID: 0}
     - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
       propertyPath: m_Sprite
       value: 

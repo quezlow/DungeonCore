@@ -1500,6 +1500,12 @@ channel's Silver-band entry, placeable at Silver 4 after a wild kill.
 `DungeonCore/DungeonBuildController.cs`, `Monster/WildMonsterController.cs`,
 `Editor/TechContentGenerator.cs` (in Assets/Editor).
 
+**Necromancer retrofit:** brought onto the mage model for convention
+consistency (prefab: 40 HP, attack range 2.8; def: telegraph 0.7s); raise pool
+deliberately unchanged (Skeleton/Zombie -- Ghoul stays the Deathpriest's tier-4
+draw). The remaining original five are unchanged by ruling: research-channel
+identity and the cap-efficiency floor are load-bearing.
+
 **Rejected:** shown-but-locked display for wrong-type skins (breaks the reskin
 illusion); per-floor wild pool assets (one shared pool + depth field is the
 authored surface); a monster projectile system (adventurer-Mage hitscan
