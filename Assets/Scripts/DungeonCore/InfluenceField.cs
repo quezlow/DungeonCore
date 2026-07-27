@@ -55,12 +55,30 @@ public class InfluenceField : MonoBehaviour
     [SerializeField, Min(0f)] private float baseReach = 8f;
     [Tooltip("Extra reach granted per dungeon level above 1.")]
     [SerializeField, Min(0f)] private float reachPerLevel = 3f;
-    [Tooltip("Dijkstra bound margin past max-level reach; cells beyond it are never computed.")]
+    [Tooltip("Extra reach granted per elapsed day, on top of the level term. This is what " +
+             "makes the cap non-terminal: given time, influence reaches the whole floor. " +
+             "1.6 keeps reach tracking just ahead of the creep frontier (at day 100 reach is " +
+             "~168 against a frontier cost of ~172), so the free-growth band stays a visible " +
+             "frontier in the overlay rather than ballooning into a meaningless halo.")]
+    [SerializeField, Min(0f)] private float reachPerDay = 1.6f;
+    [Tooltip("Dijkstra bound margin past the current reach; cells beyond it are never computed. " +
+             "The field is recomputed when reach grows toward the bound, so early game stays " +
+             "cheap and the full-floor cost is only paid once the domain is actually that large.")]
     [SerializeField, Min(0f)] private float fieldDepthMargin = 10f;
 
     [Header("Creep")]
-    [Tooltip("Seconds between free ambient claims.")]
-    [SerializeField, Min(0.05f)] private float ambientInterval = 3f;
+    [Tooltip("Seconds between free ambient claims on day 1, before the ramp. The core is " +
+             "still learning to press outward, so growth is deliberately sluggish.")]
+    [SerializeField, Min(0.05f)] private float ambientIntervalDay1 = 10f;
+    [Tooltip("Seconds between free ambient claims once the ramp completes.")]
+    [SerializeField, Min(0.02f)] private float ambientIntervalRamped = 0.466f;
+    [Tooltip("Days over which the ambient rate ramps from the day-1 value to the ramped " +
+             "value. Rate (claims per second) is interpolated linearly, NOT the interval: " +
+             "ramping the interval would spend most of the run near the slow end. With the " +
+             "shipped numbers floor 0 (~26,900 claimable cells) fills in roughly this many " +
+             "days. The rate is the same on every floor, so larger deep floors take " +
+             "proportionally longer and the deepest never fully fill -- intended.")]
+    [SerializeField, Min(1f)] private float ambientRampDays = 100f;
     [Tooltip("Seconds between free claims while surging (level-up bloom / breach recovery).")]
     [SerializeField, Min(0.02f)] private float surgeInterval = 0.2f;
     [Tooltip("How long the level-up surge lasts, in seconds.")]
@@ -74,7 +92,7 @@ public class InfluenceField : MonoBehaviour
     [Tooltip("Fraction of your domain's radial extent that a breach reclaims — the outer rind, " +
              "measured straight-line from the core. Everything inside it survives, so ground around " +
              "the core is never lost. 0 = breach-proof; 1 = a breach reclaims the entire domain.")]
-    [SerializeField, Range(0f, 1f)] private float pushedFringeLost = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float pushedFringeLost = 0.08f;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -88,6 +106,10 @@ public class InfluenceField : MonoBehaviour
     private bool subscribedChambers;
     private float surgeUntil = -1f;
     private Coroutine creepRoutine;
+    // Reach at which the cost field was last built. Once reach grows past most of the
+    // margin, the field is stale (cells the creep can now afford have no cost entry),
+    // so it is rebuilt. Spread across a 100-day fill this fires a few dozen times.
+    private float lastFieldBound = -1f;
 
     private static readonly Vector3Int[] Neighbours =
     {
@@ -135,7 +157,21 @@ public class InfluenceField : MonoBehaviour
     }
 
     public float ReachAtLevel(int level)
-        => baseReach + Mathf.Max(0, level - 1) * reachPerLevel;
+        => baseReach + Mathf.Max(0, level - 1) * reachPerLevel + ElapsedDayReach;
+
+    /// <summary>Reach earned purely by elapsed time. Day 1 grants nothing, so a fresh
+    /// dungeon starts exactly where it always did. Suppressed by a breach along with the
+    /// rest of reach -- the day term is not privileged, so a breach genuinely sets the
+    /// domain back and the creep regrows it.</summary>
+    private float ElapsedDayReach
+    {
+        get
+        {
+            var cycle = DayNightCycle.Instance;
+            int day = cycle != null ? cycle.CurrentDay : 1;
+            return Mathf.Max(0, day - 1) * reachPerDay;
+        }
+    }
 
     /// <summary>Cost-distance from the floor's core cell, if reachable at all.</summary>
     public bool TryGetCost(Vector3Int cell, out float cost)
@@ -319,7 +355,14 @@ public class InfluenceField : MonoBehaviour
                 yield return null;
             }
 
-            if (fieldDirty || !DependenciesReady()) continue;
+            if (!DependenciesReady()) continue;
+
+            // Reach has outgrown the computed field: rebuild before creeping, or growth
+            // would stall at a stale bound exactly as it used to at the old hard limit.
+            if (lastFieldBound >= 0f && EffectiveReach > lastFieldBound - fieldDepthMargin * 0.5f)
+                fieldDirty = true;
+
+            if (fieldDirty) continue;
             TryCreepOnce();
         }
     }
@@ -330,7 +373,24 @@ public class InfluenceField : MonoBehaviour
         var core = DungeonCore.Instance;
         if (recoveryUsesSurgeRate && core != null && core.IsUnstable)
             surging = true;
-        return surging ? surgeInterval : ambientInterval;
+        return surging ? surgeInterval : AmbientIntervalNow();
+    }
+
+    /// <summary>Ambient interval for the current day, from a linear ramp in RATE.
+    /// Interpolating claims-per-second and inverting keeps the total honest; lerping the
+    /// interval directly would sit near the slow end for most of the run and undershoot
+    /// the intended coverage badly.</summary>
+    private float AmbientIntervalNow()
+    {
+        var cycle = DayNightCycle.Instance;
+        int day = cycle != null ? cycle.CurrentDay : 1;
+
+        float safeSlow = Mathf.Max(0.05f, ambientIntervalDay1);
+        float safeFast = Mathf.Max(0.02f, ambientIntervalRamped);
+
+        float t = Mathf.Clamp01((day - 1) / Mathf.Max(1f, ambientRampDays));
+        float rate = Mathf.Lerp(1f / safeSlow, 1f / safeFast, t);
+        return rate > 0f ? 1f / rate : safeSlow;
     }
 
     private void TryCreepOnce()
@@ -368,7 +428,11 @@ public class InfluenceField : MonoBehaviour
 
         var terrain = floor.Terrain;
         Vector3Int core = terrain.CoreCell;
-        float bound = ReachAtLevel(LevelTierUtil.MaxFlatLevel) + fieldDepthMargin;
+        // Bound on current reach, not max-level reach: the day term makes the latter
+        // unbounded. Bedrock's infinite step cost stops the search at the rim regardless,
+        // so this only ever trims work in the early game.
+        float bound = EffectiveReach + fieldDepthMargin;
+        lastFieldBound = bound;
 
         var open = new MinHeap();
         costDistance[core] = 0f;

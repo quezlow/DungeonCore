@@ -206,6 +206,12 @@ spawners are deliberately excluded -- they keep selection-driven removal through
 MonsterCommandUI because removal also returns creature capacity. `TrapPanel` is
 read-only as a result; its former per-entry remove button is retired.
 
+**Mine gestures (2026-07).** Three: Single (click, Shift to queue), Drag (paint
+along the path), Box (rectangle, previewed live, queued on release). Chosen from
+a Mine sub-menu mirroring the Build sub-menu, persisted in PlayerPrefs under
+DCR.MineGesture, defaulting to Single. Box reuses the room-drag SpriteRenderer
+quad pool so both rectangle gestures render identically.
+
 ## 2. Adventurer Types, Intents and Goals
 
 Status: SHIPPED. Supersedes the roadmap's nine-type intent table (p.13) and
@@ -612,6 +618,13 @@ system look like the cause, and drew several wrong fixes before the real
 mechanism was found. Do not reintroduce them, and do not re-key `IsVoidRock` on
 `IsTileClaimed`.
 
+**No hole in the rim (2026-07).** MarkNaturalFloor filters bedrock. A river's dry
+banks are registered as natural floor for footing, and bank cells falling inside
+the rim previously became pre-mined walkable ground -- a second, unintended
+entrance straight through the sealed border. The claim-side IsBedrock guard could
+never catch it because pre-mined ground never needs claiming. Entrance-cave cells
+stay exempt inside IsBedrock, so the real tunnel through the rim still registers.
+
 ---
 
 # PART II -- DESIGNED, NOT YET BUILT
@@ -702,6 +715,11 @@ an event sets an UnlockState key, a KeyUnlocked node reveals off it, and the
 node's completion key gates the UI. With KillsAny (entry, Day-62 work) the
 reveal conditions are Always / PatternKnown / KeyUnlocked / KillsOfClass /
 KillsAny.
+
+**Patrol gating (2026-07).** Patrol orders require tech.patrol_orders, an
+Observation tier-1 node (10 points, 2 days, no prerequisites). Gated at both the
+command-UI button and OnPatrolClicked. Patrol is a control/information affordance,
+so it sits on Observation, preserving one gating identity per path.
 
 ## Guided Opening (TutorialDirector)
 

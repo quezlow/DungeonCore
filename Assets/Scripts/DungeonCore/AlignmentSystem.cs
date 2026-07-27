@@ -93,7 +93,13 @@ public class AlignmentSystem : MonoBehaviour
         float gain = leaveAlive;
         if (lootCarried > 0 && lootPerGold > 0f)
         {
-            float taper = Mathf.Clamp01(1f - Mathf.Max(0f, alignment) / max);
+            // Guard the divisor. A zero max would make taper NaN, which flows into
+            // gain, through Shift into alignment, and survives Mathf.Clamp (NaN
+            // comparisons are false) -- corrupting alignment for the run and saving
+            // it that way. Every other unguarded divisor in the project is a
+            // Clamp01'd fade where a zero simply means "instant"; this one persists.
+            float alignmentSpan = Mathf.Max(0.0001f, max);
+            float taper = Mathf.Clamp01(1f - Mathf.Max(0f, alignment) / alignmentSpan);
             gain += lootCarried * lootPerGold * taper;
         }
         Shift(gain);
