@@ -267,7 +267,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 float across = Mathf.Abs(dx * outward.y - dy * outward.x);
                 if (along > 0f && across <= profile.roadClearance) continue;
                 if (trailCells.Contains(cell) || shoulderCells.Contains(cell)) continue;
-                if (OverlapsSurfaceRiver(cell, 0f)) continue;   // nothing grows mid-channel
+                if (NearSurfaceRiver(cell)) continue;   // clear banks, not just the water
                 if (InAnyCamp(cell, 0f)) continue;
                 float t = Mathf.InverseLerp(inner, outer, depth);
                 float density = Mathf.Lerp(band.densityInner, band.densityOuter, t);
@@ -384,7 +384,17 @@ public class SurfaceZoneGenerator : MonoBehaviour
         return true;
     }
 
-    /// <summary>True when any cell within `radius` of `cell` is surface river water.</summary>
+    /// <summary>True on the river or inside its prop-clearance band. One hash lookup:
+    /// the band is precomputed by the feature generator when the rivers are painted.</summary>
+    private bool NearSurfaceRiver(Vector3Int cell)
+    {
+        var features = floor != null ? floor.FeatureGenerator : null;
+        return features != null && features.IsNearSurfaceRiver(cell);
+    }
+
+    /// <summary>True when any cell within `radius` of `cell` is surface river water.
+    /// Used where the caller needs its OWN radius (camp footprints); scatter code should
+    /// use NearSurfaceRiver, which is precomputed.</summary>
     private bool OverlapsSurfaceRiver(Vector3Int cell, float radius)
     {
         var features = floor != null ? floor.FeatureGenerator : null;
@@ -539,7 +549,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
             float across = Mathf.Abs(dx * outward.y - dy * outward.x);
             if (along > 0f && across <= profile.roadClearance) continue;
             if (trailCells.Contains(cell) || shoulderCells.Contains(cell)) continue;
-            if (OverlapsSurfaceRiver(cell, 0f)) continue;   // nothing grows mid-channel
+            if (NearSurfaceRiver(cell)) continue;   // clear banks, not just the water
             if (InAnyCamp(cell, 1f)) continue;
             bool tooClose = false;
             foreach (var n in nodeCells)

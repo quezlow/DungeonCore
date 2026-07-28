@@ -172,6 +172,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Tooltip("Minimum river width for a ford. Narrower rivers are steered clear of the " +
              "road rather than forded.")]
     [SerializeField, Min(1)] private int minFordWidth = 2;
+    [Tooltip("Cells either side of the surface river kept clear of trees, rocks and other " +
+             "scatter. Prop sprites are taller and wider than their cell, so a prop sitting " +
+             "directly on the bank still overhangs the water. 3 keeps the channel readable; " +
+             "raise it if tall trees still crowd the banks. Set 0 to exclude only the water " +
+             "cells themselves.")]
+    [SerializeField, Min(0)] private int surfaceRiverPropClearance = 3;
     [Tooltip("Half-width of the pilgrim road used for crossing tests. Keep in step with " +
              "SurfaceZoneProfile.roadHalfWidth.")]
     [SerializeField, Min(0.5f)] private float roadHalfWidthForFord = 2.5f;
@@ -1518,8 +1524,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// <summary>True where the surface river crosses the pilgrim road: the ford.</summary>
     public bool IsFord(Vector3Int cell) => surfaceFordCells.Contains(cell);
 
+    /// <summary>True on the surface river OR within surfaceRiverPropClearance of it.
+    /// Precomputed when the rivers are painted, so scatter code pays one hash lookup per
+    /// candidate cell instead of probing a disc around every one.</summary>
+    public bool IsNearSurfaceRiver(Vector3Int cell) => surfaceRiverNearCells.Contains(cell);
+
     private readonly HashSet<Vector3Int> surfaceRiverCells = new();
     private readonly HashSet<Vector3Int> surfaceFordCells = new();
+    private readonly HashSet<Vector3Int> surfaceRiverNearCells = new();
 
     /// <summary>Paints every river's surface stretch and fills the lookup sets. Unlike the
     /// cave stretch this does NOT wait on discovery: water entering the forest is the
@@ -1529,6 +1541,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         surfaceRiverCells.Clear();
         surfaceFordCells.Clear();
+        surfaceRiverNearCells.Clear();
         if (featureData?.rivers == null) return;
 
         foreach (var r in featureData.rivers)
@@ -1543,6 +1556,29 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 }
             if (r.fordCells != null)
                 foreach (var sv in r.fordCells) surfaceFordCells.Add(sv.ToVector3Int());
+        }
+
+        BuildSurfaceRiverClearance();
+    }
+
+    /// <summary>Dilates the surface river by surfaceRiverPropClearance into the lookup that
+    /// scatter code tests. Circular rather than square, so the cleared bank follows the
+    /// channel instead of blocking out a boxy corridor.</summary>
+    private void BuildSurfaceRiverClearance()
+    {
+        surfaceRiverNearCells.Clear();
+        int r = Mathf.Max(0, surfaceRiverPropClearance);
+        int rSq = r * r;
+
+        foreach (var c in surfaceRiverCells)
+        {
+            if (r == 0) { surfaceRiverNearCells.Add(c); continue; }
+            for (int dx = -r; dx <= r; dx++)
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    if (dx * dx + dy * dy > rSq) continue;
+                    surfaceRiverNearCells.Add(new Vector3Int(c.x + dx, c.y + dy, 0));
+                }
         }
     }
 
