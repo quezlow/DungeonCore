@@ -229,11 +229,9 @@ public class MonsterSelectionUI : MonoBehaviour
 
         if (rosterContainer == null || rosterRowPrefab == null || registry?.All == null) return;
 
-        AddGroup("Creatures", d => !(d is BossVariantDefinition) && !(d is SubBossVariantDefinition));
-        AddGroup("Sub-Bosses", d => d is SubBossVariantDefinition);
-        // Both variant types derive straight from MonsterDefinition, not from each
-        // other, so these three predicates are mutually exclusive as written.
-        AddGroup("Bosses", d => d is BossVariantDefinition);
+        // One flat list: boss rank is a promotion applied to a placed spawner, not a
+        // separate definition, so the roster is creatures only and needs no grouping.
+        AddGroup(null, d => true);
     }
 
     private void AddGroup(string title, System.Func<MonsterDefinition, bool> belongs)
@@ -259,7 +257,7 @@ public class MonsterSelectionUI : MonoBehaviour
                                   System.StringComparison.Ordinal);
         });
 
-        if (rosterHeaderPrefab != null)
+        if (rosterHeaderPrefab != null && !string.IsNullOrEmpty(title))
         {
             var head = Instantiate(rosterHeaderPrefab, rosterContainer);
             head.SetActive(true);
@@ -378,8 +376,9 @@ public class MonsterSelectionUI : MonoBehaviour
     /// <summary>Where the monster may be placed, appended to the cost line.</summary>
     private static string MusterLine(MonsterDefinition def)
     {
-        string rooms = def is BossVariantDefinition
-            ? "Boss Room" : MusterRooms.MusterRoomNames(def.category);
+        // Category alone. A spawner promoted to boss rank still musters by its base
+        // creature's category, so there is no boss-room special case to make here.
+        string rooms = MusterRooms.MusterRoomNames(def.category);
         return string.IsNullOrEmpty(rooms) ? "" : $"\nMusters in: {rooms}";
     }
 
