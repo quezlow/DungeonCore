@@ -1295,8 +1295,9 @@ spread, speed-up hastens it. The creep is monotonic (a chained unlock moves
 the target further out) and unsaved (loading lands at full researched depth).
 `DungeonBoundsUpdater` unions the revealed disc into the floor-0 confiner
 AABB and exposes `MarkDirty()` for the generator. An edge-fog ring
-(generator-painted tilemap above the props: alpha smoothstepped across
-the last `fogFadeCells` (8) of painted ground, solid for
+(generator-painted tilemap above the props: alpha eased quadratically
+across the last `fogFadeCells` (12) of painted ground, full solid landing
+two cells past the edge, then holding for
 `fogSolidMarginCells` (24) past it) hides the unpainted void at every
 band edge and keeps the world's outermost rim misty forever.
 

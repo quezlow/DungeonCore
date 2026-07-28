@@ -691,8 +691,12 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 long sq = (long)dx * dx + (long)dy * dy;
                 if (sq <= innerSq || sq > outerSq) continue;
                 float depth = Mathf.Sqrt(sq) - rim;
-                float t = Mathf.Clamp01((depth - innerDepth) / Mathf.Max(1, fogFadeCells));
-                float a = fogColor.a * (t * t * (3f - 2f * t));   // smoothstep
+                // Quadratic ease anchored two cells past the edge: the
+                // treeline greys gently across the fade and full solid lands
+                // just beyond the last painted ground -- no wall of fog.
+                float t = Mathf.Clamp01((depth - innerDepth)
+                    / Mathf.Max(1f, fogFadeCells + 2f));
+                float a = fogColor.a * (t * t);
                 var cell = new Vector3Int(center.x + dx, center.y + dy, 0);
                 fogTilemap.SetTile(cell, fogTile);
                 fogTilemap.SetTileFlags(cell, TileFlags.None);
