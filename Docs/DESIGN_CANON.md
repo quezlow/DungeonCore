@@ -75,6 +75,7 @@ the supersession in one line.
 25. Camp Growth, Identity & Effects
 26. The Surface War
 27. Bestiary Expansion
+28. Boss Promotion (Rank-on-Spawner, Waiting Halls)
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -1610,6 +1611,58 @@ Dawnmaw.
 declined -- balance-neutral ruling holds); ten archetypes with six skins each
 (the reskin route; uniqueness was the ask); research or discovery gating on
 native lines (the automatic channel stays automatic).
+
+---
+
+## 28. Boss Promotion (Rank-on-Spawner, Waiting Halls)
+
+Status: SHIPPED. Verified: 2026-07-29.
+
+Boss and sub-boss are PROMOTION RANKS on the spawner (PromotionRank
+None/SubBoss/Boss), applied to any placed monster via two command-panel
+buttons -- the per-monster BossVariantDefinition/SubBossVariantDefinition
+assets are retired (files deleted, registry cleaned; both CLASSES remain for
+the Hungry Bear wild event, the title screen filter, and legacy code paths).
+Every regular, present and future, is boss-eligible with zero per-monster
+authoring.
+
+**Rule A -- waiting halls:** boss rank exists only inside a Boss Room. The
+room's spawnCategories opened to all three categories; any spawner may be
+placed into an otherwise-valid empty Boss Room (MusterRooms allows placement
+with ignoreBossSpawner) where it sits respawn-paused until promotion.
+requiresBossSpawner is satisfied by rank (RoomValidator keys off
+MonsterSpawner.IsBossSpawner); promotion revalidates anchors so the hall flips
+valid and its +15% respawn hastening starts the moment the tenant rises.
+Sub-boss rank rises anywhere the spawner musters.
+
+**Limits and costs:** 1 boss and 2 sub-bosses per floor (live census).
+Promotion pays the mana and capacity DIFFERENCE between ranks; the spawner's
+CapacityCost folds the bonus (demolish refunds the promoted total). No demote.
+Applies to the living monster immediately BY RATIO (never double-stacks) and
+heals to the new maximum. Veterancy stacks. Transients cannot rise; wilds and
+risen are out of scope (spawner-only).
+
+**Numbers:** one PromotionTemplate asset (assigned on DungeonBuildController)
+-- boss x5 HP / x3 dmg / x5 XP / x4 cap / x4 mana / x1.5 scale, untinted;
+sub-boss x2.5 / x2 / x2.5 / x2 / x2 / x1.25, dark tint -- seeded verbatim from
+the retired variants, plus the boss epithet pool.
+
+**Titles:** bosses roll a persisted epithet ("<name>, <epithet>"); custom name
+overrides; sub-bosses are untitled by design (promotedTitle null below Boss).
+Boss deaths route through a new title-string NotifyBossDeath overload.
+
+**Key files:** Monster/PromotionTemplate.cs (new; enum + template),
+Monster/MonsterSpawner.cs, Monster/DungeonMonster.cs (ApplyPromotion),
+Monster/MonsterCommandUI.cs, DungeonCore/DungeonBuildController.cs (promotion
+API), Room/MusterRooms.cs, Room/RoomValidator.cs, UI/BossAlertService.cs,
+Save/DungeonSaveData.cs + DungeonSaveController.cs (additive
+promotionRank/bossEpithet).
+
+**Rejected:** per-definition boss variant coverage (doubles the registry
+forever); rank-at-placement in the picker (superseded by the command-panel
+verb); demotion (refund complexity for no play value); Boss Room as optional
+housing (rule B -- the room must gate, or its cost buys nothing); promotion of
+wilds, risen minions, or transients.
 
 ---
 
