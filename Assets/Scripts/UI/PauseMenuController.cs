@@ -126,6 +126,7 @@ public class PauseMenuController : MonoBehaviour
 
         if (IsMenuOpen) Resume();
         else if (CryptRaiseUI.Instance != null && CryptRaiseUI.Instance.IsOpen) CryptRaiseUI.Instance.Close();
+        else if (PrisonerPanelUI.Instance != null && PrisonerPanelUI.Instance.IsOpen) PrisonerPanelUI.Instance.Close();
         else if (ResearchTreeUI.Instance != null && ResearchTreeUI.Instance.IsOpen) ResearchTreeUI.Instance.ClosePanel();
         else if (QuestLogUI.Instance != null && QuestLogUI.Instance.IsOpen) QuestLogUI.Instance.CloseJournal();
         else if (IsIdle() && ActionBarHUD.LastCancelFrame != Time.frameCount) Open();

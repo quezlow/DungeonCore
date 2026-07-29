@@ -104,6 +104,10 @@ public class WispScript : ScriptableObject
             // earns the nudge, since the codex now lives quietly in the journal.
             new Line { id = "pattern_learned", once = false,
                 text = "Something new, remembered. It has settled into the codex - look when you like." },
+
+            // First arrival of the Wandering Merchant, once ever.
+            new Line { id = "merchant_first", once = true,
+                text = "A wagon on the road. He has come a long way to sell to something like you - do look at what he carries." },
         };
 
         barkSets = new[]

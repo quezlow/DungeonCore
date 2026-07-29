@@ -205,6 +205,7 @@ public class DungeonSaveController : MonoBehaviour
         AlertsLog.Instance?.ClearHistory();
         DungeonAdventurer.ResetSessionSignals();   // re-arm the wisp's one-shot party announce
         TutorialDirector.ResetForNewGame();        // fresh dungeon runs the guided opening again
+        WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
 
         SaveGame();
 
@@ -301,6 +302,7 @@ public class DungeonSaveController : MonoBehaviour
         }
 
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
+        currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
 
         if (TodoListUI.Instance != null)
             currentSave.playerTodos = TodoListUI.Instance.GetSaveData();
@@ -533,6 +535,25 @@ public class DungeonSaveController : MonoBehaviour
             });
         }
 
+        // Captives record their CELL rather than their world position: the held
+        // sprite carries a visual lift that would round to the wrong tile.
+        foreach (var pr in floor.GetComponentsInChildren<Prisoner>(true))
+        {
+            if (pr == null || pr.Resolved) continue;
+            if (PrisonController.Instance == null
+                || !PrisonController.Instance.TryGetCell(pr, out var prCell)) continue;
+            data.prisoners.Add(new PrisonerSaveData
+            {
+                captiveName = pr.CaptiveName,
+                type = (int)pr.Type,
+                combatClass = (int)pr.Class,
+                className = pr.ClassName,
+                named = pr.IsNamed,
+                daysHeld = pr.DaysHeld,
+                cell = SerializableVector3Int.From(prCell)
+            });
+        }
+
         foreach (var a in floor.GetComponentsInChildren<RoomAnchor>(true))
         {
             var fp = new List<SerializableVector3Int>(a.Footprint.Count);
@@ -749,6 +770,7 @@ public class DungeonSaveController : MonoBehaviour
             WispCompanion.Instance?.RestoreSpokenFromSave(currentSave.wispSpokenLines);
             WispCompanion.Instance?.RestorePersonalityFromSave(currentSave.wispPersonality);
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
+            WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);
@@ -899,6 +921,13 @@ public class DungeonSaveController : MonoBehaviour
         if (data.namedCorpses != null)
             foreach (var nc in data.namedCorpses)
                 CryptController.Instance?.RestoreNamedCorpse(floor, nc.heroName, nc.cell.ToVector3Int(), nc.housed);
+
+        // Runs after the furniture pass above, so every cell exists to rebind to.
+        if (data.prisoners != null)
+            foreach (var pr in data.prisoners)
+                PrisonController.Instance?.RestorePrisoner(floor, pr.captiveName,
+                    (AdventurerType)pr.type, (CombatClass)pr.combatClass, pr.className,
+                    pr.named, pr.daysHeld, pr.cell.ToVector3Int());
 
         if (data.roomAnchors != null)
             foreach (var a in data.roomAnchors)

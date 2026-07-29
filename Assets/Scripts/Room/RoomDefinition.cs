@@ -101,6 +101,7 @@ public enum RoomEffectType
     CryptPreservation,  // marker: this room preserves named corpses (read by CryptController; no per-second work)
     TrophyHousing,      // marker: trophies standing in this valid room contribute their effect (read by RoomEffectCensus)
     RaidForesight,      // marker: a valid room reads the coming raid (Oracle Chamber). Room tier sets the depth of the wave-preview forecast (RoomEffectCensus.ForesightTier).
+    PrisonHousing,      // marker: cells in this room may hold captives (read by PrisonController; no per-second work)
 }
 
 [Serializable]

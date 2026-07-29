@@ -63,6 +63,17 @@ public class CampGrowthController : MonoBehaviour
 {
     public static CampGrowthController Instance { get; private set; }
 
+    // Live commerce-anchor props by zone, registered as tiers build and
+    // cleared when a raid ruins them. The Wandering Merchant docks here.
+    private readonly Dictionary<string, Transform> commerceAnchors = new();
+
+    /// <summary>Every live commerce anchor, keyed by zone id.</summary>
+    public IEnumerable<KeyValuePair<string, Transform>> CommerceAnchors => commerceAnchors;
+
+    /// <summary>The zone's live commerce anchor, or null (unbuilt or ruined).</summary>
+    public Transform CommerceAnchorOf(string zoneId)
+        => commerceAnchors.TryGetValue(zoneId, out var t) ? t : null;
+
     [Tooltip("Wisp lines on tier-up, indexed by the tier reached (last entry repeats for later tiers).")]
     [SerializeField]
     private List<string> tierUpBarks = new List<string>
@@ -559,6 +570,7 @@ public class CampGrowthController : MonoBehaviour
                 var rc = Instantiate(rdef.ruinCommercePrefab, parent);
                 rc.name = "CommerceRuin";
                 rc.transform.localPosition = rCommerce;
+                commerceAnchors.Remove(marker.ZoneId);   // a ruin is no dock - the merchant skips
             }
             PlaceRow(parent, marker.ZoneId, -state, rdef.props, rdef.ruinProps,
                      rr, rCommerce);
@@ -579,6 +591,11 @@ public class CampGrowthController : MonoBehaviour
             var c = Instantiate(def.commercePrefab, parent);
             c.name = "Commerce";
             c.transform.localPosition = commerceLocal;
+            commerceAnchors[marker.ZoneId] = c.transform;   // the merchant's dock
+        }
+        else
+        {
+            commerceAnchors.Remove(marker.ZoneId);
         }
 
         PlaceRow(parent, marker.ZoneId, tier, def.props, null, radius, commerceLocal);

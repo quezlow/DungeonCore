@@ -55,6 +55,7 @@ public class DungeonSaveData
     public List<string> wispSpokenLines = new();          // tutorial one-shots already heard (additive; empty on old saves)
     public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
     public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)
+    public int merchantNextVisitDay = -1;                 // wandering merchant schedule; -1 = unscheduled (additive)
 
     public RunStatsSaveData runStats;
 
@@ -169,6 +170,7 @@ public class FloorSaveData
     public List<DungeonChestSaveData> chests = new();
     public List<FurnitureSaveData> furniture = new();
     public List<NamedCorpseSaveData> namedCorpses = new();   // named-hero corpses (additive; null on old saves)
+    public List<PrisonerSaveData> prisoners = new();         // captives held in cells (additive; null on old saves)
     public List<RoomAnchorSaveData> roomAnchors = new();
     public List<TrapSaveData> traps = new();
     public List<StairsSaveData> stairs = new();
@@ -229,6 +231,18 @@ public class NamedCorpseSaveData
     public string heroName;
     public SerializableVector3Int cell;   // sarcophagus cell when housed, else where it lies
     public bool housed;
+}
+
+[Serializable]
+public class PrisonerSaveData
+{
+    public string captiveName;
+    public int type;                      // AdventurerType ordinal
+    public int combatClass;               // CombatClass ordinal
+    public string className;
+    public bool named;
+    public int daysHeld;
+    public SerializableVector3Int cell;   // the cell furniture holding them
 }
 
 [Serializable]

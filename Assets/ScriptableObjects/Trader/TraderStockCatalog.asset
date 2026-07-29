@@ -1,0 +1,187 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25e7712f9f9d1ba4fb4af60506b4cd9e, type: 3}
+  m_Name: TraderStockCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::TraderStockCatalog
+  entries:
+  - id: pat_consecrant_ash
+    displayName: Consecrant Ash
+    type: 0
+    pattern: {fileID: 11400000, guid: 87f8777dfaa7bb74d89390ffebe05ef3, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_cured_leather
+    displayName: Cured Leather
+    type: 0
+    pattern: {fileID: 11400000, guid: b1c1b146b663d2342908a990a5e93caf, type: 2}
+    nodeKey: 
+    price: 60
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_emberglass
+    displayName: Emberglass
+    type: 0
+    pattern: {fileID: 11400000, guid: d27b4df9c1c6fb14f8091ba6046758e2, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_gravegold
+    displayName: Gravegold
+    type: 0
+    pattern: {fileID: 11400000, guid: a91ba886a25c618468a9e647ac02b9af, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_hempen_rope
+    displayName: Hempen Rope
+    type: 0
+    pattern: {fileID: 11400000, guid: f42743a5bf1021b489374d8dbfeff95d, type: 2}
+    nodeKey: 
+    price: 100
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_living_wood
+    displayName: Living Wood
+    type: 0
+    pattern: {fileID: 11400000, guid: dee004b5c57fbb141bd5dfc560967941, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_minted_brass
+    displayName: Minted Brass
+    type: 0
+    pattern: {fileID: 11400000, guid: 5d1433beb2e9d2641b851e63665bc90c, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_riverpearl
+    displayName: Riverpearl
+    type: 0
+    pattern: {fileID: 11400000, guid: 93c94b226f2afe546a433af98fa0467b, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_rough_timber
+    displayName: Rough Timber
+    type: 0
+    pattern: {fileID: 11400000, guid: f4d92040e4e8d8a46b70eb37cb92b9d0, type: 2}
+    nodeKey: 
+    price: 60
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_runed_crystal
+    displayName: Runed Crystal
+    type: 0
+    pattern: {fileID: 11400000, guid: 2930a3bce4ba3a74eb23482c3673ef2e, type: 2}
+    nodeKey: 
+    price: 320
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_silverwork
+    displayName: Silverwork
+    type: 0
+    pattern: {fileID: 11400000, guid: aa3286d208777054a815b22218b20601, type: 2}
+    nodeKey: 
+    price: 180
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_skysilver
+    displayName: Skysilver
+    type: 0
+    pattern: {fileID: 11400000, guid: 85782a57d5fad0b40a65bc8ed779d345, type: 2}
+    nodeKey: 
+    price: 240
+    flavour: Only the wagon carries this. He will not say where it was got.
+    isCatchUp: 0
+  - id: pat_star_iron
+    displayName: Star-Iron
+    type: 0
+    pattern: {fileID: 11400000, guid: 242b909625ff89b4b81f20d92d9523cc, type: 2}
+    nodeKey: 
+    price: 550
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_tempered_steel
+    displayName: Tempered Steel
+    type: 0
+    pattern: {fileID: 11400000, guid: 75be6e24d057e9d40a18ec0c386f36e6, type: 2}
+    nodeKey: 
+    price: 180
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: pat_wrought_iron
+    displayName: Wrought Iron
+    type: 0
+    pattern: {fileID: 11400000, guid: 9e73fdad6444b264ab8c29fb74271ecf, type: 2}
+    nodeKey: 
+    price: 100
+    flavour: The deep withheld it; the road provides.
+    isCatchUp: 1
+  - id: bk_assessor
+    displayName: The Assessor's Own Ledger
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.known_parties
+    price: 220
+    flavour: A guild ledger, bought or stolen. Half the names are crossed out; the
+      ink tells you why.
+    isCatchUp: 0
+  - id: bk_whispers
+    displayName: Whispers Set to Parchment
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.oracle_intent
+    price: 400
+    flavour: Someone wrote down what the walls hear. The margins argue with the text.
+    isCatchUp: 0
+  - id: bk_consecrant
+    displayName: Codex of Consecrant Masonry
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.consecrant_masonry
+    price: 220
+    flavour: Church stonework, annotated by someone who meant to unbuild it. The
+      binding is iron - the requirement travels with the book.
+    isCatchUp: 0
+  - id: bk_halls_of_war
+    displayName: On Halls of War
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.halls_of_war
+    price: 400
+    flavour: A drill-master's treatise on rooms that make soldiers. Bloodstains where
+      the good chapters start.
+    isCatchUp: 0
+  - id: bk_psalter
+    displayName: Psalter of the Shambling Dead
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.shambling_dead
+    price: 220
+    flavour: Hymns for the risen, transcribed backwards. They hum along, after a
+      fashion.
+    isCatchUp: 0
+  - id: bk_marrow
+    displayName: Whisperer in Marrow
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.whisperer_in_marrow
+    price: 480
+    flavour: The book the node is named for. It arrives already open.
+    isCatchUp: 0

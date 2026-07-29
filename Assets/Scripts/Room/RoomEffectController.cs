@@ -93,7 +93,8 @@ public class RoomEffectController : MonoBehaviour
                     || fx.type == RoomEffectType.RespawnSpeed || fx.type == RoomEffectType.ManaRegen
                     || fx.type == RoomEffectType.TrapDamage || fx.type == RoomEffectType.LibraryResearch
                     || fx.type == RoomEffectType.SparringXp
-                    || fx.type == RoomEffectType.CryptPreservation) continue;
+                    || fx.type == RoomEffectType.CryptPreservation
+                    || fx.type == RoomEffectType.PrisonHousing) continue;
 
                 // Core retaliation acts on adventurers in the room (no monsters required).
                 if (fx.type == RoomEffectType.CoreRetaliation)

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a73f400152177e4195c007e6eb6bd55, type: 3}
+  m_Name: Room_Prison
+  m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
+  roomName: Room
+  description: 
+  effectSummary: 
+  validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
+  minTileCount: 9
+  maxTileCount: 0
+  requiresCore: 0
+  requiredFurniture: []
+  requiresBossSpawner: 0
+  techNodeUnlockKey: 
+  techNodeDescription: 
+  requiredTechKey: 
+  maxTier: 3
+  upgradeBaseCost: 100
+  effects: []
+  spawnCategories: 

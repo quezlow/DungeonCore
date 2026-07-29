@@ -108,6 +108,14 @@ public class PatternDiscovery : MonoBehaviour
     /// game (floor bootstraps may claim the starter area before the reset)
     /// and on load (heals saves that predate the pattern system).
     /// </summary>
+    /// <summary>Trader channel: a pattern bought from the Wandering Merchant.
+    /// Announces normally - the wisp's discovery bark fires as for any find.</summary>
+    public static void NotifyTraderPurchase(PatternDefinition def, Vector3 worldPos)
+    {
+        if (def == null) return;
+        Instance?.Learn(def, "trader", worldPos, 0, announce: true);
+    }
+
     public static void CatchUpTerrain()
     {
         if (Instance == null || Instance.catalog == null) return;

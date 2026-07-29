@@ -47,6 +47,10 @@ MonoBehaviour:
     once: 0
     text: Something new, remembered. It has settled into the codex - look when you
       like.
+  - id: merchant_first
+    once: 1
+    text: A wagon on the road. He has come a long way to sell to something like you
+      - do look at what he carries.
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}

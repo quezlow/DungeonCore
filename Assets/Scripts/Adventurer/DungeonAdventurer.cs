@@ -1603,9 +1603,37 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     /// <summary>True while actively fighting - used to hush ambient banter.</summary>
     public bool IsInCombat => state == AdventurerState.Combat;
 
+    /// <summary>Take this one alive instead, if the dungeon can hold them. Heroes and
+    /// Inspectors are never taken (the first by rule, the second because the assessment
+    /// must run its course), and the Suicidal least of all -- a death in the dark is
+    /// exactly what they walked in for. Cells are both the capacity and the opt-in:
+    /// with none built, nothing here ever fires. Returns true when the captive is housed
+    /// and this body is spent, in which case no death is reported at all: no kill
+    /// notoriety, no faction kill, no alignment shift, no corpse. The verb chosen in the
+    /// cell decides all of that later.</summary>
+    private bool TryCapture()
+    {
+        var prison = PrisonController.Instance;
+        if (prison == null) return false;
+        if (type == AdventurerType.Hero
+            || type == AdventurerType.Inspector
+            || type == AdventurerType.Suicidal) return false;
+        if (!prison.TryImprison(displayName, type, combatClass, className, named)) return false;
+
+        // The same resolution bookkeeping a death performs, minus everything that
+        // reports a kill. XP still lands: the core overcame them either way.
+        DungeonCore.Instance?.AddXP(xpOnDeath);
+        DropCarriedTribute("dropped the offering when they were taken");
+        party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
+        UnregisterFromFloor(currentFloor);
+        DropCarriedLoot();
+        if (statusBars != null) Destroy(statusBars.gameObject);
+        Destroy(gameObject);
+        return true;
+    }
+
     private void Die()
     {
-        AdventurerDeaths++;
         OnAnyAdventurerSlain?.Invoke();
         DropCarriedTribute("fell with the offering");
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);

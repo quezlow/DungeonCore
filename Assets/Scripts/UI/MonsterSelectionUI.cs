@@ -49,6 +49,15 @@ public class MonsterSelectionUI : MonoBehaviour
 
     [Header("UI References")]
     [SerializeField] private GameObject     panel;
+    [Tooltip("The roster panel (MonsterSelectionMainPanel). Separate from `panel`, which " +
+             "is wired to the description panel, so closing the picker hides both.")]
+    [SerializeField] private GameObject     rosterPanel;
+    [Tooltip("Panel header, e.g. 'Summon roster    12 known'. Counts creatures the core " +
+             "can actually summon right now -- rank, research and discovery all met -- so " +
+             "it rises as the roster opens up. Optional.")]
+    [SerializeField] private TMP_Text       rosterHeaderLabel;
+    [Tooltip("Text shown before the count in the panel header.")]
+    [SerializeField] private string         rosterHeaderTitle = "Summon roster";
     [SerializeField] private Image          monsterIcon;
     [SerializeField] private TMP_Text       monsterNameLabel;
     [SerializeField] private TMP_Text       costLabel;
@@ -168,6 +177,13 @@ public class MonsterSelectionUI : MonoBehaviour
             && core.UsedCapacity + def.CapacityCost <= core.MaxCapacity;
     }
 
+    /// <summary>True only when the player ACTIVELY researched this creature. A creature
+    /// with no tech gate satisfies TechMet trivially and must not count here, or every
+    /// ungated creature in the game would reveal its name from rank 1.</summary>
+    private static bool ResearchEarned(MonsterDefinition def)
+        => !string.IsNullOrEmpty(def.requiredTechKey)
+        && UnlockState.IsUnlocked(def.requiredTechKey);
+
     private static RosterState StateOf(MonsterDefinition def)
     {
         // Never discovered: a mystery at any rank, so the Bestiary hunt stays a goal
@@ -183,11 +199,11 @@ public class MonsterSelectionUI : MonoBehaviour
         // Rank reached but the shape is not remembered yet: name it and say why.
         if (rank) return RosterState.ResearchNeeded;
 
-        // Researched ahead of rank: the player earned the reveal, so it is named and
-        // sits after the mystery rows.
-        if (tech) return RosterState.RankLocked;
+        // Rank-locked. Research is what buys the reveal: study something five ranks out
+        // and it is named for good, with the rank it opens at. Creatures gated ONLY by
+        // rank stay anonymous, and are teased just one step ahead.
+        if (ResearchEarned(def)) return RosterState.RankLocked;
 
-        // Not researched and not yet at rank: tease only the next step up.
         return IsNextRank(def) ? RosterState.Mystery : RosterState.Hidden;
     }
 
@@ -222,10 +238,33 @@ public class MonsterSelectionUI : MonoBehaviour
 
     /// <summary>Rebuilds every row. Cheap enough to run on open and on any unlock,
     /// and far simpler than diffing a hundred rows against changed lock state.</summary>
+    /// <summary>Creatures the core could summon right now if it had the mana: rank,
+    /// research and discovery all met. This is what "known" means in the header.</summary>
+    private int KnownCount()
+    {
+        if (registry?.All == null) return 0;
+        int n = 0;
+        foreach (var def in registry.All)
+        {
+            if (def == null || !AffinityAllowed(def)) continue;
+            var s = StateOf(def);
+            if (s == RosterState.Available || s == RosterState.Unaffordable) n++;
+        }
+        return n;
+    }
+
+    private void RefreshRosterHeader()
+    {
+        if (rosterHeaderLabel == null) return;
+        rosterHeaderLabel.text = $"{rosterHeaderTitle}    {KnownCount()} known";
+    }
+
     private void RebuildRoster()
     {
         foreach (var go in spawnedRows) if (go != null) Destroy(go);
         spawnedRows.Clear();
+        firstPlaceable = null;
+        RefreshRosterHeader();
 
         if (rosterContainer == null || rosterRowPrefab == null || registry?.All == null) return;
 
@@ -295,6 +334,10 @@ public class MonsterSelectionUI : MonoBehaviour
         bool selectable = state == RosterState.Available || state == RosterState.Unaffordable;
         btn.interactable = selectable;
 
+        // Remember the first row the player could actually place, so the description pane
+        // opens on something useful rather than on whatever happens to be selected.
+        if (state == RosterState.Available && firstPlaceable == null) firstPlaceable = def;
+
         var captured = def;
         if (selectable)
             btn.onClick.AddListener(() => SelectFromRoster(captured));
@@ -315,31 +358,43 @@ public class MonsterSelectionUI : MonoBehaviour
         Hide();
     }
 
-    /// <summary>Detail pane preview on hover. Does not change the selection.</summary>
+    private MonsterDefinition firstPlaceable;
+    private MonsterDefinition shownInPane;
+
+    /// <summary>
+    /// Detail pane preview on hover. Sticky by design: a ??? row is ignored outright and
+    /// leaving a row does not revert, so the pane holds the last NAMED creature the
+    /// pointer crossed. Named-but-locked rows (research required, rank-locked) do update
+    /// it -- seeing what a creature does is the whole reason to go and unlock it.
+    /// </summary>
     public void PreviewRow(MonsterDefinition def, bool mystery)
     {
+        if (def == null || mystery) return;   // ??? never takes over the pane
+        ShowInPane(def);
+    }
+
+    /// <summary>No-op: the pane is sticky, so a pointer leaving a row changes nothing.
+    /// Kept so the hover relay has a stable contract.</summary>
+    public void ClearPreview() { }
+
+    private void ShowInPane(MonsterDefinition def)
+    {
         if (def == null) return;
+        shownInPane = def;
         var state = StateOf(def);
+
+        if (panel != null && !panel.activeSelf) panel.SetActive(true);
 
         if (monsterIcon != null)
         {
-            monsterIcon.sprite = mystery ? null : def.icon;
-            monsterIcon.enabled = !mystery;
+            monsterIcon.sprite = def.icon;
+            monsterIcon.enabled = def.icon != null;
         }
-        if (monsterNameLabel != null)
-            monsterNameLabel.text = mystery ? "???" : def.monsterName;
+        if (monsterNameLabel != null) monsterNameLabel.text = def.monsterName;
         if (costLabel != null)
-            costLabel.text = mystery
-                ? StatusLine(def, state)
-                : $"{StatusLine(def, state)}{MusterLine(def)}";
-        if (descriptionLabel != null)
-            descriptionLabel.text = mystery
-                ? "Something the core has not yet learned to shape."
-                : def.description;
+            costLabel.text = $"{StatusLine(def, state)}{MusterLine(def)}";
+        if (descriptionLabel != null) descriptionLabel.text = def.description;
     }
-
-    /// <summary>Restores the detail pane to the current selection when a hover ends.</summary>
-    public void ClearPreview() => RefreshDisplay();
 
     // ── Display ───────────────────────────────────────────────────
 
@@ -394,8 +449,15 @@ public class MonsterSelectionUI : MonoBehaviour
 
     private void Show()
     {
+        if (rosterPanel != null) rosterPanel.SetActive(true);
         if (panel != null) panel.SetActive(true);
         RebuildRoster();
+
+        // Open on the first placeable creature. RebuildRoster fills firstPlaceable while
+        // spawning rows, so this runs after it. With nothing placeable the pane has
+        // nothing honest to show, so it stays shut until a row is hovered.
+        if (firstPlaceable != null) ShowInPane(firstPlaceable);
+        else if (panel != null) panel.SetActive(false);
 
         // Snap off a wrong-affinity selection (e.g. after loading a different
         // core's save) and refresh lock states that may have changed while the
@@ -410,5 +472,7 @@ public class MonsterSelectionUI : MonoBehaviour
     private void Hide()
     {
         if (panel != null) panel.SetActive(false);
+        if (rosterPanel != null) rosterPanel.SetActive(false);
+        shownInPane = null;
     }
 }

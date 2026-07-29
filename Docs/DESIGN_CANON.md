@@ -50,6 +50,7 @@ the supersession in one line.
 7. Factions and Standing
 8. Recurring Threat Events
 8A. Notoriety Model (Gain Shaping, Tier Gates, Decay)
+8B. Prison and Captives (Capture, Verbs, Starvation)
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
 11. Tribute and GiftGivers
@@ -481,6 +482,72 @@ earns through `AccrueKillNotoriety`).
 pure-notoriety hero/spawn gating (superseded by the tier floors); a buildable
 notoriety sink this session (deferred -- tuning solved the reported problem).
 
+## 8B. Prison and Captives (Capture, Verbs, Starvation)
+
+Status: SHIPPED (guide 1 of 2 -- the reactive layer is pending). Capture is
+the player's active hand on notoriety, the agency deliberately deferred in
+the 8A tuning pass.
+
+**Capture.** `DungeonAdventurer.TryCapture()` pre-empts `Die()`. A beaten
+adventurer is taken alive when `PrisonController.TryImprison` finds a free
+Cell inside a valid Prison. Exempt always: Hero (by rule), Inspector (the
+assessment must run its course), Suicidal (death is what they came for).
+The capture path deliberately skips every kill report -- no
+`AccrueKillNotoriety`, no `FactionSystem.RegisterKill`, no
+`AlignmentSystem.OnAdventurerKilled`, no corpse, no `AdventurerDeaths++`,
+no `OnAnyAdventurerSlain`. XP still lands: the core overcame them either way.
+
+**Capacity is cells, and cells are the opt-in.** There is no prisoner budget
+and no toggle. Capture fires only when a free Cell stands in a valid Prison,
+so a player who builds none sees the pre-capture behaviour unchanged. This
+supersedes any notion of a separate holding budget or a monster-budget share.
+
+**The verbs** (`PrisonController`, all via `PrisonerPanelUI`):
+Release drains notoriety (default 8) and shifts alignment toward the light
+(4). Execute raises notoriety (8), darkens alignment (6) and leaves a corpse
+-- named captives keep their name, so the Crypt can gather and raise them,
+making capture a controlled input to the nemesis loop. Interrogate unlocks
+`FactionIntel.IntelKey` for that captive's banner, once per faction, and the
+captive survives the reading. A captive left unprocessed starves after
+`starveDays` (5) dawns and leaves a corpse. A Prison that falls out of
+validity loses its captives at the next dawn -- a broken gaol keeps nobody.
+
+**Room and marker.** New `RoomEffectType.PrisonHousing`, appended at the enum
+tail so existing ordinals do not shift; a marker only, skipped by
+`RoomEffectController`'s per-second tick exactly like `CryptPreservation`.
+Prison = Room Definition (min 9 tiles, 1 Cell required, `requiredTechKey`
+`tech.prison`); Cell = Furniture Definition whose `furnitureName` string
+"Cell" is load-bearing for saves.
+
+**Save.** `PrisonerSaveData` per floor (name, type/class ordinals, class
+label, named flag, days held, cell). Captives record their CELL rather than
+their world position, since the held sprite carries a visual lift that would
+round to the wrong tile. Restore runs after the furniture pass.
+
+**Design forks settled:** capture via subdue-on-defeat and (guide 2)
+capture-traps, never monster escort; no Convert/Recruit; capturable = every
+type but Hero/Inspector/Suicidal; passive starvation rather than active
+guarded escape; capacity = cell availability only.
+
+**Pending (guide 2, the reactive layer):** capture-traps that pin an
+adventurer in place with a rescue window for their surviving party; faction
+rescue parties that target the Prison for high-value captives; the
+ransom-bearer. Lore rule established: the core never negotiates outward --
+the world learns of a held captive only because an escapee carried word, and
+responds by sending either a bearer or a raid.
+
+**Key files:** `Room/Prisoner.cs`, `Room/PrisonController.cs`,
+`UI/PrisonerPanelUI.cs`, `Adventurer/DungeonAdventurer.cs` (`TryCapture`),
+`Room/RoomDefinition.cs` (marker), `Room/RoomEffectController.cs` (skip),
+`Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`,
+`UI/PauseMenuController.cs` (Esc ladder).
+
+**Un-binned:** prisoner/capture was a Day-34 rejection and is now shipped.
+Squad formations was also un-binned -- note that the LIGHT muster formation
+already shipped; what remains unbuilt is the full tactical layer (holding
+formation during the march and combat, formation effects, formation-breaking
+as a trap/monster goal), scheduled after this feature.
+
 ## 9. Endgame Climax (Diamond 3 Trial)
 
 Status: SHIPPED. Verified: 2026-07-09.
@@ -840,9 +907,10 @@ terrain, 8 loot-band, 4 reserved). Live channels: terrain first-claim
 block; Bedrock teaches nothing) and adventurer loot (rolled in
 `DroppedLoot.Absorb` against serialised per-rarity chances
 10/20/35/60/100%; expected drops to finish a band = band size / chance;
-exhausted bands fizzle silently -- the trader stays the designed catch-up
-valve; tribute coin flourishes roll as Common). Trader and avatar
-channels remain reserved catalog entries; the EVENT channel is live for
+exhausted bands fizzle silently -- the Wandering Merchant is the shipped
+catch-up valve (see the Wandering Merchant section); tribute coin
+flourishes roll as Common). The avatar channel remains a reserved catalog
+entry; the trader channel is live via the merchant; the EVENT channel is live for
 Gravegold -- the fall of a named hero teaches it
 (`PatternDiscovery.NotifyNamedHeroFelled`, called from the adventurer death
 path). Learned-from notes persist per
@@ -1730,3 +1798,35 @@ Quest Log, Known Parties, Factions, Research) are the pattern to copy.
 
 The only components that legitimately keep a private toggleKey are non-panel
 debug/HUD toggles bound to F-keys (CaveWallDebugOverlay, HudToggle).
+
+## The Wandering Merchant (Trader Channel)
+
+**As built:** `WanderingMerchantController` (floor 0, beside the surface
+systems) + `MerchantShopUI` + `TraderStockCatalog` asset authored by the
+Dungeon Core -> Generate Trader Stock menu item. Per the surface-war canon he
+stages through the forest-road gate (serialized gate Transform; appears at
+the dock if unset) and docks at the camp's commerce anchor -- exposed by a
+new `CampGrowthController.CommerceAnchors` registry filled at the commerce
+Instantiate and cleared on ruin. **Visit gate:** he comes only once a camp
+reaches Camp tier (TierOf >= 1) with a live anchor; a ruined stall skips
+visits until rebuilt. **Cadence:** arrives on OnDayStarted when due, leaves
+at dusk on OnNightStarted; the gap re-rolls 3-7 days at each departure and
+persists (`DungeonSaveData.merchantNextVisitDay`; -1 = unscheduled, due the
+first eligible day -- which also makes a mid-visit save re-arrive cleanly).
+**Stock:** rolled per visit, 4-6 slots, at least one catch-up when eligible;
+sold entries leave until the next visit. Catch-up eligibility is plumbing-
+free: a loot-band pattern stocks once a HIGHER loot band is already learned.
+All Reserved-band patterns sell at a flat 240g (the only source -- buying
+Gravegold is what opens The Waiting Dark's gate); catch-up follows the
+approved curve 60/100/180/320/550 by band; the six loot books grant nodes
+outright via `GrantNodeFully` at 220g (T2) / 400g (T3) / 480g (the Whisperer
+apex), anchored against the shipped bribe costs (150g Inspector / 250g
+Mercenary). Purchases route patterns through a new public
+`PatternDiscovery.NotifyTraderPurchase` (source "trader"; the usual
+discovery bark fires). The wisp marks his first arrival once
+(`merchant_first`) with an Excite. The panel closes by button only -- ESC
+arbitration stays centralised in PauseMenuController; the game keeps running
+while the wagon is open. The Sorcery book pair (Primer of the First Spark,
+The Drawn Breath) stays reserved by name until core spells are greenlit.
+Adding stock later (specials included) is assets-only: new typed entries in
+the catalog.
