@@ -263,6 +263,7 @@ public class MonsterSelectionUI : MonoBehaviour
     {
         foreach (var go in spawnedRows) if (go != null) Destroy(go);
         spawnedRows.Clear();
+        rowBindings.Clear();
         firstPlaceable = null;
         RefreshRosterHeader();
 
@@ -346,7 +347,47 @@ public class MonsterSelectionUI : MonoBehaviour
         // the creature.
         var hover = btn.gameObject.AddComponent<MonsterRosterRowHover>();
         hover.Bind(this, def, mystery);
+
+        // Kept so a mana change can repaint this row in place instead of rebuilding
+        // the whole roster.
+        rowBindings.Add((btn, def, labels, state));
     }
+
+    private readonly List<(Button btn, MonsterDefinition def, TMP_Text[] labels, RosterState state)>
+        rowBindings = new List<(Button, MonsterDefinition, TMP_Text[], RosterState)>();
+
+    /// <summary>Repaints rows whose affordability flipped. Called on every mana change
+    /// while the picker is open; rows that did not change are left untouched, so a quiet
+    /// tick writes nothing to the UI.</summary>
+    private void RefreshAffordability()
+    {
+        for (int i = 0; i < rowBindings.Count; i++)
+        {
+            var b = rowBindings[i];
+            if (b.btn == null || b.def == null) continue;
+
+            // Only these two states turn on mana or capacity. A locked row cannot become
+            // affordable without a rebuild-worthy change behind it.
+            if (b.state != RosterState.Available && b.state != RosterState.Unaffordable)
+                continue;
+
+            var now = Affordable(b.def) ? RosterState.Available : RosterState.Unaffordable;
+            if (now == b.state) continue;
+
+            var colour = ColourFor(now);
+            if (b.labels != null)
+            {
+                if (b.labels.Length >= 2) b.labels[1].text = StatusLine(b.def, now);
+                else if (b.labels.Length == 1)
+                    b.labels[0].text = $"{b.def.monsterName}  -  {StatusLine(b.def, now)}";
+                foreach (var t in b.labels) if (t != null) t.color = colour;
+            }
+
+            rowBindings[i] = (b.btn, b.def, b.labels, now);
+        }
+    }
+
+    private void HandleManaChanged(float _, float __) => RefreshAffordability();
 
     private void SelectFromRoster(MonsterDefinition def)
     {
@@ -453,6 +494,12 @@ public class MonsterSelectionUI : MonoBehaviour
         if (panel != null) panel.SetActive(true);
         RebuildRoster();
 
+        if (DungeonCore.Instance != null)
+        {
+            DungeonCore.Instance.OnManaChanged -= HandleManaChanged;
+            DungeonCore.Instance.OnManaChanged += HandleManaChanged;
+        }
+
         // Open on the first placeable creature. RebuildRoster fills firstPlaceable while
         // spawning rows, so this runs after it. With nothing placeable the pane has
         // nothing honest to show, so it stays shut until a row is hovered.
@@ -471,8 +518,19 @@ public class MonsterSelectionUI : MonoBehaviour
 
     private void Hide()
     {
+        if (DungeonCore.Instance != null)
+            DungeonCore.Instance.OnManaChanged -= HandleManaChanged;
+
         if (panel != null) panel.SetActive(false);
         if (rosterPanel != null) rosterPanel.SetActive(false);
         shownInPane = null;
+    }
+
+    /// <summary>Safety net: if this object is torn down while the picker is open, Hide
+    /// never runs, and an attached handler would outlive it.</summary>
+    private void OnDisable()
+    {
+        if (DungeonCore.Instance != null)
+            DungeonCore.Instance.OnManaChanged -= HandleManaChanged;
     }
 }

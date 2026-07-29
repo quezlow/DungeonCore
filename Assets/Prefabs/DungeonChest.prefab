@@ -80,7 +80,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1453108971
-  m_SortingLayer: 7
+  m_SortingLayer: 6
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 5267353087624012429, guid: b39d51932594e884687366cd0eb2b4b0, type: 3}
@@ -124,11 +124,15 @@ MonoBehaviour:
   entries:
   - label: 
     lootType: 0
+    rarity: 0
     goldValue: 5
     weight: 2
+    grantsNode: {fileID: 0}
   - label: 
     lootType: 0
+    rarity: 0
     goldValue: 15
     weight: 1
+    grantsNode: {fileID: 0}
   carriableLootPrefab: {fileID: 2510184261249386949, guid: 8dd25799e128f934e83875d915b29aa8, type: 3}
   droppedLootPrefab: {fileID: 0}
