@@ -193,6 +193,8 @@ public class MonsterSpawnerSaveData
     public bool hasPost = false;                    // additive; false on old saves
     public SerializableVector3Int postCell;
     public bool musterGated = false;                // additive; pre-muster spawners stay exempt
+    public int promotionRank = 0;                   // additive; PromotionRank enum int, 0 on old saves
+    public string bossEpithet;                      // additive; rolled boss epithet, null below boss rank
 
     // DAY 31 — Alive monster state. Captured when this spawner has a live monster
     // at save time; consumed by the spawner's first SpawnMonster() on load.

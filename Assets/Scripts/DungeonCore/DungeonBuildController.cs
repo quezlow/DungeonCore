@@ -44,6 +44,8 @@ public class DungeonBuildController : MonoBehaviour
     [SerializeField] private DungeonEntrance entrancePrefab;
     [SerializeField] private ChestDefinition selectedChest;
     [SerializeField] private MonsterSpawner spawnerShellPrefab;
+    [Tooltip("Multipliers, tints and epithets for spawner promotion.")]
+    [SerializeField] private PromotionTemplate promotionTemplate;
     [SerializeField] private RoomAnchor roomAnchorPrefab;
     [SerializeField] private FurnitureDefinition selectedFurniture;
     [SerializeField] private TrapDefinition selectedTrap;
@@ -1273,6 +1275,113 @@ public class DungeonBuildController : MonoBehaviour
 
     public MonsterSpawner RestoreSpawner(FloorRoot floor, MonsterDefinition def, Vector3Int cell)
         => RestoreSpawner(floor, def, cell, SpawnerOrderMode.Wander, null, true, false, default, true);
+
+    // -- Spawner promotion ---------------------------------------------------
+
+    public PromotionTemplate Promotion => promotionTemplate;
+
+    /// <summary>Per-floor rank census (the promotion limits: 1 boss, 2 sub-bosses).</summary>
+    public int CountRankOnFloor(FloorRoot floor, PromotionRank rank, MonsterSpawner exclude)
+    {
+        if (floor?.Entities == null) return 0;
+        promoSpawnerBuf.Clear();
+        floor.Entities.FillAll(promoSpawnerBuf);
+        int count = 0;
+        for (int i = 0; i < promoSpawnerBuf.Count; i++)
+        {
+            var s = promoSpawnerBuf[i];
+            if (s == null || s == exclude) continue;
+            if (s.Rank == rank) count++;
+        }
+        return count;
+    }
+    private static readonly System.Collections.Generic.List<MonsterSpawner> promoSpawnerBuf = new();
+
+    /// <summary>True when the spawner stands inside a Boss Room footprint that
+    /// validates once its own boss requirement is set aside (rule A: boss rank
+    /// exists only inside Boss Rooms).</summary>
+    public bool IsOnBossGround(MonsterSpawner s)
+    {
+        var floor = s != null ? s.Floor : null;
+        if (floor?.Entities == null || floor.TileInfluence == null) return false;
+        Vector3Int cell = floor.TileInfluence.WorldToCell(s.transform.position);
+        promoAnchorBuf.Clear();
+        int n = floor.Entities.FillAll(promoAnchorBuf);
+        for (int i = 0; i < n; i++)
+        {
+            var anchor = promoAnchorBuf[i];
+            if (anchor == null || anchor.AssignedRoom == null) continue;
+            if (!anchor.AssignedRoom.requiresBossSpawner) continue;
+            var result = RoomValidator.Validate(
+                anchor.Footprint, anchor.AssignedRoom, ignoreBossSpawner: true);
+            if (result.IsValid && result.RoomTiles.Contains(cell)) return true;
+        }
+        return false;
+    }
+    private static readonly System.Collections.Generic.List<RoomAnchor> promoAnchorBuf = new();
+
+    /// <summary>Gate check without paying: fills the reason and the mana price so
+    /// the command panel can label its buttons honestly.</summary>
+    public bool CanPromote(MonsterSpawner s, PromotionRank target,
+                           out string reason, out float manaCost)
+    {
+        reason = ""; manaCost = 0f;
+        if (s == null || s.Definition == null) { reason = "No spawner"; return false; }
+        if (promotionTemplate == null) { reason = "No promotion template assigned"; return false; }
+        if (s.IsTransient) { reason = "A moment-creature cannot rise"; return false; }
+        if (target <= s.Rank) { reason = "Already risen"; return false; }
+        if (target == PromotionRank.SubBoss && s.Rank != PromotionRank.None)
+        { reason = "Already risen"; return false; }
+
+        var core = DungeonCore.Instance;
+        if (core == null) { reason = "No core"; return false; }
+
+        var floor = s.Floor;
+        if (target == PromotionRank.Boss)
+        {
+            if (!IsOnBossGround(s)) { reason = "Bosses rise only in a Boss Room"; return false; }
+            if (CountRankOnFloor(floor, PromotionRank.Boss, s) >= 1)
+            { reason = "This floor already has its boss"; return false; }
+        }
+        else if (CountRankOnFloor(floor, PromotionRank.SubBoss, s) >= 2)
+        { reason = "This floor already has two sub-bosses"; return false; }
+
+        manaCost = s.Definition.ManaCost
+            * (promotionTemplate.ManaMult(target) - promotionTemplate.ManaMult(s.Rank));
+        int baseCap = s.Definition.CapacityCost;
+        int capDelta = promotionTemplate.TotalCapacityAt(baseCap, target)
+                     - promotionTemplate.TotalCapacityAt(baseCap, s.Rank);
+        if (core.FreeCapacity < capDelta) { reason = "Monster capacity full"; return false; }
+        if (core.CurrentMana < manaCost) { reason = "Not enough mana"; return false; }
+        return true;
+    }
+
+    /// <summary>Validate, pay, and promote. Rejection reasons toast at the
+    /// spawner's cell through the standard reject path.</summary>
+    public bool TryPromoteSpawner(MonsterSpawner s, PromotionRank target)
+    {
+        if (!CanPromote(s, target, out string reason, out float manaCost))
+        {
+            if (s != null && s.Floor?.TileInfluence != null)
+                RejectAt(s.Floor.TileInfluence.WorldToCell(s.transform.position), reason);
+            return false;
+        }
+
+        var core = DungeonCore.Instance;
+        int baseCap = s.Definition.CapacityCost;
+        int capDelta = promotionTemplate.TotalCapacityAt(baseCap, target)
+                     - promotionTemplate.TotalCapacityAt(baseCap, s.Rank);
+        core.TrySpendCapacity(capDelta);
+        core.SpendMana(manaCost);
+
+        string epithet = target == PromotionRank.Boss ? promotionTemplate.RollEpithet() : null;
+        s.Promote(target, capDelta, epithet, promotionTemplate);
+
+        // A boss completes its Boss Room; revalidate so the hall flips valid
+        // (and its respawn hastening starts) the moment the tenant rises.
+        if (target == PromotionRank.Boss) RevalidateAllAnchors();
+        return true;
+    }
 
     /// <summary>DAY 31 PART 3D — Full restore including patrol orders and attack target.
     /// PART 3 CLOSE-OUT — allowDefendCore added as a final parameter.</summary>

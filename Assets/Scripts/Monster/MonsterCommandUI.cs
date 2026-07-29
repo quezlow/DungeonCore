@@ -35,6 +35,10 @@ public class MonsterCommandUI : MonoBehaviour
     [SerializeField] private Button clearOrdersButton;
     [SerializeField] private Button closeButton;
 
+    [Header("Promotion")]
+    [SerializeField] private Button promoteSubBossButton;
+    [SerializeField] private Button promoteBossButton;
+
     [Header("Aggression Stance")]
     [Tooltip("A single button that cycles Global -> Defensive -> Normal -> Aggressive. " +
              "Its label (assign the button's child TMP_Text) shows the current stance. " +
@@ -72,6 +76,11 @@ public class MonsterCommandUI : MonoBehaviour
 
         if (aggressionButton != null)
             aggressionButton.onClick.AddListener(OnAggressionClicked);
+
+        if (promoteSubBossButton != null)
+            promoteSubBossButton.onClick.AddListener(OnPromoteSubBossClicked);
+        if (promoteBossButton != null)
+            promoteBossButton.onClick.AddListener(OnPromoteBossClicked);
     }
 
     private void OnDestroy()
@@ -150,6 +159,50 @@ public class MonsterCommandUI : MonoBehaviour
             aggressionLabel.text = AggressionDisplay();
             aggressionLabel.color = StanceColor();
         }
+
+        RefreshPromotionButtons(selCount);
+    }
+
+    /// <summary>Promotion buttons: hidden on multi-select and above the rank they
+    /// grant; greyed (with the reason or price on the face) otherwise.</summary>
+    private void RefreshPromotionButtons(int selCount)
+    {
+        var ctrl = DungeonBuildController.Instance;
+        RefreshOnePromotionButton(promoteSubBossButton, PromotionRank.SubBoss,
+            "Sub-Boss", selCount, ctrl);
+        RefreshOnePromotionButton(promoteBossButton, PromotionRank.Boss,
+            "Boss", selCount, ctrl);
+    }
+
+    private void RefreshOnePromotionButton(Button button, PromotionRank target,
+        string faceName, int selCount, DungeonBuildController ctrl)
+    {
+        if (button == null) return;
+        bool show = selCount <= 1 && current != null && ctrl != null
+                    && current.Rank < target;
+        button.gameObject.SetActive(show);
+        if (!show) return;
+
+        bool can = ctrl.CanPromote(current, target, out string reason, out float mana);
+        button.interactable = can;
+        var label = button.GetComponentInChildren<TMP_Text>();
+        if (label != null)
+            label.text = can ? $"{faceName}\n{Mathf.CeilToInt(mana)} mana"
+                             : $"{faceName}\n{reason}";
+    }
+
+    private void OnPromoteSubBossClicked()
+    {
+        if (current == null) return;
+        DungeonBuildController.Instance?.TryPromoteSpawner(current, PromotionRank.SubBoss);
+        RefreshDisplay();
+    }
+
+    private void OnPromoteBossClicked()
+    {
+        if (current == null) return;
+        DungeonBuildController.Instance?.TryPromoteSpawner(current, PromotionRank.Boss);
+        RefreshDisplay();
     }
 
     private static string BuildStatusText(MonsterSpawner s)

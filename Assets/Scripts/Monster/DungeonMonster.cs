@@ -156,6 +156,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private EntityStatusBars statusBars;
     private FloorRoot currentFloor;
     private BossVariantDefinition bossDefinition;
+    private PromotionRank promotedRank = PromotionRank.None;
+    private string promotedTitle;   // boss rank only; null for sub-boss and below
 
     // Wander
     private Vector3 spawnPosition;
@@ -455,6 +457,24 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (def == null) return;
         ApplyStatMultipliers(def.hpMultiplier, def.damageMultiplier,
             def.xpRewardMultiplier, def.scaleMultiplier, def.tint);
+    }
+
+    /// <summary>Rank promotion applied by the spawner: fresh spawns come in with
+    /// prior None; a live upgrade applies only the ratio between the two ranks so
+    /// multipliers never stack twice. Promotion heals to the new maximum.</summary>
+    public void ApplyPromotion(PromotionRank prior, PromotionRank target,
+                               PromotionTemplate t, string title)
+    {
+        if (t == null || target == PromotionRank.None) return;
+        promotedRank = target;
+        promotedTitle = target == PromotionRank.Boss ? title : null;
+        ApplyStatMultipliers(
+            t.HpMult(target) / t.HpMult(prior),
+            t.DamageMult(target) / t.DamageMult(prior),
+            t.XpMult(target) / t.XpMult(prior),
+            t.ScaleMult(target) / t.ScaleMult(prior),
+            t.Tint(target));
+        RefreshNameplate();
     }
 
     /// <summary>Shared stat scaler used by both boss and sub-boss variants.</summary>
@@ -1760,8 +1780,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         get
         {
             string custom = spawner != null ? spawner.CustomName : null;
-            if (bossDefinition != null)
-                return !string.IsNullOrEmpty(custom) ? custom : bossDefinition.GetBossTitle();
+            string bossT = promotedTitle ?? bossDefinition?.GetBossTitle();
+            if (bossT != null)
+                return !string.IsNullOrEmpty(custom) ? custom : bossT;
             var def = IsWild ? wildDefinition : spawner?.Definition;
             string n = def != null ? def.monsterName : "Monster";
             string full = !string.IsNullOrEmpty(custom) ? custom : (isVeteran ? $"Veteran {n}" : n);
@@ -1775,7 +1796,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public bool CanRename => spawner != null && !IsWild;
 
     /// <summary>What a rename field prefills with: the boss title, or the plain type name.</summary>
-    public string BaseName => bossDefinition != null ? bossDefinition.GetBossTitle() : TypeName;
+    public string BaseName
+           => promotedTitle ?? (bossDefinition != null ? bossDefinition.GetBossTitle() : TypeName);
 
     /// <summary>Rename this monster (empty clears back to its type name). Persists via the spawner.</summary>
     public void Rename(string newName)
@@ -1788,8 +1810,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (statusBars == null) return;
         statusBars.SetMonsterLabel(
-            bossDefinition != null ? bossDefinition.GetBossTitle() : null,
-            isVeteran,
+                  promotedTitle ?? (bossDefinition != null ? bossDefinition.GetBossTitle() : null),
+                  isVeteran,
             CustomName,
             TypeName);
     }

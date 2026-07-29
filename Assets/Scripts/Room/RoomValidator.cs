@@ -286,7 +286,7 @@ public static class RoomValidator
         for (int i = 0; i < buf.Count; i++)
         {
             var s = buf[i];
-            if (!(s.Definition is BossVariantDefinition)) continue;
+            if (!s.IsBossSpawner) continue;
             var cell = influence.WorldToCell(s.transform.position);
             if (roomTiles.Contains(cell)) return true;
         }

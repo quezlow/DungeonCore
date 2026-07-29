@@ -480,6 +480,8 @@ public class DungeonSaveController : MonoBehaviour
                 hasPost = s.HasPost,
                 postCell = SerializableVector3Int.From(s.PostCell),
                 musterGated = s.MusterGated,
+                promotionRank = (int)s.Rank,
+                bossEpithet = s.BossEpithet,
             };
 
             // DAY 31 — Capture alive monster state if the spawner has a live monster.
@@ -856,6 +858,9 @@ public class DungeonSaveController : MonoBehaviour
                 if (restoredSpawner != null) restoredSpawner.SetCustomName(s.customName);
                 if (restoredSpawner != null && s.raisedOneLife) restoredSpawner.MarkRaised();
                 if (restoredSpawner != null && s.musterGated) restoredSpawner.MarkMusterGated();
+                if (restoredSpawner != null && s.promotionRank > 0)
+                    restoredSpawner.RestorePromotion((PromotionRank)s.promotionRank,
+                        s.bossEpithet, DungeonBuildController.Instance?.Promotion);
                 if (restoredSpawner != null && s.hasPost) restoredSpawner.RestorePost(s.postCell.ToVector3Int());
 
                 if (restoredSpawner != null && s.hasAliveMonster)

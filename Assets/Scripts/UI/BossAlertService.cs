@@ -53,9 +53,14 @@ public class BossAlertService : MonoBehaviour
     /// </summary>
     public void NotifyBossDeath(MonsterSpawner spawner, BossVariantDefinition bossDef,
                                 int floorIndex, Vector3 worldPos)
+        => NotifyBossDeath(spawner, bossDef != null ? bossDef.GetBossTitle() : "Boss",
+                           floorIndex, worldPos);
+
+    /// <summary>Rank-promotion path: the title comes from the spawner.</summary>
+    public void NotifyBossDeath(MonsterSpawner spawner, string title,
+                                int floorIndex, Vector3 worldPos)
     {
         DungeonSaveController.Instance?.RequestAutosave();
-        string title = bossDef != null ? bossDef.GetBossTitle() : "Boss";
         string message = $"{title} on Floor {floorIndex + 1} has been defeated";
 
         // Always log — log entries include floor index so click jumps floors.

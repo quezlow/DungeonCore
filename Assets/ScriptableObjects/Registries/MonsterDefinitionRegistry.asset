@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: MonsterDefinitionRegistry
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinitionRegistry
   definitions:
-  - {fileID: 11400000, guid: f21a61242ff023f4391c98b9f4527faa, type: 2}
-  - {fileID: 11400000, guid: 0de453b6e82794348a0d3b4a539bfe19, type: 2}
-  - {fileID: 11400000, guid: 5e27888667699bc46ba0af43eda37e70, type: 2}
   - {fileID: 11400000, guid: 9bea2046aee1f5c4591619cb5784d5f3, type: 2}
   - {fileID: 11400000, guid: c73513a64807e1b4c816497f5fabfe52, type: 2}
   - {fileID: 11400000, guid: ae0e17a19c2f12e4cbbe44bb89b7d948, type: 2}
@@ -117,9 +114,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9330f4a5a8d16794ba62d9fcb15f2959, type: 2}
   - {fileID: 11400000, guid: d495467c40d94834a8cf06d6ae0b2905, type: 2}
   - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
-  - {fileID: 11400000, guid: c5ed63d79e96acf419f016e4543ee9aa, type: 2}
-  - {fileID: 11400000, guid: 7c7d11c4c5e8a214598a308b99ca9363, type: 2}
-  - {fileID: 11400000, guid: d4d7fd7c3295839448bebc73dc0163a7, type: 2}
   - {fileID: 11400000, guid: afcc45676f3dd124cb957f3970f4705a, type: 2}
   - {fileID: 11400000, guid: 846bfd866cde3b54c998359cdf18a751, type: 2}
   - {fileID: 11400000, guid: aefaaeda293364b43b8a501bddb6644b, type: 2}

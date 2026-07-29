@@ -50,11 +50,23 @@ public static class MusterRooms
                 continue;
             }
 
-            if (!anchor.IsValid) continue;
             var cats = anchor.AssignedRoom.spawnCategories;
             if (cats == null || !cats.Contains(def.category)) continue;
-            var roomTiles = anchor.GetRoomTiles();
-            if (roomTiles != null && roomTiles.Contains(cell)) return true;
+            if (anchor.IsValid)
+            {
+                var roomTiles = anchor.GetRoomTiles();
+                if (roomTiles != null && roomTiles.Contains(cell)) return true;
+                continue;
+            }
+            // A Boss Room stands invalid until a boss is promoted within it;
+            // placement is still legal so the hall can receive its tenant
+            // (the spawner sits respawn-paused until the promotion).
+            if (forPlacement && anchor.AssignedRoom.requiresBossSpawner)
+            {
+                var result = RoomValidator.Validate(
+                    anchor.Footprint, anchor.AssignedRoom, ignoreBossSpawner: true);
+                if (result.IsValid && result.RoomTiles.Contains(cell)) return true;
+            }
         }
         return false;
     }
@@ -81,9 +93,13 @@ public static class MusterRooms
                 if (result.IsValid) outBuf.Add(anchor);
                 continue;
             }
-            if (!anchor.IsValid) continue;
             var cats = anchor.AssignedRoom.spawnCategories;
-            if (cats != null && cats.Contains(def.category)) outBuf.Add(anchor);
+            if (cats == null || !cats.Contains(def.category)) continue;
+            if (anchor.IsValid) { outBuf.Add(anchor); continue; }
+            if (anchor.AssignedRoom.requiresBossSpawner
+                && RoomValidator.Validate(anchor.Footprint, anchor.AssignedRoom,
+                                          ignoreBossSpawner: true).IsValid)
+                outBuf.Add(anchor);
         }
         return outBuf.Count;
     }

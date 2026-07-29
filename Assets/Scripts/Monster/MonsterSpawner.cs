@@ -83,9 +83,11 @@ public class MonsterSpawner : MonoBehaviour
     private int pendingAliveKills;
 
     // ── Public reads ──────────────────────────────────────────────
-    public int CapacityCost => definition != null ? definition.CapacityCost : capacityCost;
+    public int CapacityCost
+        => (definition != null ? definition.CapacityCost : capacityCost) + promotionCapacityBonus;
     public MonsterDefinition Definition => definition;
-    public bool IsBossSpawner => definition is BossVariantDefinition;
+    public bool IsBossSpawner
+        => promotionRank == PromotionRank.Boss || definition is BossVariantDefinition;
     public bool HasLiveMonster => spawnedMonster != null;
     public DungeonMonster SpawnedMonster => spawnedMonster;
 
@@ -94,6 +96,61 @@ public class MonsterSpawner : MonoBehaviour
     public static event System.Action<MonsterSpawner> OnSpawnerArmed;
 
     public string CustomName => customName;
+
+    // -- Promotion (rank rides the spawner; ranks only rise) -----------------
+    private PromotionRank promotionRank = PromotionRank.None;
+    private int promotionCapacityBonus;   // extra capacity held above the base definition
+    private string bossEpithet = "";
+
+    public PromotionRank Rank => promotionRank;
+    public string BossEpithet => bossEpithet;
+
+    /// <summary>Boss display title: the player's custom name wins, else the
+    /// rolled epithet, else a plain fallback.</summary>
+    public string BossTitle
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(customName)) return customName;
+            string baseName = definition != null ? definition.monsterName : "Monster";
+            return string.IsNullOrEmpty(bossEpithet) ? $"{baseName}, the Overlord"
+                                                     : $"{baseName}, {bossEpithet}";
+        }
+    }
+
+    /// <summary>Apply a promotion. The controller has already validated and paid;
+    /// this applies rank state, the held-capacity bonus, and upgrades the living
+    /// monster in place (respawns re-apply from scratch).</summary>
+    public void Promote(PromotionRank target, int capacityBonusDelta, string epithet,
+                        PromotionTemplate template)
+    {
+        PromotionRank prior = promotionRank;
+        promotionRank = target;
+        promotionCapacityBonus += capacityBonusDelta;
+        if (target == PromotionRank.Boss) bossEpithet = epithet ?? "";
+
+        if (spawnedMonster != null && template != null)
+            spawnedMonster.ApplyPromotion(prior, target, template,
+                target == PromotionRank.Boss ? BossTitle : null);
+
+        AlertsLog.Instance?.AddAlert(
+            target == PromotionRank.Boss
+                ? $"{BossTitle} has risen. The hall has its tenant."
+                : $"My {(definition != null ? definition.monsterName : "monster")} has grown into something worse.",
+            transform.position, Floor != null ? Floor.FloorIndex : -1, AlertCategory.Combat);
+    }
+
+    /// <summary>Save-load restore: rank and epithet without cost or alerts. The
+    /// capacity bonus is recomputed from the template (usedCapacity itself is
+    /// restored wholesale on the core).</summary>
+    public void RestorePromotion(PromotionRank rank, string epithet, PromotionTemplate template)
+    {
+        promotionRank = rank;
+        bossEpithet = epithet ?? "";
+        int baseCost = definition != null ? definition.CapacityCost : capacityCost;
+        promotionCapacityBonus = template != null
+            ? template.TotalCapacityAt(baseCost, rank) - baseCost : 0;
+    }
 
     /// <summary>Floor this spawner stands on (cached; resolves lazily).</summary>
     public FloorRoot Floor => cachedFloor != null ? cachedFloor : (cachedFloor = GetComponentInParent<FloorRoot>());
@@ -443,6 +500,14 @@ public class MonsterSpawner : MonoBehaviour
             spawnedMonster.ApplyBossModifiers(bossDef);
         else if (definition is SubBossVariantDefinition subDef)
             spawnedMonster.ApplySubBossModifiers(subDef);
+        else if (promotionRank != PromotionRank.None)
+        {
+            var template = DungeonBuildController.Instance != null
+                ? DungeonBuildController.Instance.Promotion : null;
+            if (template != null)
+                spawnedMonster.ApplyPromotion(PromotionRank.None, promotionRank, template,
+                    promotionRank == PromotionRank.Boss ? BossTitle : null);
+        }
 
         // DAY 31 — Apply pending alive state from save load and clear so future
         // respawns (after death) revert to default full-HP/spawner-cell behavior.
@@ -495,6 +560,11 @@ public class MonsterSpawner : MonoBehaviour
         {
             int floorIndex = floor != null ? floor.FloorIndex : 0;
             BossAlertService.Instance?.NotifyBossDeath(this, bossDef, floorIndex, deathPos);
+        }
+        else if (promotionRank == PromotionRank.Boss)
+        {
+            int floorIndex = floor != null ? floor.FloorIndex : 0;
+            BossAlertService.Instance?.NotifyBossDeath(this, BossTitle, floorIndex, deathPos);
         }
     }
 
