@@ -542,6 +542,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         CheckTrapStep();
 
         if (target != null && !target.IsAlive) target = null;
+        // Release a victim the moment a capture-trap snares them: a pinned adventurer is
+        // neutralised already, and finishing them off would waste the capture.
+        if (target is DungeonAdventurer pinnedVictim && pinnedVictim.IsPinned) target = null;
         if (IsRegenState(state)) TickRegen();
         if (maxStamina > 0f) TickStaminaRegen();
 
@@ -1278,8 +1281,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void EnsureScanPredicates()
     {
         if (_taunterPred != null) return;
-        _taunterPred = a => a.IsTaunting && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
-        _advPred = a => !_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim;
+        _taunterPred = a => !a.IsPinned && a.IsTaunting && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
+        _advPred = a => !a.IsPinned && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
         _hostileMonsterPred = candidate => candidate != this && candidate.IsWild != this.IsWild;
     }
 

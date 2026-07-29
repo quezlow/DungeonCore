@@ -49,6 +49,7 @@ public class AdventurerParty
 
     // ── Named / tracked party (persistent nemesis) ──────
     public bool tracked = false;                       // set by a named member, or a player pin
+    public bool grudge = false;                        // a rescued capture: returns as a nemesis, fights harder
     public bool tributeAssigned = false;               // one bearer per Pilgrim/Cultist party
     public readonly List<PartyMember> Members = new();
 
@@ -75,6 +76,30 @@ public class AdventurerParty
     /// <summary>Track a member's live instance (for the banner's lead + majority logic).</summary>
     public void RegisterLive(DungeonAdventurer a) { if (a != null && !live.Contains(a)) live.Add(a); }
     public void DeregisterLive(DungeonAdventurer a) { live.Remove(a); }
+
+    // -- Capture-trap pin tracking -----------------------
+    private readonly List<DungeonAdventurer> pinned = new();
+
+    public void RegisterPinned(DungeonAdventurer a) { if (a != null && !pinned.Contains(a)) pinned.Add(a); }
+    public void ClearPinned(DungeonAdventurer a) { pinned.Remove(a); }
+
+    /// <summary>The pinned ally nearest a would-be rescuer (never the rescuer itself).</summary>
+    public DungeonAdventurer NearestPinned(DungeonAdventurer asker, Vector3 from)
+    {
+        DungeonAdventurer best = null; float bestSqr = float.MaxValue;
+        for (int i = 0; i < pinned.Count; i++)
+        {
+            var p = pinned[i];
+            if (p == null || p == asker || !p.IsPinned) continue;
+            float d = ((Vector2)(p.transform.position - from)).sqrMagnitude;
+            if (d < bestSqr) { bestSqr = d; best = p; }
+        }
+        return best;
+    }
+
+    /// <summary>A rescue was made: the party carries the grudge home (returns as a nemesis)
+    /// and holds its nerve longer before breaking.</summary>
+    public void MarkGrudge() { tracked = true; grudge = true; }
 
     /// <summary>Members still alive in the dungeon (died and fled both leave this list).</summary>
     public int LiveCount()
@@ -286,7 +311,9 @@ public class AdventurerParty
     {
         float sum = 0f; int n = 0;
         foreach (var m in Members) { sum += MoraleBreakFraction(m.trait); n++; }
-        return n > 0 ? sum / n : 0.5f;
+        float baseThreshold = n > 0 ? sum / n : 0.5f;
+        // A grudge-bearing party fights harder: more must fall before its nerve breaks.
+        return grudge ? Mathf.Min(0.95f, baseThreshold + 0.2f) : baseThreshold;
     }
 
     // Fraction of the party that must fall before a member of each disposition loses heart.

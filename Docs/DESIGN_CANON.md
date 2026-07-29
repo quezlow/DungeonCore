@@ -51,6 +51,7 @@ the supersession in one line.
 8. Recurring Threat Events
 8A. Notoriety Model (Gain Shaping, Tier Gates, Decay)
 8B. Prison and Captives (Capture, Verbs, Starvation)
+8C. Capture Traps and Trap-Pin Rescue
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
 11. Tribute and GiftGivers
@@ -547,6 +548,63 @@ Squad formations was also un-binned -- note that the LIGHT muster formation
 already shipped; what remains unbuilt is the full tactical layer (holding
 formation during the march and combat, formation effects, formation-breaking
 as a trap/monster goal), scheduled after this feature.
+
+## 8C. Capture Traps and Trap-Pin Rescue
+
+Status: SHIPPED (guide 2a of the reactive layer; the faction reactions are
+guide 2b, pending). The second capture route beside subdue-on-defeat, plus
+the rescue tension that makes dungeon layout matter.
+
+**The Capture Trap.** A `TrapBehaviour.CaptureTrap` (class `CaptureTrap`, a
+`PitfallTrap` sibling). On trigger it calls `DungeonAdventurer.BeginPinned`
+rather than dealing damage: the victim enters the new `Pinned` state, halted
+in place for `captureHoldSeconds` (default 10). The uncapturable
+(Hero/Inspector/Suicidal, via `CanBeSubdued`) are never pinned -- they take
+the trap's slow and walk on. Wild monsters are never snared. The trap needs
+NO research gate: with no free Prison cell to secure into, a snared
+adventurer merely struggles free after the window, so the Prison (canon 8B)
+is the real gate on the trap's value.
+
+**Trap-pin rescue.** While a member is `Pinned`, the party's other living
+members -- those in a free state, not mid-fight, fleeing or on the stairs --
+converge via the new `MovingToRescue` state (built on the `MovingToRoom`
+targeted-path pattern). A Cowardly member may abandon the attempt
+(`cowardAbandonChance`, default 0.5). A rescuer must REACH the pin cell
+alive to free the ally; your monsters block by fighting the rescuers en
+route, so a trap sunk in a defended kill-box is the counter. Monsters ignore
+the pinned captive themselves (target predicates skip `IsPinned`, and a
+target that becomes pinned mid-attack is dropped) -- otherwise a guarded trap
+would kill captures instead of securing them.
+
+**Resolution.** Rescued: the ally is freed wounded (`rescuedHpFraction`,
+default 0.4) and the whole party gains a grudge -- `MarkGrudge` sets
+`tracked` (it returns as a nemesis) and raises its morale-fracture threshold
+so it breaks less easily. Not rescued (timer elapses, or no living ally
+remains): `PrisonController.TryImprison` secures them into a free cell with
+no death reported -- the same bookkeeping as a subdue capture. Every cell
+full: they wrench loose and resume.
+
+**Persistence.** A pin is transient (~10s), so no save-schema change was made:
+`Pinned` and `MovingToRescue` fall back to `MovingToCore` on restore, exactly
+as `UsingStairs`/`Disarming`/`Organizing` already do.
+
+**Design forks settled:** capture via subdue-on-defeat (8B) and this trap,
+never monster escort; who diverts = free members converge, cowards may bail;
+grudge = nemesis return + fracture-resistance; rescue succeeds by reaching
+the trap alive (layout is the counter), not a radius test.
+
+**Pending (guide 2b):** the faction rescue party that targets the Prison for
+high-value captives, and the ransom-bearer. Lore rule (from 8B): the core
+never negotiates outward; the world learns of a held captive only via an
+escapee's report and answers with a bearer or a raid.
+
+**Key files:** `Traps/CaptureTrap.cs`, `Traps/TrapDefinition.cs` (behaviour
++ `captureHoldSeconds`), `Traps/TrapBase.cs` (factory),
+`Adventurer/DungeonAdventurer.cs` (`Pinned`/`MovingToRescue`, pin & rescue),
+`Adventurer/AdventurerParty.cs` (pin tracking, `grudge`),
+`Monster/DungeonMonster.cs` (skip the pinned).
+
+---
 
 ## 9. Endgame Climax (Diamond 3 Trial)
 

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c875285fc2fe45545bcf2494c71b59f3, type: 3}
+  m_Name: Trap_Snare
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
+  trapName: Snare
+  behaviour: 4
+  prefab: {fileID: 1074141651362270828, guid: 57c1f1e66a98550478157fadc37920ac, type: 3}
+  manaCost: 12
+  capacityCost: 2
+  damage: 0
+  cooldown: 3
+  slowMultiplier: 0.5
+  slowDuration: 2
+  captureHoldSeconds: 10
+  icon: {fileID: -8767125363165918247, guid: bc40b83db7920304f9b2979a74e643de, type: 3}
+  description: Iron jaws that hold, not harm. What it catches is yours to keep --
+    if it can be held.

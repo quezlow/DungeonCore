@@ -21,6 +21,7 @@ public class TrapDefinition : ScriptableObject
         Pitfall,      // damage + brief slow
         PressurePlate,
         Warning,      // Warning,
+        CaptureTrap,  // snares the victim in place for capture (no damage)
     }
 
     [Header("Identity")]
@@ -49,6 +50,12 @@ public class TrapDefinition : ScriptableObject
     [Tooltip("Duration of the slow effect in seconds.")]
     public float slowDuration = 2f;
 
+    [Header("Capture (Capture Trap only)")]
+    [Tooltip("Seconds a snared adventurer is pinned before the dungeon claims them into a " +
+             "cell -- the window their party has to cut them loose. Uncapturable types take " +
+             "the slow above instead.")]
+    public float captureHoldSeconds = 10f;
+
     [Header("Visuals")]
     public Sprite icon;
 
@@ -63,11 +70,17 @@ public class TrapDefinition : ScriptableObject
     /// </summary>
     public List<string> GetStatLines()
     {
-        var lines = new List<string>
+        var lines = new List<string>();
+
+        if (behaviour == TrapBehaviour.CaptureTrap)
         {
-            $"Damage: {damage:0}",
-            $"Cooldown: {cooldown:0.#}s",
-        };
+            lines.Add($"Holds: {captureHoldSeconds:0.#}s");
+            lines.Add($"Cooldown: {cooldown:0.#}s");
+            return lines;
+        }
+
+        lines.Add($"Damage: {damage:0}");
+        lines.Add($"Cooldown: {cooldown:0.#}s");
 
         if (behaviour == TrapBehaviour.Pitfall)
         {

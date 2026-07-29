@@ -39,6 +39,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Hunting,        // delver seeking the next monster to fight
         Observing,      // dwelling in a room
         Organizing,     // Forming up at the entrance before advancing
+        Pinned,         // snared in a capture-trap, awaiting rescue or the cell
+        MovingToRescue, // converging on a pinned ally to cut them loose
     }
 
     // ── Inspector ─────────────────────────────────────────────────
@@ -167,6 +169,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [SerializeField] private float manaRegenInCombat = 0.5f;
     [SerializeField] private float manaRegenOutOfCombat = 12f;
 
+    [Header("Capture Pin (capture-trap)")]
+    [Tooltip("Chance a Cowardly member writes off a pinned ally instead of going back.")]
+    [Range(0f, 1f)][SerializeField] private float cowardAbandonChance = 0.5f;
+    [Tooltip("HP fraction a rescued ally is left at -- freed, but wounded by the ordeal.")]
+    [Range(0.05f, 1f)][SerializeField] private float rescuedHpFraction = 0.4f;
+
     // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
@@ -182,6 +190,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float currentHP;
     private AdventurerState state = AdventurerState.MovingToCore;
     private BehaviourTrait trait = BehaviourTrait.Balanced;
+
+    // Capture-trap pin: pinTimer counts down while Pinned; rescueTargetAdv is the
+    // pinned ally a rescuer is converging on while MovingToRescue.
+    private float pinTimer;
+    private DungeonAdventurer rescueTargetAdv;
 
     // Intent — assigned in Initialise, shared via the party object.
     private AdventurerParty party;
@@ -596,6 +609,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         if (healsAllies) TickHeal();
         TickResources();
+        TryBeginRescue();
 
         switch (state)
         {
@@ -659,6 +673,18 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             case AdventurerState.Organizing:
                 HandleOrganizing();
                 break;
+
+            case AdventurerState.Pinned:
+                HandlePinned();
+                break;
+
+            case AdventurerState.MovingToRescue:
+                if (rescueTargetAdv == null || !rescueTargetAdv.IsPinned) { ResumeFromPin(); break; }
+                ScanForMonsters();
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating
+                    && !MovementHalted)
+                    FollowPath();
+                break;
         }
     }
 
@@ -716,6 +742,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             goalPos = roomTarget.transform.position;
         }
+        else if (state == AdventurerState.MovingToRescue && rescueTargetAdv != null)
+        {
+            goalPos = rescueTargetAdv.transform.position;
+        }
         else
         {
             if (myFloor == coreFloor)
@@ -759,6 +789,126 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         RefreshPath();
     }
 
+    // -- Capture-trap pin & rescue --------------------------------
+
+    /// <summary>Types the dungeon will never take alive (mirrors PrisonController's rule):
+    /// a Hero by decree, the Inspector because the assessment must run its course, and the
+    /// Suicidal because a death in the dark is the whole point of their coming.</summary>
+    public bool CanBeSubdued =>
+        type != AdventurerType.Hero
+        && type != AdventurerType.Inspector
+        && type != AdventurerType.Suicidal;
+
+    public bool IsPinned => state == AdventurerState.Pinned;
+
+    /// <summary>A capture-trap has closed on this one. The uncapturable take the trap's slow
+    /// and walk on; the rest are pinned in place, and their party is told, so survivors can
+    /// come back for them.</summary>
+    public void BeginPinned(float holdSeconds, float missSlow, float missSlowDuration)
+    {
+        if (state == AdventurerState.Pinned || state == AdventurerState.Retreating) return;
+        if (!CanBeSubdued)
+        {
+            ApplySlow(missSlow, missSlowDuration);
+            return;
+        }
+        state = AdventurerState.Pinned;
+        pinTimer = Mathf.Max(1f, holdSeconds);
+        combatTarget = null;
+        currentPath = new List<Vector3>();
+        pathIndex = 0;
+        party?.RegisterPinned(this);
+        AlertsLog.Instance?.AddAlert(
+            displayName + " is snared, thrashing in the trap.",
+            transform.position, currentFloor != null ? currentFloor.FloorIndex : -1,
+            AlertCategory.Trap);
+    }
+
+    private void HandlePinned()
+    {
+        pinTimer -= Time.deltaTime;
+        bool aloneNow = party == null || party.LiveCount() <= 1;
+        if (pinTimer > 0f && !aloneNow) return;
+        SecureOrStruggle();
+    }
+
+    /// <summary>The pin has run its course with no rescue. The dungeon claims them into a
+    /// free cell; if every cell is full they wrench loose and press on.</summary>
+    private void SecureOrStruggle()
+    {
+        party?.ClearPinned(this);
+        if (PrisonController.Instance != null
+            && PrisonController.Instance.TryImprison(displayName, type, combatClass, className, named))
+        {
+            // Secured -- resolved like any capture, with no death reported.
+            DropCarriedTribute("dropped the offering when they were taken");
+            party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
+            UnregisterFromFloor(currentFloor);
+            DropCarriedLoot();
+            if (statusBars != null) Destroy(statusBars.gameObject);
+            Destroy(gameObject);
+            return;
+        }
+        AlertsLog.Instance?.AddAlert(
+            displayName + " tore free of the trap -- no cell left to hold them.",
+            transform.position, currentFloor != null ? currentFloor.FloorIndex : -1,
+            AlertCategory.Trap);
+        ResumeFromPin();
+    }
+
+    private void ResumeFromPin()
+    {
+        state = goal == AdventurerGoal.Delve ? AdventurerState.Hunting : AdventurerState.MovingToCore;
+        RefreshPath();
+    }
+
+    /// <summary>A rescuer reached them: wrenched loose, wounded by the ordeal, and now free.</summary>
+    public void EndPinRescued(float woundedFraction)
+    {
+        if (state != AdventurerState.Pinned) return;
+        party?.ClearPinned(this);
+        currentHP = Mathf.Min(currentHP, Mathf.Max(1f, maxHP * woundedFraction));
+        statusBars?.SetHP(currentHP, maxHP);
+        ResumeFromPin();
+    }
+
+    /// <summary>Each free member weighs going back for a pinned ally. Those mid-fight, fleeing
+    /// or on the stairs stay their course; a coward may write the ally off. The rest converge --
+    /// and since a rescuer must reach the trap alive, the monsters guarding it are the answer.</summary>
+    private void TryBeginRescue()
+    {
+        if (party == null || !IsRescueEligibleState()) return;
+        var pinnedAlly = party.NearestPinned(this, transform.position);
+        if (pinnedAlly == null) return;
+        if (trait == BehaviourTrait.Cowardly && UnityEngine.Random.value < cowardAbandonChance) return;
+        rescueTargetAdv = pinnedAlly;
+        state = AdventurerState.MovingToRescue;
+        RefreshPath();
+    }
+
+    private bool IsRescueEligibleState() =>
+        state == AdventurerState.MovingToCore
+        || state == AdventurerState.MovingToChest
+        || state == AdventurerState.MovingToRoom
+        || state == AdventurerState.Hunting
+        || state == AdventurerState.Observing;
+
+    private void ArriveAtRescue()
+    {
+        var freed = rescueTargetAdv;
+        rescueTargetAdv = null;
+        if (freed != null && freed.IsPinned)
+        {
+            freed.EndPinRescued(rescuedHpFraction);
+            party?.MarkGrudge();
+            AlertsLog.Instance?.AddAlert(
+                "They cut their comrade loose. This dungeon has made an enemy.",
+                transform.position, currentFloor != null ? currentFloor.FloorIndex : -1,
+                AlertCategory.Combat);
+        }
+        ResumeFromPin();
+    }
+
     private void FollowPath()
     {
         if (currentPath == null || pathIndex >= currentPath.Count)
@@ -790,6 +940,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void OnReachedDestination()
     {
+        if (state == AdventurerState.MovingToRescue) { ArriveAtRescue(); return; }
+
         if (state == AdventurerState.MovingToRoom)
         {
             if (goal == AdventurerGoal.Delve)
@@ -1313,6 +1465,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private void StartRetreat()
     {
+        // A snared adventurer cannot flee -- they are held until freed or taken.
+        if (state == AdventurerState.Pinned) return;
         // A fleeing bearer panic-drops the offering where they turn tail —
         // the god is paid either way.
         DropCarriedTribute("panic-dropped");
@@ -2188,6 +2342,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             AdventurerState.UsingStairs => AdventurerState.MovingToCore,
             AdventurerState.Disarming => AdventurerState.MovingToCore,
             AdventurerState.Organizing => AdventurerState.MovingToCore,
+            AdventurerState.Pinned => AdventurerState.MovingToCore,
+            AdventurerState.MovingToRescue => AdventurerState.MovingToCore,
             var s => s,
         };
         RefreshPath();
