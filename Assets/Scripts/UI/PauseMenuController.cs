@@ -125,6 +125,7 @@ public class PauseMenuController : MonoBehaviour
         if (KeybindControlsUI.IsRebinding) return;
 
         if (IsMenuOpen) Resume();
+        else if (MerchantShopUI.Instance != null && MerchantShopUI.Instance.IsOpen) MerchantShopUI.Instance.Close();
         else if (CryptRaiseUI.Instance != null && CryptRaiseUI.Instance.IsOpen) CryptRaiseUI.Instance.Close();
         else if (PrisonerPanelUI.Instance != null && PrisonerPanelUI.Instance.IsOpen) PrisonerPanelUI.Instance.Close();
         else if (ResearchTreeUI.Instance != null && ResearchTreeUI.Instance.IsOpen) ResearchTreeUI.Instance.ClosePanel();

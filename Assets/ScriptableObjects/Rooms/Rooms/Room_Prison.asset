@@ -12,19 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a73f400152177e4195c007e6eb6bd55, type: 3}
   m_Name: Room_Prison
   m_EditorClassIdentifier: Assembly-CSharp::RoomDefinition
-  roomName: Room
-  description: 
-  effectSummary: 
-  validationTintColor: {r: 0.6, g: 1, b: 0.6, a: 0.6}
+  roomName: Prison
+  description: Not every trespasser has to die at once.
+  effectSummary: Beaten intruders are taken alive into free cells instead of slain.
+  validationTintColor: {r: 0.8301887, g: 0.5036698, b: 0.3485226, a: 0.6}
   minTileCount: 9
   maxTileCount: 0
   requiresCore: 0
-  requiredFurniture: []
+  requiredFurniture:
+  - furnitureType: {fileID: 11400000, guid: 0d55f4e010024ad4cbebbbfbbc30289e, type: 2}
+    minimumCount: 1
   requiresBossSpawner: 0
   techNodeUnlockKey: 
   techNodeDescription: 
-  requiredTechKey: 
-  maxTier: 3
+  requiredTechKey: tech.prison
+  maxTier: 1
   upgradeBaseCost: 100
-  effects: []
+  effects:
+  - type: 15
+    perSecond: 0
+    attractorTarget: 0
   spawnCategories: 

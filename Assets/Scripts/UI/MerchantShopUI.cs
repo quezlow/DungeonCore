@@ -87,6 +87,9 @@ public class MerchantShopUI : MonoBehaviour
         merchant = null;
     }
 
+    /// <summary>Read by PauseMenuController's central ESC chain.</summary>
+    public bool IsOpen => open;
+
     /// <summary>Dusk pulls the wagon out from under an open panel.</summary>
     public void CloseIfOpen() { if (open) Close(); }
 

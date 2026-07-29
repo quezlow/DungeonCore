@@ -1824,9 +1824,10 @@ apex), anchored against the shipped bribe costs (150g Inspector / 250g
 Mercenary). Purchases route patterns through a new public
 `PatternDiscovery.NotifyTraderPurchase` (source "trader"; the usual
 discovery bark fires). The wisp marks his first arrival once
-(`merchant_first`) with an Excite. The panel closes by button only -- ESC
-arbitration stays centralised in PauseMenuController; the game keeps running
-while the wagon is open. The Sorcery book pair (Primer of the First Spark,
+(`merchant_first`) with an Excite. The shop closes on ESC through
+PauseMenuController's central chain (first among the transient panels) or
+the Close button; the game keeps running while the wagon is open.
+The Sorcery book pair (Primer of the First Spark,
 The Drawn Breath) stays reserved by name until core spells are greenlit.
 Adding stock later (specials included) is assets-only: new typed entries in
 the catalog.

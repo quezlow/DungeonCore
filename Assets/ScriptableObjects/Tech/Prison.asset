@@ -12,17 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
   m_Name: Prison
   m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
-  id: 
+  id: prison
   overrideKey: 
-  displayName: 
+  displayName: Cold Iron
   icon: {fileID: 0}
-  path: 0
-  tier: 1
-  pointCost: 10
-  durationDays: 1
-  affinity: 0
-  patternRequirements: []
-  prerequisites: []
+  path: 1
+  tier: 2
+  pointCost: 15
+  durationDays: 2
+  affinity: 5
+  patternRequirements:
+  - {fileID: 11400000, guid: 9e73fdad6444b264ab8c29fb74271ecf, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 6dbd304e8821a6d479e43d16c9d19ae3, type: 2}
   bootstrapUnlocked: 0
   upgradeGates: []
   visibility: 0
@@ -30,5 +32,7 @@ MonoBehaviour:
   visibilityKey: 
   visibilityClassName: 
   visibilityKillCount: 1
-  hiddenHint: 
-  description: 
+  hiddenHint: Cold iron, for the ones worth keeping.
+  description: The Prison may be built. Beaten intruders are taken alive into its
+    cells -- to be released, questioned, or put to the stone. Requires the pattern
+    of W
