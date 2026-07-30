@@ -37,6 +37,8 @@ MonoBehaviour:
   targetPriority: 1
   knockbackForce: 0
   knockbackMinDamage: 0
+  breaksFormation: 0
+  formationBreakSeconds: 5
   isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5

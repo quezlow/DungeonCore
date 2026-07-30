@@ -13,16 +13,21 @@ MonoBehaviour:
   m_Name: WildDef_CaveBear
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Cave Bear
-  category: 0
   icon: {fileID: -9116242927022400561, guid: 8648090f015eeca4ea248ef811e417c2, type: 3}
+  voice: 1
+  category: 0
   prefab: {fileID: 6027699923266516027, guid: c3187518769e12941ac20e3f8f34ca7a, type: 3}
   capacityCost: 16
   manaCost: 110
   requiredTier: 0
   requiredRank: 1
   requiresDiscovery: 1
+  requiredTechKey: 
+  affinityType: 0
   description: 
   isAquatic: 0
+  minWildFloor: 0
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 3
@@ -31,6 +36,8 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0.8
   knockbackMinDamage: 10
+  breaksFormation: 1
+  formationBreakSeconds: 5
   isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5
