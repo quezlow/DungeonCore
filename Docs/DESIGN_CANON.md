@@ -749,11 +749,25 @@ the member re-holds afterward. No save change: the hold is transient runtime sta
 in corridors), chosen over rigid group-pathfind (clips walls) and pure flocking (reads
 less like a formation).
 
-**Pending:** 3b formation effects (a shield-wall -- the front rank mitigates ranged damage
-to the rear while cohesive; will lean on the existing class-aware `TargetPriority` so
-monsters can strike the front rank or punch through to rear casters), and 3c
-formation-breaking (a trap/monster goal that scatters the body and drops the effect; the
-capture-trap pin is already a partial breaker).
+**Shield wall + tank taunt (guide 3b -- SHIPPED).** The formation confers two effects.
+Passive: a rear member (not Tank/Fighter, in a formationed party, not fleeing) takes
+`shieldWallMitigation` less damage (default 40%) while a living front-ranker stands
+(`HasLivingFrontRank`) -- the front rank soaks for the body. Since all incoming damage is
+melee (no ranged/projectile combat exists), the wall reduces blows generally, not "ranged"
+specifically. Active: the Tank taunt is now a timed ability, not an always-on class flag --
+`IsTaunting` is driven by `tauntTimer`. In combat a Tank spends stamina (`tauntStaminaCost`,
+default 30; Tanks have stamina, not mana) to hold monster focus for `tauntDuration` (5s),
+barking via `BarkSpawner`; regen plus `tauntRecovery` pace re-taunts. The existing taunter
+lock in `ScanForHostiles` reads the timed `IsTaunting`. Counterplay: a single hit from a
+non-taunting ally of at least `peelDamageFraction` of a monster's max HP (default 20%) calls
+`DungeonMonster.PeelFromTaunt`, which makes that one monster ignore taunters for
+`tauntPeelDuration` and re-target (usually onto the ally who hit it) -- so a DPS burst peels a
+monster off the tank. Between taunts, monsters fall back to `TargetPriority` and will go for
+rear casters; that exposure is intended. Passive and taunt are independent.
+
+**Pending:** 3c formation-breaking (a trap/monster goal that scatters the body -- which will
+also be the condition that drops the shield wall; the capture-trap pin is already a partial
+breaker).
 
 **Key files:** `Adventurer/DungeonAdventurer.cs` (`FacingDir`, `AdvanceOrHold`,
 `FollowFormation`, `SlotWalkable`), `Adventurer/AdventurerParty.cs` (`HasStraggler`).

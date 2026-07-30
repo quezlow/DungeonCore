@@ -68,6 +68,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // ── State ─────────────────────────────────────────────────────
     private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade }
     private MonsterState state = MonsterState.Wander;
+    private float tauntImmuneUntil;   // set when peeled off a taunt by a heavy ally hit
+    [SerializeField, Min(0f)] private float tauntPeelDuration = 2.5f;
 
     [Header("Animation")]
     [Tooltip("Seconds to hold the body after death so the death clip can play before despawn. 0 = despawn immediately.")]
@@ -1341,7 +1343,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // priority later (the "Class-aware target priority" backlog item).
         var taunter = currentFloor.Entities.Nearest<DungeonAdventurer>(
             transform.position, detectionRange, _taunterPred);
-        if (taunter != null) { target = taunter; state = MonsterState.Attack; TryTauntBark(); return; }
+        if (taunter != null && Time.time >= tauntImmuneUntil) { target = taunter; state = MonsterState.Attack; TryTauntBark(); return; }
 
         IMonsterTarget nearest = null;
         float nearestDist = detectionRange;
@@ -1510,6 +1512,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (string.IsNullOrEmpty(line)) return;
         BarkSpawner.Spawn(transform.position, line, colour);
         lastBarkTime = Time.time;
+    }
+
+    /// <summary>A heavy hit from a non-taunting adventurer peels this monster off the taunt: it
+    /// ignores taunters briefly and re-targets (usually onto the one who just hit it).</summary>
+    public void PeelFromTaunt()
+    {
+        tauntImmuneUntil = Time.time + tauntPeelDuration;
+        if (target is DungeonAdventurer ta && ta.IsTaunting) target = null;
     }
 
     private void TryTauntBark()

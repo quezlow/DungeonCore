@@ -110,6 +110,15 @@ public class AdventurerParty
         return false;
     }
 
+    /// <summary>True while at least one front-rank member (Tank/Fighter) still stands, so the
+    /// shield wall holds for the rear.</summary>
+    public bool HasLivingFrontRank()
+    {
+        foreach (var a in live)
+            if (a != null && a.IsAlive && a.IsFrontRank) return true;
+        return false;
+    }
+
     /// <summary>Members still alive in the dungeon (died and fled both leave this list).</summary>
     public int LiveCount()
     {

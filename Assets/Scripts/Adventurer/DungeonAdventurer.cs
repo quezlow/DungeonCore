@@ -183,6 +183,20 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Tooltip("How far a holding follower may lag its (walkable) slot before the lead pauses for it -- the pace-to-slowest slack.")]
     [SerializeField, Min(0.25f)] private float formationStragglerSlack = 1.25f;
 
+    [Header("Shield Wall (formation effect)")]
+    [Tooltip("Damage reduction for a rear member (not front rank, not fleeing) while a living front rank stands.")]
+    [Range(0f, 0.9f)][SerializeField] private float shieldWallMitigation = 0.4f;
+
+    [Header("Tank Taunt (ability)")]
+    [Tooltip("Stamina a Tank spends to taunt. Regen paces how often it can be used.")]
+    [SerializeField, Min(0f)] private float tauntStaminaCost = 30f;
+    [Tooltip("Seconds a taunt holds monster focus on the tank.")]
+    [SerializeField, Min(0.5f)] private float tauntDuration = 5f;
+    [Tooltip("Extra seconds after a taunt ends before the tank may taunt again.")]
+    [SerializeField, Min(0f)] private float tauntRecovery = 1.5f;
+    [Tooltip("A single hit from another party member of at least this fraction of a monster's max HP peels it off the taunt.")]
+    [Range(0.05f, 1f)][SerializeField] private float peelDamageFraction = 0.2f;
+
     // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
@@ -307,6 +321,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float healManaCost = 0f;
     private float currentStamina = 0f;
     private float currentMana = 0f;
+
+    // Tank taunt (active ability): tauntTimer counts down while the taunt holds; IsTaunting is
+    // driven by it now (no longer an always-on class flag). tauntCooldownEnd paces re-taunts.
+    private float tauntTimer;
+    private float tauntCooldownEnd;
+
+    /// <summary>Front-rank classes stand in the shield wall and take blows for the rear.</summary>
+    public bool IsFrontRank => combatClass == CombatClass.Tank || combatClass == CombatClass.Fighter;
 
     // Formation — assigned slot to hold during Organizing.
     private Vector3? formationSlot;
@@ -635,6 +657,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         ApplySeparation();
 
         if (healsAllies) TickHeal();
+        if (taunts) TickTaunt();
         TickResources();
         TryBeginRescue();
 
@@ -1051,6 +1074,45 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (currentFloor.TileInfluence.IsTileMined(cell)) return true;
         return currentFloor.FeatureGenerator != null && currentFloor.FeatureGenerator.IsEntranceCave(cell);
     }
+
+    // -- Shield wall + tank taunt (formation effect) --------------
+
+    /// <summary>Is this a rear member currently shielded by the front rank? Front-rankers take
+    /// their own blows; a rear member is spared only in a formationed party, while not fleeing,
+    /// and while a front-ranker still stands. (3c will drop this when the body is scattered.)</summary>
+    private bool WallProtected()
+    {
+        return state != AdventurerState.Retreating
+            && party != null
+            && party.Formation != FormationType.None
+            && !IsFrontRank
+            && party.HasLivingFrontRank();
+    }
+
+    /// <summary>The tank's taunt: in a fight, spend stamina to shout the monsters onto itself for
+    /// a spell. Regen and a short recovery pace it; a heavy hit from an ally peels a monster back
+    /// off (see DealAttackDamage).</summary>
+    private void TickTaunt()
+    {
+        if (tauntTimer > 0f) { tauntTimer -= Time.deltaTime; return; }
+        if (state != AdventurerState.Combat) return;
+        if (Time.time < tauntCooldownEnd) return;
+        if (currentStamina < tauntStaminaCost) return;
+
+        currentStamina -= tauntStaminaCost;
+        statusBars?.SetStamina(currentStamina, maxStamina);
+        tauntTimer = tauntDuration;
+        tauntCooldownEnd = Time.time + tauntDuration + tauntRecovery;
+        BarkSpawner.Spawn(transform.position, TauntLines[UnityEngine.Random.Range(0, TauntLines.Length)], BanterLines.Reaction);
+    }
+
+    private static readonly string[] TauntLines =
+    {
+        "Face me!",
+        "Eyes on me, filth!",
+        "Come and try, then!",
+        "I am your wall!",
+    };
 
     private void FollowPath()
     {
@@ -1571,6 +1633,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             FloatingDamageNumber.DamageType.MonsterHit);
         animDriver?.OnAttack();
         combatTarget.TakeDamage(attackDamage);
+        // A heavy hit from anyone but the taunting tank peels that monster off the taunt.
+        if (!IsTaunting && combatTarget is DungeonMonster hitMonster
+            && attackDamage >= hitMonster.MaxHP * peelDamageFraction)
+            hitMonster.PeelFromTaunt();
         if (party != null && party.tracked && partyMember != null && !combatTarget.IsAlive)
             partyMember.xp += Mathf.RoundToInt(xpPerKill);
         if (knockbackForce > 0f && attackDamage >= knockbackMinDamage)
@@ -1873,6 +1939,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     public bool TakeDamage(float amount)
     {
+        if (WallProtected()) amount *= (1f - shieldWallMitigation);
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
         GetComponent<DamageFlash>()?.Flash();
@@ -2508,5 +2575,5 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float EffectiveMoveSpeed => moveSpeed * EncumbranceMultiplier() * slowMultiplier
                                         * terrainSpeedMultiplier * roomSlowMultiplier;
     /// <summary>Tank taunt — monsters prefer a taunting adventurer as their target.</summary>
-    public bool IsTaunting => taunts;
+    public bool IsTaunting => tauntTimer > 0f;
 }
