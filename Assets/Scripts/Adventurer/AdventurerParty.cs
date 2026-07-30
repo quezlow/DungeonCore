@@ -119,6 +119,22 @@ public class AdventurerParty
         return false;
     }
 
+    // -- Formation break (3c): a scatter trap or breaker monster disrupts the body -----
+    private float formationBrokenUntil = -1f;
+
+    /// <summary>The body is scattered: members disperse and the shield wall is down until it
+    /// re-forms.</summary>
+    public bool FormationBroken => Time.time < formationBrokenUntil;
+
+    /// <summary>Break the formation for a spell. No effect on a party with no formation to break;
+    /// the longest pending break wins.</summary>
+    public void BreakFormation(float seconds)
+    {
+        if (Formation == FormationType.None) return;
+        float until = Time.time + Mathf.Max(0.5f, seconds);
+        if (until > formationBrokenUntil) formationBrokenUntil = until;
+    }
+
     /// <summary>Members still alive in the dungeon (died and fled both leave this list).</summary>
     public int LiveCount()
     {

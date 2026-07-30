@@ -197,6 +197,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
             TrapDefinition.TrapBehaviour.Warning => placedPrefab.AddComponent<WarningTrap>(),
             TrapDefinition.TrapBehaviour.PressurePlate => placedPrefab.AddComponent<PressurePlateTrap>(),
             TrapDefinition.TrapBehaviour.CaptureTrap => placedPrefab.AddComponent<CaptureTrap>(),
+            TrapDefinition.TrapBehaviour.ScatterTrap => placedPrefab.AddComponent<ScatterTrap>(),
             _ => placedPrefab.AddComponent<SpikeTrap>(),
         };
     }

@@ -1014,6 +1014,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void AdvanceOrHold()
     {
         if (party == null || party.Formation == FormationType.None) { FollowPath(); return; }
+        if (party.FormationBroken) { holdingFormation = false; FollowPath(); return; }
         var lead = party.CurrentLead();
         if (lead == this)
         {
@@ -1085,9 +1086,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         return state != AdventurerState.Retreating
             && party != null
             && party.Formation != FormationType.None
+            && !party.FormationBroken
             && !IsFrontRank
             && party.HasLivingFrontRank();
     }
+
+    /// <summary>A scatter trap or breaker monster has struck: disrupt this member's whole party
+    /// formation. Members disperse and the shield wall drops until it re-forms.</summary>
+    public void BreakFormation(float seconds) => party?.BreakFormation(seconds);
 
     /// <summary>The tank's taunt: in a fight, spend stamina to shout the monsters onto itself for
     /// a spell. Regen and a short recovery pace it; a heavy hit from an ally peels a monster back

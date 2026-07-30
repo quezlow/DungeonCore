@@ -121,6 +121,12 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Minimum damage this monster's hit must deal to trigger knockback.")]
     [Min(0f)] public float knockbackMinDamage = 0f;
 
+    [Header("Formation Breaker")]
+    [Tooltip("If set, this monster shatters a formationed party's shield wall when it lands a hit -- a brute or charger.")]
+    public bool breaksFormation = false;
+    [Tooltip("Seconds the struck party's formation stays broken.")]
+    [Min(0.5f)] public float formationBreakSeconds = 5f;
+
     [Header("Necromancy")]
     [Tooltip("If true, this monster raises nearby adventurer corpses into transient minions.")]
     public bool isNecromancer = false;

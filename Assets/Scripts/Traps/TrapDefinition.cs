@@ -22,6 +22,7 @@ public class TrapDefinition : ScriptableObject
         PressurePlate,
         Warning,      // Warning,
         CaptureTrap,  // snares the victim in place for capture (no damage)
+        ScatterTrap,  // breaks a party's formation (no damage)
     }
 
     [Header("Identity")]
@@ -56,6 +57,10 @@ public class TrapDefinition : ScriptableObject
              "the slow above instead.")]
     public float captureHoldSeconds = 10f;
 
+    [Header("Scatter (Scatter Trap only)")]
+    [Tooltip("Seconds a party's formation stays broken after stepping on the trap -- the shield wall is down and members disperse for this long.")]
+    public float scatterSeconds = 5f;
+
     [Header("Visuals")]
     public Sprite icon;
 
@@ -75,6 +80,13 @@ public class TrapDefinition : ScriptableObject
         if (behaviour == TrapBehaviour.CaptureTrap)
         {
             lines.Add($"Holds: {captureHoldSeconds:0.#}s");
+            lines.Add($"Cooldown: {cooldown:0.#}s");
+            return lines;
+        }
+
+        if (behaviour == TrapBehaviour.ScatterTrap)
+        {
+            lines.Add($"Scatters: {scatterSeconds:0.#}s");
             lines.Add($"Cooldown: {cooldown:0.#}s");
             return lines;
         }

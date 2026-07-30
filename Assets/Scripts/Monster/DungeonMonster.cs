@@ -1545,6 +1545,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         var kdef = IsWild ? wildDefinition : spawner?.Definition;
         if (kdef != null && kdef.knockbackForce > 0f && dmg >= kdef.knockbackMinDamage)
             target.ApplyKnockback(transform.position, kdef.knockbackForce);
+        if (kdef != null && kdef.breaksFormation && advTarget != null)
+            advTarget.BreakFormation(kdef.formationBreakSeconds);
         if (!target.IsAlive)
         {
             killCount++; GainXP(xpPerKill);

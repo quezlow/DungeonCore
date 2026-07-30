@@ -765,9 +765,29 @@ non-taunting ally of at least `peelDamageFraction` of a monster's max HP (defaul
 monster off the tank. Between taunts, monsters fall back to `TargetPriority` and will go for
 rear casters; that exposure is intended. Passive and taunt are independent.
 
-**Pending:** 3c formation-breaking (a trap/monster goal that scatters the body -- which will
-also be the condition that drops the shield wall; the capture-trap pin is already a partial
-breaker).
+**Formation-breaking (guide 3c -- SHIPPED; the tactical layer is complete).** A break scatters
+a party's formation for a spell: `AdventurerParty.BreakFormation(seconds)` sets
+`formationBrokenUntil`, and while `FormationBroken` the members disperse (`AdvanceOrHold` drops
+them to individual pathing) and the shield wall is suppressed (the extra
+`!party.FormationBroken` in `WallProtected`). They re-form when it expires -- a break is a
+window, not permanent (default 5s). Two sources, both routing through
+`DungeonAdventurer.BreakFormation`:
+
+- **Scatter trap** (`TrapBehaviour.ScatterTrap`, class `ScatterTrap`, a `CaptureTrap` sibling):
+pure disruption, no damage -- any adventurer stepping on it scatters their whole party. The
+player's answer to a shield-wall party. No research gate (without formationed parties to break
+it does nothing), authored via a `TrapDefinition` with `scatterSeconds`.
+- **Breaker monster** (`MonsterDefinition.breaksFormation`, `formationBreakSeconds`): a brute or
+charger that shatters the formation when it lands a hit (hooked in the monster's
+`DealAttackDamage`). Off by default, opt-in per monster type.
+
+The capture-trap pin (8C) remains a partial breaker -- it removes one member from formation
+without scattering the whole body.
+
+**Squad-formation tactical layer complete:** 3a march-holding, 3b shield wall + tank taunt, 3c
+breaking. Note: there is no ranged/projectile combat, so the shield wall reduces melee blows
+generally rather than "ranged" specifically; a ranged-specific wall would need a ranged-combat
+system first.
 
 **Key files:** `Adventurer/DungeonAdventurer.cs` (`FacingDir`, `AdvanceOrHold`,
 `FollowFormation`, `SlotWalkable`), `Adventurer/AdventurerParty.cs` (`HasStraggler`).
