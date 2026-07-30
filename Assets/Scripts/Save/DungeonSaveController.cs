@@ -303,6 +303,7 @@ public class DungeonSaveController : MonoBehaviour
 
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
+        if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
 
         if (TodoListUI.Instance != null)
             currentSave.playerTodos = TodoListUI.Instance.GetSaveData();
@@ -771,6 +772,7 @@ public class DungeonSaveController : MonoBehaviour
             WispCompanion.Instance?.RestorePersonalityFromSave(currentSave.wispPersonality);
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
+            PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);

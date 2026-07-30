@@ -33,6 +33,7 @@ public enum AdventurerGoal
     ObserveRooms,   // visit rooms, observe, leave        (Scholar, Inspector, Noble)
     SeekDeath,      // advance + fight, never retreat      (Suicidal)
     Delve,          // hunt monsters for XP + loot, leave alive (Delver)
+    FreePrisoner,   // raider/ransom-bearer making for a held captive's cell (2b)
 }
 
 /// <summary>Single source of truth mapping a type to its intent + goal.</summary>

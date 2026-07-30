@@ -52,6 +52,7 @@ the supersession in one line.
 8A. Notoriety Model (Gain Shaping, Tier Gates, Decay)
 8B. Prison and Captives (Capture, Verbs, Starvation)
 8C. Capture Traps and Trap-Pin Rescue
+8D. Faction Reaction to Held Captives (Rescue Party, Ransom-Bearer)
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
 11. Tribute and GiftGivers
@@ -603,6 +604,68 @@ escapee's report and answers with a bearer or a raid.
 `Adventurer/DungeonAdventurer.cs` (`Pinned`/`MovingToRescue`, pin & rescue),
 `Adventurer/AdventurerParty.cs` (pin tracking, `grudge`),
 `Monster/DungeonMonster.cs` (skip the pinned).
+
+---
+
+## 8D. Faction Reaction to Held Captives (Rescue Party, Ransom-Bearer)
+
+Status: SHIPPED (guide 2b -- completes the prison arc). The outside world's
+answer to a held high-value captive. Closes the lore rule established in 8B:
+the core never negotiates outward; the world learns of a captive only through
+an escapee's report, and answers with a raid or a bearer.
+
+**Trigger.** `PrisonController` subscribes to `AdventurerParty.MemberEscaped`.
+When an adventurer escapes and a high-value captive is held (Noble, Hero, or
+named -- `IsHighValue`) with no answer already pending, a reaction is scheduled
+for `reactionMinDays`..`reactionMaxDays` (default 3-6) dawns hence. At the due
+dawn (`TryDispatchFactionReaction`, run from `HandleDawn`), if a high-value
+captive still waits, the faction answers; otherwise it fizzles. The schedule is
+single-shot -- it re-arms only on a fresh escape.
+
+**Which answer (locked fork).** By faction: `FactionId.MercenaryCompany` sends
+a ransom-bearer (they deal in coin); every other faction sends a rescue party.
+
+**Rescue party** (`AdventurerSpawner.DispatchPrisonRescue`). Mustered at the
+entrance like a Noble retaliation (a Hero champion + a Tank-fronted retinue),
+then every member is given `SetRaidTarget` -- the new `AdventurerGoal.FreePrisoner`
+plus the captive's cell position and floor. `RefreshPath` sends `FreePrisoner`
+raiders to the cell rather than the core, across floors via the same stair logic
+the core-beeline uses; your monsters block them en route (they are ordinary
+hostiles). On arrival, `AttemptBreach` frees the nearest held captive
+(`PrisonController.BreachNearest`) and the raider turns to retreat. A captive
+freed by force is NEUTRAL -- removed, word spreads, no notoriety either way. The
+counterplay is layout: a Prison sunk behind guards keeps its prisoners.
+
+**Ransom-bearer** (`DispatchRansomBearer`). A lone, peaceable Commoner-emissary
+with `GiftGiver` intent and `SetRaidTarget(ransom = true, ransomGold)`. It walks
+to the cell; `AttemptBreach` on arrival pays the core `ransomGold` (default 300)
+via `AddGold` and takes the captive. Two behaviour changes make this work: a
+raid-goal Commoner does not panic-flee near monsters, and non-aggressive monsters
+now spare all `GiftGiver`-intent bearers (not only Pilgrims), so the bearer
+reaches the gaol and the deal closes by default. Raising the aggression stance to
+Aggressive lets monsters cut the bearer down -- the way to refuse and keep the
+prisoner. (Side effect, by design: worshippers' tribute-bearers now also arrive
+unharmed under a non-aggressive stance.)
+
+**Freed captive (locked fork -- simple representation).** Breaching removes the
+`Prisoner` token and raises an alert; no live fleeing adventurer is reconstructed.
+
+**Persistence.** One additive int, `DungeonSaveData.prisonReactionDay` (-1 = none),
+mirroring the wandering-merchant schedule; the dispatched party persists via
+`liveParties` as any live party does.
+
+**Key files:** `Adventurer/AdventurerType.cs` (`FreePrisoner`),
+`Adventurer/DungeonAdventurer.cs` (raid targeting, `SetRaidTarget`,
+`AttemptBreach`), `Adventurer/AdventurerSpawner.cs` (`DispatchPrisonRescue`,
+`DispatchRansomBearer`), `Room/PrisonController.cs` (schedule, dispatch,
+`BreachNearest`), `Monster/DungeonMonster.cs` (spare gift-bearers),
+`Save/DungeonSaveData.cs` + `Save/DungeonSaveController.cs` (`prisonReactionDay`).
+
+**Prison arc complete:** 8B (capture, verbs, starvation), 8C (capture-trap +
+trap-pin rescue), 8D (faction reaction). Next major work: the full squad-formation
+tactical layer (the light muster formation already ships; the tactical layer --
+holding formation in the march and combat, formation effects, formation-breaking
+as a trap/monster goal -- remains).
 
 ---
 

@@ -1281,8 +1281,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void EnsureScanPredicates()
     {
         if (_taunterPred != null) return;
-        _taunterPred = a => !a.IsPinned && a.IsTaunting && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
-        _advPred = a => !a.IsPinned && (!_scanSparePilgrims || a.Intent != PartyIntent.Pilgrim);
+        _taunterPred = a => !a.IsPinned && a.IsTaunting && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
+        _advPred = a => !a.IsPinned && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
         _hostileMonsterPred = candidate => candidate != this && candidate.IsWild != this.IsWild;
     }
 

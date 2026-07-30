@@ -196,6 +196,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private float pinTimer;
     private DungeonAdventurer rescueTargetAdv;
 
+    // Prison raid (2b): a rescue party or ransom-bearer makes for a held captive's
+    // cell (raidTargetPos on raidTargetFloor). A ransom-bearer pays ransomValue on
+    // reaching it; a rescue party frees whoever is there for nothing.
+    private Vector3 raidTargetPos;
+    private int raidTargetFloor;
+    private bool hasRaidTarget;
+    private bool isRansomBearer;
+    private int ransomValue;
+
     // Intent — assigned in Initialise, shared via the party object.
     private AdventurerParty party;
     private PartyIntent intent = PartyIntent.Destroyer;
@@ -598,6 +607,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // unless they came to worship, in which case they hold their nerve and only harm turns them.
         if (type == AdventurerType.Commoner
             && goal != AdventurerGoal.WorshipCore
+            && goal != AdventurerGoal.FreePrisoner
             && state != AdventurerState.Retreating
             && currentFloor?.Entities != null
             && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, commonerPanicRange))
@@ -745,6 +755,25 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         else if (state == AdventurerState.MovingToRescue && rescueTargetAdv != null)
         {
             goalPos = rescueTargetAdv.transform.position;
+        }
+        else if (goal == AdventurerGoal.FreePrisoner && hasRaidTarget)
+        {
+            // Raiders make for the gaol, not the core -- across floors if need be.
+            if (myFloor == raidTargetFloor) goalPos = raidTargetPos;
+            else if (raidTargetFloor > myFloor)
+            {
+                var downStair = FindNearestStair(DungeonStairs.Direction.Down);
+                if (downStair == null) { currentPath = new List<Vector3>(); return; }
+                stairTarget = downStair;
+                goalPos = downStair.transform.position;
+            }
+            else
+            {
+                var upStair = FindNearestStair(DungeonStairs.Direction.Up);
+                if (upStair == null) { currentPath = new List<Vector3>(); return; }
+                stairTarget = upStair;
+                goalPos = upStair.transform.position;
+            }
         }
         else
         {
@@ -909,6 +938,33 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         ResumeFromPin();
     }
 
+    // -- Prison raid (rescue party / ransom-bearer) ---------------
+
+    /// <summary>Mark this adventurer as a raider making for a held captive's cell. A
+    /// ransom-bearer pays the core on arrival; a rescue party frees for nothing. The
+    /// muster-then-advance flow and RefreshPath do the rest.</summary>
+    public void SetRaidTarget(Vector3 cellPos, int cellFloor, bool ransom, int ransomAmount)
+    {
+        goal = AdventurerGoal.FreePrisoner;
+        raidTargetPos = cellPos;
+        raidTargetFloor = cellFloor;
+        hasRaidTarget = true;
+        isRansomBearer = ransom;
+        ransomValue = ransomAmount;
+    }
+
+    /// <summary>Reached the gaol. Free the nearest held captive; a ransom-bearer pays the
+    /// core its gold for the privilege. Either way, turn for the exit and fight out. If the
+    /// captive is already gone (freed by another, or spent by the player), just leave.</summary>
+    private void AttemptBreach()
+    {
+        bool freed = PrisonController.Instance != null
+            && PrisonController.Instance.BreachNearest(transform.position, 1.75f);
+        if (freed && isRansomBearer) DungeonCore.Instance?.AddGold(ransomValue);
+        hasRaidTarget = false;
+        if (state != AdventurerState.Retreating) StartRetreat();
+    }
+
     private void FollowPath()
     {
         if (currentPath == null || pathIndex >= currentPath.Count)
@@ -941,6 +997,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void OnReachedDestination()
     {
         if (state == AdventurerState.MovingToRescue) { ArriveAtRescue(); return; }
+
+        if (goal == AdventurerGoal.FreePrisoner && state != AdventurerState.Retreating) { AttemptBreach(); return; }
 
         if (state == AdventurerState.MovingToRoom)
         {

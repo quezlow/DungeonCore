@@ -56,6 +56,16 @@ public class PrisonController : MonoBehaviour
     [Tooltip("Click radius (world units) for opening the prisoner panel on a captive.")]
     [SerializeField, Min(0.1f)] private float clickRadius = 0.75f;
 
+    [Header("Faction Reaction (2b)")]
+    [Tooltip("A held Noble/Hero/named captive draws a faction response this many days after an " +
+             "escapee carries word out (rolled between the two).")]
+    [SerializeField, Min(1)] private int reactionMinDays = 3;
+    [SerializeField, Min(1)] private int reactionMaxDays = 6;
+    [Tooltip("Gold a ransom-bearer pays the core on reaching a held captive (the Mercenary Company response).")]
+    [SerializeField, Min(0)] private int ransomGold = 300;
+
+    private int reactionDay = -1;   // dawn a scheduled reaction fires; -1 = none pending
+
     public float ReleaseNotoriety => releaseNotoriety;
     public float ExecuteNotoriety => executeNotoriety;
     public int StarveDays => starveDays;
@@ -68,12 +78,13 @@ public class PrisonController : MonoBehaviour
 
     private bool subscribed;
 
-    private void OnEnable() { Instance = this; }
+    private void OnEnable() { Instance = this; AdventurerParty.MemberEscaped += OnEscapeHeard; }
 
     private void OnDisable()
     {
         if (Instance == this) Instance = null;
         if (DayNightCycle.Instance != null) DayNightCycle.Instance.OnDayStarted -= HandleDawn;
+        AdventurerParty.MemberEscaped -= OnEscapeHeard;
         subscribed = false;
     }
 
@@ -146,6 +157,8 @@ public class PrisonController : MonoBehaviour
             p.Resolve();
         }
 
+        TryDispatchFactionReaction();
+
         if (starveDays <= 0) return;
 
         // Pass 2: age every remaining captive; the forgotten ones starve.
@@ -172,6 +185,93 @@ public class PrisonController : MonoBehaviour
             p.Resolve();
         }
     }
+
+    // -- Faction reaction (2b): the world answers for a held high-value captive ----
+
+    /// <summary>An escapee has carried word to the surface. If a Noble, Hero or named captive is
+    /// held and no answer is already coming, that captive's faction is roused -- it responds in
+    /// a few days.</summary>
+    private void OnEscapeHeard(AdventurerParty party, PartyMember member)
+    {
+        if (reactionDay >= 0) return;
+        if (!AnyHighValueHeld()) return;
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
+        int lo = Mathf.Min(reactionMinDays, reactionMaxDays);
+        int hi = Mathf.Max(reactionMinDays, reactionMaxDays);
+        reactionDay = day + UnityEngine.Random.Range(lo, hi + 1);
+    }
+
+    /// <summary>At the scheduled dawn, if a high-value captive still waits, the faction answers:
+    /// the Mercenary Company sends a ransom-bearer (they deal in coin), everyone else sends
+    /// blades to break them out.</summary>
+    private void TryDispatchFactionReaction()
+    {
+        if (reactionDay < 0) return;
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
+        if (day < reactionDay) return;
+        reactionDay = -1;
+
+        if (!TryFindHighValue(out var pos, out int floor, out FactionId faction)) return;
+        var spawner = AdventurerSpawner.Instance;
+        if (spawner == null) return;
+
+        if (faction == FactionId.MercenaryCompany)
+            spawner.DispatchRansomBearer(pos, floor, ransomGold);
+        else
+            spawner.DispatchPrisonRescue(pos, floor);
+    }
+
+    private bool AnyHighValueHeld()
+    {
+        foreach (var kvp in housed)
+            if (kvp.Key != null && IsHighValue(kvp.Key)) return true;
+        return false;
+    }
+
+    private bool TryFindHighValue(out Vector3 pos, out int floor, out FactionId faction)
+    {
+        pos = default; floor = -1; faction = FactionId.AdventurersGuild;
+        foreach (var kvp in housed)
+        {
+            var p = kvp.Key; var piece = kvp.Value;
+            if (p == null || piece == null || !IsHighValue(p)) continue;
+            pos = piece.transform.position;
+            floor = FloorIndexOf(piece.gameObject);
+            faction = p.Faction;
+            return true;
+        }
+        return false;
+    }
+
+    private static bool IsHighValue(Prisoner p) =>
+        p.Type == AdventurerType.Noble || p.Type == AdventurerType.Hero || p.IsNamed;
+
+    /// <summary>A raider or ransom-bearer has reached the gaol: free the nearest held captive
+    /// within radius. They are gone -- counted loose, and word of it spreads. No notoriety
+    /// either way; a captive freed by force is simply a captive lost.</summary>
+    public bool BreachNearest(Vector3 pos, float radius)
+    {
+        PruneHoused();
+        Prisoner best = null; FurniturePiece bestPiece = null; float bestSqr = radius * radius;
+        foreach (var kvp in housed)
+        {
+            var p = kvp.Key; var piece = kvp.Value;
+            if (p == null || piece == null) continue;
+            float d = ((Vector2)(piece.transform.position - pos)).sqrMagnitude;
+            if (d <= bestSqr) { bestSqr = d; best = p; bestPiece = piece; }
+        }
+        if (best == null) return false;
+        AlertsLog.Instance?.AddAlert(
+            best.CaptiveName + " is broken out of the cells. Word of it will travel.",
+            bestPiece.transform.position, FloorIndexOf(bestPiece.gameObject), AlertCategory.Threat);
+        housed.Remove(best);
+        best.Resolve();
+        return true;
+    }
+
+    /// <summary>The pending-reaction dawn, for the save. -1 = none scheduled.</summary>
+    public int ReactionDayForSave => reactionDay;
+    public void RestoreReactionDay(int day) { reactionDay = day; }
 
     // -- The verbs ------------------------------------------------
 

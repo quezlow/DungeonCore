@@ -1071,6 +1071,67 @@ public class AdventurerSpawner : MonoBehaviour
     /// <summary>Dispatch a slain noble house's vengeance: a Destroyer party led by a named
     /// kinsman of the house, backed by a Tank-fronted retinue, scaled by nobles slain this
     /// run. Fired by NobleRetaliation after the grievance delay.</summary>
+    /// <summary>A rescue party sent to break a held captive out of the Prison. It musters at
+    /// the entrance like any dispatch, then makes for the captive's cell (SetRaidTarget) rather
+    /// than the core, freeing whoever is there and fighting its way back out. Your monsters
+    /// block the raiders; a captive lost to a breach is neutral -- an asset gone, no notoriety.</summary>
+    public void DispatchPrisonRescue(Vector3 targetPos, int targetFloor)
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var heroDef = Def(AdventurerType.Hero);
+        var guardBase = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        if (heroDef == null && guardBase == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        if (heroDef != null) SpawnMember(heroDef, RollTrait(), spawnPos, party, used);
+        if (guardBase != null)
+        {
+            int guards = 3;
+            var tankClass = ClassDefFor(CombatClass.Tank);
+            for (int i = 0; i < guards; i++)
+                SpawnMember(guardBase, RollTrait(), spawnPos, party, used, forcedClass: i == 0 ? tankClass : null);
+        }
+
+        foreach (var m in party.LiveMembers) m.SetRaidTarget(targetPos, targetFloor, false, 0);
+
+        SetupOrganize(party, AdventurerType.Hero, party.Members.Count, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(party.Members.Count);
+        PartyBannerManager.Instance?.ShowBanner(party);
+        AlertsLog.Instance?.AddAlert("Blades are coming to break my prisoner out.",
+            spawnPos, 0, AlertCategory.Threat);
+    }
+
+    /// <summary>The Mercenary Company's answer: a lone, peaceable ransom-bearer. It walks to the
+    /// captive's cell; reaching it, the core is paid its gold and the captive is taken. Non-
+    /// aggressive monsters spare it (it is a gift-bearer), so the deal closes by default -- cut it
+    /// down (raise the stance) to refuse and keep the prisoner.</summary>
+    public void DispatchRansomBearer(Vector3 targetPos, int targetFloor, int gold)
+    {
+        if (DungeonEntrance.Instance == null) return;
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+
+        var def = Def(AdventurerType.Commoner);
+        if (def == null) return;
+
+        var party = new AdventurerParty(PartyIntent.GiftGiver);
+        RegisterLiveParty(party);
+
+        var used = new Dictionary<CombatClass, int>();
+        SpawnMember(def, BehaviourTrait.Cowardly, spawnPos, party, used);
+        foreach (var m in party.LiveMembers) m.SetRaidTarget(targetPos, targetFloor, true, gold);
+
+        SetupOrganize(party, AdventurerType.Commoner, party.Members.Count, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(party.Members.Count);
+        AlertsLog.Instance?.AddAlert("A ransom-bearer approaches, coin in hand for my prisoner.",
+            spawnPos, 0, AlertCategory.Threat);
+    }
+
     public void DispatchNobleRetaliation(string house, int level)
     {
         if (DungeonEntrance.Instance == null) return;

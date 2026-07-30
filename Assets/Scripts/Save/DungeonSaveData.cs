@@ -56,6 +56,7 @@ public class DungeonSaveData
     public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
     public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)
     public int merchantNextVisitDay = -1;                 // wandering merchant schedule; -1 = unscheduled (additive)
+    public int prisonReactionDay = -1;                    // faction reaction to a held captive; -1 = none pending (additive)
 
     public RunStatsSaveData runStats;
 
