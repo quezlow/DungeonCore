@@ -80,6 +80,8 @@ the supersession in one line.
 26. The Surface War
 27. Bestiary Expansion
 28. Boss Promotion (Rank-on-Spawner, Waiting Halls)
+29. Wisp Quests (Urgings) and the Pressed Rule
+30. Ranged Combat (Projectiles, Damage Kinds, LOS)
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -752,9 +754,9 @@ less like a formation).
 **Shield wall + tank taunt (guide 3b -- SHIPPED).** The formation confers two effects.
 Passive: a rear member (not Tank/Fighter, in a formationed party, not fleeing) takes
 `shieldWallMitigation` less damage (default 40%) while a living front-ranker stands
-(`HasLivingFrontRank`) -- the front rank soaks for the body. Since all incoming damage is
-melee (no ranged/projectile combat exists), the wall reduces blows generally, not "ranged"
-specifically. Active: the Tank taunt is now a timed ability, not an always-on class flag --
+(`HasLivingFrontRank`) -- the front rank soaks for the body. Since section 30 (ranged combat), the wall
+mitigates Ranged damage only -- melee that reaches the rear rank earns full damage, and
+the front rank soaks the bolts for the body. Active: the Tank taunt is now a timed ability, not an always-on class flag --
 `IsTaunting` is driven by `tauntTimer`. In combat a Tank spends stamina (`tauntStaminaCost`,
 default 30; Tanks have stamina, not mana) to hold monster focus for `tauntDuration` (5s),
 barking via `BarkSpawner`; regen plus `tauntRecovery` pace re-taunts. The existing taunter
@@ -785,9 +787,8 @@ The capture-trap pin (8C) remains a partial breaker -- it removes one member fro
 without scattering the whole body.
 
 **Squad-formation tactical layer complete:** 3a march-holding, 3b shield wall + tank taunt, 3c
-breaking. Note: there is no ranged/projectile combat, so the shield wall reduces melee blows
-generally rather than "ranged" specifically; a ranged-specific wall would need a ranged-combat
-system first.
+breaking. Note: section 30 shipped ranged combat; the shield wall is now ranged-specific, its
+original intent fulfilled.
 
 **Key files:** `Adventurer/DungeonAdventurer.cs` (`FacingDir`, `AdvanceOrHold`,
 `FollowFormation`, `SlotWalkable`), `Adventurer/AdventurerParty.cs` (`HasStraggler`).
@@ -1821,8 +1822,9 @@ future design fork. Skin names are save keys (restore skips the affinity gate
 by design; a save reloads under its own core type).
 
 **Mage model:** ranged monsters follow the adventurer-Mage convention -- large
-attackRange (Adept 3.6, Archon 4.2) plus telegraphSeconds, no projectile
-system.
+attackRange (Adept 3.6, Archon 4.2) plus telegraphSeconds. SUPERSEDED by
+section 30: these definitions now loose travel-time projectiles; ranges and
+telegraphs are unchanged.
 
 **Depth-banded wilds:** `MonsterDefinition.minWildFloor` (default 0);
 WildMonsterController filters the shared template pool per floor before the
@@ -1842,8 +1844,8 @@ identity and the cap-efficiency floor are load-bearing.
 
 **Rejected:** shown-but-locked display for wrong-type skins (breaks the reskin
 illusion); per-floor wild pool assets (one shared pool + depth field is the
-authored surface); a monster projectile system (adventurer-Mage hitscan
-convention holds); mechanical flavour on reskins (deferred as a fork, not
+authored surface); a monster projectile system -- SUPERSEDED by section 30 (ranged
+combat ships travel-time projectiles; the hitscan convention is retired); mechanical flavour on reskins (deferred as a fork, not
 built).
 
 ### 27A. Native Affinity Lines (60 Monsters, Slot Parity)
@@ -2109,3 +2111,107 @@ quest system (the journal already renders the legacy engine); pathing
 refusal over a stat penalty (fights the player's own orders); temperament
 variants for urging text (seven-fold writing for little gain - Excite
 already colours completion by personality).
+---
+
+## 30. Ranged Combat (Projectiles, Damage Kinds, LOS)
+
+Status: SHIPPED. Verified: 2026-07-30.
+
+Supersedes the section-27 rejection of a monster projectile system and
+fulfils the section-10A shield-wall intent. The adventurer-Mage hitscan
+convention is retired.
+
+**Damage kinds.** `DamageKind { Melee, Ranged }` (Gameplay/DamageKind.cs).
+`DungeonAdventurer.TakeDamage(float, DamageKind = Melee)` -- one defaulted
+parameter, zero call-site churn; `IMonsterTarget` stays single-arg and the
+explicit interface implementation forwards on the default. The shield wall
+mitigates Ranged ONLY: melee that reaches the rear rank earns full damage,
+and environmental sources (traps, chests, room effects, sparring chip, core
+burn) ride the Melee default and are never wall-mitigated. This retires the
+old behaviour where the wall reduced every damage source reaching a rear
+member. shieldWallMitigation stays 0.4 -- retune only if ranged-only feels
+thin. Monster TakeDamage stays untyped by ruling (no mechanic reads it).
+
+**Projectile.** `DungeonProjectile` (Monster/): a straight-line travel-time
+bolt aimed at the target's position at fire moment; speed per definition
+(casters 7, arrows 10, adventurer classes 8); hit radius 0.4; a dodged bolt
+flies on and fizzles at the first solid cell or aim distance + 1.5. The
+bolt carries the full attack payload -- damage, impact number, grudge
+record, knockback, formation break, and side-specific callbacks (kill
+credit / XP / titles on the monster side; taunt peel and tracked-party XP
+on the adventurer side) -- so a shooter that falls mid-flight still lands
+its loosed shot. Transform-touching kill credit is guarded (`this == null`)
+and forfeited by a dead shooter; everything else lands regardless. Rendered
+on the Player sorting layer (a world entity per Appendix B); the built-in
+soft-glow sprite is generated at runtime (the selection-ring pattern) and
+tinted per definition (`projectileTint`), with `projectileSprite` as the
+bespoke-art override. Transient by ruling: never serialized -- a mid-flight
+save drops the bolt, the same as a mid-windup telegraph. No pooling (fire
+rates are one bolt per attacker per cooldown; the DamageNumberSpawner
+instantiation precedent).
+
+**Line of sight.** `DungeonProjectile.HasLineOfSight` samples
+`DungeonPathfinder.IsWalkable` at 0.45-unit steps along the shooter-target
+line: walls and overhangs block a shot, rivers do not, and bodies never do
+-- the shield wall's mitigation IS the front-rank-blocks-for-the-rear
+fiction, so bolts pass through bodies to their target (no physical
+interception, by ruling). The gate is wired into the existing out-of-range
+reposition branch on both sides, so a blocked shooter walks until it has
+the shot; target acquisition stays distance-based (they know you are there
+-- they reposition to shoot). In-flight bolts also fizzle on entering solid
+rock as a safety.
+
+**Sense clamp.** A ranged attacker must sense at least as far as it can
+shoot. The caster prefabs ship with the base detectionRange (3.0) under
+reaches of 2.8-4.2, so both sides clamp at initialise:
+`detectionRange = max(detectionRange, attackRange + 0.5)` when
+firesProjectile (monsters, in Start) or rangedAttacker (adventurer class
+overlay). No prefab edits.
+
+**Who fires.** The shipped caster roster, at shipped ranges and telegraphs
+(no stat edits): the six Adepts (3.6), the six warcaster -mancers (3.8),
+the six Archons (4.2), Necromancer (2.8), Deathpriest (3.0) -- stamped
+firesProjectile with per-affinity bolt tints (Fire ember-orange, Water
+azure, Air pale sky, Earth ochre, Dark violet, Light gilt, the necromantic
+pair bone-green) via Dungeon Core -> Ranged Combat -> Stamp Ranged Casters
+(idempotent; ranged-ness is authored on MonsterDefinition, never the
+prefab; tints stamp on the first flip only, so hand-whitening a definition
+for bespoke pre-coloured bolt art survives a rerun). The telegraph tint ramp is the cast wind-up: Begin's strike
+callback swaps DealAttackDamage for FireProjectile on ranged definitions.
+The adventurer Mage fires the same projectile (the rangedAttacker overlay
+flag, class-colour tint, speed 8); Explorer stays melee (its ranged feel
+was never real -- attackRangeMultiplier 1). Wild-side use is automatic: any
+definition with firesProjectile fires, including future ranged wilds.
+
+**Archers.** Three universal physical-ranged monsters, generator-authored
+via Dungeon Core -> Ranged Combat -> Generate Archer Monsters (idempotent:
+creates defs, prefab variants and registry links, and on rerun refreshes
+balance stats in place -- sprite and animator hand-edits on the variants
+survive; stand-in sprites borrowed from donor prefabs and no icons, the
+roster norm, pending bespoke art):
+
+- Bone Archer -- Undead, Bronze 6 (an empty rank), range 3.2, HP 24,
+  damage 7, cooldown 2.0, cap 8 / 22 mana. Donor: Monster.prefab.
+- Hobgoblin Sharpshooter -- Humanoid, Silver 4 (an empty rank), range 3.4,
+  HP 60, damage 12, cooldown 2.2, cap 20 / 55 mana. Donor:
+  Monster_HobgoblinSpearman.
+- Dread Marksman -- Humanoid, Gold 2 (fills the automatic channel beside
+  the research-gated Deathpriest), range 4.0, HP 100, damage 22, cooldown
+  2.6, cap 60 / 125 mana. Donor: Monster_Warlord.
+
+Arrow speed 10, fletching-grey tint; categories route them to the existing
+muster rooms (Crypt / Barracks). The ranged niche trades HP for reach
+against the same-rank melee entries.
+
+**Rejected:** hitscan and homing projectile models (travel-time chosen --
+formation dispersal on a break becomes real dodge value); physical
+body-block interception (double-stacks with wall mitigation); LOS on target
+acquisition (repositioning is the behaviour, blindness is not); typing on
+monster TakeDamage (no mechanic needs it); projectile pooling; per-prefab
+detectionRange hand-edits (the sense clamp is definition-driven).
+
+**Key files:** `Gameplay/DamageKind.cs`, `Monster/DungeonProjectile.cs`,
+`Monster/MonsterDefinition.cs` (Ranged block), `Monster/DungeonMonster.cs`,
+`Adventurer/DungeonAdventurer.cs`, `Editor/RangedContentGenerator.cs`,
+`ScriptableObjects/Monsters/Regular/MonsterDef_BoneArcher.asset` (+
+Sharpshooter, Marksman, and their prefab variants, generator-created).

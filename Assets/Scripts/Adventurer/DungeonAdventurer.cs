@@ -475,6 +475,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         telegraphSeconds = c.telegraphSeconds;
         detectionRange *= c.detectionRangeMultiplier;
 
+        // A ranged class must sense at least as far as it can shoot.
+        if (c.rangedAttacker)
+            detectionRange = Mathf.Max(detectionRange, attackRange + 0.5f);
+
         if (c.detectsTraps) canDetectTraps = true;
 
         healsAllies = c.healsAllies;
@@ -1579,7 +1583,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
 
         float dist = Vector2.Distance(transform.position, combatTarget.Transform.position);
-        if (dist > attackRange)
+        // A ranged class also needs a clear line to the target: blocked within range,
+        // it falls through to the approach path below and walks until the shot opens.
+        if (dist > attackRange
+            || (RangedClass && !DungeonProjectile.HasLineOfSight(
+                    currentFloor, transform.position, combatTarget.Transform.position)))
         {
             telegraph?.Cancel();   // target stepped out of range mid-windup — abort the tell
 
@@ -1625,10 +1633,50 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (!SpendAttackCost()) return;
         lastAttackTime = Time.time;
 
+        // Ranged classes loose a projectile at the end of the windup; melee lands as before.
+        System.Action strike = RangedClass ? FireProjectile : (System.Action)DealAttackDamage;
         if (telegraph != null && telegraphSeconds > 0f)
-            telegraph.Begin(telegraphSeconds, TelegraphColors.ForClass(combatClass), DealAttackDamage);
+            telegraph.Begin(telegraphSeconds, TelegraphColors.ForClass(combatClass), strike);
         else
-            DealAttackDamage();
+            strike();
+    }
+
+    /// <summary>True for a class that fires projectiles (the Mage overlay flag).</summary>
+    private bool RangedClass => classDef != null && classDef.rangedAttacker;
+
+    private const float ClassProjectileSpeed = 8f;
+
+    /// <summary>A ranged class's strike: loose a bolt that lands the payload on
+    /// impact. Peel and party XP ride the projectile so they resolve when the hit
+    /// actually connects, and a shooter that falls mid-flight still lands its shot.</summary>
+    private void FireProjectile()
+    {
+        if (combatTarget == null || !combatTarget.IsAlive) return;
+        animDriver?.OnAttack();
+        bool tauntingAtFire = IsTaunting;
+
+        var payload = new DungeonProjectile.Payload
+        {
+            damage = attackDamage,
+            numberType = FloatingDamageNumber.DamageType.MonsterHit,
+            knockbackForce = knockbackForce,
+            knockbackMinDamage = knockbackMinDamage,
+            onHit = hit =>
+            {
+                // A heavy hit from anyone but the taunting tank peels that monster
+                // off the taunt -- judged by the shooter's stance at fire time.
+                if (!tauntingAtFire && hit is DungeonMonster struck
+                    && attackDamage >= struck.MaxHP * peelDamageFraction)
+                    struck.PeelFromTaunt();
+            },
+            onKill = fallen =>
+            {
+                if (party != null && party.tracked && partyMember != null)
+                    partyMember.xp += Mathf.RoundToInt(xpPerKill);
+            },
+        };
+        DungeonProjectile.Fire(currentFloor, transform.position, combatTarget,
+            ClassProjectileSpeed, TelegraphColors.ForClass(combatClass), null, payload);
     }
 
     private void DealAttackDamage()
@@ -1943,9 +1991,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Health ────────────────────────────────────────────────────
 
-    public bool TakeDamage(float amount)
+    public bool TakeDamage(float amount, DamageKind kind = DamageKind.Melee)
     {
-        if (WallProtected()) amount *= (1f - shieldWallMitigation);
+        // The shield wall is a wall of shields against incoming fire: only Ranged
+        // hits are mitigated. Melee that reaches the rear rank earns full damage,
+        // and environmental sources (traps, chests, room effects, sparring, core
+        // burn) ride the Melee default and pass through untouched.
+        if (kind == DamageKind.Ranged && WallProtected()) amount *= (1f - shieldWallMitigation);
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
         GetComponent<DamageFlash>()?.Flash();

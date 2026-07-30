@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: MonsterDef_Voidspeaker
+  m_Name: MonsterDef_BoneArcher
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Voidspeaker
+  monsterName: Bone Archer
   icon: {fileID: 0}
-  voice: 3
-  category: 1
-  prefab: {fileID: 86676977585395175, guid: 412c4977fc011b04ba3b8acb045ca847, type: 3}
-  capacityCost: 65
-  manaCost: 135
-  requiredTier: 2
-  requiredRank: 3
+  voice: 2
+  category: 2
+  prefab: {fileID: 3131413977788427536, guid: 3d6d537533ccbf14f9cdd211456a915b, type: 3}
+  capacityCost: 8
+  manaCost: 22
+  requiredTier: 0
+  requiredRank: 6
   requiresDiscovery: 0
   requiredTechKey: 
-  affinityType: 5
-  description: Says a word the world was not built to hear, at range, at the casters.
-    The pause before it is the mercy.
+  affinityType: 0
+  description: A skeleton that remembers the bow. Its draw is patient and its arrows
+    do not care how far the living thought they stood.
   isAquatic: 0
   minWildFloor: 0
   wildCoreXpOnDeath: 5
@@ -34,7 +34,7 @@ MonoBehaviour:
   wildRegenMultiplier: 0
   maxStamina: 0
   attackStaminaCost: 0
-  targetPriority: 1
+  targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
   breaksFormation: 0
@@ -46,8 +46,8 @@ MonoBehaviour:
   maxRisen: 3
   risenLifetime: 45
   risenDefinitions: []
-  telegraphSeconds: 0.8
+  telegraphSeconds: 0.45
   firesProjectile: 1
-  projectileSpeed: 7
-  projectileTint: {r: 0.65, g: 0.35, b: 1, a: 1}
+  projectileSpeed: 10
+  projectileTint: {r: 0.85, g: 0.82, b: 0.72, a: 1}
   projectileSprite: {fileID: 0}

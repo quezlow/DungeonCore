@@ -47,3 +47,7 @@ MonoBehaviour:
   risenLifetime: 45
   risenDefinitions: []
   telegraphSeconds: 1
+  firesProjectile: 1
+  projectileSpeed: 7
+  projectileTint: {r: 0.85, g: 0.65, b: 0.3, a: 1}
+  projectileSprite: {fileID: 0}

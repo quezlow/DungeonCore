@@ -147,6 +147,18 @@ public class MonsterDefinition : ScriptableObject
     [Tooltip("Windup seconds before this monster's attack lands (shows a pre-attack tell). 0 = instant, no telegraph.")]
     [Min(0f)] public float telegraphSeconds = 0f;
 
+    [Header("Ranged")]
+    [Tooltip("If true, this monster's attack looses a travel-time projectile at the end "
+           + "of its telegraph instead of landing instantly, and it needs line of "
+           + "sight to shoot. Ranges and telegraphs are unchanged by this flag.")]
+    public bool firesProjectile = false;
+    [Tooltip("Projectile flight speed in world units per second.")]
+    [Min(0.1f)] public float projectileSpeed = 7f;
+    [Tooltip("Tint applied to the projectile sprite -- the per-affinity bolt colour, authored here.")]
+    public Color projectileTint = Color.white;
+    [Tooltip("Optional bespoke projectile sprite. None = the built-in soft bolt.")]
+    public Sprite projectileSprite = null;
+
     /// <summary>
     /// Mana/capacity cost to keep this monster active.
     /// Virtual so BossVariantDefinition can scale it.

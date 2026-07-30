@@ -295,6 +295,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         var ndef = IsWild ? wildDefinition : spawner?.Definition;
         isNecromancer = ndef != null && ndef.isNecromancer;
 
+        // A ranged attacker must sense at least as far as it can shoot -- the caster
+        // prefabs ship with the base detectionRange, so clamp it up here rather than
+        // hand-editing every prefab.
+        if (ndef != null && ndef.firesProjectile)
+            detectionRange = Mathf.Max(detectionRange, attackRange + 0.5f);
+
         if (statusBarsPrefab != null)
         {
             statusBars = Instantiate(statusBarsPrefab);
@@ -1436,7 +1442,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         Vector3 targetPos = target.Transform.position;
         float dist = Vector2.Distance(transform.position, targetPos);
-        if (dist > attackRange)
+        var rdef = IsWild ? wildDefinition : spawner?.Definition;
+        bool ranged = rdef != null && rdef.firesProjectile;
+        // A ranged attacker also needs a clear line to the target: blocked within
+        // range, it falls through to the chase path below and walks until the shot
+        // opens up. Acquisition stays distance-based -- it knows you are there.
+        if (dist > attackRange
+            || (ranged && !DungeonProjectile.HasLineOfSight(currentFloor, transform.position, targetPos)))
         {
             telegraph?.Cancel();   // target stepped out of range mid-windup — abort the tell
 
@@ -1477,12 +1489,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (!SpendAttackStamina()) return;
         lastAttackTime = Time.time;
 
-        var tdef = IsWild ? wildDefinition : spawner?.Definition;
-        float windup = tdef != null ? tdef.telegraphSeconds : 0f;
+        float windup = rdef != null ? rdef.telegraphSeconds : 0f;
+        // Ranged defs loose a projectile at the end of the windup; melee lands as before.
+        System.Action strike = ranged ? FireProjectile : (System.Action)DealAttackDamage;
         if (telegraph != null && windup > 0f)
-            telegraph.Begin(windup, TelegraphColors.Monster, DealAttackDamage);
+            telegraph.Begin(windup, TelegraphColors.Monster, strike);
         else
-            DealAttackDamage();
+            strike();
     }
 
     // -- Banter --
@@ -1529,6 +1542,42 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (Random.value > BanterLines.MonsterTauntChance) return;
         if (Time.time - lastBarkTime < barkCooldown) return;
         Say(BanterLines.RandomTaunt(Voice), BanterLines.MonsterBark);
+    }
+
+    /// <summary>Loose the ranged attack at the end of the telegraph. The projectile
+    /// carries the full payload, so the shot lands its damage, knockback and
+    /// formation break even if this monster falls mid-flight; transform-touching
+    /// kill credit is guarded and forfeited by a dead shooter.</summary>
+    private void FireProjectile()
+    {
+        if (target == null || !target.IsAlive) return;
+        var def = IsWild ? wildDefinition : spawner?.Definition;
+        if (def == null || !def.firesProjectile) { DealAttackDamage(); return; }
+
+        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier;
+        animDriver?.OnAttack();
+
+        var payload = new DungeonProjectile.Payload
+        {
+            damage = dmg,
+            numberType = FloatingDamageNumber.DamageType.AdventurerHit,
+            sourceName = TypeName,
+            knockbackForce = def.knockbackForce,
+            knockbackMinDamage = def.knockbackMinDamage,
+            breaksFormation = def.breaksFormation,
+            breakSeconds = def.formationBreakSeconds,
+            onKill = fallen =>
+            {
+                if (this == null) return;   // a dead shooter forfeits the credit
+                killCount++;
+                GainXP(xpPerKill);
+                if (fallen is DungeonAdventurer hero && hero.IsNamedHero)
+                    GrantKillTitle(hero.DisplayName);
+                if (ReferenceEquals(target, fallen)) target = null;
+            },
+        };
+        DungeonProjectile.Fire(currentFloor, transform.position, target,
+            def.projectileSpeed, def.projectileTint, def.projectileSprite, payload);
     }
 
     private void DealAttackDamage()

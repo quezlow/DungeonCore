@@ -37,6 +37,8 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
+  breaksFormation: 0
+  formationBreakSeconds: 5
   isNecromancer: 1
   raiseRange: 3.5
   raiseChannelSeconds: 1.5
@@ -48,3 +50,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}
   - {fileID: 11400000, guid: 09b6c74df3aac884da6b81f3de5bc076, type: 2}
   telegraphSeconds: 0.6
+  firesProjectile: 1
+  projectileSpeed: 7
+  projectileTint: {r: 0.62, g: 0.85, b: 0.5, a: 1}
+  projectileSprite: {fileID: 0}

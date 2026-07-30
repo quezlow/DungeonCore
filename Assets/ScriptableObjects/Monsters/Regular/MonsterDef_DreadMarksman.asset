@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: MonsterDef_Voidspeaker
+  m_Name: MonsterDef_DreadMarksman
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Voidspeaker
+  monsterName: Dread Marksman
   icon: {fileID: 0}
   voice: 3
   category: 1
-  prefab: {fileID: 86676977585395175, guid: 412c4977fc011b04ba3b8acb045ca847, type: 3}
-  capacityCost: 65
-  manaCost: 135
+  prefab: {fileID: 8975431914334300113, guid: 6fee7c0d4cecb2845a731326fa451e5a, type: 3}
+  capacityCost: 60
+  manaCost: 125
   requiredTier: 2
-  requiredRank: 3
+  requiredRank: 2
   requiresDiscovery: 0
   requiredTechKey: 
-  affinityType: 5
-  description: Says a word the world was not built to hear, at range, at the casters.
-    The pause before it is the mercy.
+  affinityType: 0
+  description: A longbow sniper in blackened mail. It looses seldom, and each shaft
+    is meant for the one the party could least afford to lose.
   isAquatic: 0
   minWildFloor: 0
   wildCoreXpOnDeath: 5
@@ -34,7 +34,7 @@ MonoBehaviour:
   wildRegenMultiplier: 0
   maxStamina: 0
   attackStaminaCost: 0
-  targetPriority: 1
+  targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
   breaksFormation: 0
@@ -46,8 +46,8 @@ MonoBehaviour:
   maxRisen: 3
   risenLifetime: 45
   risenDefinitions: []
-  telegraphSeconds: 0.8
+  telegraphSeconds: 0.6
   firesProjectile: 1
-  projectileSpeed: 7
-  projectileTint: {r: 0.65, g: 0.35, b: 1, a: 1}
+  projectileSpeed: 10
+  projectileTint: {r: 0.85, g: 0.82, b: 0.72, a: 1}
   projectileSprite: {fileID: 0}
