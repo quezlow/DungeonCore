@@ -108,6 +108,10 @@ public class WispScript : ScriptableObject
             // First arrival of the Wandering Merchant, once ever.
             new Line { id = "merchant_first", once = true,
                 text = "A wagon on the road. He has come a long way to sell to something like you - do look at what he carries." },
+
+            // First time the Pressed rule bites: creatures massed in a corridor.
+            new Line { id = "pressed_first", once = true,
+                text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },
         };
 
         barkSets = new[]

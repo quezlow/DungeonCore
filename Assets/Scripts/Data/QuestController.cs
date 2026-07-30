@@ -139,6 +139,59 @@ public class QuestController : MonoBehaviour
     public bool IsQuestHandedIn(string questID) =>
         handInQuestIDs.Contains(questID);
 
+    /// <summary>Absolute-set for sweep-derived objectives (the wisp urgings):
+    /// world state is recounted each tick, so progress is written, not
+    /// incremented. CollectItem stays inventory-derived.</summary>
+    public void SetObjectiveProgress(string objectiveID, int absolute)
+    {
+        if (string.IsNullOrEmpty(objectiveID)) return;
+
+        bool changed = false;
+        foreach (QuestProgress quest in activateQuests)
+        {
+            foreach (QuestObjective objective in quest.objectives)
+            {
+                if (objective.type == ObjectiveType.CollectItem) continue;
+                if (objective.objectiveID != objectiveID) continue;
+                int clamped = Mathf.Clamp(absolute, 0, objective.requiredAmount);
+                if (objective.currentAmount == clamped) continue;
+                objective.currentAmount = clamped;
+                changed = true;
+            }
+        }
+
+        if (changed) questUI?.UpdateQuestUI();
+    }
+
+    /// <summary>Record a quest as handed in without it ever being active - the
+    /// wisp director's silent reconcile for saves whose history already
+    /// satisfies an urging. No rewards, no announcement.</summary>
+    public void MarkHandedInSilently(Quest quest)
+    {
+        if (quest == null || string.IsNullOrEmpty(quest.questID)) return;
+        if (handInQuestIDs.Contains(quest.questID)) return;
+        handInQuestIDs.Add(quest.questID);
+        if (!handInQuests.Contains(quest)) handInQuests.Add(quest);
+        questUI?.UpdateQuestUI();
+    }
+
+    /// <summary>Restore the handed-in record from a save, re-linking each id
+    /// to its live asset for the journal's Completed page.</summary>
+    public void RestoreHandedIn(List<string> ids)
+    {
+        handInQuestIDs = ids ?? new();
+        handInQuests.Clear();
+        if (QuestRegistry.Instance != null)
+        {
+            foreach (var id in handInQuestIDs)
+            {
+                var asset = QuestRegistry.Instance.ById(id);
+                if (asset != null && !handInQuests.Contains(asset)) handInQuests.Add(asset);
+            }
+        }
+        questUI?.UpdateQuestUI();
+    }
+
     public bool RemoveRequiredItemsFromInventory(string questID)
     {
         QuestProgress quest = activateQuests.Find(q => q.QuestID == questID);
@@ -178,8 +231,8 @@ public class QuestController : MonoBehaviour
         if (QuestRegistry.Instance != null)
             foreach (var qp in activateQuests)
             {
-                if (qp?.quest == null) continue;
-                var asset = QuestRegistry.Instance.ById(qp.quest.questID);
+                if (qp == null) continue;
+                var asset = QuestRegistry.Instance.ById(qp.QuestID);
                 if (asset != null) qp.quest = asset;
             }
 

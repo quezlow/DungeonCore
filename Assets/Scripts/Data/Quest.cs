@@ -41,11 +41,15 @@ public enum ObjectiveType { CollectItem, DefeatEnemy, ReachLocation, TalkNPC, Cu
 public class QuestProgress
 {
     public Quest quest;
+    // Inlined for the save: the asset reference does not survive
+    // JsonUtility across sessions, so the id must ride beside it.
+    public string questID;
     public List<QuestObjective> objectives;
 
     public QuestProgress(Quest quest)
     {
         this.quest = quest;
+        questID = quest.questID;
         objectives = new List<QuestObjective>();
 
         foreach (var obj in quest.objectives)
@@ -63,7 +67,7 @@ public class QuestProgress
 
     public bool IsCompleted => objectives.TrueForAll(o => o.IsCompleted);
 
-    public string QuestID => quest.questID;
+    public string QuestID => quest != null ? quest.questID : questID;
 }
 
 [System.Serializable]

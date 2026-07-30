@@ -13,6 +13,7 @@ using UnityEngine;
 ///   2 Dig     - point at the entrance; reveal the compass     (world stays dormant)
 ///   3 Breach  - entrance found -> the rat vignette + Cave Rat (grants the first monster)
 ///   4 Grace   - a quiet day before the wild things wake       (WaveStageController grace)
+///   4b Carve  - mine a room-shaped pocket, 3x3 at the least   (offers the opening urgings)
 ///   5 Build   - designate a room, then place the rat spawner  (grants skeleton + spike_trap)
 ///   6 Research- learn the Ledger of Alarums (tech.alerts)      (soft; completes on unlock)
 ///   7 Done    - hand off to free play, persist completion
@@ -30,7 +31,7 @@ public class TutorialDirector : MonoBehaviour
     /// stays hidden until then, so the pointer appears with the instruction.</summary>
     public static bool DigPromptGiven { get; private set; }
 
-    private enum Step { Claim, Dig, Breach, Grace, Build, Research, Done }
+    private enum Step { Claim, Dig, Breach, Grace, Carve, Build, Research, Done }
 
     [Header("Data")]
     [SerializeField] private WispTutorialScript script;
@@ -121,7 +122,9 @@ public class TutorialDirector : MonoBehaviour
             GrantOnce(KeyStatusBars);
             foreach (var a in FindObjectsByType<RoomAnchor>())
                 if (a != null && a.IsValid) { roomDesignated = true; break; }
-            EnterStep(Step.Build);
+            WispQuestDirector.Instance?.OfferOpeningQuests();
+            EnterStep(roomDesignated || WispQuestDirector.CarvePocketExists()
+                ? Step.Build : Step.Carve);
             return;
         }
 
@@ -167,7 +170,19 @@ public class TutorialDirector : MonoBehaviour
             case Step.Grace:
                 Say("tut_grace");
                 // A short beat, then move the player on to building.
-                StartCoroutine(AdvanceAfter(Step.Build, 6f));
+                StartCoroutine(AdvanceAfter(Step.Carve, 6f));
+                break;
+
+            case Step.Carve:
+                Say("tut_carve");
+                // The urgings arrive with the lesson; a pocket that already
+                // exists satisfies wq_carve on offer, so move straight on.
+                WispQuestDirector.Instance?.OfferOpeningQuests();
+                if (WispQuestDirector.CarvePocketExists())
+                {
+                    EnterStep(Step.Build);
+                    return;
+                }
                 break;
 
             case Step.Build:
@@ -196,6 +211,7 @@ public class TutorialDirector : MonoBehaviour
         switch (step)
         {
             case Step.Dig: Say("tut_nudge_dig"); nudgedThisStep = true; break;
+            case Step.Carve: Say("tut_nudge_carve"); nudgedThisStep = true; break;
             case Step.Build: Say("tut_nudge_room"); nudgedThisStep = true; break;
             case Step.Research: Say("tut_nudge_research"); nudgedThisStep = true; break;
         }
@@ -210,6 +226,7 @@ public class TutorialDirector : MonoBehaviour
         RoomAnchor.OnRoomValidationChanged += HandleRoomValidation;
         MonsterSpawner.OnSpawnerArmed += HandleSpawnerArmed;
         UnlockState.OnChanged += HandleUnlockChanged;
+        WispQuestDirector.OnWispQuestCompleted += HandleWispQuestCompleted;
     }
 
     private void Unhook()
@@ -219,6 +236,7 @@ public class TutorialDirector : MonoBehaviour
         RoomAnchor.OnRoomValidationChanged -= HandleRoomValidation;
         MonsterSpawner.OnSpawnerArmed -= HandleSpawnerArmed;
         UnlockState.OnChanged -= HandleUnlockChanged;
+        WispQuestDirector.OnWispQuestCompleted -= HandleWispQuestCompleted;
     }
 
     // Beat 1 -> 2: entering claim/push mode is proof enough the lesson landed.
@@ -244,6 +262,13 @@ public class TutorialDirector : MonoBehaviour
         {
             EnterStep(Step.Done);
         }
+    }
+
+    // Beat 4b: the carve urging is handed in - the pocket exists.
+    private void HandleWispQuestCompleted(string id)
+    {
+        if (step == Step.Carve && id == WispQuestDirector.QCarve)
+            EnterStep(Step.Build);
     }
 
     // Beat 5 (part one): a room becomes valid.

@@ -205,6 +205,7 @@ public class DungeonSaveController : MonoBehaviour
         AlertsLog.Instance?.ClearHistory();
         DungeonAdventurer.ResetSessionSignals();   // re-arm the wisp's one-shot party announce
         TutorialDirector.ResetForNewGame();        // fresh dungeon runs the guided opening again
+        WispQuestDirector.ResetForNewGame();       // fresh dungeon reconciles its urgings from nothing
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
 
         SaveGame();
@@ -304,6 +305,13 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
+
+        if (QuestController.Instance != null)
+        {
+            currentSave.wispQuestsActive = QuestController.Instance.activateQuests;
+            currentSave.wispQuestsHandedIn = QuestController.Instance.handInQuestIDs;
+        }
+        currentSave.wispQuestsInitialised = WispQuestDirector.InitialisedForSave;
 
         if (TodoListUI.Instance != null)
             currentSave.playerTodos = TodoListUI.Instance.GetSaveData();
@@ -773,6 +781,9 @@ public class DungeonSaveController : MonoBehaviour
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
+            QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
+            QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);
+            WispQuestDirector.RestoreInitialised(currentSave.wispQuestsInitialised);
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);

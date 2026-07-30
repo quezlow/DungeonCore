@@ -14879,7 +14879,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.9687962
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -22557,6 +22557,54 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705720963}
   m_CullTransparentMesh: 1
+--- !u!1 &711524051
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 711524052}
+  - component: {fileID: 711524053}
+  m_Layer: 0
+  m_Name: WispQuestDirector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &711524052
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711524051}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &711524053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 711524051}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3e5adbbd16ff05468b28e2a59c65c86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WispQuestDirector
+  sweepInterval: 1
+  notorietyGoal: 25
+  spawnerGoal: 2
+  trapGoal: 2
 --- !u!1 &713819243
 GameObject:
   m_ObjectHideFlags: 0
@@ -34872,6 +34920,9 @@ MonoBehaviour:
   executeAlignment: 6
   housedYOffset: 0.15
   clickRadius: 0.75
+  reactionMinDays: 3
+  reactionMaxDays: 6
+  ransomGold: 300
 --- !u!1 &1221624196
 GameObject:
   m_ObjectHideFlags: 0
@@ -48786,7 +48837,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0.000060423405}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -56140,7 +56191,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.97323203
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -58588,7 +58639,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000006740766}
+  m_AnchoredPosition: {x: 0, y: 0.000060423405}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -65152,6 +65203,7 @@ Transform:
   - {fileID: 1056619643}
   - {fileID: 1558610805}
   - {fileID: 1771577075}
+  - {fileID: 711524052}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!225 &5000115159085552515
@@ -67267,6 +67319,7 @@ GameObject:
   - component: {fileID: 150602188216864434}
   - component: {fileID: 6744142765768187979}
   - component: {fileID: 9049654902276457047}
+  - component: {fileID: 9049654902276457048}
   m_Layer: 0
   m_Name: DamageNumberSpawner
   m_TagString: Untagged
@@ -68033,6 +68086,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DamageNumberSpawner
   prefab: {fileID: 4672789360250072260, guid: c220473d21aab9440bb5c1412ffa6bad, type: 3}
   spawnYOffset: 0.5
+--- !u!114 &9049654902276457048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8233158792510046975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c360385ade025e4ba337ab1800fed7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CrowdingController
+  tickInterval: 0.5
+  pressRadiusCells: 2
+  pressThreshold: 4
+  pressedDamageMultiplier: 0.75
+  pressedShade: {r: 0.72, g: 0.68, b: 0.78, a: 1}
 --- !u!114 &9060927996754274225
 MonoBehaviour:
   m_ObjectHideFlags: 0

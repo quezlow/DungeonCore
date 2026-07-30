@@ -131,6 +131,9 @@ public class QuestLogUI : MonoBehaviour
         else if (tab == TabCompleted) RebuildCompleted();
         else if (tab == TabDeeds) RebuildDeeds();
         // Notes: TodoListUI renders itself.
+
+        // Any open advances the ledger urging; the Deeds page its second objective.
+        WispQuestDirector.NotifyJournalTab(tab == TabDeeds);
     }
 
     // -- quest pages -------------------------------------------------------------

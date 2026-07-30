@@ -64,9 +64,13 @@ public class WispTutorialScript : ScriptableObject
             new Line { id = "tut_grace",
                 text = "But not yet. Word travels slowly, and the wild things below are still waking. Use the quiet - there is much to raise before the first of them arrives." },
 
+            // Beat 4b - carve a chamber before naming one.
+            new Line { id = "tut_carve",
+                text = "Wide, not long. A worm-run breeds a crush - your creatures fight poorly shoulder-to-shoulder. Carve me a chamber: mined ground three across at the least, and the urging in the ledger will know it." },
+
             // Beat 5 - designate a room, then house the rat.
             new Line { id = "tut_room",
-                text = "Shape the raw dark into purpose. Mark out a room across the ground you have mined, and name what it is for. Then set your new companion within it." },
+                text = "Now give the chamber a name. Mark the room across the pocket you carved, choose its purpose, and set your new companion within it." },
 
             // Beat 6 - research the alert ledger.
             new Line { id = "tut_research",
@@ -79,8 +83,10 @@ public class WispTutorialScript : ScriptableObject
             // Soft re-prompts if the player idles on a step (director may reuse).
             new Line { id = "tut_nudge_dig",
                 text = "The way in is still buried. Follow the pointer - dig toward the moving air." },
+            new Line { id = "tut_nudge_carve",
+                text = "Still all tunnel. Three across, remember - a chamber the ledger will recognise." },
             new Line { id = "tut_nudge_room",
-                text = "A room, when you are ready - marked across mined ground, then given a purpose and your companion to hold it." },
+                text = "A room, when you are ready - marked across your carved chamber, then given a purpose and your companion to hold it." },
             new Line { id = "tut_nudge_research",
                 text = "The Ledger of Alarums still waits in the tree, whenever you would have warning of what comes." },
         };

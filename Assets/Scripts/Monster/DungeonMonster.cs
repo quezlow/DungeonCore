@@ -170,6 +170,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private float slowMultiplier = 1f;
     private float roomDamageMultiplier = 1f;   // Throne Room damage buff (1 = none)
     private float globalDamageMultiplier = 1f; // Trophy Hall global buff (1 = none); set from census, read at the strike
+    private float crowdDamageMultiplier = 1f;  // Pressed rule (1 = none); set by CrowdingController, read at the strike
+    private bool isPressed;
+    private Color preCrowdColour = Color.white;
     private static float sharedGlobalDamageMultiplier = 1f; // last census value; new monsters adopt it at Start
     private float slowTimer = 0f;
 
@@ -386,6 +389,35 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// <summary>Adds HP (clamped to maxHP) with floating heal numbers. Used by
     /// room effects (Lair). No post-damage cooldown — a Lair always mends.</summary>
     public void SetRoomDamageMultiplier(float m) => roomDamageMultiplier = Mathf.Max(0f, m);
+
+    /// <summary>The Pressed rule (CrowdingController): too many of the core's
+    /// creatures shoulder-to-shoulder in a corridor fight poorly. Applies a
+    /// damage-dealt multiplier and a temporary shade; clearing restores the
+    /// prior colour only if nothing else recoloured the sprite meanwhile.</summary>
+    public void SetCrowdPenalty(bool pressed, float damageMultiplier, Color shade)
+    {
+        if (pressed == isPressed) return;
+        isPressed = pressed;
+        crowdDamageMultiplier = pressed ? Mathf.Clamp(damageMultiplier, 0.1f, 1f) : 1f;
+
+        var pressSr = GetComponentInChildren<SpriteRenderer>();
+        if (pressSr == null) return;
+        if (pressed)
+        {
+            preCrowdColour = pressSr.color;
+            pressSr.color = preCrowdColour * shade;
+        }
+        else if (ColoursClose(pressSr.color, preCrowdColour * shade))
+        {
+            pressSr.color = preCrowdColour;
+        }
+    }
+
+    /// <summary>True while the Pressed corridor penalty applies.</summary>
+    public bool IsPressed => isPressed;
+
+    private static bool ColoursClose(Color a, Color b) =>
+        Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.02f;
 
     /// <summary>Census pushes the current trophy damage multiplier to every live monster.
     /// Cached so monsters spawned later adopt it in Start.</summary>
@@ -1493,7 +1525,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (target == null || !target.IsAlive) return;
 
-        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier;
+        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier;
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();

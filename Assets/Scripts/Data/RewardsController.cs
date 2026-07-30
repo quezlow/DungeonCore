@@ -23,9 +23,13 @@ public class RewardsController : MonoBehaviour
                     break;
 
                 case RewardType.Gold:
+                    // The wisp urgings pay the core directly.
+                    DungeonCore.Instance?.AddGold(reward.amount);
                     break;
 
                 case RewardType.Experience:
+                    // Core XP, the same well the fallen feed.
+                    DungeonCore.Instance?.AddXP(reward.amount);
                     break;
 
                 case RewardType.Custom:

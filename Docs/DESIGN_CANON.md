@@ -997,7 +997,9 @@ claim territory -> grants `tech.status_bars`; (2) dig for the entrance -- the
 `MarkEntranceDiscovered`) triggers the First Blood vignette, whose mechanical
 payload is `BestiaryState.Discover("Cave Rat")` (staged by FirstBloodVignette;
 see the First Blood entry); (4) a grace day; 
-(5) designate a room, then arm a spawner -- `MonsterSpawner.OnSpawnerArmed` (new)
+(4b) carve - the wisp asks for a
+room-shaped pocket (a 3x3 of mined ground clear of existing rooms),
+satisfied through the wq_carve urging (see entry 29); (5) designate a room, then arm a spawner -- `MonsterSpawner.OnSpawnerArmed` (new)
 plus a prior valid `RoomAnchor.OnRoomValidationChanged` completes it, granting
 `tech.skeleton` + `tech.spike_trap`; (6) research the Ledger of Alarums --
 completes when `tech.alerts` unlocks (soft; the wisp re-prompts); (7) handoff.
@@ -1315,6 +1317,7 @@ the node. Wisp guide (folds in later): a
 `QuestController.ProgressObjective` increment API enabling `TalkNPC` (hooked
 in `NPC.StartDialogue`) and `Custom` objectives (optional field on
 `FlagInteractable`).
+SHIPPED (wisp urgings): the dungeon-side fold-in is entry 29.
 SHIPPED: `LootType.Book` + `DropEntry.grantsNode`; `DroppedLoot.Absorb`
 calls `GrantNodeFully` (bypasses points, prerequisites and duration; refunds
 if underway) and the gold still pays, so duplicate tomes are never dead
@@ -2002,3 +2005,73 @@ The Sorcery book pair (Primer of the First Spark,
 The Drawn Breath) stays reserved by name until core spells are greenlit.
 Adding stock later (specials included) is assets-only: new typed entries in
 the catalog.
+## 29. Wisp Quests (Urgings) and the Pressed Rule
+
+Status: SHIPPED with the tutorial-expansion delivery.
+
+**Engine:** the legacy prologue quest stack (`Quest` / `QuestController` /
+`QuestRegistry` / `RewardsController` / `QuestUI`), already present in the
+dungeon scene, is the wisp-quest engine - the fold-in entry 17 reserved. New
+`WispQuestDirector` (one component, e.g. on GameController) stands up a
+`QuestRegistry` beside itself; urging assets live under
+`Resources/Quests/Wisp` (authored by the Wisp Quest generator, Dungeon Core ->
+Generate Wisp Quests) so the registry self-populates. `RewardsController`
+gains its Gold and Experience implementations (`DungeonCore.AddGold` /
+`AddXP`) - urging rewards are small Core XP, occasionally gold.
+
+**Model:** urgings are offered, never pushed as modal steps. The opening pair
+(wq_carve, wq_journal) is offered by the TutorialDirector at its new Carve
+beat; the free-play batch (research, muster, traps, notoriety) offers at
+tutorial handoff; the rest chain contextually in the director's once-a-second
+sweep (pattern after research, tier-2 after muster, capture when a capture
+trap or captive first exists, floor 1 when stairs become placeable).
+Objectives are sweep-derived where possible - world state is recounted and
+absolute-set through the new `QuestController.SetObjectiveProgress`, the Deeds
+idiom - with one push pair: `QuestLogUI` reports journal opens and Deeds-tab
+views. Completed urgings auto-hand-in (no NPC, no item removal): rewards,
+one wisp line, a small Excite, and `OnWispQuestCompleted` for listeners.
+
+**Tutorial rework:** the guided opening gains beat 4b, Carve - after the grace
+day the wisp asks for a room-shaped pocket (a 3x3 of mined, claimed ground
+clear of existing room footprints; `WispQuestDirector.CarvePocketExists`) and
+only then for the room itself. The beat completes through the wq_carve urging;
+an already-carved save skips it on offer. Resume routes through Carve.
+Tutorial lines: new tut_carve / tut_nudge_carve; tut_room and its nudge
+reworded to build in the carved chamber.
+
+**The Pressed rule:** dungeon-owned monsters massed on mined ground OUTSIDE
+any valid room footprint fight poorly. New `CrowdingController` (one
+component) sweeps every floor each half-second, reaching owned monsters
+through their spawners: four or more clustered within two cells (Chebyshev)
+of one another in the corridors take a x0.75 damage-dealt multiplier
+(`crowdDamageMultiplier`, combined multiplicatively at the strike beside the
+Throne and Trophy multipliers) and a temporary sprite shade (promotion-safe
+restore). Wild and invader monsters are exempt. Adventurers are exempt BY
+DESIGN: a party debuffed in transit through a one-wide tunnel would reward
+tunnel-spam, the exact habit the rule exists to break - their corridor
+treatment arrives with the formation layer (formations holding in corridors).
+First trigger speaks the pressed_first one-shot.
+
+**Persistence and veterans:** `DungeonSaveData` gains wispQuestsActive /
+wispQuestsHandedIn / wispQuestsInitialised (additive). `QuestProgress` now
+inlines its questID - the asset reference does not survive JsonUtility
+across sessions - and `LoadQuestProgress` re-links through it (fixes a
+latent legacy landmine). On first meeting a
+save that predates the feature, the director reconciles silently: a finished
+tutorial records the opening pair as history, and any urging already
+satisfied records on offer with no reward and no announcement - history is
+not an event to announce (the Deeds precedent). New-game reset rides
+`DungeonSaveController` beside the TutorialDirector's.
+
+**Key files:** `Wisp/WispQuestDirector.cs`, `DungeonCore/CrowdingController.cs`,
+`Editor/WispQuestContentGenerator.cs`, `DungeonCore/TutorialDirector.cs`,
+`Data/QuestController.cs`, `Data/RewardsController.cs`, `UI/QuestLogUI.cs`,
+`UI/QuestUI.cs`, `Monster/DungeonMonster.cs`, `Wisp/WispTutorialScript.cs`,
+`Wisp/WispScript.cs`, `Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`.
+
+**Rejected:** symmetric corridor crowding (debuffs a marching party in
+transit and so rewards one-wide tunnels - backwards); a parallel wisp-only
+quest system (the journal already renders the legacy engine); pathing
+refusal over a stat penalty (fights the player's own orders); temperament
+variants for urging text (seven-fold writing for little gain - Excite
+already colours completion by personality).

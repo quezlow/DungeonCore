@@ -15,6 +15,11 @@ public class QuestUI : MonoBehaviour
 
     public void UpdateQuestUI()
     {
+        // The dungeon scene hosts this as the on-screen urging tracker; stay
+        // quiet when the prefab references are unwired rather than throwing.
+        if (questListContent == null || questEntryPrefab == null || objectiveTextPrefab == null) return;
+        if (QuestController.Instance == null) return;
+
         foreach(Transform child in questListContent)
         {
             Destroy(child.gameObject);
@@ -22,6 +27,7 @@ public class QuestUI : MonoBehaviour
 
         foreach(var quest in QuestController.Instance.activateQuests)
         {
+            if (quest == null || quest.quest == null) continue;
             GameObject entry = Instantiate(questEntryPrefab, questListContent);
             TMP_Text questNameText = entry.transform.Find("QuestNameText").GetComponent<TMP_Text>();
             Transform objectiveList = entry.transform.Find("ObjectiveList");
