@@ -115,7 +115,7 @@ public class AdventurerParty
     public bool HasLivingFrontRank()
     {
         foreach (var a in live)
-            if (a != null && a.IsAlive && a.IsFrontRank) return true;
+            if (a != null && ((IMonsterTarget)a).IsAlive && a.IsFrontRank) return true;
         return false;
     }
 
