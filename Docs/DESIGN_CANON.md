@@ -59,7 +59,7 @@ the supersession in one line.
 12. Ambient Necromancy and Corpses
 12A. Influence Field, Push and Breach Recede
 
-**Part II -- Designed, not yet built**
+**Part II -- Design entries (most since shipped in place)**
 13. Research Tree (Phase 4.5)
 14. Material Pattern System
 15. Room Effects v2 and Attractor Rooms
@@ -843,11 +843,13 @@ stay exempt inside IsBedrock, so the real tunnel through the rim still registers
 
 ---
 
-# PART II -- DESIGNED, NOT YET BUILT
+# PART II -- DESIGN ENTRIES (MOST SINCE SHIPPED IN PLACE)
 
-Nothing in this part exists in code, with one exception: entry 14 has
-shipped and is recorded as-built in place. Entries record APPROVED design;
-build guides must still verify live source before writing edits.
+Most entries in this part have since shipped and are recorded as-built in
+place with their own Status lines (13 spine / UI / roster, 14, 15, 15A, 16,
+and 17's shipped subparts); those Status lines are authoritative. Entries 18
+and 19 remain design-only. Entries record APPROVED design; build guides must
+still verify live source before writing edits.
 
 ## 13. Research Tree (Phase 4.5)
 
@@ -1710,7 +1712,8 @@ shared timber frame reads for all three); a landmark ruin variant.
 
 ## 27. Bestiary Expansion (Level-Gated Roster, Affinity Reskins, Depth-Banded Wilds)
 
-Status: SHIPPED. Verified: <date of landing>.
+Status: SHIPPED. Verified: 2026-07 (landing date unrecorded; placeholder
+resolved by the 2026-07-29 dev-plan audit).
 
 **Roster:** 26 new designs (36 definitions) spanning Bronze 2 through Diamond 3,
 1 per rank Bronze 2-10 and 1-2 per rank Silver+, gated by
@@ -1762,7 +1765,8 @@ built).
 
 ### 27A. Native Affinity Lines (60 Monsters, Slot Parity)
 
-Status: SHIPPED. Verified: <date of landing>.
+Status: SHIPPED. Verified: 2026-07 (landing date unrecorded; placeholder
+resolved by the 2026-07-29 dev-plan audit).
 
 Each core type owns ten unique native monsters -- distinct creatures, sprites
 and copy per type, nothing shared but the numbers. Ten rank slots common to all
