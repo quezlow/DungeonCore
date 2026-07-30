@@ -55,6 +55,7 @@ the supersession in one line.
 8D. Faction Reaction to Held Captives (Rescue Party, Ransom-Bearer)
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
+10A. Squad Formations (March-Holding, Effects, Breaking)
 11. Tribute and GiftGivers
 12. Ambient Necromancy and Corpses
 12A. Influence Field, Push and Breach Recede
@@ -713,6 +714,51 @@ night watch -- is entry 24's `Overworld/SurfaceLifeController.cs`.
 **Key files:** `DungeonCore/WaveStageController.cs` (or adjacent manager
 file), `Adventurer/AdventurerSpawner.cs` (muster window + `PartyRegistered`),
 `Adventurer/DungeonAdventurer.cs` (loose muster drift).
+
+## 10A. Squad Formations -- Tactical Layer
+
+Status: SHIPPED (guide 3a -- march-holding; formation effects and
+formation-breaking are guides 3b/3c, pending). Formations now persist past the
+muster: a formationed party (Assault or Escort) advances as a body instead of
+dissolving into individual beelines at BeginAdvance.
+
+**Lead-anchored soft-hold.** One member is the anchor -- `AdventurerParty.CurrentLead`
+(a Hero, else a VIP, else the first live member). The lead paths to the core exactly as
+before and exposes its heading (`FacingDir`). Every other member, while in MovingToCore,
+runs `FollowFormation`: it places its existing class-ranked slot (`ComputeSlotOffset` --
+Tank/Fighter front to Cleric rear; Escort = VIP centre, guards ahead) relative to the
+lead's position and heading, and steers to it. This reuses all existing pathfinding --
+only the lead pathfinds.
+
+**Corridors and stragglers (the soft part).** Where a slot falls in raw rock (a tight
+corridor), the follower collapses toward the lead and files in behind it (`SlotWalkable`
+gates this), so the body compresses to single file rather than clipping walls, and spreads
+back into shape in open ground. A follower that falls right out of the body (beyond
+`formationLostRange`) drops to individual pathing to rejoin, and resumes holding once back
+within `formationRejoinRange` (hysteresis prevents flicker). The lead sets the pace: while
+any follower is holding but lagging a walkable slot (`IsStraggling`, beyond
+`formationStragglerSlack`), the lead pauses (`HasStraggler`) so the body keeps together --
+pace-to-slowest without a hard speed cap.
+
+**Scope.** Only Assault and Escort parties hold; None-formation parties keep the loose
+muster and beeline. Combat still pulls a member out (the Combat state owns movement) and
+the member re-holds afterward. No save change: the hold is transient runtime state
+(`holdingFormation` defaults to holding), so a mid-march reload simply re-forms.
+
+**Design fork settled:** lead-anchored soft-hold (reuses pathfinding, degrades gracefully
+in corridors), chosen over rigid group-pathfind (clips walls) and pure flocking (reads
+less like a formation).
+
+**Pending:** 3b formation effects (a shield-wall -- the front rank mitigates ranged damage
+to the rear while cohesive; will lean on the existing class-aware `TargetPriority` so
+monsters can strike the front rank or punch through to rear casters), and 3c
+formation-breaking (a trap/monster goal that scatters the body and drops the effect; the
+capture-trap pin is already a partial breaker).
+
+**Key files:** `Adventurer/DungeonAdventurer.cs` (`FacingDir`, `AdvanceOrHold`,
+`FollowFormation`, `SlotWalkable`), `Adventurer/AdventurerParty.cs` (`HasStraggler`).
+
+---
 
 ## 11. Tribute and GiftGivers
 

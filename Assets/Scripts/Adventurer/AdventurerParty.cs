@@ -101,6 +101,15 @@ public class AdventurerParty
     /// and holds its nerve longer before breaking.</summary>
     public void MarkGrudge() { tracked = true; grudge = true; }
 
+    /// <summary>True while any live member is holding formation but lagging its slot, so the
+    /// lead knows to pause and keep the body together (pace-to-slowest).</summary>
+    public bool HasStraggler()
+    {
+        foreach (var a in live)
+            if (a != null && a.IsStraggling) return true;
+        return false;
+    }
+
     /// <summary>Members still alive in the dungeon (died and fled both leave this list).</summary>
     public int LiveCount()
     {

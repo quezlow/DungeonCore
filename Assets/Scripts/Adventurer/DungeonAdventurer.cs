@@ -175,6 +175,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     [Tooltip("HP fraction a rescued ally is left at -- freed, but wounded by the ordeal.")]
     [Range(0.05f, 1f)][SerializeField] private float rescuedHpFraction = 0.4f;
 
+    [Header("Formation March (tactical layer)")]
+    [Tooltip("A follower within this distance of the lead is back in the body and resumes holding its slot.")]
+    [SerializeField, Min(0.5f)] private float formationRejoinRange = 2.5f;
+    [Tooltip("A follower beyond this distance from the lead has fallen out and paths in individually to rejoin.")]
+    [SerializeField, Min(1f)] private float formationLostRange = 5f;
+    [Tooltip("How far a holding follower may lag its (walkable) slot before the lead pauses for it -- the pace-to-slowest slack.")]
+    [SerializeField, Min(0.25f)] private float formationStragglerSlack = 1.25f;
+
     // ── Slow effect ───────────────────────────────────────────────
     private float slowMultiplier = 1f;
     private float slowTimer = 0f;
@@ -204,6 +212,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private bool hasRaidTarget;
     private bool isRansomBearer;
     private int ransomValue;
+
+    // Formation march (tactical layer): FacingDir is the lead's heading, read by followers to
+    // place their class-ranked slots; holdingFormation toggles between holding the slot and
+    // pathing in to rejoin; formationStraggling flags a follower lagging a walkable slot so the
+    // lead knows to wait. Transient -- none of it is saved.
+    public Vector2 FacingDir { get; private set; } = Vector2.zero;
+    private bool holdingFormation = true;
+    private bool formationStraggling;
+    public bool IsStraggling => formationStraggling;
 
     // Intent — assigned in Initialise, shared via the party object.
     private AdventurerParty party;
@@ -633,7 +650,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                         ScanForChests();
                         ScanForLoot();
                     }
-                    if (!MovementHalted) FollowPath();
+                    if (!MovementHalted) AdvanceOrHold();
                 }
                 break;
 
@@ -965,6 +982,76 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (state != AdventurerState.Retreating) StartRetreat();
     }
 
+    // -- Formation march (tactical layer): hold the body together on the advance ----
+
+    /// <summary>A formationed party advances as a body: the lead paths to the core and sets the
+    /// pace (pausing when a follower lags), while the others hold their class-ranked slots
+    /// relative to it. Formation-less parties, and members whose party has no formation, just
+    /// beeline as before.</summary>
+    private void AdvanceOrHold()
+    {
+        if (party == null || party.Formation == FormationType.None) { FollowPath(); return; }
+        var lead = party.CurrentLead();
+        if (lead == this)
+        {
+            // The anchor sets the pace: hold position while the body is stretched.
+            if (party.HasStraggler()) return;
+            FollowPath();
+            return;
+        }
+        FollowFormation(lead);
+    }
+
+    /// <summary>Steer toward this member's slot relative to the lead. In open ground the slot
+    /// holds the formation shape; where the slot falls in rock (a tight corridor) the follower
+    /// collapses toward the lead and files in behind it. A follower that falls right out of the
+    /// body paths back in individually, then resumes holding once close again.</summary>
+    private void FollowFormation(DungeonAdventurer lead)
+    {
+        formationStraggling = false;
+        if (lead == null) { FollowPath(); return; }
+
+        Vector2 fwd = lead.FacingDir;
+        if (fwd.sqrMagnitude < 0.01f) fwd = party.AdvanceDir;
+        if (fwd.sqrMagnitude < 0.01f) fwd = Vector2.right;
+        Vector2 side = new Vector2(-fwd.y, fwd.x);
+        ComputeSlotOffset(out float forward, out float lateral);
+        Vector3 slot = lead.transform.position + (Vector3)(fwd * forward + side * lateral);
+        float distToLead = Vector2.Distance(transform.position, lead.transform.position);
+
+        if (holdingFormation)
+        {
+            if (distToLead > formationLostRange)
+            {
+                holdingFormation = false;
+                RefreshPath();
+                FollowPath();
+                return;
+            }
+            bool walkable = SlotWalkable(slot);
+            Vector3 target = walkable ? slot : lead.transform.position;
+            if (walkable && Vector2.Distance(transform.position, slot) > formationStragglerSlack)
+                formationStraggling = true;
+            transform.position = Vector2.MoveTowards(transform.position, target, EffectiveMoveSpeed * Time.deltaTime);
+            CheckTrapAtCurrentCell();
+        }
+        else
+        {
+            if (distToLead <= formationRejoinRange) { holdingFormation = true; return; }
+            FollowPath();
+        }
+    }
+
+    /// <summary>Is a formation slot on ground a follower can stand on? Mined tile or entrance
+    /// cave counts; raw rock does not (so the follower files in behind the lead instead).</summary>
+    private bool SlotWalkable(Vector3 world)
+    {
+        if (currentFloor == null || currentFloor.TileInfluence == null) return true;
+        var cell = currentFloor.TileInfluence.WorldToCell(world);
+        if (currentFloor.TileInfluence.IsTileMined(cell)) return true;
+        return currentFloor.FeatureGenerator != null && currentFloor.FeatureGenerator.IsEntranceCave(cell);
+    }
+
     private void FollowPath()
     {
         if (currentPath == null || pathIndex >= currentPath.Count)
@@ -983,6 +1070,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         if (canDetectTraps && state != AdventurerState.Retreating && TryBeginDisarm(waypoint))
             return;
+
+        Vector2 heading = (Vector2)(waypoint - transform.position);
+        if (heading.sqrMagnitude > 0.0001f) FacingDir = heading.normalized;
 
         transform.position = Vector2.MoveTowards(
             transform.position, waypoint, EffectiveMoveSpeed * Time.deltaTime);
