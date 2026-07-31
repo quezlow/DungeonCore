@@ -436,6 +436,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// <summary>How many reveal segments this floor's roads split into.</summary>
     public int RoadSegmentCount => roadSegments.Count;
 
+    /// <summary>How many road segments on this floor have been revealed. Drives
+    /// the one-alert-per-floor rule in FeatureRevealController.</summary>
+    public int RevealedRoadSegmentCount
+        => featureData?.revealedRoadSegmentIds?.Count ?? 0;
+
     public bool IsRoadSegmentRevealed(int segmentId)
         => featureData != null && featureData.revealedRoadSegmentIds.Contains(segmentId);
 

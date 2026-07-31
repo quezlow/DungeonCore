@@ -66,8 +66,11 @@ public class RoadFloorEntry
     [Min(1)] public int junctionMinSpacing = 60;
 
     [Tooltip("Non-tree edges added after the spanning tree, shortest first. These are " +
-             "what turn a tree into a network with loops.")]
-    [Min(0)] public int extraLoopEdges = 2;
+             "what turn a tree into a network with loops. Junction DEGREE is the thing " +
+             "this really controls: a spanning tree alone averages just under 2 roads per " +
+             "junction, so every junction reads as a bend. Loop edges are what produce " +
+             "genuine crossroads for a site to sit on.")]
+    [Min(0)] public int extraLoopEdges = 4;
 
     [Tooltip("Junctions that send a road outward toward the rim. They stop short of it " +
              "and end in collapse -- the road ran on, the rim swallowed it.")]
@@ -122,7 +125,7 @@ public class RoadNetworkProfile : ScriptableObject
             spurWidth = 2,
             junctionCount = 7,
             junctionMinSpacing = 90,
-            extraLoopEdges = 2,
+            extraLoopEdges = 4,
             rimTrunkCount = 3,
             brokenSpurCount = 4,
         },

@@ -140,8 +140,14 @@ public class FeatureRevealController : MonoBehaviour
             // rather than laying the whole floor out from one touched cell.
             case FeatureType.Road:
                 if (features.IsRoadSegmentRevealed(fref.featureId)) return;
+                // ONE alert per floor, not one per stretch. Rivers and chambers can
+                // afford an alert each because a floor holds a handful of them; a
+                // floor holds EIGHTY-FIVE road segments by construction, and a banner
+                // every forty cells of influence turns the discovery into noise.
+                bool firstOnThisFloor = features.RevealedRoadSegmentCount == 0;
                 features.RevealRoadSegment(fref.featureId);
-                FireAlert(FeatureType.Road, fref.featureId, "An ancient road has been revealed", silent);
+                FireAlert(FeatureType.Road, fref.featureId, "An ancient road has been revealed",
+                          silent || !firstOnThisFloor);
                 break;
 
             case FeatureType.EntranceCave:

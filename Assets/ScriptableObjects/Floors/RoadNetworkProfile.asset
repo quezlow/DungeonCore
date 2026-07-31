@@ -40,7 +40,7 @@ MonoBehaviour:
     meanderAmplitude: 6
     junctionCount: 7
     junctionMinSpacing: 90
-    extraLoopEdges: 2
+    extraLoopEdges: 4
     rimTrunkCount: 3
     brokenSpurCount: 4
     brokenGapCells: 6

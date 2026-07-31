@@ -334,8 +334,23 @@ public class Commands : MonoBehaviour
             fm.EnsureFloorExists(i, cell);
             sw.Stop();
             bool ok = fm.FloorExists(i);
+
+            // Two radii, deliberately. The TABLE radius is what the progression asset
+            // says the floor should be; the ACTUAL radius is what DungeonTerrain
+            // resolved and painted. Logging only the first is how a floor generating
+            // at the wrong size hides -- chambers and rivers have fixed counts, so
+            // they never look wrong at any radius.
+            int tableRadius = DungeonCore.Instance?.Progression != null
+                ? DungeonCore.Instance.Progression.FloorRadius(i) : -1;
+            var created = fm.GetFloor(i);
+            int actualRadius = created?.Terrain != null ? created.Terrain.CurrentRadius : -1;
+
             Debug.Log($"[Commands] Floor {i + 1} {(ok ? "created" : "FAILED")} in {sw.ElapsedMilliseconds} ms " +
-                      $"(radius {(DungeonCore.Instance?.Progression != null ? DungeonCore.Instance.Progression.FloorRadius(i) : -1)}).");
+                      $"(table radius {tableRadius}, ACTUAL radius {actualRadius}).");
+            if (ok && tableRadius >= 0 && actualRadius >= 0 && actualRadius != tableRadius)
+                Debug.LogError($"[Commands] RADIUS MISMATCH on floor {i + 1}: painted {actualRadius}, " +
+                               $"table says {tableRadius}. Everything generated on this floor is the " +
+                               $"wrong size. Check DungeonTerrain.RadiusForThisFloor and fallbackRadius.");
             if (!ok) break;
         }
 

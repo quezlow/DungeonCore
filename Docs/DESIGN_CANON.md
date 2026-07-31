@@ -1498,6 +1498,13 @@ stays that way.
 the last `brokenGapCells` centreline cells are simply never opened. They stay
 ordinary stone, so the road visibly stops rather than fading out.
 
+**One alert per floor.** Reveal is per segment, but the DISCOVERY BANNER is not.
+A floor holds tens of road segments by construction -- floor index 4 generates
+around eighty-five -- so alerting per segment would fire a banner every forty
+cells of influence and turn the find into noise. The first segment revealed on a
+floor speaks; every later one reveals silently. Rivers and chambers keep their
+per-feature alerts because a floor holds a handful of each.
+
 **Reveal and claiming are per SEGMENT**, not per road. A trunk splits into runs
 of `segmentLength` centreline cells, each with its own id; `featureId` in the
 feature lookup is a segment id. Unfogging an 800-cell trunk from one touched

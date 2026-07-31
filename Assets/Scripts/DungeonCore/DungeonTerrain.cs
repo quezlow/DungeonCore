@@ -53,9 +53,24 @@ public class DungeonTerrain : MonoBehaviour
     private FloorRoot myFloor;
     private Tile runtimeFogTile;
 
-    private void Start()
+    /// <summary>
+    /// Resolve the owning floor as early as Unity allows. This CANNOT wait for
+    /// Start: FloorManager instantiates a floor and calls Initialise then
+    /// Bootstrap synchronously, all inside one call, and Bootstrap reaches
+    /// GenerateAt long before Unity gets round to Start. With myFloor still null
+    /// at that point, RadiusForThisFloor took its fallback branch and every floor
+    /// below the first painted at fallbackRadius instead of its progression
+    /// radius. Floor 0 was unaffected because it exists in the scene at load, so
+    /// its Start ran before anything asked it to generate.
+    /// </summary>
+    private void Awake()
     {
         myFloor = GetComponentInParent<FloorRoot>();
+    }
+
+    private void Start()
+    {
+        if (myFloor == null) myFloor = GetComponentInParent<FloorRoot>();
 
         if (myFloor != null && myFloor.FloorIndex == 0)
         {
@@ -67,8 +82,18 @@ public class DungeonTerrain : MonoBehaviour
     /// <summary>Pulls radius from DungeonCore's progression table based on this floor's index.</summary>
     private int RadiusForThisFloor()
     {
+        // Belt and braces: resolve here too, so this can never silently fall back
+        // just because it was reached earlier than expected in the lifecycle.
+        if (myFloor == null) myFloor = GetComponentInParent<FloorRoot>();
+
         if (myFloor == null || DungeonCore.Instance == null || DungeonCore.Instance.Progression == null)
+        {
+            Debug.LogWarning($"[DungeonTerrain] Falling back to radius {fallbackRadius} on " +
+                             $"'{name}' -- floor {(myFloor == null ? "unresolved" : myFloor.FloorIndex.ToString())}, " +
+                             $"core {(DungeonCore.Instance == null ? "missing" : "present")}. " +
+                             "Everything generated on this floor will be the wrong size.");
             return fallbackRadius;
+        }
         return DungeonCore.Instance.Progression.FloorRadius(myFloor.FloorIndex);
     }
 
