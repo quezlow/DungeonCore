@@ -75,23 +75,44 @@ public class FloorRoot : MonoBehaviour
         FloorManager.Instance?.RegisterFloor(this);
     }
 
+    /// <summary>Set true to have Bootstrap log a per-stage timing breakdown.
+    /// Off by default: this runs on every floor creation in a live game, and the
+    /// numbers are only wanted while somebody is chasing a cost.</summary>
+    public static bool LogBootstrapTimings;
+
     public void Bootstrap(Vector3Int centerCell, int floorSeed)
     {
+        var sw = LogBootstrapTimings ? System.Diagnostics.Stopwatch.StartNew() : null;
+        long tTerrain = 0, tFeatures = 0, tTypeMap = 0, tInfluence = 0;
+
         if (terrain != null)
             terrain.GenerateAt(centerCell);
+        if (sw != null) { tTerrain = sw.ElapsedMilliseconds; sw.Restart(); }
 
         if (featureGenerator != null && terrain != null)
             featureGenerator.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
+        if (sw != null) { tFeatures = sw.ElapsedMilliseconds; sw.Restart(); }
 
-        // DAY 32 — terrain type map after feature gen so radial+patches can
-        //          be queried by anything else that needs them.
+        // Terrain type map after feature gen so radial+patches can be queried
+        // by anything else that needs them.
         if (terrainTypeMap != null && terrain != null)
             terrainTypeMap.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
+        if (sw != null) { tTypeMap = sw.ElapsedMilliseconds; sw.Restart(); }
 
         if (tileInfluence != null)
         {
             tileInfluence.InjectTerrain(terrain);
             tileInfluence.ClaimStarterArea(centerCell);
+        }
+        if (sw != null)
+        {
+            tInfluence = sw.ElapsedMilliseconds;
+            sw.Stop();
+            Debug.Log($"[FloorRoot] Bootstrap floor {floorIndex + 1} " +
+                      $"(radius {(terrain != null ? terrain.CurrentRadius : -1)}): " +
+                      $"terrain {tTerrain} ms, features {tFeatures} ms, " +
+                      $"typemap {tTypeMap} ms, influence {tInfluence} ms, " +
+                      $"total {tTerrain + tFeatures + tTypeMap + tInfluence} ms.");
         }
     }
 

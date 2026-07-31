@@ -324,6 +324,11 @@ public class Commands : MonoBehaviour
             ? coreFloor.TileInfluence.WorldToCell(core.transform.position)
             : Vector3Int.zero;
 
+        // Per-stage breakdown, so a slow floor points at a culprit instead of
+        // inviting a guess. Restored afterwards -- this is a live-game code path.
+        bool prevTimingFlag = FloorRoot.LogBootstrapTimings;
+        FloorRoot.LogBootstrapTimings = true;
+
         int max = fm.MaxAllowedFloorIndex;
         int start = fm.MaxFloorIndexCreated + 1;
         if (start > max) { Debug.Log($"[Commands] All {max + 1} floors already exist."); return; }
@@ -353,6 +358,8 @@ public class Commands : MonoBehaviour
                                $"wrong size. Check DungeonTerrain.RadiusForThisFloor and fallbackRadius.");
             if (!ok) break;
         }
+
+        FloorRoot.LogBootstrapTimings = prevTimingFlag;
 
         Debug.LogWarning($"[Commands] Dev side effect: core relocation is now pending on floor " +
                          $"{fm.PendingCoreRelocationFloor + 1}. Stair placement stays blocked and " +

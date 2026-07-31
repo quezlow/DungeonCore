@@ -134,16 +134,88 @@ public class DungeonTerrain : MonoBehaviour
         Debug.Log("[DungeonTerrain] Fog tile missing or sprite-less — using runtime solid white (colour-driven fog).");
     }
 
+    /// <summary>
+    /// Rows of the disc painted per SetTilesBlock call. The whole disc in one
+    /// block would be fastest by a hair and allocate two arrays of (2r+1)^2
+    /// references -- about 23 MB at radius 600, transient but ugly. Banding caps
+    /// the allocation at roughly 1.2 MB per band with no measurable speed cost,
+    /// since the per-call overhead is what mattered, not the number of calls.
+    /// </summary>
+    private const int PaintBandRows = 64;
+
+    /// <summary>
+    /// Paints the floor and fog layers across the disc.
+    ///
+    /// This used to call SetTile twice per cell. Tilemap pays chunk lookup and
+    /// dirtying on every one of those, which measured at a flat ~3.4 us per call
+    /// regardless of radius: 7.7 SECONDS to create floor 5 at radius 600, where
+    /// the disc holds about 1.13 million cells. Cost was perfectly linear in
+    /// cell count, so the problem was never the loop -- it was paying per-call
+    /// overhead 2.26 million times.
+    ///
+    /// SetTilesBlock hands the tilemap a whole rectangle at once. Cells outside
+    /// the disc are left null in the array, which is safe here because
+    /// PaintTerrain runs exactly once per floor, from GenerateAt, behind the
+    /// 'initialised' guard, and therefore only ever writes to empty tilemaps.
+    /// </summary>
     private void PaintTerrain(Vector3Int centre, int radius)
     {
-        for (int x = -radius; x <= radius; x++)
-            for (int y = -radius; y <= radius; y++)
+        if (floorTilemap == null || fogTilemap == null) return;
+        if (radius < 0) return;
+
+        long radiusSq = (long)radius * radius;
+
+        for (int bandStart = -radius; bandStart <= radius; bandStart += PaintBandRows)
+        {
+            int bandEnd = Mathf.Min(bandStart + PaintBandRows - 1, radius);
+            int height = bandEnd - bandStart + 1;
+
+            // The widest row in this band is the one nearest the centre line, so
+            // bands near the poles get a correspondingly narrow rectangle rather
+            // than the full 2r+1 and a great deal of null.
+            int nearestDy = bandStart > 0 ? bandStart : (bandEnd < 0 ? -bandEnd : 0);
+            int halfWidth = IntSqrt(radiusSq - (long)nearestDy * nearestDy);
+            int width = halfWidth * 2 + 1;
+
+            var floorBlock = new TileBase[width * height];
+            var fogBlock = new TileBase[width * height];
+
+            for (int row = 0; row < height; row++)
             {
-                Vector3Int pos = centre + new Vector3Int(x, y, 0);
-                if (!IsWithinRadius(pos, radius)) continue;
-                floorTilemap.SetTile(pos, floorTile);
-                fogTilemap.SetTile(pos, fogTile);
+                long dy = bandStart + row;
+                long spanSq = radiusSq - dy * dy;
+                if (spanSq < 0) continue;
+
+                int span = IntSqrt(spanSq);
+                int rowBase = row * width;
+                for (int i = halfWidth - span; i <= halfWidth + span; i++)
+                {
+                    floorBlock[rowBase + i] = floorTile;
+                    fogBlock[rowBase + i] = fogTile;
+                }
             }
+
+            var bounds = new BoundsInt(
+                centre.x - halfWidth, centre.y + bandStart, 0, width, height, 1);
+
+            floorTilemap.SetTilesBlock(bounds, floorBlock);
+            fogTilemap.SetTilesBlock(bounds, fogBlock);
+        }
+    }
+
+    /// <summary>
+    /// Integer square root, corrected so the result never disagrees with
+    /// IsWithinRadius. Mathf.Sqrt on a float can round either way at these
+    /// magnitudes, and a single cell of disagreement between the painted disc and
+    /// the bounds check would show up as a rim that is walkable but unpainted.
+    /// </summary>
+    private static int IntSqrt(long value)
+    {
+        if (value <= 0) return 0;
+        int root = (int)System.Math.Sqrt((double)value);
+        while ((long)(root + 1) * (root + 1) <= value) root++;
+        while (root > 0 && (long)root * root > value) root--;
+        return root;
     }
 
     public void RevealTile(Vector3Int pos) => fogTilemap.SetTile(pos, null);
