@@ -617,6 +617,47 @@
     </div>
   </details>
 
+  <details>
+    <summary>25. Deep Roads (the road profile &amp; its tiles)</summary>
+    <div class="body">
+      <div class="why">Canon 19. The whole road layer is authored through ONE
+      <code>RoadNetworkProfile</code> asset plus one tile. Roads are generated content, not
+      placeable content, so none of the five save registries are involved and there are no
+      permanent ids to protect -- but the profile decides which floors have roads at all,
+      so an empty list means no roads anywhere.</div>
+
+      <h3>The map</h3>
+      <table>
+        <tr><th>Content</th><th>Create menu</th><th>Asset / home</th><th>Wire into</th></tr>
+        <tr><td>Road network profile</td><td><code>Dungeon/Road Network Profile</code></td><td><code>ScriptableObjects/Floors</code></td><td><code>TerrainFeatureGenerator.roadProfile</code></td></tr>
+        <tr><td>Road tile</td><td><code>Dungeon/Unlocked Tile</code> or RuleTile</td><td><code>Tiles/Terrain</code></td><td><code>TerrainFeatureGenerator.roadTile</code></td></tr>
+        <tr><td>Road tilemap</td><td>GameObject on the floor</td><td>floor template prefab</td><td><code>TerrainFeatureGenerator.roadTilemap</code></td></tr>
+      </table>
+
+      <h3>25a. The profile asset</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s1"><label for="dcr-authoring-v1-c25s1">Create &rarr; <code>Dungeon/Road Network Profile</code>. One asset is enough. A fresh one already ships the two authored floors: index <b>3</b> in <code>Trunk</code> mode (the surviving road) and index <b>4</b> in <code>Network</code> mode (the dead network). A floor with no entry generates nothing.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s2"><label for="dcr-authoring-v1-c25s2"><b>Geometry:</b> <code>trunkWidth</code> (5) / <code>spurWidth</code> (2) in cells; <code>segmentLength</code> (40) is the reveal and future claiming unit; <code>rimMargin</code> (7) is how far short of the disc edge a road stops. <b>Do not drop rimMargin below the bedrock rim's thickness</b> -- <code>MarkNaturalFloor</code> refuses to open bedrock, so a road driven into the rim types as Road, reveals, and stays solid rock.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s3"><label for="dcr-authoring-v1-c25s3"><b>Meander:</b> <code>meanderStep</code> (cells between control points; larger is straighter) and <code>meanderAmplitude</code> (max perpendicular wander). The offset is pinned to zero at both ends, so an edge always reaches its endpoint no matter how high the amplitude goes.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s4"><label for="dcr-authoring-v1-c25s4"><b>Network mode:</b> <code>junctionCount</code>, <code>junctionMinSpacing</code>, <code>extraLoopEdges</code>, <code>rimTrunkCount</code>, <code>brokenSpurCount</code>, <code>brokenGapCells</code>, <code>spurMinLength</code>/<code>spurMaxLength</code>. <b>Spacing is the knob that bites:</b> a <code>junctionMinSpacing</code> larger than the floor's usable radius allows silently yields two junctions and a single edge. The headless road report tells you within a second.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s5"><label for="dcr-authoring-v1-c25s5"><b>Trunk mode:</b> <code>trunkBearingSpread</code> only -- how far the far rim point may sit off directly opposite. 0 drives the road through the middle of the disc; the chord is re-rolled anyway until it clears the core exclusion.</label></div>
+
+      <h3>25b. The road tile</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s6"><label for="dcr-authoring-v1-c25s6"><b>Prompt (terrain tiles, Style Contract):</b> subject slot <code>a worn flagstone road of fitted grey-brown paving blocks, ancient and cracked, thin dust and grit in the joints</code>. Terrain swaps the orthographic angle clause for <b>top-down</b>; drop the tall-proportions clause. 32 px per cell, seamless. Painted UI icons opt out entirely -- this is a terrain sheet, not an icon.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s7"><label for="dcr-authoring-v1-c25s7"><b>Tile type:</b> the road is never influence-tinted, so a plain <code>Dungeon/Unlocked Tile</code> is enough. If you ever want it tinted, it must become an <code>UnlockedRuleTile</code> (chapter 15 rule) or neighbour refresh wipes <code>LockColor</code>. Watch PPU against the 32 px terrain grid.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s8"><label for="dcr-authoring-v1-c25s8"><b>Both slots are null-safe.</b> Leave <code>roadTile</code> and <code>roadTilemap</code> empty and the roads still generate, reveal, unfog and become walkable -- they just render as plain cave floor. Ship the art whenever.</label></div>
+
+      <h3>25c. Wire &amp; verify</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s9"><label for="dcr-authoring-v1-c25s9">Add a <b>RoadTilemap</b> child to the floor template prefab, sorted above the floor and below units (same slot the water tilemap occupies), and assign it plus the profile and tile on the prefab's <code>TerrainFeatureGenerator</code>. Doing it on the PREFAB, not a scene instance, is what gets roads onto floors 2-5.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c25s10"><label for="dcr-authoring-v1-c25s10"><b>Smoke it without playing to floor 5:</b> assign the same profile to <code>Commands.roadReportProfile</code>, set <code>roadReportFloorIndex</code>, and run <b>Test Road Report (headless)</b>. It prints road/junction/segment counts and an ASCII map in under a second, with no floor instantiated.</label></div>
+
+      <div class="note"><b>Resistance, not a tile.</b> How hard the road is to claim lives on
+      <code>TerrainResistanceTable.roadClaimResistance</code> (chapter 15's asset, 8 by default),
+      not on anything here. There is deliberately no <code>roadClaimableTint</code>: the two
+      existing feature tints on that asset are read by nothing, and a third dead field would
+      just be a trap for whoever wires the granite overlay later.</div>
+    </div>
+  </details>
+
   
 </div>
 

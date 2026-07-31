@@ -19,6 +19,18 @@ public class FloorFeatureSaveData
     public List<int> revealedRiverIds = new();
     public List<int> revealedChamberIds = new();
 
+    // Buried Age roads. Cells are NOT stored: a road is pure geometry, so the
+    // polyline plus width plus the broken-end gap rebuilds it exactly, and one
+    // shared rasteriser serves both generation and load. A floor-index-4 network
+    // is tens of thousands of cells; persisting them would fatten every save for
+    // nothing. Empty on floors without roads and on saves written before them.
+    public List<RoadData> roads = new();
+
+    // Reveal is per SEGMENT, not per road. Touching one end of an 800-cell trunk
+    // must not unfog the whole floor. Segment ids are assigned in generation
+    // order and are stable for a given seed.
+    public List<int> revealedRoadSegmentIds = new();
+
     public CoreCavernData coreCavern;
 
     // Seeded surface entrance: tunnel through the bedrock rim + offshoot
@@ -51,6 +63,34 @@ public class RiverData
     public List<SerializableVector3Int> fordCells = new();
 }
 
+public enum RoadKind { Trunk = 0, Spur = 1 }
+
+[Serializable]
+public class RoadData
+{
+    public int id;
+    public RoadKind kind = RoadKind.Trunk;
+
+    /// <summary>Carriageway width in cells.</summary>
+    public int width = 5;
+
+    /// <summary>Cells of centreline per reveal segment.</summary>
+    public int segmentLength = 40;
+
+    /// <summary>Centreline cells left uncarved at the far end. The polyline is
+    /// built in full and these cells are simply never opened -- the same trick
+    /// the resting pocket uses -- so a broken spur visibly stops rather than
+    /// fading out. 0 on a road that runs its whole length.</summary>
+    public int brokenGapCells;
+
+    /// <summary>Floor centre and clamp radius captured AT GENERATION, so a later
+    /// edit to the road profile can never change how an existing save rasterises.</summary>
+    public SerializableVector3Int floorCentre;
+    public int clampRadius;
+
+    public List<SerializableVector3Int> polyline = new();
+}
+
 [Serializable]
 public class ChamberData
 {
@@ -80,7 +120,7 @@ public struct FeatureRef
     public int featureId;
 }
 
-public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave }
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road }
 
 [Serializable]
 public class CoreCavernData

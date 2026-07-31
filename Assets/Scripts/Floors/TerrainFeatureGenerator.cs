@@ -154,6 +154,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     // ── Inspector — Debug ─────────────────────────────────────────
 
+    // -- Inspector -- Deep Roads --------------------------------------
+
+    [Header("Deep Roads")]
+    [Tooltip("Per-floor road layout. Floors with no entry generate no roads and " +
+             "cost nothing. Leave null to disable roads entirely.")]
+    [SerializeField] private RoadNetworkProfile roadProfile;
+    [Tooltip("Per-floor road tilemap, sorting above the floor and below units. " +
+             "Road cells paint here as their segment is revealed. Null-safe.")]
+    [SerializeField] private Tilemap roadTilemap;
+    [SerializeField] private TileBase roadTile;
+
     [Header("River Rendering")]
     [Tooltip("Per-floor water tilemap, sorting above the floor and below units. " +
              "River cells paint here as they're revealed.")]
@@ -203,6 +214,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private Tilemap debugOverlayTilemap;
     [SerializeField] private TileBase debugRiverTile;
     [SerializeField] private TileBase debugChamberTile;
+    [SerializeField] private TileBase debugRoadTile;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -210,6 +222,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private FloorFeatureSaveData featureData;
     private readonly Dictionary<Vector3Int, FeatureRef> cellLookup = new();
     private readonly HashSet<Vector3Int> reservedCoreCells = new();
+
+    /// <summary>One reveal unit of one road: a run of centreline widened into
+    /// carriageway. Runtime only -- rebuilt from the polyline on both generation
+    /// and load, never serialised.</summary>
+    private class RoadSegmentRuntime
+    {
+        public int segmentId;
+        public int roadId;
+        public readonly List<Vector3Int> cells = new();
+    }
+
+    private readonly List<RoadSegmentRuntime> roadSegments = new();
+    private readonly HashSet<Vector3Int> roadCells = new();
 
     public FloorFeatureSaveData FeatureData => featureData;
     public bool HasGenerated => featureData != null;
@@ -256,6 +281,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
             GenerateEntranceCave(rng, centerCell, floorRadius);
         }
 
+        // Carve precedence: core cavern, then the entrance, then ROADS, then
+        // chambers, then rivers. Roads go in before chambers so a cave cannot
+        // swallow the carriageway, and before rivers because a river should cut
+        // through a road rather than the reverse -- the washed-out crossing is
+        // free storytelling from the ordering alone.
+        GenerateRoads(rng, centerCell, floorRadius);
         GenerateChambers(rng, centerCell, floorRadius);
         GenerateRivers(rng, centerCell, floorRadius);
 
@@ -264,7 +295,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated: " +
-            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers " + 
+            $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
+            $"{featureData.roads.Count} roads ({roadSegments.Count} segments) " + 
             (featureData.coreCavern != null ? $", core cavern ({featureData.coreCavern.cells.Count} cells, {featureData.coreCavern.tunnels.Count} tunnels)" : "") +
             $" (seed {floorSeed}).");
 
@@ -278,6 +310,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         UnfogAllRevealedFeatures();
         RepaintRevealedRiverWater();
+        RepaintRevealedRoads();
         PaintAllSurfaceRivers();
 
         Debug.Log(
@@ -299,6 +332,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsRiver(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.River;
 
 
+
+    public bool IsRoad(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.Road;
 
     public bool IsChamber(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.Chamber;
     public bool IsCoreCavern(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.CoreCavern;
@@ -365,6 +400,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         {
             FeatureType.River => IsRiverRevealed(fref.featureId),
             FeatureType.Chamber => IsChamberRevealed(fref.featureId),
+            FeatureType.Road => IsRoadSegmentRevealed(fref.featureId),
             _ => false,
         };
     }
@@ -393,6 +429,33 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // be idempotent (it may already have spawned for this chamber if this
         // reveal came in via load).
         OnChamberRevealed?.Invoke(chamberId);
+    }
+
+    // -- Road Reveal API -------------------------------------------
+
+    /// <summary>How many reveal segments this floor's roads split into.</summary>
+    public int RoadSegmentCount => roadSegments.Count;
+
+    public bool IsRoadSegmentRevealed(int segmentId)
+        => featureData != null && featureData.revealedRoadSegmentIds.Contains(segmentId);
+
+    /// <summary>Reveals ONE stretch of road. Deliberately not per-road: a trunk
+    /// runs rim to rim, and unfogging the whole thing off one touched cell would
+    /// hand the player the floor's layout for free.</summary>
+    public void RevealRoadSegment(int segmentId)
+    {
+        if (featureData == null) return;
+        if (featureData.revealedRoadSegmentIds.Contains(segmentId)) return;
+        featureData.revealedRoadSegmentIds.Add(segmentId);
+        PaintRoadSegment(segmentId);
+        UnfogRoadSegment(segmentId);
+    }
+
+    private RoadSegmentRuntime GetRoadSegment(int segmentId)
+    {
+        foreach (var s in roadSegments)
+            if (s.segmentId == segmentId) return s;
+        return null;
     }
 
     // ── Chamber Clear API (DAY 31 PART 2) ─────────────────────────
@@ -442,6 +505,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     return floor.TileInfluence.CellToWorld(mid);
                 }
         }
+        else if (type == FeatureType.Road)
+        {
+            var seg = GetRoadSegment(featureId);
+            if (seg != null && seg.cells.Count > 0)
+                return floor.TileInfluence.CellToWorld(seg.cells[seg.cells.Count / 2]);
+        }
         else if (type == FeatureType.EntranceCave && featureData.entranceCave != null)
         {
             return floor.TileInfluence.CellToWorld(featureData.entranceCave.mouthCell.ToVector3Int());
@@ -473,6 +542,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             int boxSize = rng.Next(minChamberBoxSize, maxChamberBoxSize + 1);
             var cells = LargestConnectedRegion(
                 RunChamberCA(rng, chamberCentre, boxSize, centerCell, floorRadius));
+
+            // Chambers yield to the road. A cave that opens onto the carriageway
+            // reads fine, but a cell can only have one owner, and the road was
+            // carved first. Re-run the connectivity pass afterwards: a road
+            // crossing a chamber can otherwise leave a sealed islet behind.
+            if (roadCells.Count > 0)
+            {
+                cells.RemoveAll(c => roadCells.Contains(c));
+                cells = LargestConnectedRegion(cells);
+            }
 
             if (cells.Count < minChamberCellCount) continue;
 
@@ -652,6 +731,91 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
 
         featureData.chambers.RemoveAll(c => c.cells.Count == 0);
+    }
+
+    // -- Road Generation -------------------------------------------
+
+    /// <summary>
+    /// Lays this floor's roads, if the profile has an entry for it. Produces
+    /// polylines and metadata only; the cells come from RebuildRoadCells, which
+    /// the load path also calls, so generation and load can never disagree.
+    ///
+    /// Roads stop short of the bedrock rim by the entry's rimMargin. They cannot
+    /// be driven through it: MarkNaturalFloor refuses to open bedrock, so a road
+    /// in the rim would register as Road in the lookup while staying solid rock
+    /// -- typed, revealed, and unwalkable. A rim-bound trunk therefore ends in
+    /// collapse instead, which reads better anyway: the road ran on, the rim
+    /// swallowed it.
+    /// </summary>
+    private void GenerateRoads(System.Random rng, Vector3Int centerCell, int floorRadius)
+    {
+        if (roadProfile == null || floor == null) return;
+
+        var entry = roadProfile.GetEntry(floor.FloorIndex);
+        if (entry == null || entry.mode == RoadMode.None) return;
+
+        var result = RoadNetworkBuilder.Build(
+            rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter);
+        featureData.roads = result.roads;
+
+        // Rasterise straight away so chamber generation can be kept off the
+        // carriageway. Rivers have not run yet, so this pass does not know about
+        // them; RebuildLookup recomputes once they have.
+        RebuildRoadCells();
+    }
+
+    /// <summary>
+    /// Rebuilds every road's cells and reveal segments from the stored polylines.
+    /// Runs on fresh generation AND on load, which is the whole reason road cells
+    /// are not serialised.
+    /// </summary>
+    private void RebuildRoadCells()
+    {
+        roadSegments.Clear();
+        roadCells.Clear();
+        if (featureData == null || featureData.roads == null) return;
+
+        // The core cavern, its tunnels and the entrance cave were carved first
+        // and keep their cells. Rivers take theirs back afterwards.
+        var taken = new HashSet<Vector3Int>(reservedCoreCells);
+        if (featureData.rivers != null)
+            foreach (var r in featureData.rivers)
+            {
+                foreach (var sv in r.cells) taken.Add(sv.ToVector3Int());
+                if (r.bankCells != null)
+                    foreach (var sv in r.bankCells) taken.Add(sv.ToVector3Int());
+            }
+
+        int nextSegmentId = 0;
+        foreach (var road in featureData.roads)
+        {
+            var line = RoadNetworkBuilder.Centreline(road);
+            // SerializableVector3Int is a class, so guard rather than trust a
+            // deserialiser to have built one.
+            var roadCentre = road.floorCentre != null
+                ? road.floorCentre.ToVector3Int()
+                : Vector3Int.zero;
+            int step = Mathf.Max(4, road.segmentLength);
+
+            for (int i = 0; i < line.Count; i += step)
+            {
+                int count = Mathf.Min(step, line.Count - i);
+                var chunk = line.GetRange(i, count);
+                var dilated = RoadNetworkBuilder.Dilate(
+                    chunk, road.width, roadCentre, road.clampRadius);
+
+                // The id advances whether or not the segment survives, so saved
+                // reveal ids stay aligned even where a river ate a whole stretch.
+                var seg = new RoadSegmentRuntime { segmentId = nextSegmentId++, roadId = road.id };
+                foreach (var c in dilated)
+                {
+                    if (taken.Contains(c)) continue;
+                    if (!roadCells.Add(c)) continue;   // one owner per cell
+                    seg.cells.Add(c);
+                }
+                if (seg.cells.Count > 0) roadSegments.Add(seg);
+            }
+        }
     }
 
     // ── Core Cavern Generation (DAY 34/35) ────────────────────────
@@ -1510,6 +1674,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
             }
         }
 
+        // Roads before chambers and rivers: both were generated to yield to the
+        // carriageway, and RebuildRoadCells has already handed back anything a
+        // river took, so these three passes cannot fight over a cell.
+        RebuildRoadCells();
+        foreach (var seg in roadSegments)
+            foreach (var c in seg.cells)
+                cellLookup[c] = new FeatureRef { type = FeatureType.Road, featureId = seg.segmentId };
+
         foreach (var ch in featureData.chambers)
             foreach (var sv in ch.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
@@ -1548,6 +1720,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 if (!IsRiverRevealed(r.id)) continue;
                 foreach (var sv in r.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
+            }
+
+        if (debugRoadTile != null)
+            foreach (var seg in roadSegments)
+            {
+                if (!IsRoadSegmentRevealed(seg.segmentId)) continue;
+                foreach (var c in seg.cells)
+                    debugOverlayTilemap.SetTile(c, debugRoadTile);
             }
     }
 
@@ -1723,6 +1903,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
+    /// <summary>Paints one revealed road segment into the road tilemap.</summary>
+    private void PaintRoadSegment(int segmentId)
+    {
+        if (roadTilemap == null || roadTile == null) return;
+        var seg = GetRoadSegment(segmentId);
+        if (seg == null) return;
+        foreach (var c in seg.cells) roadTilemap.SetTile(c, roadTile);
+    }
+
+    /// <summary>Repaints every already-revealed road segment (used after a load).</summary>
+    public void RepaintRevealedRoads()
+    {
+        if (featureData == null || featureData.revealedRoadSegmentIds == null) return;
+        foreach (int id in featureData.revealedRoadSegmentIds) PaintRoadSegment(id);
+    }
+
+    /// <summary>
+    /// Reveals one road segment with its wall border and registers the carriageway
+    /// as natural floor -- walkable, unclaimed, mined -- exactly as a chamber does.
+    /// That is also what makes the wall renderer treat it as open, since IsSolid
+    /// keys off minedTiles rather than the feature type.
+    /// </summary>
+    private void UnfogRoadSegment(int segmentId)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null) return;
+
+        var seg = GetRoadSegment(segmentId);
+        if (seg == null || seg.cells.Count == 0) return;
+
+        foreach (var c in seg.cells)
+        {
+            terrain.RevealTile(c);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+        }
+
+        floor.TileInfluence?.MarkNaturalFloor(seg.cells);
+    }
+
     private void UnfogChamber(int chamberId)
     {
         var terrain = floor != null ? floor.Terrain : null;
@@ -1789,6 +2011,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         UnfogEntranceCave();
         foreach (var rid in featureData.revealedRiverIds) UnfogRiver(rid);
         foreach (var cid in featureData.revealedChamberIds) UnfogChamber(cid);
+        if (featureData.revealedRoadSegmentIds != null)
+            foreach (var sid in featureData.revealedRoadSegmentIds) UnfogRoadSegment(sid);
     }
 
     [ContextMenu("Clear Debug Overlay")]
@@ -1803,6 +2027,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData == null) { Debug.LogWarning("[TerrainFeatureGenerator] No feature data."); return; }
         foreach (var ch in featureData.chambers) RevealChamber(ch.id);
         foreach (var r in featureData.rivers) RevealRiver(r.id);
+        foreach (var seg in roadSegments) RevealRoadSegment(seg.segmentId);
         Debug.Log("[TerrainFeatureGenerator] All features revealed (debug).");
     }
 
@@ -1827,6 +2052,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
             $"{featureData.revealedChamberIds.Count} revealed, {clearedChambers} cleared), " +
             $"{featureData.rivers.Count} rivers ({riverCells} cells, " +
             $"{featureData.revealedRiverIds.Count} revealed). " +
+            $"{featureData.roads.Count} roads ({roadSegments.Count} segments, " +
+            $"{roadCells.Count} cells, {featureData.revealedRoadSegmentIds.Count} revealed). " +
             $"Lookup size {cellLookup.Count}.");
     }
 }

@@ -101,6 +101,8 @@ public class FloorRoot : MonoBehaviour
     /// Effective claim cost multiplier for a cell.
     /// River cells use TerrainResistanceTable.riverClaimResistance.
     /// Cleared chamber cells use chamberClaimResistance (1× by default).
+    /// Road cells use roadClaimResistance -- the terrain-resistance rung of the
+    /// road-claiming warning ladder, felt before anything is told.
     /// Otherwise terrain type lookup.
     /// </summary>
     public float GetClaimCostMultiplier(Vector3Int cell)
@@ -111,6 +113,8 @@ public class FloorRoot : MonoBehaviour
                 return terrainTypeMap?.ResistanceTable?.riverClaimResistance ?? 1f;
             if (featureGenerator.IsChamber(cell))
                 return terrainTypeMap?.ResistanceTable?.chamberClaimResistance ?? 1f;
+            if (featureGenerator.IsRoad(cell))
+                return terrainTypeMap?.ResistanceTable?.roadClaimResistance ?? 1f;
         }
         return terrainTypeMap != null ? terrainTypeMap.GetResistance(cell) : 1f;
     }

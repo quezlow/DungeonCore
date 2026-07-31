@@ -1407,9 +1407,12 @@ the First Spark and The Drawn Breath (see entry 28A).
 
 ## 19. Buried Age Sites and the Deep Roads
 
-Status: DESIGN -- decided, unbuilt. Nothing in this entry exists in code yet;
-do not assume its classes or APIs. The tier-up divine audiences that used to
-share this entry are now 19A and have no dependency on any of this.
+Status: PART SHIPPED. The road SUBSTRATE is built and is described as-built
+below; everything downstream of it -- the sites, the dwarves, the granite
+overlay, road claiming, caravans -- remains DESIGN and does not exist in code.
+Do not assume the classes or APIs of anything still marked DESIGN here. The
+tier-up divine audiences that used to share this entry are now 19A and have no
+dependency on any of this.
 
 The deep floors get a civilisation instead of a difficulty curve. Scattered
 ruins alone read as set dressing; a ROAD through them reads as somewhere that
@@ -1451,21 +1454,90 @@ set-pieces. The Sunken Plaza is a junction. The Broken Aqueduct crosses the
 road. The Collapsed Archive sits ON it, because archives sit on roads. The
 Sealed Gate is where the road stops.
 
-### The generator (PROPOSED approach)
+### The generator (SHIPPED)
 
-`BuildRiverPolyline` in `TerrainFeatureGenerator` already picks a random rim
-point, heads across the disc on the opposite bearing and meanders by an
-authored angle. That is a road generator with the meander dialled down; the
-substrate should be built from it rather than from scratch.
+Roads are a carved feature of `TerrainFeatureGenerator`, alongside chambers and
+rivers: `FeatureType.Road`, registered as natural floor, revealed by influence
+touch, framed by the cave-wall renderer. `CaveWallClassifier.IsSolid` keys off
+`minedTiles`, so passing the carriageway to `MarkNaturalFloor` is the whole of
+what makes a road read as open ground -- no classifier change was needed.
 
-`GenerateNew` runs its steps in an explicit sequence, so roads insert BEFORE
-rivers -- which is also correct chronologically, since a river should cut
-through a road rather than the reverse. A washed-out crossing is free
-storytelling from the ordering alone.
+**Geometry is NOT `BuildRiverPolyline`.** That function picks a rim point,
+heads across on the opposite bearing and wanders until it leaves the disc.
+Right for a river, which may end anywhere; wrong for a road, which must ARRIVE
+-- a rim-to-rim trunk that wanders out early is not a trunk. `RoadNetworkBuilder`
+builds each edge between two FIXED endpoints with a perpendicular meander
+pinned to zero at both ends, so an edge always lands on its target. The meander
+is the same idea at a much lower amplitude.
 
-**Open:** three systems now carve the same disc (roads, rivers, the seeded
-entrance). Carve precedence must be decided at generation time rather than
-discovered as an intersection bug.
+**`RoadNetworkBuilder` is a pure static.** No scene, no floor, no tilemap, no
+singleton. That is what lets the dev road report in `Commands.cs` generate and
+measure a whole floor's network without instantiating the floor -- which matters
+on floor index 4, where the terrain pass alone paints 1.44 million cells. On any
+floor without a core cavern or entrance cave, roads are the first consumer of
+the floor's `System.Random`, so a report seeded with the floor seed reproduces
+the in-game network exactly. That does not hold on floor index 0.
+
+**Two modes**, chosen per floor on a `RoadNetworkProfile` asset (the floor
+template prefab is shared across floors, so per-floor settings cannot live on a
+component). `Trunk` lays one road rim to rim, its chord re-rolled until it
+clears the core's exclusion disc. `Network` scatters junction nodes, spans them
+with a minimum spanning tree, adds the shortest few non-tree edges as loops,
+sends rim-bound trunks outward from the outermost junctions, and hangs broken
+spurs off random ones.
+
+**Roads stop short of the bedrock rim** by an authored `rimMargin`. They cannot
+be driven through it: `MarkNaturalFloor` refuses to open bedrock, so a road in
+the rim would sit in the lookup as `Road`, reveal, and stay solid rock. A
+rim-bound trunk therefore ends in collapse instead -- which reads better anyway:
+the road ran on, the rim swallowed it. The `IsEntranceCave` exemption inside
+`TileInfluenceManager.IsBedrock` is the only sanctioned hole in the rim and
+stays that way.
+
+**A broken end** is the resting-pocket trick: the polyline is built in full and
+the last `brokenGapCells` centreline cells are simply never opened. They stay
+ordinary stone, so the road visibly stops rather than fading out.
+
+**Reveal and claiming are per SEGMENT**, not per road. A trunk splits into runs
+of `segmentLength` centreline cells, each with its own id; `featureId` in the
+feature lookup is a segment id. Unfogging an 800-cell trunk from one touched
+cell would hand the player the floor's layout for free. Segment ids advance even
+where a river ate a whole stretch, so saved reveal state stays aligned.
+
+**Cells are never serialised.** `RoadData` stores the polyline, width, segment
+length, broken gap, and the floor centre and clamp radius captured AT
+GENERATION; one shared rasteriser (`Centreline` + `Dilate`) runs on both fresh
+generation and load, so the two can never disagree, and a later edit to the
+profile cannot change how an existing save rasterises.
+
+**Claim resistance** is `TerrainResistanceTable.roadClaimResistance` (8 by
+default), routed through `FloorRoot.GetClaimCostMultiplier` beside the river and
+chamber cases. This is rung 1 of the warning ladder below, and it exists from
+the substrate on: the player feels the road push back before anything in the
+game says a word about it.
+
+### Carve precedence (DECIDED, was Open)
+
+`GenerateNew` runs, in order: **core cavern and its tunnels, the entrance cave,
+ROADS, chambers, rivers.**
+
+- Core cavern, tunnels and the entrance cave are carved first and keep their
+  cells outright; roads route around `reservedCoreCells`.
+- Chambers yield to roads. A cave that opens onto the carriageway reads fine,
+  but a cell has one owner, and the road was there first. The connectivity pass
+  re-runs after the subtraction, since a road crossing a chamber can otherwise
+  strand a sealed islet.
+- Rivers take their cells back from roads. A river cuts through a road, not the
+  reverse; the washed-out crossing is free storytelling from the ordering alone.
+  No ford, no bridge, nothing authored -- the river simply wins.
+
+**Key files:** `Floors/RoadNetworkBuilder.cs` (pure static; `Build`,
+`Centreline`, `Dilate`), `Floors/RoadNetworkProfile.cs` (+ `RoadFloorEntry`,
+`RoadMode`); touches `Floors/TerrainFeatureGenerator.cs` (`GenerateRoads`,
+`RebuildRoadCells`, the road reveal API), `Floors/FloorFeatureSaveData.cs`
+(`RoadData`, `RoadKind`, `FeatureType.Road`), `Floors/FeatureRevealController.cs`,
+`Floors/FloorRoot.cs`, `DungeonCore/TerrainResistanceTable.cs`,
+`TESTING/Commands.cs` (floor generation + the headless road report).
 
 ### The dwarves (DECIDED in shape)
 
@@ -1568,7 +1640,8 @@ problem for free.
 Roughly the reverse of how interesting each step is, so that the risky work
 lands on proven ground:
 
-1. The pre-carved road generator -- serves both floors and both features.
+1. The pre-carved road generator -- SHIPPED. See "The generator (SHIPPED)"
+   and "Carve precedence" above.
 2. Floor 4's dead network -- no faction, no NPCs, no trade. Pure generation
    and exploration, zero dependencies, proves the terrain in isolation.
 3. Floor 3's surviving trunk, from the same generator.

@@ -135,6 +135,15 @@ public class FeatureRevealController : MonoBehaviour
                 FireAlert(FeatureType.Chamber, fref.featureId, "A cavern has been revealed", silent);
                 break;
 
+            // Roads reveal per STRETCH, not per road. featureId is a segment id,
+            // so a trunk running rim to rim comes into view a stretch at a time
+            // rather than laying the whole floor out from one touched cell.
+            case FeatureType.Road:
+                if (features.IsRoadSegmentRevealed(fref.featureId)) return;
+                features.RevealRoadSegment(fref.featureId);
+                FireAlert(FeatureType.Road, fref.featureId, "An ancient road has been revealed", silent);
+                break;
+
             case FeatureType.EntranceCave:
                 if (features.IsEntranceDiscovered) return;
                 features.MarkEntranceDiscovered();

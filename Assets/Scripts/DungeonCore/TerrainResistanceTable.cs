@@ -42,6 +42,11 @@ public class TerrainResistanceTable : ScriptableObject
     [Tooltip("Claim cost multiplier for cleared chamber cells (already-excavated cave floor).")]
     [Min(0.1f)] public float chamberClaimResistance = 1f;
 
+    [Tooltip("Claim cost multiplier for Buried Age road cells. The road is the first " +
+             "terrain in the game with an opinion about being claimed: pushing across " +
+             "it should be felt as resistance before anything is said about it.")]
+    [Min(0.1f)] public float roadClaimResistance = 8f;
+
     [Tooltip("Claimable-ring tint for river cells (signals high-cost absorbable water).")]
     public Color riverClaimableTint = new Color(0.45f, 0.75f, 0.95f, 1f);
 

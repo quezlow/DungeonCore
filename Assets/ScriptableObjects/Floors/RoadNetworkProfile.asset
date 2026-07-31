@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b7bd8a1554b4eaea052df0a8567f27a, type: 3}
+  m_Name: RoadNetworkProfile
+  m_EditorClassIdentifier: Assembly-CSharp::RoadNetworkProfile
+  floors:
+  - floorIndex: 3
+    mode: 1
+    trunkWidth: 5
+    spurWidth: 2
+    segmentLength: 40
+    rimMargin: 7
+    meanderStep: 32
+    meanderAmplitude: 5
+    junctionCount: 7
+    junctionMinSpacing: 60
+    extraLoopEdges: 2
+    rimTrunkCount: 3
+    brokenSpurCount: 4
+    brokenGapCells: 6
+    spurMinLength: 30
+    spurMaxLength: 80
+    trunkBearingSpread: 30
+  - floorIndex: 4
+    mode: 2
+    trunkWidth: 5
+    spurWidth: 2
+    segmentLength: 40
+    rimMargin: 7
+    meanderStep: 24
+    meanderAmplitude: 6
+    junctionCount: 7
+    junctionMinSpacing: 90
+    extraLoopEdges: 2
+    rimTrunkCount: 3
+    brokenSpurCount: 4
+    brokenGapCells: 6
+    spurMinLength: 30
+    spurMaxLength: 80
+    trunkBearingSpread: 30

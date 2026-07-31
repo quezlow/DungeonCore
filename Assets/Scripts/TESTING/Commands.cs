@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Commands : MonoBehaviour
@@ -292,6 +293,197 @@ public class Commands : MonoBehaviour
         if (AdventurerSpawner.Instance == null) { Debug.Log("[Commands] No AdventurerSpawner in scene."); return; }
         AdventurerSpawner.Instance.DispatchInspectorParty();
         Debug.Log("[Commands] Inspector dispatched.");
+    }
+
+    // -- Floor generation & the deep roads -------------------------
+
+    [Header("Floor Generation / Road Report")]
+    [Tooltip("Floor index the headless road report runs against. Index 4 is the fifth floor.")]
+    [SerializeField] private int roadReportFloorIndex = 4;
+    [Tooltip("Assign the same RoadNetworkProfile wired on the floor template's " +
+             "TerrainFeatureGenerator, or the report measures a different layout.")]
+    [SerializeField] private RoadNetworkProfile roadReportProfile;
+    [Tooltip("0 derives the floor seed from the live world seed, exactly as floor " +
+             "creation does. Any other value overrides it for a one-off look.")]
+    [SerializeField] private int roadReportSeedOverride = 0;
+    [Tooltip("Keep in step with TerrainFeatureGenerator's exclusionRadiusFromCenter " +
+             "or the report's roads will sit differently to the generated ones.")]
+    [SerializeField] private int roadReportExclusionRadius = 8;
+    [Tooltip("Edge length of the ASCII map printed by the road report.")]
+    [SerializeField, Range(20, 100)] private int roadReportMapSize = 60;
+
+    [ContextMenu("Test Generate All Floors")]
+    void TestGenerateAllFloors()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.LogWarning("[Commands] No FloorManager in scene."); return; }
+
+        var coreFloor = fm.GetFloor(fm.CoreFloorIndex);
+        var core = DungeonCore.Instance;
+        Vector3Int cell = coreFloor != null && coreFloor.TileInfluence != null && core != null
+            ? coreFloor.TileInfluence.WorldToCell(core.transform.position)
+            : Vector3Int.zero;
+
+        int max = fm.MaxAllowedFloorIndex;
+        int start = fm.MaxFloorIndexCreated + 1;
+        if (start > max) { Debug.Log($"[Commands] All {max + 1} floors already exist."); return; }
+
+        for (int i = start; i <= max; i++)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            fm.EnsureFloorExists(i, cell);
+            sw.Stop();
+            bool ok = fm.FloorExists(i);
+            Debug.Log($"[Commands] Floor {i + 1} {(ok ? "created" : "FAILED")} in {sw.ElapsedMilliseconds} ms " +
+                      $"(radius {(DungeonCore.Instance?.Progression != null ? DungeonCore.Instance.Progression.FloorRadius(i) : -1)}).");
+            if (!ok) break;
+        }
+
+        Debug.LogWarning($"[Commands] Dev side effect: core relocation is now pending on floor " +
+                         $"{fm.PendingCoreRelocationFloor + 1}. Stair placement stays blocked and " +
+                         $"place-core mode stays armed until a core is placed or the run is reloaded.");
+
+        int deepest = fm.MaxFloorIndexCreated;
+        fm.SwitchToFloor(deepest);
+        Debug.Log($"[Commands] Viewing floor {deepest + 1}. Select its TerrainFeatureGenerator and " +
+                  $"use 'Reveal All Features (debug)' to see what generated.");
+    }
+
+    [ContextMenu("Test Road Report (headless)")]
+    void TestRoadReport()
+    {
+        if (roadReportProfile == null)
+        {
+            Debug.LogWarning("[Commands] Assign Road Report Profile (a RoadNetworkProfile) first.");
+            return;
+        }
+
+        int floorIdx = Mathf.Max(0, roadReportFloorIndex);
+        var entry = roadReportProfile.GetEntry(floorIdx);
+        if (entry == null || entry.mode == RoadMode.None)
+        {
+            Debug.Log($"[Commands] Road report: floor index {floorIdx} has no road entry (mode None). Nothing to build.");
+            return;
+        }
+
+        int radius = DungeonCore.Instance?.Progression != null
+            ? DungeonCore.Instance.Progression.FloorRadius(floorIdx)
+            : 400;
+
+        int worldSeed = DungeonSaveController.Instance != null ? DungeonSaveController.Instance.WorldSeed : 0;
+        int seed = roadReportSeedOverride != 0
+            ? roadReportSeedOverride
+            : FloorManager.DeriveFloorSeed(worldSeed, floorIdx);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var result = RoadNetworkBuilder.Build(
+            new System.Random(seed), Vector3Int.zero, radius, entry, roadReportExclusionRadius);
+
+        var all = new HashSet<Vector3Int>();
+        int trunks = 0, spurs = 0, broken = 0, segments = 0, longest = 0;
+        long minDistSq = long.MaxValue, maxDistSq = 0;
+
+        foreach (var road in result.roads)
+        {
+            if (road.kind == RoadKind.Trunk) trunks++; else spurs++;
+            if (road.brokenGapCells > 0) broken++;
+
+            var line = RoadNetworkBuilder.Centreline(road);
+            if (line.Count > longest) longest = line.Count;
+            segments += Mathf.CeilToInt(line.Count / (float)Mathf.Max(4, road.segmentLength));
+
+            foreach (var c in RoadNetworkBuilder.Dilate(
+                         line, road.width, road.floorCentre.ToVector3Int(), road.clampRadius))
+            {
+                all.Add(c);
+                long d = (long)c.x * c.x + (long)c.y * c.y;
+                if (d < minDistSq) minDistSq = d;
+                if (d > maxDistSq) maxDistSq = d;
+            }
+        }
+        sw.Stop();
+
+        Debug.Log(
+            $"[Commands] ROAD REPORT -- floor index {floorIdx} (floor {floorIdx + 1}), radius {radius}, " +
+            $"seed {seed} ({(roadReportSeedOverride != 0 ? "override" : "derived")}), mode {entry.mode}.\n" +
+            $"  roads {result.roads.Count} ({trunks} trunk, {spurs} spur, {broken} with a broken end), " +
+            $"junctions {result.junctions.Count}, segments {segments}\n" +
+            $"  carriageway {all.Count} cells, longest road {longest} centreline cells, " +
+            $"reach {(minDistSq == long.MaxValue ? 0 : (int)Mathf.Sqrt(minDistSq))}..{(int)Mathf.Sqrt(maxDistSq)} from centre\n" +
+            $"  built in {sw.Elapsed.TotalMilliseconds:0.0} ms, no floor instantiated.");
+
+        if (result.roads.Count == 0)
+        {
+            Debug.LogWarning("[Commands] Road report produced nothing -- check junctionMinSpacing " +
+                             "against the floor radius, and rimMargin against the disc size.");
+            return;
+        }
+
+        Debug.Log(RoadAsciiMap(all, result.junctions, radius, Mathf.Max(20, roadReportMapSize)));
+    }
+
+    /// <summary>Downsamples the carriageway to a console-sized grid. '#' is road,
+    /// '+' a junction, '.' open rock, ' ' outside the disc.</summary>
+    string RoadAsciiMap(HashSet<Vector3Int> cells, List<Vector3Int> junctions, int radius, int size)
+    {
+        var grid = new char[size, size];
+        float scale = (2f * radius) / size;
+
+        for (int gy = 0; gy < size; gy++)
+            for (int gx = 0; gx < size; gx++)
+            {
+                float wx = (gx + 0.5f) * scale - radius;
+                float wy = (gy + 0.5f) * scale - radius;
+                grid[gx, gy] = (wx * wx + wy * wy) <= (float)radius * radius ? '.' : ' ';
+            }
+
+        foreach (var c in cells)
+        {
+            int gx = Mathf.Clamp(Mathf.FloorToInt((c.x + radius) / scale), 0, size - 1);
+            int gy = Mathf.Clamp(Mathf.FloorToInt((c.y + radius) / scale), 0, size - 1);
+            grid[gx, gy] = '#';
+        }
+
+        if (junctions != null)
+            foreach (var j in junctions)
+            {
+                int gx = Mathf.Clamp(Mathf.FloorToInt((j.x + radius) / scale), 0, size - 1);
+                int gy = Mathf.Clamp(Mathf.FloorToInt((j.y + radius) / scale), 0, size - 1);
+                grid[gx, gy] = '+';
+            }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("[Commands] Road map (").Append(size).Append('x').Append(size)
+          .Append(", 1 char = ").Append(scale.ToString("0.0")).Append(" cells):\n");
+        for (int gy = size - 1; gy >= 0; gy--)
+        {
+            for (int gx = 0; gx < size; gx++) sb.Append(grid[gx, gy]);
+            sb.Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    [ContextMenu("Test Reveal All Features (active floor)")]
+    void TestRevealAllFeatures()
+    {
+        var floor = FloorManager.Instance?.ActiveFloor;
+        if (floor?.FeatureGenerator == null) { Debug.Log("[Commands] Active floor has no feature generator."); return; }
+        floor.FeatureGenerator.DebugRevealAll();
+    }
+
+    [ContextMenu("Test Print Feature Stats (all floors)")]
+    void TestPrintFeatureStatsAllFloors()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.Log("[Commands] No FloorManager in scene."); return; }
+        int n = 0;
+        foreach (var floor in fm.AllFloors)
+        {
+            if (floor?.FeatureGenerator == null) continue;
+            floor.FeatureGenerator.LogFeatureStats();
+            n++;
+        }
+        if (n == 0) Debug.Log("[Commands] No floors with a feature generator.");
     }
 
     [ContextMenu("Test Spawn Adventurer Party")]

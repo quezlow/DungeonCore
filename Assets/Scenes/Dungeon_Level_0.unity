@@ -13368,6 +13368,11 @@ MonoBehaviour:
   spikeTrapName: Spike Trap
   wallApproachFraction: 0.45
   testInvaderDef: {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
+  roadReportFloorIndex: 4
+  roadReportProfile: {fileID: 11400000, guid: e9217db15fe4c3f41b40e6787abc6019, type: 2}
+  roadReportSeedOverride: 0
+  roadReportExclusionRadius: 8
+  roadReportMapSize: 60
 --- !u!4 &435972141
 Transform:
   m_ObjectHideFlags: 0
@@ -14879,7 +14884,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99986017
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -14993,6 +14998,8 @@ MonoBehaviour:
   entranceOffshootMin: 1
   entranceOffshootMax: 3
   entranceOffshootBoxSize: 7
+  entranceRestPocket: 1
+  entranceRestRimMargin: 7
   entranceApronRun: 16
   riverPathCost: 5
   fordingSpeedMultiplier: 0.5
@@ -15001,6 +15008,9 @@ MonoBehaviour:
   wildMonsterMin: 2
   wildMonsterMax: 6
   wildMonsterCellDivisor: 6
+  roadProfile: {fileID: 0}
+  roadTilemap: {fileID: 0}
+  roadTile: {fileID: 0}
   waterTilemap: {fileID: 1113643928}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
   surfaceWaterTilemap: {fileID: 715764783}
@@ -15015,6 +15025,7 @@ MonoBehaviour:
   debugOverlayTilemap: {fileID: 1163852729}
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
   debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
+  debugRoadTile: {fileID: 0}
 --- !u!4 &468668986
 Transform:
   m_ObjectHideFlags: 0
@@ -48837,7 +48848,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00044329034}
+  m_AnchoredPosition: {x: 0, y: 0.000034137123}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -56191,7 +56202,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99988
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -57492,6 +57503,7 @@ MonoBehaviour:
   minDistFromCenter: 10
   senseRadius: 4
   duplicateResearchPoints: 10
+  remainsPrefab: {fileID: 0}
 --- !u!1 &2006568198
 GameObject:
   m_ObjectHideFlags: 0
@@ -58639,7 +58651,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00044329034}
+  m_AnchoredPosition: {x: 0, y: 0.000034137123}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -61571,6 +61583,10 @@ MonoBehaviour:
   maxPartySize: 5
   gradeRatingPerLevel: 45
   gradeRatingPerExtraMember: 120
+  descendantMinGradeLevel: 3
+  descendantMinNames: 2
+  descendantMaxNames: 3
+  descendantGuards: 2
   gradeUnderStrengthChance: 0.25
   gradeUnderStrengthLevelDrop: 2
   gradeUnderStrengthSizeDrop: 1
