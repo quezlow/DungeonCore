@@ -969,8 +969,9 @@ roadmap's "research pauses if the Laboratory is destroyed" -- the Library is
 that room. Disabling the toggle restores the decoupled model (projects run to
 completion on banked points regardless of Libraries). Affinity halves point cost
 only. Bootstrap nodes (Remembered Bones, Remembered Spikes) unlock on new
-game via `bootstrapUnlocked`; they re-lock behind the tutorial wisp when the
-prologue lands. **Realised:** the trio's `bootstrapUnlocked` flags are now
+game via `bootstrapUnlocked`; they re-lock behind the tutorial wisp (the
+prologue is built - see The Living Prologue). **Realised:** the trio's
+`bootstrapUnlocked` flags are now
 off, and the guided opening (TutorialDirector) grants each in place --
 status_bars when the player first claims, skeleton + spike_trap when the
 first spawner is armed. A completed run persists in
@@ -2363,3 +2364,71 @@ TrapRegistry.cs, Traps/PressurePlateTrap.cs, Traps/TrapSelectionUI.cs,
 Adventurer/DungeonAdventurer.cs, DungeonCore/DungeonBuildController.cs,
 Gameplay/TechNodeDefinition.cs, Gameplay/ResearchTreeUI.cs,
 Editor/TechContentGenerator.cs, Editor/TrapContentGenerator.cs.
+
+
+## The Living Prologue (Town, Forest, Ceremony)
+
+**As built.** A complete pre-dungeon act, shipped and previously undocumented.
+Scene chain: `TitleScreen` -> `TutorialTown` -> `TutorialForest` -> `Ceremony`
+-> `Dungeon_Level_0`. New Game routes through it unless
+`TitleScreenController.skipPrologue` is set, which jumps straight to the direct
+type-pick phase instead.
+
+**The living part.** The prologue is not a cutscene: the player lives an
+ordinary last day, and what they *do* is recorded. `FlagInteractable` writes a
+flag through `Persistence.SetFlag` on interaction; the canonical flag strings
+are constants in `TutorialFlags` (Inspector fields are typed by hand and must
+match them exactly). Flags are session-scoped and wiped at the start of a fresh
+prologue run so a previous session cannot leak forward.
+
+**Deeds to affinity.** `AffinityMapping` (a ScriptableObject, so weights and
+copy are tunable without a recompile) owns the mapping and every line the wisp
+speaks reading a life back:
+
+| Affinity | Deeds | Read-back |
+|---|---|---|
+| Fire | bellows, quench | worked the forge and did not flinch |
+| Water | draw well, fill jug, free net | went toward the water when others would not |
+| Air | mill climb, free pigeon | climbed for the view, freed what was caught |
+| Earth | dig grave, dig row, haul stones | turned the ground with their own hands |
+| Light | help healer, light candle, give alms | mended more than they broke |
+| Dark | smash crates, take offering | took what was watched, broke what was stacked |
+
+Scoring is **normalised** - each affinity scores the fraction of its own flags
+earned - so two-flag affinities weigh exactly the same as three-flag ones.
+Kneeling at the old stone (`flag_pray_shrine`) adds `prayShrineBoost` (0.25) to
+whichever affinity already leads: **devotion sharpens identity, it never stages
+a coup**. Earning nothing is a legitimate path - the empty-handed line frames it
+as its own kind of freedom. The easter-egg flags (`fossil_delivered`,
+`repair_mill`) vote for nothing; they earn a teasing acknowledgement and wait on
+hidden types that do not exist yet.
+
+**The ceremony.** `CeremonyController` directs it: the gloom lifts in stages,
+the wisp arrives, and four teaching beats assemble the facsimile HUD one piece
+at a time - **move** (pan), **breathe** (zoom), **reach** (sense), **pulse**
+(hold to feel ambient mana). Then the read-back of the life lived, the affinity
+choice, a recolour of world sprites and UI from white to the chosen affinity,
+and the handoff. Two standing rules: the cage is **soft** (pan and zoom are live
+from the first frame - prompts choreograph discovery, they never disable input),
+and the read-back is **suggestion, not gate** (all six affinities stay
+selectable; deeds add emphasis, a read-back line, and the dimming of roads not
+taken).
+
+**The commit.** The chosen type is written to
+`SaveSlotManager.PendingNewGame.dungeonType`; if no pending exists (the prologue
+path arrives with none, since `LaunchSlot` clears it) the controller **builds
+one** rather than dropping the choice - this was the dark-became-fire bug, and
+the guard must stay. Then `SceneLoader.FadeToScene("Dungeon_Level_0")`.
+
+**Persistence.** The prologue writes a checkpoint at
+`SlotPaths.ProloguePath(slotId)`; `DungeonSaveController.InitializeNewGame`
+saves the real dungeon and **consumes** (deletes) that checkpoint the moment the
+dungeon exists on disk, so a slot is never left with both.
+
+**Gotcha - `SceneNames.GameScene`.** The enum int-serialises in hand-placed
+scene triggers, so deleting a middle value silently re-targets every door after
+it. The retired `Forest` entry is kept deliberately as a tombstone. Never remove
+a middle value; append only.
+
+**Ceremony Gloom.** The full-screen veil lives on the Shadow sorting layer (see
+the sorting-layer section) so darkness covers walls and entities alike.
