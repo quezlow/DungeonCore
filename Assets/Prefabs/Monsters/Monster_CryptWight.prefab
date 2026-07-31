@@ -64,6 +64,22 @@ PrefabInstance:
       propertyPath: attackDamage
       value: 10
       objectReference: {fileID: 0}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Size.x
+      value: 0.64
+      objectReference: {fileID: 0}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Size.y
+      value: 0.64
+      objectReference: {fileID: 0}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 868ef7985eb5eaf4b9e75fd08e7b7d1b, type: 3}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_WasSpriteAssigned
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

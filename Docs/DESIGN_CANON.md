@@ -74,7 +74,8 @@ the supersession in one line.
 16. Crypt and Deliberate Nemesis Raise
 17. Discovery Content (Buried Skeletons, Loot Books, Wisp Guide)
 18. Phase 5 Designs
-19. Buried Age Sites and Tier-Up Audiences
+19. Buried Age Sites and the Deep Roads
+19A. Tier-Up Divine Audiences
 
 **Part III -- Lore canon**
 20. Why Holy Sites Are Underground
@@ -1403,14 +1404,193 @@ the First Spark and The Drawn Breath (see entry 28A).
   and the Wandering Merchant runs its own arrival controller rather than
   riding a shared one.
 
-## 19. Buried Age Sites and Tier-Up Audiences
+## 19. Buried Age Sites and the Deep Roads
 
-Decided (unscheduled): pre-carved unclaimed tunnels ship inert first, flank
-behaviour added as a separate later step. Ancient sites: Sunken Plaza,
-Collapsed Archive, Ossuary, Broken Aqueduct, Hollow Sanctum, Sealed Gate.
-Depth-as-time: deeper floors = older era = richer sites. Tier-up divine
-audiences at Bronze -> Silver -> Gold -> Diamond -> God milestones; the god
-of the core's type grants knowledge, feeding deep-faith lore.
+Status: DESIGN -- decided, unbuilt. Nothing in this entry exists in code yet;
+do not assume its classes or APIs. The tier-up divine audiences that used to
+share this entry are now 19A and have no dependency on any of this.
+
+The deep floors get a civilisation instead of a difficulty curve. Scattered
+ruins alone read as set dressing; a ROAD through them reads as somewhere that
+used to work, and gives the player a reason to descend beyond floor space.
+
+### Depth-as-time, made literal
+
+Deeper floors are an older era. The player walks the same civilisation twice:
+once still holding, once collapsed. Deeper is not merely richer -- it is
+EARLIER, which means it is more intact as a plan and more ruined as a place.
+
+**Floor allocation (DECIDED).**
+
+- **Floor 3 (radius 400, Diamond-gated)** carries the LIVING road: one
+  surviving trunk, rim to rim, still maintained, passing through the dwarven
+  outpost. One road because it is the last stretch anyone still keeps.
+- **Floor 4 (radius 600, God-gated)** carries the DEAD network: expanded
+  ruins joined by Buried Age roads. Deliberately DENSER than floor 3, not
+  sparser -- deeper is older, and older is when the thing was whole. Junctions
+  that go nowhere; spurs visibly broken at the edges where they once climbed
+  toward floor 3. A civilisation that shrank.
+
+Floor 4 being God-gated is why the living road is NOT there: an inhabited
+outpost and a second vendor reached only at God tier would arrive after the
+player has stopped needing either. The dead network has no such problem
+because it is exploration, not economy.
+
+Radii come from `DungeonCoreProgressionTable`: floor 0 = 100, 1 = 150,
+2 = 250, 3 = 400, 4 = 600.
+
+### The sites
+
+Ancient sites, carried forward unchanged: Sunken Plaza, Collapsed Archive,
+Ossuary, Broken Aqueduct, Hollow Sanctum, Sealed Gate. Pre-carved unclaimed
+tunnels ship INERT first; flank behaviour is a separate later step.
+
+The road is what makes the six legible as one place rather than six
+set-pieces. The Sunken Plaza is a junction. The Broken Aqueduct crosses the
+road. The Collapsed Archive sits ON it, because archives sit on roads. The
+Sealed Gate is where the road stops.
+
+### The generator (PROPOSED approach)
+
+`BuildRiverPolyline` in `TerrainFeatureGenerator` already picks a random rim
+point, heads across the disc on the opposite bearing and meanders by an
+authored angle. That is a road generator with the meander dialled down; the
+substrate should be built from it rather than from scratch.
+
+`GenerateNew` runs its steps in an explicit sequence, so roads insert BEFORE
+rivers -- which is also correct chronologically, since a river should cut
+through a road rather than the reverse. A washed-out crossing is free
+storytelling from the ordering alone.
+
+**Open:** three systems now carve the same disc (roads, rivers, the seeded
+entrance). Carve precedence must be decided at generation time rather than
+discovered as an intersection bug.
+
+### The dwarves (DECIDED in shape)
+
+The outpost is the INHABITED Buried Age site -- the one Sealed Gate that is
+not sealed. Outposts exist because of roads, so the road runs THROUGH the
+outpost, not past it: they hold a toll gate, which is why they are rich, why
+they trade, and why they care what the player does to their road.
+
+**Why they would deal with a core at all.** Everything else in the world
+arrives to kill it. The dwarves never went up, so they never learned the
+Church's version -- and entry 20 records that the old deep-faith held that
+some dead are reborn as cores. They are not friendly out of pragmatism but
+out of OLDER LOYALTY. This gives the deep-faith lore an on-screen population
+and ties the outpost to 19A's audiences.
+
+They start neutral-curious rather than hostile. A faction that does not want
+the core dead is novel in the roster and gives the alignment axis (entry 6)
+something new to push against.
+
+**Trade axis.** The surface merchant (28A) sells KNOWLEDGE -- patterns,
+research books, catch-up slots. The dwarves should sell MATERIAL: trap
+components, room upgrades, deep-floor-only furniture. Two channels that stay
+meaningful independently, so losing the surface camp does not lock the player
+out of everything.
+
+**PROPOSED, not yet confirmed:** the dwarves as a full `FactionId` with
+standing; caravans crossing the floor that the player may rob, let pass, or
+tax; converting a held road stretch into a toll the player collects. The
+caravan is a multi-day presence rather than a dawn-to-dusk visit -- at 180s
+days and a 2.6 walk speed a traveller covers roughly 470 tiles per day, so
+crossing floor 3 takes days. Travel MUST be authored in days with speed
+derived from it, never as tiles per second, or a longer day silently halves
+the crossing.
+
+**Reuse note.** `WanderingMerchantController` is a singleton with a static
+next-visit day, bound to the surface arrival model (forest road, camp
+commerce anchor, camp-tier gate, leaves at dusk). Almost none of that
+transfers to a stationary in-dungeon vendor. `TraderStockCatalog` and the
+purchase path (including `PatternDiscovery.NotifyTraderPurchase`) do.
+`MerchantShopUI` should be decoupled from the merchant singleton onto a stock
+provider BEFORE a second vendor exists, not after.
+
+### Claiming the road (DECIDED)
+
+The road is the first terrain in the game with an OPINION about being
+claimed. Pushing influence across it is a diplomatic act, not a mining
+decision.
+
+**Segmented, never binary.** Claiming is per-stretch, so standing loss scales
+with how much is taken and a two-tile corridor grab stays viable. All-or-
+nothing collapses the decision into a yes/no with an obvious answer.
+
+**The warning ladder.** The player gets one free warning before anything
+irreversible -- felt before told:
+
+1. Terrain resistance slows the push. The player notices something is
+   pushing back before being told why. Best first signal because it is
+   discovered, not announced.
+2. A wisp line, before the first claim completes.
+3. An alert at warning severity on first claim; critical on repeat.
+4. The faction panel row drops visibly.
+5. A dwarf patrol stops, looks, and turns back. Diegetic and unmissable.
+
+This reuses the Holy Ground pattern wholesale (entry 18): special terrain,
+procgen via `TerrainTypeMap`, visually distinct, with a faction consequence
+on desecration. No new pattern is needed.
+
+### Granite holdings overlay (DECIDED)
+
+Dwarven holdings render with their own boundary, shown when the player claims
+toward them, in COOL GREY GRANITE.
+
+**It must not look like the influence ring.** `InfluenceRingRenderer` is
+deliberately ethereal -- the isoline wavers on two octaves of scrolling
+noise, glows asymmetrically with a long tail into the fog, and pulses. That
+waver IS the core's identity: something alive, pushing outward. Dwarven
+holdings are the opposite claim -- surveyed, built, cut straight, unchanged
+for an age. A hard edge with no pulse. Yours breathes, theirs does not, and
+the two can never be confused at a glance.
+
+**Colour caution.** The palette is crowded: the default ring colour is gold,
+the HUD accent is gold, and Earth cores are amber-umber. Stone, brass and
+bronze all collide with two things at once. Cool grey granite was chosen
+against that constraint.
+
+**Implementation note.** Holdings are STATIC -- authored at generation,
+changing only when the player takes a stretch. No Dijkstra, no reach
+animation, no cost channel. A tilemap overlay redrawn on segment change is
+likely sufficient; the ring's shader path is not required. If it ever is, the
+field texture's A channel is free (R = boundary SDF, G = normalised growth
+cost, B = exposed fringe, A = unused).
+
+**Consequence worth keeping:** once both boundaries render, the moment the
+player's ring touches the dwarves' becomes a VISIBLE EVENT rather than a
+number in a panel -- which solves most of the "convey it to the player"
+problem for free.
+
+### Recommended build order
+
+Roughly the reverse of how interesting each step is, so that the risky work
+lands on proven ground:
+
+1. The pre-carved road generator -- serves both floors and both features.
+2. Floor 4's dead network -- no faction, no NPCs, no trade. Pure generation
+   and exploration, zero dependencies, proves the terrain in isolation.
+3. Floor 3's surviving trunk, from the same generator.
+4. The dwarves -- faction and standing, the outpost, the granite boundary,
+   road claiming, caravans, the shop decoupling. Last, because when something
+   here breaks the terrain underneath it is already known-good.
+
+## 19A. Tier-Up Divine Audiences
+
+Status: DESIGN -- decided, unscheduled. Split out of entry 19, which it never
+depended on: this is a progression-milestone reward and needs no terrain work,
+no roads and no dwarves. It may ship at any time.
+
+Decided: a divine audience at each tier-up milestone -- Bronze -> Silver ->
+Gold -> Diamond -> God. The god of the CORE'S OWN TYPE attends, and grants
+knowledge rather than power.
+
+This is the deep-faith speaking directly to one of its own. Entry 20 records
+that the old faith held divinity to reside below and that some dead are reborn
+as cores; entry 21 records that its civilisation was entombed. The audiences
+are the surviving other end of that -- the thing the Church suppressed,
+answering. Each is an opportunity to feed deep-faith lore at the exact moment
+the player has earned a reason to care.
 
 ---
 
