@@ -22,9 +22,14 @@ corrected.
 - **Before designing or extending any system**: read its entry here first,
   then the key files it points to. Do not design from the roadmap's version
   of a shipped system.
-- **Part I** is shipped and verified against source. **Part II** is decided
-  design that has NOT been built -- do not assume its classes or APIs exist.
-  **Part III** is lore canon.
+- **Part I** and **Part IV** are shipped and verified against source; Part IV
+  holds the entries that landed after the file was first split, and is no
+  less as-built than Part I. **Part II** is design decided but not necessarily
+  built -- check each entry's status line before assuming its classes or APIs
+  exist. **Part III** is lore canon. The **Appendix** is last.
+- Numbering runs in file order throughout: 1-19, then 20-21, then 22-33, then
+  A-B. A letter suffix (8A, 13A, 28A) means the entry sits directly after the
+  number it extends.
 - Entries carry a `Verified:` date -- the date the entry was checked against
   repo HEAD.
 
@@ -74,6 +79,8 @@ the supersession in one line.
 **Part III -- Lore canon**
 20. Why Holy Sites Are Underground
 21. The Buried Age
+
+**Part IV -- Later shipped systems**
 22. Deeds
 23. Trophy Hall
 24. Surface World: Radial Forest Bands
@@ -88,7 +95,7 @@ the supersession in one line.
 32. The Living Prologue (Town, Forest, Ceremony)
 33. Monster Target Priority (Class-Aware Targeting)
 
-**Appendix**
+**Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
 B. Sorting Layer Contract
 
@@ -927,7 +934,7 @@ stay exempt inside IsBedrock, so the real tunnel through the rim still registers
 
 ---
 
-# PART II -- DESIGN ENTRIES (MOST SINCE SHIPPED IN PLACE)
+# PART II -- DESIGN ENTRIES (CHECK EACH STATUS LINE)
 
 Most entries in this part have since shipped and are recorded as-built in
 place with their own Status lines (13 spine / UI / roster, 14, 15, 15A, 16,
@@ -1428,69 +1435,7 @@ Two flavours of sacred underground, one axis of history: deeper is older.
 
 ---
 
-# APPENDIX
-
-## A. Content Registries and Authoring Keys
-
-Status: SHIPPED (documentation of as-built behaviour). Verified: 2026-07-09.
-
-**Registry membership** = placeable through its picker + restorable by name on
-load. `DungeonSaveController` restores placed spawners, traps, furniture,
-chests and room assignments via `GetByName` against the five registries.
-Anything the player can place and save must be registered; transient-only
-definitions stay out (event beasts spawned from a component slot, e.g.
-`WildMonsterEvent.predatorDef` / the Ravenous Bear).
-
-**Unified wild/placeable model:** one `MonsterDefinition` serves both roles.
-It sits in the floor template's `TerrainFeatureGenerator.wildMonsterPool`
-(spawns wild) AND in the monster registry with `requiresDiscovery`
-(picker-locked until its own `monsterName` is discovered by slaying it wild).
-Adventurer-granted unlocks reuse the Bestiary channel via `unlocksOnDeath`
-(Commoner -> Thrall, Dark cores only). Discovery, save restore and the picker
-all key on `monsterName`.
-
-**Immutable keys** (save-breaking if renamed after ship): `monsterName`,
-`roomName`, `trapName`, `furnitureName`, `chestName`, `questID`, item `ID`
-ints, and enum ordinals (`AdventurerType`, `CombatClass` persist as ints --
-append new values only, never reorder). Registry list order is free: lookups
-are name-based; order only drives picker presentation.
-
-**Material patterns:** the sixth registry. `PatternCatalog.asset` lists every
-`PatternDefinition`; the save key is the `UnlockState` flag `pattern.`
-(id immutable after ship -- asset filenames free). Band = channel: Terrain is
-deterministic first-claim and code-bound; Common..Legendary join their band's
-loot roll automatically; Reserved is silhouette-only until a future system
-unlocks it. Authored via `Editor/PatternContentGenerator` (single source of
-truth -- regeneration rebuilds the catalog list).
-
-**Authoring reference:** step-by-step recipes live in the Content Authoring
-guide; this appendix records the rules those recipes obey.
-
-
-## B. Sorting Layer Contract
-
-Status: RECORDED after the Phase 3 cleanup regression. Verified: 2026-07-17.
-
-The TagManager order is load-bearing; scripts and prefabs assume it.
-Bottom to top: Default, Ground, Collision, OwnedTiles, Decor, WalkInFront,
-Player, WalkBehind, Shadow, AdjacentHighlight, WorldUI. Identity is the
-uniqueID; list order is the draw order -- reordering the list IS the
-change.
-
-Semantics: every Y-sorting entity (player, NPCs, monsters, adventurers,
-cave faces, surface trees) lives on Player. WalkInFront draws UNDER
-entities -- ground furniture the player walks in front of. WalkBehind
-draws OVER entities -- town canopy and cave wall caps the player walks
-behind (CaveWallFade and CaveWallRenderer assume this). Shadow sits just
-above WalkBehind so darkness covers walls and entities alike
-(DungeonShadow, FogLayer, and the Ceremony Gloom veil, which lives on
-Shadow for exactly this reason). AdjacentHighlight and WorldUI cap the
-world.
-
-The Phase 3 cleanup inverted this order and silently broke cap occlusion,
-fog cover, and the town walk layers for three weeks. Any future layer
-change re-reads this entry first.
-
+# PART IV -- LATER SHIPPED SYSTEMS
 
 ## 22. Deeds (Diegetic Achievement Layer)
 
@@ -1844,9 +1789,35 @@ Show()-snap in MonsterSelectionUI) and rejected at placement
 differs -- the player only ever sees their own core's skin. Two six-skin
 families ship: Adept (Silver 3; Cinder/Tide/Gale/Shale/Umbral/Radiant) and
 Archon (Diamond 2; Pyre/Maelstrom/Tempest/Terra/Void/Dawn). Reskins are
-COSMETIC ONLY by ruling -- one stat block per family; per-skin mechanics are a
-future design fork. Skin names are save keys (restore skips the affinity gate
-by design; a save reloads under its own core type).
+COSMETIC ONLY by ruling -- one stat block per family. Skin names are save keys
+(restore skips the affinity gate by design; a save reloads under its own core
+type).
+
+**Elemental flavour: fork CLOSED, need met elsewhere.** Per-skin mechanical
+divergence was left open as a fork when this entry was written. It is now
+closed and will not be built: the stat blocks stay identical within a family,
+and elemental identity is carried by three systems that shipped after the
+fork was raised.
+
+- **Visibly**, by `MonsterDefinition.projectileTint` (entry 30). Every skin
+  looses its own coloured bolt -- Cinder burnt orange, Tide cold blue, Void
+  violet -- so the element reads at a glance in combat without touching a
+  single number. Two skins of a family differ in exactly four authored
+  fields: asset name, display name, `affinityType`, `projectileTint`.
+- **Mechanically**, by the six type-locked traps (entry 31). The core's
+  element expresses itself as the signature trap only that core may build --
+  Fireball Rune, Ice Spikes, Earth Spikes, Gale Vent, Blinding Flash, Umbral
+  Snare -- which is a stronger identity lever than a per-skin damage rider,
+  because the player builds with it rather than merely fielding it.
+- **In the roster**, by the sixty native affinity-line monsters (27A), which
+  already give each type ten creatures of its own rather than a repaint.
+
+Consequence for authoring: a new skin in an existing family is a name, an
+`affinityType` and a tint. If a future design wants a burn rider or a slow on
+a specific element, it belongs on a trap or a native line, not on a reskin --
+reopening this fork would put a mechanical difference behind a gate the player
+can never see across (they only ever meet their own core's skin), which is the
+reason it was refused in the first place.
 
 **Mage model:** ranged monsters follow the adventurer-Mage convention -- large
 attackRange (Adept 3.6, Archon 4.2) plus telegraphSeconds. SUPERSEDED by
@@ -1872,8 +1843,8 @@ identity and the cap-efficiency floor are load-bearing.
 **Rejected:** shown-but-locked display for wrong-type skins (breaks the reskin
 illusion); per-floor wild pool assets (one shared pool + depth field is the
 authored surface); a monster projectile system -- SUPERSEDED by section 30 (ranged
-combat ships travel-time projectiles; the hitscan convention is retired); mechanical flavour on reskins (deferred as a fork, not
-built).
+combat ships travel-time projectiles; the hitscan convention is retired); mechanical flavour on reskins (no longer deferred -- the fork is CLOSED, see
+the elemental-flavour note above).
 
 ### 27A. Native Affinity Lines (60 Monsters, Slot Parity)
 
@@ -2508,3 +2479,68 @@ between taunts is intended, not a gap.
 **Key files:** `Monster/TargetPriority.cs`, `Monster/MonsterDefinition.cs`
 (`targetPriority`), `Monster/DungeonMonster.cs` (`ScanForHostiles`,
 `SelectAdventurer`, `PriorityKey`).
+
+---
+
+# APPENDIX
+
+## A. Content Registries and Authoring Keys
+
+Status: SHIPPED (documentation of as-built behaviour). Verified: 2026-07-09.
+
+**Registry membership** = placeable through its picker + restorable by name on
+load. `DungeonSaveController` restores placed spawners, traps, furniture,
+chests and room assignments via `GetByName` against the five registries.
+Anything the player can place and save must be registered; transient-only
+definitions stay out (event beasts spawned from a component slot, e.g.
+`WildMonsterEvent.predatorDef` / the Ravenous Bear).
+
+**Unified wild/placeable model:** one `MonsterDefinition` serves both roles.
+It sits in the floor template's `TerrainFeatureGenerator.wildMonsterPool`
+(spawns wild) AND in the monster registry with `requiresDiscovery`
+(picker-locked until its own `monsterName` is discovered by slaying it wild).
+Adventurer-granted unlocks reuse the Bestiary channel via `unlocksOnDeath`
+(Commoner -> Thrall, Dark cores only). Discovery, save restore and the picker
+all key on `monsterName`.
+
+**Immutable keys** (save-breaking if renamed after ship): `monsterName`,
+`roomName`, `trapName`, `furnitureName`, `chestName`, `questID`, item `ID`
+ints, and enum ordinals (`AdventurerType`, `CombatClass` persist as ints --
+append new values only, never reorder). Registry list order is free: lookups
+are name-based; order only drives picker presentation.
+
+**Material patterns:** the sixth registry. `PatternCatalog.asset` lists every
+`PatternDefinition`; the save key is the `UnlockState` flag `pattern.`
+(id immutable after ship -- asset filenames free). Band = channel: Terrain is
+deterministic first-claim and code-bound; Common..Legendary join their band's
+loot roll automatically; Reserved is silhouette-only until a future system
+unlocks it. Authored via `Editor/PatternContentGenerator` (single source of
+truth -- regeneration rebuilds the catalog list).
+
+**Authoring reference:** step-by-step recipes live in the Content Authoring
+guide; this appendix records the rules those recipes obey.
+
+
+## B. Sorting Layer Contract
+
+Status: RECORDED after the Phase 3 cleanup regression. Verified: 2026-07-17.
+
+The TagManager order is load-bearing; scripts and prefabs assume it.
+Bottom to top: Default, Ground, Collision, OwnedTiles, Decor, WalkInFront,
+Player, WalkBehind, Shadow, AdjacentHighlight, WorldUI. Identity is the
+uniqueID; list order is the draw order -- reordering the list IS the
+change.
+
+Semantics: every Y-sorting entity (player, NPCs, monsters, adventurers,
+cave faces, surface trees) lives on Player. WalkInFront draws UNDER
+entities -- ground furniture the player walks in front of. WalkBehind
+draws OVER entities -- town canopy and cave wall caps the player walks
+behind (CaveWallFade and CaveWallRenderer assume this). Shadow sits just
+above WalkBehind so darkness covers walls and entities alike
+(DungeonShadow, FogLayer, and the Ceremony Gloom veil, which lives on
+Shadow for exactly this reason). AdjacentHighlight and WorldUI cap the
+world.
+
+The Phase 3 cleanup inverted this order and silently broke cap occlusion,
+fog cover, and the town walk layers for three weeks. Any future layer
+change re-reads this entry first.
