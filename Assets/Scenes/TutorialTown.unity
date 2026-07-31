@@ -946,7 +946,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea9ebccff916e8a43acc7ab3174e3740, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlagInteractable
-  flagID: 'flag_fossil_found '
+  flagID: flag_fossil_found
   singleUse: 1
   displayName: Spoil Heap
   portrait: {fileID: 0}
@@ -1164,7 +1164,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2276393667779620014, guid: 8ab6295711a20f24286843173f05c289, type: 3}
       propertyPath: flagID
-      value: 'flag_free_net '
+      value: flag_free_net
       objectReference: {fileID: 0}
     - target: {fileID: 2276393667779620014, guid: 8ab6295711a20f24286843173f05c289, type: 3}
       propertyPath: displayName
@@ -9255,7 +9255,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea9ebccff916e8a43acc7ab3174e3740, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlagInteractable
-  flagID: 'flag_draw_well '
+  flagID: flag_draw_well
   singleUse: 1
   displayName: The Well
   portrait: {fileID: 0}
@@ -72691,7 +72691,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea9ebccff916e8a43acc7ab3174e3740, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlagInteractable
-  flagID: 'flag_dig_row '
+  flagID: flag_dig_row
   singleUse: 1
   displayName: Soft Row
   portrait: {fileID: 0}

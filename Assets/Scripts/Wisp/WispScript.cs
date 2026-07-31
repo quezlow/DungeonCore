@@ -112,6 +112,34 @@ public class WispScript : ScriptableObject
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },
+
+            // Memory echoes (canon 34). Each answers one deed from the living
+            // prologue at the dungeon moment that rhymes with it. Once ever,
+            // hundreds of days apart, and only if that life was actually lived.
+            new Line { id = "echo_grave", once = true,
+                text = "You dug a grave once. Spelled the old man for a few honest feet, and the earth came up dark and willing. Look what your hands do with it now." },
+            new Line { id = "echo_net", once = true,
+                text = "You cut something loose from a net once, because it was thrashing and you could not stand to watch. Listen. It is thrashing. You are the net." },
+            new Line { id = "echo_offering", once = true,
+                text = "You lifted a coin from a bowl once, and an old woman watched you do it and said nothing. Now they carry the bowl down to you. Nobody is watching at all." },
+            new Line { id = "echo_alms", once = true,
+                text = "You dropped a copper in a beggar's bowl once and he nodded, just the once. That was the last coin that ever left your hands." },
+            new Line { id = "echo_climb", once = true,
+                text = "You climbed a mill once, only to see how far the fields ran. You are going the other way now. It is further." },
+            new Line { id = "echo_quench", once = true,
+                text = "Steel into the barrel, and that hiss. You liked that sound. I thought you might like this one." },
+            new Line { id = "echo_stone", once = true,
+                text = "You knelt at a stone in the evening and it was warmer than the air, and you never asked why. This is why. The deep keeps its own, and it kept you." },
+
+            // The empty-handed voice: a life lived, nothing carried down. Three
+            // lines, in order, and then the wisp stops reaching. Refusal is a
+            // shape too, and this is what it sounds like.
+            new Line { id = "echo_hollow_1", once = true,
+                text = "I reach for the life you brought down here, and my hand closes on nothing. You lived the whole day and kept none of it." },
+            new Line { id = "echo_hollow_2", once = true,
+                text = "Nothing again. Not emptiness, quite - more the hush of a room swept before anyone arrives." },
+            new Line { id = "echo_hollow_3", once = true,
+                text = "I will stop looking. Whoever you were, you did not bring them. Whoever you become owes them nothing at all." },
         };
 
         barkSets = new[]

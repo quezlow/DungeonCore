@@ -398,6 +398,11 @@ public class CeremonyController : MonoBehaviour
 
     private IEnumerator Commit(DungeonType chosen)
     {
+        // The life is over and it happened. Everything downstream that quotes it
+        // reads this marker first, so a skipped prologue never speaks in a voice
+        // it did not earn.
+        Persistence.SetFlag(TutorialFlags.Lived);
+
         if (choicePanel != null)
         {
             choicePanel.interactable = false;

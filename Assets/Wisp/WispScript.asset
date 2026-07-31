@@ -55,6 +55,47 @@ MonoBehaviour:
     once: 1
     text: Feel them jostle? Packed in a tunnel, your creatures foul one another's
       strikes. Give a garrison a room, or watch it fight below its worth.
+  - id: echo_grave
+    once: 1
+    text: You dug a grave once. Spelled the old man for a few honest feet, and the
+      earth came up dark and willing. Look what your hands do with it now.
+  - id: echo_net
+    once: 1
+    text: You cut something loose from a net once, because it was thrashing and you
+      could not stand to watch. Listen. It is thrashing. You are the net.
+  - id: echo_offering
+    once: 1
+    text: You lifted a coin from a bowl once, and an old woman watched you do it
+      and said nothing. Now they carry the bowl down to you. Nobody is watching at
+      all.
+  - id: echo_alms
+    once: 1
+    text: You dropped a copper in a beggar's bowl once and he nodded, just the once.
+      That was the last coin that ever left your hands.
+  - id: echo_climb
+    once: 1
+    text: You climbed a mill once, only to see how far the fields ran. You are going
+      the other way now. It is further.
+  - id: echo_quench
+    once: 1
+    text: Steel into the barrel, and that hiss. You liked that sound. I thought you
+      might like this one.
+  - id: echo_stone
+    once: 1
+    text: You knelt at a stone in the evening and it was warmer than the air, and
+      you never asked why. This is why. The deep keeps its own, and it kept you.
+  - id: echo_hollow_1
+    once: 1
+    text: I reach for the life you brought down here, and my hand closes on nothing.
+      You lived the whole day and kept none of it.
+  - id: echo_hollow_2
+    once: 1
+    text: Nothing again. Not emptiness, quite - more the hush of a room swept before
+      anyone arrives.
+  - id: echo_hollow_3
+    once: 1
+    text: I will stop looking. Whoever you were, you did not bring them. Whoever
+      you become owes them nothing at all.
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}

@@ -95,6 +95,7 @@ the supersession in one line.
 31. The Trapworks (Roster, Type Exclusivity, Trapwright)
 32. The Living Prologue (Town, Forest, Ceremony)
 33. Monster Target Priority (Class-Aware Targeting)
+34. The Core's Own Past (Persisted Life, Memory Echoes)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -2571,6 +2572,19 @@ speaks reading a life back:
 | Light | help healer, light candle, give alms | mended more than they broke |
 | Dark | smash crates, take offering | took what was watched, broke what was stacked |
 
+**Correction of record (flag wiring).** For the whole of this system's shipped
+life the table above was aspirational, not true. Four authored `flagID` fields
+carried a **trailing space** (`flag_draw_well `, `flag_dig_row `,
+`flag_fossil_found `, `flag_smash_crates ` on five prefabs) and
+`AffinityMapping` matches by exact string, so those deeds scored nothing.
+`FouledNet` and `CressJug` were additionally wired to `flag_smash_crates`
+rather than their own flags. Effective ceilings were Fire 2/2, Air 2/2,
+Light 3/3, Earth 2/3, Dark 1/2, **Water 1/3** -- a life spent entirely on
+water lost to one stray forge deed. Repaired by a `Trim()` in
+`Persistence.SetFlag` (the durable fix: Inspector-typed ids are hand-entered
+and a trailing space is invisible in the field) plus retyping the assets. Any
+future flag audit starts here.
+
 Scoring is **normalised** - each affinity scores the fraction of its own flags
 earned - so two-flag affinities weigh exactly the same as three-flag ones.
 Kneeling at the old stone (`flag_pray_shrine`) adds `prayShrineBoost` (0.25) to
@@ -2609,6 +2623,9 @@ a middle value; append only.
 
 **Ceremony Gloom.** The full-screen veil lives on the Shadow sorting layer (see
 the sorting-layer section) so darkness covers walls and entities alike.
+
+**What happens to the life afterwards:** entry 34. The flags recorded here are
+no longer discarded at the handoff.
 
 ---
 
@@ -2659,6 +2676,148 @@ between taunts is intended, not a gap.
 **Key files:** `Monster/TargetPriority.cs`, `Monster/MonsterDefinition.cs`
 (`targetPriority`), `Monster/DungeonMonster.cs` (`ScanForHostiles`,
 `SelectAdventurer`, `PriorityKey`).
+
+---
+
+## 34. The Core's Own Past (Persisted Life, Memory Echoes)
+
+Status: SHIPPED (persisted life + seven echoes + the empty-handed voice).
+The town, the grave and the elapsed-time rule below are DESIGN -- decided,
+unbuilt.
+
+Entry 32 records a prologue that captures who the player was with real
+specificity and then throws it away at the ceremony. This entry keeps it.
+
+### The life persists
+
+`Persistence` flags are written to `DungeonSaveData.prologueFlags` in
+`SaveGame` and restored into the same static set on load (cleared first -- the
+statics outlive a slot switch and one core must never wake remembering
+another's life). **All twenty flags persist**, not a curated subset: the
+storage is trivial and discarding one now would mean a save migration to get
+it back later. The discipline belongs in the echo table, not the save.
+
+The prologue checkpoint is still **consumed** in `InitializeNewGame` exactly as
+entry 32 requires. Nothing about that invariant changed: the statics survive
+the Ceremony -> Dungeon scene load and that method's `SaveGame()` runs before
+the delete, so the life is captured on the way past.
+
+**`flag_lived`** is written by `CeremonyController.Commit`. It marks a life as
+having been *lived* rather than skipped -- without it an empty-handed run and a
+`skipPrologue` run are indistinguishable, and the empty-handed voice would
+speak to players who never had a last day at all. `TitleScreenController`'s
+skip path now also clears `Persistence`, closing a leak that only became
+reachable once anything downstream started reading flags.
+
+### Memory echoes
+
+`CoreMemory` is the dungeon's read surface (`Lived`, `Remembers`,
+`EmptyHanded`, `Recall`). `Persistence` stays what its own header says it is --
+the prologue's store -- and nothing below the surface touches it directly.
+
+An **echo** is one wisp line, fired **once ever**, at a dungeon moment that
+rhymes with something the player actually did on their last day alive. Echo
+lines are authored `once = true` in `WispScript`, so the shipped
+`wispSpokenLines` save field already remembers them: **the feature adds no save
+state beyond the flag list**.
+
+`CoreMemory.Recall(momentId)` is the entire API. Four outcomes:
+
+| State | Result |
+|---|---|
+| Never lived the prologue | silence, always |
+| Lived, holds the bound flag | the echo line |
+| Lived, empty-handed | a hollow line, at most three ever |
+| Lived, holds other flags | silence -- this memory is not theirs |
+
+The seven shipped echoes, one per affinity plus the old faith:
+
+| Deed in life | Dungeon moment | Site |
+|---|---|---|
+| `dig_grave` | first deliberate raise | `CryptController.RaiseFromSarcophagus` |
+| `free_net` | first adventurer pinned | `DungeonAdventurer.BeginPinned` |
+| `take_offering` | first tribute absorbed | `TributeChest` |
+| `give_alms` | first adventurer stripped | `DungeonAdventurer` death path |
+| `mill_climb` | first descent below floor 0 | `FloorManager.SetActiveFloor` |
+| `quench` | first trap fires on the living | `TrapBase.OnAdventurerEntered` |
+| `pray_shrine` | first buried remains dug | `BuriedRemainsController.Grant` |
+
+`Recall` is `IsLoading`-guarded (a restore replays history in a few frames and
+none of it is happening to the player) and **speaks at most one echo per
+frame** -- a capture trap resolves `BeginPinned` inside `ApplyEffect` and the
+trap site then recalls in the same call, so a life holding both deeds would
+otherwise hear two stacked on one snare. It mirrors `DeedsController.NotifyMoment`
+-- whose moment ids the table deliberately reuses where they already exist, so
+the two systems read as one vocabulary. The Light echo anchors on the **kill**
+rather than `DroppedLoot.Absorb`, because the tribute coin flourish runs the
+same absorb and would fire the wrong memory.
+
+**Rejected:** a Holy Ground desecration echo (`AlignmentSystem.Desecrate` is a
+stub with no caller) and a trap-*kill* echo (no kill attribution exists;
+trap-fired is the honest hook).
+
+### The empty-handed life has a voice
+
+Entry 32 calls earning nothing "its own kind of freedom" and then says nothing
+else about it. It now has three authored lines, spoken in order at the first
+three echo moments and then never again: the wisp reaches, finds nothing,
+remarks on it, and finally **stops reaching**. Refusal is a shape, and this is
+what it sounds like. Deliberately not mechanical -- the empty-handed core is
+unencumbered by design, and paying it a bonus would make the hollow path the
+optimal one.
+
+### Lore recorded
+
+**How long you were gone: nobody who knew your face is alive.** A rule, not a
+number -- deliberately vague in the manner of the Buried Age. Any future
+content wanting a survivor of the prologue generation must argue for it. This
+is load-bearing: it decides what can return, and it is why the wisp is the only
+witness left to quote a life back.
+
+**What killed you is not a blank.** The prologue exchange is explicit and
+named. Deep in the cave, at an **opened seal**, three delvers the player met in
+town that same day -- **Pell**, **Brother Mott** and **Serra Vane** -- find
+them standing in front of it. Pell panics and strikes. Serra finishes it:
+*"...Half a job."* / *"Close your eyes. The dark takes care of the rest."*
+Serra had said in the tavern that there is older stone under that town than in
+it, and Mott had asked whether anyone still tends the old stone.
+
+The blank is therefore **not** the murder. It is **what seal they had opened,
+and where Serra's maps came from** -- which points directly at entry 21 and the
+Sealed Gates of entry 19. That question stays open on purpose, and the answer
+may be shared with whatever the dwarves will not go below.
+
+**The wisp was already there.** It read the player's life back from flags it
+had no business seeing, waiting at the rebirth site -- and entry 20 records
+that deep shrines warded rebirth sites. It is plausibly a warden of the old
+deep-faith doing a job it has done many times before, for cores that failed.
+This reframes every prologue line at zero cost, explains the rare `Ancient`
+and `Reverent` temperaments, and gives it standing to recognise a dead core's
+ruin when one is found.
+
+### Designed, unbuilt
+
+**The town comes for you (descendants).** The prologue roster carries
+surnames -- Vane, Ferro, Latch, Ashcombe, Bramm, Crane, Cress, Sedge. With
+nobody alive who knew the player, the beat is not the healer returning; it is a
+**name** returning. A named adventurer bearing a prologue surname, generations
+on, who has no idea what they are walking into. `SpawnMember` already accepts
+`presetName` and `DispatchNobleRetaliation` is the working template, so this is
+a name pool and a dispatch method, not a system. **The Vane line is the
+payload:** Serra's descendant, still following maps.
+
+**Your grave -- which is not a grave.** Serra left the body where it fell and
+nobody recovered it. The remains lie near where the player died, on floor 0,
+close to their own entrance: not a burial, an unburied body the player has
+walked past for a hundred days. Payload is a wisp scene and a Deed, **no
+mechanical grant** -- entry 17 already pays for ordinary digs, and this is the
+emotional beat, not a reward.
+
+**Key files:** `Save/CoreMemory.cs`, `Save/TutorialFlags.cs`
+(`Lived`, `AffinityFlags`), `Save/Persistence.cs` (the trim),
+`Save/DungeonSaveData.cs` (`prologueFlags`), `Save/DungeonSaveController.cs`,
+`Ceremony/CeremonyController.cs`, `Wisp/WispScript.cs` (ten new lines),
+and the seven call sites above.
 
 ---
 

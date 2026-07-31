@@ -23,9 +23,16 @@ public static class Persistence
     public static bool HasFlag(string flag)
         => !string.IsNullOrEmpty(flag) && flags.Contains(flag);
 
+    /// <summary>Record a flag. The id is trimmed at the door: Inspector-typed
+    /// flagIDs are hand-entered and a trailing space is invisible in the field,
+    /// but AffinityMapping matches by exact string. Four shipped interactables
+    /// carried one, which made their affinities unwinnable. Trim here so no
+    /// future typo can silently cost a player their read-back.</summary>
     public static void SetFlag(string flag)
     {
         if (string.IsNullOrEmpty(flag)) return;
+        flag = flag.Trim();
+        if (flag.Length == 0) return;
         if (flags.Add(flag)) OnFlagSet?.Invoke(flag);
     }
 

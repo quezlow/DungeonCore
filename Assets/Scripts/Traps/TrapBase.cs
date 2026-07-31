@@ -92,6 +92,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
 
         lastTriggerTime = Time.time;
         ApplyEffect(adv);
+        CoreMemory.Recall(CoreMemory.FirstTrap);
         BanterLines.ReactTrap(adv);
         Debug.Log($"[Trap] {Definition.trapName} triggered on adventurer at {OccupiedCell}.");
     }

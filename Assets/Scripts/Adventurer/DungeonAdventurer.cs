@@ -903,6 +903,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentPath = new List<Vector3>();
         pathIndex = 0;
         party?.RegisterPinned(this);
+        CoreMemory.Recall(CoreMemory.FirstPin);
         AlertsLog.Instance?.AddAlert(
             displayName + " is snared, thrashing in the trap.",
             transform.position, currentFloor != null ? currentFloor.FloorIndex : -1,
@@ -2102,6 +2103,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             NobleRetaliation.Instance?.RegisterNobleFall(displayName);
 
         RunStats.Instance?.RecordAdventurerSlain(className);
+        CoreMemory.Recall(CoreMemory.FirstSpoils);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
         DropClassLoot();

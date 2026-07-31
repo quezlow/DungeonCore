@@ -52,6 +52,7 @@ public class DungeonSaveData
 
     public List<AlertEntrySaveData> alertHistory = new();
     public int alertUnreadCount = 0;
+    public List<string> prologueFlags = new();            // the life lived above; read by CoreMemory (additive; empty on old saves)
     public List<string> wispSpokenLines = new();          // tutorial one-shots already heard (additive; empty on old saves)
     public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
     public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)

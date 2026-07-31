@@ -147,6 +147,7 @@ public class BuriedRemainsController : MonoBehaviour
             WispCompanion.Instance?.SpeakLine(line);
             AlertsLog.Instance?.AddAlert(line, worldPos, floorIndex, AlertCategory.Discovery);
             DeedsController.Instance?.NotifyMoment("first_buried");
+            CoreMemory.Recall(CoreMemory.FirstBuried);
         }
         else
         {

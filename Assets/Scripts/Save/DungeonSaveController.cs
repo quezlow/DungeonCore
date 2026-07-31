@@ -302,6 +302,11 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.wispPersonality = WispCompanion.Instance.GetPersonalityForSave();
         }
 
+        // The life lived above. Session statics carry it down from the ceremony;
+        // from the first save it is the dungeon's own, and the prologue
+        // checkpoint can be consumed without losing it.
+        currentSave.prologueFlags = new System.Collections.Generic.List<string>(Persistence.AllFlags);
+
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
@@ -778,6 +783,13 @@ public class DungeonSaveController : MonoBehaviour
 
             WispCompanion.Instance?.RestoreSpokenFromSave(currentSave.wispSpokenLines);
             WispCompanion.Instance?.RestorePersonalityFromSave(currentSave.wispPersonality);
+            // Clear first: the statics outlive a slot switch, and one core must
+            // never wake up remembering another core's life.
+            Persistence.Clear();
+            if (currentSave.prologueFlags != null)
+                foreach (string flag in currentSave.prologueFlags)
+                    Persistence.SetFlag(flag);
+
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);

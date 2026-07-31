@@ -304,7 +304,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea9ebccff916e8a43acc7ab3174e3740, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlagInteractable
-  flagID: 'flag_smash_crates '
+  flagID: flag_smash_crates
   singleUse: 1
   displayName: Crate A
   portrait: {fileID: 0}

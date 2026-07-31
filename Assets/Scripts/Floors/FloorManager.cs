@@ -325,6 +325,9 @@ public class FloorManager : MonoBehaviour
 
         if (firstVisit && IsCoreRelocationPending && PendingCoreRelocationFloor == targetIndex)
             OnPlaceCoreAvailabilityChanged?.Invoke();
+
+        // Floor 0 is added at bootstrap, so this only ever speaks on the way down.
+        if (firstVisit && targetIndex > 0) CoreMemory.Recall(CoreMemory.FirstDescent);
     }
 
     private void MoveCameraToFloor(FloorRoot floor, bool snap)

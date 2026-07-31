@@ -163,6 +163,10 @@ public class TitleScreenController : MonoBehaviour
     {
         SlotPaths.DeleteSlot(pendingSlotId);
         SaveSlotManager.Instance.BeginNewGame(pendingSlotId, pendingDungeonName, type);
+        // No prologue on this path, so no life to carry. Clear anyway: the static
+        // set survives a return to the title screen, and a life lived in another
+        // slot this session must not follow the player into a skipped one.
+        Persistence.Clear();
         SceneLoader.FadeToScene(GAMEPLAY_SCENE);
     }
 

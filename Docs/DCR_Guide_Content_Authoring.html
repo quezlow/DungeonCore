@@ -68,7 +68,8 @@
     Precedence as always: <b>canon &gt; live code &gt; roadmap</b>.
   
       <br><b>Rev 2 (2026-07-10):</b> chapter 16 Materials (Patterns) added; chapter 0 map row added; Appendix A payload amended; canon anchors re-verified at <code>62c0a26d</code>. Requires the Material Pattern System guide.
-      <br><b>Rev 3 (2026-07-11):</b> chapter 17 Tech Nodes added; the Update-the-Canon chapter removed per standing instruction (this guide carries no canon step); chapter 0 map row added.</div>
+      <br><b>Rev 3 (2026-07-11):</b> chapter 17 Tech Nodes added; the Update-the-Canon chapter removed per standing instruction (this guide carries no canon step); chapter 0 map row added.
+      <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.</div>
 
   <details open>
     <summary>0. The Pattern, the Rules, the Map</summary>
@@ -550,6 +551,39 @@
       <div class="note"><b>Sizing reminder:</b> 1 cell = 32 px, so these 2-cell props land in a 64 px
       square; the crossbow may read better at 3 cells (96 px) if the turret silhouette crowds --
       judge on the first render.</div>
+    </div>
+  </details>
+
+
+  <details>
+    <summary>23. Memory Echoes (the core&#39;s own past)</summary>
+    <div class="body">
+      <div class="why">An <b>echo</b> is one wisp line, fired once ever, at a dungeon moment that rhymes
+      with something the player actually did during the living prologue. Canon 34. Three pieces per
+      echo and no more: a line, a table row, a call site. There is no asset, no registry and no save
+      field -- echo lines are authored <code>once = true</code>, so the shipped <code>wispSpokenLines</code>
+      save data already remembers them.</div>
+
+      <h3>The recipe</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s1"><label for="dcr-authoring-v1-c23s1"><b>Pick a deed that exists.</b> The flag must be a constant in <code>Save/TutorialFlags.cs</code> <b>and</b> actually reachable in a scene. Check both: four shipped flags were unreachable for the whole of the prologue&#39;s life because of a trailing space in the Inspector, and a fifth pair was wired to the wrong flag entirely. <code>grep -rn "flagID" Assets --exclude=*.meta | cat -A</code> is the audit -- if a flag has no clean source, an echo bound to it can never fire.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s2"><label for="dcr-authoring-v1-c23s2"><b>Write the line.</b> Add it to <code>FillCanonLines()</code> in <code>Wisp/WispScript.cs</code> with <code>once = true</code> and an <code>echo_*</code> id, then right-click the <code>WispScript</code> asset header and choose <b>Fill Canon Lines</b> to regenerate <code>Assets/Wisp/WispScript.asset</code>. The <code>.cs</code> is the source of truth; the asset is generated from it.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s3"><label for="dcr-authoring-v1-c23s3"><b>Add the row.</b> One entry in <code>CoreMemory.Table</code>: the moment id, the <code>TutorialFlags</code> constant, the line id. If the moment is new, add a <code>public const string</code> for it beside the others -- loose strings turn a rename into a silently dead echo instead of a compile error.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s4"><label for="dcr-authoring-v1-c23s4"><b>Call it at the site.</b> One line: <code>CoreMemory.Recall(CoreMemory.YourMoment);</code>. Safe to call every time the moment happens -- the once-flag on the line does the gating, so the site keeps no bookkeeping of its own. Where a deed already owns the same moment, reuse its <code>NotifyMoment</code> id so the two systems share one vocabulary.</label></div>
+
+      <div class="rule"><b>Choose the site, not the symptom.</b> The Light echo anchors on the
+      adventurer death path rather than <code>DroppedLoot.Absorb</code>, because the tribute coin
+      flourish runs that same absorb and would fire a memory about stripping the dead when someone
+      left you a gift. Ask what else reaches the line you picked.</div>
+
+      <div class="note"><b>Keep them rare.</b> Seven ship, one per affinity plus the old faith, and
+      most players will hear two or three across a whole run. An echo that fires often is not a
+      memory, it is a catchphrase. If a candidate moment happens weekly, it is the wrong moment.</div>
+
+      <h3>The empty-handed voice</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s5"><label for="dcr-authoring-v1-c23s5">A life lived that earned no affinity flag gets <code>HollowLines</code> instead: three lines, spoken in order at the first three echo moments, then the wisp stops reaching. Extending that array is the only edit -- but think hard before you do, because the whole point is that it <b>ends</b>. It is gated on <code>flag_lived</code>, so a skipped prologue stays silent rather than mourning a day it never had.</label></div>
     </div>
   </details>
 

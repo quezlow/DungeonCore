@@ -69,6 +69,8 @@ public class TributeChest : MonoBehaviour
             "Tribute delivered to the core: " + goldValue + " gold.",
             transform.position, 0, AlertCategory.System);
 
+        CoreMemory.Recall(CoreMemory.FirstTribute);
+
         Debug.Log($"[TributeChest] Absorbed {goldValue} gold into the core.");
         Destroy(gameObject);
     }

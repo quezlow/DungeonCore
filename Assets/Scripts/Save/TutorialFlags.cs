@@ -42,4 +42,24 @@ public static class TutorialFlags
     public const string FossilFound = "flag_fossil_found";
     public const string FossilDelivered = "flag_fossil_delivered";
     public const string RepairMill = "flag_repair_mill";
+
+    /// <summary>Written by the ceremony at commit. Its presence means the player
+    /// LIVED the prologue; its absence means they skipped it entirely. Without
+    /// this the two states are indistinguishable, and an empty-handed life reads
+    /// exactly like a life that never happened.</summary>
+    public const string Lived = "flag_lived";
+
+    /// <summary>The fifteen flags that weigh an affinity. Mirrors the rows in
+    /// AffinityMapping (both derive from the constants above); a core with none
+    /// of these is empty-handed. Egg flags and the shrine vote for nothing and
+    /// are deliberately absent.</summary>
+    public static readonly string[] AffinityFlags =
+    {
+        Bellows, Quench,
+        DrawWell, FillJug, FreeNet,
+        MillClimb, FreePigeon,
+        DigGrave, DigRow, HaulStones,
+        HelpHealer, LightCandle, GiveAlms,
+        SmashCrates, TakeOffering,
+    };
 }
