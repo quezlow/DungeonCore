@@ -68,6 +68,10 @@ PrefabInstance:
       propertyPath: attackCooldown
       value: 1.4
       objectReference: {fileID: 0}
+    - target: {fileID: 7613042765915195202, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -6244577865289485997, guid: 85eacf1bcbd4d064e9a6cc5105213468, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
