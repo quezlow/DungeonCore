@@ -307,6 +307,16 @@ public class DungeonSaveController : MonoBehaviour
         // checkpoint can be consumed without losing it.
         currentSave.prologueFlags = new System.Collections.Generic.List<string>(Persistence.AllFlags);
 
+        if (AdventurerSpawner.Instance != null)
+            currentSave.descendantsDispatched = AdventurerSpawner.Instance.DescendantsDispatchedForSave;
+
+        if (BuriedRemainsController.Instance != null)
+        {
+            currentSave.restArmed = BuriedRemainsController.Instance.RestArmedForSave;
+            currentSave.restAnnounced = BuriedRemainsController.Instance.RestAnnouncedForSave;
+            currentSave.restFound = BuriedRemainsController.Instance.RestFoundForSave;
+        }
+
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
@@ -790,6 +800,9 @@ public class DungeonSaveController : MonoBehaviour
                 foreach (string flag in currentSave.prologueFlags)
                     Persistence.SetFlag(flag);
 
+            AdventurerSpawner.Instance?.RestoreDescendantsDispatched(currentSave.descendantsDispatched);
+            BuriedRemainsController.Instance?.RestoreRestState(
+                currentSave.restArmed, currentSave.restAnnounced, currentSave.restFound);
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);

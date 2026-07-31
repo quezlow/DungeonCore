@@ -23,6 +23,26 @@ public class AdventurerSpawner : MonoBehaviour
     [Min(1f)][SerializeField] private float gradeRatingPerLevel = 45f;
     [Tooltip("Assessed rating per +1 team member.")]
     [Min(1f)][SerializeField] private float gradeRatingPerExtraMember = 120f;
+
+    [Header("The town's descendants (canon 34)")]
+    [Tooltip("Assessed grade level at which the prologue town's descendants come down. " +
+             "Level is 1 + rating / gradeRatingPerLevel, so 3 is a real milestone rather " +
+             "than an early curiosity.")]
+    [SerializeField, Min(1)] private int descendantMinGradeLevel = 3;
+    [Tooltip("How many named descendants ride in, inclusive. Each is a distinct house " +
+             "drawn from the deeds the core actually remembers.")]
+    [SerializeField, Min(1)] private int descendantMinNames = 2;
+    [SerializeField, Min(1)] private int descendantMaxNames = 3;
+    [Tooltip("Unnamed sellsword muscle riding with them.")]
+    [SerializeField, Min(0)] private int descendantGuards = 2;
+
+    // One bespoke arrival per run. Everything after it is canon 4's nemesis
+    // machinery: any named descendant who escapes returns forever, under their
+    // own name, with their own XP -- and the fallen are replaced by nobodies.
+    private bool descendantsDispatched;
+
+    public bool DescendantsDispatchedForSave => descendantsDispatched;
+    public void RestoreDescendantsDispatched(bool value) => descendantsDispatched = value;
     [Tooltip("Chance a matched team arrives under-strength (fresh recruits).")]
     [Range(0f, 1f)][SerializeField] private float gradeUnderStrengthChance = 0.25f;
     [Tooltip("Levels dropped when a team rolls under-strength.")]
@@ -407,7 +427,89 @@ public class AdventurerSpawner : MonoBehaviour
     }
 
     private void HandleNightStarted() { timer = 0f; }
-    private void HandleDayStarted() { }
+    private void HandleDayStarted()
+    {
+        TryDispatchDescendants();
+    }
+
+    /// <summary>Once per run, when the Guild's ranking has grown loud enough to
+    /// reach the town that used to sit above this hole, the descendants come to
+    /// see it. They do not know what they are walking into; nobody alive does.</summary>
+    private void TryDispatchDescendants()
+    {
+        if (descendantsDispatched) return;
+        if (DungeonSaveController.IsLoading) return;
+        if (!CoreMemory.Lived) return;                  // a skipped prologue has no town
+        if (DungeonEntrance.Instance == null) return;
+        if (!EntranceDiscovered) return;
+
+        var grades = GradeSystem.Instance;
+        if (grades == null || !grades.PlayerHasBeenAssessed) return;
+
+        int level = 1 + Mathf.FloorToInt(grades.AssessedRating / Mathf.Max(1f, gradeRatingPerLevel));
+        if (level < descendantMinGradeLevel) return;
+
+        var houses = PrologueHouses.PickParty(descendantMinNames, descendantMaxNames);
+        if (houses.Count == 0) return;
+
+        descendantsDispatched = true;
+        DispatchDescendants(houses, Mathf.Clamp(level, 1, LevelTierUtil.MaxFlatLevel));
+    }
+
+    /// <summary>The descendants of the prologue town. The eldest line leads as a
+    /// named Hero; the rest ride as named sellswords, because four generations
+    /// turned a smith's family into whatever paid. Unnamed guards round it out.
+    /// Every named member makes the party permanently tracked (canon 4).</summary>
+    private void DispatchDescendants(List<PrologueHouses.House> houses, int grade)
+    {
+        Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
+        var heroDef = Def(AdventurerType.Hero);
+        if (heroDef == null) return;
+
+        var party = new AdventurerParty(AdventurerTypeInfo.IntentOf(AdventurerType.Hero));
+        RegisterLiveParty(party);
+        TrackedPartyRegistry.Instance?.RegisterActive(party);
+
+        var lead = houses[0];
+        party.bannerLabelOverride = "The " + lead.surname + " Warrant";
+
+        var used = new Dictionary<CombatClass, int>();
+
+        // The lead line: a named Hero. Only one, deliberately -- IsNamedHero
+        // gates the Gravegold discovery on death, and three of them would spam it.
+        SpawnMember(heroDef, RollTrait(), spawnPos, party, used,
+                    presetName: PrologueHouses.NameFor(lead));
+
+        var muscle = guardDef != null ? guardDef : Def(AdventurerType.Mercenary);
+        var tankClass = ClassDefFor(CombatClass.Tank);
+
+        // The other lines, named but not heroes.
+        for (int i = 1; i < houses.Count && muscle != null; i++)
+            SpawnMember(muscle, RollTrait(), spawnPos, party, used,
+                        presetName: PrologueHouses.NameFor(houses[i]));
+
+        // Hired swords who never heard of any of them.
+        if (muscle != null)
+            for (int i = 0; i < descendantGuards; i++)
+                SpawnMember(muscle, RollTrait(), spawnPos, party, used,
+                            forcedClass: (i == 0) ? tankClass : null);
+
+        if (grade > 1)
+            foreach (var m in party.LiveMembers) m.ApplyGradeLevel(grade);
+
+        SetupOrganize(party, AdventurerType.Hero, party.Members.Count, spawnPos);
+        RunStats.Instance?.RecordPartySpawned(party.Members.Count);
+        PartyBannerManager.Instance?.ShowBanner(party);
+
+        // Only the wisp knows what walked in. The alert is best-effort: it is
+        // research-gated, and this beat is never allowed to depend on that.
+        WispCompanion.Instance?.Speak(lead.arriveLineId);
+        AlertsLog.Instance?.AddAlert(
+            "A company out of the old parish above stands at your mouth, little core.",
+            spawnPos, 0, AlertCategory.Threat);
+
+        Debug.Log($"[AdventurerSpawner] Descendants dispatched: {houses.Count} named house(s), lead {lead.surname}.");
+    }
 
     private void HandleTransitStarted() { transitPaused = true; Debug.Log("[AdventurerSpawner] Paused for core transit."); }
     private void HandleTransitCompleted() { transitPaused = false; timer = 0f; Debug.Log("[AdventurerSpawner] Resumed after core transit."); }

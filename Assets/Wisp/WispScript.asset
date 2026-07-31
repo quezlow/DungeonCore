@@ -96,6 +96,95 @@ MonoBehaviour:
     once: 1
     text: I will stop looking. Whoever you were, you did not bring them. Whoever
       you become owes them nothing at all.
+  - id: kin_ferro
+    once: 1
+    text: Ferro. There was a Ferro who let you work her bellows and told you fire
+      dislikes nerves. Her great-grandchild is at your door with a sword.
+  - id: kin_cress
+    once: 1
+    text: Cress. You carried an old woman's jug from the well because the walk had
+      got long for her. Her blood has come a longer way than that.
+  - id: kin_bramm
+    once: 1
+    text: Bramm. You turned a row of his soil and he pretended not to approve. His
+      line still farms up there, and one of them has come down here instead.
+  - id: kin_ashcombe
+    once: 1
+    text: Ashcombe. You picked feverfew so a wheezing man could breathe. That house
+      has been mending people ever since, and it has finally run out of patience.
+  - id: kin_latch
+    once: 1
+    text: Latch. Forty years of what the road coughed up, stacked in order of interest
+      - and you broke some of it. They kept the ledger. They kept the grudge longer.
+  - id: kin_sedge
+    once: 1
+    text: Sedge. The old woman watched you lift the coin and said nothing at all.
+      Her line does not seem to have forgotten it either.
+  - id: kin_crane
+    once: 1
+    text: Crane. You lit a candle in that man's church. His successors have been
+      polishing the plaque ever since, and now they have come to see what is under
+      it.
+  - id: kin_vane
+    once: 1
+    text: Vane. Say nothing. Serra Vane stood over you at the open seal and told
+      you to close your eyes. Her blood is at your door, following maps, exactly
+      as she did.
+  - id: kin_ferro_fall
+    once: 1
+    text: That is the last Ferro. The forge above has nobody left to inherit it,
+      and the fault runs all the way back to a girl who liked the sparks.
+  - id: kin_cress_fall
+    once: 1
+    text: The Cress line ends on your floor. Somewhere far above, a jug sits on a
+      sill and nobody comes for it.
+  - id: kin_bramm_fall
+    once: 1
+    text: No more Bramms. Turnips do not pull themselves, and now there is nobody
+      to say so.
+  - id: kin_ashcombe_fall
+    once: 1
+    text: The last of the menders, mended into the floor. Four generations of hands
+      that helped, finished by a thing they helped make.
+  - id: kin_latch_fall
+    once: 1
+    text: The Latch curiosity is settled. Everything they collected, and the last
+      of them ends up in somebody else's collection.
+  - id: kin_sedge_fall
+    once: 1
+    text: Sedge told you the dead go down, and that down is not away. She was right
+      about her own, in the end.
+  - id: kin_crane_fall
+    once: 1
+    text: The church above is short a family. They walked in light while it was offered,
+      and then it was not.
+  - id: kin_vane_fall
+    once: 1
+    text: The Vane line is finished. It opened a seal, it killed you for standing
+      near it, and it has just been paid. There is nothing in me that calls this
+      even.
+  - id: rest_murmur
+    once: 1
+    text: Now that you have gone down a floor, I will tell you a thing I have been
+      sitting on. There is a pocket of stone beside your own mouth. Open it or do
+      not.
+  - id: rest_found_1
+    once: 1
+    text: There. That is what she meant by the dark taking care of the rest. She
+      did not even move you.
+  - id: rest_found_2
+    once: 1
+    text: You have walked your creatures past this wall since the day the seal broke.
+      I could have said. I did not know how you would take it.
+  - id: rest_found_3
+    once: 1
+    text: There is nothing to take from it. No lesson, no gift. It is only where
+      you stopped, and everything since has been the argument against it.
+  - id: rest_found_empty
+    once: 1
+    text: 'Nothing on you, and nothing in you when you came down. You arrived at
+      this the same way you arrived at everything that last day: empty-handed, and
+      free.'
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}

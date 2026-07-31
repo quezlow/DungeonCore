@@ -111,6 +111,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField, Range(0, 3)] private int entranceOffshootMax = 2;
     [Tooltip("CA bounding-box edge length for each offshoot chamberlet.")]
     [SerializeField, Min(5)] private int entranceOffshootBoxSize = 7;
+    [Tooltip("Roll the sealed resting-place pocket off the entrance tunnel (canon 34). " +
+             "Rolled like an offshoot and then never carved: it stays stone until dug.")]
+    [SerializeField] private bool entranceRestPocket = true;
+    [Tooltip("How far in from the disc edge the resting pocket must sit, in cells. " +
+             "Bedrock can be neither claimed nor mined, and a body sealed in unminable " +
+             "stone is a body nobody ever finds -- but the rim map is generated AFTER " +
+             "features, so bedrock cannot be queried here. Cover the thickest possible " +
+             "rim (TerrainTypeMap's maxRingThickness, 6 by default) plus a cell of slack, " +
+             "exactly as riverBankRimMargin does.")]
+    [SerializeField, Min(0)] private int entranceRestRimMargin = 7;
     [Tooltip("How far the channel runs OUT past the disc edge onto the apron, in cells. " +
              "Straight along the road bearing; parties spawn at its outer end.")]
     [SerializeField, Min(1)] private int entranceApronRun = 4;
@@ -295,6 +305,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsReservedCoreFeature(Vector3Int cell) => reservedCoreCells.Contains(cell);
     public CoreCavernData CoreCavern => featureData?.coreCavern;
     public bool IsEntranceCave(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.EntranceCave;
+
+    /// <summary>The resting place (canon 34), or null on a floor without one and
+    /// on saves written before it existed.</summary>
+    public EntranceCaveData RestingPlace
+        => (featureData?.entranceCave != null && featureData.entranceCave.hasRest)
+            ? featureData.entranceCave : null;
     public EntranceCaveData EntranceCave => featureData?.entranceCave;
     public bool IsEntranceDiscovered
         => featureData?.entranceCave != null && featureData.entranceCave.discovered;
@@ -987,6 +1003,48 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var p in pocket) carved.Add(p);
         }
 
+        // The resting place: rolled exactly like an offshoot, then withheld.
+        // It is never added to `carved`, so UnfogEntranceCave never reveals it
+        // and MarkNaturalFloor never opens it. It is simply a designated volume
+        // of ordinary stone that nothing else is allowed to overwrite.
+        var restPocket = new List<Vector3Int>();
+        var restCentre = Vector3Int.zero;
+        if (entranceRestPocket && span > 3)
+        {
+            for (int attempt = 0; attempt < 6 && restPocket.Count == 0; attempt++)
+            {
+                var stem = centreline[rng.Next(span / 2, span)];
+                int side = rng.Next(2) == 0 ? -1 : 1;
+                int reach = 3 + rng.Next(2);
+                var centre = new Vector3Int(
+                    stem.x + (int)Math.Round(side * reach * perpDx),
+                    stem.y + (int)Math.Round(side * reach * perpDy), 0);
+
+                var pocket = LargestConnectedRegion(
+                    RunChamberCA(rng, centre, entranceOffshootBoxSize, centerCell, floorRadius));
+                if (pocket.Count < 4) continue;
+
+                // Never overlap the tunnel or another feature, and never sit in
+                // the bedrock rim. The rim is unclaimable and unminable, so a
+                // body sealed there is a body nobody ever finds -- and since the
+                // rim map is built after features, the test is a margin in cells
+                // rather than a bedrock query.
+                long safeR = Math.Max(0, floorRadius - entranceRestRimMargin);
+                bool clash = false;
+                foreach (var p in pocket)
+                {
+                    long ddx = p.x - centerCell.x, ddy = p.y - centerCell.y;
+                    if (ddx * ddx + ddy * ddy > safeR * safeR) { clash = true; break; }
+                    if (carved.Contains(p) || reservedCoreCells.Contains(p)) { clash = true; break; }
+                }
+                if (clash) continue;
+
+                restPocket.AddRange(pocket);
+                restCentre = centre;
+                if (!restPocket.Contains(restCentre)) restCentre = restPocket[0];
+            }
+        }
+
         if (carved.Count == 0) return;
         carved.Add(mouth);
 
@@ -1002,10 +1060,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             hasSpawnCell = true,
             angleDegrees = (float)(angle * 180.0 / Math.PI),
             cells = ToSerializable(new List<Vector3Int>(carved)),
+            restCells = ToSerializable(restPocket),
+            restCell = SerializableVector3Int.From(restCentre),
+            hasRest = restPocket.Count > 0,
         };
 
-        // Reserve so chambers and rivers avoid the cave footprint.
+        // Reserve so chambers and rivers avoid the cave footprint. The resting
+        // pocket is reserved too, though it is never carved: nothing else may
+        // grow through the stone the body is in.
         foreach (var c in carved) reservedCoreCells.Add(c);
+        foreach (var c in restPocket) reservedCoreCells.Add(c);
 
         UnfogEntranceCave();
     }

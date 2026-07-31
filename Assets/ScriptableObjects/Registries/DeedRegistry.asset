@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: DeedRegistry
   m_EditorClassIdentifier: Assembly-CSharp::DeedRegistry
   deeds:
+  - {fileID: 11400000, guid: b4e0c9d182f74a3f9c15e7a06d3b21c7, type: 2}
   - {fileID: 11400000, guid: 77a23cac78894b5459dbba2473243954, type: 2}
   - {fileID: 11400000, guid: 5e77a9d4016fa424c81a5edee19a8da0, type: 2}
   - {fileID: 11400000, guid: d2f0c8cf5ab76194497ba4e0b6196eca, type: 2}

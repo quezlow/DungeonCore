@@ -69,6 +69,7 @@
   
       <br><b>Rev 2 (2026-07-10):</b> chapter 16 Materials (Patterns) added; chapter 0 map row added; Appendix A payload amended; canon anchors re-verified at <code>62c0a26d</code>. Requires the Material Pattern System guide.
       <br><b>Rev 3 (2026-07-11):</b> chapter 17 Tech Nodes added; the Update-the-Canon chapter removed per standing instruction (this guide carries no canon step); chapter 0 map row added.
+      <br><b>Rev 5:</b> chapter 24 added -- the town's descendants (house table, given-name pool) and the resting-place remains sprite.
       <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.</div>
 
   <details open>
@@ -584,6 +585,35 @@
 
       <h3>The empty-handed voice</h3>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s5"><label for="dcr-authoring-v1-c23s5">A life lived that earned no affinity flag gets <code>HollowLines</code> instead: three lines, spoken in order at the first three echo moments, then the wisp stops reaching. Extending that array is the only edit -- but think hard before you do, because the whole point is that it <b>ends</b>. It is gated on <code>flag_lived</code>, so a skipped prologue stays silent rather than mourning a day it never had.</label></div>
+    </div>
+  </details>
+
+
+  <details>
+    <summary>24. The Town&#39;s Descendants &amp; the Resting Place</summary>
+    <div class="body">
+      <div class="why">Canon 34. Two pieces of authorable content: the house table that decides
+      which surnames come down out of the prologue town, and the one sprite the resting place wants.
+      Neither has an asset or a registry -- both are code tables, edited in place.</div>
+
+      <h3>Houses and given names</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c24s1"><label for="dcr-authoring-v1-c24s1"><b>Adding a house.</b> One row in <code>PrologueHouses.Table</code>: the surname, the <code>TutorialFlags</code> constant that makes it eligible, and two <code>WispScript</code> line ids (arrival + fall). Then the two lines in <code>FillCanonLines</code>, then regenerate the asset. The flag must be reachable in a scene -- run the chapter 23 audit first, or the house can never be drawn.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c24s2"><label for="dcr-authoring-v1-c24s2"><b>The Vane row is special.</b> Its <code>flag</code> is null, which makes it permanently ineligible for normal selection and reserves it as the fallback. Do not give it a flag, and do not add a second null-flag row -- <code>VaneHouse()</code> returns the first match by surname.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c24s3"><label for="dcr-authoring-v1-c24s3"><b>Given names</b> live in <code>PrologueHouses.GivenNames</code>. Twenty plain ones ship. These are farmers&#39; and smiths&#39; great-grandchildren four generations on, so keep them plainer than the <code>NobleNames</code> pool -- a descendant reads &quot;Bryn Ashcombe&quot;, never &quot;Lady Bryn Ashcombe&quot;.</label></div>
+
+      <div class="rule"><b>Surnames must not collide.</b> <code>TryHouseOf</code> matches the last
+      word of a display name, and it is what fires the fall lines. A house sharing a surname with
+      anything in <code>NobleNames.houseNames</code> would make a slain noble speak a descendant&#39;s
+      eulogy. The eight shipped surnames are clear of that list; check any new one against it.</div>
+
+      <h3>The remains sprite</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c24s4"><label for="dcr-authoring-v1-c24s4"><b>Prompt (objects/props Style Contract):</b> subject slot <code>a long-dead human skeleton curled on its side against bare rock, ragged rotted clothing, one arm outstretched</code>. Drop the tall-proportions clause (creatures only), lead with the orthographic angle clause straight after the subject noun, target 2 cells = <b>64 px</b>, palette <code>dcr-props-1x.png</code>. Background removal via <b>INSPYRENET</b>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c24s5"><label for="dcr-authoring-v1-c24s5"><b>Wire it:</b> a prefab with a <code>SpriteRenderer</code>, dropped on <code>BuriedRemainsController</code>&#39;s <b>Remains Prefab</b> field on the managers object. The field is <b>optional and null-safe</b> -- until it is assigned the beat plays in full with no sprite, so this can ship after the feature.</label></div>
+
+      <div class="note"><b>Do not give it a reward.</b> The resting place is the one discovery in the
+      dungeon that pays nothing, and <code>HandleMined</code> deliberately returns early rather than
+      falling through to the entry 17 grant. If a future pass wants to hang something off it, that is
+      a canon change, not a tuning change.</div>
     </div>
   </details>
 

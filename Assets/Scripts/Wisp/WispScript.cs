@@ -140,6 +140,56 @@ public class WispScript : ScriptableObject
                 text = "Nothing again. Not emptiness, quite - more the hush of a room swept before anyone arrives." },
             new Line { id = "echo_hollow_3", once = true,
                 text = "I will stop looking. Whoever you were, you did not bring them. Whoever you become owes them nothing at all." },
+
+            // The descendants (canon 34). One arrival line for whichever house
+            // leads, and one for each house when its descendant falls. Nobody in
+            // the party knows any of this. Only the two of us do.
+            new Line { id = "kin_ferro", once = true,
+                text = "Ferro. There was a Ferro who let you work her bellows and told you fire dislikes nerves. Her great-grandchild is at your door with a sword." },
+            new Line { id = "kin_cress", once = true,
+                text = "Cress. You carried an old woman's jug from the well because the walk had got long for her. Her blood has come a longer way than that." },
+            new Line { id = "kin_bramm", once = true,
+                text = "Bramm. You turned a row of his soil and he pretended not to approve. His line still farms up there, and one of them has come down here instead." },
+            new Line { id = "kin_ashcombe", once = true,
+                text = "Ashcombe. You picked feverfew so a wheezing man could breathe. That house has been mending people ever since, and it has finally run out of patience." },
+            new Line { id = "kin_latch", once = true,
+                text = "Latch. Forty years of what the road coughed up, stacked in order of interest - and you broke some of it. They kept the ledger. They kept the grudge longer." },
+            new Line { id = "kin_sedge", once = true,
+                text = "Sedge. The old woman watched you lift the coin and said nothing at all. Her line does not seem to have forgotten it either." },
+            new Line { id = "kin_crane", once = true,
+                text = "Crane. You lit a candle in that man's church. His successors have been polishing the plaque ever since, and now they have come to see what is under it." },
+            new Line { id = "kin_vane", once = true,
+                text = "Vane. Say nothing. Serra Vane stood over you at the open seal and told you to close your eyes. Her blood is at your door, following maps, exactly as she did." },
+
+            new Line { id = "kin_ferro_fall", once = true,
+                text = "That is the last Ferro. The forge above has nobody left to inherit it, and the fault runs all the way back to a girl who liked the sparks." },
+            new Line { id = "kin_cress_fall", once = true,
+                text = "The Cress line ends on your floor. Somewhere far above, a jug sits on a sill and nobody comes for it." },
+            new Line { id = "kin_bramm_fall", once = true,
+                text = "No more Bramms. Turnips do not pull themselves, and now there is nobody to say so." },
+            new Line { id = "kin_ashcombe_fall", once = true,
+                text = "The last of the menders, mended into the floor. Four generations of hands that helped, finished by a thing they helped make." },
+            new Line { id = "kin_latch_fall", once = true,
+                text = "The Latch curiosity is settled. Everything they collected, and the last of them ends up in somebody else's collection." },
+            new Line { id = "kin_sedge_fall", once = true,
+                text = "Sedge told you the dead go down, and that down is not away. She was right about her own, in the end." },
+            new Line { id = "kin_crane_fall", once = true,
+                text = "The church above is short a family. They walked in light while it was offered, and then it was not." },
+            new Line { id = "kin_vane_fall", once = true,
+                text = "The Vane line is finished. It opened a seal, it killed you for standing near it, and it has just been paid. There is nothing in me that calls this even." },
+
+            // The resting place (canon 34). Spoken at the mouth, over what is
+            // left of the body Serra Vane did not trouble to move.
+            new Line { id = "rest_murmur", once = true,
+                text = "Now that you have gone down a floor, I will tell you a thing I have been sitting on. There is a pocket of stone beside your own mouth. Open it or do not." },
+            new Line { id = "rest_found_1", once = true,
+                text = "There. That is what she meant by the dark taking care of the rest. She did not even move you." },
+            new Line { id = "rest_found_2", once = true,
+                text = "You have walked your creatures past this wall since the day the seal broke. I could have said. I did not know how you would take it." },
+            new Line { id = "rest_found_3", once = true,
+                text = "There is nothing to take from it. No lesson, no gift. It is only where you stopped, and everything since has been the argument against it." },
+            new Line { id = "rest_found_empty", once = true,
+                text = "Nothing on you, and nothing in you when you came down. You arrived at this the same way you arrived at everything that last day: empty-handed, and free." },
         };
 
         barkSets = new[]

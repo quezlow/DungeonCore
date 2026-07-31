@@ -2681,9 +2681,9 @@ between taunts is intended, not a gap.
 
 ## 34. The Core's Own Past (Persisted Life, Memory Echoes)
 
-Status: SHIPPED (persisted life + seven echoes + the empty-handed voice).
-The town, the grave and the elapsed-time rule below are DESIGN -- decided,
-unbuilt.
+Status: SHIPPED (persisted life, seven echoes, the empty-handed voice, the
+town's descendants, the resting place). The elapsed-time rule below is a
+recorded lore decision, not code.
 
 Entry 32 records a prologue that captures who the player was with real
 specificity and then throws it away at the ceremony. This entry keeps it.
@@ -2795,29 +2795,102 @@ This reframes every prologue line at zero cost, explains the rare `Ancient`
 and `Reverent` temperaments, and gives it standing to recognise a dead core's
 ruin when one is found.
 
-### Designed, unbuilt
+### What came back, and what did not
 
-**The town comes for you (descendants).** The prologue roster carries
-surnames -- Vane, Ferro, Latch, Ashcombe, Bramm, Crane, Cress, Sedge. With
-nobody alive who knew the player, the beat is not the healer returning; it is a
-**name** returning. A named adventurer bearing a prologue surname, generations
-on, who has no idea what they are walking into. `SpawnMember` already accepts
-`presetName` and `DispatchNobleRetaliation` is the working template, so this is
-a name pool and a dispatch method, not a system. **The Vane line is the
-payload:** Serra's descendant, still following maps.
+**The town comes for you (descendants).** SHIPPED. With nobody alive who knew
+the player, the beat is not the healer returning; it is a **name** returning.
 
-**Your grave -- which is not a grave.** Serra left the body where it fell and
-nobody recovered it. The remains lie near where the player died, on floor 0,
-close to their own entrance: not a burial, an unburied body the player has
-walked past for a hundred days. Payload is a wisp scene and a Deed, **no
-mechanical grant** -- entry 17 already pays for ordinary digs, and this is the
-emotional beat, not a reward.
+`PrologueHouses` binds each of seven surnames to the deed of that last day
+which belongs to it: Ferro/`bellows`, Cress/`fill_jug`, Bramm/`dig_row`,
+Ashcombe/`help_healer`, Latch/`smash_crates`, Sedge/`take_offering`,
+Crane/`light_candle`. The mapping is not decorative -- it is read off the
+persisted flags, so **the houses that come down are the ones whose lives the
+player actually touched**. The beggar at the gate is deliberately absent: he
+says his own name is not worth giving, so `give_alms` makes nobody eligible.
+
+**Vane is the eighth and is never eligible** -- it is the fallback. Serra Vane
+stood over the player at the opened seal regardless of what they did that day,
+so her line always has standing. An empty-handed core touched nobody and
+therefore gets **Vane alone**: one woman, no company, which is the loneliest
+form of the encounter and is left unpadded on purpose.
+
+**Dispatch.** Once per run, at dawn, when the Guild's player-visible assessment
+puts the dungeon at grade level `descendantMinGradeLevel` (**canon default 3**,
+i.e. 1 + rating / `gradeRatingPerLevel`). Two or three houses ride in: the lead
+line as a **named Hero**, the rest as **named Mercenaries** (one named Hero
+only -- `IsNamedHero` gates the Gravegold discovery on death and three would
+spam it), plus `descendantGuards` unnamed sellswords, all grade-scaled. Banner
+reads "The <House> Warrant". Gated on `flag_lived`: a skipped prologue has no
+town and never sees this.
+
+**Everything after the first arrival is entry 4, unmodified.** Named members
+make the party permanently tracked, and `SpawnReturningParty` respawns each
+survivor under their own `presetName` with their own XP while replacing the
+fallen with unnamed rolls. So the surviving lines return forever and **the
+player can extinguish individual bloodlines out of a recurring party**. That
+behaviour is emergent from shipped code, not built here.
+
+**Nobody in the party knows any of this**, and nobody alive could. The only
+reaction is the wisp's: one arrival line for the leading house, and one line
+per house when its descendant dies -- sixteen authored one-shots.
+
+**Your grave -- which is not a grave.** SHIPPED. Serra left the body where it
+fell and nobody recovered it.
+
+**The pocket.** `GenerateEntranceCave` rolls one extra chamberlet off the
+interior half of the tunnel centreline, exactly as it rolls the carved
+offshoots -- and then **deliberately does not carve it**. Its cells never enter
+`carved`, so `UnfogEntranceCave` never reveals them and `MarkNaturalFloor`
+never opens them. It stays ordinary stone, indistinguishable from the rock
+around it, a few cells off the tunnel the player walks down every day.
+Reserved into `reservedCoreCells` so no river or chamber can grow through it,
+and rejected and re-rolled (six attempts) if it would land on the tunnel, on
+another reserved feature, or within `entranceRestRimMargin` (**canon default
+7**) of the disc edge. That last test is the **bedrock rim** guard: bedrock can
+be neither claimed nor mined, and a body sealed in unminable stone is a body
+nobody ever finds. It is a margin in cells rather than a bedrock query because
+the rim map is generated AFTER features -- the same reasoning, and the same
+default, as `riverBankRimMargin`.
+
+Persisted on `EntranceCaveData` as `restCells` / `restCell` / `hasRest`.
+`GenerateEntranceCave` runs only from `GenerateNew`, so **dungeons saved before
+this shipped simply have no resting place** -- the fields are absent, `hasRest`
+is false, and nothing speaks. No migration.
+
+**Arming (the answer to "why not on day two").** The stone is inert until the
+player **first descends below floor 0**: they have stopped being a hole in the
+ground and started being a dungeon, and that is when it is worth showing them
+what they used to be. Mining the cell before that does nothing at all and
+leaves it undiscovered. The wisp admits the pocket exists at the **next dawn**,
+never on the descent itself, so it cannot stack on that descent's own memory
+echo (`echo_climb`). Then the player digs it out at whatever pace they like --
+the camera is already there, so this needs no vignette and no camera move.
+
+**Payload: nothing.** A hidden Deed (`found_self`, "Where You Stopped") and
+four wisp lines, one of which is swapped for an empty-handed variant. No
+Bestiary rung, no research, no pattern. `HandleMined` checks the resting cell
+**before** the seeded buried sites and returns early rather than falling
+through, so it can never pay an entry 17 grant by accident. This is the one
+discovery in the dungeon that gives the player nothing, and that is the point.
+
+Gated on `flag_lived` throughout: a skipped prologue has no body.
+
+**Folded into `BuriedRemainsController`** rather than given its own manager --
+it already sits on the managers object and already hooks `OnTileMined` per
+floor, so this added **no new scene wiring**. `remainsPrefab` is optional and
+null-safe: without art the beat still plays, it simply has no sprite.
 
 **Key files:** `Save/CoreMemory.cs`, `Save/TutorialFlags.cs`
 (`Lived`, `AffinityFlags`), `Save/Persistence.cs` (the trim),
-`Save/DungeonSaveData.cs` (`prologueFlags`), `Save/DungeonSaveController.cs`,
-`Ceremony/CeremonyController.cs`, `Wisp/WispScript.cs` (ten new lines),
-and the seven call sites above.
+`Save/DungeonSaveData.cs` (`prologueFlags`, `descendantsDispatched`, the three
+`rest*` flags), `Save/DungeonSaveController.cs`,
+`Ceremony/CeremonyController.cs`, `Wisp/WispScript.cs` (thirty-one lines in
+total for this entry), the seven echo call sites,
+`Adventurer/PrologueHouses.cs`, `Adventurer/AdventurerSpawner.cs`
+(`TryDispatchDescendants` / `DispatchDescendants`),
+`Floors/FloorFeatureSaveData.cs` (`restCells`),
+`Floors/TerrainFeatureGenerator.cs` (the uncarved pocket), and
+`Gameplay/BuriedRemainsController.cs` (arming, dawn murmur, reveal).
 
 ---
 

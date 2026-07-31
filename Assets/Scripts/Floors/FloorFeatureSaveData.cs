@@ -125,4 +125,24 @@ public class EntranceCaveData
     /// <summary>Day the seal broke. The first wave arrives the day after;
     /// -1 = not yet discovered.</summary>
     public int discoveredDay = -1;
+
+    /// <summary>The resting place (canon 34): a pocket rolled exactly like an
+    /// offshoot chamberlet and then deliberately NOT carved. These cells never
+    /// enter `cells`, so they are never revealed and never marked natural floor
+    /// -- they stay ordinary stone, indistinguishable from the rock around them,
+    /// one cell off the tunnel the player walks down every day. Reserved at
+    /// generation so rivers and chambers cannot claim the space.
+    /// Empty on saves written before the resting place existed, in which case
+    /// that dungeon simply has no body to find.</summary>
+    public List<SerializableVector3Int> restCells = new();
+
+    /// <summary>The cell the remains lie in: the pocket's centre. Mining it is
+    /// what finds them.</summary>
+    public SerializableVector3Int restCell;
+    public bool hasRest;
+
+    /// <summary>Set once the player has descended and the wisp has admitted the
+    /// pocket exists; and once the stone has actually been opened.</summary>
+    public bool restArmed;
+    public bool restFound;
 }

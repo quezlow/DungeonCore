@@ -35,6 +35,18 @@ public class BuriedRemainsController : MonoBehaviour
     [Tooltip("Research points paid when the Bestiary ladder is already exhausted.")]
     [SerializeField, Min(0)] private int duplicateResearchPoints = 10;
 
+    [Header("The resting place (canon 34)")]
+    [Tooltip("Optional. Spawned where the remains are found. Null-safe: without art " +
+             "the beat still plays, it simply has no sprite.")]
+    [SerializeField] private GameObject remainsPrefab;
+
+    // Armed by the first descent below floor 0; the wisp admits it at the NEXT
+    // dawn, so it never stacks on the descent's own echo.
+    private bool restArmed;
+    private bool restAnnounced;
+    private bool restFound;
+    private bool dawnHooked;
+
     private readonly HashSet<TileInfluenceManager> hooked = new();
     // Per-floor handler closures, kept so they can be unsubscribed. A lambda
     // subscribed inline cannot be removed (no stable reference), which on scene
@@ -46,7 +58,15 @@ public class BuriedRemainsController : MonoBehaviour
     private readonly Dictionary<int, HashSet<Vector3Int>> consumed = new();
     private readonly Dictionary<int, HashSet<Vector3Int>> sensed = new();
 
-    private void OnEnable() { Instance = this; }
+    private void OnEnable()
+    {
+        Instance = this;
+        if (!dawnHooked && DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted += HandleDawn;
+            dawnHooked = true;
+        }
+    }
 
     private void OnDisable()
     {
@@ -59,11 +79,22 @@ public class BuriedRemainsController : MonoBehaviour
         claimedHandlers.Clear();
         hooked.Clear();
 
+        if (dawnHooked && DayNightCycle.Instance != null)
+            DayNightCycle.Instance.OnDayStarted -= HandleDawn;
+        dawnHooked = false;
+
         if (Instance == this) Instance = null;
     }
 
     private void Update()
     {
+        // Late dawn hook: DayNightCycle may not exist yet at OnEnable.
+        if (!dawnHooked && DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted += HandleDawn;
+            dawnHooked = true;
+        }
+
         // Floors spawn dynamically; hook each one's events as it appears.
         var fm = FloorManager.Instance;
         if (fm == null) return;
@@ -122,6 +153,21 @@ public class BuriedRemainsController : MonoBehaviour
         if (DungeonSaveController.IsLoading) return;
         if (floor?.TerrainTypeMap == null) return;
 
+        // The resting place first, and it never falls through to the ordinary
+        // grant: it is not a buried-remains site and must not pay like one.
+        if (!restFound && floor.FloorIndex == 0 && CoreMemory.Lived)
+        {
+            var rest = floor.FeatureGenerator?.RestingPlace;
+            if (rest != null && rest.restCell.ToVector3Int() == pos)
+            {
+                // Dug before the wisp was willing to mention it: the stone is
+                // inert, and stays inert, until the descent arms it.
+                if (!restArmed) return;
+                RevealRestingPlace(floor, pos);
+                return;
+            }
+        }
+
         var sites = SitesFor(floor);
         if (!sites.Contains(pos)) return;
 
@@ -162,6 +208,70 @@ public class BuriedRemainsController : MonoBehaviour
     /// the Holy Ground desecration reward calls this).</summary>
     public void GrantExternalDiscovery(Vector3 worldPos, int floorIndex)
         => Grant(worldPos, floorIndex);
+
+    // -- The resting place (canon 34) ------------------------------
+
+    public bool RestArmedForSave => restArmed;
+    public bool RestAnnouncedForSave => restAnnounced;
+    public bool RestFoundForSave => restFound;
+
+    public void RestoreRestState(bool armed, bool announced, bool found)
+    {
+        restArmed = armed;
+        restAnnounced = announced;
+        restFound = found;
+    }
+
+    /// <summary>Called on the first descent below floor 0. The player has stopped
+    /// being a hole in the ground and started being a dungeon; that is when it is
+    /// worth showing them what they used to be. Nothing is said until the next
+    /// dawn, so this never lands on top of the descent's own memory echo.</summary>
+    public void ArmRestingPlace()
+    {
+        if (restFound || restArmed) return;
+        if (!CoreMemory.Lived) return;   // no life, no body
+        restArmed = true;
+    }
+
+    private void HandleDawn()
+    {
+        if (!restArmed || restAnnounced || restFound) return;
+        if (DungeonSaveController.IsLoading) return;
+
+        var floor = FloorManager.Instance?.GetFloor(0);
+        var rest = floor?.FeatureGenerator?.RestingPlace;
+        if (floor?.TileInfluence == null || rest == null) return;
+
+        restAnnounced = true;
+        var world = floor.TileInfluence.CellToWorld(rest.restCell.ToVector3Int());
+
+        WispCompanion.Instance?.Speak("rest_murmur");
+        AlertsLog.Instance?.AddAlert(
+            "There is a pocket in the stone by your own mouth that I have never let you look at.",
+            world, 0, AlertCategory.Discovery);
+    }
+
+    /// <summary>The stone is open. Whatever the player expected, this is the one
+    /// discovery in the dungeon that pays nothing.</summary>
+    private void RevealRestingPlace(FloorRoot floor, Vector3Int cell)
+    {
+        restFound = true;
+        var world = floor.TileInfluence.CellToWorld(cell);
+
+        if (remainsPrefab != null)
+        {
+            var go = Instantiate(remainsPrefab, world, Quaternion.identity);
+            go.transform.SetParent(floor.transform, true);
+        }
+
+        WispCompanion.Instance?.Speak("rest_found_1");
+        WispCompanion.Instance?.Speak("rest_found_2");
+        WispCompanion.Instance?.Speak(CoreMemory.EmptyHanded ? "rest_found_empty" : "rest_found_3");
+
+        AlertsLog.Instance?.AddAlert(
+            "You have found yourself.", world, 0, AlertCategory.Discovery);
+        DeedsController.Instance?.NotifyMoment("found_self");
+    }
 
     // -- Save / restore surface ------------------------------------
 

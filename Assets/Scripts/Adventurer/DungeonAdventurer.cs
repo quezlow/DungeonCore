@@ -2104,6 +2104,12 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         RunStats.Instance?.RecordAdventurerSlain(className);
         CoreMemory.Recall(CoreMemory.FirstSpoils);
+
+        // A descendant of the town the player lived in has just died in the dark.
+        // Once per house, ever: the line ends here, or it walks back out.
+        if (named && CoreMemory.Lived
+            && PrologueHouses.TryHouseOf(displayName, out var fallenHouse))
+            WispCompanion.Instance?.Speak(fallenHouse.fallLineId);
         lootTable?.Roll(transform.position);
         DropCarriedLoot();
         DropClassLoot();

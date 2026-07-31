@@ -53,6 +53,10 @@ public class DungeonSaveData
     public List<AlertEntrySaveData> alertHistory = new();
     public int alertUnreadCount = 0;
     public List<string> prologueFlags = new();            // the life lived above; read by CoreMemory (additive; empty on old saves)
+    public bool descendantsDispatched;                   // the town's descendants have come down once (additive; false on old saves)
+    public bool restArmed;                               // the resting place: descended, so the wisp may mention it (additive)
+    public bool restAnnounced;                           // the resting place: the wisp has mentioned it (additive)
+    public bool restFound;                               // the resting place: the stone is open (additive)
     public List<string> wispSpokenLines = new();          // tutorial one-shots already heard (additive; empty on old saves)
     public int wispPersonality = -1;                      // rolled once per dungeon; -1 = not yet rolled
     public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)

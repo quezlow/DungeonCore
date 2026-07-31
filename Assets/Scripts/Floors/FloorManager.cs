@@ -327,7 +327,12 @@ public class FloorManager : MonoBehaviour
             OnPlaceCoreAvailabilityChanged?.Invoke();
 
         // Floor 0 is added at bootstrap, so this only ever speaks on the way down.
-        if (firstVisit && targetIndex > 0) CoreMemory.Recall(CoreMemory.FirstDescent);
+        if (firstVisit && targetIndex > 0)
+        {
+            CoreMemory.Recall(CoreMemory.FirstDescent);
+            // The descent arms the resting place; the wisp mentions it at dawn.
+            BuriedRemainsController.Instance?.ArmRestingPlace();
+        }
     }
 
     private void MoveCameraToFloor(FloorRoot floor, bool snap)
