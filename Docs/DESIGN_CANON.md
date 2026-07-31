@@ -62,6 +62,7 @@ the supersession in one line.
 
 **Part II -- Design entries (most since shipped in place)**
 13. Research Tree (Phase 4.5)
+13A. Guided Opening (TutorialDirector)
 14. Material Pattern System
 15. Room Effects v2 and Attractor Rooms
 15A. Monster Muster (Spawn Rooms, Posts, Floor Gates)
@@ -80,8 +81,12 @@ the supersession in one line.
 26. The Surface War
 27. Bestiary Expansion
 28. Boss Promotion (Rank-on-Spawner, Waiting Halls)
+28A. The Wandering Merchant (Trader Channel)
 29. Wisp Quests (Urgings) and the Pressed Rule
 30. Ranged Combat (Projectiles, Damage Kinds, LOS)
+31. The Trapworks (Roster, Type Exclusivity, Trapwright)
+32. The Living Prologue (Town, Forest, Ceremony)
+33. Monster Target Priority (Class-Aware Targeting)
 
 **Appendix**
 A. Content Registries and Authoring Keys
@@ -489,9 +494,10 @@ notoriety sink this session (deferred -- tuning solved the reported problem).
 
 ## 8B. Prison and Captives (Capture, Verbs, Starvation)
 
-Status: SHIPPED (guide 1 of 2 -- the reactive layer is pending). Capture is
-the player's active hand on notoriety, the agency deliberately deferred in
-the 8A tuning pass.
+Status: SHIPPED. Capture is the player's active hand on notoriety, the
+agency deliberately deferred in the 8A tuning pass. The reactive layer that
+was pending here has since shipped in full -- see 8C (capture traps,
+trap-pin rescue) and 8D (faction rescue party, ransom-bearer).
 
 **Capture.** `DungeonAdventurer.TryCapture()` pre-empts `Die()`. A beaten
 adventurer is taken alive when `PrisonController.TryImprison` finds a free
@@ -548,16 +554,15 @@ responds by sending either a bearer or a raid.
 `UI/PauseMenuController.cs` (Esc ladder).
 
 **Un-binned:** prisoner/capture was a Day-34 rejection and is now shipped.
-Squad formations was also un-binned -- note that the LIGHT muster formation
-already shipped; what remains unbuilt is the full tactical layer (holding
-formation during the march and combat, formation effects, formation-breaking
-as a trap/monster goal), scheduled after this feature.
+Squad formations was also un-binned and has since shipped in full -- the
+light muster formation plus the complete tactical layer (march-holding,
+formation effects, formation-breaking). See entry 10A.
 
 ## 8C. Capture Traps and Trap-Pin Rescue
 
-Status: SHIPPED (guide 2a of the reactive layer; the faction reactions are
-guide 2b, pending). The second capture route beside subdue-on-defeat, plus
-the rescue tension that makes dungeon layout matter.
+Status: SHIPPED. The second capture route beside subdue-on-defeat, plus the
+rescue tension that makes dungeon layout matter. The faction reactions that
+were pending here have since shipped -- see 8D.
 
 **The Capture Trap.** A `TrapBehaviour.CaptureTrap` (class `CaptureTrap`, a
 `PitfallTrap` sibling). On trigger it calls `DungeonAdventurer.BeginPinned`
@@ -665,10 +670,8 @@ mirroring the wandering-merchant schedule; the dispatched party persists via
 `Save/DungeonSaveData.cs` + `Save/DungeonSaveController.cs` (`prisonReactionDay`).
 
 **Prison arc complete:** 8B (capture, verbs, starvation), 8C (capture-trap +
-trap-pin rescue), 8D (faction reaction). Next major work: the full squad-formation
-tactical layer (the light muster formation already ships; the tactical layer --
-holding formation in the march and combat, formation effects, formation-breaking
-as a trap/monster goal -- remains).
+trap-pin rescue), 8D (faction reaction). The squad-formation tactical layer
+named here as the next major work has since shipped in full -- see 10A.
 
 ---
 
@@ -1021,7 +1024,7 @@ Observation tier-1 node (10 points, 2 days, no prerequisites). Gated at both the
 command-UI button and OnPatrolClicked. Patrol is a control/information affordance,
 so it sits on Observation, preserving one gating identity per path.
 
-## Guided Opening (TutorialDirector)
+## 13A. Guided Opening (TutorialDirector)
 
 **As built:** a soft, event-watched sequence teaches the first-build loop by
 leading the player to dig out the seeded entrance, then house the monster the
@@ -1367,8 +1370,31 @@ trigger -- Holy Ground patches are procgen via `TerrainTypeMap`, desecrating
 one is unsealing a Church seal and feeds the trigger; recommended reward is a
 buried-skeleton Bestiary discovery. Alert severity tiers
 (info/warning/critical). Faction payoffs as the mid-game gold sink and the
-deliberate way to lower escalation tiers (see entry 7). Core spells / active
-abilities are NOT yet greenlit; the Sorcery research path hangs on that call.
+deliberate way to lower escalation tiers (see entry 7).
+
+**Core spells / active abilities: GREENLIT, unscheduled.** The call is made;
+the build is not started. Two things unblock on it: the Sorcery research
+path (which hung on this decision and may now be planned), and the two
+trader books already reserved by name in the merchant catalog -- Primer of
+the First Spark and The Drawn Breath (see entry 28A).
+
+**Standing ledger (recorded so it is not re-litigated).**
+
+- *Carry weight / encumbrance:* BINNED. Not to be revisited without a new
+  case.
+- *Chest tiers:* OPEN, partially built. `ChestDefinition.ChestTier`
+  (Bronze/Silver/Gold) exists and is a placement-picker LABEL only -- richer
+  tiers are simply authored with higher-rarity `LootTable` entries, and no
+  code outside `ChestDefinition.cs` reads the field. The open half is the
+  behavioural hook: tier influencing adventurer decisions (which chest a
+  Treasure Hunter beelines for, whether a richer chest holds a party longer
+  or deepens a Destroyer's resolve). Do not record this as shipped.
+- *Random world events framework:* DEFERRED, to be revisited. What exists is
+  three bespoke recurring threats, each its own component --
+  `HolyOrderStrike`, `MercenaryContract`, `WildMonsterEvent` (entry 8).
+  There is no scheduler, event registry or data-driven authoring surface,
+  and the Wandering Merchant runs its own arrival controller rather than
+  riding a shared one.
 
 ## 19. Buried Age Sites and Tier-Up Audiences
 
@@ -2010,7 +2036,7 @@ Quest Log, Known Parties, Factions, Research) are the pattern to copy.
 The only components that legitimately keep a private toggleKey are non-panel
 debug/HUD toggles bound to F-keys (CaveWallDebugOverlay, HudToggle).
 
-## The Wandering Merchant (Trader Channel)
+## 28A. The Wandering Merchant (Trader Channel)
 
 **As built:** `WanderingMerchantController` (floor 0, beside the surface
 systems) + `MerchantShopUI` + `TraderStockCatalog` asset authored by the
@@ -2366,7 +2392,7 @@ Gameplay/TechNodeDefinition.cs, Gameplay/ResearchTreeUI.cs,
 Editor/TechContentGenerator.cs, Editor/TrapContentGenerator.cs.
 
 
-## The Living Prologue (Town, Forest, Ceremony)
+## 32. The Living Prologue (Town, Forest, Ceremony)
 
 **As built.** A complete pre-dungeon act, shipped and previously undocumented.
 Scene chain: `TitleScreen` -> `TutorialTown` -> `TutorialForest` -> `Ceremony`
@@ -2432,3 +2458,53 @@ a middle value; append only.
 
 **Ceremony Gloom.** The full-screen veil lives on the Shadow sorting layer (see
 the sorting-layer section) so darkness covers walls and entities alike.
+
+---
+
+## 33. Monster Target Priority (Class-Aware Targeting)
+
+Status: SHIPPED. Verified: 2026-07-30 (landing date unrecorded; documented by
+the canon hygiene pass).
+
+Monsters no longer swing at whoever is closest. Each monster type carries a
+targeting preference, so a dungeon's roster expresses intent -- backline divers,
+healer-killers, finishers -- instead of every creature behaving identically.
+
+**The enum.** `Monster/TargetPriority.cs`, four values:
+
+- `Nearest` -- no class bias. The default, and behaviourally unchanged from
+  before the system existed.
+- `Casters` -- prefer Mage or Cleric. Dive the fragile backline.
+- `Healers` -- prefer Cleric. Kill the heals first.
+- `Wounded` -- prefer the lowest HP fraction. The finisher.
+
+**Resolution.** Authored per type as `MonsterDefinition.targetPriority` and
+cached on `DungeonMonster`. Inside `ScanForHostiles` the monster gathers every
+in-range adventurer into a reusable buffer (minus spared Pilgrims) and passes it
+to `SelectAdventurer`, which scores each candidate with `PriorityKey` -- lower
+wins, nearest breaks ties. The class modes return 0 for a match and 1 otherwise,
+so the nearest match wins and the monster falls back to the nearest of anyone
+when no match is in range; `Wounded` returns the HP fraction directly; `Nearest`
+returns 0 for everyone, leaving the tie-break to pick pure nearest. The buffer
+is a member field, not a local -- no per-scan allocation.
+
+**Precedence.** A taunting Tank still overrides everything: the taunter check
+runs first and returns early (see 10A -- the taunt is timed, and a peel grants
+`tauntImmuneUntil`, after which target priority resumes). Wild-versus-player
+monster targeting is untouched and stays nearest-based; a closer hostile monster
+still preempts the chosen adventurer.
+
+**Authoring.** Hand-set in the Inspector on the monster asset -- no generator
+writes this field, so a regenerate never clobbers it and never fills it in
+either. Currently authored on 31 of 111 definitions (21 `Casters`, 9 `Wounded`,
+1 `Healers`); the rest sit on the `Nearest` default. New monsters default to
+`Nearest` and are opted in deliberately.
+
+**Design note.** This is the counterweight to the shield wall. A formationed
+party puts Clerics and Mages in the rear rank where ranged damage is mitigated
+(10A); a `Casters` or `Healers` monster is the player's answer, and the exposure
+between taunts is intended, not a gap.
+
+**Key files:** `Monster/TargetPriority.cs`, `Monster/MonsterDefinition.cs`
+(`targetPriority`), `Monster/DungeonMonster.cs` (`ScanForHostiles`,
+`SelectAdventurer`, `PriorityKey`).
