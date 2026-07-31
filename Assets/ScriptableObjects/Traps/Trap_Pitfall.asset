@@ -14,12 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
   trapName: Pitfall
   behaviour: 1
+  requiredTechKey: 
+  affinity: 0
+  disarmable: 1
+  detoursWhenFlagged: 1
   prefab: {fileID: 6796459096403072027, guid: 16b442190068e7e408d0f9b723cc3983, type: 3}
   manaCost: 10
+  capacityCost: 2
   damage: 8
   cooldown: 4
   slowMultiplier: 0.4
   slowDuration: 2
+  captureHoldSeconds: 10
+  scatterSeconds: 5
+  sentryRange: 3.5
+  projectileSpeed: 10
+  projectileTint: {r: 1, g: 1, b: 1, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
   icon: {fileID: -8767125363165918247, guid: bc40b83db7920304f9b2979a74e643de, type: 3}
   description: A concealed drop into the dungeon's lower workings. Adventurers who
     escape it limp away considerably slower.

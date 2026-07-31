@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c875285fc2fe45545bcf2494c71b59f3, type: 3}
+  m_Name: Trap_EarthSpikes
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
+  trapName: Earth Spikes
+  behaviour: 9
+  requiredTechKey: tech.trap_earth_spikes
+  affinity: 4
+  disarmable: 1
+  detoursWhenFlagged: 1
+  prefab: {fileID: 3766488542571460235, guid: d1713dd89965509458a25d864111f128, type: 3}
+  manaCost: 16
+  capacityCost: 2
+  damage: 20
+  cooldown: 5
+  slowMultiplier: 0.5
+  slowDuration: 2
+  captureHoldSeconds: 10
+  scatterSeconds: 5
+  sentryRange: 3.5
+  projectileSpeed: 10
+  projectileTint: {r: 0.7985, g: 0.66069996, b: 0.4878, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
+  icon: {fileID: 0}
+  description: The floor takes exception. Loudly.

@@ -1190,6 +1190,14 @@ public class DungeonBuildController : MonoBehaviour
         }
 
         if (selectedTrap == null || selectedTrap.prefab == null) return;
+        // Backstops for the picker filters: another core's element, or a shape
+        // not yet researched, is refused even if a stale selection slips through.
+        if (selectedTrap.affinity != DungeonType.None && DungeonCore.Instance != null
+            && selectedTrap.affinity != DungeonCore.Instance.DungeonType)
+        { RejectAt(cell, "The core cannot hold that element's shape"); return; }
+        if (!string.IsNullOrEmpty(selectedTrap.requiredTechKey)
+            && !UnlockState.IsUnlocked(selectedTrap.requiredTechKey))
+        { RejectAt(cell, "That shape is not yet remembered"); return; }
         if (ActiveTrapRegistry != null && ActiveTrapRegistry.GetTrapAt(cell) != null) { RejectAt(cell, "A trap is already here"); return; }
         if (DungeonCore.Instance.FreeCapacity < selectedTrap.capacityCost) { RejectAt(cell, "Trap capacity full"); return; }
         if (DungeonCore.Instance.CurrentMana < selectedTrap.manaCost) { RejectAt(cell, "Not enough mana"); return; }

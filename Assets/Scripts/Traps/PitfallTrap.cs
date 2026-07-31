@@ -13,23 +13,23 @@ public class PitfallTrap : TrapBase
     {
         if (adv == null) return;
 
-        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         adv.TakeDamage(dmg);
 
-        adv.ApplySlow(Definition.slowMultiplier, Definition.slowDuration);
+        adv.ApplySlow(Definition.slowMultiplier, ScaledDuration(Definition.slowDuration));
     }
 
     protected override void ApplyEffect(DungeonMonster m)
     {
         if (m == null) return;
 
-        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, m.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         m.TakeDamage(dmg);
 
-        m.ApplySlow(Definition.slowMultiplier, Definition.slowDuration);
+        m.ApplySlow(Definition.slowMultiplier, ScaledDuration(Definition.slowDuration));
     }
 }

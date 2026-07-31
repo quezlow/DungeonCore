@@ -88,6 +88,7 @@ public class TechNodeDefinition : ScriptableObject
         KeyUnlocked = 2,    // an arbitrary UnlockState key is set
         KillsOfClass = 3,   // RunStats.KillsByClass[name] >= count
         KillsAny = 4,       // RunStats.TotalKills >= count (any adventurers slain)
+        CoreAffinity = 5,   // visible only when the core's type matches this node's affinity
     }
 
     /// <summary>Whether the node appears on the tree canvas at all.</summary>
@@ -106,9 +107,25 @@ public class TechNodeDefinition : ScriptableObject
             case VisibilityCondition.KillsAny:
                 if (RunStats.Instance == null) return false;
                 return RunStats.Instance.TotalKills >= visibilityKillCount;
+            case VisibilityCondition.CoreAffinity:
+                return DungeonCore.Instance != null
+                    && affinity != DungeonType.None
+                    && DungeonCore.Instance.DungeonType == affinity;
             default:
                 return true;
         }
+    }
+
+    /// <summary>False when this node can never appear in the current run (a
+    /// core-affinity node on a mismatched core). The tree UI drops such nodes
+    /// from layout entirely -- no reserved gap for a reveal that cannot come,
+    /// since the core's type is fixed at the ceremony.</summary>
+    public bool CanAppearThisRun()
+    {
+        if (visibility != VisibilityCondition.CoreAffinity) return true;
+        return DungeonCore.Instance != null
+            && affinity != DungeonType.None
+            && DungeonCore.Instance.DungeonType == affinity;
     }
 
     [Header("Display")]

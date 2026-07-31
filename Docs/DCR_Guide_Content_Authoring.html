@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR :: Content Authoring Guide</title>
+<style>
+  :root {
+    --bg: #0d0d1a; --panel: #14142a; --panel2: #1a1a35;
+    --accent: #e94560; --gold: #c8902a; --text: #d8d4c8;
+    --dim: #8a8578; --code-bg: #0a0a14; --ok: #4caf7d;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Crimson Text', Georgia, serif;
+    margin: 0; padding: 0 0 80px 0; font-size: 17px; line-height: 1.55; }
+  #progressWrap { position: sticky; top: 0; z-index: 50; background: var(--panel);
+    border-bottom: 1px solid #2a2a4a; padding: 8px 16px; }
+  #progressBar { height: 8px; background: #26264a; border-radius: 4px; overflow: hidden; }
+  #progressFill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width .25s; }
+  #progressText { font-size: 13px; color: var(--dim); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  #resetBtn { float: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--panel2);
+    color: var(--dim); border: 1px solid #2a2a4a; border-radius: 3px; padding: 2px 8px; cursor: pointer; }
+  #resetBtn:hover { color: var(--accent); }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 24px 20px; }
+  h1 { font-family: 'Cinzel', Georgia, serif; color: var(--gold); font-size: 30px; margin: 10px 0 2px 0; letter-spacing: 1px; }
+  h3 { font-family: 'Cinzel', Georgia, serif; color: var(--gold); font-size: 17px; margin: 18px 0 6px 0; }
+  .subtitle { color: var(--dim); font-style: italic; margin-bottom: 18px; }
+  .meta { background: var(--panel); border-left: 3px solid var(--gold); padding: 10px 14px; font-size: 15px; margin-bottom: 26px; }
+  .meta code, h3 code { color: var(--gold); }
+  details { background: var(--panel); border: 1px solid #26264a; border-radius: 6px; margin-bottom: 18px; }
+  summary { cursor: pointer; padding: 12px 16px; font-family: 'Cinzel', Georgia, serif; font-size: 19px;
+    color: var(--accent); list-style: none; user-select: none; }
+  summary::before { content: "\2726  "; color: var(--gold); }
+  .body { padding: 4px 20px 18px 20px; border-top: 1px solid #26264a; }
+  .step { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0; }
+  .step input[type=checkbox] { margin-top: 5px; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+  .step label { cursor: pointer; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 14px; background: var(--code-bg);
+    padding: 1px 5px; border-radius: 3px; color: #b8d0e8; }
+  pre { background: var(--code-bg); border: 1px solid #26264a; border-radius: 5px; padding: 12px 14px;
+    overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5; color: #c8d8e8; }
+  pre .lbl { color: var(--gold); }
+  .note { background: var(--panel2); border-left: 3px solid var(--accent); padding: 8px 12px; font-size: 15px; margin: 12px 0; }
+  .note b { color: var(--accent); }
+  .why { color: var(--dim); font-size: 15px; margin: 6px 0 12px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 10px 0; }
+  th, td { border: 1px solid #2a2a4a; padding: 5px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); color: var(--gold); font-family: 'Cinzel', Georgia, serif; font-size: 13px; }
+  td code { font-size: 12.5px; }
+  .rule { color: var(--gold); font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="progressWrap">
+  <button id="resetBtn" type="button">reset checkmarks</button>
+  <div id="progressBar"><div id="progressFill"></div></div>
+  <div id="progressText">0 / 0 steps complete</div>
+</div>
+
+<div class="wrap">
+  <h1>Content Authoring Guide</h1>
+  <div class="subtitle">Every ScriptableObject, every registry, every wire. The wisp keeps the ledger.</div>
+
+  <div class="meta">
+    Verified against <code>main @ 9c5c9555</code> ("bug fixes") with all five repairs applied.
+    This is a reusable cookbook, not a one-shot build: the reset button clears checkmarks between
+    uses. Chapter 16 carries this guide's canon edit -- apply it once, on first read-through.
+    Precedence as always: <b>canon &gt; live code &gt; roadmap</b>.
+  
+      <br><b>Rev 2 (2026-07-10):</b> chapter 16 Materials (Patterns) added; chapter 0 map row added; Appendix A payload amended; canon anchors re-verified at <code>62c0a26d</code>. Requires the Material Pattern System guide.
+      <br><b>Rev 3 (2026-07-11):</b> chapter 17 Tech Nodes added; the Update-the-Canon chapter removed per standing instruction (this guide carries no canon step); chapter 0 map row added.</div>
+
+  <details open>
+    <summary>0. The Pattern, the Rules, the Map</summary>
+    <div class="body">
+      <p>Nearly every content type follows the same four beats:
+      <b>Definition asset</b> (stats and identity) &rarr; <b>Prefab</b> (visuals and behaviour components)
+      &rarr; <b>Registry</b> (makes it placeable and save-restorable) &rarr; <b>Scene/prefab wiring</b>
+      (only where a component holds a direct slot). When a recipe below skips a beat, that is deliberate.</p>
+
+      <h3>Golden rules</h3>
+      <p><span class="rule">1. Names and IDs are save keys and immutable after ship.</span>
+      <code>DungeonSaveController</code> restores placed content via <code>GetByName</code>:
+      <code>monsterName</code>, <code>roomName</code>, <code>trapName</code>, <code>furnitureName</code>,
+      <code>chestName</code> must never be renamed once a save can contain them. Same for
+      <code>questID</code> and item <code>ID</code> ints. Asset <em>filenames</em> are free.</p>
+      <p><span class="rule">2. Registry membership = placeable + restorable.</span> If the player can place
+      it and save it, it must be registered. Transient-only definitions stay out -- the Ravenous Bear
+      spawns from <code>WildMonsterEvent</code>'s own <code>predatorDef</code> slot and is correctly unregistered.</p>
+      <p><span class="rule">3. Registry order is presentation only.</span> Lookups are name-based; list order
+      just sets the picker cycle / button order. Reorder freely.</p>
+      <p><span class="rule">4. Enums persist as ints.</span> <code>AdventurerType</code> and
+      <code>CombatClass</code> are saved as ordinals: append new values at the end, never reorder or remove.</p>
+      <p><span class="rule">5. One asset per type in <code>adventurerTypes</code>.</span>
+      <code>Def()</code> returns the first match; variants live only in dedicated slots (see the GuardDef
+      incident, canon &sect;2).</p>
+
+      <h3>The map</h3>
+      <table>
+        <tr><th>Content</th><th>Create menu</th><th>Asset home</th><th>Wire into</th><th>Save key</th></tr>
+        <tr><td>Monster</td><td><code>Dungeon/Monster Definition</code></td><td><code>ScriptableObjects/Monsters/Regular</code></td><td>MonsterDefinitionRegistry</td><td><code>monsterName</code></td></tr>
+        <tr><td>Boss variant</td><td><code>Dungeon/Boss Variant Definition</code></td><td><code>Monsters/Boss</code></td><td>MonsterDefinitionRegistry</td><td><code>monsterName</code></td></tr>
+        <tr><td>Sub-boss</td><td><code>Dungeon/Sub-Boss Variant Definition</code></td><td><code>Monsters/Sub-Boss</code></td><td>MonsterDefinitionRegistry</td><td><code>monsterName</code></td></tr>
+        <tr><td>Wild monster</td><td><code>Dungeon/Monster Definition</code></td><td><code>Monsters/Wild/Regular</code></td><td>Registry <b>and</b> FloorTemplatePrefab 1 &rarr; TerrainFeatureGenerator &rarr; Wild Monster Pool</td><td><code>monsterName</code></td></tr>
+        <tr><td>Adventurer type</td><td><code>Dungeon/Adventurer Definition</code></td><td><code>Adventurers/Types</code></td><td>AdventurerSpawnController &rarr; Adventurer Types (one per enum type)</td><td>type ordinal</td></tr>
+        <tr><td>Combat class</td><td><code>Dungeon/Combat Class</code></td><td><code>Adventurers/Classes</code></td><td>AdventurerSpawnController &rarr; Combat Classes</td><td>class ordinal</td></tr>
+        <tr><td>Item</td><td>prefab variant of <code>Prefabs/Item.prefab</code></td><td><code>Prefabs/Items</code></td><td><code>ItemDictionary.prefab</code> &rarr; Item Prefabs</td><td><code>ID</code> int</td></tr>
+        <tr><td>Room</td><td><code>Dungeon/Room Definition</code></td><td><code>Rooms/Rooms</code></td><td>RoomDefinitionRegistry (only wire; order = button order)</td><td><code>roomName</code></td></tr>
+        <tr><td>Furniture</td><td><code>Dungeon/Furniture Definition</code></td><td><code>Rooms/Furniture</code></td><td>FurnitureDefinitionRegistry</td><td><code>furnitureName</code></td></tr>
+        <tr><td>Trap</td><td><code>Dungeon/Trap Definition</code></td><td><code>Rooms/Traps</code></td><td>TrapDefinitionRegistry</td><td><code>trapName</code></td></tr>
+        <tr><td>Chest</td><td><code>Dungeon/Chest Definition</code></td><td><code>ScriptableObjects/Chests</code></td><td>ChestDefinitionRegistry</td><td><code>chestName</code></td></tr>
+        <tr><td>Quest</td><td><code>Quests/Quest</code></td><td><code>Assets/Quests</code></td><td>an <code>NPCDialogue.quest</code> slot or choice</td><td><code>questID</code></td></tr>
+        <tr><td>NPC dialogue</td><td><code>NPC Dialogue</code></td><td><code>Assets/NPC/&lt;who&gt;</code></td><td><code>NPC.dialogueData</code> / <code>NPCDialogueSwap</code></td><td>n/a</td></tr>
+        <tr><td>Barks</td><td colspan="3">code: string pools in <code>Adventurer/BanterLines.cs</code></td><td>n/a</td></tr>
+        <tr><td>Sound effect</td><td>n/a (AudioClip import)</td><td>clip under <code>Assets/Audio</code></td><td>GameController prefab &rarr; SoundEffectLibrary group; played by group name</td><td>group name</td></tr>
+        <tr><td>Terrain resistance</td><td>edit existing asset</td><td><code>Assets/Data/TerrainResistanceTable.asset</code></td><td>already slotted on TerrainTypeMap</td><td>n/a</td></tr>
+        <tr><td>Animal wave tier</td><td>n/a (list entry)</td><td>n/a</td><td>AnimalWaveSpawner &rarr; Tiers (Dungeon_Level_0)</td><td>n/a</td></tr>
+        <tr><td>Scene NPC</td><td>n/a (GameObject)</td><td>the scene</td><td>NPC component &rarr; <code>dialogueData</code>; trigger collider</td><td>n/a</td></tr>
+        <tr><td>Flag interaction</td><td>n/a (GameObject)</td><td>the scene</td><td>FlagInteractable; <code>flagID</code> from <code>TutorialFlags</code></td><td>flag string</td></tr>
+        <tr><td>Stairs</td><td><code>Dungeon/Stairs Definition</code></td><td>single asset</td><td><code>DungeonBuildController</code> &rarr; Stairs Definition slot</td><td>n/a</td></tr>
+              <tr><td>Material pattern</td><td><code>Dungeon/Pattern Definition</code> (or the generator)</td><td><code>ScriptableObjects/Patterns</code></td><td><code>PatternCatalog.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>pattern.&lt;id&gt;</code></td></tr>
+      <tr><td>Tech node</td><td><code>Dungeon/Tech Node</code> (or the generator)</td><td><code>ScriptableObjects/Tech</code></td><td><code>TechTree.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>tech.&lt;id&gt;</code></td></tr>
+      </table>
+      <p class="why">All asset homes are under <code>Assets/ScriptableObjects/</code> unless prefixed otherwise.
+      The five registries live in <code>Assets/ScriptableObjects/Registries/</code>; all five are already
+      assigned on the <code>DungeonSaveController</code> scene object and their pickers on <code>UIPanels</code>.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>1. Monsters (Placeable) + Boss / Sub-Boss Variants</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s1"><label for="dcr-authoring-v1-c1s1"><b>Prefab:</b> right-click <code>Assets/Prefabs/Monsters/Monster.prefab</code> &rarr; Create &rarr; Prefab Variant. Name it <code>Monster_&lt;Name&gt; Variant</code>, keep it in that folder. Set the sprite and Animator Controller on the variant (animator wiring lives in the Animation Controllers guide). The base already carries <code>DungeonMonster</code> (requires Rigidbody2D) and a <code>LootTable</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s2"><label for="dcr-authoring-v1-c1s2"><b>Loot:</b> on the variant's <code>LootTable</code>, set <code>owner</code> = Monster (drops <code>CarriableLoot</code> that adventurers can steal) and author the drop entries: label, loot type (Gold only today -- Material and Equipment are commented Phase 2 stubs), rarity, gold value, weight.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s3"><label for="dcr-authoring-v1-c1s3"><b>Definition:</b> Create &rarr; <code>Dungeon/Monster Definition</code> in <code>Monsters/Regular</code>. Name the asset <code>MonsterDef_&lt;Name&gt;</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s4"><label for="dcr-authoring-v1-c1s4"><b>Fields</b> -- the non-obvious ones:</label></div>
+      <table>
+        <tr><th>Field</th><th>Meaning</th></tr>
+        <tr><td><code>monsterName</code></td><td>Save key, Bestiary key, picker label. Unique, permanent.</td></tr>
+        <tr><td><code>voice</code></td><td>Silent / Beast / Undead / Humanoid -- picks the growl and taunt pools in BanterLines. Silent never speaks.</td></tr>
+        <tr><td><code>requiredTier</code> + <code>requiredRank</code></td><td>Flat-level gate; picker shows "Unlocks at ..." until reached.</td></tr>
+        <tr><td><code>requiresDiscovery</code></td><td>Picker-locked until <code>monsterName</code> is in the Bestiary (wild kill or adventurer <code>unlocksOnDeath</code>).</td></tr>
+        <tr><td><code>capacityCost</code> / <code>manaCost</code></td><td>Placement economy.</td></tr>
+        <tr><td><code>passiveRegenPerSecond</code> / <code>regenCooldown</code> / <code>wildRegenMultiplier</code></td><td>Regen; the multiplier only matters if the def also spawns wild.</td></tr>
+        <tr><td><code>maxStamina</code> / <code>attackStaminaCost</code></td><td>Attack pacing.</td></tr>
+        <tr><td><code>knockbackForce</code> / <code>knockbackMinDamage</code></td><td>Heavy-hit push (0 disables).</td></tr>
+        <tr><td><code>telegraphSeconds</code></td><td>Pre-attack windup tell.</td></tr>
+        <tr><td><code>isNecromancer</code> + <code>risenDefinitions</code> + raise fields</td><td>Ambient necromancy: which defs it raises, range, channel, cooldown, <code>maxRisen</code>, <code>risenLifetime</code>.</td></tr>
+        <tr><td><code>wildCoreXpOnDeath</code></td><td>Core XP for a wild kill only; keep well under an adventurer's 15.</td></tr>
+      </table>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s5"><label for="dcr-authoring-v1-c1s5"><b>Register:</b> add the def to <code>Registries/MonsterDefinitionRegistry</code>. Keep regulars grouped ahead of the wild block for a sane picker cycle. That is the whole wiring: <code>MonsterSelectionUI</code>, save restore, and the title-screen encounter director all read the registry.</label></div>
+      <h3>Boss variant</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s6"><label for="dcr-authoring-v1-c1s6">Create &rarr; <code>Dungeon/Boss Variant Definition</code> in <code>Monsters/Boss</code>. Reuse the same prefab; set <code>bossTitle</code> and <code>tint</code>; stat multipliers scale the base numbers (capacity is overridden in class). Register it. Only a <code>BossVariantDefinition</code> satisfies a room's <code>requiresBossSpawner</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c1s7"><label for="dcr-authoring-v1-c1s7"><b>Sub-boss:</b> same recipe via <code>Dungeon/Sub-Boss Variant Definition</code> in <code>Monsters/Sub-Boss</code> -- lighter multipliers, tint, no banner, does <b>not</b> satisfy the Boss Room.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>2. Wild Monsters (Unified Model)</summary>
+    <div class="body">
+      <div class="why">One definition serves both roles: the floor's wild pool spawns it as an invader,
+      and the registry lists it in the build picker locked behind "Slay one in the wild to learn it".
+      Killing it wild calls <code>BestiaryState.Discover(monsterName)</code> on its own name, which unlocks
+      the same def for placement. No paired assets, no name collisions.</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c2s1"><label for="dcr-authoring-v1-c2s1">Build the prefab variant in <code>Prefabs/Monsters/Wild</code> and the def (<code>WildDef_&lt;Name&gt;</code>) in <code>Monsters/Wild/Regular</code>, exactly as Chapter 1.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c2s2"><label for="dcr-authoring-v1-c2s2">Set <code>requiresDiscovery</code> = true, real <code>capacityCost</code>/<code>manaCost</code> (it becomes placeable), <code>wildRegenMultiplier</code>, <code>wildCoreXpOnDeath</code>, and a fitting <code>voice</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c2s3"><label for="dcr-authoring-v1-c2s3">Add it to <code>MonsterDefinitionRegistry</code> (wild block at the end).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c2s4"><label for="dcr-authoring-v1-c2s4">Open <code>Assets/Prefabs/FloorTemplatePrefab 1.prefab</code> &rarr; <code>TerrainFeatureGenerator</code> &rarr; add the def to <b>Wild Monster Pool</b>. Every floor instantiates from this template; chamber restore looks the def up pool-first, registry as fallback.</label></div>
+      <div class="note"><b>Event beasts are the exception:</b> a wild <em>boss</em> like the Ravenous Bear is wired straight into <code>WildMonsterEvent.predatorDef</code> on its scene object in Dungeon_Level_0 -- transient, never placeable, never registered.</div>
+      <div class="note"><b>Backlog wording note:</b> the discovery lock line always says "wild" even for adventurer-sourced unlocks (Thrall). Cosmetic; on the passive backlog.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>3. Adventurers: Types, Classes, Names</summary>
+    <div class="body">
+      <h3>Tuning an existing type</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s1"><label for="dcr-authoring-v1-c3s1">Edit its asset in <code>Adventurers/Types</code>. Key fields: <code>className</code> (status-bar label), <code>named</code> (Hero-style tracked-party flag), <code>overrideTrait</code>/<code>forcedTrait</code>, combat stats, trap detection trio, <code>xpOnDeath</code>, knockback pair, and <code>unlocksOnDeath</code> + <code>unlockRequiresDarkCore</code> (Bestiary grant on kill -- the Commoner &rarr; Thrall channel). All types share <code>Prefabs/Adventurer.prefab</code> except Commoner (<code>Commoner.prefab</code>).</label></div>
+      <div class="note"><b>Never</b> add a second asset with the same <code>type</code> to the spawner list -- <code>Def()</code> takes the first match. Variant assets (GuardDef) go only in their dedicated slot (<code>guardDef</code>, used for Noble bodyguards and Inspector escorts).</div>
+      <h3>A whole new type (code required -- touch points only)</h3>
+      <p class="why">Bring this list to a build session; it is the complete surface:</p>
+      <p><code>AdventurerType.cs</code> (append enum value last) &rarr; <code>AdventurerTypeInfo</code> (IntentOf / GoalOf / FactionOf switches) &rarr; <code>AdventurerSpawner</code> (a <code>weight&lt;Type&gt;</code> field, intent-pool roll, party composition case) &rarr; new definition asset &rarr; add to <b>Adventurer Types</b> on <code>AdventurerSpawnController</code>. Ordinals persist in saves: append-only. Canon &sect;2 holds the intent/goal/faction table.</p>
+      <h3>Combat classes</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s2"><label for="dcr-authoring-v1-c3s2">Tune the six assets in <code>Adventurers/Classes</code>: multipliers over the type's base stats, <code>spawnWeight</code> (variety-biased roll), behaviour flags (<code>rangedAttacker</code>, <code>detectsTraps</code>, <code>healsAllies</code> + heal tuning, <code>taunts</code>, <code>scoutRooms</code>), stamina/mana costs, <code>telegraphSeconds</code>, and <code>classLoot</code> (class-specific drop entries rolled on death). A new class = <code>CombatClass</code> enum append + asset + the spawner's Combat Classes list + behaviour code where the flags are read.</label></div>
+      <h3>Adventurer loot</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s6"><label for="dcr-authoring-v1-c3s6">The one live authoring surface is <code>classLoot</code> on each <code>CombatClassDefinition</code>: a weighted <code>DropEntry</code> list (label, Gold, rarity, <code>goldValue</code>, weight). On death, <code>DropClassLoot()</code> picks a single weighted entry and spawns a core-absorbed <code>DroppedLoot</code> worth <code>goldValue</code> &times; the rarity multiplier. To make a class drop richer or oftener, edit its entries.</label></div>
+      <div class="note"><b>Escort bonus:</b> Mercenary members in an Escort formation (Noble bodyguards)
+      multiply the rolled value by <code>escortGuardLootMultiplier</code> -- that is the whole
+      "guards drop higher-value gear" mechanic; there is no separate guard table.</div>
+      <p class="why">Owner semantics for reference: a <code>LootTable</code> with owner Adventurer spawns
+      <code>DroppedLoot</code> (core absorbs), owner Monster spawns <code>CarriableLoot</code> (adventurers
+      can steal it). Adventurers also drop whatever they were <em>carrying</em> when killed -- stolen
+      loot and looted gold return to the floor. That is recovery, not authoring. <b>Vestigial:</b> the
+      <code>LootTable</code> component on the shared <code>Adventurer.prefab</code> is cached but never
+      rolled -- per-<em>type</em> adventurer loot has no authoring surface today; differentiation is
+      per-class only.</p>
+      <h3>Names -- all Inspector, no code</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s3"><label for="dcr-authoring-v1-c3s3"><b>Heroes:</b> <code>TrackedPartyRegistry</code> scene object &rarr; <b>Name Pool</b> list (cycled in order).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s4"><label for="dcr-authoring-v1-c3s4"><b>Nobles:</b> <code>Registries/NobleNamesRegistry</code> asset -- pools consumed by <code>Generate()</code>/<code>GenerateWithHouse()</code>, wired on the spawner's <code>nobleNames</code> slot.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c3s5"><label for="dcr-authoring-v1-c3s5"><b>Affinity flavour:</b> <code>Registries/AffinityProfiles</code> asset -- per-faction affinity weight spreads, per-affinity tint colours + <code>tintStrength</code>, and <code>flavorNames</code> entries keyed (combat class, affinity) that produce display names.</label></div>
+      <div class="note"><b>Title screen is separate:</b> <code>TitleEncounterDirector</code> in
+      <code>TitleScreen.unity</code> keeps its own <code>adventurerTypes</code> list for the vignette.
+      Monsters flow to the title automatically via the registry; a new adventurer type appears there
+      only if you add its asset to that list too.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>4. Items</summary>
+    <div class="body">
+      <div class="why">Items are prefab variants, not ScriptableObjects. The hybrid base prefab carries
+      both UI (Image) and world (SpriteRenderer + CircleCollider2D) faces plus the <code>Item</code>
+      component. The dictionary hardening made the serialised <code>ID</code> the single source of truth:
+      duplicates, zeros, and nulls LogError at Awake.</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c4s1"><label for="dcr-authoring-v1-c4s1">Right-click <code>Assets/Prefabs/Item.prefab</code> &rarr; Create &rarr; Prefab Variant &rarr; move to <code>Assets/Prefabs/Items</code>, PascalCase name.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c4s2"><label for="dcr-authoring-v1-c4s2">On the variant: set <code>Item.ID</code> to the next unused positive int (currently <b>12</b>; the dictionary list is the ledger), <code>Item.Name</code>, and the sprite on <b>both</b> the Image and the SpriteRenderer.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c4s3"><label for="dcr-authoring-v1-c4s3">Open <code>Assets/Prefabs/ItemDictionary.prefab</code> (the prefab, not the scene instance -- the instance inherits) and append the variant to <b>Item Prefabs</b>.</label></div>
+      <div class="note"><b>Footgun:</b> the base <code>Item.prefab</code> is itself live content -- ID 1, "Health Potion". Never repurpose it; always override ID + Name + both sprites on variants. IDs are forever: inventory and hotbar saves store raw ints, quest objectives and rewards reference them. Never reuse a retired ID.</div>
+      <p class="why">Consumers: <code>InventoryController</code>/<code>HotbarController</code> (save by ID),
+      <code>RewardsController</code> (quest rewards spawn by ID), world pickup via
+      <code>PlayerItemCollector</code> trigger + <code>Item</code>. Batch alternative: the
+      <b>Dungeon Core &rarr; Generate Tutorial Content</b> menu appends <code>ItemSpec</code> entries and
+      normalises IDs -- but it also regenerates tutorial quests and dialogue, so prefer manual for one-offs.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>5. Rooms</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c5s1"><label for="dcr-authoring-v1-c5s1">Create &rarr; <code>Dungeon/Room Definition</code> in <code>Rooms/Rooms</code>, named <code>Room_&lt;Name&gt;</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c5s2"><label for="dcr-authoring-v1-c5s2">Fields: <code>roomName</code> (save key), <code>minTileCount</code>/<code>maxTileCount</code>, <code>requiresCore</code> (Core Room pattern), required furniture entries (<code>furnitureType</code> + <code>minimumCount</code>, live have/need counts show in the picker tooltip), <code>requiresBossSpawner</code>, tech-node key/description (Phase 4.5 hook), upgrade tiering, and the effects list -- each entry a <code>RoomEffectType</code> + <code>perSecond</code> (LairRegen and TrainingXp are per-second amounts; MonsterDamageBuff a multiplier; CoreRetaliation zap tuning, sparing peaceful visitors unless Aggressive).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c5s3"><label for="dcr-authoring-v1-c5s3"><b>Register</b> in <code>RoomDefinitionRegistry</code> -- the only wire since the picker repair. Registry order is button order; drop it where you want the button.</label></div>
+      <p class="why">A new <code>RoomEffectType</code> is code: the enum in <code>Room/RoomDefinition.cs</code>
+      plus handling in <code>Room/RoomEffectController.cs</code> (aura branches and the per-monster switch).
+      Room Effects v2 designs live in canon &sect;15 -- check before inventing.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>6. Furniture</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c6s1"><label for="dcr-authoring-v1-c6s1">Prefab variant of <code>Prefabs/FurniturePiece.prefab</code> with the sprite; def via Create &rarr; <code>Dungeon/Furniture Definition</code> in <code>Rooms/Furniture</code>: <code>furnitureName</code> (save key), <code>prefab</code>, <code>manaCost</code>, <code>blocksPathfinding</code> (placement is rejected where it would seal a route), icon, description.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c6s2"><label for="dcr-authoring-v1-c6s2">Register in <code>FurnitureDefinitionRegistry</code>. Reference it from any room's required-furniture list to make it a room ingredient.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>7. Traps</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c7s1"><label for="dcr-authoring-v1-c7s1"><b>Author in the generator, not by hand.</b> New trap on an existing behaviour = one <code>TrapSpec</code> entry in <code>Editor/TrapContentGenerator.cs</code> (costs, stats, <code>requiredTechKey</code>, <code>affinity</code>, <code>detoursWhenFlagged</code>, tint, description), then rerun <code>Dungeon Core &rarr; Generate Trap Content</code>: definition, stand-in prefab and registry link are all authored, and reruns refresh in place without touching icons or registry order. The hand path (Create &rarr; <code>Dungeon/Trap Definition</code>) still works for one-offs -- if you take it, also set the four access/flag fields: <code>requiredTechKey</code> (empty = available with trap mode itself), <code>affinity</code> (None = neutral; otherwise exclusive to that core and hidden from all others), <code>disarmable</code>, <code>detoursWhenFlagged</code> -- and register in <code>TrapDefinitionRegistry</code> yourself.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c7s2"><label for="dcr-authoring-v1-c7s2"><b>Gate it with research.</b> If the trap should be researched, add a matching node in <code>Editor/TechContentGenerator.cs</code> (chapter 17) and point <code>requiredTechKey</code> at its <code>tech.*</code> key. Elemental signatures use <code>visibility = CoreAffinity</code> plus the node's <code>affinity</code> field, so mismatched cores never see the node at all.</label></div>
+      <p class="why">A new behaviour is code: append the <code>TrapBehaviour</code> enum, write the
+      <code>TrapBase</code> subclass, add its <code>EnsureBehaviour</code> case, and give the generator a spec.
+      Fifteen behaviours exist as of the trapworks arc. Ambient facts: traps hold fire entirely while
+      global stance is Defensive (<code>TrapsArmed</code>); damage routes through <code>ScaledDamage</code>
+      (Forge census x Trapwright), affliction durations through <code>ScaledDuration</code>.</p>
+      <div class="note"><b>Picker routing:</b> the trap picker lists registry traps first, then every
+      registered chest with <code>isTrapChest</code>. Treasure chests route to the chest picker instead.
+      The carousel hides affinity-mismatched and unresearched traps -- the tree is the discovery
+      surface, the picker is the toolbox.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>8. Chests</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c8s1"><label for="dcr-authoring-v1-c8s1">Def via Create &rarr; <code>Dungeon/Chest Definition</code> in <code>ScriptableObjects/Chests</code>: <code>chestName</code> (save key), <code>tier</code> (Bronze/Silver/Gold -- a label and picker grouping, not auto-scaling), <code>prefab</code> (<code>DungeonChest.prefab</code> for treasure, <code>DungeonChest_Trap_Prefab</code> for traps), <code>manaCost</code>, <code>resetSeconds</code>, <code>isTrapChest</code> + <code>trapDamage</code>, icon, description.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c8s2"><label for="dcr-authoring-v1-c8s2"><b>Contents</b> are the prefab's <code>LootTable</code>: richer tiers mean richer entries on a richer prefab variant, so distinct tiers want distinct prefab variants.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c8s3"><label for="dcr-authoring-v1-c8s3">Register in <code>ChestDefinitionRegistry</code>. Treasure appears in the chest picker; <code>isTrapChest</code> ones append to the trap picker.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>9. Barks &amp; Banter (Code-Authored)</summary>
+    <div class="body">
+      <div class="why">All bark text lives in one static class: <code>Assets/Scripts/Adventurer/BanterLines.cs</code>.
+      Editing content = editing string arrays. Two voices, never mixed: <b>alerts are the wisp</b>;
+      <b>barks are diegetic</b> -- the speakers' own words.</div>
+      <table>
+        <tr><th>Pool</th><th>Fires</th></tr>
+        <tr><td><code>Generic</code> / <code>Guild</code> / <code>Mercenary</code> / <code>Cultist</code></td><td>Faction solos via <code>FactionPool</code>: Guild + Holy Order &rarr; Guild, Mercenary Company &rarr; Mercenary, Cultists &rarr; Cultist, else Generic.</td></tr>
+        <tr><td><code>Pairs</code></td><td>Two-line party exchanges (<code>string[][]</code>).</td></tr>
+        <tr><td><code>RareEggs</code> / <code>ChargeEggs</code></td><td>6% solo swap / 1.5% combat-charge yell, gold-tinted.</td></tr>
+        <tr><td><code>BeastGrowls..HumanoidTaunts</code></td><td>Monster idle growls + lock-on taunts (35%) by <code>MonsterVoice</code>; Silent opts out.</td></tr>
+        <tr><td><code>TrapReactions</code></td><td>50% yelp on a sprung trap.</td></tr>
+        <tr><td><code>DeathReactionsNamed</code> / <code>Generic</code></td><td>Witnessing a named vs plain comrade fall.</td></tr>
+        <tr><td><code>CoreSightReactions</code></td><td>First sight of the core within 7 tiles.</td></tr>
+      </table>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c9s1"><label for="dcr-authoring-v1-c9s1">Add lines to the relevant array; keep them short, ASCII, in-character. Chances and colours are the constants at the top of the class.</label></div>
+      <p class="why">New faction pool = new array + a <code>FactionPool</code> switch case. New monster voice =
+      <code>MonsterVoice</code> enum value + growl/taunt arrays + the two switch cases in
+      <code>RandomGrowl</code>/<code>RandomTaunt</code>, then set <code>voice</code> on the defs.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>10. Quests</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c10s1"><label for="dcr-authoring-v1-c10s1">Create &rarr; <code>Quests/Quest</code> in <code>Assets/Quests</code>. Set <code>questID</code> yourself, snake_case (<code>tut_*</code> pattern) -- it is the permanent save key. <code>OnValidate</code> only auto-fills an <em>empty</em> field (with an ugly GUID), so set it first.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c10s2"><label for="dcr-authoring-v1-c10s2"><b>Objectives:</b> only <code>CollectItem</code> progresses today -- <code>objectiveID</code> is the item's dictionary <b>ID as a string</b>, auto-recounted from inventory. DefeatEnemy / ReachLocation / TalkNPC / Custom exist in the enum but have no progression path yet (TalkNPC + Custom arrive with the Wisp guide's <code>ProgressObjective</code> API).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c10s3"><label for="dcr-authoring-v1-c10s3"><b>Rewards:</b> Item (<code>rewardID</code> = item ID) / Gold / Experience, granted by <code>RewardsController.GiveQuestReward</code> at hand-in. Hand-in removes required items first; <code>handInFlag</code> fires <code>Persistence.SetFlag</code> -- the hook <code>FlagInteractable</code> and <code>NPCDialogueSwap</code> listen for.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c10s4"><label for="dcr-authoring-v1-c10s4"><b>Give it:</b> assign to an <code>NPCDialogue.quest</code> slot (offered at dialogue end) or a choice with <code>givesQuest</code>.</label></div>
+      <div class="note"><b>Spec path:</b> tutorial-era quests are owned by <code>QuestSpec</code> entries in
+      <code>Assets/Editor/TutorialContentGenerator.cs</code> with the same create-or-overwrite semantics as
+      dialogue -- see the ownership rule in Chapter 11. Edit the spec and re-run; never hand-edit a
+      generated quest asset.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>11. NPC Dialogue</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c11s1"><label for="dcr-authoring-v1-c11s1">Create &rarr; <code>NPC Dialogue</code> (top-level menu) under <code>Assets/NPC/&lt;who&gt;</code>. Author <code>dialogueLines</code>, portrait, name, typing speed, voice blip + pitch.</label></div>
+      <div class="note"><b>Parallel-array gotcha:</b> <code>autoProgressLines</code> and <code>endDialogueLines</code>
+      are bool arrays indexed against <code>dialogueLines</code> -- keep all three the same length. Same inside
+      each <code>DialogueChoice</code>: <code>choices</code>, <code>nextDialogueIndexes</code>, <code>givesQuest</code>
+      run in lockstep, anchored at <code>dialogueIndex</code>.</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c11s2"><label for="dcr-authoring-v1-c11s2">Quest hooks: <code>quest</code> + <code>questInProgressIndex</code> / <code>questCompletedIndex</code> pick the line spoken while the quest is active vs handed in.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c11s3"><label for="dcr-authoring-v1-c11s3">Wire: assign to the NPC's <code>dialogueData</code>. For a post-quest personality change, add <code>NPCDialogueSwap</code> (prerequisite quest + swapped dialogue) beside it.</label></div>
+      <h3>The spec path: TutorialContentGenerator</h3>
+      <p class="why">The tutorial-town dialogue was not hand-built -- it is generated.
+      <code>Assets/Editor/TutorialContentGenerator.cs</code> holds a <code>DialogueSpec[]</code> array;
+      <b>Dungeon Core &rarr; Generate Tutorial Content</b> creates-or-loads each asset in
+      <code>Assets/NPC/Tutorial</code> and stamps every field from its spec.</p>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c11s4"><label for="dcr-authoring-v1-c11s4"><b>Spec fields:</b> <code>asset</code> (filename), <code>npcName</code>, <code>sprite</code> (folder under <code>Art/characters/npc</code>, empty for none), <code>pitch</code>, <code>lines[]</code>, <code>auto</code> and <code>end</code> as bitstrings ("1" per line -- <code>Bits()</code> expands them to matched-length bool arrays, so the parallel-array gotcha cannot occur here), <code>choices[]</code> (<code>ChoiceSpec</code>), <code>inProgress</code>/<code>completed</code> indices, <code>questId</code>.</label></div>
+      <div class="note"><b>Ownership rule:</b> a generated asset belongs to its spec -- hand edits in the
+      Inspector are overwritten on the next run. Batch or tutorial content: edit the spec, re-run the menu.
+      One-off NPCs elsewhere: hand-author per the steps above and keep the asset out of the spec list.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>12. Odds &amp; Ends</summary>
+    <div class="body">
+      <p><b>Stairs:</b> one <code>Dungeon/Stairs Definition</code> asset (name, prefab, mana, icon, up-variant
+      sprite) in the <code>DungeonBuildController</code> scene object's slot. Editing the asset is the recipe;
+      there is no registry.</p>
+      <p><b>Known stale, deliberately unfixed:</b> the <code>MonsterDefinition</code> header still says
+      "assign to the MonsterSpawner's available types list" (registry is truth); the
+      <code>AdventurerDefinition</code> header still calls itself a combat-class archetype; the
+      <code>AdventurerType</code> enum header says nine types (there are eleven -- canon &sect;2). Trust
+      canon and this guide over header comments.</p>
+      <p><b>Importing new art:</b> copy import settings from a sibling sprite in the same folder --
+      point filter, no compression, pixels-per-unit matched to the sheet (Time Fantasy sheets vary;
+      the character sample imports at 16 PPU, the terrain grid is 32px). A mismatched PPU is the
+      usual cause of a sprite rendering at the wrong scale.</p>
+      <p><b>Deliberately out of scope</b> (feature code, not content): new hotkeys (everything routes
+      through the rebindable <code>Keybinds</code>/<code>GameAction</code> system), alert-log strings
+      (feature code; write them in the wisp voice), camera/Cinemachine, save-schema changes
+      (additive-only rule), and scene dressing beyond the generators listed in Chapter 14.</p>
+      <p><b>Not covered here:</b> wall sprite assignment (<code>CaveWallSheetLayout</code> -- Wall Sprite
+      Layout guide) and animation controllers (their own guide). Terrain tiles moved to Chapter 15.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>13. Audio: Sound Effects</summary>
+    <div class="body">
+      <div class="why"><code>SoundEffectLibrary</code> on the <b>GameController prefab</b> holds
+      <code>SoundEffectGroup</code> entries -- a <code>name</code> plus a list of AudioClips. Code fires
+      them by name via <code>SoundEffectManager.Play("name", randomPitch)</code>, picking randomly
+      within the group.</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c13s1"><label for="dcr-authoring-v1-c13s1"><b>Variant of an existing sound:</b> import the clip (copy import settings from a sibling), open the GameController prefab &rarr; SoundEffectLibrary &rarr; add the clip to the matching group. Done -- every existing play site now rolls it.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c13s2"><label for="dcr-authoring-v1-c13s2"><b>Brand-new sound:</b> add a group with a unique <code>name</code> + clips. The group only fires from a <code>SoundEffectManager.Play</code> call, so a genuinely new sound also needs its call site -- that part is code.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>14. World &amp; Scene Content</summary>
+    <div class="body">
+      <div class="why">Everything here is hand-placed: the tutorial generator authors <em>assets</em>
+      only, never scene objects. Interaction uses the player's <code>InteractionDetector</code>, which
+      finds <code>IInteractable</code> components through <b>trigger colliders</b> -- so every
+      interactable needs a Collider2D with Is Trigger on.</div>
+      <h3>NPCs in a scene</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c14s1"><label for="dcr-authoring-v1-c14s1">GameObject + SpriteRenderer + Collider2D (Is Trigger) + <code>NPC</code> component &rarr; assign <code>dialogueData</code>. Optional <code>NPCDialogueSwap</code> beside it for the post-quest personality change.</label></div>
+      <h3>Flag interactions</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c14s2"><label for="dcr-authoring-v1-c14s2">Same collider recipe + <code>FlagInteractable</code>: <code>flagID</code> (typed by hand -- it <b>must</b> match a constant in <code>Save/TutorialFlags.cs</code>; new flag = add the constant first), <code>singleUse</code>, <code>displayName</code> + <code>portrait</code> + <code>narrationLines[]</code> for the on-interact narration, <code>prerequisiteQuest</code> gate, <code>givesQuest</code>, and an <code>onInteracted</code> UnityEvent for side effects.</label></div>
+      <div class="note"><b>Correction of record:</b> an earlier session note called FlagInteractable
+      "flags and events only, no text". Wrong -- it carries portraited narration lines and quest hooks;
+      it is the lightweight one-sided dialogue surface. This guide supersedes that note.</div>
+      <h3>The prologue exchange</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c14s3"><label for="dcr-authoring-v1-c14s3">The murder-scene script is data on <code>DeathSequenceController</code>. Per its own header it attaches to a GameObject with a trigger Collider2D spanning the passage before the sealed slab in <code>CaveEntrance.unity</code> (not yet placed at HEAD -- attaching it is part of the scene build). Its Inspector data: <code>lines[]</code> of {<code>speakerName</code>, <code>portrait</code>, <code>text</code>, <code>holdSeconds</code>}, with <code>fadeOnLinesFromEnd</code> steering the fade-to-black. Rewriting The Three is an Inspector edit.</label></div>
+      <h3>Rating-gated content</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c14s4"><label for="dcr-authoring-v1-c14s4"><code>GradeSystem</code> (Dungeon_Level_0): <b>Tiers</b> of {<code>tierName</code>, <code>minRating</code>} -- the Assessor's grade labels and thresholds. <code>AnimalWaveSpawner</code> (Dungeon_Level_0): <b>Tiers</b> of {<code>monster</code> (a MonsterDefinition -- wild defs slot straight in), <code>minRating</code>} plus pack size, interval, and <code>lowerTierChance</code>. A new surface animal = its definition (Chapter 2) + a tier entry.</label></div>
+      <h3>Visual pools &amp; theming</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c14s5"><label for="dcr-authoring-v1-c14s5"><b>Corpses:</b> <code>spriteVariants[]</code> on <code>CorpsePrefab.prefab</code> (random pick + optional flip). <b>Party banners:</b> <code>PartyBannerManager</code> (Dungeon_Level_0) -- intent bar sprites (Pilgrim blue / GiftGiver green / Destroyer red) + the <code>pinnedPool</code> for player-pinned parties. <b>Floor theming:</b> <code>FloorTint</code> -- shallow-to-deep gradient over <code>maxDepth</code>, <code>fogShadow</code>, and per-floor <code>floorOverrides</code> {floorIndex, tint}. <b>Surface trees:</b> <code>SurfaceApronGenerator</code> on the <code>ApronProps</code> object in Dungeon_Level_0 &rarr; <code>treePrefabs</code> list scatters the apron forest.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>15. Terrain: Resistance &amp; Tiles</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c15s1"><label for="dcr-authoring-v1-c15s1"><b>Dig/claim economy and terrain colours</b> live in <code>Assets/Data/TerrainResistanceTable.asset</code> (note the nonstandard home). One <code>Entry</code> per <code>TerrainType</code>: <code>resistance</code> multiplier, <code>claimableRingTint</code>, <code>stoneTint</code>, <code>displayName</code>; plus river/chamber claim resistances and tints. It is already slotted on <code>TerrainTypeMap</code> -- editing the asset is the whole recipe. A new <code>TerrainType</code> is code: the enum, an entry, and generator support for painting it.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c15s2"><label for="dcr-authoring-v1-c15s2"><b>Tiles:</b> any terrain RuleTile that gets tinted must be an <code>UnlockedRuleTile</code> (Create &rarr; <code>Dungeon/Unlocked Rule Tile</code>; plain single tiles use <code>Dungeon/Unlocked Tile</code>) -- stock tiles wipe <code>LockColor</code> on neighbour refresh. Wall sprite assignment and the full tile pipeline live in the Wall Sprite Layout guide; cliff art conventions in the memory notes (terrain.png, 32px grid).</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>16. Materials (Patterns)</summary>
+    <div class="body">
+      <div class="why">Requires the Material Pattern System build guide applied
+      (<code>DCR_Guide_Material_Patterns.html</code>) -- not yet on <code>main</code> as of this revision.
+      Patterns are boolean discoveries, not stockpiles: the asset is the identity, the
+      <code>UnlockState</code> flag is the state, and the band decides which channel can teach it.</div>
+
+      <h3>The recipe (recommended route)</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c16bs1"><label for="dcr-authoring-v1-c16bs1"><b>Add a <code>Define(...)</code> line</b> to <code>Editor/PatternContentGenerator.cs</code> (id, display name, band, source hint, discovery note) and run <code>Dungeon Core &rarr; Generate Pattern Content</code>. The generator is idempotent and single-source: it creates the asset under <code>ScriptableObjects/Patterns/</code> and rewires <code>PatternCatalog.asset</code> in one pass. <span class="rule">Regenerating rebuilds the catalog list from the generator alone</span> -- hand-created assets fall out of the catalog on the next run, so if you hand-author instead (Create &rarr; <code>Dungeon/Pattern Definition</code>, then drag into the catalog), either fold it into the generator afterwards or re-add it after every regen.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c16bs2"><label for="dcr-authoring-v1-c16bs2"><b>Fields:</b> <code>id</code> is snake_case and immutable after ship -- the save key is <code>"pattern." + id</code> (rename the asset file freely, never the id). <code>displayName</code> feeds the codex row and the wisp alert ("A pattern settles into the core: ..."). <code>icon</code> is null-safe (renders as a plain silhouette block until you assign one). <code>sourceHint</code> is the line shown while silhouetted; <code>discoveryNote</code> the line once known -- both in wisp voice, short and declarative. Check the console for the catalog's <code>OnValidate</code>: duplicate or empty ids log errors.</label></div>
+
+      <h3>Bands are channels</h3>
+      <table>
+        <tr><th>Band</th><th>How it unlocks</th><th>Authoring cost</th></tr>
+        <tr><td><code>Terrain</code></td><td>Deterministic on first live claim of its terrain type</td><td>Code-bound: the <code>TerrainPatternId</code> switch in <code>PatternDiscovery.cs</code> maps <code>TerrainType &rarr; id</code>. All six diggable types are taken -- a new terrain pattern only arrives with a new <code>TerrainType</code> (which is code; see chapter 15).</td></tr>
+        <tr><td><code>Common..Legendary</code></td><td>Loot roll on absorb: chance by drop rarity (10 / 20 / 35 / 60 / 100%), random unlearned pattern from the band; exhausted bands fizzle</td><td>Pure data -- a new asset in the band joins the roll pool automatically. Pacing rule: <span class="rule">expected drops to finish a band = band size &divide; chance</span>. Current sizes are 2 / 2 / 2 / 1 / 1; every asset you add slows that band's completion, so grow deliberately.</td></tr>
+        <tr><td><code>Reserved</code></td><td>Nothing yet -- silhouette + hint only</td><td>Pure data. The tease shelf for trader / avatar / event channels; whatever ships later just calls <code>UnlockState.Unlock("pattern.&lt;id&gt;")</code>.</td></tr>
+      </table>
+
+      <h3>Order, saves, testing</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c16bs3"><label for="dcr-authoring-v1-c16bs3"><b>Codex order = catalog order</b> (= generator order). Keep bands grouped: terrain, then loot bands ascending, then reserved. Purely presentational -- reorder freely.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c16bs4"><label for="dcr-authoring-v1-c16bs4"><b>Saves are additive:</b> existing saves show the new silhouette immediately and the chip total grows -- no migration, no version bump. Deleting a shipped pattern strands its key in old saves harmlessly, but research nodes may reference it later: retire by moving to <code>Reserved</code> rather than deleting.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c16bs5"><label for="dcr-authoring-v1-c16bs5"><b>Smoke it:</b> silhouette row present with its hint; then either earn it from the intended channel (kill a drop of the matching rarity) or toggle the key through the test harness (<code>Commands</code> drives <code>UnlockState</code>) to preview the known row + learned-from line.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>17. Tech Nodes (Research)</summary>
+    <div class="body">
+      <div class="why">Requires the research spine (on <code>main</code> as of <code>d0e3a2ba</code>).
+      Purchases are timed projects: points are spent when a project starts <i>or queues</i>
+      (queue of one, pre-paid, promotes free); cancelling either slot refunds in full and
+      loses progress. The node asset is the identity; the <code>UnlockState</code> flag
+      <code>tech.&lt;id&gt;</code> is the state; gated content checks the flag.</div>
+
+      <h3>The recipe</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c17s1"><label for="dcr-authoring-v1-c17s1"><b>Create the node.</b> Two routes. <i>Hand-author</i> (fine for bespoke nodes): Create &rarr; <code>Dungeon/Tech Node</code>, fill the fields, drag it into <code>ScriptableObjects/Tech/TechTree.asset</code>'s nodes list. <i>Generator</i> (reproducible): add a <code>Define(...)</code> call in <code>Editor/TechContentGenerator.cs</code> <span class="rule">and extend the wiring block</span> -- unlike the pattern generator, the tree wiring is fixed-index (<code>arraySize</code> plus one <code>GetArrayElementAtIndex</code> line per node), so both places need the touch. Either way: <span class="rule">re-running the generator resets the tree list to the generator's own nodes</span>, dropping hand-added ones -- re-add them after, or fold them in.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c17s2"><label for="dcr-authoring-v1-c17s2"><b>Fields.</b> <code>id</code> is snake_case and immutable after ship (the save key is <code>"tech." + id</code>); <code>overrideKey</code> exists only to adopt the two legacy bare keys (<code>oracle_chamber</code>, <code>adventurer_stats</code>) -- leave it empty otherwise. <code>displayName</code> feeds the revealed node and wisp alerts. <code>path</code>: Observation, Architecture or Bestiary -- <span class="rule">Sorcery is a reserved slot; author nothing there</span> unless Phase 5 spells are greenlit. <code>pointCost</code> (affinity halves points only, 50%, never patterns), <code>durationDays</code> (completion lands at dawn; minimum 1). <code>patternRequirements</code>: drag PatternDefinition assets -- Architecture-path convention, gating starts tier 2+. <code>prerequisites</code>: drag nodes; cross-path prerequisites at higher tiers are canon; the tree's OnValidate flags self-references and duplicate keys.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c17s3"><label for="dcr-authoring-v1-c17s3"><b>Hooks.</b> <code>bootstrapUnlocked</code> marks new-game freebies (currently Remembered Bones + Remembered Spikes; these re-lock behind the tutorial wisp when the prologue lands). <code>upgradeGates</code> entries (room + minTier) make <code>RoomAnchor.PurchaseTier</code> refuse that room's tier until the node is understood -- Deeper Lairs gating the Barracks at tier 2 is the reference example. Loot books route through <code>GrantNodeFully</code>: bypasses points, prerequisites <i>and</i> duration, refunding if the node was underway -- flavour-match tomes to nodes when the roster session wires drops.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c17s4"><label for="dcr-authoring-v1-c17s4"><b>Hidden hint, in wisp voice.</b> The tree UI follows the DK2 rule: shape visible from the start, names hidden until one prerequisite away -- <code>hiddenHint</code> is everything the player sees before then. One short atmospheric line ("The beasts could rest easier, given better stone."), no mechanics, no node name.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c17s5"><label for="dcr-authoring-v1-c17s5"><b>Smoke it.</b> New game for bootstrap flags; run a dawn (speed hotkeys) and watch income land and the project tick; requirements refuse correctly (missing pattern / prerequisite reads its reason from <code>MeetsRequirements</code>); toggle the key via the test harness (<code>Commands</code>) to preview gated content without waiting out the duration.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>18. Surface Zone (Bands, Camps, War &amp; Life)</summary>
+    <div class="body">
+      <div class="why">Floor 0 is generated from one asset:
+      <code>Assets/ScriptableObjects/Surface/SurfaceZoneProfile.asset</code>, read by
+      <code>SurfaceZoneGenerator</code>. Nearly everything below is a row edit on that asset;
+      the same seed regrows the identical surface. Rebuilt against live HEAD -- current numbers
+      cited are asset data, not contract.</div>
+      <h3>The world</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s1"><label for="dcr-authoring-v1-c18s1"><b>Bands:</b> <code>bands</code> rows of {{<code>unlockKey</code> (empty = always; <code>tech.scout_1/2/3</code> gate the outer rings), <code>outerDepth</code>, <code>densityInner</code>/<code>densityOuter</code>, <code>hasMainCamp</code>, <code>satelliteCampCount</code>, <code>nodeCount</code>}}. Currently 60 / 100 / 180 / 260 deep with node counts 3 / 10 / 14 / 18. A new ring is one new row plus its research key.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s2"><label for="dcr-authoring-v1-c18s2"><b>Terrain &amp; props:</b> <code>grassTile</code> / <code>roadTile</code> / <code>trailTile</code>; scatter pools <code>treePrefabs</code> / <code>rockPrefabs</code> / <code>decorPrefabs</code>; road corridor knobs <code>roadHalfWidth</code>, <code>roadClearance</code>, <code>treeFreeInnerBand</code>. Densities taper per band row.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s3"><label for="dcr-authoring-v1-c18s3"><b>Camp seeding:</b> <code>mainCampRadius</code> / <code>satelliteCampRadius</code>, <code>minCampSeparation</code>, <code>minCampBearingDeg</code>, <code>mainCampRoadDepth</code>. Which bands carry camps lives on the band rows.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s4"><label for="dcr-authoring-v1-c18s4"><b>Camp tiers</b> (<code>campTiers</code> rows, open-ended -- a future Town is a data row): <code>name</code>, <code>growthThreshold</code>, <code>commercePrefab</code> (the narrative anchor: cart &rarr; stall &rarr; shop; it is also the wandering merchant&#39;s dock and is placed facing the way home), <code>props</code>, the framing pair (<code>framingCommercePrefab</code> + <code>framingProps</code> -- <code>framingProps[i]</code> frames <code>props[i]</code> and lands at the exact final hashed positions once the previous tier passes <code>framingFraction</code>, the 70% rule), the ruin pair (<code>ruinCommercePrefab</code> + <code>ruinProps</code>, raid-displacement only -- natural decay leaves no scar), and <code>millerMultiplier</code>. Growth caps: <code>mainGrowthCap</code> / <code>satelliteGrowthCap</code>; decay: <code>decayGraceDays</code>, <code>decayPerDay</code>.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s5"><label for="dcr-authoring-v1-c18s5"><b>Identity effects:</b> per-faction camp knobs -- <code>guildIntervalSecondsPerTier</code> + <code>guildIntervalFloorFraction</code> (Guild speeds ambient intervals), <code>cultistDecayDampenPerTier</code> + <code>cultistDecayMultiplierMin</code>, <code>holyManaTaxPerTier</code> + <code>holyManaTaxCap</code>.</label></div>
+      <h3>Resource nodes</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s6"><label for="dcr-authoring-v1-c18s6"><b>The node table:</b> <code>nodeTypes</code> rows of {{<code>nodeKey</code>, <code>displayName</code>, <code>stubPrefab</code>, <code>minSpawnDistance01</code>/<code>maxSpawnDistance01</code> (band placement window), <code>weight</code>}}. An empty table means zero nodes -- there is no fallback. Per-band counts live on the band rows.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s7"><label for="dcr-authoring-v1-c18s7"><b>Stub visuals are optional.</b> A null <code>stubPrefab</code> spawns an empty named after <code>displayName</code> carrying <code>ResourceNodeStub</code>; assign a sprite prefab later with no code change (the generator attaches the stub component if the prefab lacks one). <code>nodeMinSpacing</code> keeps stubs apart; nodes never land on the road corridor, trail shoulders, or camp clearings.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s8"><label for="dcr-authoring-v1-c18s8"><b>Adding a type later</b> is one new row -- pick an unused <code>nodeKey</code>, set its band window and weight, done. Harvest yields, depletion, and per-type binding arrive with the harvesting system and will key off <code>nodeKey</code>; the row you author now is that system&#39;s identity.</label></div>
+      <h3>Life, war &amp; dressing</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s9"><label for="dcr-authoring-v1-c18s9"><b>Puppet sprites:</b> <code>SurfaceLifeController</code> (scene) -- <code>daySprites</code> / <code>nightWatchSprites</code> pools, miller counts (<code>dayMainMin/Max</code>, <code>daySatelliteMin/Max</code>, night counts), <code>wanderSpeed</code>, sorting (Player / 5). Raid crossings and kindred caravan porters (<code>PlayCrossing</code>) reuse the same pools -- new puppet art is a sprite drop, no code.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s10"><label for="dcr-authoring-v1-c18s10"><b>War knobs</b> (all on the profile): <code>interactionRange</code> (cells), <code>hostileDawnChance</code>, <code>hostilePairCooldownDays</code>, <code>raidLoserGrowthLoss</code> / <code>raidWinnerGrowthLoss</code>, <code>caravanDawnChance</code>, <code>suppressionPerAttackerTier</code> + <code>suppressionCap</code>, and the <code>factionStances</code> rows (unlisted pairs neutral; same faction kindred).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s11"><label for="dcr-authoring-v1-c18s11"><b>Landmarks:</b> <code>factionLandmarkPrefabs</code> in FactionId order (guild hall / church / unholy temple; the Mercenary slot stays empty) rise at the camp centre at the FINAL authored tier; <code>factionLandmarkFramingPrefab</code> is the one shared scaffold shown while that tier frames. Displacement razes the landmark with the rest -- no bespoke landmark ruin.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s12"><label for="dcr-authoring-v1-c18s12"><b>Edge fog &amp; the gate:</b> on <code>SurfaceZoneGenerator</code> -- <code>fogFadeCells</code> (8), <code>fogSolidMarginCells</code> (24), <code>fogColor</code>; the ring hides unpainted void at every band edge and keeps the outermost rim misty forever. City gate: <code>gatePrefab</code>, <code>gateTriggerSize</code>, <code>gateReturnInset</code> on the profile.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c18s13"><label for="dcr-authoring-v1-c18s13"><b>Smoke it:</b> toggle <code>tech.scout_1/2/3</code> via the <code>Commands</code> context menus -- each ring paints instantly, sight creeps out over a day (<code>creepDays</code>), camps / trails / nodes land deterministically, and a reload regrows the identical surface.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>19. Level-Gated Monsters, Affinity Reskin Families &amp; Depth-Banded Wilds</summary>
+    <div class="body">
+      <div class="why">Everything in Chapter 1 still applies; this chapter covers the surfaces the
+      Bestiary Expansion and Boss Promotion arcs added on top of it.</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c19s1"><label for="dcr-authoring-v1-c19s1"><b>Level gates:</b> <code>requiredTier</code> + <code>requiredRank</code> on the definition. The spawner picker cycles what the core&#39;s level admits; a new monster slots into the curve by choosing its tier/rank pair (empty ranks are listed in canon section 27).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c19s2"><label for="dcr-authoring-v1-c19s2"><b>Affinity:</b> <code>affinityType</code> (<code>None</code> = universal). <code>AffinityMatches</code> gates placement (<code>DungeonBuildController</code> rejects with &quot;answers another core&quot;) and the picker skips non-matching defs with Show()-snap. Native lines fill 10 parity slots per core type; slot stat blocks are <b>identical across the six types by ruling</b> -- core choice is balance-neutral, identity is carried by name, sprite, and description.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c19s3"><label for="dcr-authoring-v1-c19s3"><b>Reskin family recipe</b> (the Adept / Archon pattern): ONE prefab variant carries the stats; six definitions point at it, differing only in <code>monsterName</code>, <code>affinityType</code>, <code>description</code> (and sprite once bespoke art lands). Register all six; the picker + placement gate do the rest.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c19s4"><label for="dcr-authoring-v1-c19s4"><b>Depth-banded wilds:</b> <code>minWildFloor</code> on the definition; <code>WildMonsterController</code> filters the floor template&#39;s wild pool by <code>floor.FloorIndex &gt;= minWildFloor</code>. A deep-floor wild is Chapter 2&#39;s recipe plus this one field.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c19s5"><label for="dcr-authoring-v1-c19s5"><b>Boss / sub-boss promotion supersedes Chapter 1&#39;s variant-asset steps.</b> Promotion is now rank-on-spawner: one <code>PromotionTemplate</code> asset (Create &rarr; <code>Dungeon/Promotion Template</code>) holds the sub-boss and boss multiplier blocks plus the epithet pool, assigned to <code>DungeonBuildController</code>&#39;s Promotion Template slot. Any placed monster promotes for the difference cost; per-floor limits (1 boss, 2 sub-bosses); <code>BossVariantDefinition</code> / <code>SubBossVariantDefinition</code> assets are retired from authoring (the classes remain for legacy loads).</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>20. Trader Stock (the merchant&#39;s wagon)</summary>
+    <div class="body">
+      <p>The Wandering Merchant sells from one data asset:
+      <code>Assets/ScriptableObjects/Trader/TraderStockCatalog.asset</code>, rebuilt any time by
+      <b>Dungeon Core &rarr; Generate Trader Stock</b>. The generator reads the live pattern
+      assets, so most stock is added without touching it. Prices are anchored to the shipped
+      bribes (150g Inspector / 250g Mercenary): exclusives flat <b>240g</b>; catch-up by band
+      <b>60 / 100 / 180 / 320 / 550</b>; books <b>220g</b> (T2) / <b>400g</b> (T3) / <b>480g</b> (apex).</p>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c20s1"><label for="dcr-authoring-v1-c20s1"><b>New trader-exclusive pattern:</b> Create &rarr; <code>Dungeon Core/Pattern Definition</code> in <code>ScriptableObjects/Patterns</code>; set <code>id</code> (snake_case), <code>displayName</code>, <code>band = Reserved</code>, and a hint line pointing at the merchant. Rerun <b>Generate Trader Stock</b> -- it joins the wagon at 240g automatically. Reserved patterns are the merchant&rsquo;s alone; gate future nodes on them via <code>AddPattern</code> in <code>TechContentGenerator</code> when their time comes.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c20s2"><label for="dcr-authoring-v1-c20s2"><b>Catch-up stock is automatic:</b> every loot-band pattern (Common&ndash;Legendary) is already in the catalog at the band curve, flagged <code>isCatchUp</code>. It only ever appears in a visit once a HIGHER loot band is learned -- no authoring needed.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c20s3"><label for="dcr-authoring-v1-c20s3"><b>New loot book:</b> add one <code>AddBook(catalog, &quot;bk_id&quot;, &quot;Display Name&quot;, &quot;tech.node_id&quot;, price, &quot;flavour&quot;);</code> line in <code>TraderStockGenerator.Generate</code> and rerun the menu item. The node key is the full unlock key; the book grants it outright via <code>GrantNodeFully</code> (points, prerequisites, and pattern requirements bypassed -- the requirement travels in the binding). Price by tier per the anchors above.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c20s4"><label for="dcr-authoring-v1-c20s4"><b>Future stock kinds (specials included):</b> add a value to <code>TraderStockCatalog.StockType</code>, a matching apply branch in <code>WanderingMerchantController.TryPurchase</code>, and author entries -- the controller, rotation, and shop UI need nothing else. The Sorcery book pair (<i>Primer of the First Spark</i>, <i>The Drawn Breath</i>) stays reserved by name until core spells are greenlit.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>21. Projectile Bolts &amp; Archer Sprites (Ranged Combat)</summary>
+    <div class="body">
+      <div class="why">Ranged combat v1 ships with a runtime-generated soft-glow bolt tinted
+      per definition, and archer bodies borrowed from donor prefabs -- nothing blocks play.
+      This chapter is the road to bespoke art. All prompts follow Guide 1's Style Contract:
+      prefix the fixed head, suffix the fixed tail; only the <b>subject slots</b> live here.
+      Wiring rule to internalise first: <code>projectileTint</code> <i>multiplies</i> the
+      sprite, so pre-coloured bespoke art wants the tint set back to <b>white</b> on that
+      definition. Both generators respect this: caster tints stamp on the first flip only,
+      and archer visual fields stamp fresh-only, so your whitening survives reruns.</div>
+
+      <h3>Magic bolts (seven)</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s1"><label for="dcr-authoring-v1-c21s1"><b>Generate</b> seven bolt sprites with <code>dcr_base_generator</code>. These are radial effects: no orthographic-angle clause, no tall-proportions clause, square canvas. Subject slots -- <i>Fire:</i> "a small round mote of flame, a compact glowing fire orb trailing embers"; <i>Water:</i> "a small sphere of seawater, a compact glowing tide orb trailing droplets"; <i>Air:</i> "a small coil of pale wind, a compact glowing gale orb trailing wisps"; <i>Earth:</i> "a small shard-cored stone orb, a compact glowing ochre mote trailing grit"; <i>Dark:</i> "a small orb of violet shadow, a compact glowing void mote trailing smoke"; <i>Light:</i> "a small gilt sun-mote, a compact glowing radiant orb trailing sparks"; <i>Bone-green (Necromancer / Deathpriest):</i> "a small orb of sickly green grave-fire, a compact glowing bone-fire mote".</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s2"><label for="dcr-authoring-v1-c21s2"><b>Post:</b> background removal with <b>INSPYRENET</b> (not RMBG-2.0 -- meta-tensors failure on the current libraries), then downscale to <b>32x32</b> -- one cell at the game-wide 32 px/world-unit density.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s3"><label for="dcr-authoring-v1-c21s3"><b>Import</b> matching the existing sprite settings (Sprite 2D, PPU 32), then assign each bolt to its caster definitions' <code>projectileSprite</code> (six affinity bolts across Adepts / -mancers / Archons by <code>affinityType</code>; bone-green to Necromancer and Deathpriest) and set those definitions' <code>projectileTint</code> to <b>white</b>.</label></div>
+
+      <h3>Arrows</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s4"><label for="dcr-authoring-v1-c21s4"><b>Generate</b> one arrow sprite. Object convention: drop the tall-proportions clause and lead with the orthographic side-view clause right after the subject noun. Subject slot: "a single fletched arrow in flat side profile, iron head pointing right, dark wood shaft, grey goose fletching". <b>Pointing right matters</b> -- <code>DungeonProjectile</code> rotates right-facing art along the flight heading.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s5"><label for="dcr-authoring-v1-c21s5"><b>Post + wire:</b> INSPYRENET removal, downscale to 32x32, import at PPU 32, assign to the three archer definitions' <code>projectileSprite</code> (Bone Archer, Hobgoblin Sharpshooter, Dread Marksman), tints to white.</label></div>
+
+      <h3>Archer bodies (three)</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s6"><label for="dcr-authoring-v1-c21s6"><b>Generate</b> three creature sprites (keep the tall-proportions clause; humanoid target ~34x60 in a 64 px square per the size table). Subject slots -- <i>Bone Archer:</i> "a skeletal archer, yellowed bones, drawing a cracked longbow, quiver of black arrows at the hip"; <i>Hobgoblin Sharpshooter:</i> "a hobgoblin sharpshooter in dark leathers, shouldering a heavy iron crossbow, bolt quiver on the back"; <i>Dread Marksman:</i> "a grim human marksman in blackened mail and a hooded half-cloak, tall yew longbow, bracer and shooting glove".</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s7"><label for="dcr-authoring-v1-c21s7"><b>Wire</b> each body onto its generated prefab variant (<code>Monster_BoneArcher</code>, <code>Monster_HobgoblinSharpshooter</code>, <code>Monster_DreadMarksman</code>) -- sprite plus Animator Controller per the Animation Controllers guide. Rerunning <i>Generate Archer Monsters</i> refreshes balance stats only; these hand-edits survive.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c21s8"><label for="dcr-authoring-v1-c21s8"><b>Icons (optional):</b> the roster norm is none. If you make them, use the painted-UI-icon convention -- it opts out of the Style Contract entirely.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>22. Trapworks Sprites (the nine new traps)</summary>
+    <div class="body">
+      <div class="why">The nine trapworks prefabs ship as stand-ins: the donor spike sprite under an
+      affinity tint, applied by <code>TrapContentGenerator</code>. This chapter is the sprite pass.
+      All are <b>objects/props</b> under the Guide 1 Style Contract: keep the fixed head and tail,
+      <b>drop the tall-proportions clause</b> (creatures only), and <b>lead with the orthographic
+      angle clause immediately after the subject noun</b>. Target 2 cells = <b>64 px</b> (humanoid-free
+      props); palette <code>dcr-props-1x.png</code>; a 1024x768 landscape canvas nudges the model
+      toward flatter front-on angles. Post: background removal via <b>INSPYRENET</b> (RMBG-2.0 fails
+      with a meta-tensors error on current library versions).</div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s1"><label for="dcr-authoring-v1-c22s1"><b>Crossbow.</b> Subject slot: <code>a mounted iron crossbow turret on a squat wooden tripod, loaded bolt, taut string</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s2"><label for="dcr-authoring-v1-c22s2"><b>Fireball Rune.</b> Subject slot: <code>a circular ember-red rune carved into a stone floor tile, faint inner glow, cracked edges</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s3"><label for="dcr-authoring-v1-c22s3"><b>Ice Spikes.</b> Subject slot: <code>a cluster of jagged pale-blue ice spikes erupting from a frosted stone floor plate</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s4"><label for="dcr-authoring-v1-c22s4"><b>Earth Spikes.</b> Subject slot: <code>a cluster of jagged granite spikes bursting from a cracked earthen floor plate</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s5"><label for="dcr-authoring-v1-c22s5"><b>Gale Vent.</b> Subject slot: <code>a round stone floor vent with curved iron louvres, faint spiral of dust above it</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s6"><label for="dcr-authoring-v1-c22s6"><b>Blinding Flash.</b> Subject slot: <code>a polished gold-white sigil disc set flush in a stone tile, thin engraved rays</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s7"><label for="dcr-authoring-v1-c22s7"><b>Umbral Snare.</b> Subject slot: <code>a black thorned iron ring half-sunk in shadowed stone, wisps of dark mist</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s8"><label for="dcr-authoring-v1-c22s8"><b>Sleep Dart.</b> Subject slot: <code>a small brass dart box set into a wall base, narrow firing slit, one feathered dart</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s9"><label for="dcr-authoring-v1-c22s9"><b>Siphon Rune.</b> Subject slot: <code>a teal spiral rune etched in a stone tile, thin channels feeding a small centre crystal</code></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s10"><label for="dcr-authoring-v1-c22s10"><b>Wire the art in through the generator.</b> Assign each finished sprite on its prefab's <code>SpriteRenderer</code> (the generator only sets the sprite when it is null, so real art survives reruns), and set that trap's <code>TrapSpec.tint</code> to <code>Color.white</code> in <code>TrapContentGenerator.cs</code> -- the tint was the stand-in differentiator and reruns re-apply it, so blank it at the spec, not on the prefab.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c22s11"><label for="dcr-authoring-v1-c22s11"><b>Icons later, painted convention.</b> Trap icons opt out of the Style Contract entirely (painted UI icon convention). The generator never touches the <code>icon</code> field, so hand-assigned icons survive every rerun.</label></div>
+      <div class="note"><b>Sizing reminder:</b> 1 cell = 32 px, so these 2-cell props land in a 64 px
+      square; the crossbow may read better at 3 cells (96 px) if the turret silhouette crowds --
+      judge on the first render.</div>
+    </div>
+  </details>
+
+  
+</div>
+
+<script>
+(function () {
+  var PREFIX = "dcr-authoring-v1-";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var fill = document.getElementById('progressFill');
+  var text = document.getElementById('progressText');
+  var reset = document.getElementById('resetBtn');
+
+  function refresh() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var pct = boxes.length ? Math.round(100 * done / boxes.length) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = done + ' / ' + boxes.length + ' steps complete';
+  }
+
+  boxes.forEach(function (b) {
+    try {
+      if (localStorage.getItem(b.id) === '1') b.checked = true;
+    } catch (e) {}
+    b.addEventListener('change', function () {
+      try { localStorage.setItem(b.id, b.checked ? '1' : '0'); } catch (e) {}
+      refresh();
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

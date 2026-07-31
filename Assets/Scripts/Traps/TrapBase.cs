@@ -88,7 +88,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         if (Definition == null) return;
         if (IsDisarmed) return;
         if (!TrapsArmed) return;
-        if (Time.time - lastTriggerTime < Definition.cooldown) return;
+        if (Time.time - lastTriggerTime < Definition.cooldown * TrapMastery.CooldownMultiplier) return;
 
         lastTriggerTime = Time.time;
         ApplyEffect(adv);
@@ -121,7 +121,7 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         if (m == null) return;
         if (IsDisarmed) return;
         if (IsFlagged) return;
-        if (Time.time - lastTriggerTime < Definition.cooldown) return;
+        if (Time.time - lastTriggerTime < Definition.cooldown * TrapMastery.CooldownMultiplier) return;
 
         lastTriggerTime = Time.time;
         ApplyEffect(m);
@@ -183,6 +183,20 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
         IsFlagged = false;
     }
 
+    // -- Scaling ------------------------------------------------------
+
+    /// <summary>Definition damage through both standing levers: the room-side
+    /// census (Forges and mounted trophies) and the Trapwright research line.
+    /// Read at fire time, so every placed trap sharpens the moment a node or
+    /// room completes.</summary>
+    protected float ScaledDamage =>
+        Definition.damage * RoomEffectCensus.TrapDamageMultiplier * TrapMastery.DamageMultiplier;
+
+    /// <summary>Affliction duration through the Trapwright line. The capture
+    /// hold is deliberately excluded -- lengthening it widens the rescue
+    /// window and would weaken the trap.</summary>
+    protected float ScaledDuration(float seconds) => seconds * TrapMastery.DurationMultiplier;
+
     // ── Factory ───────────────────────────────────────────────────
 
     public static TrapBase EnsureBehaviour(GameObject placedPrefab, TrapDefinition def)
@@ -198,6 +212,15 @@ public abstract class TrapBase : MonoBehaviour, IFloorEntity
             TrapDefinition.TrapBehaviour.PressurePlate => placedPrefab.AddComponent<PressurePlateTrap>(),
             TrapDefinition.TrapBehaviour.CaptureTrap => placedPrefab.AddComponent<CaptureTrap>(),
             TrapDefinition.TrapBehaviour.ScatterTrap => placedPrefab.AddComponent<ScatterTrap>(),
+            TrapDefinition.TrapBehaviour.Crossbow => placedPrefab.AddComponent<CrossbowTrap>(),
+            TrapDefinition.TrapBehaviour.Fireball => placedPrefab.AddComponent<FireballTrap>(),
+            TrapDefinition.TrapBehaviour.IceSpikes => placedPrefab.AddComponent<IceSpikesTrap>(),
+            TrapDefinition.TrapBehaviour.EarthSpikes => placedPrefab.AddComponent<EarthSpikesTrap>(),
+            TrapDefinition.TrapBehaviour.GaleVent => placedPrefab.AddComponent<GaleVentTrap>(),
+            TrapDefinition.TrapBehaviour.BlindingFlash => placedPrefab.AddComponent<BlindingFlashTrap>(),
+            TrapDefinition.TrapBehaviour.UmbralSnare => placedPrefab.AddComponent<UmbralSnareTrap>(),
+            TrapDefinition.TrapBehaviour.SleepDart => placedPrefab.AddComponent<SleepDartTrap>(),
+            TrapDefinition.TrapBehaviour.SiphonRune => placedPrefab.AddComponent<SiphonRuneTrap>(),
             _ => placedPrefab.AddComponent<SpikeTrap>(),
         };
     }

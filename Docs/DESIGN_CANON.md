@@ -2215,3 +2215,151 @@ detectionRange hand-edits (the sense clamp is definition-driven).
 `Adventurer/DungeonAdventurer.cs`, `Editor/RangedContentGenerator.cs`,
 `ScriptableObjects/Monsters/Regular/MonsterDef_BoneArcher.asset` (+
 Sharpshooter, Marksman, and their prefab variants, generator-created).
+
+## 31. The Trapworks (Roster, Type Exclusivity, Trapwright)
+
+Status: SHIPPED. Verified: pending smoke test.
+
+The trap system reworked from a fixed six-trap set with hardcoded behaviour
+switches into a data-driven roster of fifteen, with core-type exclusivity,
+a research spine, and a retroactive upgrade line.
+
+### Elemental exclusivity (the type-lock rule)
+
+Each of the six elemental traps belongs to exactly one core type and is the
+signature of that core: Fire holds the Fireball Rune, Water the Ice Spikes,
+Earth the Earth Spikes, Air the Gale Vent, Light the Blinding Flash, Dark
+the Umbral Snare. The other five are hidden entirely on a mismatched core:
+never in the research tree (VisibilityCondition.CoreAffinity, and
+CanAppearThisRun() drops them from tree layout so no reserved gap remains),
+never in the trap carousel, and refused at placement as a backstop with the
+wisp line "The core cannot hold that element's shape". Neutral traps are
+universal. GrantBuriedDiscovery already filters by matching affinity, so
+buried sites can only ever grant the core's own signature.
+
+The canonical opposition table -- Fire against Water, Air against Earth,
+Dark against Light -- is recorded here as the standing reference for future
+type-interaction systems. It does not gate trap access; exclusivity does.
+
+### The roster (fifteen traps)
+
+Six pre-rework traps unchanged in behaviour: Spike, Pitfall, Warning,
+Pressure Plate, Snare (capture), Scatter. Nine new:
+
+- Crossbow (neutral, tech.crossbow_trap, 16 mana / 3 cap): a sentry, not a
+  snare. Scans sentryRange 3.5 for the nearest adventurer with line of
+  sight (wild monster as fallback target, the pressure-plate precedent) and
+  looses a real DungeonProjectile every 2.4s for 9 damage. Bolts land as
+  DamageKind.Ranged, so a marching shield wall mitigates them -- Scatter or
+  Gale Vent is the intended opener. Never cell-triggered: walking its cell
+  is safe, so detoursWhenFlagged is off and a flagged crossbow keeps firing
+  until a Rogue disarms it (awareness buys avoidance, not immunity, and a
+  sentry cannot be avoided by pathing).
+- Fireball Rune (Fire, 22 / 3): burst radius 1.6 around the cell, 16 damage
+  to everyone in it, plus a clinging burn on adventurers (4 dps for 3s,
+  ticked once per second). Cooldown 6s. A wild stepper detonates it for all.
+- Ice Spikes (Water, 14 / 2): 10 damage plus a near-freeze (slow x0.05 for
+  2.5s). Cooldown 4s.
+- Earth Spikes (Earth, 16 / 2): 20 damage -- the heaviest single wound in
+  the trapworks -- plus knockback 1.5. Cooldown 5s.
+- Gale Vent (Air, 12 / 2): knockback 2.5, formation broken for 4s, 4 buffet
+  damage. Cooldown 5s. The strongest formation-breaker.
+- Blinding Flash (Light, 14 / 2): burst radius 1.5; every adventurer in it
+  loses its combat target, all but stills for 1.5s, takes 5 sear damage, and
+  has trap-sense suppressed for 8s (no detecting, no disarming). Cooldown
+  8s. Light-affinity theming holds: this light judges, it does not guide.
+- Umbral Snare (Dark, 12 / 2): no damage; knockback 0.8, slow x0.5 for 3s,
+  and monster-detection range halved for 6s so the dark's own get the first
+  blow in. Cooldown 6s.
+- Sleep Dart (neutral, tech.sleep_dart, 10 / 2): no damage; the blind
+  primitive with no sense suppression -- target dropped, all but stilled
+  for 3.5s. Cooldown 5s.
+- Siphon Rune (neutral, tech.siphon_rune, 10 / 2): 6 damage and 10 mana
+  returned to the core per trigger. Cooldown 3s. Adventurers only pay the
+  tithe -- wilds take the wound but grant nothing, or wandering wilds would
+  be a slow mana farm.
+
+### Research spine (Architecture lane)
+
+crossbow_trap "The Patient Arm" (t2, 15 pts / 2d, prereq spike_trap,
+pattern TemperedSteel) is the trunk. All six elemental nodes sit at t3 (30
+pts / 3d, prereq crossbow_trap, visibility CoreAffinity, affinity set -- so
+the one core that can see its node also gets the 50% affinity discount):
+trap_fireball "The Waking Ember" (WroughtIron), trap_ice_spikes "Teeth of
+Winter" (Silverwork), trap_earth_spikes "The Rising Stone" (VeinedGranite),
+trap_gale_vent "The Hollow Gale" (QuarrySand), trap_blinding_flash "The
+Searing Glance" (HallowedStone), trap_umbral_snare "The Clinging Dark"
+(Gravegold -- a second consumer for the trader-exclusive pattern).
+sleep_dart "The Quiet Needle" (t3, 20 / 2d, CuredLeather) and siphon_rune
+"The Tithing Mark" (t3, 20 / 2d, Silverwork) hang off the same trunk.
+
+trapwright_1 "Trapwright's Craft" (t3, 25 / 3d, prereq crossbow_trap,
+WroughtIron) and trapwright_2 "Master Trapwright" (t4, 45 / 4d, prereq
+trapwright_1, TemperedSteel) are the upgrade line. TrapMastery (static,
+Traps/) reads UnlockState at fire time: damage and affliction durations
+x1.25 at tier I, x1.5 at tier II, cooldowns x0.8 at tier II. Retroactive by
+construction -- every placed trap sharpens the moment the node completes --
+and stacks multiplicatively with RoomEffectCensus.TrapDamageMultiplier
+(Forges, mounted trophies). The capture hold is deliberately excluded from
+duration scaling: lengthening it widens the rescue window.
+
+### Data-driven trap flags
+
+TrapDefinition gains requiredTechKey, affinity, disarmable and
+detoursWhenFlagged; the scattered behaviour-enum switches are gone.
+IsDisarmableTrap reads def.disarmable (pre-rework values preserved: Spike
+and Pitfall true, the rest of the old six false; all nine new traps true).
+GetFlaggedCells reads def.detoursWhenFlagged (pre-rework preserved: Warning
+and Pressure Plate false, Crossbow also false, everything else true). The
+carousel lists only unlocked, affinity-valid traps -- the tree is the
+discovery surface, the picker is the toolbox -- and rebuilds in place on
+UnlockState.OnChanged, keeping the current pick if it survives. Placement
+carries both backstop gates.
+
+### Adventurer statuses (transient by the section-30 precedent)
+
+ApplyBurn (dps ticked once per second; strongest dps and latest end win on
+refresh), ApplyBlind (telegraph cancelled, combat target dropped -- the
+combat state machine self-heals off the null target -- near-stilled via the
+slow machinery, trap-sense suppressed while blindUntil holds; IsBlinded
+gates both ScanForTraps and TryBeginDisarm), and ApplySenseDamp
+(EffectiveDetectionRange multiplies monster-detection down at the three
+ScanForMonsters call sites; the faction-brawl and commoner-panic scans are
+deliberately unaffected). None of these survive a save, matching the
+mid-flight-bolt ruling.
+
+### Wild monster ruling
+
+Damage, slows and knockback apply to wilds equally; burn, blind, sense
+dimming, formation breaks and the mana tithe are adventurer-only. The line:
+anything needing new monster-side plumbing or modelling an adventurer
+concept stays adventurer-side. A wild stepping on an adventurer-only trap
+still spends its charge.
+
+### Bug fixes and fold-ins riding this arc
+
+- PressurePlateTrap.FireLinkedTrapForMonster used the never-assigned
+  TrapRegistry.Instance, so plates never fired their linked trap for wild
+  monsters. It now resolves the per-floor registry via FloorRoot; the dead
+  Instance property is removed.
+- The hand-added Cold Iron (prison) and Standing Orders (patrol_orders)
+  nodes had fallen out of TechTree.asset on main, leaving both
+  unresearchable. Both are folded into TechContentGenerator verbatim (Cold
+  Iron's full description restored), so the generator is authoritative
+  again and reruns keep them.
+
+### Generator authority
+
+TrapContentGenerator (Editor, menu Dungeon Core -> Generate Trap Content)
+is authoritative for trap content: it authors the nine definitions, their
+stand-in prefabs (donor spike sprite under an affinity tint, replaced by
+the sprite pass later), patches the six existing definitions' new fields,
+and appends missing registry links preserving hand order. Icons are never
+touched on rerun. Author new traps there, not by hand.
+
+Key files: Traps/TrapDefinition.cs, Traps/TrapBase.cs, Traps/TrapMastery.cs,
+Traps/CrossbowTrap.cs (+ the eight sibling subclasses), Traps/
+TrapRegistry.cs, Traps/PressurePlateTrap.cs, Traps/TrapSelectionUI.cs,
+Adventurer/DungeonAdventurer.cs, DungeonCore/DungeonBuildController.cs,
+Gameplay/TechNodeDefinition.cs, Gameplay/ResearchTreeUI.cs,
+Editor/TechContentGenerator.cs, Editor/TrapContentGenerator.cs.

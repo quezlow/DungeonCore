@@ -14,7 +14,7 @@ public class ScatterTrap : TrapBase
     protected override void ApplyEffect(DungeonAdventurer adv)
     {
         if (adv == null) return;
-        adv.BreakFormation(Definition.scatterSeconds);
+        adv.BreakFormation(ScaledDuration(Definition.scatterSeconds));
     }
 
     // ApplyEffect(DungeonMonster) inherits the empty default: monsters have no formation.

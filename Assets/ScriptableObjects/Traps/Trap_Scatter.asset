@@ -14,6 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
   trapName: Sundering Plate
   behaviour: 5
+  requiredTechKey: 
+  affinity: 0
+  disarmable: 0
+  detoursWhenFlagged: 1
   prefab: {fileID: 68821483933244047, guid: 4c50ffb88e9ebed4c98e1da322abc05a, type: 3}
   manaCost: 12
   capacityCost: 2
@@ -23,6 +27,18 @@ MonoBehaviour:
   slowDuration: 2
   captureHoldSeconds: 0
   scatterSeconds: 5
+  sentryRange: 3.5
+  projectileSpeed: 10
+  projectileTint: {r: 1, g: 1, b: 1, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
   icon: {fileID: -8767125363165918247, guid: bc40b83db7920304f9b2979a74e643de, type: 3}
   description: A plate that shatters their ranks. What holds together, it breaks
     apart.

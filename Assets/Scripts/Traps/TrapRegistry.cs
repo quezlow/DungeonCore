@@ -14,8 +14,6 @@ using UnityEngine;
 [DefaultExecutionOrder(-10)]
 public class TrapRegistry : MonoBehaviour
 {
-    public static TrapRegistry Instance { get; private set; }
-
     [Header("Pathfinding")]
     [Tooltip("Dijkstra step cost for a flagged damage-trap cell. Rivers cost 5. " +
              "At 10, a party detours up to nine clear tiles to avoid one known trap " +
@@ -90,8 +88,7 @@ public class TrapRegistry : MonoBehaviour
                 if (kvp.Value == null) continue;
                 if (!kvp.Value.IsFlagged) continue;
                 if (kvp.Value.Definition != null &&
-                    (kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.Warning ||
-                     kvp.Value.Definition.behaviour == TrapDefinition.TrapBehaviour.PressurePlate))
+                    !kvp.Value.Definition.detoursWhenFlagged)
                     continue;
                 flaggedCellsCache.Add(kvp.Key);
             }

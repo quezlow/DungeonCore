@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: MasterTrapwright
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: trapwright_2
+  overrideKey: 
+  displayName: Master Trapwright
+  icon: {fileID: 0}
+  path: 1
+  tier: 4
+  pointCost: 45
+  durationDays: 4
+  affinity: 0
+  patternRequirements:
+  - {fileID: 11400000, guid: 75be6e24d057e9d40a18ec0c386f36e6, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 8c13bb0f468ce864dbadaed925d53354, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: The craft, mastered.
+  description: Trap damage and afflictions rise to half again over base, and every
+    trap resets a fifth faster. Requires the pattern of Tempered Steel.

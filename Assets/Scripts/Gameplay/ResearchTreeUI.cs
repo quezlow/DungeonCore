@@ -183,6 +183,7 @@ public class ResearchTreeUI : MonoBehaviour
         foreach (var n in tree.Nodes)
         {
             if (n == null) continue;
+            if (!n.CanAppearThisRun()) continue;
             if (!byCell.TryGetValue(n.path, out var tiers))
                 byCell[n.path] = tiers = new Dictionary<int, List<TechNodeDefinition>>();
             if (!tiers.TryGetValue(n.tier, out var list))

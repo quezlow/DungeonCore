@@ -56,6 +56,7 @@ public class TrapSelectionUI : MonoBehaviour
             DungeonBuildController.Instance.OnModeChanged += HandleModeChanged;
         if (DungeonCore.Instance != null)
             DungeonCore.Instance.OnManaChanged += HandleManaChanged;
+        UnlockState.OnChanged += HandleUnlockChanged;
 
         RefreshDisplay();
         PushSelectionToBuildController();
@@ -67,14 +68,26 @@ public class TrapSelectionUI : MonoBehaviour
             DungeonBuildController.Instance.OnModeChanged -= HandleModeChanged;
         if (DungeonCore.Instance != null)
             DungeonCore.Instance.OnManaChanged -= HandleManaChanged;
+        UnlockState.OnChanged -= HandleUnlockChanged;
     }
 
     private void BuildEntries()
     {
         entries.Clear();
+        var coreType = DungeonCore.Instance != null
+            ? DungeonCore.Instance.DungeonType : DungeonType.None;
         if (registry != null && registry.All != null)
             foreach (var t in registry.All)
-                if (t != null) entries.Add(new Entry { trap = t });
+            {
+                if (t == null) continue;
+                // Elemental exclusivity: another core's signature never lists.
+                if (t.affinity != DungeonType.None && t.affinity != coreType) continue;
+                // Research gate: unresearched traps stay off the carousel --
+                // the tree is the discovery surface, the picker is the toolbox.
+                if (!string.IsNullOrEmpty(t.requiredTechKey)
+                    && !UnlockState.IsUnlocked(t.requiredTechKey)) continue;
+                entries.Add(new Entry { trap = t });
+            }
         if (chestRegistry != null && chestRegistry.All != null)
             foreach (var c in chestRegistry.All)
                 if (c != null && c.isTrapChest) entries.Add(new Entry { chest = c });
@@ -87,6 +100,22 @@ public class TrapSelectionUI : MonoBehaviour
     }
 
     private void HandleManaChanged(float currentMana, float maxMana) => UpdateAffordabilityVisual();
+
+    /// <summary>A research completion may add traps to the roster; rebuild in
+    /// place and keep the current pick if it survives the rebuild.</summary>
+    private void HandleUnlockChanged(string key)
+    {
+        var kept = Current;
+        BuildEntries();
+        selectedIndex = 0;
+        if (!kept.IsChest && kept.trap != null)
+            for (int i = 0; i < entries.Count; i++)
+                if (entries[i].trap == kept.trap) { selectedIndex = i; break; }
+        RefreshDisplay();
+        if (DungeonBuildController.Instance != null
+            && DungeonBuildController.Instance.CurrentMode == BuildMode.PlaceTrap)
+            PushSelectionToBuildController();
+    }
 
     public void OnPrevClicked()
     {

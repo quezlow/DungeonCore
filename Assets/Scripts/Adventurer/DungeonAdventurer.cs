@@ -633,6 +633,18 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             if (slowTimer <= 0f) slowMultiplier = 1f;
         }
 
+        if (Time.time < burnUntil)
+        {
+            burnTick -= Time.deltaTime;
+            if (burnTick <= 0f)
+            {
+                burnTick += 1f;
+                DamageNumberSpawner.Spawn(burnDps, transform.position,
+                    FloatingDamageNumber.DamageType.AdventurerHit);
+                if (TakeDamage(burnDps)) return;
+            }
+        }
+
         if (knockbackRemaining > 0f) { KnockbackStep(); return; }
 
         if (state == AdventurerState.UsingStairs)
@@ -1415,7 +1427,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             // only harm turns them back. A Cowardly observer still bolts.
             if (goal == AdventurerGoal.ObserveRooms
                 && trait == BehaviourTrait.Cowardly && currentFloor?.Entities != null
-                && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, detectionRange))
+                && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, EffectiveDetectionRange))
                 StartRetreat();
             return;
         }
@@ -1428,9 +1440,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         DungeonMonster nearest = null;
         if (!string.IsNullOrEmpty(returnGrudge))
             nearest = currentFloor.Entities.Nearest<DungeonMonster>(
-                transform.position, detectionRange, m => m.TypeName == returnGrudge);
+                transform.position, EffectiveDetectionRange, m => m.TypeName == returnGrudge);
         if (nearest == null)
-            nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, detectionRange);
+            nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, EffectiveDetectionRange);
 
         if (nearest == null) return;
 
@@ -2185,9 +2197,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private static bool IsDisarmableTrap(TrapBase trap)
     {
         if (trap == null || trap.Definition == null) return false;
-        var b = trap.Definition.behaviour;
-        return b == TrapDefinition.TrapBehaviour.SpikeTrap
-            || b == TrapDefinition.TrapBehaviour.Pitfall;
+        return trap.Definition.disarmable;
     }
 
     // True (and enters the Disarming state) when the next waypoint holds a flagged,
@@ -2195,6 +2205,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private bool TryBeginDisarm(Vector3 waypoint)
     {
         if (currentFloor == null) return false;
+        if (IsBlinded) return false;
         var influence = currentFloor.TileInfluence;
         var trapReg = currentFloor.TrapRegistry;
         if (influence == null || trapReg == null) return false;
@@ -2264,6 +2275,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void ScanForTraps()
     {
         if (currentFloor == null) return;
+        if (IsBlinded) return;
         var trapReg = currentFloor.TrapRegistry;
         var influence = currentFloor.TileInfluence;
         if (trapReg == null || influence == null) return;
@@ -2405,6 +2417,52 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (party == null || Time.time < party.HaltCooldownEnd) return;
         party.HaltUntil = Time.time + trapHaltDuration;
         party.HaltCooldownEnd = Time.time + trapHaltCooldown;
+    }
+
+    // -- Trapworks statuses (burn, blind, dimmed senses) ----------
+    // Transient by the section-30 precedent: none of these survive a save.
+
+    private float blindUntil = -999f;
+    private float senseDampUntil = -999f;
+    private float senseDampMult = 1f;
+    private float burnUntil = -999f;
+    private float burnDps;
+    private float burnTick;
+
+    /// <summary>True while a flash or dart has burned out this one's trap-sense.</summary>
+    public bool IsBlinded => Time.time < blindUntil;
+
+    /// <summary>Monster-detection range through the umbral dimming, if any.</summary>
+    private float EffectiveDetectionRange =>
+        Time.time < senseDampUntil ? detectionRange * senseDampMult : detectionRange;
+
+    /// <summary>A flash or dart: the current quarrel is forgotten, the body all but
+    /// stills for a moment, and (flash only) trap-sense is burned out for a spell.
+    /// The combat state machine self-heals off the null target next frame.</summary>
+    public void ApplyBlind(float haltSeconds, float senseSuppressSeconds)
+    {
+        telegraph?.Cancel();
+        combatTarget = null;
+        if (haltSeconds > 0f) ApplySlow(0.05f, haltSeconds);
+        if (senseSuppressSeconds > 0f)
+            blindUntil = Mathf.Max(blindUntil, Time.time + senseSuppressSeconds);
+    }
+
+    /// <summary>Umbral dimming: monster-detection range multiplied down for a spell,
+    /// so the dark's own get the first blow in.</summary>
+    public void ApplySenseDamp(float multiplier, float seconds)
+    {
+        senseDampMult = Mathf.Clamp(multiplier, 0.1f, 1f);
+        senseDampUntil = Mathf.Max(senseDampUntil, Time.time + seconds);
+    }
+
+    /// <summary>A clinging burn: damage per second, ticked once a second until it
+    /// gutters out. Refreshing takes the stronger dps and the later end.</summary>
+    public void ApplyBurn(float dps, float seconds)
+    {
+        burnDps = Mathf.Max(burnDps, dps);
+        burnUntil = Mathf.Max(burnUntil, Time.time + seconds);
+        if (burnTick <= 0f) burnTick = 1f;
     }
 
     public void ApplySlow(float multiplier, float duration)

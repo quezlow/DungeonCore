@@ -14,7 +14,7 @@ public class SpikeTrap : TrapBase
     {
         if (adv == null) return;
 
-        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         adv.TakeDamage(dmg);
@@ -27,7 +27,7 @@ public class SpikeTrap : TrapBase
         // Floating number colour matches damage-to-monster (yellow per
         // FloatingDamageNumber.DamageType.AdventurerHit naming — that enum
         // value is used wherever a monster TAKES damage from a hostile source).
-        float dmg = Definition.damage * RoomEffectCensus.TrapDamageMultiplier;
+        float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, m.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         m.TakeDamage(dmg);

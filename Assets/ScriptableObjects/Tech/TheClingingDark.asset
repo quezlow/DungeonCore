@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: TheClingingDark
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: trap_umbral_snare
+  overrideKey: 
+  displayName: The Clinging Dark
+  icon: {fileID: 0}
+  path: 1
+  tier: 3
+  pointCost: 30
+  durationDays: 3
+  affinity: 5
+  patternRequirements:
+  - {fileID: 11400000, guid: a91ba886a25c618468a9e647ac02b9af, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: 4fa51fab5cebe9148a414c273b3bc74a, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 5
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: Some shadows do not part.
+  description: 'Umbral snares may be laid: recoil, slowness, and senses dimmed to
+    a candle''s reach. Requires the pattern of Gravegold.'

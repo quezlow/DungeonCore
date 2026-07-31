@@ -38,6 +38,8 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0.6
   knockbackMinDamage: 4
+  breaksFormation: 0
+  formationBreakSeconds: 5
   isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5
@@ -46,3 +48,7 @@ MonoBehaviour:
   risenLifetime: 45
   risenDefinitions: []
   telegraphSeconds: 0.3
+  firesProjectile: 0
+  projectileSpeed: 7
+  projectileTint: {r: 1, g: 1, b: 1, a: 1}
+  projectileSprite: {fileID: 0}

@@ -14,12 +14,31 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
   trapName: Spike Trap
   behaviour: 0
+  requiredTechKey: 
+  affinity: 0
+  disarmable: 1
+  detoursWhenFlagged: 1
   prefab: {fileID: 5249949511220367081, guid: 6ed9008724f878140829adea6858a666, type: 3}
   manaCost: 8
+  capacityCost: 2
   damage: 12
   cooldown: 3
   slowMultiplier: 0.4
   slowDuration: 2
+  captureHoldSeconds: 10
+  scatterSeconds: 5
+  sentryRange: 3.5
+  projectileSpeed: 10
+  projectileTint: {r: 1, g: 1, b: 1, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
   icon: {fileID: -7238928559084705860, guid: bc40b83db7920304f9b2979a74e643de, type: 3}
   description: Iron spikes drive upward through the floor when weight presses down.
     Cheap, reliable, and rearms after a brief moment.

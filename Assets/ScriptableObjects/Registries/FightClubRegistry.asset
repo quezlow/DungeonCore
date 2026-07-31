@@ -12,4 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 361e7bec978965e449b64c7c795ad85b, type: 3}
   m_Name: FightClubRegistry
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinitionRegistry
-  definitions: []
+  definitions:
+  - {fileID: 11400000, guid: 15a2af908c9aece4bb6c68e8d4e1f84c, type: 2}
+  - {fileID: 11400000, guid: e6fcbadb0767b1445b66709ac0ea04f9, type: 2}
+  - {fileID: 11400000, guid: b06fed940ffe30347912e4bdcc3d5338, type: 2}
+  - {fileID: 11400000, guid: fe0cab00a2a02364da51be80d6e63da0, type: 2}
+  - {fileID: 11400000, guid: 41a393cff9d47224ab3f70f421f98cce, type: 2}
+  - {fileID: 11400000, guid: 631d7ad447c002a4ab8863fcf77debca, type: 2}
+  - {fileID: 11400000, guid: 2d21f16cc6114ce41bae25cc9fedb6e5, type: 2}
+  - {fileID: 11400000, guid: 27e5ec87aacfcba498935ab0473982d2, type: 2}
+  - {fileID: 11400000, guid: 465f0b3435e8b0646a5b9ff53fc40106, type: 2}
+  - {fileID: 11400000, guid: abf276e4527509c4d94aa6827e9db877, type: 2}
+  - {fileID: 11400000, guid: 7d8051673cd5e8c4481267066a28ebb3, type: 2}
+  - {fileID: 11400000, guid: b7f779aeaae4d0744a1d25c7605bb027, type: 2}
+  - {fileID: 11400000, guid: 09b6c74df3aac884da6b81f3de5bc076, type: 2}
+  - {fileID: 11400000, guid: 52a1aeefc6f2ea147860a344aa03ba05, type: 2}
+  - {fileID: 11400000, guid: 6092c0bff4ca6074c90662d5eb66f877, type: 2}
+  - {fileID: 11400000, guid: c7cb4a18de553ff488945087c69c84b2, type: 2}
+  - {fileID: 11400000, guid: 7dfa19141cd5b2b43b0db8e7bc7cd5a3, type: 2}
+  - {fileID: 11400000, guid: 067fea74e3f1e1746a0339185f518b25, type: 2}
+  - {fileID: 11400000, guid: 046407b8c37a8f0479efe6dd7799fda1, type: 2}
+  - {fileID: 11400000, guid: 377e4b3d2b0b9034aa2a39637271801d, type: 2}
+  - {fileID: 11400000, guid: a86a9ac5f6780fb42986aece3364494d, type: 2}
+  - {fileID: 11400000, guid: 8f4143779bd3a714aa2ff6b6f1f2890e, type: 2}
+  - {fileID: 11400000, guid: 578b0605734e2f547b04c1f515439819, type: 2}

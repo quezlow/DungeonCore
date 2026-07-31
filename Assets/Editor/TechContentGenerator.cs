@@ -172,6 +172,72 @@ public static class TechContentGenerator
             "Crypts may be built. The named dead can be kept, and spent. Requires the pattern of Gravegold.");
         n_waiting_dark.affinity = DungeonType.Dark;
 
+        // Hand-added nodes folded in verbatim, so a generator rerun keeps them.
+        // Both had fallen out of the tree asset on main -- the exact hazard the
+        // header warns about -- leaving Cold Iron and Standing Orders
+        // unresearchable. The generator is authoritative again from here.
+        var n_patrol = Define("patrol_orders", "Standing Orders", ResearchPath.Observation, 1, 10, 2,
+            "A route, held in mind.",
+            "A route held in mind. Creatures may be given a patrol path.");
+
+        var n_prison = Define("prison", "Cold Iron", ResearchPath.Architecture, 2, 15, 2,
+            "Cold iron, for the ones worth keeping.",
+            "The Prison may be built. Beaten intruders are taken alive into its cells -- to be released, questioned, or put to the stone. Requires the pattern of Wrought Iron.");
+        n_prison.affinity = DungeonType.Dark;
+
+        // The trapworks: the crossbow trunk, six exclusive elemental
+        // signatures (each visible only to its matching core), two neutral
+        // craft pieces, and the Trapwright line.
+        var n_crossbow = Define("crossbow_trap", "The Patient Arm", ResearchPath.Architecture, 2, 15, 2,
+            "Something that waits, and does not tire.",
+            "Crossbow sentries may be placed: a watched span of hall, and a bolt for whoever crosses it. Requires the pattern of Tempered Steel.");
+
+        var n_trap_fire = Define("trap_fireball", "The Waking Ember", ResearchPath.Architecture, 3, 30, 3,
+            "Heat, folded and waiting.",
+            "Fireball runes may be laid: a burst for the many, and a burn that clings after. Requires the pattern of Wrought Iron.");
+        n_trap_fire.affinity = DungeonType.Fire;
+
+        var n_trap_ice = Define("trap_ice_spikes", "Teeth of Winter", ResearchPath.Architecture, 3, 30, 3,
+            "The cold remembers how to bite.",
+            "Ice-spike traps may be laid: a wound, and a cold that all but stills. Requires the pattern of Silverwork.");
+        n_trap_ice.affinity = DungeonType.Water;
+
+        var n_trap_earth = Define("trap_earth_spikes", "The Rising Stone", ResearchPath.Architecture, 3, 30, 3,
+            "The floor need not lie still.",
+            "Earth-spike traps may be laid: the floor itself striking upward, and hurling back. Requires the pattern of Veined Granite.");
+        n_trap_earth.affinity = DungeonType.Earth;
+
+        var n_trap_gale = Define("trap_gale_vent", "The Hollow Gale", ResearchPath.Architecture, 3, 30, 3,
+            "A breath, held under stone.",
+            "Gale vents may be laid: a hammer of wind that hurls intruders and breaks their lines. Requires the pattern of Quarry Sand.");
+        n_trap_gale.affinity = DungeonType.Air;
+
+        var n_trap_flash = Define("trap_blinding_flash", "The Searing Glance", ResearchPath.Architecture, 3, 30, 3,
+            "Not all light means to guide.",
+            "Blinding flash traps may be laid: judgment in a burst -- quarrels forgotten, trap-sense burned away. Requires the pattern of Hallowed Stone.");
+        n_trap_flash.affinity = DungeonType.Light;
+
+        var n_trap_umbral = Define("trap_umbral_snare", "The Clinging Dark", ResearchPath.Architecture, 3, 30, 3,
+            "Some shadows do not part.",
+            "Umbral snares may be laid: recoil, slowness, and senses dimmed to a candle's reach. Requires the pattern of Gravegold.");
+        n_trap_umbral.affinity = DungeonType.Dark;
+
+        var n_sleep_dart = Define("sleep_dart", "The Quiet Needle", ResearchPath.Architecture, 3, 20, 2,
+            "Softly, and they forget you.",
+            "Sleep darts may be laid: no wound, only a stolen moment and a forgotten quarrel. Requires the pattern of Cured Leather.");
+
+        var n_siphon = Define("siphon_rune", "The Tithing Mark", ResearchPath.Architecture, 3, 20, 2,
+            "All who pass owe something.",
+            "Siphon runes may be laid: a small wound, and the taking returned to the core as mana. Requires the pattern of Silverwork.");
+
+        var n_trapwright1 = Define("trapwright_1", "Trapwright's Craft", ResearchPath.Architecture, 3, 25, 3,
+            "The craft improves with use.",
+            "Every trap bites a quarter harder and its afflictions cling a quarter longer. Requires the pattern of Wrought Iron.");
+
+        var n_trapwright2 = Define("trapwright_2", "Master Trapwright", ResearchPath.Architecture, 4, 45, 4,
+            "The craft, mastered.",
+            "Trap damage and afflictions rise to half again over base, and every trap resets a fifth faster. Requires the pattern of Tempered Steel.");
+
         // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
         AddPrereq(n_wave_preview, n_status_bars);
         AddPrereq(n_known_parties, n_wave_preview);
@@ -232,10 +298,47 @@ public static class TechContentGenerator
         AddPrereq(n_waiting_dark, n_summoning_circle);
         AddPattern(n_waiting_dark, "Gravegold");
 
+        AddPrereq(n_prison, n_hall_of_trophies);
+        AddPattern(n_prison, "WroughtIron");
+
+        AddPrereq(n_crossbow, n_spike_trap);
+        AddPattern(n_crossbow, "TemperedSteel");
+
+        AddPrereq(n_trap_fire, n_crossbow);
+        AddPattern(n_trap_fire, "WroughtIron");
+        n_trap_fire.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+        AddPrereq(n_trap_ice, n_crossbow);
+        AddPattern(n_trap_ice, "Silverwork");
+        n_trap_ice.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+        AddPrereq(n_trap_earth, n_crossbow);
+        AddPattern(n_trap_earth, "VeinedGranite");
+        n_trap_earth.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+        AddPrereq(n_trap_gale, n_crossbow);
+        AddPattern(n_trap_gale, "QuarrySand");
+        n_trap_gale.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+        AddPrereq(n_trap_flash, n_crossbow);
+        AddPattern(n_trap_flash, "HallowedStone");
+        n_trap_flash.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+        AddPrereq(n_trap_umbral, n_crossbow);
+        AddPattern(n_trap_umbral, "Gravegold");
+        n_trap_umbral.visibility = TechNodeDefinition.VisibilityCondition.CoreAffinity;
+
+        AddPrereq(n_sleep_dart, n_crossbow);
+        AddPattern(n_sleep_dart, "CuredLeather");
+        AddPrereq(n_siphon, n_crossbow);
+        AddPattern(n_siphon, "Silverwork");
+
+        AddPrereq(n_trapwright1, n_crossbow);
+        AddPattern(n_trapwright1, "WroughtIron");
+        AddPrereq(n_trapwright2, n_trapwright1);
+        AddPattern(n_trapwright2, "TemperedSteel");
+
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_minimap, n_alerts, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
             n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_barrow_oaths, n_litany_of_graves, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
-            n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3 });
+            n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3,
+            n_patrol, n_prison, n_crossbow, n_trap_fire, n_trap_ice, n_trap_earth, n_trap_gale, n_trap_flash, n_trap_umbral,
+            n_sleep_dart, n_siphon, n_trapwright1, n_trapwright2 });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");
