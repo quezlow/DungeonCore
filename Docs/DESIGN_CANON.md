@@ -2470,7 +2470,7 @@ Sharpshooter, Marksman, and their prefab variants, generator-created).
 
 ## 31. The Trapworks (Roster, Type Exclusivity, Trapwright)
 
-Status: SHIPPED. Verified: pending smoke test.
+Status: SHIPPED. Verified: Complete
 
 The trap system reworked from a fixed six-trap set with hardcoded behaviour
 switches into a data-driven roster of fifteen, with core-type exclusivity,
