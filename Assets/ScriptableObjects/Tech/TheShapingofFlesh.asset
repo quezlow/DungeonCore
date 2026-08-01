@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: TheShapingofFlesh
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: mutation_1
+  overrideKey: 
+  displayName: The Shaping of Flesh
+  icon: {fileID: 0}
+  path: 2
+  tier: 3
+  pointCost: 25
+  durationDays: 3
+  affinity: 0
+  patternRequirements:
+  - {fileID: 11400000, guid: b1c1b146b663d2342908a990a5e93caf, type: 2}
+  prerequisites:
+  - {fileID: 11400000, guid: c2449c2ef0cd3ba4394993cd012288c1, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: What serves can be made better.
+  description: Every monster of the dungeon strikes harder and sheds a tenth of every
+    wound. Requires the pattern of Cured Leather.

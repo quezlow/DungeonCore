@@ -1086,7 +1086,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             terrainSpeedMultiplier = features.FordingSpeedMultiplier;
     }
 
-    private float EffectiveMoveSpeed => moveSpeed * terrainSpeedMultiplier * slowMultiplier;
+    private float EffectiveMoveSpeed =>
+        moveSpeed * terrainSpeedMultiplier * slowMultiplier * (IsWild ? 1f : MonsterMastery.SpeedMultiplier);
 
     // ── Wander ────────────────────────────────────────────────────
 
@@ -1554,7 +1555,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         var def = IsWild ? wildDefinition : spawner?.Definition;
         if (def == null || !def.firesProjectile) { DealAttackDamage(); return; }
 
-        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier;
+        // Mutation research sharpens dungeon monsters only; the wild ruling holds.
+        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
+                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier);
         animDriver?.OnAttack();
 
         var payload = new DungeonProjectile.Payload
@@ -1584,7 +1587,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (target == null || !target.IsAlive) return;
 
-        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier;
+        // Mutation research sharpens dungeon monsters only; the wild ruling holds.
+        float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
+                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier);
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();
@@ -1657,6 +1662,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public void TakeDamage(float amount)
     {
+        // Mutation tier II toughens the dungeon's own; wilds and invaders take
+        // full wounds. Applied to incoming damage rather than maxHP so the
+        // node is retroactive for monsters already alive when it completes.
+        if (!IsWild) amount *= MonsterMastery.DamageTakenMultiplier;
         lastDamageTime = Time.time;
         pendingHealDisplay = 0f;
         currentHP -= amount;

@@ -238,6 +238,14 @@ public static class TechContentGenerator
             "The craft, mastered.",
             "Trap damage and afflictions rise to half again over base, and every trap resets a fifth faster. Requires the pattern of Tempered Steel.");
 
+        var n_mutation1 = Define("mutation_1", "The Shaping of Flesh", ResearchPath.Bestiary, 3, 25, 3,
+            "What serves can be made better.",
+            "Every monster of the dungeon strikes harder and sheds a tenth of every wound. Requires the pattern of Cured Leather.");
+
+        var n_mutation2 = Define("mutation_2", "The Perfected Strain", ResearchPath.Bestiary, 4, 45, 4,
+            "The shaping, finished.",
+            "The dungeon's monsters strike near a third harder, a fifth of every wound falls away, and their stride quickens a tenth. Requires the pattern of Runed Crystal.");
+
         // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
         AddPrereq(n_wave_preview, n_status_bars);
         AddPrereq(n_known_parties, n_wave_preview);
@@ -333,12 +341,17 @@ public static class TechContentGenerator
         AddPrereq(n_trapwright2, n_trapwright1);
         AddPattern(n_trapwright2, "TemperedSteel");
 
+        AddPrereq(n_mutation1, n_bones_in_iron);
+        AddPattern(n_mutation1, "CuredLeather");
+        AddPrereq(n_mutation2, n_mutation1);
+        AddPattern(n_mutation2, "RunedCrystal");
+
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_minimap, n_alerts, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
             n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_barrow_oaths, n_litany_of_graves, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
             n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3,
             n_patrol, n_prison, n_crossbow, n_trap_fire, n_trap_ice, n_trap_earth, n_trap_gale, n_trap_flash, n_trap_umbral,
-            n_sleep_dart, n_siphon, n_trapwright1, n_trapwright2 });
+            n_sleep_dart, n_siphon, n_trapwright1, n_trapwright2, n_mutation1, n_mutation2 });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");

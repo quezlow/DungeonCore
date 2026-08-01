@@ -93,6 +93,20 @@ public class Commands : MonoBehaviour
     [ContextMenu("Test Add Notoriety")]
     void TestNotoriety() => DungeonCore.Instance.AddNotoriety(10f);
 
+    [ContextMenu("Test Toggle Mutation Tier 1")]
+    void TestToggleMutation1()
+    {
+        UnlockState.Toggle(MonsterMastery.TierOneKey);
+        Debug.Log($"[Commands] mutation_1 unlocked = {UnlockState.IsUnlocked(MonsterMastery.TierOneKey)}");
+    }
+
+    [ContextMenu("Test Toggle Mutation Tier 2")]
+    void TestToggleMutation2()
+    {
+        UnlockState.Toggle(MonsterMastery.TierTwoKey);
+        Debug.Log($"[Commands] mutation_2 unlocked = {UnlockState.IsUnlocked(MonsterMastery.TierTwoKey)}");
+    }
+
     [ContextMenu("Test Toggle Scout Tier 1")]
     void TestToggleScout1()
     {

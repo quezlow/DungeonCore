@@ -3441,6 +3441,42 @@ total for this entry), the seven echo call sites,
 
 # APPENDIX
 
+## 35. Monster Mutations (Bestiary upgrade line)
+
+Status: BUILT. Verified: pending smoke test
+
+The Bestiary path gains its upgrade line -- the trapwright pattern applied
+to monsters. Two stacked nodes: mutation_1 "The Shaping of Flesh" (t3, 25
+pts / 3d, prereq bones_in_iron, pattern CuredLeather) and mutation_2 "The
+Perfected Strain" (t4, 45 pts / 4d, prereq mutation_1, pattern RunedCrystal
+-- the Epic band's first research consumer). Both Always-visible under the
+DK2 name rule; no affinity, no cross-path edge, matching trapwright.
+
+MonsterMastery (static, Monster/) is the read point. Tier I: damage x1.15,
+damage taken x0.9. Tier II: damage x1.3, damage taken x0.8, move speed
+x1.1. Reach was considered and DROPPED: attack range feeds the combat state
+machine's spacing decisions and cannot be verified off-screen. Values are
+cached and recomputed on UnlockState.OnChanged because the speed multiplier
+sits on the per-frame movement path (the EntityAnimationDriver hash-guard
+lesson); TrapMastery stays uncached because fire time is rare.
+
+Consumption sites, all gated !IsWild so wild monsters AND invaders are
+excluded (the trapworks wild ruling): both strike computations
+(FireProjectile and DealAttackDamage -- the projectile payload carries the
+mutated figure, so a dead shooter's bolt still lands it), TakeDamage (the
+damage-taken multiplier, applied to incoming damage rather than maxHP so it
+is retroactive for monsters already alive), and EffectiveMoveSpeed.
+Mutations stack multiplicatively with roomDamageMultiplier, the Trophy Hall
+global buff and the crowd penalty. The damage-taken multiplier also softens
+friendly trap wounds (a Fireball Rune burst hits everyone in it); accepted
+as flavour-consistent. Nothing is excluded from scaling, unlike
+trapwright's capture-hold carve-out -- subdue-on-defeat is adventurer-side,
+so capture is untouched.
+
+Key files: Monster/MonsterMastery.cs, Monster/DungeonMonster.cs,
+Editor/TechContentGenerator.cs (regenerate via Dungeon Core menu after
+pulling).
+
 ## A. Content Registries and Authoring Keys
 
 Status: SHIPPED (documentation of as-built behaviour). Verified: 2026-07-09.
