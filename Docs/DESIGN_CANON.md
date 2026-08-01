@@ -1553,6 +1553,13 @@ failure; the toggle makes "everything" a deliberate statement.
 | 3 | 400 | 3--5 | Archive, Sealed Gate, Guard Post, Sanctum, Toll House |
 | 4 | 600 | 9--13 | all eight |
 
+Spans are 16--26, 20--34 and 22--40 by floor. They were roughly half again
+larger at first ship and had to come down: a site reveals ENTIRE, cell count
+grows with the square of span, and a span-62 plaza put some three thousand
+open floor cells on screen in one rectangle against roughly 100--200 for a
+cave chamber. It read as a hole in the fog rather than a building. Keep a span
+near twice the chamber box size, not five times it.
+
 Escalation by depth: one lonely structure with no road near it, then the
 handful a maintained road still keeps, then a city. Floor index 4 lands
 meaningfully denser than floor 3 by area, as the entry requires. Floor index 2

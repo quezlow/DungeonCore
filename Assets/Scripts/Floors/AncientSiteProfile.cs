@@ -79,7 +79,11 @@ public class SiteFloorEntry
 
     [Header("Size")]
     [Tooltip("Shortest and longest edge of a site's bounding box, in cells. The plan " +
-             "is composed in local axis-aligned space at this scale and then rotated.")]
+             "is composed in local axis-aligned space at this scale and then rotated. " +
+             "Cell count grows with the SQUARE of this, and a site reveals entire -- " +
+             "a span of 62 puts some three thousand open cells on screen at once, " +
+             "against roughly 100-200 for a cave chamber. Keep it near twice the " +
+             "chamber box size, not five times it.")]
     [Min(8)] public int minSpan = 30;
     [Min(8)] public int maxSpan = 62;
 
@@ -139,8 +143,8 @@ public class AncientSiteProfile : ScriptableObject
             bandInner = 0.15f,
             bandOuter = 0.65f,
             minSpacing = 60,
-            minSpan = 20,
-            maxSpan = 34,
+            minSpan = 16,
+            maxSpan = 26,
             rimMargin = 12,
             pool = new List<SiteArchetype> { SiteArchetype.GuardPost },
         },
@@ -156,8 +160,8 @@ public class AncientSiteProfile : ScriptableObject
             bandInner = 0.15f,
             bandOuter = 0.65f,
             minSpacing = 110,
-            minSpan = 26,
-            maxSpan = 54,
+            minSpan = 20,
+            maxSpan = 34,
             rimMargin = 12,
             reserveOutpost = true,
             pool = new List<SiteArchetype>
@@ -180,8 +184,8 @@ public class AncientSiteProfile : ScriptableObject
             bandInner = 0.15f,
             bandOuter = 0.65f,
             minSpacing = 90,
-            minSpan = 30,
-            maxSpan = 62,
+            minSpan = 22,
+            maxSpan = 40,
             rimMargin = 12,
             useAllArchetypes = true,
             pool = new List<SiteArchetype>(),

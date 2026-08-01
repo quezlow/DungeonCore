@@ -19,8 +19,8 @@ MonoBehaviour:
     bandInner: 0.15
     bandOuter: 0.65
     minSpacing: 60
-    minSpan: 20
-    maxSpan: 34
+    minSpan: 16
+    maxSpan: 26
     rimMargin: 12
     useAllArchetypes: 0
     pool: 06000000
@@ -31,8 +31,8 @@ MonoBehaviour:
     bandInner: 0.15
     bandOuter: 0.65
     minSpacing: 110
-    minSpan: 26
-    maxSpan: 54
+    minSpan: 20
+    maxSpan: 34
     rimMargin: 12
     useAllArchetypes: 0
     pool: 0100000005000000060000000400000007000000
@@ -43,8 +43,8 @@ MonoBehaviour:
     bandInner: 0.15
     bandOuter: 0.65
     minSpacing: 90
-    minSpan: 30
-    maxSpan: 62
+    minSpan: 22
+    maxSpan: 40
     rimMargin: 12
     useAllArchetypes: 1
     pool: 

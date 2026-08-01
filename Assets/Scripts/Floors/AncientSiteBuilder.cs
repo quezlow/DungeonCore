@@ -466,7 +466,10 @@ public static class AncientSiteBuilder
         }
 
         /// <summary>Open ground with regular column stubs. A colonnade is the
-        /// cheapest thing that says "this was built" at a glance.</summary>
+        /// cheapest thing that says "this was built" at a glance -- but only if the
+        /// columns are close enough together to read as a grid. Spaced too widely
+        /// they read as scattered rubble on a field, which is what a span-62 plaza
+        /// looked like.</summary>
         public void Colonnade(int x0, int y0, int w, int h, int spacing, int colSize)
         {
             Floor(x0, y0, w, h);
@@ -475,6 +478,21 @@ public static class AncientSiteBuilder
             for (int x = x0 + s; x < x0 + w - cs; x += s)
                 for (int y = y0 + s; y < y0 + h - cs; y += s)
                     Wall(x, y, cs, cs);
+        }
+
+        /// <summary>Cuts a rectangle out of the plan entirely -- neither floor nor
+        /// masonry. Used to stop a plan filling its whole bounding box: an open
+        /// corner is unexcavated rock, and rock is what a ruin should mostly be
+        /// surrounded by.</summary>
+        public void Clear(int x0, int y0, int w, int h)
+        {
+            for (int x = x0; x < x0 + w; x++)
+                for (int y = y0; y < y0 + h; y++)
+                {
+                    var p = new Vector2Int(x, y);
+                    floor.Remove(p);
+                    wall.Remove(p);
+                }
         }
 
         /// <summary>Cuts the four corners off a rectangle, turning a square room
@@ -488,7 +506,11 @@ public static class AncientSiteBuilder
 
         /// <summary>Knocks gaps in the masonry. Nothing down here is intact, and
         /// a breach is also what lets the interior be walked into rather than
-        /// only mined into.</summary>
+        /// only mined into.
+        ///
+        /// Callers pass a count sized for a LARGE plan; ScaleBreach trims it for a
+        /// small one, because three holes of radius two in a 26-cell building is
+        /// most of its outer wall.</summary>
         public void Breach(System.Random rng, int count, int size)
         {
             if (wall.Count == 0 || count <= 0) return;
@@ -507,6 +529,15 @@ public static class AncientSiteBuilder
         }
     }
 
+    /// <summary>Trims a breach count for small plans. The authored figures suit a
+    /// large building; on a small one the same holes remove most of the wall.</summary>
+    private static int ScaleBreach(int count, int span)
+    {
+        if (span >= 34) return count;
+        if (span >= 24) return Mathf.Max(1, (count * 2) / 3);
+        return Mathf.Max(1, count / 2);
+    }
+
     private static LocalPlan Compose(System.Random rng, SiteArchetype archetype, int variant, int span)
     {
         var p = new LocalPlan();
@@ -521,9 +552,16 @@ public static class AncientSiteBuilder
             case SiteArchetype.SunkenPlaza:
                 if (variant == 0)
                 {
-                    p.Colonnade(lo, lo, s, s, Mathf.Max(5, s / 6), t);
+                    // Columns on a tighter grid, and the four corners taken out, so
+                    // the plaza reads as a colonnaded square rather than a field.
+                    p.Colonnade(lo, lo, s, s, Mathf.Max(4, s / 9), t);
                     p.Wall(lo, lo, s, t); p.Wall(lo, half - t, s, t);
                     p.Wall(lo, lo, t, s); p.Wall(half - t, lo, t, s);
+                    int corner = Mathf.Max(2, s / 6);
+                    p.Clear(lo, lo, corner, corner);
+                    p.Clear(half - corner, lo, corner, corner);
+                    p.Clear(lo, half - corner, corner, corner);
+                    p.Clear(half - corner, half - corner, corner, corner);
                 }
                 else if (variant == 1)
                 {
@@ -536,8 +574,15 @@ public static class AncientSiteBuilder
                     p.Room(lo, lo, s, s, t);
                     int plinth = Mathf.Max(3, s / 5);
                     p.Wall(-plinth / 2, -plinth / 2, plinth, plinth);
+                    // Four short spurs off the plinth: a hall this size needs
+                    // something between the plinth and the outer wall.
+                    int spur = Mathf.Max(2, s / 5);
+                    p.Wall(-t / 2, plinth / 2, Mathf.Max(1, t), spur);
+                    p.Wall(-t / 2, -plinth / 2 - spur, Mathf.Max(1, t), spur);
+                    p.Wall(plinth / 2, -t / 2, spur, Mathf.Max(1, t));
+                    p.Wall(-plinth / 2 - spur, -t / 2, spur, Mathf.Max(1, t));
                 }
-                p.Breach(rng, 3 + rng.Next(0, 3), t);
+                p.Breach(rng, ScaleBreach(3 + rng.Next(0, 3), s), t);
                 break;
 
             // -- Archives sit on roads, because archives sit on roads. ---------
@@ -568,7 +613,7 @@ public static class AncientSiteBuilder
                     p.Room(lo, -h / 2, s, h, t);
                     p.Wall(lo + (s * 2) / 3, -h / 2, s / 3, h);   // the roof came down
                 }
-                p.Breach(rng, 2 + rng.Next(0, 3), t);
+                p.Breach(rng, ScaleBreach(2 + rng.Next(0, 3), s), t);
                 break;
 
             // -- Cells, and what was kept in them. -----------------------------
@@ -608,7 +653,7 @@ public static class AncientSiteBuilder
                     for (int x = lo + 2; x + niche < half; x += niche + t)
                         p.Room(x, -niche / 2, niche, niche, t);
                 }
-                p.Breach(rng, 2 + rng.Next(0, 2), 1);
+                p.Breach(rng, ScaleBreach(2 + rng.Next(0, 2), s), 1);
                 break;
 
             // -- It crosses the road. It carried water once; it is dry now. ----
@@ -654,7 +699,7 @@ public static class AncientSiteBuilder
                         for (int x = lo; x < lo + stub; x += pier) p.Wall(x, -chan / 2 - t - 1, t, chan + 2 * t + 2);
                         for (int x = half - stub; x < half; x += pier) p.Wall(x, -chan / 2 - t - 1, t, chan + 2 * t + 2);
                     }
-                    p.Breach(rng, 1 + rng.Next(0, 3), t);
+                    p.Breach(rng, ScaleBreach(1 + rng.Next(0, 3), s), t);
                 }
                 break;
 
@@ -667,6 +712,11 @@ public static class AncientSiteBuilder
                     p.Room(-mid / 2, -mid / 2, mid, mid, t);
                     int core = Mathf.Max(3, s / 6);
                     p.Wall(-core / 2, -core / 2, core, core);   // still sealed
+                    // Radial partitions across the ambulatory, so the ring between
+                    // the two walls is divided rather than one continuous corridor.
+                    int gapRing = (s - mid) / 2;
+                    p.Wall(-t / 2, mid / 2, Mathf.Max(1, t), gapRing);
+                    p.Wall(-t / 2, -mid / 2 - gapRing, Mathf.Max(1, t), gapRing);
                 }
                 else if (variant == 1)
                 {
@@ -680,7 +730,7 @@ public static class AncientSiteBuilder
                     p.Room(lo, lo, s, s, t);
                     p.Chamfer(0, 0, half, half / 3);
                 }
-                p.Breach(rng, 2 + rng.Next(0, 2), t);
+                p.Breach(rng, ScaleBreach(2 + rng.Next(0, 2), s), t);
                 break;
 
             // -- Where the road stops, and why. --------------------------------
@@ -708,7 +758,7 @@ public static class AncientSiteBuilder
                         p.Wall(lo, thick, s, thick);
                         p.Floor(lo, -thick, s, thick * 2);
                     }
-                    p.Breach(rng, 1 + rng.Next(0, 2), 1);
+                    p.Breach(rng, ScaleBreach(1 + rng.Next(0, 2), s), 1);
                 }
                 break;
 
@@ -735,7 +785,7 @@ public static class AncientSiteBuilder
                         p.Room(-house / 2, -house / 2, house, house, t);
                         p.Wall(house / 2, -t / 2 - 1, Mathf.Max(4, s / 3), Mathf.Max(1, t));
                     }
-                    p.Breach(rng, 1 + rng.Next(0, 2), 1);
+                    p.Breach(rng, ScaleBreach(1 + rng.Next(0, 2), s), 1);
                 }
                 break;
 
@@ -764,7 +814,7 @@ public static class AncientSiteBuilder
                         p.Wall(-yard / 2, yard / 2 - t, yard, t);
                         p.Wall(-yard / 2, -yard / 2, t, yard);
                     }
-                    p.Breach(rng, 2 + rng.Next(0, 2), t);
+                    p.Breach(rng, ScaleBreach(2 + rng.Next(0, 2), s), t);
                 }
                 break;
 
