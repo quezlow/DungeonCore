@@ -1460,6 +1460,18 @@ nothing is a wall, and a toll house away from a road is a cottage. Every
 preference DEGRADES to a free in-band pick rather than failing, which is what
 puts the lone guard post on road-less floor index 2.
 
+**Only the masonry SKIN is revealed.** `CaveWallRenderer` paints a solid cell
+only when it is claimed or 8-adjacent to a MINED cell, and site masonry is
+never mined -- so masonry buried inside a thick wall is never painted at all.
+Revealing it regardless stripped its fog and left bare floor tile showing where
+a wall should be, which is what the first build shipped. Fog is one-way, so
+there is no correcting it after the fact; those cells must simply not be
+revealed. Sites therefore reveal their carved floor and only the masonry
+touching it, with no border halo -- the halo exists to frame a chamber in its
+surrounding rock, and a site brings its own walls. **Any future feature that
+reveals solid cells must check the same thing: revealing rock the wall renderer
+will not paint shows the floor tile underneath it.**
+
 **Two cell sets, and the read.** A site's carved interior is natural floor,
 revealed and marked exactly as a chamber is. Its MASONRY is deliberately not
 carved: those cells stay solid rock and are merely retyped to
@@ -1522,6 +1534,12 @@ at. **The commonest cause of "no sites" is neither: they generate correctly and
 are simply not revealed, because reveal is influence-touch only and the band
 starts at 15 per cent of the radius. Read the log count before hunting a render
 bug.**
+
+**`Dungeon Core / Site Plan Preview`** draws any plan, procedural or authored,
+as a colour-coded map at any rotation: walkable floor, floor blocked by the
+wall drape, masonry that will be painted, and masonry that never will be. The
+three failure modes of site geometry are all invisible in the plan itself and
+all used to surface only in game, a full generate-and-look cycle at a time.
 
 **`Dungeon Core / Validate Site Plans`** checks every authored plan against the
 drape rule in all eight orientations and reports the worst case, without

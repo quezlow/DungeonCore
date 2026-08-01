@@ -1094,13 +1094,35 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var site = GetSiteById(siteId);
         if (site == null || site.cells.Count == 0) return;
 
-        RevealWithBorder(terrain, site.cells);
+        // No border halo. RevealWithBorder lights the ring around a chamber so its
+        // rock frames it, but a site's ring IS its masonry, and halo-revealing it
+        // would undo the skin-only rule below and put the bare-floor slabs back.
+        foreach (var sv in site.cells) terrain.RevealTile(sv.ToVector3Int());
 
         // Masonry is revealed but never opened: the player sees the wall, and
         // mining it is a deliberate act that pays out ancient_masonry.
+        //
+        // Only the SKIN is revealed -- masonry that touches this site's carved
+        // floor. CaveWallRenderer paints a solid cell only when it is claimed or
+        // 8-adjacent to a MINED cell, and site masonry is never mined, so a cell
+        // buried inside a thick wall is never painted at all. Revealing it anyway
+        // stripped its fog and left bare floor tile showing where a wall should
+        // be. Fog is one-way, so there is no correcting that afterwards; the cells
+        // simply must not be revealed. Everything deeper stays dark, exactly like
+        // the unexcavated rock it is drawn as, and mining through the skin reveals
+        // the next layer by the ordinary route.
         if (site.ruinsCells != null)
+        {
+            var carved = new HashSet<Vector3Int>();
+            foreach (var sv in site.cells) carved.Add(sv.ToVector3Int());
+
             foreach (var sv in site.ruinsCells)
-                terrain.RevealTile(sv.ToVector3Int());
+            {
+                var c = sv.ToVector3Int();
+                if (!TouchesAny(c, carved)) continue;
+                terrain.RevealTile(c);
+            }
+        }
 
         var open = new List<Vector3Int>(site.cells.Count);
         foreach (var sv in site.cells) open.Add(sv.ToVector3Int());
@@ -2203,6 +2225,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// revealed ground the instant it's discovered (mirrors UnfogCoreCavern). Fog left
     /// under a cap shows through its transparent edges as a dark rim.
     /// </summary>
+    /// <summary>True when any of the eight neighbours is in the set. Used to find
+    /// the masonry SKIN of a site: the only masonry the wall renderer will ever
+    /// paint, because it is the only masonry touching open floor.</summary>
+    private static bool TouchesAny(Vector3Int cell, HashSet<Vector3Int> set)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                if (set.Contains(new Vector3Int(cell.x + dx, cell.y + dy, cell.z))) return true;
+            }
+        return false;
+    }
+
     private static void RevealWithBorder(DungeonTerrain terrain, List<SerializableVector3Int> cells)
     {
         foreach (var sv in cells)

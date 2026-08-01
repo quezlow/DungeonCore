@@ -251,6 +251,25 @@ public static class AncientSiteBuilder
         return result;
     }
 
+    /// <summary>
+    /// Builds one plan's local cells for inspection, without placing anything.
+    /// Used by the editor preview window so plan geometry can be checked without
+    /// entering play mode or generating a floor.
+    /// </summary>
+    public static void PreviewPlan(
+        SiteArchetype archetype, int variant, int span, int seed,
+        out List<Vector2Int> floorCells, out List<Vector2Int> wallCells)
+    {
+        floorCells = new List<Vector2Int>();
+        wallCells = new List<Vector2Int>();
+
+        var plan = Compose(new System.Random(seed), archetype, variant, span);
+        if (plan == null) return;
+
+        foreach (var c in plan.floor) floorCells.Add(c);
+        foreach (var c in plan.wall) wallCells.Add(c);
+    }
+
     // ---- Plan pool -------------------------------------------------
 
     private struct PlanRef
