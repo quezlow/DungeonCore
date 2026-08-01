@@ -125,6 +125,13 @@ public class WispScript : ScriptableObject
             new Line { id = "outpost_greeting", once = false,
                 text = "He looks at you the way a man looks at weather. Not afraid. Deciding." },
 
+            // Settling the spoil invoice. Not a one-shot -- it is the beat of the
+            // whole trade relationship and should not fall silent after once.
+            new Line { id = "outpost_spoil_sold", once = false,
+                text = "He weighs it, and he does not argue. They have been paying for stone since before anyone up there had a word for money." },
+            new Line { id = "outpost_first_trade", once = true,
+                text = "That is the first thing anyone down here has ever bought from them. They will remember it longer than you will." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },

@@ -52,6 +52,48 @@ public static class TrapContentGenerator
 
     private static TrapSpec[] Specs() => new[]
     {
+        // -- The Deep Holds' machinery -------------------------------------
+        // Bought, never researched: requiredTechKey here is a bare UnlockState
+        // string with no node behind it, and both TrapSelectionUI and
+        // DungeonBuildController gate on UnlockState alone. Affinity None
+        // throughout -- the six elemental locks are a core's signature and
+        // dwarven engineering has no business inside them. Every one is a data
+        // variant of a shipped behaviour, so no new TrapBase subclass exists.
+        //
+        // Tuned deliberately heavier than the researched roster they echo
+        // (Crossbow 16/3/9/2.4, Pitfall 10/2/8/4, Sundering Plate 12/2/0/4):
+        // these cost gold and a faction, and must feel like it.
+        new TrapSpec
+        {
+            assetName = "BallistaPost", trapName = "Ballista Post", prefabName = "BallistaPostTrap_Prefab",
+            behaviour = TrapDefinition.TrapBehaviour.Crossbow, component = typeof(CrossbowTrap),
+            requiredTechKey = "dwarf.trap_ballista", affinity = DungeonType.None,
+            detoursWhenFlagged = false,
+            manaCost = 26, capacityCost = 4, damage = 22, cooldown = 5.5f,
+            sentryRange = 6.5f, projectileSpeed = 14f,
+            tint = new Color(0.74f, 0.70f, 0.62f),
+            description = "It watches further than anything you built, and it takes its time. Dwarven work: slow, certain, and disinclined to miss.",
+        },
+        new TrapSpec
+        {
+            assetName = "Deadfall", trapName = "Deadfall", prefabName = "DeadfallTrap_Prefab",
+            behaviour = TrapDefinition.TrapBehaviour.Pitfall, component = typeof(PitfallTrap),
+            requiredTechKey = "dwarf.trap_deadfall", affinity = DungeonType.None,
+            manaCost = 20, capacityCost = 3, damage = 26, cooldown = 8f,
+            slowMultiplier = 0.25f, slowDuration = 3f,
+            tint = new Color(0.62f, 0.58f, 0.54f),
+            description = "A ceiling that was only ever pretending. Whatever walks out of it walks slowly.",
+        },
+        new TrapSpec
+        {
+            assetName = "Chainline", trapName = "Chainline", prefabName = "ChainlineTrap_Prefab",
+            behaviour = TrapDefinition.TrapBehaviour.ScatterTrap, component = typeof(ScatterTrap),
+            requiredTechKey = "dwarf.trap_chainline", affinity = DungeonType.None,
+            manaCost = 18, capacityCost = 3, damage = 0, cooldown = 6f,
+            scatterSeconds = 9f,
+            tint = new Color(0.70f, 0.66f, 0.58f),
+            description = "Chain at the ankle, run the width of the hall. Formations come apart on it the way a wave comes apart on rock.",
+        },
         new TrapSpec
         {
             assetName = "Crossbow", trapName = "Crossbow", prefabName = "CrossbowTrap_Prefab",

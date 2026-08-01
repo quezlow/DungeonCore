@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25e7712f9f9d1ba4fb4af60506b4cd9e, type: 3}
+  m_Name: DwarvenStockCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::TraderStockCatalog
+  entries:
+  - id: dw_ballista
+    displayName: Ballista Post
+    type: 2
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: dwarf.trap_ballista
+    minRegard: 0
+    price: 320
+    flavour: Bolt-thrower on a stone carriage. Their gate has three; they will part
+      with one.
+    isCatchUp: 0
+  - id: dw_deadfall
+    displayName: Deadfall
+    type: 2
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: dwarf.trap_deadfall
+    minRegard: 0
+    price: 260
+    flavour: A ceiling that is only pretending. Older than the road, and it still
+      works.
+    isCatchUp: 0
+  - id: dw_chainline
+    displayName: Chainline
+    type: 2
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: dwarf.trap_chainline
+    minRegard: 2
+    price: 380
+    flavour: Chain at the ankle, run the width of a hall. Formations come apart on
+      it like a wave on rock.
+    isCatchUp: 0
+  - id: dw_bk_trapwright
+    displayName: Mechanisms of the Under-Road
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.trapwright_1
+    unlockKey: 
+    minRegard: 0
+    price: 400
+    flavour: Gate-engines and their tempers. Half the diagrams are corrections of
+      the other half.
+    isCatchUp: 0
+  - id: dw_bk_proving
+    displayName: The Drilled Hall
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.proving_grounds
+    unlockKey: 
+    minRegard: 0
+    price: 440
+    flavour: How to make a hall that makes soldiers. They have been doing it since
+      before there were soldiers to make.
+    isCatchUp: 0
+  - id: dw_bk_marches
+    displayName: Survey of the Far Marches
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.scout_3
+    unlockKey: 
+    minRegard: 0
+    price: 520
+    flavour: Every road they ever cut and three they abandoned. The abandoned ones
+      are annotated most.
+    isCatchUp: 0
+  - id: dw_bk_master
+    displayName: The Long Patience
+    type: 1
+    pattern: {fileID: 0}
+    nodeKey: tech.trapwright_2
+    unlockKey: 
+    minRegard: 0
+    price: 600
+    flavour: The master's book. It does not explain itself twice.
+    isCatchUp: 0

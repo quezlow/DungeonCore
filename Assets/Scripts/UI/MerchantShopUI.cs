@@ -28,7 +28,11 @@ public class MerchantShopUI : MonoBehaviour
     [Tooltip("Row prefab: a Button with two TMP_Texts named Name and Price, and a TMP_Text named Flavour.")]
     [SerializeField] private GameObject rowPrefab;
 
-    private WanderingMerchantController merchant;
+    // Held as the INTERFACE, not the merchant. Canon 19 asked for this before a
+    // second vendor existed rather than after, and this is that moment: the
+    // dwarven outpost is the second, and a third would otherwise have added a
+    // branch to each of the four places this used to name a concrete type.
+    private IShopVendor vendor;
     private readonly List<GameObject> rows = new();
     private bool open;
 
@@ -51,13 +55,13 @@ public class MerchantShopUI : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    public void Open(WanderingMerchantController from)
+    public void Open(IShopVendor from)
     {
         if (open || from == null || panelRoot == null) return;
-        merchant = from;
+        vendor = from;
         open = true;
 
-        if (titleLabel != null) titleLabel.text = "The Wandering Merchant";
+        if (titleLabel != null) titleLabel.text = from.ShopTitle;
         panelRoot.gameObject.SetActive(true);
         panelRoot.alpha = 1f;
         panelRoot.blocksRaycasts = true;
@@ -84,7 +88,7 @@ public class MerchantShopUI : MonoBehaviour
             panelRoot.blocksRaycasts = false;
             panelRoot.gameObject.SetActive(false);
         }
-        merchant = null;
+        vendor = null;
     }
 
     /// <summary>Read by PauseMenuController's central ESC chain.</summary>
@@ -106,9 +110,9 @@ public class MerchantShopUI : MonoBehaviour
     private void Rebuild()
     {
         ClearRows();
-        if (merchant == null || contentParent == null || rowPrefab == null) return;
+        if (vendor == null || contentParent == null || rowPrefab == null) return;
 
-        foreach (var entry in merchant.CurrentStock)
+        foreach (var entry in vendor.CurrentStock)
         {
             var e = entry;   // capture per row
             GameObject row = Instantiate(rowPrefab, contentParent);
@@ -117,7 +121,9 @@ public class MerchantShopUI : MonoBehaviour
             foreach (var label in row.GetComponentsInChildren<TMP_Text>(true))
             {
                 if (label.name == "Name") label.text = e.displayName;
-                else if (label.name == "Price") label.text = e.price + "g";
+                // PriceOf, not e.price: the Deep Holds discount by regard and the
+                // shelf must show what will actually be taken.
+                else if (label.name == "Price") label.text = vendor.PriceOf(e) + "g";
                 else if (label.name == "Flavour") label.text = e.flavour;
             }
 
@@ -125,7 +131,7 @@ public class MerchantShopUI : MonoBehaviour
             if (buy != null)
                 buy.onClick.AddListener(() =>
                 {
-                    if (merchant != null && merchant.TryPurchase(e))
+                    if (vendor != null && vendor.TryPurchase(e))
                     {
                         Rebuild();
                         RefreshGold();
@@ -137,14 +143,14 @@ public class MerchantShopUI : MonoBehaviour
 
     private void RefreshAffordability()
     {
-        if (merchant == null || DungeonCore.Instance == null) return;
+        if (vendor == null || DungeonCore.Instance == null) return;
         int gold = DungeonCore.Instance.Gold;
         int i = 0;
-        foreach (var entry in merchant.CurrentStock)
+        foreach (var entry in vendor.CurrentStock)
         {
             if (i >= rows.Count) break;
             Button buy = rows[i].GetComponentInChildren<Button>(true);
-            if (buy != null) buy.interactable = gold >= entry.price;
+            if (buy != null) buy.interactable = gold >= vendor.PriceOf(entry);
             i++;
         }
     }

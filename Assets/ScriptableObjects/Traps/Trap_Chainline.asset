@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c875285fc2fe45545bcf2494c71b59f3, type: 3}
+  m_Name: Trap_Chainline
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
+  trapName: Chainline
+  behaviour: 5
+  requiredTechKey: dwarf.trap_chainline
+  affinity: 0
+  disarmable: 1
+  detoursWhenFlagged: 1
+  prefab: {fileID: 4871301335148635653, guid: 86cc7cfa4da6c3f428bf9c366ff0055b, type: 3}
+  manaCost: 18
+  capacityCost: 3
+  damage: 0
+  cooldown: 6
+  slowMultiplier: 0.5
+  slowDuration: 2
+  captureHoldSeconds: 10
+  scatterSeconds: 9
+  sentryRange: 3.5
+  projectileSpeed: 10
+  projectileTint: {r: 0.7, g: 0.66, b: 0.58, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
+  icon: {fileID: 0}
+  description: Chain at the ankle, run the width of the hall. Formations come apart
+    on it the way a wave comes apart on rock.

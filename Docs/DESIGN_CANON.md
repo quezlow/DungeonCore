@@ -1845,6 +1845,118 @@ The gatekeeper stands at the centroid of the site's carved cells SNAPPED to the
 nearest carved cell, not at the stored anchor: the anchor is the plan's centre
 before subtraction, which on an outpost is the middle of the road.
 
+### The dwarves -- the vendor and the spoil economy (SHIPPED, part 2)
+
+Part 2 is BUILT: the shop decoupling, the Deep Holds' counter, three
+bought-only traps, and the spoil invoice. The granite boundary, road claiming
+and caravans remain DESIGN, below.
+
+**The shop is decoupled.** `IShopVendor` (`UI/IShopVendor.cs`) carries
+`ShopTitle`, `CurrentStock`, `PriceOf` and `TryPurchase`. `MerchantShopUI` now
+holds the interface rather than a `WanderingMerchantController`, and both
+vendors implement it. `PriceOf` exists rather than the UI reading
+`StockEntry.price` because the dwarves discount by regard; a vendor that does
+not discount returns list price and nothing downstream knows the difference.
+Done at the second vendor rather than the third, which is what canon asked.
+
+**The grant channel is shared.** `TraderStockCatalog.ApplyPurchase` owns the
+Pattern / Book / Unlock switch. It takes no payment and removes nothing from
+stock -- the vendor owns both, because only the vendor knows its own price. The
+switch belongs to the stock KIND, not to whoever stands behind the counter.
+
+**`StockType.Unlock` is appended** (never reordered; it serialises into the
+catalog asset as an int). It sets a bare `UnlockState` key with no research node
+behind it. That is the whole gating mechanism for the dwarven traps: a
+`TrapDefinition.requiredTechKey` is only ever tested through
+`UnlockState.IsUnlocked`, in `TrapSelectionUI` and as a placement backstop in
+`DungeonBuildController`, so a key no node owns gates a trap that can only be
+bought.
+
+**Two catalogues, deliberately.** `TraderStockGenerator` rebuilds the wagon from
+every non-terrain `PatternDefinition` in the folder, so anything the dwarves
+sold as a pattern would appear on the wagon too. The Deep Holds get
+`DwarvenStockCatalog.asset` and their own menu item. **They sell no patterns at
+all** -- machinery and books only, which keeps the two vendors legible: the
+merchant sells knowledge, the dwarves sell machinery.
+
+**The shelf does not rotate.** Everything they hold is out from the day the
+outpost is found; sold is gone for good. Rotation is what makes the wagon feel
+like a wagon, and copying it here would erase the difference between a visit and
+a shop. It is rebuilt on each open so regard-gated stock appears the moment it
+is earned.
+
+**The three traps** are data variants of shipped behaviours -- no new
+`TrapBase` subclass exists. All `DungeonType.None`: the six elemental locks are
+a core's signature and dwarven engineering has no business inside them.
+
+| Trap | Behaviour | Mana | Cap | Dmg | Cooldown | Signature | Price |
+|---|---|---|---|---|---|---|---|
+| Ballista Post | Crossbow | 26 | 4 | 22 | 5.5s | range 6.5 | 320g |
+| Deadfall | Pitfall | 20 | 3 | 26 | 8s | slow 0.25 / 3s | 260g |
+| Chainline | ScatterTrap | 18 | 3 | 0 | 6s | scatter 9s | 380g, Trusted |
+
+Tuned deliberately heavier than the researched roster they echo (Crossbow
+16/3/9/2.4, Pitfall 10/2/8/4, Sundering Plate 12/2/0/4): these cost gold and a
+faction, and must feel like it.
+
+**The books obey two rules, and the second was learned by getting it wrong.**
+
+1. **Affinity None only.** An affinity-gated node is exclusive to its core type
+   and a book granting one to a mismatched core would hand out something that
+   core may never hold.
+2. **Tier 3 or above only.** The outpost is on floor index 3, which is
+   DIAMOND-gated -- the fourth tier of five. A tier-2 node costs 15 points
+   behind a single Rare pattern and is researched hundreds of days before a core
+   can descend that far, at which point `IsOwned` filters the book off the shelf
+   and it is dead stock that never appears. The first slate had Vaulted Reserves
+   and Hall of Trophies on it (both tier 2, 15 points) and both were pulled.
+
+The defect is invisible in play -- an over-early book does not error, it simply
+never shows -- so `DwarfStockGenerator.ValidateBookTiers` checks tier, affinity
+and node existence at authoring time and logs an error rather than leaving it to
+a test plan.
+
+On the shelf: Trapwright's Craft (T3, 400g), Proving Grounds (T3, 440g), The Far
+Marches (T3, 520g), Master Trapwright (T4, 600g). Prices run past the 500g base
+treasury cap without apology: treasuries are a tier-2 research node and any core
+that has reached Diamond has had them for a long time.
+
+**Spoil is an invoice, not a stockpile.** Canon 14 closed the stockpile
+question, and this does not reopen it: there is no inventory and nothing is
+carried. Mining Granite or Ruins on floor index 3 or below, after the outpost is
+found, accrues a single int of gold OWED (3g and 5g a cell). Clicking the
+gatekeeper settles it before the shop opens -- collecting your own money should
+not be a puzzle with one answer.
+
+The rate is anchored to cost rather than chosen: mining is 5 mana times terrain
+resistance, and Granite and Ruins resist 4.0 and 6.0, so 20 and 30 mana a cell.
+3g and 5g holds the return at a fixed ratio to the cost, which is what stops
+mining-for-gold ever beating mining-for-room.
+
+`AddGold` CLAMPS at the treasury cap rather than refusing, so an overlarge
+settlement loses the overflow. Recorded as accepted behaviour, not a bug: the
+treasury exists to raise that cap and Vaulted Reserves is on the dwarves' own
+shelf.
+
+**Standing moves on trade.** Selling pays `2.5` standing per 100g, buying `1.0`
+-- selling is the exchange where you carry something to them rather than the one
+where you take something away. Both route through the shipped
+`FactionSystem.AddStanding`.
+
+**The mining hook is per-floor and guarded.** `DwarvenOutpostController` hooks
+`OnTileMined` across `FloorManager.AllFloors` with named delegates held per
+influence manager, exactly as `BuriedRemainsController` does.
+`TileInfluenceManager.Instance` is **last-floor-wins** -- `Awake` sets it
+unconditionally on a per-floor component -- so the singleton is useless here.
+`HandleMined` returns early on `DungeonSaveController.IsLoading`, because
+loading replays mined cells and would otherwise mint the whole excavation again
+on every reload.
+
+**Key files:** `UI/IShopVendor.cs`, `Gameplay/DwarvenSpoil.cs`,
+`Gameplay/TraderStockCatalog.cs`, `UI/MerchantShopUI.cs`,
+`Floors/DwarvenOutpostController.cs`, `Editor/DwarfStockGenerator.cs`,
+`Editor/TrapContentGenerator.cs`.
+
 ### The dwarves (DECIDED in shape)
 
 The outpost is the INHABITED Buried Age site -- the one Sealed Gate that is
@@ -1956,9 +2068,10 @@ lands on proven ground:
 4. The dwarves, PART 1 -- SHIPPED. The faction and standing (entry 7), the
    guaranteed outpost, its authored plan, `DwarvenOutpostController`. See "The
    dwarves -- faction and outpost" above.
-5. The dwarves, PART 2 -- the vendor, the shop decoupling, dwarf-exclusive
-   traps, and the spoil economy. Split from part 1 deliberately: part 1's whole
-   risk sits in `AncientSiteBuilder`, part 2's in UI and economy, and one
+5. The dwarves, PART 2 -- SHIPPED. The vendor, the shop decoupling,
+   dwarf-exclusive traps, and the spoil economy. See "The dwarves -- the vendor
+   and the spoil economy" above. Split from part 1 deliberately: part 1's whole
+   risk sat in `AncientSiteBuilder`, part 2's in UI and economy, and one
    delivery would have given a floor-3 regression six possible parents.
 6. Later, and still DESIGN: the granite boundary, road claiming and the warning
    ladder, caravans.

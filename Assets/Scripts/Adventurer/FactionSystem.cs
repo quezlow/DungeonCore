@@ -171,6 +171,18 @@ public class FactionSystem : MonoBehaviour
     /// than at nightfall.</summary>
     public int LiveRegardStep() => RegardStep(Standing(FactionId.Dwarves));
 
+    /// <summary>What the Deep Holds knock off at each regard step. Applied at the
+    /// point the price is QUOTED, against live standing rather than the nightly
+    /// snapshot, so a sale that lifts you over a step is felt on the next row
+    /// rather than at nightfall.</summary>
+    public static float RegardPriceMultiplier(int step) => step switch
+    {
+        1 => 0.90f,
+        2 => 0.80f,
+        3 => 0.70f,
+        _ => 1.00f,
+    };
+
     public static string RegardName(int step) => step switch
     {
         1 => "Tolerated",

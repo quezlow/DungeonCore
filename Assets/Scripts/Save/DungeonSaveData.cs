@@ -62,6 +62,8 @@ public class DungeonSaveData
     public bool tutorialComplete = false;                 // guided opening finished; never replays (additive; false on old saves)
     public int merchantNextVisitDay = -1;                 // wandering merchant schedule; -1 = unscheduled (additive)
     public int prisonReactionDay = -1;                    // faction reaction to a held captive; -1 = none pending (additive)
+    public int dwarvenSpoilUnsold = 0;                    // gold owed by the Deep Holds, uncollected (additive; 0 on old saves)
+    public int dwarvenSpoilLifetime = 0;                  // gold ever taken at their counter (additive; 0 on old saves)
     public List<QuestProgress> wispQuestsActive = new();  // wisp urgings in progress (additive; empty on old saves)
     public List<string> wispQuestsHandedIn = new();       // wisp urgings completed (additive)
     public bool wispQuestsInitialised = false;            // director has reconciled this dungeon once (additive)

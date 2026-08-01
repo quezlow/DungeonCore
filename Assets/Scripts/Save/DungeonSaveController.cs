@@ -197,6 +197,9 @@ public class DungeonSaveController : MonoBehaviour
         // starter area before this ran, so catch the terrain patterns back
         // up after the reset (silent; the codex starts with them known).
         UnlockState.ResetAll();
+        // Spoil is per-dungeon. Without this a second run started in the same
+        // session would open owing whatever the first one had left uncollected.
+        DwarvenSpoil.ResetForNewDungeon();
         PatternDiscovery.ClearNotes();
         PatternDiscovery.CatchUpTerrain();
         ResearchController.SeedBootstrap();      // the core remembering: bootstrap nodes
@@ -319,6 +322,8 @@ public class DungeonSaveController : MonoBehaviour
 
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
+        currentSave.dwarvenSpoilUnsold = DwarvenSpoil.Unsold;
+        currentSave.dwarvenSpoilLifetime = DwarvenSpoil.LifetimeSold;
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
 
         if (QuestController.Instance != null)
@@ -805,6 +810,8 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.restArmed, currentSave.restAnnounced, currentSave.restFound);
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
+            DwarvenSpoil.RestoreFromSave(currentSave.dwarvenSpoilUnsold,
+                                         currentSave.dwarvenSpoilLifetime);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);

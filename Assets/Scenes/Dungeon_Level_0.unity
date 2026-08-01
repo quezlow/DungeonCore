@@ -16342,6 +16342,9 @@ MonoBehaviour:
   sortingLayerName: Player
   sortingOrder: 5
   clickRadius: 0.9
+  stock: {fileID: 11400000, guid: e1c82ca1cc342644ead59edea5d54d50, type: 2}
+  standingPerHundredSold: 2.5
+  standingPerHundredSpent: 1
   pollSeconds: 1
 --- !u!1 &516620640
 GameObject:
@@ -48903,7 +48906,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00008026237}
+  m_AnchoredPosition: {x: 0, y: 0.0000929131}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -58706,7 +58709,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00008026237}
+  m_AnchoredPosition: {x: 0, y: 0.0000929131}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

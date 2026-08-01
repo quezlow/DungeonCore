@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c875285fc2fe45545bcf2494c71b59f3, type: 3}
+  m_Name: Trap_BallistaPost
+  m_EditorClassIdentifier: Assembly-CSharp::TrapDefinition
+  trapName: Ballista Post
+  behaviour: 6
+  requiredTechKey: dwarf.trap_ballista
+  affinity: 0
+  disarmable: 1
+  detoursWhenFlagged: 0
+  prefab: {fileID: 8350292546471794999, guid: 200e16b3be9f7604db466abc7f74fcc0, type: 3}
+  manaCost: 26
+  capacityCost: 4
+  damage: 22
+  cooldown: 5.5
+  slowMultiplier: 0.5
+  slowDuration: 2
+  captureHoldSeconds: 10
+  scatterSeconds: 5
+  sentryRange: 6.5
+  projectileSpeed: 14
+  projectileTint: {r: 0.74, g: 0.7, b: 0.62, a: 1}
+  burstRadius: 1.6
+  burnDps: 4
+  burnSeconds: 3
+  knockbackForce: 1.5
+  blindHaltSeconds: 1.5
+  blindSenseSeconds: 8
+  senseDampMultiplier: 0.5
+  senseDampSeconds: 6
+  manaGain: 10
+  icon: {fileID: 0}
+  description: 'It watches further than anything you built, and it takes its time.
+    Dwarven work: slow, certain, and disinclined to miss.'

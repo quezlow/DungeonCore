@@ -68,6 +68,14 @@ MonoBehaviour:
   - id: outpost_greeting
     once: 0
     text: He looks at you the way a man looks at weather. Not afraid. Deciding.
+  - id: outpost_spoil_sold
+    once: 0
+    text: He weighs it, and he does not argue. They have been paying for stone since
+      before anyone up there had a word for money.
+  - id: outpost_first_trade
+    once: 1
+    text: That is the first thing anyone down here has ever bought from them. They
+      will remember it longer than you will.
   - id: pressed_first
     once: 1
     text: Feel them jostle? Packed in a tunnel, your creatures foul one another's

@@ -22,7 +22,7 @@ using UnityEngine.InputSystem;
 /// once some higher loot band is already learned - proof the ladder rolled
 /// past it. If a raid ruins the anchor, he skips visits until it is rebuilt.
 /// </summary>
-public class WanderingMerchantController : MonoBehaviour
+public class WanderingMerchantController : MonoBehaviour, IShopVendor
 {
     public static WanderingMerchantController Instance { get; private set; }
 
@@ -235,24 +235,21 @@ public class WanderingMerchantController : MonoBehaviour
 
     /// <summary>Spend gold and apply the purchase. Sold entries leave the
     /// wagon until his next visit rolls fresh stock.</summary>
+    // -- IShopVendor -----------------------------------------------------------
+
+    public string ShopTitle => "The Wandering Merchant";
+
+    /// <summary>He haggles with nobody. List price, always.</summary>
+    public int PriceOf(TraderStockCatalog.StockEntry entry) => entry != null ? entry.price : 0;
+
     public bool TryPurchase(TraderStockCatalog.StockEntry entry)
     {
         if (entry == null || !currentStock.Contains(entry)) return false;
         if (DungeonCore.Instance == null || !DungeonCore.Instance.TrySpendGold(entry.price)) return false;
 
         Vector3 at = walker != null ? walker.transform.position : transform.position;
-        if (entry.type == TraderStockCatalog.StockType.Pattern && entry.pattern != null)
-        {
-            PatternDiscovery.NotifyTraderPurchase(entry.pattern, at);
-        }
-        else if (entry.type == TraderStockCatalog.StockType.Book)
-        {
-            var node = ResearchController.Instance != null
-                ? ResearchController.Instance.Tree?.GetByKey(entry.nodeKey)
-                : null;
-            ResearchController.Instance?.GrantNodeFully(node,
-                "The merchant's book gives up its whole art: " + entry.displayName + ".");
-        }
+        TraderStockCatalog.ApplyPurchase(entry, at,
+            "The merchant's book gives up its whole art: " + entry.displayName + ".");
 
         currentStock.Remove(entry);
         return true;
