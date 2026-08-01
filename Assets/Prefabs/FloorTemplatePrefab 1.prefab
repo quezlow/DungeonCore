@@ -2298,6 +2298,8 @@ MonoBehaviour:
   caSmoothingIterations: 4
   minChamberCellCount: 6
   chamberSpacing: 10
+  chamberReferenceRadius: 150
+  chamberCountCeiling: 30
   chamberRimMargin: 10
   riverBankRimMargin: 7
   minRivers: 1
@@ -2344,6 +2346,7 @@ MonoBehaviour:
   wildMonsterMax: 6
   wildMonsterCellDivisor: 6
   roadProfile: {fileID: 11400000, guid: e9217db15fe4c3f41b40e6787abc6019, type: 2}
+  siteProfile: {fileID: 11400000, guid: 9c13ac2d3ee6b7d4392b47f93dd2900f, type: 2}
   roadTilemap: {fileID: 8472111960170152276}
   roadTile: {fileID: 11400000, guid: b05dbd4e85d00a34aa4b40b44e0afb5f, type: 2}
   waterTilemap: {fileID: 2255533193577490305}

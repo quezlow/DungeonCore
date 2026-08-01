@@ -27,6 +27,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private int minChamberCellCount = 6;
     [Tooltip("Reject a chamber centre within this many tiles of another chamber's centre.")]
     [SerializeField] private int chamberSpacing = 10;
+    [Tooltip("Floor radius the authored chamber count is calibrated against. " +
+             "Deeper floors scale their count up from here.")]
+    [SerializeField, Min(1)] private int chamberReferenceRadius = 150;
+    [Tooltip("Hard ceiling on chambers per floor after scaling, so a future radius " +
+             "bump cannot quietly turn a floor into a warren.")]
+    [SerializeField, Min(1)] private int chamberCountCeiling = 30;
     [Tooltip("Keep chambers clear of the outer bedrock rim: chamber centres are drawn " +
              "from a disc this many cells smaller than the floor radius, so a chamber " +
              "never opens into the unminable border ring. Cover the max rim thickness " +
@@ -160,6 +166,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Tooltip("Per-floor road layout. Floors with no entry generate no roads and " +
              "cost nothing. Leave null to disable roads entirely.")]
     [SerializeField] private RoadNetworkProfile roadProfile;
+    [Tooltip("Per-floor Buried Age site layout. Floors with no entry generate no " +
+             "sites and cost nothing. Leave null to disable sites entirely. A " +
+             "SEPARATE asset from the road profile on purpose: floor index 2 carries " +
+             "a site and no road at all.")]
+    [SerializeField] private AncientSiteProfile siteProfile;
     [Tooltip("Per-floor road tilemap, sorting above the floor and below units. " +
              "Road cells paint here as their segment is revealed. Null-safe.")]
     [SerializeField] private Tilemap roadTilemap;
@@ -236,6 +247,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private readonly List<RoadSegmentRuntime> roadSegments = new();
     private readonly HashSet<Vector3Int> roadCells = new();
 
+    // Road anchors handed to the site builder. Junctions are the crossroads a
+    // plaza wants; roadAnchorCells is a THINNED sample of centreline, because the
+    // full set runs to tens of thousands of cells and the builder samples it on
+    // every placement attempt; roadEndCells are the broken and rim-bound ends a
+    // Sealed Gate wants to stand at. Runtime only -- all three are rebuilt from
+    // the polylines and never serialised.
+    private readonly List<Vector3Int> roadJunctions = new();
+    private readonly List<Vector3Int> roadAnchorCells = new();
+    private readonly List<Vector3Int> roadEndCells = new();
+
+    // Every carved site interior cell on this floor, so chamber generation can be
+    // kept off the ruins the same way it is kept off the carriageway.
+    private readonly HashSet<Vector3Int> siteCells = new();
+
     public FloorFeatureSaveData FeatureData => featureData;
     public bool HasGenerated => featureData != null;
     public int RiverPathCost => riverPathCost;
@@ -287,6 +312,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // through a road rather than the reverse -- the washed-out crossing is
         // free storytelling from the ordering alone.
         GenerateRoads(rng, centerCell, floorRadius);
+        GenerateSites(rng, centerCell, floorRadius);
         GenerateChambers(rng, centerCell, floorRadius);
         GenerateRivers(rng, centerCell, floorRadius);
 
@@ -296,7 +322,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated: " +
             $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
-            $"{featureData.roads.Count} roads ({roadSegments.Count} segments) " + 
+            $"{featureData.roads.Count} roads ({roadSegments.Count} segments), " +
+            $"{featureData.sites.Count} sites" +
             (featureData.coreCavern != null ? $", core cavern ({featureData.coreCavern.cells.Count} cells, {featureData.coreCavern.tunnels.Count} tunnels)" : "") +
             $" (seed {floorSeed}).");
 
@@ -312,6 +339,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         RepaintRevealedRiverWater();
         RepaintRevealedRoads();
         PaintAllSurfaceRivers();
+
+        // The type map regenerates from seed in RecreateFloorFromSave, which runs
+        // BEFORE feature data is restored -- so the Ruins masonry has to be
+        // re-applied here, once the sites are actually back.
+        ApplyRuinsOverrides();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
@@ -401,6 +433,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
             FeatureType.River => IsRiverRevealed(fref.featureId),
             FeatureType.Chamber => IsChamberRevealed(fref.featureId),
             FeatureType.Road => IsRoadSegmentRevealed(fref.featureId),
+            FeatureType.AncientSite => IsSiteRevealed(fref.featureId),
             _ => false,
         };
     }
@@ -463,6 +496,40 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return null;
     }
 
+    // -- Ancient Site Reveal API -----------------------------------
+
+    /// <summary>How many Buried Age sites this floor carries.</summary>
+    public int SiteCount => featureData?.sites?.Count ?? 0;
+
+    /// <summary>How many sites on this floor have been revealed. Drives the
+    /// first-site wisp line in FeatureRevealController.</summary>
+    public int RevealedSiteCount => featureData?.revealedSiteIds?.Count ?? 0;
+
+    public bool IsAncientSite(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.AncientSite;
+
+    public bool IsSiteRevealed(int siteId)
+        => featureData != null && featureData.revealedSiteIds.Contains(siteId);
+
+    public SiteData GetSiteById(int siteId)
+    {
+        if (featureData == null || featureData.sites == null) return null;
+        foreach (var s in featureData.sites)
+            if (s.id == siteId) return s;
+        return null;
+    }
+
+    /// <summary>Reveals one whole site. Deliberately NOT split into stretches the
+    /// way a road is: a trunk runs rim to rim and unfogging it from one touched
+    /// cell would hand the player the floor's layout, whereas a site is a single
+    /// set-piece and a floor holds a handful. It reveals entire, like a chamber.</summary>
+    public void RevealSite(int siteId)
+    {
+        if (featureData == null) return;
+        if (featureData.revealedSiteIds.Contains(siteId)) return;
+        featureData.revealedSiteIds.Add(siteId);
+        UnfogSite(siteId);
+    }
+
     // ── Chamber Clear API (DAY 31 PART 2) ─────────────────────────
 
     public bool IsChamberCleared(int chamberId)
@@ -516,6 +583,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (seg != null && seg.cells.Count > 0)
                 return floor.TileInfluence.CellToWorld(seg.cells[seg.cells.Count / 2]);
         }
+        else if (type == FeatureType.AncientSite)
+        {
+            var site = GetSiteById(featureId);
+            if (site != null)
+                return floor.TileInfluence.CellToWorld(site.anchorCell.ToVector3Int());
+        }
         else if (type == FeatureType.EntranceCave && featureData.entranceCave != null)
         {
             return floor.TileInfluence.CellToWorld(featureData.entranceCave.mouthCell.ToVector3Int());
@@ -527,7 +600,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     private void GenerateChambers(System.Random rng, Vector3Int centerCell, int floorRadius)
     {
-        int desiredCount = rng.Next(minChambers, maxChambers + 1);
+        // Scaled by RADIUS, not by area. The authored count is calibrated against
+        // chamberReferenceRadius; an area scale would take floor index 4 (radius
+        // 600) to roughly ninety-six chambers, which is a warren rather than a
+        // floor. The player walks a radius, not an area, so a linear scale is the
+        // honest one: radius 250 gets 5-10, radius 400 gets 8-16, radius 600 gets
+        // 12-24 against the 3-6 a radius-150 floor rolls.
+        //
+        // NOTE: placement stays UNIFORM across the disc, so on a deep floor a good
+        // share of these land past the reach the player will ever have. Confining
+        // chambers to a band the way sites are is a separate call and is not taken
+        // here.
+        float radiusScale = Mathf.Max(1f, floorRadius / (float)Mathf.Max(1, chamberReferenceRadius));
+        int rolled = rng.Next(minChambers, maxChambers + 1);
+        int desiredCount = Mathf.Clamp(
+            Mathf.RoundToInt(rolled * radiusScale), 1, Mathf.Max(1, chamberCountCeiling));
         int attempts = 0;
         int maxAttempts = desiredCount * 6;
 
@@ -552,9 +639,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
             // reads fine, but a cell can only have one owner, and the road was
             // carved first. Re-run the connectivity pass afterwards: a road
             // crossing a chamber can otherwise leave a sealed islet behind.
-            if (roadCells.Count > 0)
+            if (roadCells.Count > 0 || siteCells.Count > 0)
             {
-                cells.RemoveAll(c => roadCells.Contains(c));
+                cells.RemoveAll(c => roadCells.Contains(c) || siteCells.Contains(c));
                 cells = LargestConnectedRegion(cells);
             }
 
@@ -709,6 +796,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var chamber in featureData.chambers)
                 chamber.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
 
+            // So do sites, masonry included. A river cuts through a ruin exactly as
+            // it cuts through a road: the washed-out crossing is free storytelling
+            // from the carve order alone, and a wall standing in a watercourse
+            // would read as a bug rather than a ruin.
+            if (featureData.sites != null)
+                foreach (var site in featureData.sites)
+                {
+                    site.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
+                    site.ruinsCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
+                }
+
             // Erode the outer shell into dry floor banks; the eroded core stays water.
             int bankWidth = rng.Next(minRiverBank, maxRiverBank + 1);
             SplitRiverBanks(cells, bankWidth, floorCentre,
@@ -821,6 +919,159 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 if (seg.cells.Count > 0) roadSegments.Add(seg);
             }
         }
+
+        RebuildRoadAnchors();
+    }
+
+    /// <summary>
+    /// Collects the road anchors the site builder wants: junctions (rebuilt by
+    /// proximity, since RoadNetworkResult.junctions is tooling-only and never
+    /// persisted), a thinned centreline sample, and the ends roads stop at.
+    /// Runs wherever road cells are rebuilt, so it is correct on load too.
+    /// </summary>
+    private void RebuildRoadAnchors()
+    {
+        roadJunctions.Clear();
+        roadAnchorCells.Clear();
+        roadEndCells.Clear();
+        if (featureData == null || featureData.roads == null) return;
+
+        const int SampleStride = 12;
+
+        var endpoints = new List<Vector3Int>();
+        foreach (var road in featureData.roads)
+        {
+            var line = RoadNetworkBuilder.Centreline(road);
+            if (line.Count == 0) continue;
+
+            for (int i = 0; i < line.Count; i += SampleStride)
+                roadAnchorCells.Add(line[i]);
+
+            endpoints.Add(line[0]);
+            endpoints.Add(line[line.Count - 1]);
+
+            // A road with a broken gap stops dead; that far end is a Sealed Gate's
+            // natural home. A road that ran its whole length ends where it ends.
+            if (road.brokenGapCells > 0) roadEndCells.Add(line[line.Count - 1]);
+        }
+
+        // Two road ends meeting inside this radius were one junction node before
+        // the network was split into edges. Cheaper and more robust than
+        // persisting the builder's own junction list.
+        const int JunctionMergeRadius = 6;
+        for (int i = 0; i < endpoints.Count; i++)
+            for (int j = i + 1; j < endpoints.Count; j++)
+            {
+                long dx = endpoints[i].x - endpoints[j].x;
+                long dy = endpoints[i].y - endpoints[j].y;
+                if (dx * dx + dy * dy > JunctionMergeRadius * JunctionMergeRadius) continue;
+                if (!roadJunctions.Contains(endpoints[i])) roadJunctions.Add(endpoints[i]);
+                break;
+            }
+
+        // No roads at all is a legitimate state, not a failure: floor index 2
+        // carries a site and no road layer. Every anchor preference in the
+        // builder degrades to a free in-band pick.
+        if (roadEndCells.Count == 0 && endpoints.Count > 0)
+            roadEndCells.AddRange(endpoints);
+    }
+
+    // -- Ancient Site Generation -----------------------------------
+
+    /// <summary>
+    /// Lays this floor's Buried Age sites, if the profile has an entry for it.
+    /// Runs AFTER roads (a site is composed around a carriageway that is already
+    /// there) and BEFORE chambers and rivers.
+    /// </summary>
+    private void GenerateSites(System.Random rng, Vector3Int centerCell, int floorRadius)
+    {
+        siteCells.Clear();
+        if (siteProfile == null || floor == null) return;
+
+        var entry = siteProfile.GetEntry(floor.FloorIndex);
+        if (entry == null) return;
+
+        var result = AncientSiteBuilder.Build(
+            rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
+            roadJunctions, roadAnchorCells, roadEndCells,
+            siteProfile.GetAuthoredPlans());
+
+        foreach (var plan in result.sites)
+        {
+            // The road and the core keep their cells outright. A site yields to
+            // both: the carriageway was carved first, and nothing is ever allowed
+            // to sit on the core cavern or the entrance.
+            plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
+            plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
+            if (plan.cells.Count < 12) continue;
+
+            var data = new SiteData
+            {
+                id = featureData.sites.Count,
+                archetype = plan.archetype,
+                variant = plan.variant,
+                anchorCell = SerializableVector3Int.From(plan.anchor),
+                cells = ToSerializable(plan.cells),
+                ruinsCells = ToSerializable(plan.ruinsCells),
+                reservedForOutpost = plan.reservedForOutpost,
+            };
+            featureData.sites.Add(data);
+            foreach (var c in plan.cells) siteCells.Add(c);
+        }
+    }
+
+    /// <summary>
+    /// Retypes every site's masonry to TerrainType.Ruins. Idempotent, and called
+    /// from BOTH paths because the type map clears its overrides on GenerateNew:
+    /// FloorRoot.Bootstrap calls it after building the map on a new floor, and
+    /// LoadFromSave calls it once restored feature data is in hand.
+    ///
+    /// Ruins already carries resistance and tints in TerrainResistanceTable and
+    /// already maps to the ancient_masonry pattern in PatternDiscovery, so this
+    /// one call is the whole of the wiring -- the enum value has been reserved
+    /// and unplaced since the terrain system shipped.
+    /// </summary>
+    public void ApplyRuinsOverrides()
+    {
+        if (featureData == null || featureData.sites == null || floor == null) return;
+        var map = floor.TerrainTypeMap;
+        if (map == null || !map.IsGenerated) return;
+
+        var cells = new List<Vector3Int>();
+        foreach (var s in featureData.sites)
+        {
+            if (s.ruinsCells == null) continue;
+            foreach (var sv in s.ruinsCells) cells.Add(sv.ToVector3Int());
+        }
+        if (cells.Count == 0) return;
+        map.ApplyFeatureOverride(cells, TerrainType.Ruins);
+    }
+
+    /// <summary>
+    /// Reveals one site with its wall border and registers the carved interior as
+    /// natural floor -- walkable, unclaimed, mined -- exactly as a chamber does.
+    /// The masonry is deliberately NOT marked: it stays solid so the cave-wall
+    /// renderer frames the site with straight walls, which is the entire read.
+    /// </summary>
+    private void UnfogSite(int siteId)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null) return;
+
+        var site = GetSiteById(siteId);
+        if (site == null || site.cells.Count == 0) return;
+
+        RevealWithBorder(terrain, site.cells);
+
+        // Masonry is revealed but never opened: the player sees the wall, and
+        // mining it is a deliberate act that pays out ancient_masonry.
+        if (site.ruinsCells != null)
+            foreach (var sv in site.ruinsCells)
+                terrain.RevealTile(sv.ToVector3Int());
+
+        var open = new List<Vector3Int>(site.cells.Count);
+        foreach (var sv in site.cells) open.Add(sv.ToVector3Int());
+        floor.TileInfluence?.MarkNaturalFloor(open);
     }
 
     // ── Core Cavern Generation (DAY 34/35) ────────────────────────
@@ -1687,6 +1938,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var c in seg.cells)
                 cellLookup[c] = new FeatureRef { type = FeatureType.Road, featureId = seg.segmentId };
 
+        // Sites after roads and before chambers, matching the carve order: a site
+        // was composed around a carriageway that was already there, and chambers
+        // were generated to avoid both. Only the CARVED interior enters the lookup
+        // -- masonry is solid rock and belongs to the terrain type map, not here.
+        siteCells.Clear();
+        if (featureData.sites != null)
+            foreach (var s in featureData.sites)
+                foreach (var sv in s.cells)
+                {
+                    var c = sv.ToVector3Int();
+                    siteCells.Add(c);
+                    cellLookup[c] = new FeatureRef { type = FeatureType.AncientSite, featureId = s.id };
+                }
+
         foreach (var ch in featureData.chambers)
             foreach (var sv in ch.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
@@ -2018,6 +2283,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var cid in featureData.revealedChamberIds) UnfogChamber(cid);
         if (featureData.revealedRoadSegmentIds != null)
             foreach (var sid in featureData.revealedRoadSegmentIds) UnfogRoadSegment(sid);
+        if (featureData.revealedSiteIds != null)
+            foreach (var sid in featureData.revealedSiteIds) UnfogSite(sid);
     }
 
     [ContextMenu("Clear Debug Overlay")]

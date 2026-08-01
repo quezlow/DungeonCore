@@ -97,6 +97,12 @@ public class FloorRoot : MonoBehaviour
         // by anything else that needs them.
         if (terrainTypeMap != null && terrain != null)
             terrainTypeMap.GenerateNew(floorSeed, centerCell, terrain.CurrentRadius);
+
+        // GenerateNew clears the type map's override table, so a site's masonry has
+        // to be retyped AFTER it, not during feature generation. The load path does
+        // the same thing from TerrainFeatureGenerator.LoadFromSave, where the
+        // ordering is reversed.
+        featureGenerator?.ApplyRuinsOverrides();
         if (sw != null) { tTypeMap = sw.ElapsedMilliseconds; sw.Restart(); }
 
         if (tileInfluence != null)
@@ -136,6 +142,8 @@ public class FloorRoot : MonoBehaviour
                 return terrainTypeMap?.ResistanceTable?.chamberClaimResistance ?? 1f;
             if (featureGenerator.IsRoad(cell))
                 return terrainTypeMap?.ResistanceTable?.roadClaimResistance ?? 1f;
+            if (featureGenerator.IsAncientSite(cell))
+                return terrainTypeMap?.ResistanceTable?.siteClaimResistance ?? 1f;
         }
         return terrainTypeMap != null ? terrainTypeMap.GetResistance(cell) : 1f;
     }

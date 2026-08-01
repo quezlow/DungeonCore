@@ -150,12 +150,51 @@ public class FeatureRevealController : MonoBehaviour
                           silent || !firstOnThisFloor);
                 break;
 
+            // One alert per SITE. Roads collapse to one alert per floor because a
+            // floor holds eighty-five stretches; a floor holds a handful of sites
+            // and each is a set-piece, so each one speaks.
+            case FeatureType.AncientSite:
+                if (features.IsSiteRevealed(fref.featureId)) return;
+                bool firstSiteOnFloor = features.RevealedSiteCount == 0;
+                var site = features.GetSiteById(fref.featureId);
+                features.RevealSite(fref.featureId);
+                FireAlert(FeatureType.AncientSite, fref.featureId,
+                          "The dark opens onto " + (site != null
+                              ? AncientSiteProfile.DisplayName(site.archetype)
+                              : "a Buried Age ruin"),
+                          silent);
+                if (!silent) SpeakForSite(site, firstSiteOnFloor);
+                break;
+
             case FeatureType.EntranceCave:
                 if (features.IsEntranceDiscovered) return;
                 features.MarkEntranceDiscovered();
                 FireEntranceAlert(silent);
                 break;
         }
+    }
+
+    /// <summary>
+    /// The wisp's two lines about the Buried Age. Both are authored once = true,
+    /// so the shipped spoken-line save field does the remembering and this needs
+    /// no state of its own.
+    ///
+    /// The Sealed Gate line is gated on CoreMemory.Lived rather than on a deed
+    /// flag, and is deliberately NOT a memory echo: canon 34 records that the
+    /// player died at an OPENED SEAL regardless of what they did that last day,
+    /// so the memory belongs to every lived core and to no particular flag.
+    /// </summary>
+    private void SpeakForSite(SiteData site, bool firstOnFloor)
+    {
+        var wisp = WispCompanion.Instance;
+        if (wisp == null) return;
+
+        if (site != null && site.archetype == SiteArchetype.SealedGate && CoreMemory.Lived)
+        {
+            wisp.Speak("site_sealed_gate");
+            return;
+        }
+        if (firstOnFloor) wisp.Speak("site_first");
     }
 
     private void FireEntranceAlert(bool silent)

@@ -47,6 +47,13 @@ public class TerrainResistanceTable : ScriptableObject
              "it should be felt as resistance before anything is said about it.")]
     [Min(0.1f)] public float roadClaimResistance = 8f;
 
+    [Tooltip("Claim cost multiplier for the carved interior of a Buried Age site. " +
+             "A middle rung: dearer than a cleared chamber (already-excavated cave " +
+             "floor, 1x) and cheaper than the road (8x), because the ruins were " +
+             "somebody's and the road still is. The site's MASONRY is not covered " +
+             "here -- it stays solid rock typed as Ruins and pays that resistance.")]
+    [Min(0.1f)] public float siteClaimResistance = 3f;
+
     [Tooltip("Claimable-ring tint for river cells (signals high-cost absorbable water).")]
     public Color riverClaimableTint = new Color(0.45f, 0.75f, 0.95f, 1f);
 

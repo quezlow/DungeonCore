@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3f1c07d5b9e42c0ad61f8b4e2c73d15, type: 3}
+  m_Name: AncientSiteProfile
+  m_EditorClassIdentifier: Assembly-CSharp::AncientSiteProfile
+  floors:
+  - floorIndex: 2
+    minSites: 1
+    maxSites: 2
+    bandInner: 0.15
+    bandOuter: 0.65
+    minSpacing: 60
+    minSpan: 20
+    maxSpan: 34
+    rimMargin: 12
+    pool: 06000000
+    reserveOutpost: 0
+  - floorIndex: 3
+    minSites: 3
+    maxSites: 5
+    bandInner: 0.15
+    bandOuter: 0.65
+    minSpacing: 110
+    minSpan: 26
+    maxSpan: 54
+    rimMargin: 12
+    pool: 0100000005000000060000000400000007000000
+    reserveOutpost: 1
+  - floorIndex: 4
+    minSites: 9
+    maxSites: 13
+    bandInner: 0.15
+    bandOuter: 0.65
+    minSpacing: 90
+    minSpan: 30
+    maxSpan: 62
+    rimMargin: 12
+    pool: 
+    reserveOutpost: 0

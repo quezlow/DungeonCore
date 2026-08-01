@@ -109,6 +109,14 @@ public class WispScript : ScriptableObject
             new Line { id = "merchant_first", once = true,
                 text = "A wagon on the road. He has come a long way to sell to something like you - do look at what he carries." },
 
+            // The Buried Age (canon 19). The first ruin found on a floor, and the
+            // Sealed Gate -- which is gated on having LIVED the prologue, because
+            // canon 34 puts the player's death at an opened seal.
+            new Line { id = "site_first", once = true,
+                text = "Straight walls. Down here, that means hands. Somebody built this before anything above ground knew how to." },
+            new Line { id = "site_sealed_gate", once = true,
+                text = "A gate, and it is still shut. You stood at one of these once, at the end, and it was open - and three people you had met that morning found you there. Ask yourself who opened it." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },

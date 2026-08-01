@@ -100,6 +100,28 @@ public class TerrainTypeMap : MonoBehaviour
             $"radius {floorRadius}, seed {floorSeed:X}.");
     }
 
+    /// <summary>
+    /// Retypes cells laid down by a terrain FEATURE -- currently the masonry of
+    /// Buried Age sites, which becomes TerrainType.Ruins.
+    ///
+    /// This writes into the same sparse override map the procgen patches use, so
+    /// resistance, tints and PatternDiscovery all pick it up with no further
+    /// plumbing. It must be re-applied after every GenerateNew, because that
+    /// clears the map: on a new floor FloorRoot.Bootstrap calls it after the type
+    /// map is built, and on load TerrainFeatureGenerator.LoadFromSave calls it
+    /// once feature data is back. Bedrock is never overridden -- the rim is the
+    /// rim, and a site never reaches it anyway.
+    /// </summary>
+    public void ApplyFeatureOverride(IEnumerable<Vector3Int> cells, TerrainType type)
+    {
+        if (!generated || cells == null) return;
+        foreach (var c in cells)
+        {
+            if (IsBedrock(c)) continue;
+            patchOverrides[c] = type;
+        }
+    }
+
     public TerrainType GetTerrainAt(Vector3Int cell)
     {
         if (!generated) return TerrainType.Dirt;

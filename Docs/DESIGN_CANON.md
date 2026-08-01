@@ -1407,12 +1407,12 @@ the First Spark and The Drawn Breath (see entry 28A).
 
 ## 19. Buried Age Sites and the Deep Roads
 
-Status: PART SHIPPED. The road SUBSTRATE is built and is described as-built
-below; everything downstream of it -- the sites, the dwarves, the granite
-overlay, road claiming, caravans -- remains DESIGN and does not exist in code.
-Do not assume the classes or APIs of anything still marked DESIGN here. The
-tier-up divine audiences that used to share this entry are now 19A and have no
-dependency on any of this.
+Status: PART SHIPPED. The road SUBSTRATE and the SITES are built and are
+described as-built below. Everything downstream of them -- the dwarves, the
+granite overlay, road claiming, caravans -- remains DESIGN and does not exist
+in code. Do not assume the classes or APIs of anything still marked DESIGN
+here. The tier-up divine audiences that used to share this entry are now 19A
+and have no dependency on any of this.
 
 The deep floors get a civilisation instead of a difficulty curve. Scattered
 ruins alone read as set dressing; a ROAD through them reads as somewhere that
@@ -1443,16 +1443,138 @@ because it is exploration, not economy.
 Radii come from `DungeonCoreProgressionTable`: floor 0 = 100, 1 = 150,
 2 = 250, 3 = 400, 4 = 600.
 
-### The sites
+### The sites (SHIPPED)
 
-Ancient sites, carried forward unchanged: Sunken Plaza, Collapsed Archive,
-Ossuary, Broken Aqueduct, Hollow Sanctum, Sealed Gate. Pre-carved unclaimed
-tunnels ship INERT first; flank behaviour is a separate later step.
+Eight archetypes: the canon six -- Sunken Plaza, Collapsed Archive, Ossuary,
+Broken Aqueduct, Hollow Sanctum, Sealed Gate -- plus **Guard Post** and **Toll
+House**. The Toll House earns its slot by foreshadowing: the dwarves hold a
+toll gate, so a ruined one on the dead network is the same institution two
+eras earlier. Sites ship INERT: no wild spawns, no loot, no flank behaviour.
 
-The road is what makes the six legible as one place rather than six
-set-pieces. The Sunken Plaza is a junction. The Broken Aqueduct crosses the
-road. The Collapsed Archive sits ON it, because archives sit on roads. The
-Sealed Gate is where the road stops.
+The road is what makes them legible as one place rather than set-pieces. The
+Sunken Plaza is a junction. The Broken Aqueduct crosses the road. The
+Collapsed Archive sits ON it, because archives sit on roads. The Sealed Gate
+is where the road stops. Anchor preference is fixed PER ARCHETYPE rather than
+authored, because the relation IS the archetype -- an aqueduct that crosses
+nothing is a wall, and a toll house away from a road is a cottage. Every
+preference DEGRADES to a free in-band pick rather than failing, which is what
+puts the lone guard post on road-less floor index 2.
+
+**Two cell sets, and the read.** A site's carved interior is natural floor,
+revealed and marked exactly as a chamber is. Its MASONRY is deliberately not
+carved: those cells stay solid rock and are merely retyped to
+`TerrainType.Ruins`. They therefore render as cave wall, cost Ruins resistance
+to claim, and pay out the `ancient_masonry` pattern when mined -- all of which
+the terrain system already did for an enum value that had been reserved and
+unplaced since it shipped. Straight walls against organic cellular-automata
+chambers is the entire read; no props and no new art are involved.
+
+**The plan is the no-repeat unit**, not the archetype. Each archetype has
+three PROCEDURAL variants that change the layout -- wing count, colonnade
+against solid wall, sunken against raised, courtyard against corridor -- for a
+base pool of twenty-four. Floor index 4's thirteen sites therefore never repeat
+a plan even where an archetype appears twice. Parametric jitter rides on top:
+span, quarter-turn rotation, mirror, and breach count. Rotation is restricted
+to quarter turns and mirrors because those are exact integer maps; an
+arbitrary angle would alias every wall into a staircase and lose the read.
+
+**Plans may also be HAND-AUTHORED, and the two kinds are interchangeable.** A
+plan drawn as an ASCII grid in a text asset joins the same pool as an extra
+variant of the archetype it declares, numbered above the procedural ones, and
+inherits the entire placement layer unchanged -- band, anchors, spacing, disc
+clamp, rotation, the walkability guard, save, reveal and terrain override. The
+no-repeat rule therefore covers both kinds without knowing the difference. An
+authored plan ignores `minSpan`/`maxSpan`, because being drawn at a chosen size
+is the point of drawing it; it may override its archetype's anchor with
+`@anchor:`, and may opt out of rotation with `@rotate: no`. A plan whose
+archetype is absent from a floor's roster is never picked on that floor.
+
+The format is `#` masonry, `.` carved, top of file is north, `@key: value`
+headers, `//` comments; the grid self-centres on its bounding box. Text rather
+than a Unity scene because scene authoring would need two tilemaps, an editor
+bake reading `cellBounds`, and a re-bake on every tweak -- none of which exists
+in the project -- whereas a monospace file needs no tooling, diffs in git, and
+matches the ASCII the headless report already prints.
+
+This is deliberately a HYBRID and is expected to stay one. Set-pieces carrying
+lore weight are drawn by hand; the ordinary furniture of a dead city stays
+procedural. The shipped authored set is two Sealed Gates and two Hollow
+Sanctums. **Because a site serialises its cells, adding, removing or reordering
+authored plans cannot disturb an existing save** -- the stored `variant` is
+informational only.
+
+**`Dungeon Core / Validate Site Plans`** checks every authored plan against the
+drape rule in all eight orientations and reports the worst case, without
+entering play mode. Authoring by hand is otherwise the easiest way to draw a
+room that looks enterable and behaves as a wall.
+
+**The placement band, and why it is not the whole disc.** Influence reach is
+COST-distance, not cells: `baseReach + (level - 1) * reachPerLevel +
+(day - 1) * reachPerDay`, spent against terrain resistance, and reveal is
+influence-touch only. Working the radial bands through, a plausible late run
+reaches roughly the inner 65 per cent of a deep floor's radius; covering the
+whole of floor index 4 would take some six hundred in-game days. A site placed
+uniformly across the disc is therefore better than even money never to be seen
+at all. Sites are confined to 15--65 per cent of radius and the outer third of
+each disc is left empty -- which reads correctly anyway. That is past where
+anyone went. **Any future deep-floor content is measured against this number
+before it is scattered.**
+
+**Per-floor rosters and counts**, authored on `AncientSiteProfile`:
+
+| Floor index | Radius | Sites | Roster |
+|---|---|---|---|
+| 2 | 250 | 1--2 | Guard Post only |
+| 3 | 400 | 3--5 | Archive, Sealed Gate, Guard Post, Sanctum, Toll House |
+| 4 | 600 | 9--13 | all eight |
+
+Escalation by depth: one lonely structure with no road near it, then the
+handful a maintained road still keeps, then a city. Floor index 4 lands
+meaningfully denser than floor 3 by area, as the entry requires. Floor index 2
+is deliberate reach -- floors 3 and 4 are Diamond- and God-gated, so without it
+most players would never meet the Buried Age at all.
+
+**One Sealed Gate on floor index 3 is flagged `reservedForOutpost`.** Nothing
+reads it. It exists so the dwarves arc can convert a site in place rather than
+forcing a save migration.
+
+**Cells ARE serialised**, unlike roads. A road is pure geometry and rebuilds
+from its polyline; a site is a composed plan, and re-deriving it would pin the
+builder's recipes forever -- an edit to a variant would silently reshape every
+existing save. A floor's whole site layer is a few thousand cells, which is
+chamber-scale.
+
+**Reveal is per SITE.** A road splits into stretches because a trunk runs rim
+to rim and one touched cell would hand over the floor's layout. A site is a
+single set-piece and a floor holds a handful, so it reveals entire and gets its
+own discovery alert naming the archetype.
+
+**The wisp has two lines.** `site_first` on the first ruin found on a floor.
+`site_sealed_gate` on the first Sealed Gate, gated on `CoreMemory.Lived` --
+deliberately NOT a memory echo, because entry 34 puts the player's death at an
+OPENED SEAL regardless of what they did that last day, so the memory belongs to
+every lived core and to no particular deed flag. This is the first content to
+touch the blank entry 34 left open.
+
+**Chamber count now scales with floor radius** (rolled count times
+`floorRadius / chamberReferenceRadius`, capped by `chamberCountCeiling`). The
+authored 3--6 was floor-radius-independent, which left floor index 4 with up to
+six cellular-automata caves in a 1.13-million-cell disc. The scale is linear in
+RADIUS, not area: an area scale takes floor 4 to roughly ninety-six chambers,
+which is a warren. Chamber PLACEMENT stays uniform across the disc and is not
+band-confined the way sites are -- that call is open.
+
+**Key files:** `Floors/AncientSiteBuilder.cs` (pure static; `Build`, plus the
+plan recipes), `Floors/AncientSitePlanLibrary.cs` (+ `AuthoredSitePlan`; the
+ASCII parser), `Editor/SitePlanValidator.cs`,
+`Floors/AncientSiteProfile.cs` (+ `SiteFloorEntry`,
+`SiteArchetype`, `SiteAnchor`); touches `Floors/TerrainFeatureGenerator.cs`
+(`GenerateSites`, `RebuildRoadAnchors`, `ApplyRuinsOverrides`, `UnfogSite`, the
+site reveal API, chamber scaling), `Floors/FloorFeatureSaveData.cs` (`SiteData`,
+`FeatureType.AncientSite`), `Floors/FeatureRevealController.cs`,
+`Floors/TerrainTypeMap.cs` (`ApplyFeatureOverride`), `Floors/FloorRoot.cs`,
+`DungeonCore/TerrainResistanceTable.cs` (`siteClaimResistance`, 3 by default),
+`Wisp/WispScript.cs` + `Wisp/WispScript.asset`, `TESTING/Commands.cs`.
 
 ### The generator (SHIPPED)
 
@@ -1649,9 +1771,11 @@ lands on proven ground:
 
 1. The pre-carved road generator -- SHIPPED. See "The generator (SHIPPED)"
    and "Carve precedence" above.
-2. Floor 4's dead network -- no faction, no NPCs, no trade. Pure generation
-   and exploration, zero dependencies, proves the terrain in isolation.
-3. Floor 3's surviving trunk, from the same generator.
+2. Floor 4's dead network -- SHIPPED. Authored on `RoadNetworkProfile`.
+3. Floor 3's surviving trunk -- SHIPPED. Same generator, `Trunk` mode.
+3a. The sites -- SHIPPED. See "The sites" above. Inert: terrain, reveal and
+   two wisp lines, no faction and no NPCs, which is what leaves step 4
+   standing on known-good ground.
 4. The dwarves -- faction and standing, the outpost, the granite boundary,
    road claiming, caravans, the shop decoupling. Last, because when something
    here breaks the terrain underneath it is already known-good.

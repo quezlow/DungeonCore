@@ -47,6 +47,15 @@ MonoBehaviour:
     once: 0
     text: Something new, remembered. It has settled into the codex - look when you
       like.
+  - id: site_first
+    once: 1
+    text: Straight walls. Down here, that means hands. Somebody built this before
+      anything above ground knew how to.
+  - id: site_sealed_gate
+    once: 1
+    text: A gate, and it is still shut. You stood at one of these once, at the end,
+      and it was open - and three people you had met that morning found you there.
+      Ask yourself who opened it.
   - id: merchant_first
     once: 1
     text: A wagon on the road. He has come a long way to sell to something like you

@@ -657,6 +657,71 @@
       just be a trap for whoever wires the granite overlay later.</div>
     </div>
   </details>
+  <details>
+    <summary>26. Buried Age Site Plans (hand-drawn ruins)</summary>
+    <div class="body">
+      <div class="why">Canon 19. Sites generate procedurally by default; this chapter is for
+      DRAWING one by hand instead. An authored plan is an ASCII grid in a plain text file that
+      becomes an extra variant of its archetype -- it competes in the same no-repeat pool as the
+      procedural recipes and inherits the entire placement layer. No scene, no prefab, no bake
+      step. Nothing here touches the five save registries: sites serialise their cells, so
+      adding, removing or reordering plans can never disturb an existing save.</div>
+
+      <h3>The map</h3>
+      <table>
+        <tr><th>Content</th><th>Create</th><th>Asset / home</th><th>Wire into</th></tr>
+        <tr><td>Site plan</td><td>a <code>.txt</code> file in any text editor</td><td><code>ScriptableObjects/Sites/Plans</code></td><td><code>AncientSiteProfile.authoredPlans</code></td></tr>
+        <tr><td>Site profile</td><td><code>Dungeon/Ancient Site Profile</code></td><td><code>ScriptableObjects/Floors</code></td><td><code>TerrainFeatureGenerator.siteProfile</code></td></tr>
+      </table>
+
+      <h3>26a. The format</h3>
+      <pre>@archetype: SealedGate      <span class="lbl">// required -- which archetype this is a variant of</span>
+@name: The Last Door        <span class="lbl">// optional, for your own reference</span>
+@anchor: RoadEnd            <span class="lbl">// optional -- overrides the archetype's default</span>
+@rotate: no                 <span class="lbl">// optional -- default is yes</span>
+
+<span class="lbl">// Comments start with two slashes.</span>
+########################################
+########################################
+#################......#################
+#################......#################
+#################......#################
+#####..............................#####
+#####..............................#####
+#####..............................#####</pre>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s1"><label for="dcr-authoring-v1-c26s1"><code>#</code> is <b>masonry</b>: it stays SOLID rock, is retyped to <code>Ruins</code>, renders as cave wall, costs 6x to claim and pays out <code>ancient_masonry</code> when mined. <code>.</code> is <b>carved</b> open floor. <b>Any other character, including a space, is not part of the site at all</b> -- that is how you get a non-rectangular footprint.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s2"><label for="dcr-authoring-v1-c26s2">Top of the file is <b>north</b>. Rows may be ragged. The grid self-centres on its own bounding box, so you never think about origins.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s3"><label for="dcr-authoring-v1-c26s3">Save it into <code>Assets/ScriptableObjects/Sites/Plans/</code> and drag it onto the profile's <code>Authored Plans</code> list. <b>Use a monospace editor</b> -- a proportional font will lie to you about alignment.</label></div>
+
+      <h3>26b. The one rule that will catch you out</h3>
+      <p class="rule">A wall's face renders TWO cells tall and drapes down over the open floor
+      south of it, and those cells are not walkable. So a room needs THREE rows of interior
+      before a single cell is walkable, and about FIVE to be usable. Draw a two-row corridor and
+      you have drawn a wall that looks like a corridor.</p>
+      <pre>########   <span class="lbl">masonry</span>
+........   <span class="lbl">carved, but NOT walkable (face upper slice)</span>
+........   <span class="lbl">carved, but NOT walkable (face lower slice)</span>
+........   <span class="lbl">first walkable row</span>
+........
+........</pre>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s4"><label for="dcr-authoring-v1-c26s4">It is also <b>orientation-dependent</b>. The drape is always in world +Y, so a north-south corridor drapes nothing while the same plan rotated a quarter turn can be impassable. Unless you set <code>@rotate: no</code>, your plan will be rolled in all eight orientations, so <b>it must work in the worst one</b>.</label></div>
+
+      <h3>26c. Validate before you play</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s5"><label for="dcr-authoring-v1-c26s5">Run <b><code>Dungeon Core &rarr; Validate Site Plans</code></b>. It parses every plan on every profile and reports dimensions, carved and masonry counts, and the <b>worst-case walkable count across all eight orientations</b>. No play mode, no floor generation.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s6"><label for="dcr-authoring-v1-c26s6">A plan under <b>16 walkable cells</b> in its worst orientation logs as an error and names the offending rotation. The generator rejects such a site at placement, so it silently costs you a site rather than shipping an impassable room.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s7"><label for="dcr-authoring-v1-c26s7">A malformed file is warned about and skipped, never fatal: an unknown <code>@archetype</code>, a missing header, or a grid with no <code>.</code> cells at all.</label></div>
+
+      <h3>26d. Where it lands in game</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s8"><label for="dcr-authoring-v1-c26s8">A plan only appears on floors whose roster contains its archetype. A <code>SealedGate</code> plan is eligible on floor indices 3 and 4, never on floor 2 (Guard Post only). <b>Check the roster before wondering why your ruin never spawns.</b></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s9"><label for="dcr-authoring-v1-c26s9">Authored plans <b>ignore</b> <code>minSpan</code>/<code>maxSpan</code> -- drawn size is final. They still obey the placement band, spacing, and the disc clamp, so keep a plan comfortably smaller than the floor's <code>rimMargin</code> allowance.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s10"><label for="dcr-authoring-v1-c26s10">Confirm with the headless report: <code>Commands &rarr; Test Road Report</code> now prints <code>plans: N procedural, M hand-authored</code>. If M is 0, the plans are not on the profile or their archetype is off-roster.</label></div>
+
+      <div class="note"><b>Hybrid on purpose.</b> Draw the set-pieces that carry lore weight; leave
+      the ordinary furniture of a dead city procedural. The shipped set is two Sealed Gates and
+      two Hollow Sanctums -- read those four files first, they are the worked examples.</div>
+    </div>
+  </details>
 
   
 </div>

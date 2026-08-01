@@ -31,6 +31,18 @@ public class FloorFeatureSaveData
     // order and are stable for a given seed.
     public List<int> revealedRoadSegmentIds = new();
 
+    // Buried Age sites. Unlike roads, cells ARE stored: a site is a composed
+    // plan rather than pure geometry, and re-deriving it on load would mean
+    // pinning the builder's recipes forever -- an edit to a plan would silently
+    // reshape every existing save. A floor's whole site layer is a few thousand
+    // cells, which is chamber-scale and costs nothing. Empty on floors without
+    // sites and on saves written before them.
+    public List<SiteData> sites = new();
+
+    // Reveal is per SITE, not per stretch. A floor holds a handful of set-pieces,
+    // so a site comes into view entire, exactly as a chamber does.
+    public List<int> revealedSiteIds = new();
+
     public CoreCavernData coreCavern;
 
     // Seeded surface entrance: tunnel through the bedrock rim + offshoot
@@ -91,6 +103,36 @@ public class RoadData
     public List<SerializableVector3Int> polyline = new();
 }
 
+/// <summary>One placed Buried Age site (canon 19).</summary>
+[Serializable]
+public class SiteData
+{
+    public int id;
+    public SiteArchetype archetype;
+
+    /// <summary>Which plan of that archetype this instance was built from. The
+    /// no-repeat rule works on archetype PLUS variant, so a floor may hold two
+    /// archives with different plans but never the same plan twice.</summary>
+    public int variant;
+
+    public SerializableVector3Int anchorCell;
+
+    /// <summary>Carved interior -- natural floor on reveal.</summary>
+    public List<SerializableVector3Int> cells = new();
+
+    /// <summary>The masonry. Deliberately NOT carved: these cells stay solid
+    /// rock and are retyped to TerrainType.Ruins, so they render as wall, cost
+    /// Ruins resistance to claim, and pay out the ancient_masonry pattern when
+    /// mined. Straight walls against organic chambers is the whole of what makes
+    /// a site read as built rather than found.</summary>
+    public List<SerializableVector3Int> ruinsCells = new();
+
+    /// <summary>Reserved as the future dwarven outpost. A flag only -- nothing
+    /// reads it yet. It exists so the dwarves arc can convert a site in place
+    /// instead of forcing a save migration.</summary>
+    public bool reservedForOutpost;
+}
+
 [Serializable]
 public class ChamberData
 {
@@ -120,7 +162,8 @@ public struct FeatureRef
     public int featureId;
 }
 
-public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road }
+// Appended only, never reordered: the values are serialised into saves as ints.
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road, AncientSite }
 
 [Serializable]
 public class CoreCavernData

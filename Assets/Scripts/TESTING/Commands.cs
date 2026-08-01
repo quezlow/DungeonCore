@@ -311,6 +311,9 @@ public class Commands : MonoBehaviour
     [SerializeField] private int roadReportExclusionRadius = 8;
     [Tooltip("Edge length of the ASCII map printed by the road report.")]
     [SerializeField, Range(20, 100)] private int roadReportMapSize = 60;
+    [Tooltip("Assign the same AncientSiteProfile wired on the floor template's " +
+             "TerrainFeatureGenerator. Leave null to report roads only.")]
+    [SerializeField] private AncientSiteProfile siteReportProfile;
 
     [ContextMenu("Test Generate All Floors")]
     void TestGenerateAllFloors()
@@ -441,12 +444,74 @@ public class Commands : MonoBehaviour
             return;
         }
 
-        Debug.Log(RoadAsciiMap(all, result.junctions, radius, Mathf.Max(20, roadReportMapSize)));
+        // Sites ride the same headless report. They consume the SAME System.Random
+        // immediately after the roads do, exactly as GenerateNew orders them, so a
+        // report seeded with the floor seed reproduces the in-game layout on any
+        // floor without a core cavern or entrance cave -- which is every floor
+        // below the first.
+        var siteResult = new AncientSiteResult();
+        var siteEntry = siteReportProfile != null ? siteReportProfile.GetEntry(floorIdx) : null;
+        if (siteEntry != null)
+        {
+            var junctions = result.junctions;
+            var centrelines = new List<Vector3Int>();
+            var ends = new List<Vector3Int>();
+            foreach (var road in result.roads)
+            {
+                var line = RoadNetworkBuilder.Centreline(road);
+                for (int i = 0; i < line.Count; i += 12) centrelines.Add(line[i]);
+                if (line.Count > 0) ends.Add(line[line.Count - 1]);
+            }
+
+            siteResult = AncientSiteBuilder.Build(
+                new System.Random(seed), Vector3Int.zero, radius, siteEntry,
+                roadReportExclusionRadius, junctions, centrelines, ends,
+                siteReportProfile.GetAuthoredPlans());
+
+            int floorCells = 0, masonry = 0;
+            var tally = new Dictionary<SiteArchetype, int>();
+            foreach (var s in siteResult.sites)
+            {
+                floorCells += s.cells.Count;
+                masonry += s.ruinsCells.Count;
+                tally.TryGetValue(s.archetype, out int had);
+                tally[s.archetype] = had + 1;
+            }
+
+            var roster = new System.Text.StringBuilder();
+            foreach (var kv in tally) roster.Append(kv.Key).Append(" x").Append(kv.Value).Append("  ");
+
+            int authoredUsed = 0;
+            int procVariants = AncientSiteProfile.VariantCountFor(SiteArchetype.GuardPost);
+            foreach (var s in siteResult.sites)
+                if (s.variant >= procVariants) authoredUsed++;
+
+            Debug.Log(
+                $"[Commands] SITE REPORT -- floor index {floorIdx}, band " +
+                $"{siteEntry.bandInner:0.00}..{siteEntry.bandOuter:0.00} of radius {radius} " +
+                $"(cells {Mathf.RoundToInt(radius * siteEntry.bandInner)}.." +
+                $"{Mathf.RoundToInt(radius * siteEntry.bandOuter)}).\n" +
+                $"  sites {siteResult.sites.Count} (authored {siteEntry.minSites}..{siteEntry.maxSites}), " +
+                $"carved {floorCells} cells, masonry {masonry} cells\n" +
+                $"  roster: {roster}\n" +
+                $"  plans: {siteResult.sites.Count - authoredUsed} procedural, " +
+                $"{authoredUsed} hand-authored");
+
+            if (siteResult.sites.Count < siteEntry.minSites)
+                Debug.LogWarning("[Commands] Site report placed fewer than the authored minimum -- " +
+                                 "check minSpacing against the band area, and rimMargin against maxSpan.");
+        }
+
+        Debug.Log(RoadAsciiMap(all, result.junctions, siteResult.sites, radius,
+                               Mathf.Max(20, roadReportMapSize)));
     }
 
     /// <summary>Downsamples the carriageway to a console-sized grid. '#' is road,
-    /// '+' a junction, '.' open rock, ' ' outside the disc.</summary>
-    string RoadAsciiMap(HashSet<Vector3Int> cells, List<Vector3Int> junctions, int radius, int size)
+    /// '+' a junction, 'o' a site's carved floor, 'O' its masonry, '.' open rock,
+    /// ' ' outside the disc. Sites are drawn last so a ruin standing on a road is
+    /// visible rather than hidden under the carriageway.</summary>
+    string RoadAsciiMap(HashSet<Vector3Int> cells, List<Vector3Int> junctions,
+                        List<AncientSitePlan> sites, int radius, int size)
     {
         var grid = new char[size, size];
         float scale = (2f * radius) / size;
@@ -472,6 +537,23 @@ public class Commands : MonoBehaviour
                 int gx = Mathf.Clamp(Mathf.FloorToInt((j.x + radius) / scale), 0, size - 1);
                 int gy = Mathf.Clamp(Mathf.FloorToInt((j.y + radius) / scale), 0, size - 1);
                 grid[gx, gy] = '+';
+            }
+
+        if (sites != null)
+            foreach (var s in sites)
+            {
+                foreach (var c in s.cells)
+                {
+                    int gx = Mathf.Clamp(Mathf.FloorToInt((c.x + radius) / scale), 0, size - 1);
+                    int gy = Mathf.Clamp(Mathf.FloorToInt((c.y + radius) / scale), 0, size - 1);
+                    grid[gx, gy] = 'o';
+                }
+                foreach (var c in s.ruinsCells)
+                {
+                    int gx = Mathf.Clamp(Mathf.FloorToInt((c.x + radius) / scale), 0, size - 1);
+                    int gy = Mathf.Clamp(Mathf.FloorToInt((c.y + radius) / scale), 0, size - 1);
+                    grid[gx, gy] = 'O';
+                }
             }
 
         var sb = new System.Text.StringBuilder();
