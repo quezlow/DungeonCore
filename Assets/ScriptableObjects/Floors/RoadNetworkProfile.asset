@@ -30,6 +30,8 @@ MonoBehaviour:
     spurMinLength: 30
     spurMaxLength: 80
     trunkBearingSpread: 30
+    minJunctionAngleDegrees: 25
+    minRoadSeparation: 20
   - floorIndex: 4
     mode: 2
     trunkWidth: 5
@@ -47,3 +49,5 @@ MonoBehaviour:
     spurMinLength: 30
     spurMaxLength: 80
     trunkBearingSpread: 30
+    minJunctionAngleDegrees: 25
+    minRoadSeparation: 20

@@ -1503,6 +1503,17 @@ Sanctums. **Because a site serialises its cells, adding, removing or reordering
 authored plans cannot disturb an existing save** -- the stored `variant` is
 informational only.
 
+`AncientSiteResult` carries per-stage rejection counters and
+`TerrainFeatureGenerator` logs them (`logSiteGeneration`, on by default), so an
+empty floor reports which stage discarded its sites rather than needing to be
+bisected. Sites also draw in the debug overlay via `debugSiteTile`, and unlike
+chambers, rivers and roads they draw whether revealed or not -- the overlay is
+a development tool, and an unrevealed site is exactly what one wants to look
+at. **The commonest cause of "no sites" is neither: they generate correctly and
+are simply not revealed, because reveal is influence-touch only and the band
+starts at 15 per cent of the radius. Read the log count before hunting a render
+bug.**
+
 **`Dungeon Core / Validate Site Plans`** checks every authored plan against the
 drape rule in all eight orientations and reports the worst case, without
 entering play mode. Authoring by hand is otherwise the easiest way to draw a
@@ -1519,6 +1530,11 @@ at all. Sites are confined to 15--65 per cent of radius and the outer third of
 each disc is left empty -- which reads correctly anyway. That is past where
 anyone went. **Any future deep-floor content is measured against this number
 before it is scattered.**
+
+A floor's roster is set by an explicit `useAllArchetypes` toggle, NOT by
+leaving the pool list empty. An empty list in the inspector is
+indistinguishable from one nobody has filled in yet, which reads as a silent
+failure; the toggle makes "everything" a deliberate statement.
 
 **Per-floor rosters and counts**, authored on `AncientSiteProfile`:
 
@@ -1659,6 +1675,25 @@ ROADS, chambers, rivers.**
 - Rivers take their cells back from roads. A river cuts through a road, not the
   reverse; the washed-out crossing is free storytelling from the ordering alone.
   No ford, no bridge, nothing authored -- the river simply wins.
+
+**Road spacing (SHIPPED).** Two geometric rules, per-floor on the profile.
+`minJunctionAngleDegrees` (25) is the smallest angle permitted between two
+roads meeting at one junction; `minRoadSeparation` (20 cells) is the smallest
+distance permitted between two roads sharing no junction. Measured over 300
+generated floor-4 networks, the unconstrained builder produced **4.7 pairs per
+floor under 25 degrees** -- long thin slivers, worst case 0.0 degrees, two
+roads laid exactly on top of each other -- plus 0.6 pairs of near-parallel
+roads. Both rules together take those to zero and cost about 0.2 loop edges.
+
+The dominant cause was `ExtraLoopEdges`, which returns the SHORTEST unused node
+pairs: those are precisely the pairs already joined by a short tree path, so
+each one closed a thin triangle. Spurs were second, firing at a fully random
+bearing from a random junction. **Spanning-tree edges are never refused** --
+connectivity beats spacing, and refusing one could orphan a junction; loops,
+rim trunks and spurs each draw from a wider candidate list than they need so
+the rules trim rather than starve. A graph-hop constraint was tested and
+rejected: it starved loop edges (4.0 down to 2.5 per floor) while adding
+nothing once the angle rule was in.
 
 **Key files:** `Floors/RoadNetworkBuilder.cs` (pure static; `Build`,
 `Centreline`, `Dilate`), `Floors/RoadNetworkProfile.cs` (+ `RoadFloorEntry`,

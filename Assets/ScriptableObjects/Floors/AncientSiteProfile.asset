@@ -22,6 +22,7 @@ MonoBehaviour:
     minSpan: 20
     maxSpan: 34
     rimMargin: 12
+    useAllArchetypes: 0
     pool: 06000000
     reserveOutpost: 0
   - floorIndex: 3
@@ -33,6 +34,7 @@ MonoBehaviour:
     minSpan: 26
     maxSpan: 54
     rimMargin: 12
+    useAllArchetypes: 0
     pool: 0100000005000000060000000400000007000000
     reserveOutpost: 1
   - floorIndex: 4
@@ -44,6 +46,7 @@ MonoBehaviour:
     minSpan: 30
     maxSpan: 62
     rimMargin: 12
+    useAllArchetypes: 1
     pool: 
     reserveOutpost: 0
   authoredPlans:

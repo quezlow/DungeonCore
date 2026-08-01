@@ -90,7 +90,13 @@ public class SiteFloorEntry
     [Min(0)] public int rimMargin = 12;
 
     [Header("Roster")]
-    [Tooltip("Archetypes eligible on this floor. Empty means every archetype. " +
+    [Tooltip("Use every archetype on this floor and ignore the pool list below. " +
+             "This is an EXPLICIT toggle rather than 'an empty list means all', " +
+             "because in the inspector an empty list is indistinguishable from one " +
+             "you have not filled in yet -- which reads as a silent failure.")]
+    public bool useAllArchetypes = false;
+
+    [Tooltip("Archetypes eligible on this floor, used when useAllArchetypes is off. " +
              "The no-repeat rule works on the PLAN (archetype plus variant), not " +
              "the archetype, so a floor may hold two archives with different plans " +
              "but never the same plan twice.")]
@@ -177,6 +183,7 @@ public class AncientSiteProfile : ScriptableObject
             minSpan = 30,
             maxSpan = 62,
             rimMargin = 12,
+            useAllArchetypes = true,
             pool = new List<SiteArchetype>(),
         },
     };

@@ -27,6 +27,29 @@ public class AncientSitePlan
 public class AncientSiteResult
 {
     public List<AncientSitePlan> sites = new List<AncientSitePlan>();
+
+    /// <summary>Why placement attempts were thrown away, so "no sites spawned"
+    /// can be answered with a number instead of a guess. Every `continue` in the
+    /// placement loop increments exactly one of these.</summary>
+    public int wanted;
+    public int planPoolSize;
+    public int attempts;
+    public int rejectedNoAnchor;
+    public int rejectedTooClose;
+    public int rejectedNullShape;
+    public int rejectedTooSmall;
+    public int rejectedUnwalkable;
+    public string abortReason = "";
+
+    public string Summary()
+    {
+        if (!string.IsNullOrEmpty(abortReason))
+            return "aborted before placing: " + abortReason;
+        return $"placed {sites.Count}/{wanted} from a pool of {planPoolSize} plans " +
+               $"in {attempts} attempts; rejected: no-anchor {rejectedNoAnchor}, " +
+               $"too-close {rejectedTooClose}, null-shape {rejectedNullShape}, " +
+               $"too-small {rejectedTooSmall}, unwalkable {rejectedUnwalkable}";
+    }
 }
 
 /// <summary>
@@ -71,20 +94,45 @@ public static class AncientSiteBuilder
         IReadOnlyList<AuthoredSitePlan> authoredPlans = null)
     {
         var result = new AncientSiteResult();
-        if (rng == null || entry == null) return result;
+        if (rng == null || entry == null)
+        {
+            result.abortReason = "no rng or no floor entry";
+            return result;
+        }
 
         int usable = Mathf.Max(0, radius - Mathf.Max(0, entry.rimMargin));
-        if (usable <= coreExclusionRadius) return result;
+        if (usable <= coreExclusionRadius)
+        {
+            result.abortReason = $"usable radius {usable} (radius {radius} minus rimMargin " +
+                                 $"{entry.rimMargin}) is inside the core exclusion {coreExclusionRadius}";
+            return result;
+        }
 
         int inner = Mathf.Max(coreExclusionRadius + 2, Mathf.RoundToInt(radius * Mathf.Clamp01(entry.bandInner)));
         int outer = Mathf.Min(usable, Mathf.RoundToInt(radius * Mathf.Clamp01(entry.bandOuter)));
-        if (outer <= inner) return result;
+        if (outer <= inner)
+        {
+            result.abortReason = $"placement band is empty: inner {inner} >= outer {outer} " +
+                                 $"(radius {radius}, bandInner {entry.bandInner}, bandOuter {entry.bandOuter})";
+            return result;
+        }
 
         int want = Mathf.Max(0, RandomRange(rng, entry.minSites, entry.maxSites));
-        if (want == 0) return result;
+        result.wanted = want;
+        if (want == 0)
+        {
+            result.abortReason = $"rolled 0 sites from minSites {entry.minSites} / maxSites {entry.maxSites}";
+            return result;
+        }
 
         var plans = BuildPlanPool(rng, entry, authoredPlans);
-        if (plans.Count == 0) return result;
+        result.planPoolSize = plans.Count;
+        if (plans.Count == 0)
+        {
+            result.abortReason = "plan pool is EMPTY -- the floor entry's roster resolved to no " +
+                                 "archetypes at all. Check useAllArchetypes / the pool list.";
+            return result;
+        }
 
         var anchorsUsed = new List<Vector3Int>();
         int minSpacingSq = Mathf.Max(1, entry.minSpacing) * Mathf.Max(1, entry.minSpacing);
@@ -97,6 +145,7 @@ public static class AncientSiteBuilder
         while (result.sites.Count < want && attempts < maxAttempts)
         {
             attempts++;
+            result.attempts = attempts;
 
             // The plan pool is walked in shuffled order and only wraps once it is
             // exhausted, so a floor exhausts every distinct plan before repeating.
@@ -109,9 +158,16 @@ public static class AncientSiteBuilder
                 : AncientSiteProfile.AnchorFor(plan.archetype);
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
                                junctions, roadCells, roadEnds, out var anchor))
+            {
+                result.rejectedNoAnchor++;
                 continue;
+            }
 
-            if (TooClose(anchor, anchorsUsed, minSpacingSq)) continue;
+            if (TooClose(anchor, anchorsUsed, minSpacingSq))
+            {
+                result.rejectedTooClose++;
+                continue;
+            }
 
             // An authored plan is drawn at a fixed size and ignores span entirely
             // -- that IS the point of hand-authoring it. Procedural recipes still
@@ -126,7 +182,11 @@ public static class AncientSiteBuilder
                 int span = Mathf.Max(8, RandomRange(rng, entry.minSpan, entry.maxSpan));
                 site = Compose(rng, plan.archetype, plan.variant, span);
             }
-            if (site == null) continue;
+            if (site == null)
+            {
+                result.rejectedNullShape++;
+                continue;
+            }
 
             bool rotatable = plan.authored == null || plan.authored.allowRotation;
             int rot = rotatable ? rng.Next(0, 4) : 0;
@@ -144,7 +204,11 @@ public static class AncientSiteBuilder
             EmitTransformed(site.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
 
             // A site reduced to a handful of cells by the disc clamp is not a site.
-            if (placed.cells.Count < 12) continue;
+            if (placed.cells.Count < 12)
+            {
+                result.rejectedTooSmall++;
+                continue;
+            }
 
             // And a site nobody can walk into is not a site either. A wall's face
             // renders TWO cells tall and drapes over the open floor south of it;
@@ -154,7 +218,11 @@ public static class AncientSiteBuilder
             // world +Y -- the same plan can be fine on one quarter turn and
             // impassable on another. Failing here does NOT advance the plan cursor,
             // so the loop re-rolls the rotation and tries the same plan again.
-            if (CountWalkable(placed.cells) < MinWalkableCells) continue;
+            if (CountWalkable(placed.cells) < MinWalkableCells)
+            {
+                result.rejectedUnwalkable++;
+                continue;
+            }
 
             if (!outpostTaken && plan.archetype == SiteArchetype.SealedGate)
             {
@@ -200,15 +268,15 @@ public static class AncientSiteBuilder
         IReadOnlyList<AuthoredSitePlan> authoredPlans)
     {
         var roster = new List<SiteArchetype>();
-        if (entry.pool != null && entry.pool.Count > 0)
-        {
-            foreach (var a in entry.pool)
-                if (!roster.Contains(a)) roster.Add(a);
-        }
-        else
+        if (entry.useAllArchetypes)
         {
             for (int i = 0; i <= (int)SiteArchetype.TollHouse; i++)
                 roster.Add((SiteArchetype)i);
+        }
+        else if (entry.pool != null)
+        {
+            foreach (var a in entry.pool)
+                if (!roster.Contains(a)) roster.Add(a);
         }
 
         var pool = new List<PlanRef>();

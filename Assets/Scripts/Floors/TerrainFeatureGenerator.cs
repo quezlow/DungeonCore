@@ -226,6 +226,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [SerializeField] private TileBase debugRiverTile;
     [SerializeField] private TileBase debugChamberTile;
     [SerializeField] private TileBase debugRoadTile;
+    [Tooltip("Debug overlay colour for Buried Age site interiors. Leave empty to " +
+             "skip. Note debugRoadTile is also unassigned by default, so roads do " +
+             "not show in the overlay either.")]
+    [SerializeField] private TileBase debugSiteTile;
+    [Tooltip("Logs why site generation produced the count it did. Cheap, and the " +
+             "only way to tell an empty roster from an unreachable band.")]
+    [SerializeField] private bool logSiteGeneration = true;
 
     // ── State ─────────────────────────────────────────────────────
 
@@ -989,7 +996,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (siteProfile == null || floor == null) return;
 
         var entry = siteProfile.GetEntry(floor.FloorIndex);
-        if (entry == null) return;
+        if (entry == null)
+        {
+            // Not an error -- most floors carry no sites. Logged all the same,
+            // because "the profile has no entry for this floor" is by far the
+            // most likely reason for an unexpectedly empty floor.
+            if (logSiteGeneration)
+                Debug.Log($"[Sites] Floor {floor.FloorIndex}: no entry on '{siteProfile.name}', " +
+                          "so no sites. Add one if this floor should carry them.");
+            return;
+        }
 
         var result = AncientSiteBuilder.Build(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
@@ -1017,6 +1033,23 @@ public class TerrainFeatureGenerator : MonoBehaviour
             };
             featureData.sites.Add(data);
             foreach (var c in plan.cells) siteCells.Add(c);
+        }
+
+        if (logSiteGeneration)
+        {
+            int dropped = result.sites.Count - featureData.sites.Count;
+            Debug.Log(
+                $"[Sites] Floor {floor.FloorIndex} (radius {floorRadius}): {result.Summary()}. " +
+                $"{dropped} lost to road/core overlap. " +
+                $"Kept {featureData.sites.Count}. " +
+                $"Anchors available: {roadJunctions.Count} junctions, " +
+                $"{roadAnchorCells.Count} road samples, {roadEndCells.Count} road ends.");
+
+            if (featureData.sites.Count == 0)
+                Debug.LogWarning(
+                    "[Sites] Floor " + floor.FloorIndex + " generated NO sites. The line above " +
+                    "says which stage discarded them. Note that sites are only VISIBLE once " +
+                    "influence reaches them -- check the count here before hunting a render bug.");
         }
     }
 
@@ -1998,6 +2031,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 if (!IsRoadSegmentRevealed(seg.segmentId)) continue;
                 foreach (var c in seg.cells)
                     debugOverlayTilemap.SetTile(c, debugRoadTile);
+            }
+
+        // Sites. Unlike the three above, these are drawn whether revealed or not:
+        // the overlay is a development tool and an unrevealed site is exactly what
+        // you want to look at when checking a floor's layout.
+        if (debugSiteTile != null && featureData.sites != null)
+            foreach (var s in featureData.sites)
+            {
+                foreach (var sv in s.cells)
+                    debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugSiteTile);
+                if (s.ruinsCells != null)
+                    foreach (var sv in s.ruinsCells)
+                        debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugSiteTile);
             }
     }
 
