@@ -1503,11 +1503,20 @@ Sanctums. **Because a site serialises its cells, adding, removing or reordering
 authored plans cannot disturb an existing save** -- the stored `variant` is
 informational only.
 
+Anchor selection tests band membership AND spacing together, inside the
+sampler. Testing spacing afterwards gave each attempt a single chance at it,
+and since six of the eight archetypes anchor onto roads their candidates
+cluster along the carriageway -- floor index 4 placed four sites of ten and
+discarded 116 attempts. No tunable changed; the search did.
+
 `AncientSiteResult` carries per-stage rejection counters and
 `TerrainFeatureGenerator` logs them (`logSiteGeneration`, on by default), so an
 empty floor reports which stage discarded its sites rather than needing to be
-bisected. Sites also draw in the debug overlay via `debugSiteTile`, and unlike
-chambers, rivers and roads they draw whether revealed or not -- the overlay is
+bisected. `DebugRevealAll` and `LogFeatureStats` both cover sites; omitting them was
+what made a floor log five sites and show none, since the roads beside them
+unfogged and the ruins did not. Sites also draw in the debug overlay via
+`debugSiteTile`, and unlike chambers, rivers and roads they draw whether
+revealed or not -- the overlay is
 a development tool, and an unrevealed site is exactly what one wants to look
 at. **The commonest cause of "no sites" is neither: they generate correctly and
 are simply not revealed, because reveal is influence-touch only and the band

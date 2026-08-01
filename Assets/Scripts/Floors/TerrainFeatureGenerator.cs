@@ -2346,7 +2346,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var ch in featureData.chambers) RevealChamber(ch.id);
         foreach (var r in featureData.rivers) RevealRiver(r.id);
         foreach (var seg in roadSegments) RevealRoadSegment(seg.segmentId);
-        Debug.Log("[TerrainFeatureGenerator] All features revealed (debug).");
+
+        // Sites. Their absence here is why a floor could log "5 sites" and still
+        // show nothing after Reveal All Features: the roads unfogged and the
+        // ruins beside them stayed under fog.
+        if (featureData.sites != null)
+            foreach (var s in featureData.sites) RevealSite(s.id);
+
+        Debug.Log($"[TerrainFeatureGenerator] All features revealed (debug): " +
+                  $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
+                  $"{roadSegments.Count} road segments, " +
+                  $"{(featureData.sites != null ? featureData.sites.Count : 0)} sites.");
     }
 
     [ContextMenu("Log Feature Stats")]
@@ -2370,6 +2380,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
             $"{featureData.revealedChamberIds.Count} revealed, {clearedChambers} cleared), " +
             $"{featureData.rivers.Count} rivers ({riverCells} cells, " +
             $"{featureData.revealedRiverIds.Count} revealed). " +
+            $"{(featureData.sites != null ? featureData.sites.Count : 0)} sites " +
+            $"({(featureData.revealedSiteIds != null ? featureData.revealedSiteIds.Count : 0)} revealed). " +
             $"{featureData.roads.Count} roads ({roadSegments.Count} segments, " +
             $"{roadCells.Count} cells, {featureData.revealedRoadSegmentIds.Count} revealed). " +
             $"Lookup size {cellLookup.Count}.");
