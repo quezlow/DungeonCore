@@ -114,9 +114,9 @@ public class RoadFloorEntry
 ///
 /// A fresh asset already carries the shipped layout: floor index 2 (radius 250)
 /// gets the surviving trunk and the dwarven gatehouse it runs through, floor
-/// index 4 (radius 600) gets the dead network. Floor index 3 is deliberately
-/// empty for now -- the dwarven village floor is being authored separately. Edit or delete entries freely -- nothing else reads the
-/// floor indices.
+/// index 3 (radius 400) the sparse living network the village sits on, floor
+/// index 4 (radius 600) the dead network. Edit or delete entries freely --
+/// nothing else reads the floor indices.
 /// </summary>
 [CreateAssetMenu(fileName = "RoadNetworkProfile", menuName = "Dungeon/Road Network Profile")]
 public class RoadNetworkProfile : ScriptableObject
@@ -137,6 +137,31 @@ public class RoadNetworkProfile : ScriptableObject
             meanderStep = 20,
             meanderAmplitude = 5f,
         },
+
+        // Floor index 3 -- radius 400, the village floor. Network mode tuned
+        // SPARSE, and the offshoot ladder is deliberate: index 2's trunk has 0
+        // offshoots, this floor 4 (rim trunks 2 + broken spurs 2), index 4 has
+        // 7 -- so the floor reads as the last living crossroads with the
+        // network already dying at its edges. meanderStep 32 / amplitude 5 are
+        // the values this radius carried before the correction moved the trunk
+        // down to index 2. junctionCount 4 at spacing 90 keeps the graph
+        // legible on a 400 disc; loop edges stay at 1 because loops are what
+        // close thin triangles.
+        new RoadFloorEntry
+        {
+            floorIndex = 3,
+            mode = RoadMode.Network,
+            trunkWidth = 5,
+            spurWidth = 2,
+            meanderStep = 32,
+            meanderAmplitude = 5f,
+            junctionCount = 4,
+            junctionMinSpacing = 90,
+            extraLoopEdges = 1,
+            rimTrunkCount = 2,
+            brokenSpurCount = 2,
+        },
+
         new RoadFloorEntry
         {
             floorIndex = 4,

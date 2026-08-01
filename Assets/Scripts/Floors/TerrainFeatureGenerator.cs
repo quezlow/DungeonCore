@@ -527,6 +527,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return null;
     }
 
+    /// <summary>This floor's dwarven village, or null. Same single-per-floor
+    /// guarantee as the outpost.</summary>
+    public SiteData GetVillageSite()
+    {
+        if (featureData?.sites == null) return null;
+        foreach (var s in featureData.sites)
+            if (s != null && s.reservedForVillage) return s;
+        return null;
+    }
+
     public SiteData GetSiteById(int siteId)
     {
         if (featureData == null || featureData.sites == null) return null;
@@ -1036,10 +1046,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 // ruin that is fine and silent. On the outpost it means the floor
                 // ships with no dwarves, which must never be a silent outcome --
                 // the plan wants widening, not this guard removing.
-                if (plan.reservedForOutpost)
-                    Debug.LogError("[TerrainFeatureGenerator] The guaranteed outpost " +
-                        "was reduced below 12 cells by the carriageway subtraction and " +
-                        "has been dropped. Widen the outpost plan.");
+                if (plan.reservedForOutpost || plan.reservedForVillage)
+                    Debug.LogError("[TerrainFeatureGenerator] The guaranteed " +
+                        (plan.reservedForOutpost ? "outpost" : "village") +
+                        " was reduced below 12 cells by the carriageway subtraction " +
+                        "and has been dropped. Widen the plan.");
                 continue;
             }
 
@@ -1052,6 +1063,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 cells = ToSerializable(plan.cells),
                 ruinsCells = ToSerializable(plan.ruinsCells),
                 reservedForOutpost = plan.reservedForOutpost,
+                reservedForVillage = plan.reservedForVillage,
             };
             featureData.sites.Add(data);
             foreach (var c in plan.cells) siteCells.Add(c);

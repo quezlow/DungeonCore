@@ -70,7 +70,8 @@
       <br><b>Rev 2 (2026-07-10):</b> chapter 16 Materials (Patterns) added; chapter 0 map row added; Appendix A payload amended; canon anchors re-verified at <code>62c0a26d</code>. Requires the Material Pattern System guide.
       <br><b>Rev 3 (2026-07-11):</b> chapter 17 Tech Nodes added; the Update-the-Canon chapter removed per standing instruction (this guide carries no canon step); chapter 0 map row added.
       <br><b>Rev 5:</b> chapter 24 added -- the town's descendants (house table, given-name pool) and the resting-place remains sprite.
-      <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.</div>
+      <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.
+      <br><b>Rev 6:</b> chapter 28 added -- the dwarven village (canon 19 part 3): editing the hold's plan, the guarantee headers, the settlement name roster, and the villager sprite. Chapter 26's roster-eligibility step updated for the floor plan correction and <code>@general: no</code>.</div>
 
   <details open>
     <summary>0. The Pattern, the Rules, the Map</summary>
@@ -713,7 +714,7 @@
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s7"><label for="dcr-authoring-v1-c26s7">A malformed file is warned about and skipped, never fatal: an unknown <code>@archetype</code>, a missing header, or a grid with no <code>.</code> cells at all.</label></div>
 
       <h3>26d. Where it lands in game</h3>
-      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s8"><label for="dcr-authoring-v1-c26s8">A plan only appears on floors whose roster contains its archetype. A <code>SealedGate</code> plan is eligible on floor indices 3 and 4, never on floor 2 (Guard Post only). <b>Check the roster before wondering why your ruin never spawns.</b></label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s8"><label for="dcr-authoring-v1-c26s8">A plan only appears on floors whose roster contains its archetype -- today <code>SealedGate</code> sits in the index-2 and index-4 rosters, and the index-3 pool deliberately omits it. A plan headed <code>@general: no</code> enters no pool at all, and the village's archetype belongs to no roster (chapter 28 covers both). <b>Check the roster before wondering why your ruin never spawns.</b></label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s9"><label for="dcr-authoring-v1-c26s9">Authored plans <b>ignore</b> <code>minSpan</code>/<code>maxSpan</code> -- drawn size is final. They still obey the placement band, spacing, and the disc clamp, so keep a plan comfortably smaller than the floor's <code>rimMargin</code> allowance.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s10"><label for="dcr-authoring-v1-c26s10">Confirm with the headless report: <code>Commands &rarr; Test Road Report</code> now prints <code>plans: N procedural, M hand-authored</code>. If M is 0, the plans are not on the profile or their archetype is off-roster.</label></div>
 
@@ -733,8 +734,36 @@
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c27s7"><label for="dcr-authoring-v1-c27s7">Rerunning either generator is safe: <code>TrapContentGenerator</code> is <code>BuildOrUpdate</code> plus <code>SyncRegistry</code>, and <code>DwarfStockGenerator</code> rebuilds only its own asset.</label></div>
 
       <div class="note"><b>Hybrid on purpose.</b> Draw the set-pieces that carry lore weight; leave
-      the ordinary furniture of a dead city procedural. The shipped set is two Sealed Gates and
-      two Hollow Sanctums -- read those four files first, they are the worked examples.</div>
+      the ordinary furniture of a dead city procedural. Read the two Sealed Gates and the two
+      Hollow Sanctums first -- they are the worked examples. The outpost and the village are the
+      set-piece exceptions with extra rules of their own (26e above and chapter 28 below).</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>28. The Dwarven Village (plan, guarantees, names, villagers)</summary>
+    <div class="body">
+      <p>Canon 19 part 3. The village is an authored site like chapter 26's ruins, plus a thin
+      living layer: a guaranteed placement, a rolled settlement name, and static villagers. This
+      chapter is what you touch to change any of it.</p>
+
+      <h3>28a. Editing the hold itself</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s1"><label for="dcr-authoring-v1-c28s1">The plan is <code>Sites/Plans/DwarvenVillage_TheHearthOfTheDeep.txt</code>; everything in chapter 26 applies. <b>THE DOOR RULE is load-bearing and recorded in the file: every door and internal passage is THREE cells long in its run direction.</b> The drape seals 2-long gaps that rotation turns east/west -- the draft of this plan lost a 45-cell interior to exactly that. Do not shorten a door to make a wall look tidier.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s2"><label for="dcr-authoring-v1-c28s2">Keep the four 5-wide gates on all bearings and keep the interior partitioned. The hold draws 1008 carved and hands 150-350 back to the carriageway; what reads as a hole in the fog is one big empty rectangle, not cell count.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s3"><label for="dcr-authoring-v1-c28s3">After any edit run <code>Dungeon Core &rarr; Validate Site Plans</code>, then check the headless road report on floor index 3 for <code>village: placed</code>. <b>Floor features persist in saves</b> -- an edited plan only shows in a fresh dungeon.</label></div>
+
+      <h3>28b. The guarantee headers</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s4"><label for="dcr-authoring-v1-c28s4">The village is selected <b>by name</b>: <code>SiteFloorEntry.villagePlanName</code> on the site profile must equal the plan's <code>@name</code> header. Rename one, rename both, or the floor logs a loud error and places no village.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s5"><label for="dcr-authoring-v1-c28s5"><code>@general: no</code> marks a plan as guarantee-only: it never enters any floor's general pool. The outpost's plan carries it (without it, floor index 4's all-archetypes roster placed the open hold as a dead ruin). The village does not need it -- <code>DwarvenVillage</code> belongs to no roster at all -- but any future guarantee-only plan should carry it from day one.</label></div>
+
+      <h3>28c. The settlement name roster</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s6"><label for="dcr-authoring-v1-c28s6">Names live on the <code>DwarvenVillageController</code> component (<code>villageNames</code>, eight shipped). One is rolled per run, seeded from the floor seed and site id, so it re-derives identically on every load -- <b>no save field, edit freely</b>. Keep the register institutional and hearth-flavoured: <i>The Undervault</i>, <i>Emberhold</i>, not personal names.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s7"><label for="dcr-authoring-v1-c28s7">The rolled name appears in the discovery alert ("Hearthsmoke in the deep - ... still stands."). Wisp lines <code>village_first</code> / <code>village_greeting</code> live in <code>WispScript</code> as usual (chapter 9 rules).</label></div>
+
+      <h3>28d. The villager sprite</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s8"><label for="dcr-authoring-v1-c28s8"><b>Generate</b> with <code>dcr_base_generator</code> under Guide 1's Style Contract: keep the fixed head and tail and the tall-proportions clause (creature convention; humanoid target ~34x60 in a 64 px square). Subject slot: "a stout dwarven villager in a wool tunic and leather apron, thick braided beard, small hand-lantern at the belt, standing at ease". A second variant for variety: "a stout dwarven matron in a banded work-dress and head-scarf, grey-streaked braids, basket of coal at the hip, standing at ease".</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s9"><label for="dcr-authoring-v1-c28s9"><b>Post:</b> INSPYRENET background removal (not RMBG-2.0), downscale per the size table. Assign one sprite to the controller's <code>villagerSprite</code> slot -- a single slot today, all four villagers share it; per-villager variety is Living Holds work, do not add a list field ahead of that arc.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c28s10"><label for="dcr-authoring-v1-c28s10"><code>villagerCount</code> ships at 4 and is the knob The Living Holds arc grows. Leave it until then; more statues is not more life.</label></div>
     </div>
   </details>
 

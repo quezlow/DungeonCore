@@ -1,0 +1,75 @@
+@archetype: DwarvenVillage
+@name: The Hearth of the Deep
+@anchor: AlongRoad
+
+// The dwarven village: the hold the Deep Holds are named for, one floor below
+// the gatehouse that guards the way to it. Placed by name through
+// SiteFloorEntry.reserveVillage, never through the roster -- so no @general
+// header is needed here; the archetype sits in no floor's pool at all.
+//
+// FOUR GATES, five cells wide, on every bearing: the anchor is a road
+// centreline cell whose local heading is whatever the meander made it, so a
+// hold with fewer mouths would be butted into by most roads -- the same
+// arithmetic as the gatehouse.
+//
+// THE DOOR RULE, measured, do not shorten: every door and internal passage is
+// THREE cells long in its run direction. The wall drape blocks the two cells
+// south of masonry, so after a quarter turn a 2-long gap in what becomes an
+// east/west wall seals its room outright -- the v2 draft of this plan lost a
+// 45-cell interior to exactly that in two of the eight orientations. A 3-long
+// gap always keeps its lowest cell clear of the drape, in every orientation.
+//
+// SCALE. 1008 carved as drawn against 322-394 for the ordinary authored plans
+// and 521 for the gatehouse. Deliberate: this is the floor's landmark, the
+// carriageway subtraction hands roughly 150-200 cells back to the road, and
+// the interior is partitioned into rooms and lanes rather than left as one
+// yard -- it is the one empty rectangle that reads as a hole in the fog, not
+// cell count. Validated through the real builder in all eight orientations,
+// before and after a five-wide road cut on four headings: zero sealed
+// pockets, zero fragmentation.
+//
+// The quarters: north-west the Great Hall (the pillar is the hearth),
+// north-east two long-houses over a shared passage, south-west the forge (the
+// three pillars are coal stores), south-east a terrace of three dwellings.
+
+##################.....##################
+##################.....##################
+#################.......#################
+#################.......#################
+####...........##.......##...........####
+####...........##.......##...........####
+####...........##.......##...........####
+####...........##.......##...........####
+####.....#.....##.......##...........####
+####...........##.......#####...#########
+####...........##.......#####...#########
+####....................##...........####
+####.................................####
+####.................................####
+########...######....................####
+########...######.......##...........####
+########...######.......#####...#########
+##.....................................##
+.........................................
+.........................................
+.........................................
+.........................................
+.........................................
+##.....................................##
+#######...#######.......#####...#########
+#######...#######.......#####...#########
+####...........##.......##...........####
+####...........##....................####
+####..#.....#..##....................####
+####...........##....................####
+####...........##.......#####...#########
+####...........##.......#####...#########
+####....................##...........####
+####.....#..............##...........####
+####....................##...........####
+####...........##.......#####...#########
+#################.......##...........####
+#################.......##...........####
+#################.......##...........####
+##################.....##################
+##################.....##################

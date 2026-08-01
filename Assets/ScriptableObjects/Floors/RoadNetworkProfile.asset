@@ -32,6 +32,25 @@ MonoBehaviour:
     trunkBearingSpread: 30
     minJunctionAngleDegrees: 25
     minRoadSeparation: 20
+  - floorIndex: 3
+    mode: 2
+    trunkWidth: 5
+    spurWidth: 2
+    segmentLength: 40
+    rimMargin: 7
+    meanderStep: 32
+    meanderAmplitude: 5
+    junctionCount: 4
+    junctionMinSpacing: 90
+    extraLoopEdges: 1
+    rimTrunkCount: 2
+    brokenSpurCount: 2
+    brokenGapCells: 6
+    spurMinLength: 30
+    spurMaxLength: 80
+    trunkBearingSpread: 30
+    minJunctionAngleDegrees: 25
+    minRoadSeparation: 20
   - floorIndex: 4
     mode: 2
     trunkWidth: 5

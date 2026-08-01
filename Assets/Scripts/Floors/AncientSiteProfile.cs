@@ -16,6 +16,12 @@ public enum SiteArchetype
     SealedGate = 5,
     GuardPost = 6,
     TollHouse = 7,
+
+    /// <summary>The inhabited hold on the village floor. AUTHORED-ONLY: it has
+    /// no procedural variants (VariantCountFor returns 0), sits in no floor's
+    /// pool, and is placed solely by name through SiteFloorEntry.reserveVillage
+    /// -- which is why useAllArchetypes deliberately does not sweep it in.</summary>
+    DwarvenVillage = 8,
 }
 
 /// <summary>
@@ -129,6 +135,19 @@ public class SiteFloorEntry
              "placement band, so it degrades to a free pick and strands the outpost " +
              "somewhere with no road at all.")]
     public SiteAnchor outpostAnchor = SiteAnchor.AlongRoad;
+
+    [Tooltip("Place the guaranteed dwarven village on this floor. Same contract " +
+             "as reserveOutpost: placed first on its own budget, counts toward " +
+             "minSites/maxSites, and a floor that cannot fit it logs an error. " +
+             "Keep it true on EXACTLY ONE floor -- DwarvenVillageController takes " +
+             "the first revealed village it finds, exactly as the outpost does.")]
+    public bool reserveVillage = false;
+
+    [Tooltip("The authored plan the village is built from, matched against the " +
+             "plan's @name header. Selected BY NAME rather than through the " +
+             "roster, so the DwarvenVillage archetype sits in no pool and the " +
+             "plan can never be double-placed by the general fill loop.")]
+    public string villagePlanName = "";
 }
 
 /// <summary>
@@ -142,9 +161,10 @@ public class SiteFloorEntry
 /// carries a site and no road at all, so folding sites into the road entries
 /// would mean authoring a road entry whose only job is to declare no road.
 ///
-/// A fresh asset already carries the shipped layout: index 2 gets the lone
-/// guard post, index 3 the handful a maintained road keeps, index 4 the whole
-/// roster.
+/// A fresh asset already carries the shipped layout: index 2 the gatehouse
+/// floor (the guaranteed outpost plus at most one ruin), index 3 the village
+/// floor (the guaranteed village plus the handful a living road keeps), index
+/// 4 the whole roster.
 /// </summary>
 [CreateAssetMenu(fileName = "AncientSiteProfile", menuName = "Dungeon/Ancient Site Profile")]
 public class AncientSiteProfile : ScriptableObject
@@ -197,10 +217,35 @@ public class AncientSiteProfile : ScriptableObject
             },
         },
 
-        // Floor index 3 -- radius 400. INTENTIONALLY ABSENT, not forgotten: this
-        // is the dwarven village floor and it is being authored separately. A
-        // floor with no entry simply gets no sites, so leaving it out is the
-        // correct way to hold the slot.
+        // Floor index 3 -- radius 400, the village floor. These are the numbers
+        // the floor carried BEFORE the correction moved the gatehouse down to
+        // index 2 -- authored for this radius, and simply restored.
+        // SealedGate left the pool on purpose: sealed gates read as the dead
+        // eras below, and keeping the archetype here would have put the
+        // outpost's own authored plan into this floor's general pool as a
+        // pickable ruin. The village counts toward minSites/maxSites exactly
+        // as the outpost does, so the floor is the village plus 2-4 ruins.
+        new SiteFloorEntry
+        {
+            floorIndex = 3,
+            minSites = 3,
+            maxSites = 5,
+            bandInner = 0.15f,
+            bandOuter = 0.65f,
+            minSpacing = 110,
+            minSpan = 20,
+            maxSpan = 34,
+            rimMargin = 12,
+            reserveVillage = true,
+            villagePlanName = "The Hearth of the Deep",
+            pool = new List<SiteArchetype>
+            {
+                SiteArchetype.CollapsedArchive,
+                SiteArchetype.GuardPost,
+                SiteArchetype.HollowSanctum,
+                SiteArchetype.TollHouse,
+            },
+        },
 
         // Floor index 4 -- radius 600, the dead network. Everything, and the densest
         // floor by design: deeper is older, and older is when it was whole.
@@ -271,6 +316,7 @@ public class AncientSiteProfile : ScriptableObject
             case SiteArchetype.SealedGate: return SiteAnchor.RoadEnd;
             case SiteArchetype.GuardPost: return SiteAnchor.AlongRoad;
             case SiteArchetype.TollHouse: return SiteAnchor.AlongRoad;
+            case SiteArchetype.DwarvenVillage: return SiteAnchor.AlongRoad;
             case SiteArchetype.Ossuary: return SiteAnchor.Free;
             case SiteArchetype.HollowSanctum: return SiteAnchor.Free;
             default: return SiteAnchor.Free;
@@ -279,8 +325,14 @@ public class AncientSiteProfile : ScriptableObject
 
     /// <summary>How many PROCEDURAL plan variants an archetype has. Hand-authored
     /// plans are counted separately and numbered above these, so raising this
-    /// figure needs the matching case in AncientSiteBuilder.Compose first.</summary>
-    public static int VariantCountFor(SiteArchetype a) => 3;
+    /// figure needs the matching case in AncientSiteBuilder.Compose first.
+    /// ZERO marks an AUTHORED-ONLY archetype: BuildPlanPool adds no procedural
+    /// refs for it, so the archetype exists purely as its hand-drawn plans.</summary>
+    public static int VariantCountFor(SiteArchetype a) => a switch
+    {
+        SiteArchetype.DwarvenVillage => 0,
+        _ => 3,
+    };
 
     /// <summary>Player-facing name, used by the discovery alert.</summary>
     public static string DisplayName(SiteArchetype a)
@@ -295,6 +347,7 @@ public class AncientSiteProfile : ScriptableObject
             case SiteArchetype.SealedGate: return "a sealed gate";
             case SiteArchetype.GuardPost: return "an abandoned guard post";
             case SiteArchetype.TollHouse: return "a ruined toll house";
+            case SiteArchetype.DwarvenVillage: return "a dwarven village";
             default: return "a Buried Age ruin";
         }
     }

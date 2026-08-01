@@ -127,10 +127,15 @@ public class SiteData
     /// a site read as built rather than found.</summary>
     public List<SerializableVector3Int> ruinsCells = new();
 
-    /// <summary>Reserved as the future dwarven outpost. A flag only -- nothing
-    /// reads it yet. It exists so the dwarves arc can convert a site in place
-    /// instead of forcing a save migration.</summary>
+    /// <summary>The dwarven outpost. DwarvenOutpostController finds its site by
+    /// this flag; placement guarantees at most one per floor.</summary>
     public bool reservedForOutpost;
+
+    /// <summary>The dwarven village, same contract: DwarvenVillageController
+    /// finds its site by this flag. APPENDED for JsonUtility -- older saves load
+    /// it false, and no older save can contain a village anyway, because floor
+    /// features persist rather than regenerate.</summary>
+    public bool reservedForVillage;
 }
 
 [Serializable]

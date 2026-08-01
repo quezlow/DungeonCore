@@ -132,6 +132,13 @@ public class WispScript : ScriptableObject
             new Line { id = "outpost_first_trade", once = true,
                 text = "That is the first thing anyone down here has ever bought from them. They will remember it longer than you will." },
 
+            // The village on the floor below the gatehouse. The greeting is NOT
+            // a one-shot -- it is what plays whenever a villager is clicked.
+            new Line { id = "village_first", once = true,
+                text = "A whole hold, lamplit and living. They never went up, so they never learned to fear the shape of you. Walk soft - this is the oldest home the world still keeps." },
+            new Line { id = "village_greeting", once = false,
+                text = "Hammers pause. Eyes follow. Not fear - bookkeeping. They will remember what you touch." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },

@@ -454,7 +454,9 @@ on the other side and they are not one -- so only an explicit martial strength
 was added. The deep-faith reading would put them beside the Cultists and
 against the Church; that is deliberately NOT written into the matrix, because
 no shipped system runs a dwarf encounter and a relationship nothing exercises
-is a claim that cannot yet be shown wrong. Revisit with caravans and patrols.
+is a claim that cannot yet be shown wrong. Revisit in The Living Holds arc
+(entry 19's build order, step 7), which greenlights caravans and patrols --
+the first dwarves a shipped system can meet in the field.
 
 **Key files:** `Adventurer/FactionId.cs`, `Adventurer/FactionSystem.cs`,
 `Adventurer/FactionRelations.cs`, `Gameplay/FactionIntel.cs`,
@@ -1449,12 +1451,14 @@ the First Spark and The Drawn Breath (see entry 28A).
 
 ## 19. Buried Age Sites and the Deep Roads
 
-Status: PART SHIPPED. The road SUBSTRATE and the SITES are built and are
-described as-built below. Everything downstream of them -- the dwarves, the
-granite overlay, road claiming, caravans -- remains DESIGN and does not exist
-in code. Do not assume the classes or APIs of anything still marked DESIGN
-here. The tier-up divine audiences that used to share this entry are now 19A
-and have no dependency on any of this.
+Status: PART SHIPPED. The road substrate, the sites, and the dwarves --
+faction, outpost, vendor, spoil economy, and now the village (part 3) -- are
+built and described as-built below. The granite overlay and road claiming
+remain DESIGN and do not exist in code; caravans and patrols are GREENLIT into
+The Living Holds arc (see the build order at the end of this entry). Do not
+assume the classes or APIs of anything still marked DESIGN here. The tier-up
+divine audiences that used to share this entry are now 19A and have no
+dependency on any of this.
 
 The deep floors get a civilisation instead of a difficulty curve. Scattered
 ruins alone read as set dressing; a ROAD through them reads as somewhere that
@@ -1466,21 +1470,26 @@ Deeper floors are an older era. The player walks the same civilisation twice:
 once still holding, once collapsed. Deeper is not merely richer -- it is
 EARLIER, which means it is more intact as a plan and more ruined as a place.
 
-**Floor allocation (DECIDED).**
+**Floor allocation (DECIDED; renumbered and extended by the floor plan
+correction below).**
 
-- **Floor 3 (radius 400, Diamond-gated)** carries the LIVING road: one
+- **Floor 3 [index 2] (radius 250, Gold-gated)** carries the LIVING road: one
   surviving trunk, rim to rim, still maintained, passing through the dwarven
-  outpost. One road because it is the last stretch anyone still keeps.
-- **Floor 4 (radius 600, God-gated)** carries the DEAD network: expanded
-  ruins joined by Buried Age roads. Deliberately DENSER than floor 3, not
-  sparser -- deeper is older, and older is when the thing was whole. Junctions
-  that go nowhere; spurs visibly broken at the edges where they once climbed
-  toward floor 3. A civilisation that shrank.
+  gatehouse. One road because it is the last stretch anyone still keeps.
+- **Floor 4 [index 3] (radius 400, Diamond-gated)** carries the VILLAGE and
+  the last living crossroads: a sparse network the dwarves still walk, its
+  first broken spurs at the edges -- the network already dying where it once
+  climbed toward the floor above.
+- **Floor 5 [index 4] (radius 600, God-gated)** carries the DEAD network:
+  expanded ruins joined by Buried Age roads. Deliberately DENSER than the
+  village floor, not sparser -- deeper is older, and older is when the thing
+  was whole. Junctions that go nowhere; spurs visibly broken. A civilisation
+  that shrank.
 
-Floor 4 being God-gated is why the living road is NOT there: an inhabited
-outpost and a second vendor reached only at God tier would arrive after the
-player has stopped needing either. The dead network has no such problem
-because it is exploration, not economy.
+The bottom floor being God-gated is why the living settlements are NOT there:
+an inhabited hold and a second vendor reached only at God tier would arrive
+after the player has stopped needing either. The dead network has no such
+problem because it is exploration, not economy.
 
 Radii come from `DungeonCoreProgressionTable`: floor 0 = 100, 1 = 150,
 2 = 250, 3 = 400, 4 = 600.
@@ -1640,11 +1649,16 @@ failure; the toggle makes "everything" a deliberate statement.
 
 | Floor index | Radius | Sites | Roster |
 |---|---|---|---|
-| 2 | 250 | 1--2 | Guard Post only |
-| 3 | 400 | 3--5 | Archive, Sealed Gate, Guard Post, Sanctum, Toll House |
-| 4 | 600 | 9--13 | all eight |
+| 2 | 250 | 1--2 | gatehouse + Archive, Sealed Gate, Guard Post, Sanctum, Toll House |
+| 3 | 400 | 3--5 | village + Archive, Guard Post, Sanctum, Toll House |
+| 4 | 600 | 9--13 | all eight procedural archetypes |
 
-Spans are 16--26, 20--34 and 22--40 by floor. They were roughly half again
+Both guaranteed set-pieces count toward their floor's site roll. SealedGate
+left index 3's pool on purpose: sealed gates read as the dead eras below, and
+keeping the archetype would have put the outpost's own authored plan into the
+village floor's general pool as a pickable dead ruin.
+
+Spans are 13--21, 20--34 and 22--40 by floor. They were roughly half again
 larger at first ship and had to come down: a site reveals ENTIRE, cell count
 grows with the square of span, and a span-62 plaza put some three thousand
 open floor cells on screen in one rectangle against roughly 100--200 for a
@@ -2024,6 +2038,86 @@ on every reload.
 `Floors/DwarvenOutpostController.cs`, `Editor/DwarfStockGenerator.cs`,
 `Editor/TrapContentGenerator.cs`.
 
+### The dwarves -- the village (SHIPPED, part 3)
+
+The floor plan's last slot: floor index 3 (radius 400, Diamond-gated) now
+carries the sparse living network and the hold it serves. The gatehouse above
+guards the way DOWN to something; this is the something.
+
+**The road layer.** `RoadNetworkProfile` gained an index-3 entry: Network mode
+tuned sparse -- junctionCount 4 at spacing 90, extraLoopEdges 1, rimTrunkCount
+2, brokenSpurCount 2, meanderStep 32 / amplitude 5 (the values this radius
+carried before the correction). The offshoot ladder across the deep floors is
+deliberate: 0 (index 2's lone trunk), 4 (here: 2 rim trunks + 2 broken spurs),
+7 (index 4). Measured through the real builder over 200 seeds: junctions
+always 4, roads 7--8 (the MST's 3, plus the 0--1 loop edges the angle rule
+permits, plus 2 rim trunks and 2 broken spurs), carriageway ~7,700 cells.
+
+**The site layer.** `AncientSiteProfile` got the index-3 entry back --
+minSites 3 / maxSites 5, band 0.15--0.65, minSpacing 110, spans 20--34, the
+pre-correction numbers restored -- with two changes: SealedGate is out of the
+pool (see the roster table note above), and the entry carries the new
+guarantee pair `reserveVillage` + `villagePlanName`.
+
+**The guarantee.** `PlaceVillage` in `AncientSiteBuilder` mirrors
+`PlaceOutpost`'s first-and-loud contract with one deliberate difference: the
+plan is selected BY NAME from the authored set, never through the pool.
+`SiteArchetype.DwarvenVillage` (appended, = 8) sits in no roster and has ZERO
+procedural variants -- `VariantCountFor` is a switch now, zero means
+authored-only, and `BuildPlanPool` no longer clamps variant counts to a
+minimum of one -- so the fill loop cannot serve it and there is no pool
+bookkeeping on success. The village counts toward the floor's site roll
+exactly as the outpost does. `SiteData.reservedForVillage` is APPENDED
+(JsonUtility-safe; no older save can hold a village because floor features
+persist) and `TerrainFeatureGenerator.GetVillageSite()` mirrors the outpost
+accessor. Measured over 200 seeds through the real pipeline: 200/200 placed,
+0 duplicates, 0 post-subtraction walkability failures.
+
+**@general: no.** The authored-plan format gained one header: a plan marked
+`@general: no` may only be placed by a guarantee pass, and `Build` strips such
+plans from the pool after the guarantees run. The outpost's plan now carries
+it -- without it, floor index 4's all-archetypes roster placed the one OPEN
+hold as an ordinary dead ruin on the bottom floor. Measured: 0 leaks in 200
+index-4 seeds, sites still 9--13. `TryParseArchetype`'s cap moved to the enum
+tail so DwarvenVillage parses; `BuildPlanPool`'s useAllArchetypes cap
+deliberately stays at TollHouse, so an authored-only archetype is opted in per
+floor and never swept in by "all".
+
+**The plan.** `DwarvenVillage_TheHearthOfTheDeep.txt`: 41x41, 1008 carved /
+673 masonry as drawn, four 5-wide gates on every bearing (an AlongRoad anchor
+lands on any local heading -- the gatehouse arithmetic). Quarters: the Great
+Hall with its hearth pillar, two long-houses over a shared passage, the forge
+with three coal stores, a terrace of three dwellings. THE DOOR RULE is
+recorded in the file and is load-bearing: every door and internal passage is
+3 cells long, because the wall drape seals 2-long gaps that rotation turns
+east/west -- the v2 draft lost a 45-cell interior to exactly that. Validated
+in all eight orientations, before and after 5-wide road cuts on four
+headings: zero sealed pockets, zero fragmentation. Post-subtraction carved
+measures 653--968 (avg 803) depending on how the road crosses. The scale is
+deliberate: the landmark of its floor, partitioned into rooms and lanes --
+what reads as a hole in the fog is one empty rectangle, not cell count.
+
+**The controller.** `DwarvenVillageController` -- scene singleton beside
+`DwarvenOutpostController`, and the same poll rationale, recorded on both:
+the load path unfogs sites without events, so listening would stay silent
+after a reload. On establish it rolls the settlement's name from an 8-name
+roster seeded by floor seed and site id (deterministic, so no save field),
+fires `FactionIntel.NotifyEncounter(Dwarves)` -- idempotent, and deliberately
+fired here as well as at the gatehouse, because stairs are player-placed and
+a run can genuinely reach the village first -- stands four STATIC villagers
+on interior cells picked by the builder's own walkable rule (which also keeps
+them off the carriageway), raises a Discovery alert naming the hold, and
+speaks `village_first` once. Clicking a villager repeats `village_greeting`.
+No vendor: they trade at the gate, they live here. `villagerCount` is
+serialized at 4 for The Living Holds arc to raise. The discovery alert
+re-fires once per session after a reload, exactly as the outpost's does --
+accepted.
+
+**Key files:** `Floors/DwarvenVillageController.cs`,
+`Floors/AncientSiteBuilder.cs`, `Floors/AncientSiteProfile.cs`,
+`Floors/AncientSitePlanLibrary.cs`, `Floors/RoadNetworkProfile.cs`,
+`ScriptableObjects/Sites/Plans/DwarvenVillage_TheHearthOfTheDeep.txt`.
+
 ### The dwarves (DECIDED in shape)
 
 The outpost is the INHABITED Buried Age site -- the one Sealed Gate that is
@@ -2048,14 +2142,17 @@ components, room upgrades, deep-floor-only furniture. Two channels that stay
 meaningful independently, so losing the surface camp does not lock the player
 out of everything.
 
-**PROPOSED, not yet confirmed:** the dwarves as a full `FactionId` with
-standing; caravans crossing the floor that the player may rob, let pass, or
-tax; converting a held road stretch into a toll the player collects. The
-caravan is a multi-day presence rather than a dawn-to-dusk visit -- at 180s
-days and a 2.6 walk speed a traveller covers roughly 470 tiles per day, so
-crossing floor 3 takes days. Travel MUST be authored in days with speed
-derived from it, never as tiles per second, or a longer day silently halves
-the crossing.
+**The Living Holds (GREENLIT, the next arc).** The dwarves who WALK:
+villagers with routines, patrols on the sparse network, and caravans crossing
+between gatehouse and village that the player may rob, let pass, or tax.
+Converting a held road stretch into a toll the player collects belongs here
+too. The caravan is a multi-day presence rather than a dawn-to-dusk visit --
+at 180s days and a 2.6 walk speed a traveller covers roughly 470 tiles per
+day, so crossing the village floor takes days. Travel MUST be authored in
+days with speed derived from it, never as tiles per second, or a longer day
+silently halves the crossing. This arc is also the trigger entry 7 defers the
+faction-vs-faction matrix to: patrols and caravans are the first dwarves a
+shipped system can meet in the field.
 
 **Reuse note.** `WanderingMerchantController` is a singleton with a static
 next-visit day, bound to the surface arrival model (forest road, camp
@@ -2140,8 +2237,15 @@ lands on proven ground:
    and the spoil economy" above. Split from part 1 deliberately: part 1's whole
    risk sat in `AncientSiteBuilder`, part 2's in UI and economy, and one
    delivery would have given a floor-3 regression six possible parents.
-6. Later, and still DESIGN: the granite boundary, road claiming and the warning
-   ladder, caravans.
+6. The village, PART 3 -- SHIPPED. Floor index 3's sparse living network,
+   the guaranteed village, the DwarvenVillage archetype, the name roster, and
+   four static villagers. See "The dwarves -- the village" above.
+7. THE LIVING HOLDS -- GREENLIT, the next arc, fresh chat: living dwarves,
+   patrols, caravans, and the entry-7 matrix revisit. Static villagers become
+   walkers; `villagerCount` on the controller is the knob that grows.
+8. Later, and still DESIGN: the granite boundary, road claiming and the
+   warning ladder (blocked on an alert severity layer that does not exist --
+   `AlertEntry` carries categories only).
 
 ## 19A. Tier-Up Divine Audiences
 

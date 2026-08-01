@@ -1,6 +1,10 @@
 @archetype: SealedGate
 @name: The Toll of the Deep
 @anchor: AlongRoad
+// Guarantee-only: without this, the plan joins the general pool of any floor
+// whose roster holds SealedGate -- floor index 4's all-archetypes roster would
+// place the one OPEN hold as an ordinary dead ruin on the bottom floor.
+@general: no
 
 // The dwarven outpost: the one Sealed Gate that is not sealed.
 //

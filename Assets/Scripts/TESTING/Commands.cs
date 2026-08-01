@@ -496,9 +496,10 @@ public class Commands : MonoBehaviour
             foreach (var kv in tally) roster.Append(kv.Key).Append(" x").Append(kv.Value).Append("  ");
 
             int authoredUsed = 0;
-            int procVariants = AncientSiteProfile.VariantCountFor(SiteArchetype.GuardPost);
+            // Per-archetype, because variant counts differ now: the village's
+            // authored plan is variant 0 of a zero-procedural archetype.
             foreach (var s in siteResult.sites)
-                if (s.variant >= procVariants) authoredUsed++;
+                if (s.variant >= AncientSiteProfile.VariantCountFor(s.archetype)) authoredUsed++;
 
             Debug.Log(
                 $"[Commands] SITE REPORT -- floor index {floorIdx}, band " +
@@ -509,7 +510,10 @@ public class Commands : MonoBehaviour
                 $"carved {floorCells} cells, masonry {masonry} cells\n" +
                 $"  roster: {roster}\n" +
                 $"  plans: {siteResult.sites.Count - authoredUsed} procedural, " +
-                $"{authoredUsed} hand-authored");
+                $"{authoredUsed} hand-authored\n" +
+                $"  {siteResult.OutpostSummary()}, {siteResult.VillageSummary()}" +
+                (siteEntry.reserveOutpost && !siteResult.outpostPlaced ? "  <-- MISSING" : "") +
+                (siteEntry.reserveVillage && !siteResult.villagePlaced ? "  <-- MISSING" : ""));
 
             if (siteResult.sites.Count < siteEntry.minSites)
                 Debug.LogWarning("[Commands] Site report placed fewer than the authored minimum -- " +

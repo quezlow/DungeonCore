@@ -22,6 +22,11 @@ public class AncientSitePlan
     public List<Vector3Int> ruinsCells = new List<Vector3Int>();
 
     public bool reservedForOutpost;
+
+    /// <summary>The guaranteed village, when SiteFloorEntry.reserveVillage placed
+    /// this plan. Carried into SiteData so DwarvenVillageController can find its
+    /// site the same way the outpost controller finds the hold.</summary>
+    public bool reservedForVillage;
 }
 
 public class AncientSiteResult
@@ -42,6 +47,9 @@ public class AncientSiteResult
     /// <summary>Whether this floor's guaranteed outpost actually landed. False on
     /// a floor that never asked for one; false AND loud on a floor that did.</summary>
     public bool outpostPlaced;
+
+    /// <summary>Same contract for the guaranteed village.</summary>
+    public bool villagePlaced;
     public int inBandJunctions;
     public int inBandRoadCells;
     public int inBandRoadEnds;
@@ -51,6 +59,10 @@ public class AncientSiteResult
     /// there rather than only on screen, hundreds of days into a run.</summary>
     public string OutpostSummary() =>
         outpostPlaced ? "outpost: placed" : "outpost: NONE";
+
+    /// <summary>Same shape for the village, so the site report prints both.</summary>
+    public string VillageSummary() =>
+        villagePlaced ? "village: placed" : "village: NONE";
 
     public string Summary()
     {
@@ -163,6 +175,21 @@ public static class AncientSiteBuilder
             PlaceOutpost(rng, entry, centre, inner, outer, usable,
                          junctions, roadCells, roadEnds,
                          plans, anchorsUsed, minSpacingSq, result);
+
+        // The village rides the same guarantee, selected BY NAME from the
+        // authored set rather than through the pool -- its archetype sits in no
+        // roster, so the fill loop can never serve it and there is no pool
+        // bookkeeping to do on success.
+        if (entry.reserveVillage)
+            PlaceVillage(rng, entry, centre, inner, outer, usable,
+                         junctions, roadCells, roadEnds,
+                         authoredPlans, anchorsUsed, minSpacingSq, result);
+
+        // Guarantee-only plans (authored "@general: no") never reach the fill
+        // loop. A guarantee that took one already removed it; this strips
+        // whatever no guarantee consumed -- the outpost's hold sitting in floor
+        // index 4's all-archetypes roster being the case that motivated it.
+        plans.RemoveAll(p => p.authored != null && !p.authored.generalPool);
 
         int planCursor = 0;
         int attempts = 0;
@@ -353,6 +380,82 @@ public static class AncientSiteBuilder
     }
 
     /// <summary>
+    /// Places the guaranteed dwarven village: the same first-and-loud contract as
+    /// PlaceOutpost, with one deliberate difference -- the plan is selected BY
+    /// NAME from the authored set, not filtered from the pool. The DwarvenVillage
+    /// archetype belongs to no roster, so the general loop can never serve it and
+    /// there is nothing to remove from the pool on success.
+    /// </summary>
+    private static void PlaceVillage(
+        System.Random rng, SiteFloorEntry entry, Vector3Int centre,
+        int inner, int outer, int usable,
+        IReadOnlyList<Vector3Int> junctions,
+        IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadEnds,
+        IReadOnlyList<AuthoredSitePlan> authoredPlans,
+        List<Vector3Int> anchorsUsed, int minSpacingSq,
+        AncientSiteResult result)
+    {
+        AuthoredSitePlan plan = null;
+        if (authoredPlans != null)
+            foreach (var p in authoredPlans)
+                if (p != null && p.name == entry.villagePlanName) { plan = p; break; }
+        if (plan == null)
+        {
+            Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+                " asked for a guaranteed village but no authored plan is named '" +
+                entry.villagePlanName + "'. Check villagePlanName against the " +
+                "plan's @name header and the profile's authoredPlans list.");
+            return;
+        }
+
+        var anchorKind = plan.hasAnchorOverride
+            ? plan.anchorOverride
+            : AncientSiteProfile.AnchorFor(SiteArchetype.DwarvenVillage);
+
+        long clampSq = (long)usable * usable;
+
+        for (int attempt = 0; attempt < 240; attempt++)
+        {
+            if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
+                               junctions, roadCells, roadEnds,
+                               anchorsUsed, minSpacingSq, out var anchor))
+                continue;
+
+            LocalPlan shape = FromAuthored(plan);
+            if (shape == null) continue;
+
+            bool rotatable = plan.allowRotation;
+            int rot = rotatable ? rng.Next(0, 4) : 0;
+            bool mirror = rotatable && rng.Next(0, 2) == 0;
+
+            var placed = new AncientSitePlan
+            {
+                archetype = SiteArchetype.DwarvenVillage,
+                variant = 0,
+                anchor = anchor,
+                reservedForVillage = true,
+            };
+            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+
+            if (placed.cells.Count < 12) continue;
+            if (CountWalkable(placed.cells) < MinWalkableCells) continue;
+
+            placed.id = result.sites.Count;
+            result.sites.Add(placed);
+            anchorsUsed.Add(anchor);
+            result.villagePlaced = true;
+            return;
+        }
+
+        Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+            " failed to place its guaranteed village in 240 attempts. That floor " +
+            "will have no dwarves at home. Most likely cause: the placement band " +
+            "holds no road cells -- check inBandRoadCells in the site report.");
+    }
+
+    /// <summary>
     /// Builds one plan's local cells for inspection, without placing anything.
     /// Used by the editor preview window so plan geometry can be checked without
     /// entering play mode or generating a floor.
@@ -414,7 +517,10 @@ public static class AncientSiteBuilder
         var pool = new List<PlanRef>();
         foreach (var a in roster)
         {
-            int variants = Mathf.Max(1, AncientSiteProfile.VariantCountFor(a));
+            // Zero is meaningful now: an AUTHORED-ONLY archetype contributes no
+            // procedural refs at all, so a roster naming one gets exactly its
+            // hand-drawn plans and never a null Compose.
+            int variants = AncientSiteProfile.VariantCountFor(a);
             for (int v = 0; v < variants; v++)
                 pool.Add(new PlanRef { archetype = a, variant = v });
         }

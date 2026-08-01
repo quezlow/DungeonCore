@@ -23,6 +23,14 @@ public class AuthoredSitePlan
     /// meaning. Costs variety, so it is off by default.</summary>
     public bool allowRotation = true;
 
+    /// <summary>Cleared by "@general: no" for a plan that only a guarantee pass
+    /// (reserveOutpost / reserveVillage) may place. Build strips such plans from
+    /// the pool after the guarantees run, so the outpost's own hold can never
+    /// appear as an ordinary dead ruin on a floor whose roster holds its
+    /// archetype -- which floor index 4's all-archetypes roster otherwise
+    /// would.</summary>
+    public bool generalPool = true;
+
     /// <summary>Local cells, centred on the plan's bounding box.</summary>
     public readonly List<Vector2Int> floor = new List<Vector2Int>();
     public readonly List<Vector2Int> wall = new List<Vector2Int>();
@@ -108,6 +116,11 @@ public static class AncientSitePlanLibrary
                         plan.allowRotation = !(val.ToLowerInvariant() == "no"
                                             || val.ToLowerInvariant() == "false"
                                             || val == "0");
+                        break;
+                    case "general":
+                        plan.generalPool = !(val.ToLowerInvariant() == "no"
+                                          || val.ToLowerInvariant() == "false"
+                                          || val == "0");
                         break;
                 }
                 continue;
@@ -206,7 +219,11 @@ public static class AncientSitePlanLibrary
         value = SiteArchetype.GuardPost;
         if (string.IsNullOrEmpty(s)) return false;
         string k = s.Replace(" ", "").Replace("_", "").ToLowerInvariant();
-        for (int i = 0; i <= (int)SiteArchetype.TollHouse; i++)
+        // The cap must track the enum's TAIL so every value parses -- unlike
+        // BuildPlanPool's useAllArchetypes cap, which deliberately stops at
+        // TollHouse so an authored-only archetype is opted in per floor and
+        // never swept in by "all".
+        for (int i = 0; i <= (int)SiteArchetype.DwarvenVillage; i++)
         {
             var candidate = (SiteArchetype)i;
             if (candidate.ToString().ToLowerInvariant() == k)
