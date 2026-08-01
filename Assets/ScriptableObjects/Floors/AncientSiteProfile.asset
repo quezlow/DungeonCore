@@ -25,6 +25,8 @@ MonoBehaviour:
     useAllArchetypes: 0
     pool: 06000000
     reserveOutpost: 0
+    outpostArchetype: 5
+    outpostAnchor: 2
   - floorIndex: 3
     minSites: 3
     maxSites: 5
@@ -37,6 +39,8 @@ MonoBehaviour:
     useAllArchetypes: 0
     pool: 0100000005000000060000000400000007000000
     reserveOutpost: 1
+    outpostArchetype: 5
+    outpostAnchor: 2
   - floorIndex: 4
     minSites: 9
     maxSites: 13
@@ -49,8 +53,11 @@ MonoBehaviour:
     useAllArchetypes: 1
     pool: 
     reserveOutpost: 0
+    outpostArchetype: 5
+    outpostAnchor: 2
   authoredPlans:
   - {fileID: 4900000, guid: 27e5b9c40a8d41f6ae3b2c7d5109f84b, type: 3}
   - {fileID: 4900000, guid: 5b0c8d13f42a496e97ad6e2b8c4f0173, type: 3}
   - {fileID: 4900000, guid: 9a1b7e4c2d5f403e8c6a1b9d7e0f2345, type: 3}
   - {fileID: 4900000, guid: c3d8f01a6b2e47559d4c8a0f3b1e6729, type: 3}
+  - {fileID: 4900000, guid: 7f2a4c9e18b34d6ab05e3c7f91d206e4, type: 3}

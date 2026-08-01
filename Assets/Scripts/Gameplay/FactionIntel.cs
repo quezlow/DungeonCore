@@ -14,6 +14,7 @@ public static class FactionIntel
         FactionId.HolyOrder => "holy_order",
         FactionId.MercenaryCompany => "mercenaries",
         FactionId.Cultists => "cultists",
+        FactionId.Dwarves => "dwarves",
         _ => "guild",
     };
 
@@ -33,6 +34,9 @@ public static class FactionIntel
         FactionId.HolyOrder => "The orthodox Church. Reveres the light and abhors dark cores.",
         FactionId.MercenaryCompany => "Sellswords who answer to coin, not creed.",
         FactionId.Cultists => "Heretic remnants of the deep faith. They bring tribute.",
+        FactionId.Dwarves => "The Deep Holds. They never went up, so they never learned "
+            + "the Church's version -- and the old faith below held that some dead come "
+            + "back as cores.",
         _ => "The broad adventuring establishment — treasure, glory, and reports.",
     };
 
@@ -44,6 +48,9 @@ public static class FactionIntel
         FactionId.MercenaryCompany => "Marches a reprisal when too much loot leaves your halls. "
             + "Choke the outflow or pay them off before the countdown lapses.",
         FactionId.Cultists => "Arrive bearing tribute chests; leaving them in peace raises Cultist standing.",
+        FactionId.Dwarves => "Sends nobody. They hold the toll gate the trunk road "
+            + "runs through, and they judge the core by what it trades and by what it "
+            + "takes from their road.",
         _ => "Sends treasure hunters, scholars and nobles; a bad report brings heroes.",
     };
 }

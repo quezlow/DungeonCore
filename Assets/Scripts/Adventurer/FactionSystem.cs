@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Tracks the dungeon's relationship with each of the four factions: a continuous
+/// Tracks the dungeon's relationship with each of the five factions: a continuous
 /// standing (-100..+100, neutral 0) and a sticky escalation tier (0..3). Standing
 /// moves on in-dungeon outcomes - a faction's member slain lowers its standing;
 /// a completed pilgrimage or delivered tribute raises the relevant faction. The
@@ -41,6 +41,20 @@ public class FactionSystem : MonoBehaviour
     [SerializeField] private float tier2Standing = -50f;
     [SerializeField] private float tier3Standing = -80f;
 
+    [Header("Starting Standing")]
+    [Tooltip("Standing the Dwarven Holds begin at. Neutral-CURIOUS rather than " +
+             "friendly: they are the one faction with no wish to see the core dead, " +
+             "but they have not met it yet. Every other faction starts at 0.")]
+    [SerializeField] private float dwarvesStartingStanding = 15f;
+
+    [Header("Dwarven Regard")]
+    [Tooltip("Standing at or above which the Deep Holds count the core Tolerated / " +
+             "Trusted / Kin. Regard is NOT the escalation tier: it does not ratchet, " +
+             "and it falls again the moment standing does.")]
+    [SerializeField] private float regard1Standing = 25f;
+    [SerializeField] private float regard2Standing = 50f;
+    [SerializeField] private float regard3Standing = 80f;
+
     private class Relation
     {
         public float standing;
@@ -60,6 +74,18 @@ public class FactionSystem : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         foreach (var f in FactionInfo.All) relations[f] = new Relation();
+        SeedDwarves();
+    }
+
+    /// <summary>Puts the Deep Holds at their neutral-curious start. Called on a
+    /// fresh dungeon and again on restoring a save written before they existed,
+    /// which carries no record for them and would otherwise leave them at a flat
+    /// zero -- readable in the panel as indifference the lore does not support.</summary>
+    private void SeedDwarves()
+    {
+        var r = Rel(FactionId.Dwarves);
+        r.standing = dwarvesStartingStanding;
+        r.displayedStanding = dwarvesStartingStanding;
     }
 
     private void Start()
@@ -124,6 +150,34 @@ public class FactionSystem : MonoBehaviour
         r.tier = next;
         OnStandingChanged?.Invoke(f);
     }
+
+    /// <summary>The Deep Holds' regard step for a given standing, 0..3.
+    /// Deliberately NOT the escalation tier: that ratchets one way and only ever
+    /// measures how badly a faction wants the core dead, which says nothing at
+    /// all above zero. Regard is the positive half, and it is reversible.</summary>
+    public int RegardStep(float standing)
+    {
+        if (standing >= regard3Standing) return 3;
+        if (standing >= regard2Standing) return 2;
+        if (standing >= regard1Standing) return 1;
+        return 0;
+    }
+
+    /// <summary>Regard as of the last nightly reckoning -- what the panel shows.</summary>
+    public int DisplayedRegardStep() => RegardStep(DisplayedStanding(FactionId.Dwarves));
+
+    /// <summary>Regard on the LIVE value. Part 2 quotes prices against this, so a
+    /// purchase that lifts the player over a step is felt on the next row rather
+    /// than at nightfall.</summary>
+    public int LiveRegardStep() => RegardStep(Standing(FactionId.Dwarves));
+
+    public static string RegardName(int step) => step switch
+    {
+        1 => "Tolerated",
+        2 => "Trusted",
+        3 => "Kin",
+        _ => "Curious",
+    };
 
     private void EvaluateTier(Relation r)
     {
@@ -191,6 +245,7 @@ public class FactionSystem : MonoBehaviour
     public void RestoreFromSave(FactionSystemSaveData data)
     {
         if (data == null || data.relations == null) return;
+        bool sawDwarves = false;
         foreach (var rec in data.relations)
         {
             var r = Rel(rec.faction);
@@ -198,7 +253,11 @@ public class FactionSystem : MonoBehaviour
             r.tier = rec.tier;
             r.displayedStanding = rec.displayedStanding;
             r.displayedTier = rec.displayedTier;
+            if (rec.faction == FactionId.Dwarves) sawDwarves = true;
         }
+        // Additive migration: a save from before the Deep Holds existed simply has
+        // no record for them, and Rel() would hand back a fresh zeroed Relation.
+        if (!sawDwarves) SeedDwarves();
         foreach (var f in FactionInfo.All) OnStandingChanged?.Invoke(f);
     }
 }

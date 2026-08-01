@@ -39,10 +39,18 @@ public class AncientSiteResult
     public int rejectedNullShape;
     public int rejectedTooSmall;
     public int rejectedUnwalkable;
+    /// <summary>Whether this floor's guaranteed outpost actually landed. False on
+    /// a floor that never asked for one; false AND loud on a floor that did.</summary>
+    public bool outpostPlaced;
     public int inBandJunctions;
     public int inBandRoadCells;
     public int inBandRoadEnds;
     public string abortReason = "";
+
+    /// <summary>Appended to the headless report so a missing outpost is visible
+    /// there rather than only on screen, hundreds of days into a run.</summary>
+    public string OutpostSummary() =>
+        outpostPlaced ? "outpost: placed" : "outpost: NONE";
 
     public string Summary()
     {
@@ -141,7 +149,20 @@ public static class AncientSiteBuilder
 
         var anchorsUsed = new List<Vector3Int>();
         int minSpacingSq = Mathf.Max(1, entry.minSpacing) * Mathf.Max(1, entry.minSpacing);
-        bool outpostTaken = !entry.reserveOutpost;
+
+        // The outpost goes down FIRST and on purpose. The old rule latched
+        // reservedForOutpost onto whichever Sealed Gate the shuffled pool happened
+        // to serve, which failed two different ways on floor index 3: the roster
+        // holds five archetypes and the floor rolls three to five sites, so a run
+        // could finish with no Sealed Gate and therefore no dwarves at all; and the
+        // Sealed Gate's own RoadEnd preference resolves, on a rim-to-rim trunk with
+        // no broken ends, to the two rim endpoints -- both outside the placement
+        // band -- so it degraded to a free pick and put the outpost nowhere near the
+        // road it is supposed to hold.
+        if (entry.reserveOutpost)
+            PlaceOutpost(rng, entry, centre, inner, outer, usable,
+                         junctions, roadCells, roadEnds,
+                         plans, anchorsUsed, minSpacingSq, result);
 
         int planCursor = 0;
         int attempts = 0;
@@ -236,12 +257,6 @@ public static class AncientSiteBuilder
                 continue;
             }
 
-            if (!outpostTaken && plan.archetype == SiteArchetype.SealedGate)
-            {
-                placed.reservedForOutpost = true;
-                outpostTaken = true;
-            }
-
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(anchor);
@@ -249,6 +264,92 @@ public static class AncientSiteBuilder
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Places the guaranteed dwarven outpost, ahead of everything else, and takes
+    /// its plan out of the pool so the general loop cannot serve it twice.
+    ///
+    /// Prefers a hand-authored plan of the outpost archetype when one exists -- the
+    /// procedural Sealed Gate recipes were composed to read as SEALED, which is
+    /// exactly wrong for the one gate that is open. Falls back to a procedural
+    /// variant rather than failing, because a plainly-shaped outpost beats none.
+    ///
+    /// Its attempt budget is its own and generous: this is a set-piece the whole
+    /// dwarven arc hangs off, and spending a few hundred rejected anchors to land
+    /// it is free next to a run that silently has no dwarves in it.
+    /// </summary>
+    private static void PlaceOutpost(
+        System.Random rng, SiteFloorEntry entry, Vector3Int centre,
+        int inner, int outer, int usable,
+        IReadOnlyList<Vector3Int> junctions,
+        IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadEnds,
+        List<PlanRef> plans, List<Vector3Int> anchorsUsed, int minSpacingSq,
+        AncientSiteResult result)
+    {
+        // Authored plans of the outpost archetype first, then procedural ones.
+        var candidates = new List<PlanRef>();
+        foreach (var p in plans)
+            if (p.archetype == entry.outpostArchetype && p.authored != null)
+                candidates.Add(p);
+        foreach (var p in plans)
+            if (p.archetype == entry.outpostArchetype && p.authored == null)
+                candidates.Add(p);
+        if (candidates.Count == 0)
+        {
+            Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+                " asked for a guaranteed outpost but its plan pool holds no " +
+                entry.outpostArchetype + " at all. Check the floor's roster.");
+            return;
+        }
+
+        long clampSq = (long)usable * usable;
+
+        for (int attempt = 0; attempt < 240; attempt++)
+        {
+            var plan = candidates[attempt % candidates.Count];
+
+            if (!TryPickAnchor(rng, entry.outpostAnchor, centre, inner, outer,
+                               junctions, roadCells, roadEnds,
+                               anchorsUsed, minSpacingSq, out var anchor))
+                continue;
+
+            LocalPlan shape = plan.authored != null
+                ? FromAuthored(plan.authored)
+                : Compose(rng, plan.archetype, plan.variant,
+                          Mathf.Max(8, RandomRange(rng, entry.minSpan, entry.maxSpan)));
+            if (shape == null) continue;
+
+            bool rotatable = plan.authored == null || plan.authored.allowRotation;
+            int rot = rotatable ? rng.Next(0, 4) : 0;
+            bool mirror = rotatable && rng.Next(0, 2) == 0;
+
+            var placed = new AncientSitePlan
+            {
+                archetype = plan.archetype,
+                variant = plan.variant,
+                anchor = anchor,
+                reservedForOutpost = true,
+            };
+            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+
+            if (placed.cells.Count < 12) continue;
+            if (CountWalkable(placed.cells) < MinWalkableCells) continue;
+
+            placed.id = result.sites.Count;
+            result.sites.Add(placed);
+            anchorsUsed.Add(anchor);
+            plans.Remove(plan);
+            result.outpostPlaced = true;
+            return;
+        }
+
+        Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+            " failed to place its guaranteed outpost in 240 attempts. That floor " +
+            "will have no dwarves. Most likely cause: the placement band holds no " +
+            "road cells -- check inBandRoadCells in the site report.");
     }
 
     /// <summary>

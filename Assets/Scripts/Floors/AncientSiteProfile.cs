@@ -106,10 +106,29 @@ public class SiteFloorEntry
              "but never the same plan twice.")]
     public List<SiteArchetype> pool = new List<SiteArchetype>();
 
-    [Tooltip("Reserve one Sealed Gate on this floor as the future dwarven outpost. " +
-             "A flag only -- nothing reads it yet. It exists so the dwarves arc can " +
-             "convert a site in place instead of forcing a save migration.")]
+    [Tooltip("Place the dwarven outpost on this floor. This GUARANTEES it: the " +
+             "outpost is placed first, before the random roster, and a floor that " +
+             "cannot fit it logs an error rather than quietly shipping without " +
+             "dwarves. It used to be an opportunistic flag latched onto whichever " +
+             "Sealed Gate the shuffle happened to produce, which meant a floor " +
+             "rolling three sites from a five-archetype roster could finish with no " +
+             "outpost at all.")]
     public bool reserveOutpost = false;
+
+    [Tooltip("Archetype the outpost is built from. SealedGate by design -- canon " +
+             "19 makes the outpost the one Sealed Gate that is NOT sealed, so it " +
+             "reads as the same institution the dead network is full of. Explicit " +
+             "rather than hardcoded so a later arc can move it without a code edit.")]
+    public SiteArchetype outpostArchetype = SiteArchetype.SealedGate;
+
+    [Tooltip("Where the outpost anchors. AlongRoad, because the road must run " +
+             "THROUGH it: anchors centre a plan on the sampled cell and the road " +
+             "anchor list is a thinned CENTRELINE, so AlongRoad already puts the " +
+             "site astride the carriageway. Do not use RoadEnd -- on a rim-to-rim " +
+             "trunk the only ends are the two rim points, both outside the 0.15-0.65 " +
+             "placement band, so it degrades to a free pick and strands the outpost " +
+             "somewhere with no road at all.")]
+    public SiteAnchor outpostAnchor = SiteAnchor.AlongRoad;
 }
 
 /// <summary>

@@ -4,6 +4,15 @@ using UnityEngine;
 /// The faction-vs-faction relationship matrix and the encounter resolver - the data layer a
 /// future forest / dungeon-exterior encounter system will consult when two faction groups meet.
 ///
+/// DWARVES: the Deep Holds sit outside every quarrel in this matrix. Between()
+/// already yields Neutral for them against all four -- the Cultist clause needs a
+/// lawful faction on the other side and the Deep Holds are not one -- so nothing
+/// here needs a special case, only an explicit strength. That neutrality is a
+/// DELIBERATE floor rather than a lore claim: the deep-faith reading would put
+/// them beside the Cultists and against the Church, but no shipped system runs a
+/// dwarf encounter, and a relationship nothing exercises is a claim that cannot
+/// be wrong yet. Revisit when caravans and patrols exist.
+///
 /// RELATIONSHIPS: only the lawful establishment against the heretic Cultists is hostile -
 /// {Guild &lt;-&gt; Cultists} and {Holy Order &lt;-&gt; Cultists}. Mercenaries take no side.
 /// Everything else is Neutral. (The dungeon's OWN standing with each faction lives in
@@ -31,6 +40,9 @@ public static class FactionRelations
         FactionId.HolyOrder => 8,
         FactionId.MercenaryCompany => 8,
         FactionId.Cultists => 8,
+        // Explicit rather than falling to the default: the Deep Holds field no
+        // adventurers, so a wrong figure here would never surface in play.
+        FactionId.Dwarves => 8,
         _ => 5,
     };
 

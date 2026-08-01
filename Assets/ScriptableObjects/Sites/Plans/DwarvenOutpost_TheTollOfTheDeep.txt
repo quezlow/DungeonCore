@@ -1,0 +1,43 @@
+@archetype: SealedGate
+@name: The Toll of the Deep
+@anchor: AlongRoad
+
+// The dwarven outpost: the one Sealed Gate that is not sealed.
+//
+// A toll hold astride the trunk road, not beside it. Gate gaps five cells wide
+// pierce the outer wall on all four bearings, because the anchor is a
+// centreline cell and the road's local heading there is whatever the meander
+// made it -- a hold with one gate would be butted into by three roads out of
+// four. Four quadrant halls with single-cell doors give the interior something
+// to read as rooms rather than a yard.
+//
+// SCALE. 521 carved cells as drawn, against 322-394 for the shipped authored
+// plans. That is deliberate and self-correcting: TerrainFeatureGenerator
+// subtracts the carriageway from a site's cells after placement, and a
+// five-wide road across a thirty-nine-cell span takes roughly 150 of them
+// back, landing the built site at about 370. Do not "fix" the openness by
+// shrinking the cross -- the cross is where the road goes.
+
+#################.....#################
+#################.....#################
+#################.....#################
+###.................................###
+###..##########.........##########..###
+###..#........#.........#........#..###
+###..#...........................#..###
+###..#........#.........#........#..###
+###..##########.........##########..###
+.......................................
+.......................................
+.......................................
+.......................................
+.......................................
+###..##########.........##########..###
+###..#........#.........#........#..###
+###..#...........................#..###
+###..#........#.........#........#..###
+###..##########.........##########..###
+###.................................###
+#################.....#################
+#################.....#################
+#################.....#################

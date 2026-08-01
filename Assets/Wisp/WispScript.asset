@@ -60,6 +60,14 @@ MonoBehaviour:
     once: 1
     text: A wagon on the road. He has come a long way to sell to something like you
       - do look at what he carries.
+  - id: outpost_first
+    once: 1
+    text: Lamps. Down here, and lit, and nobody up there knows. They kept the road,
+      and they kept the gate on it - and they have not heard a word the Church says
+      about things like you.
+  - id: outpost_greeting
+    once: 0
+    text: He looks at you the way a man looks at weather. Not afraid. Deciding.
   - id: pressed_first
     once: 1
     text: Feel them jostle? Packed in a tunnel, your creatures foul one another's

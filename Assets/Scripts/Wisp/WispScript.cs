@@ -117,6 +117,14 @@ public class WispScript : ScriptableObject
             new Line { id = "site_sealed_gate", once = true,
                 text = "A gate, and it is still shut. You stood at one of these once, at the end, and it was open - and three people you had met that morning found you there. Ask yourself who opened it." },
 
+            // The dwarven outpost (canon 19). The first line is the discovery;
+            // the greeting is deliberately NOT a one-shot, because in part 2 it
+            // becomes the line that plays whenever the counter is closed.
+            new Line { id = "outpost_first", once = true,
+                text = "Lamps. Down here, and lit, and nobody up there knows. They kept the road, and they kept the gate on it - and they have not heard a word the Church says about things like you." },
+            new Line { id = "outpost_greeting", once = false,
+                text = "He looks at you the way a man looks at weather. Not afraid. Deciding." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },

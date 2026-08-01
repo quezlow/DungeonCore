@@ -392,7 +392,9 @@ spare-lives gains carry the last stretch. Persisted.
 
 ## 7. Factions and Standing
 
-Status: SHIPPED (System 4 foundation). Verified: 2026-07-09.
+Status: SHIPPED (System 4 foundation). Verified: 2026-07-09. FIFTH FACTION
+(Dwarves) added with the outpost -- see the sub-section at the end of this
+entry and entry 19.
 
 Four factions (Adventurers Guild, Holy Order, Mercenary Company, Cultists),
 each with a continuous standing (**-100..+100**, neutral 0) and a sticky
@@ -417,6 +419,46 @@ roadmap's separate "intel panel / profile panel" is served in-panel.
 `FactionIntel` (`Gameplay/FactionIntel.cs`) holds the slugs, keys and text.
 Rejected: stand-alone per-faction windows (the panel already reserves the
 intel slot).
+
+### The Deep Holds -- the fifth faction (SHIPPED)
+
+`FactionId.Dwarves` is APPENDED at index 4. The enum serialises into
+`FactionRelationSave`, so it may never be reordered. Display name: **Dwarven
+Holds**.
+
+They are unlike the other four in three ways that are all deliberate:
+
+- **They start positive.** `dwarvesStartingStanding` is **+15** -- neutral-
+  CURIOUS, not friendly. Seeded in `Awake`, and seeded AGAIN in
+  `RestoreFromSave` when a loaded save carries no Dwarves record, because an
+  older save would otherwise restore them to a flat zero.
+- **They dispatch nobody.** `PoolFor` returns empty and that is correct; the
+  panel's intel block drops the "Dispatches:" line for them rather than
+  printing an empty roster.
+- **They carry REGARD, not just a tier.** The escalation tier ratchets one way
+  and only measures how badly a faction wants the core dead, which says nothing
+  above zero. Regard is the positive half: steps at **+25 / +50 / +80** named
+  *Curious / Tolerated / Trusted / Kin*, reversible, no ratchet. The panel row
+  shows regard while the tier is 0 and reverts to the ordinary escalation text
+  the moment the tier ratchets -- so the same slot always shows whichever half
+  currently means something.
+
+**Panel visibility.** The row is HIDDEN until `FactionIntel.Encountered
+(FactionId.Dwarves)`, set by `DwarvenOutpostController` when the outpost is
+first revealed. Listing them from day one would advertise a floor-index-3
+set-piece hundreds of days before a Diamond core can reach it.
+
+**Faction-vs-faction.** `FactionRelations.Between` already yields Neutral for
+the Deep Holds against all four -- the Cultist clause needs a lawful faction
+on the other side and they are not one -- so only an explicit martial strength
+was added. The deep-faith reading would put them beside the Cultists and
+against the Church; that is deliberately NOT written into the matrix, because
+no shipped system runs a dwarf encounter and a relationship nothing exercises
+is a claim that cannot yet be shown wrong. Revisit with caravans and patrols.
+
+**Key files:** `Adventurer/FactionId.cs`, `Adventurer/FactionSystem.cs`,
+`Adventurer/FactionRelations.cs`, `Gameplay/FactionIntel.cs`,
+`UI/FactionPanel.cs`.
 
 ## 8. Recurring Threat Events
 
@@ -1747,6 +1789,62 @@ nothing once the angle rule was in.
 `Floors/FloorRoot.cs`, `DungeonCore/TerrainResistanceTable.cs`,
 `TESTING/Commands.cs` (floor generation + the headless road report).
 
+### The dwarves -- faction and outpost (SHIPPED, part 1)
+
+Part 1 of the dwarves arc is BUILT: the faction (see entry 7), the guaranteed
+outpost, its authored plan, and the controller that puts the Deep Holds on the
+board when the player finds it. The VENDOR, the spoil economy, the dwarven
+traps, the granite overlay, road claiming and caravans are NOT built. Design
+for the vendor and the economy is recorded below and in part 2's guide; the
+overlay, claiming and caravans remain DESIGN in the sub-sections further down.
+
+**The outpost is GUARANTEED, and placed first.** `SiteFloorEntry.reserveOutpost`
+no longer latches onto whichever Sealed Gate the shuffle produced. It now runs
+`AncientSiteBuilder.PlaceOutpost` ahead of the general loop, on its own
+240-attempt budget, and takes the chosen plan out of the pool. The old rule
+failed two ways on floor index 3: the roster holds five archetypes and the
+floor rolls three to five sites, so a run could finish with **no Sealed Gate
+and therefore no dwarves**; and the Sealed Gate's `RoadEnd` preference
+resolves, on a rim-to-rim trunk with no broken ends, to the two rim endpoints,
+both outside the 0.15-0.65 band, so it degraded to a **free pick** and stranded
+the outpost away from the road entirely.
+
+**It anchors `AlongRoad`, and that is what puts the road THROUGH it.** No new
+anchor kind was needed. Anchors CENTRE a plan on the sampled cell, and the road
+anchor list handed to the builder is a thinned CENTRELINE sample -- so
+`AlongRoad` already lands a plan astride the carriageway. `outpostArchetype`
+(SealedGate) and `outpostAnchor` (AlongRoad) are explicit serialized fields on
+the floor entry rather than hardcoded.
+
+**The plan is hand-authored:** `Sites/Plans/DwarvenOutpost_TheTollOfTheDeep.txt`,
+a toll hold with gate gaps five cells wide on ALL FOUR bearings. Four gates
+because the anchor is a centreline cell whose local road heading is whatever
+the meander made it -- a hold with one gate would be butted into by three roads
+out of four. Procedural Sealed Gate variants are deliberately not used: they
+were composed to read as SEALED, which is exactly wrong for the one gate that
+is open.
+
+**Scale, and the subtraction that corrects it.** The plan draws 521 carved
+cells against 322-394 for the other authored plans. That is intentional:
+`TerrainFeatureGenerator` subtracts the carriageway from a site's cells after
+placement, and a five-wide road across a thirty-nine-cell span takes roughly
+150 back, landing the built site near 370. The builder's own 12-cell floor is
+checked BEFORE that subtraction, so an outpost can pass there and die after --
+which now logs an ERROR instead of vanishing, because a floor shipping without
+dwarves must never be silent.
+
+**The controller polls; it does not listen.** `DwarvenOutpostController` is a
+scene singleton with no per-floor wiring, checking once a second until the
+outpost is established and then stopping for good. An event on
+`RevealSite` was rejected: the LOAD path calls `UnfogSite` directly for every
+saved id and never touches `RevealSite`, so an event would fire for a player
+who discovers the outpost this session and stay silent for one who reloaded
+afterwards -- the gatekeeper would disappear on Continue.
+
+The gatekeeper stands at the centroid of the site's carved cells SNAPPED to the
+nearest carved cell, not at the stored anchor: the anchor is the plan's centre
+before subtraction, which on an outpost is the middle of the road.
+
 ### The dwarves (DECIDED in shape)
 
 The outpost is the INHABITED Buried Age site -- the one Sealed Gate that is
@@ -1855,9 +1953,15 @@ lands on proven ground:
 3a. The sites -- SHIPPED. See "The sites" above. Inert: terrain, reveal and
    two wisp lines, no faction and no NPCs, which is what leaves step 4
    standing on known-good ground.
-4. The dwarves -- faction and standing, the outpost, the granite boundary,
-   road claiming, caravans, the shop decoupling. Last, because when something
-   here breaks the terrain underneath it is already known-good.
+4. The dwarves, PART 1 -- SHIPPED. The faction and standing (entry 7), the
+   guaranteed outpost, its authored plan, `DwarvenOutpostController`. See "The
+   dwarves -- faction and outpost" above.
+5. The dwarves, PART 2 -- the vendor, the shop decoupling, dwarf-exclusive
+   traps, and the spoil economy. Split from part 1 deliberately: part 1's whole
+   risk sits in `AncientSiteBuilder`, part 2's in UI and economy, and one
+   delivery would have given a floor-3 regression six possible parents.
+6. Later, and still DESIGN: the granite boundary, road claiming and the warning
+   ladder, caravans.
 
 ## 19A. Tier-Up Divine Audiences
 

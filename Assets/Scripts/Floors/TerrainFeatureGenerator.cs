@@ -517,6 +517,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsSiteRevealed(int siteId)
         => featureData != null && featureData.revealedSiteIds.Contains(siteId);
 
+    /// <summary>This floor's dwarven outpost, or null. Placement guarantees at
+    /// most one per floor, so the first match is the answer.</summary>
+    public SiteData GetOutpostSite()
+    {
+        if (featureData?.sites == null) return null;
+        foreach (var s in featureData.sites)
+            if (s != null && s.reservedForOutpost) return s;
+        return null;
+    }
+
     public SiteData GetSiteById(int siteId)
     {
         if (featureData == null || featureData.sites == null) return null;
@@ -1019,7 +1029,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
             // to sit on the core cavern or the entrance.
             plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
-            if (plan.cells.Count < 12) continue;
+            if (plan.cells.Count < 12)
+            {
+                // The builder's own size check ran BEFORE the carriageway was
+                // subtracted, so a site can pass there and die here. On an ordinary
+                // ruin that is fine and silent. On the outpost it means the floor
+                // ships with no dwarves, which must never be a silent outcome --
+                // the plan wants widening, not this guard removing.
+                if (plan.reservedForOutpost)
+                    Debug.LogError("[TerrainFeatureGenerator] The guaranteed outpost " +
+                        "was reduced below 12 cells by the carriageway subtraction and " +
+                        "has been dropped. Widen the outpost plan.");
+                continue;
+            }
 
             var data = new SiteData
             {

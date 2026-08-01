@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// On-demand panel listing the four factions and the dungeon's standing with each.
+/// On-demand panel listing the known factions and the dungeon's standing with each.
 /// Standing is shown as of the last daily reckoning - the panel reads FactionSystem's
 /// DISPLAYED snapshot (refreshed at nightfall), never the live value, so the player
 /// does not watch standing move in real time. Rebuilds each time it opens. Toggle
@@ -84,7 +84,14 @@ public class FactionPanel : MonoBehaviour
         var fs = FactionSystem.Instance;
         if (fs == null) return;
 
-        foreach (var f in FactionInfo.All) AddRow(f, fs);
+        foreach (var f in FactionInfo.All)
+        {
+            // The Deep Holds are not on the board until the player has stood in
+            // their outpost. Listing them from day one would advertise floor index
+            // 3's set-piece hundreds of days before a Diamond core can reach it.
+            if (f == FactionId.Dwarves && !FactionIntel.Encountered(f)) continue;
+            AddRow(f, fs);
+        }
     }
 
     private void AddRow(FactionId f, FactionSystem fs)
@@ -103,7 +110,15 @@ public class FactionPanel : MonoBehaviour
             standingLabel.text = (standing >= 0f ? "+" : "") + standing.ToString("0");
 
         var tierLabel = FindLabel(row.transform, "TierLabel");
-        if (tierLabel != null) tierLabel.text = TierText(tier, fs.MaxTier);
+        if (tierLabel != null)
+            // While the Deep Holds are calm the tier says nothing -- it only ever
+            // measures how badly a faction wants you dead -- so the row carries
+            // regard instead. Anger them past the first band and the ordinary
+            // escalation text takes the slot back, which is the point at which it
+            // starts meaning something.
+            tierLabel.text = (f == FactionId.Dwarves && tier == 0)
+                ? "Regard: " + FactionSystem.RegardName(fs.DisplayedRegardStep())
+                : TierText(tier, fs.MaxTier);
 
         var statusLabel = FindLabel(row.transform, "StatusLabel");
         if (statusLabel != null) statusLabel.text = StatusText(f);
@@ -145,6 +160,11 @@ public class FactionPanel : MonoBehaviour
     {
         if (!FactionIntel.IntelKnown(f))
             return FactionIntel.Encountered(f) ? "<i>Unstudied — research to reveal.</i>" : "";
+
+        // The Deep Holds dispatch nobody, so the roster line would read
+        // "Dispatches: -" and teach the player nothing.
+        if (f == FactionId.Dwarves)
+            return FactionIntel.Profile(f) + "\n" + FactionIntel.Tactics(f);
 
         var pool = FactionSystem.PoolFor(f);
         string roster = pool != null && pool.Count > 0 ? string.Join(", ", pool) : "—";
