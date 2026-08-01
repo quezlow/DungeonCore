@@ -48,7 +48,7 @@
   <h1>The Dwarven Village</h1>
   <div class="sub">Canon 19, part 3 -- the hold the Deep Holds are named for. Floor index 3's sparse
   living network, the guaranteed village, the DwarvenVillage archetype, a rolled settlement name,
-  and four static villagers. Everything below was validated headlessly through the real builder
+  and its static villagers. Everything below was validated headlessly through the real builder
   code over 200 seeds per floor before delivery.</div>
 
   <details open>
@@ -66,7 +66,7 @@
       the last living crossroads, already dying at its edges.</p>
       <p>The village: a 41x41 walled hold placed <b>AlongRoad</b> with four 5-wide gates, quarters
       (Great Hall with hearth, two long-houses, the forge with coal stores, a terrace of three
-      dwellings), a settlement name rolled per run from an 8-name roster, four static villagers,
+      dwellings), a settlement name rolled per run from an 8-name roster, static villagers dealt from a variant sprite list,
       a Discovery alert, and two wisp lines. No vendor -- they trade at the gate, they live here.</p>
       <div class="note"><b>Static on purpose.</b> Villagers are the gatekeeper pattern: bare sprites,
       no pathfinding, no combat entity. <b>The Living Holds arc</b> (greenlit, next, fresh chat)
@@ -104,7 +104,7 @@
     <div class="body">
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s1"><label for="dcr-village-v1-c2s1">Open <code>Dungeon_Level_0</code> and select the persistent manager GameObject that carries <code>DwarvenOutpostController</code>. <b>Add Component &rarr; DwarvenVillageController</b> beside it.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s2"><label for="dcr-village-v1-c2s2">Defaults are shipping values: <code>villagerCount</code> 4, poll 1s, click radius 0.9, the 8-name roster. Leave them.</label></div>
-      <div class="step"><input type="checkbox" id="dcr-village-v1-c2s3"><label for="dcr-village-v1-c2s3"><b>Optional now:</b> assign <code>villagerSprite</code> (authoring one-liners are Content Authoring chapter 28d). Unassigned is safe -- the village establishes with nobody drawn yet, exactly like the gatekeeper did before his sprite existed.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c2s3"><label for="dcr-village-v1-c2s3"><b>Optional now:</b> add any number of variants to <code>villagerSprites</code> (three authoring one-liners are Content Authoring chapter 28d). A seeded round-robin over a shuffled copy deals them out as evenly as the list allows. Empty is safe -- the village establishes with nobody drawn yet, exactly like the gatekeeper did before his sprite existed.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s4"><label for="dcr-village-v1-c2s4">Save the scene.</label></div>
     </div>
   </details>
@@ -140,11 +140,11 @@ SITE REPORT  -- sites <span class="k">3..5</span> (authored 3..5), spur roads vi
       <div class="warn"><b>Fresh dungeon REQUIRED.</b> Floor features persist in saves; an existing
       save's floor 3 has no village and never will. Start clean.</div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c4s1"><label for="dcr-village-v1-c4s1">New dungeon. Either play down to Diamond and place stairs to floor index 3, or use the debug path: <code>Commands &rarr; Test Generate All Floors</code>, switch the active floor to index 3, then <code>Test Reveal All Features (active floor)</code>.</label></div>
-      <div class="step"><input type="checkbox" id="dcr-village-v1-c4s2"><label for="dcr-village-v1-c4s2"><b>The establish beat</b> fires within a second of the village site being revealed: a Discovery alert -- <i>"Hearthsmoke in the deep - &lt;Name&gt; still stands."</i> -- the wisp speaks <code>village_first</code> and brightens, and four villagers stand in the lanes (if the sprite is assigned). Note the rolled name.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c4s2"><label for="dcr-village-v1-c4s2"><b>The establish beat</b> fires within a second of the village site being revealed: a Discovery alert -- <i>"Hearthsmoke in the deep - &lt;Name&gt; still stands."</i> -- the wisp speaks <code>village_first</code> and brightens, and the villagers stand in the lanes (if variants are assigned), variant counts as even as the list allows. Note the rolled name.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c4s3"><label for="dcr-village-v1-c4s3">Walk the hold visually: the road should run <b>through</b> it on some heading, gates should line up with the carriageway, interiors should be intact rooms. Villagers stand off the road and clear of wall faces -- they are picked by the builder's own walkable rule.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c4s4"><label for="dcr-village-v1-c4s4">Click a villager: the wisp gives <code>village_greeting</code>. Click another later -- it repeats by design (not a once-line).</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c4s5"><label for="dcr-village-v1-c4s5">Check the journal / faction intel: the Deep Holds read as encountered even if you never unfogged the gatehouse this run -- the village fires <code>NotifyEncounter</code> too, deliberately, because stairs are player-placed and a run can genuinely find the village first.</label></div>
-      <div class="step"><input type="checkbox" id="dcr-village-v1-c4s6"><label for="dcr-village-v1-c4s6"><b>Reload check:</b> save, reload, return to floor 3. The village re-establishes on the poll with the <b>same name</b> and the <b>same villager positions</b> (seeded from floor seed + site id -- determinism is the test). The discovery alert re-fires once per session; recorded, accepted, matches the outpost.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c4s6"><label for="dcr-village-v1-c4s6"><b>Reload check:</b> save, reload, return to floor 3. The village re-establishes on the poll with the <b>same name</b>, the <b>same villager positions</b> and the <b>same variant on each</b> (seeded from floor seed + site id -- determinism is the test). The discovery alert re-fires once per session; recorded, accepted, matches the outpost.</label></div>
     </div>
   </details>
 
@@ -156,7 +156,7 @@ SITE REPORT  -- sites <span class="k">3..5</span> (authored 3..5), spur roads vi
         <tr><td><code>village: NONE  &lt;-- MISSING</code> in the report</td><td>The guarantee failed. Read the <code>[AncientSiteBuilder]</code> error above it: either <i>"no authored plan is named ..."</i> (the <code>villagePlanName</code> / <code>@name</code> pair drifted, or the plan is not on the profile's <code>authoredPlans</code>) or <i>"failed to place ... in 240 attempts"</i> (band holds no road cells -- check <code>inBandRoadCells</code>; the 200-seed average is ~70, so near-zero means the road profile entry is missing or mangled).</td></tr>
         <tr><td><code>[AncientSitePlan] '...' skipped</code></td><td>Malformed plan file; the warning names the reason. The rest of the plans survive.</td></tr>
         <tr><td>Report fine, but no establish in game</td><td>The site is not <i>revealed</i> yet (fog), the controller is missing from the scene, or the floor has not generated. The poll is silent until all three are true.</td></tr>
-        <tr><td>Alert fired, no villagers</td><td><code>villagerSprite</code> unassigned -- by design. Assign and reload.</td></tr>
+        <tr><td>Alert fired, no villagers</td><td><code>villagerSprites</code> empty -- by design. Add variants and reload.</td></tr>
         <tr><td><code>The guaranteed village was reduced below 12 cells...</code></td><td>The carriageway subtraction guard. Should be unreachable with the shipped plan (post-cut minimum measured at 653); if you shrank the plan, widen it back -- do not remove the guard.</td></tr>
         <tr><td>The toll hold appears as a ruin on floor 5 [index 4]</td><td>The outpost plan lost its <code>@general: no</code> header. Restore it.</td></tr>
       </table>

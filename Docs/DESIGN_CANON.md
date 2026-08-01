@@ -2104,12 +2104,15 @@ after a reload. On establish it rolls the settlement's name from an 8-name
 roster seeded by floor seed and site id (deterministic, so no save field),
 fires `FactionIntel.NotifyEncounter(Dwarves)` -- idempotent, and deliberately
 fired here as well as at the gatehouse, because stairs are player-placed and
-a run can genuinely reach the village first -- stands four STATIC villagers
+a run can genuinely reach the village first -- stands its STATIC villagers
 on interior cells picked by the builder's own walkable rule (which also keeps
 them off the carriageway), raises a Discovery alert naming the hold, and
 speaks `village_first` once. Clicking a villager repeats `village_greeting`.
-No vendor: they trade at the gate, they live here. `villagerCount` is
-serialized at 4 for The Living Holds arc to raise. The discovery alert
+No vendor: they trade at the gate, they live here. Villager art is a
+variant list (`villagerSprites`), dealt by a seeded round-robin over a
+shuffled copy so counts stay as even as the list allows; null entries are
+skipped and an empty list draws nobody. `villagerCount` ships defaulting to 4
+for The Living Holds arc to raise. The discovery alert
 re-fires once per session after a reload, exactly as the outpost's does --
 accepted.
 
@@ -2239,7 +2242,8 @@ lands on proven ground:
    delivery would have given a floor-3 regression six possible parents.
 6. The village, PART 3 -- SHIPPED. Floor index 3's sparse living network,
    the guaranteed village, the DwarvenVillage archetype, the name roster, and
-   four static villagers. See "The dwarves -- the village" above.
+   the static villagers (variant sprite list, count on the controller). See
+   "The dwarves -- the village" above.
 7. THE LIVING HOLDS -- GREENLIT, the next arc, fresh chat: living dwarves,
    patrols, caravans, and the entry-7 matrix revisit. Static villagers become
    walkers; `villagerCount` on the controller is the knob that grows.

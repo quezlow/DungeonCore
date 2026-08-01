@@ -14885,7 +14885,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9949934
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16359,7 +16359,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f1dfe10506e4ca46a9fab159d743256, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DwarvenVillageController
-  villagerSprite: {fileID: 3295236706101327806, guid: 1ff6ef66db060074386776a1560851b4, type: 3}
+  villagerSprites:
+  - {fileID: 3295236706101327806, guid: 1ff6ef66db060074386776a1560851b4, type: 3}
   villagerCount: 6
   sortingLayerName: Player
   sortingOrder: 5
@@ -48934,7 +48935,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000021016653}
+  m_AnchoredPosition: {x: 0, y: 0.000104923776}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -56288,7 +56289,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9957051
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -58737,7 +58738,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000021016653}
+  m_AnchoredPosition: {x: 0, y: 0.000104923776}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

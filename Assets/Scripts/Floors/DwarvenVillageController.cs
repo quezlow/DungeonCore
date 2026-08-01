@@ -21,7 +21,7 @@ using UnityEngine.InputSystem;
 ///
 /// SCENE SETUP: one of these on the persistent manager GameObject beside
 /// DwarvenOutpostController. No per-floor wiring -- it finds its floor through
-/// FloorManager. villagerSprite may stay unassigned; the village then
+/// FloorManager. villagerSprites may stay empty; the village then
 /// establishes with nobody drawn yet, exactly as the gatekeeper does.
 ///
 /// WHY THIS POLLS RATHER THAN LISTENING: the same reason the outpost
@@ -38,9 +38,11 @@ public class DwarvenVillageController : MonoBehaviour
     public static DwarvenVillageController Instance { get; private set; }
 
     [Header("Villagers")]
-    [Tooltip("Optional. The dwarves who stand in the lanes. Leave unassigned " +
+    [Tooltip("Optional. The dwarves who stand in the lanes -- any number of " +
+             "variants. Assignment is a seeded round-robin over a shuffled " +
+             "copy, so counts stay as even as the list allows. Leave empty " +
              "and the village still establishes -- nobody is drawn yet.")]
-    [SerializeField] private Sprite villagerSprite;
+    [SerializeField] private List<Sprite> villagerSprites = new List<Sprite>();
     [Tooltip("How many static villagers to stand up. Four for now; the Living " +
              "Holds arc raises this when they learn to walk.")]
     [SerializeField, Min(0)] private int villagerCount = 4;
@@ -175,8 +177,23 @@ public class DwarvenVillageController : MonoBehaviour
     private void PlaceVillagers(FloorRoot floor, SiteData site, System.Random rng)
     {
         var influence = floor.TileInfluence;
-        if (villagerSprite == null || influence == null || villagerCount <= 0) return;
+        if (influence == null || villagerCount <= 0) return;
         if (site.cells == null || site.cells.Count == 0) return;
+
+        // Null-safe deck of variants. A seeded shuffle then a round-robin
+        // deal keeps counts as even as the list allows -- pure per-villager
+        // random hands out four identical dwarves about one run in eight,
+        // which reads as a bug rather than a family.
+        var deck = new List<Sprite>();
+        if (villagerSprites != null)
+            foreach (var s in villagerSprites)
+                if (s != null) deck.Add(s);
+        if (deck.Count == 0) return;
+        for (int i = deck.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (deck[i], deck[j]) = (deck[j], deck[i]);
+        }
 
         var cells = new HashSet<Vector3Int>();
         foreach (var sv in site.cells) cells.Add(sv.ToVector3Int());
@@ -209,7 +226,7 @@ public class DwarvenVillageController : MonoBehaviour
             var go = new GameObject("DwarvenVillager" + (i + 1));
             go.transform.position = influence.CellToWorld(pick);
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = villagerSprite;
+            sr.sprite = deck[i % deck.Count];
             sr.sortingLayerName = sortingLayerName;
             sr.sortingOrder = sortingOrder;
             villagers.Add(sr);
