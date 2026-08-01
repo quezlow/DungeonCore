@@ -1094,35 +1094,32 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var site = GetSiteById(siteId);
         if (site == null || site.cells.Count == 0) return;
 
-        // No border halo. RevealWithBorder lights the ring around a chamber so its
-        // rock frames it, but a site's ring IS its masonry, and halo-revealing it
-        // would undo the skin-only rule below and put the bare-floor slabs back.
-        foreach (var sv in site.cells) terrain.RevealTile(sv.ToVector3Int());
-
-        // Masonry is revealed but never opened: the player sees the wall, and
-        // mining it is a deliberate act that pays out ancient_masonry.
+        // Carved floor plus its one-cell halo, and NOTHING else. Two separate
+        // things decide whether a cell reads as a wall:
         //
-        // Only the SKIN is revealed -- masonry that touches this site's carved
-        // floor. CaveWallRenderer paints a solid cell only when it is claimed or
-        // 8-adjacent to a MINED cell, and site masonry is never mined, so a cell
-        // buried inside a thick wall is never painted at all. Revealing it anyway
-        // stripped its fog and left bare floor tile showing where a wall should
-        // be. Fog is one-way, so there is no correcting that afterwards; the cells
-        // simply must not be revealed. Everything deeper stays dark, exactly like
-        // the unexcavated rock it is drawn as, and mining through the skin reveals
-        // the next layer by the ordinary route.
-        if (site.ruinsCells != null)
-        {
-            var carved = new HashSet<Vector3Int>();
-            foreach (var sv in site.cells) carved.Add(sv.ToVector3Int());
+        //   PAINTED  -- CaveWallRenderer caps and faces a solid cell when it is
+        //               claimed or 8-adjacent to a MINED cell.
+        //   REVEALED -- the fog over it has been cleared.
+        //
+        // A cell needs both. Revealed but unpainted shows the bare floor tile
+        // underneath; painted but fogged is simply invisible, which is what left
+        // sites with open floor and no wall attached to it.
+        //
+        // The halo is EXACTLY the set the renderer will paint, because "painted"
+        // is defined as 8-adjacency to mined floor and the carved cells are the
+        // mined floor. So this reveals every wall cell and not one cell more:
+        // measured over the 24 plans, zero painted-but-fogged and zero
+        // revealed-but-unpainted. The masonry skin is a subset of the halo, which
+        // is why the separate skin pass that used to sit below is gone.
+        //
+        // Deeper masonry stays dark, exactly like the unexcavated rock it is drawn
+        // as, and mining through the skin reveals the next layer by the ordinary
+        // route.
+        RevealWithBorder(terrain, site.cells);
 
-            foreach (var sv in site.ruinsCells)
-            {
-                var c = sv.ToVector3Int();
-                if (!TouchesAny(c, carved)) continue;
-                terrain.RevealTile(c);
-            }
-        }
+        // Masonry needs no pass of its own. The skin -- the only masonry the
+        // renderer ever paints -- is already inside the halo above, and anything
+        // deeper must stay fogged or it shows as bare floor.
 
         var open = new List<Vector3Int>(site.cells.Count);
         foreach (var sv in site.cells) open.Add(sv.ToVector3Int());
@@ -2225,20 +2222,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// revealed ground the instant it's discovered (mirrors UnfogCoreCavern). Fog left
     /// under a cap shows through its transparent edges as a dark rim.
     /// </summary>
-    /// <summary>True when any of the eight neighbours is in the set. Used to find
-    /// the masonry SKIN of a site: the only masonry the wall renderer will ever
-    /// paint, because it is the only masonry touching open floor.</summary>
-    private static bool TouchesAny(Vector3Int cell, HashSet<Vector3Int> set)
-    {
-        for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-                if (set.Contains(new Vector3Int(cell.x + dx, cell.y + dy, cell.z))) return true;
-            }
-        return false;
-    }
-
     private static void RevealWithBorder(DungeonTerrain terrain, List<SerializableVector3Int> cells)
     {
         foreach (var sv in cells)

@@ -1460,17 +1460,27 @@ nothing is a wall, and a toll house away from a road is a cottage. Every
 preference DEGRADES to a free in-band pick rather than failing, which is what
 puts the lone guard post on road-less floor index 2.
 
-**Only the masonry SKIN is revealed.** `CaveWallRenderer` paints a solid cell
-only when it is claimed or 8-adjacent to a MINED cell, and site masonry is
-never mined -- so masonry buried inside a thick wall is never painted at all.
-Revealing it regardless stripped its fog and left bare floor tile showing where
-a wall should be, which is what the first build shipped. Fog is one-way, so
-there is no correcting it after the fact; those cells must simply not be
-revealed. Sites therefore reveal their carved floor and only the masonry
-touching it, with no border halo -- the halo exists to frame a chamber in its
-surrounding rock, and a site brings its own walls. **Any future feature that
-reveals solid cells must check the same thing: revealing rock the wall renderer
-will not paint shows the floor tile underneath it.**
+**Reveal is the carved floor plus its one-cell halo, and nothing else.** Two
+independent things decide whether a cell reads as a wall. PAINTED:
+`CaveWallRenderer` caps and faces a solid cell when it is claimed or 8-adjacent
+to a MINED cell. REVEALED: its fog is cleared. A cell needs BOTH, and each
+failure mode has its own symptom -- revealed but unpainted shows the bare floor
+tile underneath, painted but fogged is invisible.
+
+Sites hit both in turn. The first build revealed every masonry cell, including
+the ones buried inside a thick wall that border no open floor and are therefore
+never painted: 726 cells of bare floor slab across the roster. The correction
+then removed the halo as well, which fogged the natural rock around each site
+-- rock that IS 8-adjacent to the carved floor and IS painted: 683 wall cells
+rendered and never unfogged, so sites had open floor with no wall attached.
+
+The halo alone is exactly right, because "painted" is defined as 8-adjacency to
+mined floor and the carved cells are the mined floor. Measured over the roster:
+zero painted-but-fogged, zero revealed-but-unpainted. The masonry skin is a
+subset of the halo, so it needs no pass of its own. **Any future feature that
+reveals solid cells must satisfy the same invariant: reveal exactly the cells
+the wall renderer will paint, no more and no fewer.** Fog is one-way, so
+neither error can be corrected after the fact.
 
 **Two cell sets, and the read.** A site's carved interior is natural floor,
 revealed and marked exactly as a chamber is. Its MASONRY is deliberately not
