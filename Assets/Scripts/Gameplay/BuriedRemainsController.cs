@@ -309,8 +309,64 @@ public class BuriedRemainsController : MonoBehaviour
     {
         if (siteCache.TryGetValue(floor.FloorIndex, out var cached)) return cached;
         var sites = floor.TerrainTypeMap.GetBuriedSites(sitesPerFloor, minDistFromCenter);
-        siteCache[floor.FloorIndex] = sites;
+
+        // An Ossuary would be a poor ossuary with nothing in it: every placed
+        // one guarantees exactly one buried-remains cell in its masonry
+        // (canon 19). Appended here rather than sampled by GetBuriedSites,
+        // because that sampler accepts only Stone and Granite, and site
+        // masonry has been retyped to Ruins long before anyone digs.
+        AppendOssuaryRemains(floor, sites);
+
+        // Sites may not have generated yet on a floor that somehow takes a
+        // claim first; caching then would lose the ossuary cells forever, and
+        // GetBuriedSites is deterministic, so recomputing costs nothing.
+        if (floor.FeatureGenerator != null && floor.FeatureGenerator.HasGenerated)
+            siteCache[floor.FloorIndex] = sites;
         return sites;
+    }
+
+    /// <summary>One guaranteed buried-remains cell per placed Ossuary (canon
+    /// 19), chosen deterministically from its masonry so saves and reloads
+    /// agree. The cell must border the carved interior: the claim-halo murmur
+    /// senses from CLAIMED tiles, and masonry buried two deep in the ring
+    /// walls would be found only by accident.</summary>
+    private static void AppendOssuaryRemains(FloorRoot floor, List<Vector3Int> sites)
+    {
+        var data = floor.FeatureGenerator != null ? floor.FeatureGenerator.FeatureData : null;
+        if (data == null || data.sites == null) return;
+
+        foreach (var site in data.sites)
+        {
+            if (site == null || site.archetype != SiteArchetype.Ossuary) continue;
+            if (site.ruinsCells == null || site.ruinsCells.Count == 0) continue;
+
+            var carved = new HashSet<Vector3Int>();
+            foreach (var sv in site.cells) carved.Add(sv.ToVector3Int());
+
+            // Candidates walked in serialised order, so the pick survives a
+            // reload byte for byte.
+            var candidates = new List<Vector3Int>();
+            foreach (var sv in site.ruinsCells)
+            {
+                var cell = sv.ToVector3Int();
+                bool bordersFloor = false;
+                for (int dx = -1; dx <= 1 && !bordersFloor; dx++)
+                    for (int dy = -1; dy <= 1 && !bordersFloor; dy++)
+                        if (carved.Contains(new Vector3Int(cell.x + dx, cell.y + dy, cell.z)))
+                            bordersFloor = true;
+                if (bordersFloor) candidates.Add(cell);
+            }
+            if (candidates.Count == 0) continue;
+
+            // A cheap hash on the site's identity rather than an RNG: there is
+            // no seed for two machines to disagree about and no draw order to
+            // preserve. The constants are the usual spatial-hash primes.
+            int h = unchecked(site.id * 73856093
+                            ^ site.anchorCell.x * 19349663
+                            ^ site.anchorCell.y * 83492791);
+            var pick = candidates[(h & int.MaxValue) % candidates.Count];
+            if (!sites.Contains(pick)) sites.Add(pick);
+        }
     }
 
     private HashSet<Vector3Int> ConsumedFor(int floorIndex)

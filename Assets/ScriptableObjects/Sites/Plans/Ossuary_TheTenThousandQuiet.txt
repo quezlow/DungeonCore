@@ -1,0 +1,31 @@
+@archetype: Ossuary
+@name: The Ten Thousand Quiet
+
+// Concentric bone galleries wound around a central well. The doorways
+// never line up: each ring must be walked half-round to reach the next,
+// so the dead were carried inward the long way, past all the others.
+// Free-anchored -- the site stumbled into off the road. The outer wall
+// is sealed; the only way in is through it.
+
+########################
+#......................#
+#......................#
+#......................#
+#...################...#
+#...#..............#...#
+#...#..............#...#
+#...#..............#...#
+#...#...###..###...#...#
+#...#...#......#...#...#
+#...#...#......#...#...#
+#...#...#......#...#...#
+#...#...#......#...#...#
+#...#...########...#...#
+#...#..............#...#
+#...#..............#...#
+#...#..............#...#
+#...#######..#######...#
+#......................#
+#......................#
+#......................#
+########################

@@ -1,0 +1,16 @@
+@archetype: BrokenAqueduct
+@name: The Dry Span
+
+// A water channel that crossed the road on a raised bed. The middle span
+// went down an age ago and the two reaches no longer even agree on a
+// line -- the eastern one settled two cells south when its piers failed.
+// The stray blocks inside each mouth are what is left of the fall.
+// Nothing has flowed here since the Buried Age ended.
+
+###################
+#..................
+#.................#  ###################
+#..................  ..................#
+###################  .#................#
+                     ..................#
+                     ###################

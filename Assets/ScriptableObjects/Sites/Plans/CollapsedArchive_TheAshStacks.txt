@@ -1,0 +1,25 @@
+@archetype: CollapsedArchive
+@name: The Ash Stacks
+
+// Shelving stacks in parallel runs, reading aisles between them. The east
+// wing went down whole -- a solid collapse to mine through to learn what
+// it buried. The central band is open: archives sit on roads, and the
+// carriageway rides through the middle of this one.
+
+##############################
+#........................#####
+#..########....########..#####
+#........................#####
+#........................#####
+#........................#####
+#..########....########..#####
+#........................#####
+#............................#
+#........................#####
+#..########....########..#####
+#........................#####
+#........................#####
+#........................#####
+#..########....########..#####
+#........................#####
+##############################

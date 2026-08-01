@@ -1,0 +1,19 @@
+@archetype: GuardPost
+@name: The Cold Watch
+
+// A road watch of two rooms and a brazier yard. Small, because it was
+// never meant to hold -- only to see, and to send word down the road in
+// time. Floor-2-sized on purpose: this is the first Buried Age structure
+// most cores ever meet, and it should read as built, not found.
+
+#################
+#...............#
+#...............#
+#...####..####..#
+#...#..........##
+#...#..........##
+#...#..........##
+#...####..####..#
+#...............#
+#...............#
+#################

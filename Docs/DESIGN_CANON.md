@@ -1492,6 +1492,17 @@ Broken Aqueduct, Hollow Sanctum, Sealed Gate -- plus **Guard Post** and **Toll
 House**. The Toll House earns its slot by foreshadowing: the dwarves hold a
 toll gate, so a ruined one on the dead network is the same institution two
 eras earlier. Sites ship INERT: no wild spawns, no loot, no flank behaviour.
+The one exception, added with the authored-plan expansion: **every placed
+Ossuary guarantees exactly one buried-remains cell** in its masonry, chosen
+deterministically (a hash of the site's id and anchor, not an RNG -- there is
+no seed to disagree about) from the ruins cells that border the carved
+interior, so the claim-halo murmur can sense it from claimed floor. Appended
+in `BuriedRemainsController.SitesFor` rather than sampled by
+`GetBuriedSites`, because that sampler accepts only Stone and Granite and
+site masonry is retyped to Ruins. Ossuaries sit on floor index 4's roster
+only, so the find is rare by placement alone; the discovery pays exactly as
+canon 17's ordinary buried remains do, and mining the cell also pays the
+`ancient_masonry` pattern the way any ruins cell does -- both on purpose.
 
 The road is what makes them legible as one place rather than set-pieces. The
 Sunken Plaza is a junction. The Broken Aqueduct crosses the road. The
@@ -1562,8 +1573,18 @@ matches the ASCII the headless report already prints.
 
 This is deliberately a HYBRID and is expected to stay one. Set-pieces carrying
 lore weight are drawn by hand; the ordinary furniture of a dead city stays
-procedural. The shipped authored set is two Sealed Gates and two Hollow
-Sanctums. **Because a site serialises its cells, adding, removing or reordering
+procedural. The shipped authored set covers every archetype: three plans on
+the Sealed Gate archetype (The Last Door, The Watched Road, and the dwarven
+toll hold The Toll of the Deep), two Hollow Sanctums (The Kneeling Hall, The
+Drowned Choir), two Sunken Plazas (The Counting Floor, The Gallows Court),
+two Collapsed Archives (The Ash Stacks, The Burned Wing), and one each of
+Ossuary (The Ten Thousand Quiet), Broken Aqueduct (The Dry Span), Guard Post
+(The Cold Watch) and Toll House (The Weighing House). The Cold Watch exists
+because Guard Post is the only archetype most players ever meet -- it alone
+sits on floor index 2's roster -- so it is where a hand-drawn plan buys the
+most. All eight new plans keep the archetype's default anchor: the defaults
+ARE the road relations, and none of these plans argues with its own
+archetype. **Because a site serialises its cells, adding, removing or reordering
 authored plans cannot disturb an existing save** -- the stored `variant` is
 informational only.
 
@@ -1676,7 +1697,8 @@ site reveal API, chamber scaling), `Floors/FloorFeatureSaveData.cs` (`SiteData`,
 `FeatureType.AncientSite`), `Floors/FeatureRevealController.cs`,
 `Floors/TerrainTypeMap.cs` (`ApplyFeatureOverride`), `Floors/FloorRoot.cs`,
 `DungeonCore/TerrainResistanceTable.cs` (`siteClaimResistance`, 3 by default),
-`Wisp/WispScript.cs` + `Wisp/WispScript.asset`, `TESTING/Commands.cs`.
+`Wisp/WispScript.cs` + `Wisp/WispScript.asset`, `TESTING/Commands.cs`,
+`Gameplay/BuriedRemainsController.cs` (the ossuary remains guarantee).
 
 ### The generator (SHIPPED)
 
