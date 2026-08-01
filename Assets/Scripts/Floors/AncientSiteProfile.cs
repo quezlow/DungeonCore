@@ -152,35 +152,39 @@ public class AncientSiteProfile : ScriptableObject
     [SerializeField]
     private List<SiteFloorEntry> floors = new List<SiteFloorEntry>
     {
-        // Floor index 2 -- radius 250, no road layer. One structure, alone, with
-        // nothing around it. The road never got this high, or what did is gone.
+        // Floor index 2 -- radius 250, the living trunk and the gatehouse that
+        // holds it. This is the DWARVEN floor.
+        //
+        // It carried a single lonely GuardPost until the floor plan was corrected;
+        // the whole trunk-and-outpost configuration moved down here from index 3.
+        // Every proportional figure was rescaled by 250/400 on the way, because a
+        // layout authored for a 400-radius floor is 60 per cent too large here.
+        //
+        // bandInner is 0.30 rather than the 0.15 the other floors use, and the
+        // reason is spatial crowding, NOT the core reservation: exclusionRadius-
+        // FromCenter is only 8, so even at 0.15 the gatehouse would clear it.
+        // The actual problem is that 0.15 puts the inner edge 37 cells out, and
+        // this hold is 39 cells across -- on a 250-radius floor that drops a
+        // landmark practically on the player's doorstep, overlapping the arrival
+        // area the up-stairs open into. 0.30 moves the inner edge to 75, which
+        // leaves the hold a clear half-width of open floor between it and the
+        // core. Measured, not guessed: at 0.30 the gatehouse spans radius 52 to
+        // 185 against a usable disc of 238.
+        //
+        // minSites/maxSites are 1-2 and the GUARANTEED OUTPOST COUNTS TOWARD THEM
+        // (PlaceOutpost adds to result.sites before the fill loop reads its
+        // target). So this floor is the gatehouse plus at most one ruin, which is
+        // the intent: the Buried Age sites ramp on the floors BELOW this one.
         new SiteFloorEntry
         {
             floorIndex = 2,
             minSites = 1,
             maxSites = 2,
-            bandInner = 0.15f,
+            bandInner = 0.30f,
             bandOuter = 0.65f,
-            minSpacing = 60,
-            minSpan = 16,
-            maxSpan = 26,
-            rimMargin = 12,
-            pool = new List<SiteArchetype> { SiteArchetype.GuardPost },
-        },
-
-        // Floor index 3 -- radius 400, the living trunk. What a maintained road
-        // still keeps: somewhere to file things, somewhere to charge for passage,
-        // somewhere to stand watch, and the gate the road stops at.
-        new SiteFloorEntry
-        {
-            floorIndex = 3,
-            minSites = 3,
-            maxSites = 5,
-            bandInner = 0.15f,
-            bandOuter = 0.65f,
-            minSpacing = 110,
-            minSpan = 20,
-            maxSpan = 34,
+            minSpacing = 70,
+            minSpan = 13,
+            maxSpan = 21,
             rimMargin = 12,
             reserveOutpost = true,
             pool = new List<SiteArchetype>
@@ -193,8 +197,13 @@ public class AncientSiteProfile : ScriptableObject
             },
         },
 
-        // Floor index 4 -- radius 600, the dead network. Everything, and denser
-        // than floor 3 by design: deeper is older, and older is when it was whole.
+        // Floor index 3 -- radius 400. INTENTIONALLY ABSENT, not forgotten: this
+        // is the dwarven village floor and it is being authored separately. A
+        // floor with no entry simply gets no sites, so leaving it out is the
+        // correct way to hold the slot.
+
+        // Floor index 4 -- radius 600, the dead network. Everything, and the densest
+        // floor by design: deeper is older, and older is when it was whole.
         new SiteFloorEntry
         {
             floorIndex = 4,

@@ -152,7 +152,7 @@ public static class AncientSiteBuilder
 
         // The outpost goes down FIRST and on purpose. The old rule latched
         // reservedForOutpost onto whichever Sealed Gate the shuffled pool happened
-        // to serve, which failed two different ways on floor index 3: the roster
+        // to serve, which failed two different ways on the gatehouse floor: the roster
         // holds five archetypes and the floor rolls three to five sites, so a run
         // could finish with no Sealed Gate and therefore no dwarves at all; and the
         // Sealed Gate's own RoadEnd preference resolves, on a rim-to-rim trunk with

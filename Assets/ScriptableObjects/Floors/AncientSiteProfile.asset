@@ -16,25 +16,11 @@ MonoBehaviour:
   - floorIndex: 2
     minSites: 1
     maxSites: 2
-    bandInner: 0.15
+    bandInner: 0.3
     bandOuter: 0.65
-    minSpacing: 60
-    minSpan: 16
-    maxSpan: 26
-    rimMargin: 12
-    useAllArchetypes: 0
-    pool: 06000000
-    reserveOutpost: 0
-    outpostArchetype: 5
-    outpostAnchor: 2
-  - floorIndex: 3
-    minSites: 3
-    maxSites: 5
-    bandInner: 0.15
-    bandOuter: 0.65
-    minSpacing: 110
-    minSpan: 20
-    maxSpan: 34
+    minSpacing: 70
+    minSpan: 13
+    maxSpan: 21
     rimMargin: 12
     useAllArchetypes: 0
     pool: 0100000005000000060000000400000007000000

@@ -112,9 +112,10 @@ public class RoadFloorEntry
 /// The one authored asset for the deep roads. Holds a per-floor entry list;
 /// a floor without an entry has no roads.
 ///
-/// A fresh asset already carries the shipped layout: floor index 3 (the fourth
-/// floor, radius 400) gets the surviving trunk, floor index 4 (radius 600) gets
-/// the dead network. Edit or delete entries freely -- nothing else reads the
+/// A fresh asset already carries the shipped layout: floor index 2 (radius 250)
+/// gets the surviving trunk and the dwarven gatehouse it runs through, floor
+/// index 4 (radius 600) gets the dead network. Floor index 3 is deliberately
+/// empty for now -- the dwarven village floor is being authored separately. Edit or delete entries freely -- nothing else reads the
 /// floor indices.
 /// </summary>
 [CreateAssetMenu(fileName = "RoadNetworkProfile", menuName = "Dungeon/Road Network Profile")]
@@ -123,12 +124,17 @@ public class RoadNetworkProfile : ScriptableObject
     [SerializeField]
     private List<RoadFloorEntry> floors = new List<RoadFloorEntry>
     {
+        // The trunk moved down from index 3 (radius 400) to index 2 (radius 250)
+        // with the floor-plan correction. trunkWidth does NOT scale with the
+        // floor -- a five-cell road is five cells wide wherever it is cut -- but
+        // meanderStep does: left at 32 the road would cross a floor this size in
+        // barely a dozen steps and read as a straight line.
         new RoadFloorEntry
         {
-            floorIndex = 3,
+            floorIndex = 2,
             mode = RoadMode.Trunk,
             trunkWidth = 5,
-            meanderStep = 32,
+            meanderStep = 20,
             meanderAmplitude = 5f,
         },
         new RoadFloorEntry

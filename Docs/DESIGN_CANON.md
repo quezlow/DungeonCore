@@ -445,7 +445,7 @@ They are unlike the other four in three ways that are all deliberate:
 
 **Panel visibility.** The row is HIDDEN until `FactionIntel.Encountered
 (FactionId.Dwarves)`, set by `DwarvenOutpostController` when the outpost is
-first revealed. Listing them from day one would advertise a floor-index-3
+first revealed. Listing them from day one would advertise a floor-index-2
 set-piece hundreds of days before a Diamond core can reach it.
 
 **Faction-vs-faction.** `FactionRelations.Between` already yields Neutral for
@@ -1636,7 +1636,7 @@ meaningfully denser than floor 3 by area, as the entry requires. Floor index 2
 is deliberate reach -- floors 3 and 4 are Diamond- and God-gated, so without it
 most players would never meet the Buried Age at all.
 
-**One Sealed Gate on floor index 3 is flagged `reservedForOutpost`.** Nothing
+**One Sealed Gate on the gatehouse floor is flagged `reservedForOutpost`.** Nothing
 reads it. It exists so the dwarves arc can convert a site in place rather than
 forcing a save migration.
 
@@ -1798,11 +1798,56 @@ traps, the granite overlay, road claiming and caravans are NOT built. Design
 for the vendor and the economy is recorded below and in part 2's guide; the
 overlay, claiming and caravans remain DESIGN in the sub-sections further down.
 
+**FLOOR PLAN CORRECTION (applied after part 2).** The dwarven trunk and
+gatehouse were originally authored on floor index 3 and MOVED DOWN to floor
+index 2. The corrected plan is:
+
+| Code index | Floor | Contents |
+|---|---|---|
+| 0 | 1 | starting floor |
+| 1 | 2 | once the player has a handle on the dungeon |
+| 2 | 3 | **dwarven highway + gatehouse** |
+| 3 | 4 | dwarven village + highway + a handful of sites (UNBUILT) |
+| 4 | 5 | bottom floor, most Buried Age sites |
+
+Floor index 3 currently has **no road entry and no site entry**, which is the
+correct way to hold the slot: a floor without an entry simply gets no features.
+
+The renumber itself was one constant (`DwarvenSpoil.MinFloorIndex`) and two data
+assets -- nothing else in the codebase is floor-keyed, because
+`DwarvenOutpostController` searches all floors for the reserved site rather than
+assuming one. The real work was that **index 2 is radius 250 and index 3 was
+400**, so every proportional figure in the moved configuration was 60 per cent
+too large. Scaled by 0.625 where proportional (`minSpacing` 110->70, `minSpan`
+20->13, `maxSpan` 34->21, `meanderStep` 32->20); left alone where physical
+(`trunkWidth` stays 5 -- a road's width does not shrink with its floor;
+`segmentLength` stays 40 so reveal granularity is consistent across floors).
+
+`bandInner` on this floor is **0.30, not the 0.15 every other floor uses**, and
+the reason is spatial crowding rather than the core reservation --
+`exclusionRadiusFromCenter` is only 8, so the hold clears it either way. The
+real problem is that 0.15 puts the inner edge 37 cells out while the hold is 39
+cells across: on a 250-radius floor that drops the landmark practically on the
+player's doorstep, overlapping the arrival area the up-stairs open into. At 0.30
+the gatehouse spans radius 52 to 185 against a usable disc of 238, which leaves
+clear floor on both sides.
+
+`minSites`/`maxSites` dropped from 3-5 to **1-2**, and the guaranteed outpost
+COUNTS TOWARD that target (`PlaceOutpost` adds to `result.sites` before the fill
+loop reads it). So the gatehouse floor is the gatehouse plus at most one ruin,
+which is the intent: the Buried Age sites ramp on the floors below it.
+
+Consequence for the vendor: the shelf now opens at **Gold** tier rather than
+Diamond. That makes the tier-3-or-above book rule SAFER rather than looser -- a
+Gold core has done less research, so a tier-3 node is more likely still
+unlearned. Prices were deliberately not rebalanced; spoil is the matched income
+stream and it starts on the same floor.
+
 **The outpost is GUARANTEED, and placed first.** `SiteFloorEntry.reserveOutpost`
 no longer latches onto whichever Sealed Gate the shuffle produced. It now runs
 `AncientSiteBuilder.PlaceOutpost` ahead of the general loop, on its own
 240-attempt budget, and takes the chosen plan out of the pool. The old rule
-failed two ways on floor index 3: the roster holds five archetypes and the
+failed two ways on the gatehouse floor: the roster holds five archetypes and the
 floor rolls three to five sites, so a run could finish with **no Sealed Gate
 and therefore no dwarves**; and the Sealed Gate's `RoadEnd` preference
 resolves, on a rim-to-rim trunk with no broken ends, to the two rim endpoints,
@@ -1904,8 +1949,8 @@ faction, and must feel like it.
 1. **Affinity None only.** An affinity-gated node is exclusive to its core type
    and a book granting one to a mismatched core would hand out something that
    core may never hold.
-2. **Tier 3 or above only.** The outpost is on floor index 3, which is
-   DIAMOND-gated -- the fourth tier of five. A tier-2 node costs 15 points
+2. **Tier 3 or above only.** The outpost is on floor index 2, which is
+   GOLD-gated -- the third tier of five. A tier-2 node costs 15 points
    behind a single Rare pattern and is researched hundreds of days before a core
    can descend that far, at which point `IsOwned` filters the book off the shelf
    and it is dead stock that never appears. The first slate had Vaulted Reserves
@@ -1923,7 +1968,7 @@ that has reached Diamond has had them for a long time.
 
 **Spoil is an invoice, not a stockpile.** Canon 14 closed the stockpile
 question, and this does not reopen it: there is no inventory and nothing is
-carried. Mining Granite or Ruins on floor index 3 or below, after the outpost is
+carried. Mining Granite or Ruins on floor index 2 or below, after the outpost is
 found, accrues a single int of gold OWED (3g and 5g a cell). Clicking the
 gatekeeper settles it before the shop opens -- collecting your own money should
 not be a puzzle with one answer.

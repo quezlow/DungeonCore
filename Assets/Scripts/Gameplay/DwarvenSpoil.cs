@@ -31,8 +31,13 @@ public static class DwarvenSpoil
     public static int LifetimeSold { get; private set; }
 
     /// <summary>Lowest floor index whose stone the Deep Holds will buy. Floors
-    /// above this are nowhere near their road and they have no interest.</summary>
-    public const int MinFloorIndex = 3;
+    /// above this are nowhere near their road and they have no interest.
+    ///
+    /// Tracks the gatehouse floor, which is index 2 -- the outpost moved down from
+    /// index 3 when the floor plan was corrected. If the gatehouse ever moves
+    /// again, this moves with it: the rule is "their road's floor and below", not
+    /// a number that happens to be right today.</summary>
+    public const int MinFloorIndex = 2;
 
     public static int ValueOf(TerrainType type) => type switch
     {

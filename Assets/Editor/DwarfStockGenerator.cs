@@ -52,8 +52,11 @@ public static class DwarfStockGenerator
         //    type, and a book granting one to a mismatched core hands out
         //    something that core may never hold.
         //
-        // 2. TIER 3 OR ABOVE ONLY. The outpost sits on floor index 3, which is
-        //    DIAMOND-gated -- the fourth tier of five. A tier-2 node costs 15
+        // 2. TIER 3 OR ABOVE ONLY. The outpost sits on floor index 2, which is
+        //    GOLD-gated -- the third tier of five, one tier EARLIER than when this
+        //    slate was first chosen. That makes the rule safer rather than
+        //    looser: a Gold-tier core has done less research, so a tier-3 node is
+        //    MORE likely to still be unlearned when the shelf opens. A tier-2 node costs 15
         //    points behind a single Rare pattern and is all but certainly
         //    researched hundreds of days before the player can descend that far,
         //    at which point IsOwned filters the book off the shelf and it is dead
@@ -64,7 +67,14 @@ public static class DwarfStockGenerator
         // Prices follow the merchant's shipped curve by point cost (his 25-30
         // point books are 400g, his 35 is 480g) and run past the 500g base
         // treasury cap without apology: treasuries are a tier-2 research node and
-        // any core that has reached Diamond has had them for a long time.
+        // any core that has reached Gold has almost certainly built one.
+        //
+        // WATCH IN PLAY. This shelf was priced for a Diamond-tier player and now
+        // opens to a Gold-tier one, so the same numbers meet a thinner purse. It
+        // was left alone deliberately: spoil is the matched income stream and it
+        // starts on this same floor, so the prices are relative to the money the
+        // dwarves themselves pay. If it bites, scale here and rerun -- nothing
+        // else reads these figures.
         AddBook(catalog, "dw_bk_trapwright", "Mechanisms of the Under-Road", "trapwright_1", 400,
             "Gate-engines and their tempers. Half the diagrams are corrections of the other half.");
         AddBook(catalog, "dw_bk_proving", "The Drilled Hall", "proving_grounds", 440,
@@ -112,7 +122,7 @@ public static class DwarfStockGenerator
                                 $"which is exclusive to {node.affinity} cores. Books must be affinity None.");
             if (node.tier < 3)
                 Debug.LogError($"DwarfStockGenerator: '{e.displayName}' grants {node.displayName} " +
-                                $"(tier {node.tier}, {node.pointCost} pts). The outpost is Diamond-gated, so a " +
+                                $"(tier {node.tier}, {node.pointCost} pts). The outpost is Gold-gated, so a " +
                                 "node this cheap is researched long before the player can reach the shelf and " +
                                 "the entry will never appear. Sell a tier 3+ node instead.");
         }

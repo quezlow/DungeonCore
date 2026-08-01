@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: RoadNetworkProfile
   m_EditorClassIdentifier: Assembly-CSharp::RoadNetworkProfile
   floors:
-  - floorIndex: 3
+  - floorIndex: 2
     mode: 1
     trunkWidth: 5
     spurWidth: 2
     segmentLength: 40
     rimMargin: 7
-    meanderStep: 32
+    meanderStep: 20
     meanderAmplitude: 5
     junctionCount: 7
     junctionMinSpacing: 60

@@ -88,7 +88,7 @@ public class FactionPanel : MonoBehaviour
         {
             // The Deep Holds are not on the board until the player has stood in
             // their outpost. Listing them from day one would advertise floor index
-            // 3's set-piece hundreds of days before a Diamond core can reach it.
+            // 2's set-piece long before a Gold-tier core can reach it.
             if (f == FactionId.Dwarves && !FactionIntel.Encountered(f)) continue;
             AddRow(f, fs);
         }
