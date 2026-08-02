@@ -234,7 +234,7 @@ MonoBehaviour:
   ruinsSheet: {fileID: 2800000, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   ruinsCapSlots:
   - cell: {x: -1, y: -1}
-    overrideSprite: {fileID: -814714329, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+    overrideSprite: {fileID: -1211611643, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: 1271314556, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
@@ -281,13 +281,13 @@ MonoBehaviour:
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: 0}
   - cell: {x: 1, y: 6}
-    overrideSprite: {fileID: -384880585, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+    overrideSprite: {fileID: -125881354, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: 773184453, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: -1112293089, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
-    overrideSprite: {fileID: 1515895430, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+    overrideSprite: {fileID: 1213717510, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: 269675356, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
@@ -304,7 +304,7 @@ MonoBehaviour:
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: 131938605, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
-    overrideSprite: {fileID: -2067547235, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+    overrideSprite: {fileID: -654918852, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
     overrideSprite: {fileID: -237075423, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
   - cell: {x: -1, y: -1}
@@ -314,31 +314,14 @@ MonoBehaviour:
   ruinsVariants:
   - cap:
       cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -665144255, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+      overrideSprite: {fileID: -1438640843, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
     upper:
       cell: {x: 7, y: 9}
       overrideSprite: {fileID: -54893324, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
     lower:
       cell: {x: 7, y: 10}
       overrideSprite: {fileID: 1996276451, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-  - cap:
-      cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1438640843, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-    upper:
-      cell: {x: 10, y: 9}
-      overrideSprite: {fileID: 366648185, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-    lower:
-      cell: {x: 10, y: 10}
-      overrideSprite: {fileID: -898522828, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-  - cap:
-      cell: {x: -1, y: -1}
-      overrideSprite: {fileID: 1158539852, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-    upper:
-      cell: {x: 10, y: 9}
-      overrideSprite: {fileID: -1947708987, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
-    lower:
-      cell: {x: 10, y: 10}
-      overrideSprite: {fileID: -1200871396, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+  ruinsPlainWeight: 8
   ruinsPavingSlots:
   - cell: {x: 15, y: 37}
     overrideSprite: {fileID: 0}
@@ -348,4 +331,3 @@ MonoBehaviour:
     overrideSprite: {fileID: 0}
   - cell: {x: 16, y: 39}
     overrideSprite: {fileID: 0}
-  ruinsPlainWeight: 8

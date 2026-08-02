@@ -87,6 +87,8 @@ public static class SitePlanValidator
             {
                 totalPlans++;
 
+                Debug.Log($"PLAN LOADED: '{plan.sourceName}' floor={plan.floor.Count} wall={plan.wall.Count}");
+
                 int worst = int.MaxValue, best = 0;
                 int worstRot = 0;
                 bool worstMirror = false;

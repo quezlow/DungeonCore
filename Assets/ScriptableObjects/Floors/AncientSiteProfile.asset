@@ -27,6 +27,8 @@ MonoBehaviour:
     reserveOutpost: 1
     outpostArchetype: 5
     outpostAnchor: 2
+    reserveVillage: 0
+    villagePlanName: 
   - floorIndex: 3
     minSites: 3
     maxSites: 5
@@ -57,6 +59,8 @@ MonoBehaviour:
     reserveOutpost: 0
     outpostArchetype: 5
     outpostAnchor: 2
+    reserveVillage: 0
+    villagePlanName: 
   authoredPlans:
   - {fileID: 4900000, guid: 27e5b9c40a8d41f6ae3b2c7d5109f84b, type: 3}
   - {fileID: 4900000, guid: 5b0c8d13f42a496e97ad6e2b8c4f0173, type: 3}
@@ -74,3 +78,4 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 9a5e3c8f1d6b47204b9c7e5a3f1d8062, type: 3}
   - {fileID: 4900000, guid: 2b7d4a9c6f3e48157d2b9a4c6e8f3510, type: 3}
   - {fileID: 4900000, guid: 7c1f5b8d3a6e49268e7c1f5b9d3a6084, type: 3}
+  siteDecor: []

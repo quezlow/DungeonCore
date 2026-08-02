@@ -203,14 +203,19 @@ public static class AncientSitePlanLibrary
         foreach (var asset in assets)
         {
             if (asset == null) continue;
+
             var plan = Parse(asset.text, asset.name, out string error);
             if (plan == null)
             {
                 Debug.LogWarning("[AncientSitePlan] '" + asset.name + "' skipped: " + error);
                 continue;
             }
+
+            Debug.Log($"PARSED PLAN: {asset.name} archetype={plan.archetype} name={plan.sourceName} floor={plan.floor.Count}");
+
             result.Add(plan);
         }
+
         return result;
     }
 
