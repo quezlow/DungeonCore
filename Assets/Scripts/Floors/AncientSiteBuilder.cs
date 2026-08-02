@@ -55,6 +55,11 @@ public class AncientSiteResult
 
     /// <summary>Same contract for the guaranteed village.</summary>
     public bool villagePlaced;
+
+    /// <summary>The @name of the hold the seeded roll chose -- the report
+    /// prints it, so rotation variety is verifiable headlessly by stepping
+    /// the report seed instead of walking the map.</summary>
+    public string villagePlanPicked = "";
     public int inBandJunctions;
     public int inBandRoadCells;
     public int inBandRoadEnds;
@@ -65,9 +70,13 @@ public class AncientSiteResult
     public string OutpostSummary() =>
         outpostPlaced ? "outpost: placed" : "outpost: NONE";
 
-    /// <summary>Same shape for the village, so the site report prints both.</summary>
+    /// <summary>Same shape for the village, so the site report prints both.
+    /// Names the chosen hold: with several villages in rotation, this line is
+    /// how variety gets verified.</summary>
     public string VillageSummary() =>
-        villagePlaced ? "village: placed" : "village: NONE";
+        villagePlaced
+            ? "village: placed (" + villagePlanPicked + ")"
+            : "village: NONE";
 
     public string Summary()
     {
@@ -388,10 +397,12 @@ public static class AncientSiteBuilder
 
     /// <summary>
     /// Places the guaranteed dwarven village: the same first-and-loud contract as
-    /// PlaceOutpost, with one deliberate difference -- the plan is selected BY
-    /// NAME from the authored set, not filtered from the pool. The DwarvenVillage
-    /// archetype belongs to no roster, so the general loop can never serve it and
-    /// there is nothing to remove from the pool on success.
+    /// PlaceOutpost, with one deliberate difference -- the plan comes from the
+    /// authored set, never the pool. Every authored DwarvenVillage plan is a
+    /// candidate and one is rolled seeded, so playthroughs rotate holds; a
+    /// non-empty villagePlanName pins the roll to one plan instead (testing).
+    /// The archetype belongs to no roster, so the general loop can never serve
+    /// it and there is nothing to remove from the pool on success.
     /// </summary>
     private static void PlaceVillage(
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
@@ -403,18 +414,30 @@ public static class AncientSiteBuilder
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result)
     {
-        AuthoredSitePlan plan = null;
+        var candidates = new List<AuthoredSitePlan>();
         if (authoredPlans != null)
             foreach (var p in authoredPlans)
-                if (p != null && p.name == entry.villagePlanName) { plan = p; break; }
-        if (plan == null)
+                if (p != null && p.archetype == SiteArchetype.DwarvenVillage)
+                    candidates.Add(p);
+        // Optional pin: a non-empty villagePlanName narrows the roll to that
+        // one plan, for testing a specific hold without unlisting the others.
+        if (!string.IsNullOrEmpty(entry.villagePlanName))
+            candidates.RemoveAll(p => p.name != entry.villagePlanName);
+        if (candidates.Count == 0)
         {
             Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
-                " asked for a guaranteed village but no authored plan is named '" +
-                entry.villagePlanName + "'. Check villagePlanName against the " +
-                "plan's @name header and the profile's authoredPlans list.");
+                " asked for a guaranteed village but no authored DwarvenVillage " +
+                "plan is available" +
+                (string.IsNullOrEmpty(entry.villagePlanName) ? "" :
+                 " matching villagePlanName '" + entry.villagePlanName + "'") +
+                ". Check the profile's authoredPlans list" +
+                (string.IsNullOrEmpty(entry.villagePlanName) ? "." :
+                 " and the plan's @name header."));
             return;
         }
+
+        int pick = rng.Next(candidates.Count);
+        AuthoredSitePlan plan = candidates[pick];
 
         var anchorKind = plan.hasAnchorOverride
             ? plan.anchorOverride
@@ -439,7 +462,9 @@ public static class AncientSiteBuilder
             var placed = new AncientSitePlan
             {
                 archetype = SiteArchetype.DwarvenVillage,
-                variant = 0,
+                // The candidate index, persisted through SiteData.variant as a
+                // breadcrumb for which hold this world rolled.
+                variant = pick,
                 planName = plan.name,
                 anchor = anchor,
                 reservedForVillage = true,
@@ -454,6 +479,7 @@ public static class AncientSiteBuilder
             result.sites.Add(placed);
             anchorsUsed.Add(anchor);
             result.villagePlaced = true;
+            result.villagePlanPicked = plan.name;
             return;
         }
 

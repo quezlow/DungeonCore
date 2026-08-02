@@ -143,10 +143,12 @@ public class SiteFloorEntry
              "the first revealed village it finds, exactly as the outpost does.")]
     public bool reserveVillage = false;
 
-    [Tooltip("The authored plan the village is built from, matched against the " +
-             "plan's @name header. Selected BY NAME rather than through the " +
-             "roster, so the DwarvenVillage archetype sits in no pool and the " +
-             "plan can never be double-placed by the general fill loop.")]
+    [Tooltip("OPTIONAL PIN, empty on the shipped asset. Empty rolls seeded " +
+             "among every authored DwarvenVillage plan on this profile -- add " +
+             "a plan file with that archetype and it joins the rotation, zero " +
+             "config. Set a plan's @name here to force that hold, for testing. " +
+             "Either way the archetype sits in no pool, so the fill loop can " +
+             "never serve or double-place a village.")]
     public string villagePlanName = "";
 }
 
@@ -237,7 +239,6 @@ public class AncientSiteProfile : ScriptableObject
             maxSpan = 34,
             rimMargin = 12,
             reserveVillage = true,
-            villagePlanName = "The Hearth of the Deep",
             pool = new List<SiteArchetype>
             {
                 SiteArchetype.CollapsedArchive,

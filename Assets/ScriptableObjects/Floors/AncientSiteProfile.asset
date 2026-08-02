@@ -42,7 +42,7 @@ MonoBehaviour:
     outpostArchetype: 5
     outpostAnchor: 2
     reserveVillage: 1
-    villagePlanName: The Hearth of the Deep
+    villagePlanName: 
   - floorIndex: 4
     minSites: 9
     maxSites: 13
@@ -63,7 +63,9 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 9a1b7e4c2d5f403e8c6a1b9d7e0f2345, type: 3}
   - {fileID: 4900000, guid: c3d8f01a6b2e47559d4c8a0f3b1e6729, type: 3}
   - {fileID: 4900000, guid: 7f2a4c9e18b34d6ab05e3c7f91d206e4, type: 3}
-  - {fileID: 4900000, guid: 4d77a2f1c8b94e02a6d3b5e18c7f0942, type: 3}
+  - {fileID: 4900000, guid: 8c3fa2d17e5b40c9a1d6f4e2b8073c51, type: 3}
+  - {fileID: 4900000, guid: 2ab90e6c47d1483f9b5e8a0c6d2f174e, type: 3}
+  - {fileID: 4900000, guid: f5d81c30b6a24e7f8c29d5b1a4e60398, type: 3}
   - {fileID: 4900000, guid: 3e7a91c5d2b84f06a8e14c7b9d503f26, type: 3}
   - {fileID: 4900000, guid: 8b2f4d0a6c9e41738a5d2e0f7c1b6394, type: 3}
   - {fileID: 4900000, guid: 1c9e6b3f8a2d45067e9b4a1c8f5d2073, type: 3}

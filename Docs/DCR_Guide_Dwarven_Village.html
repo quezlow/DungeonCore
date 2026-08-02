@@ -64,9 +64,11 @@
       <p>The offshoot ladder across the deep floors is deliberate and measured: <b>0</b> offshoots on
       index 2's lone trunk, <b>4</b> here (2 rim trunks + 2 broken spurs), <b>7</b> on index 4 --
       the last living crossroads, already dying at its edges.</p>
-      <p>The village: a 41x41 walled hold placed <b>AlongRoad</b> with four 5-wide gates, quarters
-      (Great Hall with hearth, two long-houses, the forge with coal stores, a terrace of three
-      dwellings), a settlement name rolled per run from an 8-name roster, static villagers dealt from a variant sprite list,
+      <p>The village: <b>one of three walled holds, rolled seeded per world</b> so playthroughs
+      differ -- <b>The Terraced Vein</b> (57x57 mining town), <b>The Deep Market</b> (71x49
+      crossroads town) or <b>The Shrinehold</b> (61x61 old-faith village), each roughly double
+      the retired first-ship Hearth and placed <b>AlongRoad</b> with four 5-wide gates. Plus a
+      settlement name rolled from an 8-name roster, static villagers dealt from a variant sprite list,
       a Discovery alert, and two wisp lines. No vendor -- they trade at the gate, they live here.</p>
       <div class="note"><b>Static on purpose.</b> Villagers are the gatekeeper pattern: bare sprites,
       no pathfinding, no combat entity. <b>The Living Holds arc</b> (greenlit, next, fresh chat)
@@ -82,9 +84,9 @@
       <table>
         <tr><th>File</th><th>Change</th></tr>
         <tr><td><code>Floors/DwarvenVillageController.cs</code></td><td><b>NEW</b> -- discovery poll, name roster, villagers, click greeting</td></tr>
-        <tr><td><code>Sites/Plans/DwarvenVillage_TheHearthOfTheDeep.txt</code> (+ .meta)</td><td><b>NEW</b> -- the authored hold, door rule recorded in-file</td></tr>
+        <tr><td><code>Sites/Plans/DwarvenVillage_The{TerracedVein,DeepMarket,Shrinehold}.txt</code> (+ .meta)</td><td>The three rotating holds, door rule recorded in every file; the Hearth retires from the roll (file stays on disk)</td></tr>
         <tr><td><code>Floors/AncientSiteProfile.cs</code></td><td>DwarvenVillage archetype (=8), zero-variant switch, <code>reserveVillage</code> + <code>villagePlanName</code>, index-3 default entry</td></tr>
-        <tr><td><code>Floors/AncientSiteBuilder.cs</code></td><td><code>PlaceVillage</code> (by-name guarantee), guarantee-only pool strip, zero-variant pool support, <code>villagePlaced</code> + <code>VillageSummary</code></td></tr>
+        <tr><td><code>Floors/AncientSiteBuilder.cs</code></td><td><code>PlaceVillage</code> (seeded roll among authored DwarvenVillage plans; optional <code>villagePlanName</code> pin), guarantee-only pool strip, zero-variant pool support, <code>villagePlaced</code> + <code>VillageSummary</code> naming the pick</td></tr>
         <tr><td><code>Floors/AncientSitePlanLibrary.cs</code></td><td><code>@general: no</code> header; archetype parse cap moved to enum tail</td></tr>
         <tr><td><code>Floors/RoadNetworkProfile.cs</code></td><td>index-3 sparse Network default entry; stale comment fixed</td></tr>
         <tr><td><code>Floors/TerrainFeatureGenerator.cs</code></td><td><code>GetVillageSite()</code>, SiteData copy, subtraction guard covers the village</td></tr>
@@ -106,6 +108,8 @@
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s2"><label for="dcr-village-v1-c2s2">Defaults are shipping values: <code>villagerCount</code> 4, poll 1s, click radius 0.9, the 8-name roster. Leave them.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s3"><label for="dcr-village-v1-c2s3"><b>Optional now:</b> add any number of variants to <code>villagerSprites</code> (three authoring one-liners are Content Authoring chapter 28d). A seeded round-robin over a shuffled copy deals them out as evenly as the list allows. Empty is safe -- the village establishes with nobody drawn yet, exactly like the gatekeeper did before his sprite existed.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c2s4"><label for="dcr-village-v1-c2s4">Save the scene.</label></div>
+      <div class="note"><b>Villager density:</b> at double footprint a count of 6 reads sparse; 8-10
+      fits the big holds. Inspector knob on the component -- your call, no code involved.</div>
     </div>
   </details>
 
@@ -116,8 +120,8 @@
       code and print pass/fail in the console.</p>
 
       <h3>3a. Validate Site Plans</h3>
-      <div class="step"><input type="checkbox" id="dcr-village-v1-c3s1"><label for="dcr-village-v1-c3s1"><b><code>Dungeon Core &rarr; Validate Site Plans</code></b>. The new plan must list clean: 41x41, carved 1008, masonry 673, and a healthy worst-orientation walkable count (hundreds, nowhere near the 16 floor). No <code>[AncientSitePlan] ... skipped</code> warning.</label></div>
-      <div class="step"><input type="checkbox" id="dcr-village-v1-c3s2"><label for="dcr-village-v1-c3s2"><b><code>Dungeon Core &rarr; Site Plan Preview</code></b> and look at the hold once: outer wall, four gates, the hall, the forge, the terrace. Rotate through orientations if you like -- every door stays open in all eight (that is the 3-long door rule doing its job).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c3s1"><label for="dcr-village-v1-c3s1"><b><code>Dungeon Core &rarr; Validate Site Plans</code></b>. All three holds must list clean -- Terraced Vein 57x57 (2314 carved / 935 masonry), Deep Market 71x49 (2374 / 1105), Shrinehold 61x61 (2588 / 1133) -- each with a worst-orientation walkable count in the high hundreds, nowhere near the 16 floor. The retired Hearth still validates too; it is on disk, just off the profile. No <code>[AncientSitePlan] ... skipped</code> warning.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c3s2"><label for="dcr-village-v1-c3s2"><b><code>Dungeon Core &rarr; Site Plan Preview</code></b> and look at each hold once -- the Vein's quarry and terraces, the Market's stall rows and warehouses, the Shrinehold's sanctum ring and grave rows. Rotate through orientations if you like -- every door stays open in all eight (that is the 3-long door rule doing its job).</label></div>
 
       <h3>3b. The road + site report on floor index 3</h3>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c3s3"><label for="dcr-village-v1-c3s3">On the <code>Commands</code> component set <code>roadReportFloorIndex</code> = <b>3</b>, then run the context menu <b><code>Test Road Report (headless)</code></b>.</label></div>
@@ -125,11 +129,12 @@
       <pre>ROAD REPORT  -- junctions <span class="k">4</span>, roads <span class="k">7-8</span> (3 MST + 0-1 loop + 2 rim + 2 broken spurs)
 SITE REPORT  -- sites <span class="k">3..5</span> (authored 3..5), spur roads visibly broken at the rim
   plans: N procedural, <span class="k">&gt;=1</span> hand-authored   (the village; Sanctum plans may add more)
-  outpost: NONE, <span class="k">village: placed</span></pre>
+  outpost: NONE, <span class="k">village: placed (The Deep Market)</span>  or Vein / Shrinehold</pre>
       <div class="note"><b><code>outpost: NONE</code> is CORRECT on this floor</b> -- index 3 does not
       ask for one, so no <code>&lt;-- MISSING</code> flag prints. A missing village prints
       <code>village: NONE  &lt;-- MISSING</code> and that is a stop-and-diagnose.</div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c3s5"><label for="dcr-village-v1-c3s5">On the ASCII map the village is the one large <code>o</code>/<code>O</code> mass sitting on a road. Re-run a few times if you want to watch the placement move.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-village-v1-c3s5b"><label for="dcr-village-v1-c3s5b"><b>Watch the rotation:</b> set <code>roadReportSeedOverride</code> to 1, 2, 3... and re-run -- the village line names different holds (the 200-seed split measured 65 Vein / 62 Market / 73 Shrinehold). Set it back to <b>0</b> when done: zero means the world's own seed.</label></div>
       <div class="step"><input type="checkbox" id="dcr-village-v1-c3s6"><label for="dcr-village-v1-c3s6"><b>Regression sweep:</b> set <code>roadReportFloorIndex</code> = <b>2</b> and confirm <code>outpost: placed</code>, then <b>4</b> and confirm sites 9..13 with <b>no SealedGate carrying the outpost's plan</b> (the toll hold must never appear as a dead ruin down there -- that is the new <code>@general: no</code> strip, measured at 0 leaks in 200 seeds).</label></div>
     </div>
   </details>
@@ -153,7 +158,7 @@ SITE REPORT  -- sites <span class="k">3..5</span> (authored 3..5), spur roads vi
     <div class="body">
       <table>
         <tr><th>Symptom</th><th>Meaning</th></tr>
-        <tr><td><code>village: NONE  &lt;-- MISSING</code> in the report</td><td>The guarantee failed. Read the <code>[AncientSiteBuilder]</code> error above it: either <i>"no authored plan is named ..."</i> (the <code>villagePlanName</code> / <code>@name</code> pair drifted, or the plan is not on the profile's <code>authoredPlans</code>) or <i>"failed to place ... in 240 attempts"</i> (band holds no road cells -- check <code>inBandRoadCells</code>; the 200-seed average is ~70, so near-zero means the road profile entry is missing or mangled).</td></tr>
+        <tr><td><code>village: NONE  &lt;-- MISSING</code> in the report</td><td>The guarantee failed. Read the <code>[AncientSiteBuilder]</code> error above it: either <i>"no authored DwarvenVillage plan is available ..."</i> (nothing with the archetype on the profile's <code>authoredPlans</code>, or a stale <code>villagePlanName</code> pin matching no plan -- empty means roll) or <i>"failed to place ... in 240 attempts"</i> (band holds no road cells -- check <code>inBandRoadCells</code>; the 200-seed average is ~70, so near-zero means the road profile entry is missing or mangled).</td></tr>
         <tr><td><code>[AncientSitePlan] '...' skipped</code></td><td>Malformed plan file; the warning names the reason. The rest of the plans survive.</td></tr>
         <tr><td>Report fine, but no establish in game</td><td>The site is not <i>revealed</i> yet (fog), the controller is missing from the scene, or the floor has not generated. The poll is silent until all three are true.</td></tr>
         <tr><td>Alert fired, no villagers</td><td><code>villagerSprites</code> empty -- by design. Add variants and reload.</td></tr>

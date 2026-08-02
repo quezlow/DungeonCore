@@ -2104,11 +2104,19 @@ permits, plus 2 rim trunks and 2 broken spurs), carriageway ~7,700 cells.
 minSites 3 / maxSites 5, band 0.15--0.65, minSpacing 110, spans 20--34, the
 pre-correction numbers restored -- with two changes: SealedGate is out of the
 pool (see the roster table note above), and the entry carries the new
-guarantee pair `reserveVillage` + `villagePlanName`.
+guarantee flag `reserveVillage` (plus `villagePlanName`, now an optional
+pin -- see the guarantee below).
 
 **The guarantee.** `PlaceVillage` in `AncientSiteBuilder` mirrors
 `PlaceOutpost`'s first-and-loud contract with one deliberate difference: the
-plan is selected BY NAME from the authored set, never through the pool.
+plan comes from the authored set, never the pool. Every authored
+DwarvenVillage plan is a candidate and one is ROLLED seeded per world, so
+playthroughs rotate holds. A non-empty `villagePlanName` pins the roll to
+that one plan (testing); empty -- the shipped state -- means roll, so adding
+a fourth hold someday is one plan file with the archetype, zero config. The
+pick index persists through `SiteData.variant` as a breadcrumb, and the
+report names the chosen hold -- `village: placed (The Deep Market)` -- so
+rotation verifies headlessly by stepping `roadReportSeedOverride`.
 `SiteArchetype.DwarvenVillage` (appended, = 8) sits in no roster and has ZERO
 procedural variants -- `VariantCountFor` is a switch now, zero means
 authored-only, and `BuildPlanPool` no longer clamps variant counts to a
@@ -2130,19 +2138,37 @@ tail so DwarvenVillage parses; `BuildPlanPool`'s useAllArchetypes cap
 deliberately stays at TollHouse, so an authored-only archetype is opted in per
 floor and never swept in by "all".
 
-**The plan.** `DwarvenVillage_TheHearthOfTheDeep.txt`: 41x41, 1008 carved /
-673 masonry as drawn, four 5-wide gates on every bearing (an AlongRoad anchor
-lands on any local heading -- the gatehouse arithmetic). Quarters: the Great
-Hall with its hearth pillar, two long-houses over a shared passage, the forge
-with three coal stores, a terrace of three dwellings. THE DOOR RULE is
-recorded in the file and is load-bearing: every door and internal passage is
-3 cells long, because the wall drape seals 2-long gaps that rotation turns
-east/west -- the v2 draft lost a 45-cell interior to exactly that. Validated
-in all eight orientations, before and after 5-wide road cuts on four
-headings: zero sealed pockets, zero fragmentation. Post-subtraction carved
-measures 653--968 (avg 803) depending on how the road crosses. The scale is
-deliberate: the landmark of its floor, partitioned into rooms and lanes --
-what reads as a hole in the fog is one empty rectangle, not cell count.
+**The plans.** Three holds rotate, sharing one contract: four 5-wide gates
+on every bearing (an AlongRoad anchor lands on any local heading -- the
+gatehouse arithmetic), interiors partitioned so no single empty rectangle
+reads as a hole, and THE DOOR RULE recorded in every file -- all doors,
+passages, stall gaps and grave rows are 3 cells long, because the wall drape
+seals 2-long gaps that rotation turns east/west (the Hearth's draft lost a
+45-cell interior to that; the Market's draft, a 66-cell stall lane when the
+rule was not yet applied to furniture). Each hold validated in all eight
+orientations before and after 5-wide road cuts on four headings: zero
+pockets, zero fragmentation. Measured over 200 seeds the roll splits
+65/62/73:
+
+- `DwarvenVillage_TheTerracedVein.txt` -- the mining town. 57x57, 2314
+  carved as drawn, 1749--2214 after the carriageway. Terrace stacks, the
+  quarry yard with ore stacks and spoil ridge, the winch house and its
+  head-frame posts.
+- `DwarvenVillage_TheDeepMarket.txt` -- the crossroads town the sparse
+  network implies. 71x49 -- deliberately not square, so rotation deals
+  portrait and landscape markets -- 2374 carved, 1873--2306 after.
+  Crate-stacked warehouses, the grand trade hall, the stall-rowed market
+  yard, shop terraces.
+- `DwarvenVillage_TheShrinehold.txt` -- the old-faith village, entry 20's
+  deep faith on screen. 61x61, 2588 carved, 2002--2443 after. Cloister
+  terraces, the refectory, the shrine precinct with votive pillars around an
+  inner sanctum and altar, the bell court with belfry, keeper's house and
+  grave rows.
+
+The first-ship hold, `DwarvenVillage_TheHearthOfTheDeep.txt` (41x41, 1008
+carved), RETIRED from the roll after reading too small at play. The file
+stays on disk as the small worked example Authoring chapter 28 reads, but it
+is off the profile's `authoredPlans` -- which is all retirement takes.
 
 **The controller.** `DwarvenVillageController` -- scene singleton beside
 `DwarvenOutpostController`, and the same poll rationale, recorded on both:
@@ -2166,7 +2192,8 @@ accepted.
 **Key files:** `Floors/DwarvenVillageController.cs`,
 `Floors/AncientSiteBuilder.cs`, `Floors/AncientSiteProfile.cs`,
 `Floors/AncientSitePlanLibrary.cs`, `Floors/RoadNetworkProfile.cs`,
-`ScriptableObjects/Sites/Plans/DwarvenVillage_TheHearthOfTheDeep.txt`.
+the three rotating `ScriptableObjects/Sites/Plans/DwarvenVillage_*.txt`
+holds (the retired Hearth stays on disk beside them).
 
 ### The dwarves (DECIDED in shape)
 
