@@ -103,6 +103,38 @@ public class CaveWallSheetLayout : ScriptableObject
              "pick from the pool. Any mask 0-15 may have one.")]
     public CapVarietySet[] capVariety = DefaultCapVariety();
 
+    // -- Ruins family (Buried Age masonry, canon 19) ---------------
+
+    [Header("Ruins family")]
+    [Tooltip("Sheet the ruins slots slice from (castle_interriors). Ruins cells render this " +
+             "family instead of stone: no moss, white tint. EVERY ruins slot may be left " +
+             "empty; caps fall back to the ruins mask-11 cap, faces to the ruins Straight " +
+             "face, and only a wholly unassigned family falls back to the stone slots.")]
+    public Texture2D ruinsSheet;
+
+    [Tooltip("Per-mask ruins caps; same 16 masks as capSlots. Mask 11 doubles as the " +
+             "family's base cap that every empty ruins cap slot falls back to.")]
+    public SheetSlot[] ruinsCapSlots = EmptySlots(16);
+
+    public SheetSlot ruinsInnerSE = new SheetSlot();
+    public SheetSlot ruinsInnerSW = new SheetSlot();
+    public SheetSlot ruinsInnerNE = new SheetSlot();
+    public SheetSlot ruinsInnerNW = new SheetSlot();
+
+    [Tooltip("Ruins face slices, same 8 variants as faceUpperSlots. Empty variants fall " +
+             "back to the ruins Straight face -- a corner rendered as straight masonry " +
+             "still reads as masonry, which cave rock would not.")]
+    public SheetSlot[] ruinsFaceUpperSlots = EmptySlots(8);
+    public SheetSlot[] ruinsFaceLowerSlots = EmptySlots(8);
+
+    [Tooltip("Straight-wall variety for ruins cells (pilastered walls and the like). A " +
+             "column's empty cap falls back to the ruins base cap, never to cave rock.")]
+    public WallColumn[] ruinsVariants = new WallColumn[0];
+
+    [Tooltip("Site paving: floor tiles painted over a site's carved interior, one picked " +
+             "per cell by a stable spatial hash. Empty list = the ordinary cave floor.")]
+    public SheetSlot[] ruinsPavingSlots = new SheetSlot[0];
+
     // ── Labels (shared by the Inspector and the validator) ────────
 
     public static readonly string[] CapMaskLabels =
@@ -140,6 +172,13 @@ public class CaveWallSheetLayout : ScriptableObject
     // ── Defaults: the MainLev.png layout ──────────────────────────
 
     private static SheetSlot S(int col, int row) => new SheetSlot { cell = new Vector2Int(col, row) };
+
+    private static SheetSlot[] EmptySlots(int n)
+    {
+        var arr = new SheetSlot[n];
+        for (int i = 0; i < n; i++) arr[i] = new SheetSlot();
+        return arr;
+    }
 
     private static WallColumn Col(int col, int capRow, int upperRow, int lowerRow)
         => new WallColumn { cap = S(col, capRow), upper = S(col, upperRow), lower = S(col, lowerRow) };
@@ -192,6 +231,12 @@ public class CaveWallSheetLayout : ScriptableObject
     public bool CellInBounds(Vector2Int cell)
         => sheet != null && cell.x >= 0 && cell.y >= 0 && cell.x < SheetCols && cell.y < SheetRows;
 
+    public int RuinsSheetCols => ruinsSheet != null ? ruinsSheet.width / Mathf.Max(1, cellSize) : 0;
+    public int RuinsSheetRows => ruinsSheet != null ? ruinsSheet.height / Mathf.Max(1, cellSize) : 0;
+
+    public bool RuinsCellInBounds(Vector2Int cell)
+        => ruinsSheet != null && cell.x >= 0 && cell.y >= 0 && cell.x < RuinsSheetCols && cell.y < RuinsSheetRows;
+
     // ── Structural guards ─────────────────────────────────────────
 
     private void OnValidate()
@@ -200,6 +245,9 @@ public class CaveWallSheetLayout : ScriptableObject
         FixLength(ref capSlots, 16);
         FixLength(ref faceUpperSlots, 8);
         FixLength(ref faceLowerSlots, 8);
+        FixLength(ref ruinsCapSlots, 16);
+        FixLength(ref ruinsFaceUpperSlots, 8);
+        FixLength(ref ruinsFaceLowerSlots, 8);
         if (capVariety != null)
             foreach (var set in capVariety)
                 if (set != null) set.mask = Mathf.Clamp(set.mask, 0, 15);
@@ -291,6 +339,51 @@ public class CaveWallSheetLayout : ScriptableObject
                 for (int i = 0; i < set.variants.Length; i++)
                     Check(set.variants[i], $"Cap variety (mask {set.mask}) [{i}]", true, true);
             }
+
+        // -- Ruins family: everything optional by design, so only report what is
+        // assigned but wrong, plus notes on states that are legal but surprising.
+        void CheckRuins(SheetSlot slot, string label, bool capPivot)
+        {
+            if (slot == null || slot.IsEmpty) return;
+            if (slot.overrideSprite != null) { Check(slot, label, capPivot, required: false); return; }
+            if (ruinsSheet == null)
+            { sb.AppendLine($"- {label}: cell assigned but no ruinsSheet texture."); issues++; return; }
+            if (!RuinsCellInBounds(slot.cell))
+            { sb.AppendLine($"- {label}: cell ({slot.cell.x}, {slot.cell.y}) is outside the {RuinsSheetCols} x {RuinsSheetRows} ruins sheet grid."); issues++; }
+        }
+
+        bool ruinsAny = false;
+        for (int m = 0; m < 16 && m < ruinsCapSlots.Length; m++)
+        {
+            if (ruinsCapSlots[m] != null && !ruinsCapSlots[m].IsEmpty) ruinsAny = true;
+            CheckRuins(ruinsCapSlots[m], $"Ruins cap [{CapMaskLabels[m]}]", capPivot: true);
+        }
+        CheckRuins(ruinsInnerSE, "Ruins inner SE", true);
+        CheckRuins(ruinsInnerSW, "Ruins inner SW", true);
+        CheckRuins(ruinsInnerNE, "Ruins inner NE", true);
+        CheckRuins(ruinsInnerNW, "Ruins inner NW", true);
+        for (int v = 1; v < 8 && v < ruinsFaceUpperSlots.Length; v++)
+        {
+            CheckRuins(ruinsFaceUpperSlots[v], $"Ruins face upper [{FaceLabels[v]}]", false);
+            CheckRuins(ruinsFaceLowerSlots[v], $"Ruins face lower [{FaceLabels[v]}]", false);
+        }
+        if (ruinsVariants != null)
+            for (int i = 0; i < ruinsVariants.Length; i++)
+            {
+                if (ruinsVariants[i] == null) continue;
+                CheckRuins(ruinsVariants[i].cap, $"Ruins variant [{i}] cap", true);
+                CheckRuins(ruinsVariants[i].upper, $"Ruins variant [{i}] upper", false);
+                CheckRuins(ruinsVariants[i].lower, $"Ruins variant [{i}] lower", false);
+                if (ruinsVariants[i].upper != null && !ruinsVariants[i].upper.IsEmpty) ruinsAny = true;
+            }
+        if (ruinsPavingSlots != null)
+            foreach (var p in ruinsPavingSlots) CheckRuins(p, "Ruins paving", capPivot: false);
+
+        if (ruinsAny && (ruinsCapSlots[11] == null || ruinsCapSlots[11].IsEmpty))
+            sb.AppendLine("- Note: ruins slots are assigned but mask-11 (the family base cap) is empty; " +
+                          "caps without their own slot will fall back to STONE art.");
+        if (!ruinsAny)
+            sb.AppendLine("- Note: no ruins family assigned; Ruins cells render as tinted stone (the pre-visual-pass look).");
 
         if (issues == 0)
             Debug.Log($"[CaveWallSheetLayout] '{name}' validated: no issues.\n{sb}", this);

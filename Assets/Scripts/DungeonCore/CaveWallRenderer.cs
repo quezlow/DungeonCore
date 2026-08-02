@@ -91,6 +91,15 @@ public class CaveWallRenderer : MonoBehaviour
     private int greenMossCount;              // moss index < greenMossCount -> green glow
     private TileBase[][] capVariants;        // index = mask; non-null only for 7, 13, 14
     private TileBase innerSE, innerSW, innerNE, innerNW;     // concave-corner caps
+    private TileBase[] ruinsCapTiles;        // ruins caps, index = mask; [11] is the family base
+    private TileBase[] ruinsFaceUpperTiles;  // ruins face slices, index = CaveFace variant
+    private TileBase[] ruinsFaceLowerTiles;
+    private TileBase[] ruinsStraightCapTiles;    // ruins straight variety
+    private TileBase[] ruinsStraightUpperTiles;
+    private TileBase[] ruinsStraightLowerTiles;
+    private TileBase ruinsInnerSETile, ruinsInnerSWTile, ruinsInnerNETile, ruinsInnerNWTile;
+    private TileBase[] ruinsPavingTiles;     // site paving variants, picked per cell
+    private bool ruinsFamilyPresent;         // base cap assigned -> family renders, tint goes white
     private readonly HashSet<Vector3Int> wallScratch = new();
     private readonly HashSet<Vector3Int> greenMossCells = new();
     private readonly HashSet<Vector3Int> goldMossCells = new();
@@ -178,7 +187,59 @@ public class CaveWallRenderer : MonoBehaviour
                     arr[i] = MakeTile(set.variants[i], capPivot);
                 capVariants[set.mask] = arr;
             }
+
+        BuildRuinsTiles();
     }
+
+    // Ruins family (Buried Age masonry, canon 19): a parallel tile set sliced
+    // from layout.ruinsSheet. Built unconditionally; empty slots stay null and
+    // the pick helpers fall back per-role at paint time.
+    private void BuildRuinsTiles()
+    {
+        var capPivot = new Vector2(0.5f, 0.5f);
+        var facePivot = new Vector2(0.5f, 0f);
+        var tex = layout.ruinsSheet;
+
+        ruinsCapTiles = new TileBase[16];
+        for (int mask = 0; mask < 16; mask++)
+            ruinsCapTiles[mask] = MakeTileFrom(tex, SlotAt(layout.ruinsCapSlots, mask), capPivot);
+
+        ruinsInnerSETile = MakeTileFrom(tex, layout.ruinsInnerSE, capPivot);
+        ruinsInnerSWTile = MakeTileFrom(tex, layout.ruinsInnerSW, capPivot);
+        ruinsInnerNETile = MakeTileFrom(tex, layout.ruinsInnerNE, capPivot);
+        ruinsInnerNWTile = MakeTileFrom(tex, layout.ruinsInnerNW, capPivot);
+
+        ruinsFaceUpperTiles = new TileBase[8];
+        ruinsFaceLowerTiles = new TileBase[8];
+        for (int v = 1; v < 8; v++)
+        {
+            ruinsFaceUpperTiles[v] = MakeTileFrom(tex, SlotAt(layout.ruinsFaceUpperSlots, v), facePivot);
+            ruinsFaceLowerTiles[v] = MakeTileFrom(tex, SlotAt(layout.ruinsFaceLowerSlots, v), facePivot);
+        }
+
+        int rLen = layout.ruinsVariants != null ? layout.ruinsVariants.Length : 0;
+        ruinsStraightCapTiles = new TileBase[rLen];
+        ruinsStraightUpperTiles = new TileBase[rLen];
+        ruinsStraightLowerTiles = new TileBase[rLen];
+        for (int i = 0; i < rLen; i++)
+        {
+            var col = layout.ruinsVariants[i];
+            ruinsStraightCapTiles[i] = MakeTileFrom(tex, col != null ? col.cap : null, capPivot);
+            ruinsStraightUpperTiles[i] = MakeTileFrom(tex, col != null ? col.upper : null, facePivot);
+            ruinsStraightLowerTiles[i] = MakeTileFrom(tex, col != null ? col.lower : null, facePivot);
+        }
+
+        int pLen = layout.ruinsPavingSlots != null ? layout.ruinsPavingSlots.Length : 0;
+        ruinsPavingTiles = new TileBase[pLen];
+        for (int i = 0; i < pLen; i++)
+            ruinsPavingTiles[i] = MakeTileFrom(tex, layout.ruinsPavingSlots[i], facePivot);
+
+        ruinsFamilyPresent = ruinsCapTiles[11] != null;
+    }
+
+    /// <summary>Site paving variants for TerrainFeatureGenerator.PaintSitePaving.
+    /// May be empty; entries may be null when a slot failed to slice.</summary>
+    public TileBase[] SitePavingTiles => ruinsPavingTiles;
 
     private static CaveWallSheetLayout.SheetSlot SlotAt(CaveWallSheetLayout.SheetSlot[] arr, int index)
         => (arr != null && index >= 0 && index < arr.Length) ? arr[index] : null;
@@ -192,6 +253,11 @@ public class CaveWallRenderer : MonoBehaviour
     }
 
     private TileBase MakeTile(CaveWallSheetLayout.SheetSlot slot, Vector2 pivot)
+        => MakeTileFrom(layout.sheet, slot, pivot);
+
+    // Texture-parameterised so the ruins family can slice from its own sheet
+    // with the same machinery (and the same top-down row convention).
+    private TileBase MakeTileFrom(Texture2D tex, CaveWallSheetLayout.SheetSlot slot, Vector2 pivot)
     {
         if (slot == null) return null;
 
@@ -204,11 +270,11 @@ public class CaveWallRenderer : MonoBehaviour
         }
         else
         {
-            if (layout.sheet == null || slot.cell.x < 0 || slot.cell.y < 0) return null;
+            if (tex == null || slot.cell.x < 0 || slot.cell.y < 0) return null;
             int cs = layout.cellSize;
             int px = slot.cell.x * cs;
-            int py = layout.sheet.height - (slot.cell.y + 1) * cs;   // sheet rows top-down; texture Y bottom-up
-            spr = Sprite.Create(layout.sheet, new Rect(px, py, cs, cs), pivot, cs);
+            int py = tex.height - (slot.cell.y + 1) * cs;   // sheet rows top-down; texture Y bottom-up
+            spr = Sprite.Create(tex, new Rect(px, py, cs, cs), pivot, cs);
         }
 
         var tile = ScriptableObject.CreateInstance<UnlockedTile>();
@@ -308,18 +374,35 @@ public class CaveWallRenderer : MonoBehaviour
         {
             int mask = classifier.CapMask(wall);
 
+            // Buried Age masonry renders the ruins family instead of stone. Gated on
+            // the family actually being assigned, so a layout without it keeps the
+            // pre-visual-pass look (tinted stone) rather than going blank.
+            bool ruins = ruinsFamilyPresent && IsRuinsCell(wall);
+
             // Per-cell material tint: the whole wall column - cap and both face slices -
             // takes the wall cell's stone tint. CaveWallFade preserves this RGB while it
-            // fades the alpha.
-            Color tint = StoneTintFor(wall);
+            // fades the alpha. Ruins-family cells render WHITE: the castle art is
+            // already thematic, and the lavender that sells retinted cave rock as
+            // masonry would only muddy real masonry.
+            Color tint = ruins ? Color.white : StoneTintFor(wall);
 
             // Straight S-wall (mask 11): plain stone variety, or a moss variant at the
             // floor's rolled rate. Cap + both face slices share the chosen variant so the
             // top always matches the drape.
             if (mask == 11)
             {
-                bool moss = StraightWallTiles(wall, out TileBase capT, out TileBase upperT, out TileBase lowerT, out int mossIndex);
-                if (moss) { if (mossIndex < greenMossCount) greenMossCells.Add(wall); else goldMossCells.Add(wall); }
+                TileBase capT, upperT, lowerT;
+                if (ruins)
+                {
+                    // Ruins never roll moss: moss hands back the organic read that
+                    // straight worked walls exist to defeat.
+                    RuinsStraightTiles(wall, out capT, out upperT, out lowerT);
+                }
+                else
+                {
+                    bool moss = StraightWallTiles(wall, out capT, out upperT, out lowerT, out int mossIndex);
+                    if (moss) { if (mossIndex < greenMossCount) greenMossCells.Add(wall); else goldMossCells.Add(wall); }
+                }
                 capsTilemap.SetTile(wall, capT); capsTilemap.SetColor(wall, tint);
                 Vector3Int u = wall + S;          // S is open for mask 11
                 if (facesTilemap != null) { facesTilemap.SetTile(u, upperT); facesTilemap.SetColor(u, tint); }
@@ -333,9 +416,11 @@ public class CaveWallRenderer : MonoBehaviour
             }
 
             // --- cap: junction-cap variety (7/13/14), concave corner (15), or plain base ---
-            TileBase capTile = (capVariants != null && capVariants[mask] != null)
-                ? PickCapVariant(wall, mask)
-                : CapFor(wall, mask);
+            TileBase capTile = ruins
+                ? RuinsCapFor(wall, mask)
+                : (capVariants != null && capVariants[mask] != null)
+                    ? PickCapVariant(wall, mask)
+                    : CapFor(wall, mask);
             capsTilemap.SetTile(wall, capTile); capsTilemap.SetColor(wall, tint);
 
             if (!classifier.IsSouthFacing(wall)) continue;
@@ -343,15 +428,81 @@ public class CaveWallRenderer : MonoBehaviour
             // --- everything else: slice by face type ---
             int v = (int)classifier.FaceVariant(wall);
             if (v <= 0 || faceUpperTiles == null) continue;
+            TileBase fUpper = ruins ? RuinsFaceUpper(v) : faceUpperTiles[v];
+            TileBase fLower = ruins ? RuinsFaceLower(v) : faceLowerTiles[v];
             Vector3Int upper = wall + S;
-            if (facesTilemap != null) { facesTilemap.SetTile(upper, faceUpperTiles[v]); facesTilemap.SetColor(upper, tint); }
+            if (facesTilemap != null) { facesTilemap.SetTile(upper, fUpper); facesTilemap.SetColor(upper, tint); }
 
             // Always paint the lower (bottom) slice on the behind tilemap so it sits
             // BELOW entities — a monster at the foot of the wall renders in front of it
             // (its head no longer clips behind the base). The cap and upper slice stay
             // on WalkBehind for the over-the-head occlusion.
-            if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(upper + S, faceLowerTiles[v]); facesBehindTilemap.SetColor(upper + S, tint); }
+            if (facesBehindTilemap != null) { facesBehindTilemap.SetTile(upper + S, fLower); facesBehindTilemap.SetColor(upper + S, tint); }
         }
+    }
+
+    // -- Ruins family picks -------------------------------------------------
+    // Fallback chains keep masonry reading as masonry: cap -> ruins base cap ->
+    // stone cap; face -> ruins Straight -> stone face. The family gate
+    // (ruinsFamilyPresent) means the stone tail is only reachable for faces,
+    // and only when the family has a base cap but no Straight face -- a state
+    // the layout validator flags.
+
+    private bool IsRuinsCell(Vector3Int cell)
+        => terrainTypeMap != null && terrainTypeMap.GetTerrainAt(cell) == TerrainType.Ruins;
+
+    private TileBase RuinsBaseCap()
+        => ruinsCapTiles != null && ruinsCapTiles[11] != null ? ruinsCapTiles[11]
+         : capTiles != null ? capTiles[11] : null;
+
+    private TileBase RuinsCapFor(Vector3Int cell, int mask)
+    {
+        if (mask == 15)
+        {
+            bool oNE = !classifier.IsSolid(cell + NE);
+            bool oNW = !classifier.IsSolid(cell + NW);
+            bool oSE = !classifier.IsSolid(cell + SE);
+            bool oSW = !classifier.IsSolid(cell + SW);
+            int open = (oNE ? 1 : 0) + (oNW ? 1 : 0) + (oSE ? 1 : 0) + (oSW ? 1 : 0);
+            if (open == 1)
+            {
+                if (oSE && ruinsInnerSETile != null) return ruinsInnerSETile;
+                if (oSW && ruinsInnerSWTile != null) return ruinsInnerSWTile;
+                if (oNE && ruinsInnerNETile != null) return ruinsInnerNETile;
+                if (oNW && ruinsInnerNWTile != null) return ruinsInnerNWTile;
+            }
+        }
+        if (ruinsCapTiles != null && ruinsCapTiles[mask] != null) return ruinsCapTiles[mask];
+        return RuinsBaseCap();
+    }
+
+    private TileBase RuinsFaceUpper(int v)
+        => ruinsFaceUpperTiles != null && ruinsFaceUpperTiles[v] != null ? ruinsFaceUpperTiles[v]
+         : ruinsFaceUpperTiles != null && ruinsFaceUpperTiles[(int)CaveFace.Straight] != null ? ruinsFaceUpperTiles[(int)CaveFace.Straight]
+         : faceUpperTiles[v];
+
+    private TileBase RuinsFaceLower(int v)
+        => ruinsFaceLowerTiles != null && ruinsFaceLowerTiles[v] != null ? ruinsFaceLowerTiles[v]
+         : ruinsFaceLowerTiles != null && ruinsFaceLowerTiles[(int)CaveFace.Straight] != null ? ruinsFaceLowerTiles[(int)CaveFace.Straight]
+         : faceLowerTiles[v];
+
+    // Straight ruins wall: a seeded variety pick (pilastered walls and the like),
+    // or the base column when no variants are assigned. Same seed recipe as the
+    // stone pick, so re-rolls are stable and floors decorrelate.
+    private void RuinsStraightTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower)
+    {
+        if (ruinsStraightCapTiles != null && ruinsStraightCapTiles.Length > 0)
+        {
+            var rng = new System.Random(unchecked(wall.GetHashCode() ^ (floor.FloorIndex * 73856093)));
+            int v = rng.Next(ruinsStraightCapTiles.Length);
+            cap = ruinsStraightCapTiles[v] != null ? ruinsStraightCapTiles[v] : RuinsBaseCap();
+            upper = ruinsStraightUpperTiles[v] != null ? ruinsStraightUpperTiles[v] : RuinsFaceUpper((int)CaveFace.Straight);
+            lower = ruinsStraightLowerTiles[v] != null ? ruinsStraightLowerTiles[v] : RuinsFaceLower((int)CaveFace.Straight);
+            return;
+        }
+        cap = RuinsBaseCap();
+        upper = RuinsFaceUpper((int)CaveFace.Straight);
+        lower = RuinsFaceLower((int)CaveFace.Straight);
     }
 
     // The wall cell's material tint (Dirt/Sand/Stone/Granite/...). White if no terrain map.

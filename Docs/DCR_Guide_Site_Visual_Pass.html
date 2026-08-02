@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR &mdash; Ancient Site Visual Pass</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0d0d1a; --accent:#e94560; --gold:#c8902a; --text:#d8d4e8; --dim:#8a86a0; --panel:#15152a; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.55; margin:0; padding-bottom:80px; }
+.container { max-width:880px; margin:0 auto; padding:0 20px; }
+h1 { font-family:'Cinzel',serif; color:var(--gold); font-size:1.9em; margin:28px 0 4px; }
+.subtitle { color:var(--dim); font-style:italic; margin-bottom:24px; }
+code { font-family:'JetBrains Mono',monospace; font-size:0.82em; background:#1d1d34; padding:1px 5px; border-radius:3px; color:#a8d8ff; }
+details { background:var(--panel); border:1px solid #24243e; border-radius:8px; margin:14px 0; }
+summary { font-family:'Cinzel',serif; color:var(--accent); font-size:1.12em; padding:14px 18px; cursor:pointer; }
+.body { padding:4px 22px 18px; }
+.step { margin:10px 0; display:flex; gap:10px; align-items:flex-start; }
+.step input { margin-top:7px; accent-color:var(--accent); flex-shrink:0; }
+.step label { cursor:pointer; }
+.callout { border-left:3px solid var(--gold); background:#191930; padding:10px 14px; margin:12px 0; }
+.warn { border-left-color:var(--accent); }
+#progressWrap { position:sticky; top:0; z-index:10; background:var(--bg); padding:10px 0 6px; border-bottom:1px solid #24243e; }
+#progressBar { height:8px; background:#24243e; border-radius:4px; overflow:hidden; }
+#progressFill { height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .25s; }
+#progressText { color:var(--dim); font-size:0.85em; margin-top:4px; }
+#resetBtn { float:right; background:none; border:1px solid #3a3a5c; color:var(--dim); border-radius:5px; padding:2px 10px; cursor:pointer; font-family:'Crimson Text',serif; }
+#resetBtn:hover { color:var(--accent); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+<div id="progressWrap"><div id="progressBar"><div id="progressFill"></div></div><div id="progressText">0 / 0 steps<button id="resetBtn">Reset checkmarks</button></div></div>
+
+<h1>Ancient Site Visual Pass</h1>
+<div class="subtitle">Ruins wall family + site paving + decor prefab hook + the 8x wall &mdash; canon 19's visual identity layer</div>
+
+<details open>
+<summary>1. What shipped</summary>
+<div class="body">
+<p>Buried Age sites now look built as well as reading built, without a single change to how they behave: masonry stays mineable, fog stays one-way, the drape stays two slices deep, saves stay compatible.</p>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c1s1"><label for="dcr-sitevisual-v1-c1s1"><b>Ruins wall family.</b> Wall cells typed <code>Ruins</code> render castle masonry sliced from <code>castle_interriors.png</code> &mdash; base cap (2,4), face pair (1,6)/(2,8), two pilastered straight variants &mdash; white-tinted, never mossy. Every unfilled slot falls back inside the family, so corners and ends render the generic ruins top until you give them dedicated art.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c1s2"><label for="dcr-sitevisual-v1-c1s2"><b>Site paving.</b> Carved interiors paint four paving variants, one per cell by spatial hash, at generation and load, under fog. No reveal wiring; nothing to maintain.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c1s3"><label for="dcr-sitevisual-v1-c1s3"><b>Decor prefab hook.</b> <code>AncientSiteProfile.siteDecor</code> maps a plan's <code>@name</code> to a dressing-only prefab, spawned at the site anchor on reveal and re-spawned on load. Ships EMPTY &mdash; you author the prefabs at your own pace (Content Authoring guide, chapter 29).</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c1s4"><label for="dcr-sitevisual-v1-c1s4"><b>Ruins resistance 6x &rarr; 8x.</b> Between Granite (4) and Holy Ground (10). Older power resists; the verb survives.</label></div>
+</div>
+</details>
+
+<details>
+<summary>2. Apply and compile</summary>
+<div class="body">
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c2s1"><label for="dcr-sitevisual-v1-c2s1">Pull, then run <code>python3 deliver_site_visual_v1.py</code> from the repo root. It stages every edit in memory, validates all anchors, and writes nothing on any failure.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c2s2"><label for="dcr-sitevisual-v1-c2s2">Open Unity and let it compile. Touched code: <code>CaveWallSheetLayout</code>, <code>CaveWallRenderer</code>, <code>TerrainFeatureGenerator</code>, <code>AncientSiteBuilder</code>, <code>AncientSiteProfile</code>, <code>FloorFeatureSaveData</code>, <code>SitePlanValidator</code>, <code>TerrainResistanceTable</code>. Zero errors expected.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c2s3"><label for="dcr-sitevisual-v1-c2s3">Select <code>Data/CaveWallSheetLayout.asset</code>, confirm the Ruins family section shows the castle sheet and the shipped cells, and run its <b>Validate Layout</b> context menu. Expected: no issues, plus a note that no corner art is assigned yet.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c2s4"><label for="dcr-sitevisual-v1-c2s4">Run <b>Dungeon Core / Validate Site Plans</b>. Expected: 13 plans OK, zero decor failures (the decor list ships empty).</label></div>
+</div>
+</details>
+
+<details>
+<summary>3. Smoke test</summary>
+<div class="body">
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s1"><label for="dcr-sitevisual-v1-c3s1">New world, dig to floor 4 (or use the Commands generate-all helper), reveal any site. <b>Walls:</b> castle masonry, white-tinted, straight runs mixing plain and pilastered variants; no moss anywhere on the site.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s2"><label for="dcr-sitevisual-v1-c3s2"><b>Floor:</b> the carved interior shows paving variants, visibly different from the surrounding cave floor, with no repetition banding.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s3"><label for="dcr-sitevisual-v1-c3s3"><b>Corners and ends</b> show the generic ruins top (base cap) rather than cave rock. This is the designed fallback, not a bug &mdash; chapter 4 is how you upgrade it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s4"><label for="dcr-sitevisual-v1-c3s4"><b>Mine a masonry cell.</b> It resists at 8x, pays <code>ancient_masonry</code>, the wall repaints cleanly around the hole, and paving is untouched. On an ossuary, one masonry cell still grants the buried remains.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s5"><label for="dcr-sitevisual-v1-c3s5"><b>Save and reload</b> with a revealed site. Walls, tint, and paving come back identical (all picks are hashes, not RNG draws).</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c3s6"><label for="dcr-sitevisual-v1-c3s6"><b>The dwarven outpost and village</b> inherit the castle skin &mdash; same Ruins typing, one ancient-masonry look everywhere. Eyeball one to confirm nothing clashes with their inhabitants.</label></div>
+<div class="callout warn">If a site renders stone walls instead: the renderer gates the family on the base cap slot &mdash; check <code>ruinsCapSlots</code> element 11 is (2,4) and the ruins sheet reference survived the pull.</div>
+</div>
+</details>
+
+<details>
+<summary>4. Refining the look (yours, at leisure)</summary>
+<div class="body">
+<p>All Inspector work on the layout asset; no scripts, no round trips. Content Authoring chapter 29 carries the full recipes &mdash; this is the map.</p>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c4s1"><label for="dcr-sitevisual-v1-c4s1"><b>Corner caps first:</b> masks 3 (SW outer) and 9 (SE outer) plus the four inner-corner slots buy the most read per slot filled. The mask labels in the Inspector name every configuration.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c4s2"><label for="dcr-sitevisual-v1-c4s2"><b>Face variants:</b> Corner W / Corner E / Pillar faces currently fall back to the Straight face. Fill them when a wall-run end looks too uniform.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c4s3"><label for="dcr-sitevisual-v1-c4s3"><b>The unassigned (1,7) cell</b> from the veto round is a natural third face or variant slice if the shipped pair tiles poorly in long runs.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c4s4"><label for="dcr-sitevisual-v1-c4s4"><b>Decor prefabs:</b> start with the Ossuary or a Sanctum (Free-anchored, so the road-band rule does not apply), plan <code>@rotate: no</code>, dressing on carved floor only. The validator holds the rotation rule for you.</label></div>
+</div>
+</details>
+
+<details>
+<summary>5. Update the Canon</summary>
+<div class="body">
+<div class="callout">The canon edit RIDES THE DELIVERY SCRIPT &mdash; section 19 gains its Visual identity subsection, the key-files list grows, and Content Authoring gains chapter 29, all in the same run that edits the code. Nothing below is a manual step; these checkboxes are verification only.</div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c5s1"><label for="dcr-sitevisual-v1-c5s1"><code>Docs/DESIGN_CANON.md</code> section 19 contains <b>Visual identity (SHIPPED)</b> covering the ruins family, paving, decor hook, and the 6x&rarr;8x resistance change.</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c5s2"><label for="dcr-sitevisual-v1-c5s2"><code>Docs/DCR_Guide_Content_Authoring.html</code> ends with chapter 29 (ruins slots, paving, decor prefabs).</label></div>
+<div class="step"><input type="checkbox" id="dcr-sitevisual-v1-c5s3"><label for="dcr-sitevisual-v1-c5s3">Push, confirm <b>pushed</b>, and testing begins only after origin/main is verified.</label></div>
+</div>
+</details>
+
+</div>
+<script>
+(function () {
+  var PREFIX = "dcr-sitevisual-v1-";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var fill = document.getElementById('progressFill');
+  var text = document.getElementById('progressText');
+  var reset = document.getElementById('resetBtn');
+  function update() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    fill.style.width = (boxes.length ? (100 * done / boxes.length) : 0) + '%';
+    text.childNodes[0].nodeValue = done + ' / ' + boxes.length + ' steps';
+  }
+  boxes.forEach(function (b) {
+    if (localStorage.getItem(PREFIX + b.id) === '1') b.checked = true;
+    b.addEventListener('change', function () {
+      localStorage.setItem(PREFIX + b.id, b.checked ? '1' : '0');
+      update();
+    });
+  });
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) { b.checked = false; localStorage.setItem(PREFIX + b.id, '0'); });
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>

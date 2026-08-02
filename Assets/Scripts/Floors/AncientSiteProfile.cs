@@ -278,6 +278,33 @@ public class AncientSiteProfile : ScriptableObject
     // next script compile without a manual clear.
     private List<AuthoredSitePlan> parsedPlans;
 
+    // -- Site decor prefabs (canon 19: the decor-prefab hook) ----------------
+
+    [System.Serializable]
+    public class SiteDecorEntry
+    {
+        [Tooltip("The plan's @name, e.g. 'The Ten Thousand Quiet'. Decorated plans " +
+                 "must be @rotate: no; Validate Site Plans enforces it.")]
+        public string planName;
+
+        [Tooltip("Visual dressing only: platforms, stairs, clutter on carved floor. " +
+                 "No walls, no floors, no colliders -- the plan keeps driving terrain, " +
+                 "fog, mining and pathfinding. Spawned at the site anchor on reveal.")]
+        public GameObject prefab;
+    }
+
+    [SerializeField] private List<SiteDecorEntry> siteDecor = new List<SiteDecorEntry>();
+
+    public IReadOnlyList<SiteDecorEntry> SiteDecor => siteDecor;
+
+    public GameObject GetDecorPrefab(string planName)
+    {
+        if (string.IsNullOrEmpty(planName) || siteDecor == null) return null;
+        foreach (var e in siteDecor)
+            if (e != null && e.prefab != null && e.planName == planName) return e.prefab;
+        return null;
+    }
+
     public IReadOnlyList<SiteFloorEntry> Floors => floors;
 
     /// <summary>The parsed authored plans, loading them on first use.</summary>

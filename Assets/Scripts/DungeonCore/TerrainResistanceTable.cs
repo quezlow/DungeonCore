@@ -30,7 +30,11 @@ public class TerrainResistanceTable : ScriptableObject
         new Entry { type = TerrainType.Sand,       resistance = 1.2f,  claimableRingTint = new Color(0.95f, 0.85f, 0.65f, 1f), stoneTint = new Color(0.96f, 0.90f, 0.78f, 1f), displayName = "Sand" },
         new Entry { type = TerrainType.Stone,      resistance = 2.0f,  claimableRingTint = new Color(0.70f, 0.72f, 0.78f, 1f), stoneTint = new Color(0.85f, 0.87f, 0.92f, 1f), displayName = "Stone" },
         new Entry { type = TerrainType.Granite,    resistance = 4.0f,  claimableRingTint = new Color(0.50f, 0.55f, 0.65f, 1f), stoneTint = new Color(0.68f, 0.72f, 0.82f, 1f), displayName = "Granite" },
-        new Entry { type = TerrainType.Ruins,      resistance = 6.0f,  claimableRingTint = new Color(0.65f, 0.55f, 0.70f, 1f), stoneTint = new Color(0.82f, 0.76f, 0.85f, 1f), displayName = "Ruins" },
+        // 8x, up from the original 6x: Buried Age masonry sits between Granite (4)
+        // and Holy Ground (10). Older power resists -- the walls stay mineable
+        // (four shipped plans and the ossuary remains depend on that verb) but a
+        // breach is a project, not a doorway.
+        new Entry { type = TerrainType.Ruins,      resistance = 8.0f,  claimableRingTint = new Color(0.65f, 0.55f, 0.70f, 1f), stoneTint = new Color(0.82f, 0.76f, 0.85f, 1f), displayName = "Ruins" },
         new Entry { type = TerrainType.HolyGround, resistance = 10.0f, claimableRingTint = new Color(1.00f, 0.90f, 0.70f, 1f), stoneTint = new Color(1.00f, 0.95f, 0.82f, 1f), displayName = "Holy Ground" },
         new Entry { type = TerrainType.Bedrock,    resistance = 9999f, claimableRingTint = new Color(0.30f, 0.30f, 0.35f, 1f), stoneTint = new Color(0.32f, 0.33f, 0.40f, 1f), displayName = "Bedrock" },
     };

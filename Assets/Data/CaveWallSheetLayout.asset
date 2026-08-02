@@ -231,3 +231,111 @@ MonoBehaviour:
       overrideSprite: {fileID: 0}
     - cell: {x: 4, y: 0}
       overrideSprite: {fileID: 0}
+  ruinsSheet: {fileID: 2800000, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
+  ruinsCapSlots:
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 2, y: 4}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsInnerSE:
+    cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsInnerSW:
+    cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsInnerNE:
+    cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsInnerNW:
+    cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsFaceUpperSlots:
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 1, y: 6}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsFaceLowerSlots:
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 2, y: 8}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  - cell: {x: -1, y: -1}
+    overrideSprite: {fileID: 0}
+  ruinsVariants:
+  - cap:
+      cell: {x: -1, y: -1}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 7, y: 9}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 7, y: 10}
+      overrideSprite: {fileID: 0}
+  - cap:
+      cell: {x: -1, y: -1}
+      overrideSprite: {fileID: 0}
+    upper:
+      cell: {x: 10, y: 9}
+      overrideSprite: {fileID: 0}
+    lower:
+      cell: {x: 10, y: 10}
+      overrideSprite: {fileID: 0}
+  ruinsPavingSlots:
+  - cell: {x: 15, y: 37}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 16, y: 37}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 16, y: 38}
+    overrideSprite: {fileID: 0}
+  - cell: {x: 16, y: 39}
+    overrideSprite: {fileID: 0}

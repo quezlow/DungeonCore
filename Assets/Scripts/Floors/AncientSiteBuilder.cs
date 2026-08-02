@@ -8,6 +8,11 @@ public class AncientSitePlan
     public int id;
     public SiteArchetype archetype;
     public int variant;
+
+    /// <summary>The authored plan's @name; "" for procedural plans. Carried into
+    /// SiteData for the decor-prefab lookup.</summary>
+    public string planName = "";
+
     public Vector3Int anchor;
 
     /// <summary>Carved interior. Registered as natural floor on reveal, exactly
@@ -16,7 +21,7 @@ public class AncientSitePlan
 
     /// <summary>The masonry. Deliberately NOT carved -- these cells stay solid
     /// rock and are merely retyped to TerrainType.Ruins, so they render as wall,
-    /// cost 6x to claim, and pay out the ancient_masonry pattern when mined.
+    /// cost 8x to claim, and pay out the ancient_masonry pattern when mined.
     /// Straight walls against organic cellular-automata chambers is the whole of
     /// what makes a site read as built rather than found.</summary>
     public List<Vector3Int> ruinsCells = new List<Vector3Int>();
@@ -256,6 +261,7 @@ public static class AncientSiteBuilder
             {
                 archetype = plan.archetype,
                 variant = plan.variant,
+                planName = plan.authored != null ? plan.authored.name : "",
                 anchor = anchor,
             };
 
@@ -356,6 +362,7 @@ public static class AncientSiteBuilder
             {
                 archetype = plan.archetype,
                 variant = plan.variant,
+                planName = plan.authored != null ? plan.authored.name : "",
                 anchor = anchor,
                 reservedForOutpost = true,
             };
@@ -433,6 +440,7 @@ public static class AncientSiteBuilder
             {
                 archetype = SiteArchetype.DwarvenVillage,
                 variant = 0,
+                planName = plan.name,
                 anchor = anchor,
                 reservedForVillage = true,
             };

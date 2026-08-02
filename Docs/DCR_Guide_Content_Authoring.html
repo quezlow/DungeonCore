@@ -767,6 +767,32 @@
     </div>
   </details>
 
+  <details>
+    <summary>29. Ancient site visuals: ruins slots, paving, decor prefabs</summary>
+    <div class="body">
+      <p>Canon 19's visual identity layer. Three asset surfaces, no code: the ruins wall family
+      and paving live on <code>Data/CaveWallSheetLayout.asset</code>, decor prefabs hang off
+      <code>AncientSiteProfile.siteDecor</code>. Masonry stays mineable throughout -- this
+      chapter changes how sites look, never how they behave.</p>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s1"><label for="dcr-authoring-v1-c29s1"><b>Filling a ruins slot:</b> open <code>Data/CaveWallSheetLayout.asset</code>, find the Ruins family section, and set a slot's cell as (column, row from top) on <code>castle_interriors.png</code> -- same convention as every other slot, (-1, -1) means empty. Caps want art that reads top-down; faces want front-view slices, upper above lower. Run the asset's <b>Validate Layout</b> context menu after editing: it bounds-checks every cell and warns when the family is part-assigned in a way that will surprise you.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s2"><label for="dcr-authoring-v1-c29s2"><b>The fallback chain is why partial fills are safe:</b> an empty ruins cap renders the ruins base cap (mask 11), an empty ruins face renders the ruins Straight face, and only a wholly unassigned family falls back to stone. So fill the masks that bother you -- corners first, usually -- and ignore the rest. The 16 cap masks are labelled in the Inspector; mask 11 is the straight top and doubles as the family base.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s3"><label for="dcr-authoring-v1-c29s3"><b>Adding a ruins wall variant</b> (pilastered wall, banner wall): grow <code>ruinsVariants</code> by one column, set upper and lower to a vertically-matched pair, and leave the cap at (-1, -1) unless the sheet has a matching top -- an empty variant cap falls back to the ruins base cap, never to cave rock. Variants are picked per wall by a stable seed, so the mix will not shimmer between rebuilds.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s4"><label for="dcr-authoring-v1-c29s4"><b>Adding a paving variant:</b> grow <code>ruinsPavingSlots</code> by one cell. Paving is picked per carved cell by a spatial hash; more variants means less visible repetition, and an empty list means ordinary cave floor. Paving paints at generation and load, under fog, so no reveal wiring is ever needed.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s5"><label for="dcr-authoring-v1-c29s5"><b>Authoring a decor prefab:</b> build the dressing in a scene at 32 px/unit with the prefab origin at the plan's bounding-box centre -- that origin lands on the site anchor at spawn. Dressing means sprites only: platforms, stairs, braziers, rubble, bone piles. <b>No walls, no floors, no colliders, no logic.</b> The plan keeps driving terrain, fog, mining and pathfinding; a prefab wall would double-render over the cave wall system and refuse to be mined.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s6"><label for="dcr-authoring-v1-c29s6"><b>Decor placement rules:</b> carved floor only, and off the central band of road-anchored plans. The carriageway subtraction punches a 5-wide corridor through a road-anchored site at an arbitrary bearing, and any ruins cell can be mined out later -- decor attached to either ends up floating. Free-anchored plans (Ossuary, Hollow Sanctum) dodge the road rule entirely, which is why they make the best first candidates.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s7"><label for="dcr-authoring-v1-c29s7"><b>Wiring it up:</b> add an entry to <code>AncientSiteProfile.siteDecor</code> with the plan's <code>@name</code> (e.g. <code>The Ten Thousand Quiet</code>) and the prefab. The plan MUST be <code>@rotate: no</code> -- the prefab does not rotate with the site, and <b>Dungeon Core / Validate Site Plans</b> fails the profile if a decorated plan still allows rotation. Undecorated plans need nothing and look exactly as before.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s8"><label for="dcr-authoring-v1-c29s8"><b>Sorting sanity check:</b> spawn the site (Commands has the site reveal helpers), walk a monster past the decor, and confirm nothing pops in front of the wall drape or behind the paving. Start decor SpriteRenderers on the Player layer at order 0 and adjust from what you see -- the drape occupies the two rows south of every wall, so keep tall decor off those cells entirely.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

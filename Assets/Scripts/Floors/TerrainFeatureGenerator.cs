@@ -351,6 +351,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // BEFORE feature data is restored -- so the Ruins masonry has to be
         // re-applied here, once the sites are actually back.
         ApplyRuinsOverrides();
+        SpawnDecorForRevealedSites();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
@@ -555,6 +556,46 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData.revealedSiteIds.Contains(siteId)) return;
         featureData.revealedSiteIds.Add(siteId);
         UnfogSite(siteId);
+        SpawnSiteDecor(siteId);
+    }
+
+    // -- Site decor (canon 19: the decor-prefab hook) ----------------------
+
+    private readonly HashSet<int> decorSpawned = new HashSet<int>();
+
+    /// <summary>Instantiates the decor prefab mapped to a site's plan name, once,
+    /// at the site's anchor (the plan's bounding-box centre -- the same origin a
+    /// decor prefab is authored against). Decor is a pure visual skin: the plan
+    /// keeps driving terrain, fog, mining and pathfinding; the prefab holds only
+    /// dressing on carved floor. Spawned on reveal because a site reveals ENTIRE
+    /// and fog is one-way, which reduces the whole fog question to this call.
+    /// Decorated plans are @rotate: no (validator-enforced), so no rotation is
+    /// applied here on purpose.</summary>
+    private void SpawnSiteDecor(int siteId)
+    {
+        if (siteProfile == null || floor == null) return;
+        var site = GetSiteById(siteId);
+        if (site == null || string.IsNullOrEmpty(site.planName)) return;
+
+        var prefab = siteProfile.GetDecorPrefab(site.planName);
+        if (prefab == null) return;
+
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+        if (!decorSpawned.Add(siteId)) return;
+
+        Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(site.anchorCell.ToVector3Int());
+        var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
+        go.name = "SiteDecor_" + site.planName.Replace(' ', '_');
+    }
+
+    /// <summary>Load-path sweep: a save can hold already-revealed sites, whose
+    /// reveal call happened in a previous session. LoadFromSave runs this after
+    /// the feature data is restored.</summary>
+    private void SpawnDecorForRevealedSites()
+    {
+        if (featureData == null || featureData.revealedSiteIds == null) return;
+        foreach (int id in featureData.revealedSiteIds) SpawnSiteDecor(id);
     }
 
     // ── Chamber Clear API (DAY 31 PART 2) ─────────────────────────
@@ -1059,6 +1100,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 id = featureData.sites.Count,
                 archetype = plan.archetype,
                 variant = plan.variant,
+                planName = plan.planName,
                 anchorCell = SerializableVector3Int.From(plan.anchor),
                 cells = ToSerializable(plan.cells),
                 ruinsCells = ToSerializable(plan.ruinsCells),
@@ -1112,6 +1154,45 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
         if (cells.Count == 0) return;
         map.ApplyFeatureOverride(cells, TerrainType.Ruins);
+
+        PaintSitePaving();
+    }
+
+    // Cached child renderer for site paving; found once per floor lifetime.
+    private CaveWallRenderer wallRendererForPaving;
+
+    /// <summary>Paints the ruins paving variants over every site's carved interior
+    /// (canon 19). Runs from ApplyRuinsOverrides because both the fresh-generation
+    /// path (FloorRoot) and the load path already call it AFTER the floor
+    /// tilemap's disc paint, so one choke point covers both and nothing can
+    /// overpaint it later. The per-cell pick is a spatial hash, not an RNG: no
+    /// seed to disagree about, no draw order, stable across reloads.
+    ///
+    /// NOTE for the lazy floor-paint backlog item: if disc painting ever moves
+    /// into RevealTile, this pass must move with it or paving is overpainted.</summary>
+    private void PaintSitePaving()
+    {
+        if (featureData == null || featureData.sites == null || floor == null) return;
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+
+        if (wallRendererForPaving == null)
+            wallRendererForPaving = floor.GetComponentInChildren<CaveWallRenderer>(true);
+        var paving = wallRendererForPaving != null ? wallRendererForPaving.SitePavingTiles : null;
+        if (paving == null || paving.Length == 0) return;
+
+        var map = terrain.FloorTilemap;
+        foreach (var s in featureData.sites)
+        {
+            if (s == null || s.cells == null) continue;
+            foreach (var sv in s.cells)
+            {
+                var cell = sv.ToVector3Int();
+                int h = unchecked(cell.x * 73856093 ^ cell.y * 19349663 ^ (floor.FloorIndex + 1) * 83492791);
+                var tile = paving[(h & int.MaxValue) % paving.Length];
+                if (tile != null) map.SetTile(cell, tile);
+            }
+        }
     }
 
     /// <summary>

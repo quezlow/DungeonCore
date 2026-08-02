@@ -34,7 +34,7 @@ MonoBehaviour:
     stoneTint: {r: 0.68, g: 0.72, b: 0.82, a: 1}
     displayName: Granite
   - type: 4
-    resistance: 6
+    resistance: 8
     claimableRingTint: {r: 0.65, g: 0.55, b: 0.7, a: 1}
     stoneTint: {r: 0.82, g: 0.76, b: 0.85, a: 1}
     displayName: Ruins

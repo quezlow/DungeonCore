@@ -1712,7 +1712,54 @@ site reveal API, chamber scaling), `Floors/FloorFeatureSaveData.cs` (`SiteData`,
 `Floors/TerrainTypeMap.cs` (`ApplyFeatureOverride`), `Floors/FloorRoot.cs`,
 `DungeonCore/TerrainResistanceTable.cs` (`siteClaimResistance`, 3 by default),
 `Wisp/WispScript.cs` + `Wisp/WispScript.asset`, `TESTING/Commands.cs`,
-`Gameplay/BuriedRemainsController.cs` (the ossuary remains guarantee).
+`Gameplay/BuriedRemainsController.cs` (the ossuary remains guarantee),
+`DungeonCore/CaveWallRenderer.cs` + `DungeonCore/CaveWallSheetLayout.cs`
+(the ruins family and site paving), `Data/CaveWallSheetLayout.asset`,
+`Data/TerrainResistanceTable.asset`.
+
+### Visual identity (SHIPPED)
+
+Sites LOOK built as well as reading built. Three layers, all shipped together
+and none of them touching behaviour -- masonry stays mineable, fog stays
+one-way, the drape stays two slices deep:
+
+**The ruins wall family.** `CaveWallSheetLayout` carries a parallel slot set
+(`ruinsSheet` + caps, inner corners, faces, straight variety, paving) sliced
+from `castle_interriors.png`, and `CaveWallRenderer` renders it for any wall
+cell typed `TerrainType.Ruins`. Ruins cells never roll moss and render with a
+WHITE tint -- the castle art is already thematic, and the lavender tint that
+sells retinted cave rock as masonry would muddy real masonry. Every ruins
+slot is optional: empty caps fall back to the ruins base cap (mask 11), empty
+faces to the ruins Straight face, and only a wholly unassigned family falls
+back to stone, keeping the pre-visual-pass look. Filling more masks and face
+variants is Inspector work on `Data/CaveWallSheetLayout.asset`; the layout's
+Validate Layout context menu checks bounds and flags surprising states. The
+shipped fill: base cap (2,4), Straight faces (1,6)/(2,8), two pilastered wall
+variants (7,9)-(7,10) and (10,9)-(10,10), no corner art yet.
+
+**Site paving.** The carved interior is painted with paving variants -- the
+shipped four are (15,37) and (16,37)-(16,39) -- one per cell by a spatial
+hash (no RNG, stable across reloads). The paint rides
+`ApplyRuinsOverrides`, which both the fresh-generation path and the load
+path call after the disc paint; if the lazy floor-paint backlog item ever
+lands, the paving pass must move with it.
+
+**The decor-prefab hook.** `AncientSiteProfile.siteDecor` maps a plan's
+`@name` to a prefab of pure dressing (platforms, stairs, clutter -- no
+walls, no floors, no colliders), instantiated once at the site anchor when
+the site reveals, and re-spawned on load for already-revealed sites.
+`SiteData.planName` (appended field; old saves load "") carries the lookup
+key. Rules, validator-enforced where possible: a decorated plan MUST be
+`@rotate: no` (the prefab does not rotate with the site); by authoring
+convention decor sits on carved floor only and off the central band of
+road-anchored plans, because the carriageway subtraction and later mining
+can remove cells the prefab thought it was dressing. Content Authoring
+guide chapter 29 is the authoring recipe.
+
+Alongside the visual pass, Ruins claim resistance rose from 6x to 8x
+(`TerrainResistanceTable`, between Granite at 4 and Holy Ground at 10):
+older power resists, but the verb survives -- four shipped plans and the
+ossuary remains guarantee depend on mining staying the entry.
 
 ### The generator (SHIPPED)
 

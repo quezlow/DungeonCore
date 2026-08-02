@@ -47,6 +47,33 @@ public static class SitePlanValidator
         foreach (var profile in profiles)
         {
             var plans = profile.GetAuthoredPlans();
+
+            // Decor entries: each must name a real authored plan, and that plan
+            // must be @rotate: no -- a decor prefab does not rotate with the
+            // site, so a rotatable decorated plan WILL misalign on three of four
+            // quarter turns. Checked before the walkability loop so a decor
+            // failure is visible even when every plan passes.
+            if (profile.SiteDecor != null)
+                foreach (var entry in profile.SiteDecor)
+                {
+                    if (entry == null || entry.prefab == null) continue;
+                    AuthoredSitePlan match = null;
+                    foreach (var p in plans)
+                        if (p != null && p.name == entry.planName) { match = p; break; }
+                    if (match == null)
+                    {
+                        failures++;
+                        sb.Append("  DECOR FAIL: entry '").Append(entry.planName)
+                          .Append("' names no authored plan on this profile.\n");
+                        continue;
+                    }
+                    if (match.allowRotation)
+                    {
+                        failures++;
+                        sb.Append("  DECOR FAIL: '").Append(entry.planName)
+                          .Append("' allows rotation; a decorated plan must be @rotate: no.\n");
+                    }
+                }
             sb.Append("\n=== ").Append(profile.name).Append(" -- ")
               .Append(plans.Count).Append(" authored plan(s) ===\n");
 

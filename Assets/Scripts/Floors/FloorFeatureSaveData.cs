@@ -115,6 +115,12 @@ public class SiteData
     /// archives with different plans but never the same plan twice.</summary>
     public int variant;
 
+    /// <summary>The authored plan's @name (empty for procedural plans). Added for
+    /// the decor-prefab hook: AncientSiteProfile maps plan name to prefab, and a
+    /// serialised name survives authored-list edits where (archetype, variant)
+    /// arithmetic would not. Appended field: old saves load it as "".</summary>
+    public string planName = "";
+
     public SerializableVector3Int anchorCell;
 
     /// <summary>Carved interior -- natural floor on reveal.</summary>
