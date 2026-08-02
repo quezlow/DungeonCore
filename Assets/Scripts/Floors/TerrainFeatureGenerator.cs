@@ -1088,6 +1088,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var pavedRoad = new List<SerializableVector3Int>();
             foreach (var c in plan.cells)
                 if (roadCells.Contains(c)) pavedRoad.Add(SerializableVector3Int.From(c));
+            // The wall band yields road cells too (the road punches its own
+            // gate); those pave as well, or the crossing shows road in every
+            // doorway while the room around it is paved.
+            foreach (var c in plan.ruinsCells)
+                if (roadCells.Contains(c)) pavedRoad.Add(SerializableVector3Int.From(c));
 
             plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
@@ -1219,16 +1224,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 if (tile != null) map.SetTile(cell, tile);
             }
 
-            // Carriageway cells the site yielded: paved on the ROAD tilemap, so
-            // whichever of road tile or paving paints last, the paving wins.
+            // Carriageway cells the site yielded: paved on the FLOOR tilemap so
+            // they take the floor tint like the rest of the room (painting the
+            // untinted road tilemap was the pale-band bug), and the road tile
+            // is cleared so nothing lighter sits above the paving.
             if (s.pavedRoadCells == null) continue;
             foreach (var sv in s.pavedRoadCells)
             {
                 var cell = sv.ToVector3Int();
                 sitePavedRoad.Add(cell);
-                if (roadTilemap == null) continue;
                 var tile = SitePavingTileFor(cell);
-                if (tile != null) roadTilemap.SetTile(cell, tile);
+                if (tile != null) map.SetTile(cell, tile);
+                if (roadTilemap != null) roadTilemap.SetTile(cell, null);
             }
         }
     }
@@ -2399,13 +2406,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (seg == null) return;
         foreach (var c in seg.cells)
         {
-            // Inside a site's yielded band the road is paved over (canon 19):
-            // the segment paints paving there, road everywhere else.
-            if (sitePavedRoad.Contains(c))
-            {
-                var pavingTile = SitePavingTileFor(c);
-                if (pavingTile != null) { roadTilemap.SetTile(c, pavingTile); continue; }
-            }
+            // Inside a site's yielded band the road is paved over on the floor
+            // tilemap (canon 19). The segment must not paint here at all: a
+            // road tile would sit above the tinted paving and re-open the pale
+            // band this hook exists to prevent.
+            if (sitePavedRoad.Contains(c)) continue;
             roadTilemap.SetTile(c, roadTile);
         }
     }

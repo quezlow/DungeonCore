@@ -348,3 +348,4 @@ MonoBehaviour:
     overrideSprite: {fileID: 0}
   - cell: {x: 16, y: 39}
     overrideSprite: {fileID: 0}
+  ruinsPlainWeight: 8
