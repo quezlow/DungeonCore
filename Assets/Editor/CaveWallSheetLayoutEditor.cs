@@ -44,12 +44,16 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
         var sprRect = new Rect(x, lineY, rect.xMax - x - Thumb - 8f, EditorGUIUtility.singleLineHeight);
         EditorGUI.PropertyField(sprRect, overrideProp, GUIContent.none);
 
-        // Thumbnail.
+        // Thumbnail. Ruins slots sample the ruins sheet; everything else the
+        // main sheet. The property path is the only identity a drawer gets, and
+        // every ruins field deliberately starts with "ruins" so this holds for
+        // nested paths (ruinsVariants.Array.data[0].cap) too.
         var thumbRect = new Rect(rect.xMax - Thumb, rect.y, Thumb, Thumb);
-        DrawThumb(thumbRect, layout, cellProp.vector2IntValue, overrideProp.objectReferenceValue as Sprite);
+        bool ruinsSlot = property.propertyPath.StartsWith("ruins");
+        DrawThumb(thumbRect, layout, cellProp.vector2IntValue, overrideProp.objectReferenceValue as Sprite, ruinsSlot);
     }
 
-    private static void DrawThumb(Rect r, CaveWallSheetLayout layout, Vector2Int cell, Sprite over)
+    private static void DrawThumb(Rect r, CaveWallSheetLayout layout, Vector2Int cell, Sprite over, bool ruinsSlot)
     {
         EditorGUI.DrawRect(r, new Color(0f, 0f, 0f, 0.30f));
 
@@ -62,11 +66,12 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
             return;
         }
 
-        if (layout == null || layout.sheet == null || cell.x < 0 || cell.y < 0) return;
+        Texture2D tex = ruinsSlot ? layout != null ? layout.ruinsSheet : null : layout != null ? layout.sheet : null;
+        if (layout == null || tex == null || cell.x < 0 || cell.y < 0) return;
 
         int cs = Mathf.Max(1, layout.cellSize);
-        float w = layout.sheet.width;
-        float h = layout.sheet.height;
+        float w = tex.width;
+        float h = tex.height;
         var uvCell = new Rect(cell.x * cs / w, (h - (cell.y + 1) * cs) / h, cs / w, cs / h);
 
         // Out of bounds: red block instead of a garbage sample.
@@ -75,7 +80,7 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
             EditorGUI.DrawRect(r, new Color(0.65f, 0.12f, 0.12f, 0.75f));
             return;
         }
-        GUI.DrawTextureWithTexCoords(r, layout.sheet, uvCell, true);
+        GUI.DrawTextureWithTexCoords(r, tex, uvCell, true);
     }
 }
 
@@ -119,6 +124,36 @@ public class CaveWallSheetLayoutEditor : Editor
         EditorGUILayout.Space(6f);
         EditorGUILayout.LabelField("Cap variety pools", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("capVariety"), true);
+
+        EditorGUILayout.Space(10f);
+        EditorGUILayout.LabelField("Ruins family (Buried Age masonry)", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsSheet"));
+        if (layout.ruinsSheet != null)
+            EditorGUILayout.HelpBox(
+                $"Ruins sheet grid: {layout.RuinsSheetCols} x {layout.RuinsSheetRows} cells at {layout.cellSize}px. " +
+                "Every ruins slot is optional: empty caps fall back to the ruins mask-11 cap (the family base), " +
+                "empty faces to the ruins Straight face. Only a wholly unassigned family falls back to stone.",
+                MessageType.None);
+
+        DrawLabeledArray("ruinsCapSlots", CaveWallSheetLayout.CapMaskLabels,
+            "Ruins caps - one per mask (mask 11 doubles as the family base cap)", skipZero: false);
+
+        EditorGUILayout.Space(6f);
+        EditorGUILayout.LabelField("Ruins concave corners", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerSE"), new GUIContent("Ruins inner SE"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerSW"), new GUIContent("Ruins inner SW"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerNE"), new GUIContent("Ruins inner NE"));
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerNW"), new GUIContent("Ruins inner NW"));
+
+        DrawLabeledArray("ruinsFaceUpperSlots", CaveWallSheetLayout.FaceLabels,
+            "Ruins face upper slices (by face variant)", skipZero: true);
+        DrawLabeledArray("ruinsFaceLowerSlots", CaveWallSheetLayout.FaceLabels,
+            "Ruins face lower slices (by face variant)", skipZero: true);
+
+        EditorGUILayout.Space(6f);
+        EditorGUILayout.LabelField("Ruins straight-wall variety and site paving", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsVariants"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsPavingSlots"), true);
 
         EditorGUILayout.Space(10f);
         if (GUILayout.Button("Validate Layout", GUILayout.Height(26f)))
