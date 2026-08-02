@@ -873,6 +873,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 {
                     site.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
                     site.ruinsCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
+                    // The washed-out crossing stays washed out: a river through
+                    // the paved band shows water, not paving.
+                    site.pavedRoadCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
                 }
 
             // Erode the outer shell into dry floor banks; the eroded core stays water.
@@ -1078,6 +1081,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
             // The road and the core keep their cells outright. A site yields to
             // both: the carriageway was carved first, and nothing is ever allowed
             // to sit on the core cavern or the entrance.
+            // Record the carriageway overlap BEFORE yielding it: those cells
+            // get site paving on the road tilemap, so the room reads built
+            // around the road rather than cut through by it. Core overlap is
+            // yielded silently as before -- nothing paves the core cavern.
+            var pavedRoad = new List<SerializableVector3Int>();
+            foreach (var c in plan.cells)
+                if (roadCells.Contains(c)) pavedRoad.Add(SerializableVector3Int.From(c));
+
             plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
             if (plan.cells.Count < 12)
@@ -1104,6 +1115,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 anchorCell = SerializableVector3Int.From(plan.anchor),
                 cells = ToSerializable(plan.cells),
                 ruinsCells = ToSerializable(plan.ruinsCells),
+                pavedRoadCells = pavedRoad,
                 reservedForOutpost = plan.reservedForOutpost,
                 reservedForVillage = plan.reservedForVillage,
             };
@@ -1170,6 +1182,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
     ///
     /// NOTE for the lazy floor-paint backlog item: if disc painting ever moves
     /// into RevealTile, this pass must move with it or paving is overpainted.</summary>
+    // Road cells that carry site paving instead of the road tile. Built by
+    // PaintSitePaving, consulted by PaintRoadSegment -- roads paint lazily per
+    // revealed segment, so a segment revealed AFTER the paving pass would
+    // otherwise repaint road over it.
+    private readonly HashSet<Vector3Int> sitePavedRoad = new HashSet<Vector3Int>();
+
+    private TileBase SitePavingTileFor(Vector3Int cell)
+    {
+        var paving = wallRendererForPaving != null ? wallRendererForPaving.SitePavingTiles : null;
+        if (paving == null || paving.Length == 0) return null;
+        int h = unchecked(cell.x * 73856093 ^ cell.y * 19349663 ^ (floor.FloorIndex + 1) * 83492791);
+        return paving[(h & int.MaxValue) % paving.Length];
+    }
+
     private void PaintSitePaving()
     {
         if (featureData == null || featureData.sites == null || floor == null) return;
@@ -1182,15 +1208,27 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (paving == null || paving.Length == 0) return;
 
         var map = terrain.FloorTilemap;
+        sitePavedRoad.Clear();
         foreach (var s in featureData.sites)
         {
             if (s == null || s.cells == null) continue;
             foreach (var sv in s.cells)
             {
                 var cell = sv.ToVector3Int();
-                int h = unchecked(cell.x * 73856093 ^ cell.y * 19349663 ^ (floor.FloorIndex + 1) * 83492791);
-                var tile = paving[(h & int.MaxValue) % paving.Length];
+                var tile = SitePavingTileFor(cell);
                 if (tile != null) map.SetTile(cell, tile);
+            }
+
+            // Carriageway cells the site yielded: paved on the ROAD tilemap, so
+            // whichever of road tile or paving paints last, the paving wins.
+            if (s.pavedRoadCells == null) continue;
+            foreach (var sv in s.pavedRoadCells)
+            {
+                var cell = sv.ToVector3Int();
+                sitePavedRoad.Add(cell);
+                if (roadTilemap == null) continue;
+                var tile = SitePavingTileFor(cell);
+                if (tile != null) roadTilemap.SetTile(cell, tile);
             }
         }
     }
@@ -2359,7 +2397,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (roadTilemap == null || roadTile == null) return;
         var seg = GetRoadSegment(segmentId);
         if (seg == null) return;
-        foreach (var c in seg.cells) roadTilemap.SetTile(c, roadTile);
+        foreach (var c in seg.cells)
+        {
+            // Inside a site's yielded band the road is paved over (canon 19):
+            // the segment paints paving there, road everywhere else.
+            if (sitePavedRoad.Contains(c))
+            {
+                var pavingTile = SitePavingTileFor(c);
+                if (pavingTile != null) { roadTilemap.SetTile(c, pavingTile); continue; }
+            }
+            roadTilemap.SetTile(c, roadTile);
+        }
     }
 
     /// <summary>Repaints every already-revealed road segment (used after a load).</summary>

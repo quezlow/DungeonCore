@@ -1742,7 +1742,16 @@ shipped four are (15,37) and (16,37)-(16,39) -- one per cell by a spatial
 hash (no RNG, stable across reloads). The paint rides
 `ApplyRuinsOverrides`, which both the fresh-generation path and the load
 path call after the disc paint; if the lazy floor-paint backlog item ever
-lands, the paving pass must move with it.
+lands, the paving pass must move with it. The carriageway is paved too:
+the road cells a site yields at placement are recorded
+(`SiteData.pavedRoadCells`, appended field, empty in old saves) and painted
+with site paving on the ROAD tilemap -- both in the paving pass and inside
+`PaintRoadSegment`, because road segments paint lazily on reveal and a later
+reveal must not repaint road over the room floor. The room reads built
+around the road; a river through the band still washes it out. Straight-wall
+variety mixes the plain wall into the pool at `ruinsPlainWeight` (default 4,
+so roughly two in three walls are plain against the two shipped pilaster
+variants); weight 0 restores the all-pilaster look on purpose.
 
 **The decor-prefab hook.** `AncientSiteProfile.siteDecor` maps a plan's
 `@name` to a prefab of pure dressing (platforms, stairs, clutter -- no

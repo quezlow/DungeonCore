@@ -131,6 +131,12 @@ public class CaveWallSheetLayout : ScriptableObject
              "column's empty cap falls back to the ruins base cap, never to cave rock.")]
     public WallColumn[] ruinsVariants = new WallColumn[0];
 
+    [Tooltip("How many pool entries the PLAIN wall (base cap + Straight faces) counts as " +
+             "in the straight variety roll. With 2 variants and weight 4, roughly two " +
+             "walls in three are plain. 0 = every straight wall is a variant, which is " +
+             "the all-pilaster look this knob exists to prevent.")]
+    [Min(0)] public int ruinsPlainWeight = 4;
+
     [Tooltip("Site paving: floor tiles painted over a site's carved interior, one picked " +
              "per cell by a stable spatial hash. Empty list = the ordinary cave floor.")]
     public SheetSlot[] ruinsPavingSlots = new SheetSlot[0];

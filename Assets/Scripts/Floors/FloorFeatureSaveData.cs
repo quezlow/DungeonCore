@@ -133,6 +133,12 @@ public class SiteData
     /// a site read as built rather than found.</summary>
     public List<SerializableVector3Int> ruinsCells = new();
 
+    /// <summary>Carriageway cells this site yielded at placement, kept so the
+    /// road can be PAVED where it runs through the room -- built around, not
+    /// cut through. Appended field: old saves load it empty and keep the
+    /// cut-through look until the floor regenerates.</summary>
+    public List<SerializableVector3Int> pavedRoadCells = new();
+
     /// <summary>The dwarven outpost. DwarvenOutpostController finds its site by
     /// this flag; placement guarantees at most one per floor.</summary>
     public bool reservedForOutpost;

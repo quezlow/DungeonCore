@@ -153,6 +153,7 @@ public class CaveWallSheetLayoutEditor : Editor
         EditorGUILayout.Space(6f);
         EditorGUILayout.LabelField("Ruins straight-wall variety and site paving", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsVariants"), true);
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsPlainWeight"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsPavingSlots"), true);
 
         EditorGUILayout.Space(10f);

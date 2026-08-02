@@ -229,10 +229,13 @@ public class CaveWallRenderer : MonoBehaviour
             ruinsStraightLowerTiles[i] = MakeTileFrom(tex, col != null ? col.lower : null, facePivot);
         }
 
+        // Paving is a FLAT floor tile, so it takes the centre pivot. The face
+        // pivot (bottom centre) used here originally anchored the sprite half a
+        // cell north of its cell -- the "shift the paving south" bug.
         int pLen = layout.ruinsPavingSlots != null ? layout.ruinsPavingSlots.Length : 0;
         ruinsPavingTiles = new TileBase[pLen];
         for (int i = 0; i < pLen; i++)
-            ruinsPavingTiles[i] = MakeTileFrom(tex, layout.ruinsPavingSlots[i], facePivot);
+            ruinsPavingTiles[i] = MakeTileFrom(tex, layout.ruinsPavingSlots[i], capPivot);
 
         ruinsFamilyPresent = ruinsCapTiles[11] != null;
     }
@@ -491,10 +494,30 @@ public class CaveWallRenderer : MonoBehaviour
     // stone pick, so re-rolls are stable and floors decorrelate.
     private void RuinsStraightTiles(Vector3Int wall, out TileBase cap, out TileBase upper, out TileBase lower)
     {
-        if (ruinsStraightCapTiles != null && ruinsStraightCapTiles.Length > 0)
+        // The plain wall is IN the pool, weighted by ruinsPlainWeight. Without
+        // it, two authored variants meant a pilaster on every straight wall --
+        // variety with nothing to vary against.
+        int variants = ruinsStraightCapTiles != null ? ruinsStraightCapTiles.Length : 0;
+        int plainWeight = Mathf.Max(0, layout.ruinsPlainWeight);
+        int poolSize = variants + (variants > 0 ? plainWeight : 0);
+        if (poolSize > variants)
         {
             var rng = new System.Random(unchecked(wall.GetHashCode() ^ (floor.FloorIndex * 73856093)));
-            int v = rng.Next(ruinsStraightCapTiles.Length);
+            int pick = rng.Next(poolSize);
+            if (pick >= plainWeight)
+            {
+                int v = pick - plainWeight;
+                cap = ruinsStraightCapTiles[v] != null ? ruinsStraightCapTiles[v] : RuinsBaseCap();
+                upper = ruinsStraightUpperTiles[v] != null ? ruinsStraightUpperTiles[v] : RuinsFaceUpper((int)CaveFace.Straight);
+                lower = ruinsStraightLowerTiles[v] != null ? ruinsStraightLowerTiles[v] : RuinsFaceLower((int)CaveFace.Straight);
+                return;
+            }
+        }
+        else if (variants > 0)
+        {
+            // plainWeight 0: every straight wall is a variant, by request.
+            var rng = new System.Random(unchecked(wall.GetHashCode() ^ (floor.FloorIndex * 73856093)));
+            int v = rng.Next(variants);
             cap = ruinsStraightCapTiles[v] != null ? ruinsStraightCapTiles[v] : RuinsBaseCap();
             upper = ruinsStraightUpperTiles[v] != null ? ruinsStraightUpperTiles[v] : RuinsFaceUpper((int)CaveFace.Straight);
             lower = ruinsStraightLowerTiles[v] != null ? ruinsStraightLowerTiles[v] : RuinsFaceLower((int)CaveFace.Straight);
