@@ -44,6 +44,26 @@ public class FeatureRevealController : MonoBehaviour
              "Leave null to skip banner; AlertsLog entries still fire.")]
     [SerializeField] private FeatureAlertBanner discoveryBanner;
 
+    /// <summary>The banner that can actually be shown.
+    ///
+    /// The serialized field above is only usable on floor 0. Every deeper floor
+    /// comes from Instantiate(floorTemplatePrefab), and a prefab cannot hold a
+    /// reference to a scene object, so on those floors the field points at the
+    /// PREFAB ASSET: no parent, never activeInHierarchy, and StartCoroutine
+    /// throws on it. scene.IsValid() is the definitive difference between an
+    /// asset and a live object, so the field is only trusted when it passes
+    /// that test.</summary>
+    private FeatureAlertBanner Banner
+    {
+        get
+        {
+            if (FeatureAlertBanner.Instance != null) return FeatureAlertBanner.Instance;
+            if (discoveryBanner != null && discoveryBanner.gameObject.scene.IsValid())
+                return discoveryBanner;
+            return null;
+        }
+    }
+
     [Header("SFX")]
     [Tooltip("SoundEffectLibrary key to play on a non-silent reveal. " +
              "Missing clip is fine — SoundEffectManager.Play() is null-safe.")]
@@ -206,8 +226,9 @@ public class FeatureRevealController : MonoBehaviour
         AlertsLog.Instance?.AddAlert(message, worldPos, floor.FloorIndex, AlertCategory.Discovery);
 
         if (silent) return;
-        if (discoveryBanner != null)
-            discoveryBanner.Show(message, worldPos, floor.FloorIndex);
+        var banner = Banner;
+        if (banner != null)
+            banner.Show(message, worldPos, floor.FloorIndex);
         SoundEffectManager.Play(revealSfxKey);
     }
 
@@ -227,8 +248,9 @@ public class FeatureRevealController : MonoBehaviour
         // Feature banner stays active in the hierarchy by design (see
         // FeatureAlertBanner), so Show() never hits the activation issue
         // that BossAlertBanner suffered when called from here.
-        if (discoveryBanner != null)
-            discoveryBanner.Show(message, worldPos, floorIdx);
+        var banner = Banner;
+        if (banner != null)
+            banner.Show(message, worldPos, floorIdx);
 
         SoundEffectManager.Play(revealSfxKey);
     }

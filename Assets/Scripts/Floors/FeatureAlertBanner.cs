@@ -47,8 +47,16 @@ public class FeatureAlertBanner : MonoBehaviour
 
     private Coroutine animationCo;
 
+    /// <summary>The live scene banner. Resolved through this rather than through
+    /// a serialized field, because floors 1+ are Instantiate(floorTemplatePrefab)
+    /// and a PREFAB cannot reference a scene object -- their controllers held the
+    /// prefab asset instead, which has no parent, is never activeInHierarchy, and
+    /// throws on StartCoroutine.</summary>
+    public static FeatureAlertBanner Instance { get; private set; }
+
     private void Awake()
     {
+        if (Instance == null || !Instance.gameObject.scene.IsValid()) Instance = this;
         if (rect == null) rect = GetComponent<RectTransform>();
         if (rect != null) rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, hiddenY);
         // NOTE: we deliberately do NOT call gameObject.SetActive(false). The
@@ -116,6 +124,11 @@ public class FeatureAlertBanner : MonoBehaviour
         Debug.LogWarning("[FeatureAlertBanner] Discovery banner skipped: not " +
                          "activeInHierarchy. The AlertsLog entry was still written. " +
                          "This banner is meant to stay active in the scene. Chain: " + path);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     public void Hide()

@@ -62,6 +62,25 @@ public class Commands : MonoBehaviour
     // so the tier is a ceiling rather than an exact value.
     private const int REGISTRY_TIER_MAX = -20;
 
+    [ContextMenu("Validate Reveal Consistency")]
+    private void ValidateRevealConsistency()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.LogWarning("[RevealCheck] No FloorManager in scene."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        bool anyFail = false;
+        foreach (var floor in fm.AllFloors)
+        {
+            if (floor == null || floor.FeatureGenerator == null) continue;
+            string report = floor.FeatureGenerator.BuildRevealConsistencyReport();
+            if (report.Contains("FAIL")) anyFail = true;
+            sb.Append(report);
+        }
+        if (anyFail) Debug.LogError(sb.ToString());
+        else Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Test Build No-Gap Trap Wall")]
     void TestBuildTrapWall()
     {

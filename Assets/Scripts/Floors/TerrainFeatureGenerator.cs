@@ -2540,6 +2540,136 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
+    /// <summary>Headless consistency report over this floor's reveal state.
+    ///
+    /// THREE independent mechanisms have to agree cell for cell and nothing has
+    /// been checking that they do:
+    ///
+    ///   PAINTED  -- CaveWallRenderer caps a solid cell that is claimed or
+    ///               8-adjacent to mined floor (or to revealed river water).
+    ///   REVEALED -- the fog tile over the cell has been cleared.
+    ///   OPEN     -- MarkNaturalFloor has entered it in minedTiles, which is
+    ///               what makes its neighbours paintable in the first place.
+    ///
+    /// Revealed but unpainted shows the bare floor tile under a wall that was
+    /// never drawn. Painted but fogged is an invisible wall. Both were measured
+    /// by hand once during the site-plan pass and never re-measured, and every
+    /// road artefact since has been one of these disagreements.
+    ///
+    /// Returns a human-readable multi-line report; the caller logs it.</summary>
+    public string BuildRevealConsistencyReport(int sampleLimit = 6)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[RevealCheck] floor " + (floor != null ? floor.FloorIndex : -1));
+
+        var terrain = floor != null ? floor.Terrain : null;
+        var inf = floor != null ? floor.TileInfluence : null;
+        if (terrain == null || inf == null || featureData == null)
+        {
+            sb.AppendLine("  ABORT: floor not ready.");
+            return sb.ToString();
+        }
+
+        var fog = terrain.FogTilemap;
+        var classifier = new CaveWallClassifier(inf, this, terrain);
+        int radius = terrain.CurrentRadius;
+        var core = terrain.CoreCell;
+
+        var revealedUnpainted = new List<Vector3Int>();
+        var paintedFogged = new List<Vector3Int>();
+        var roadUnpainted = new List<Vector3Int>();
+        var roadOverPaving = new List<Vector3Int>();
+        var visibleJoins = new List<Vector3Int>();
+
+        for (int dy = -radius; dy <= radius; dy++)
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                if (dx * dx + dy * dy > radius * radius) continue;
+                var cell = new Vector3Int(core.x + dx, core.y + dy, 0);
+
+                bool revealed = fog == null || fog.GetTile(cell) == null;
+                bool solid = classifier.IsSolid(cell);
+                bool painted = solid && WouldBePainted(cell, inf);
+
+                if (revealed && solid && !painted) revealedUnpainted.Add(cell);
+                if (!revealed && painted) paintedFogged.Add(cell);
+
+                if (GetFeatureAt(cell) == FeatureType.Road)
+                {
+                    bool paved = sitePavedRoad.Contains(cell);
+                    bool hasRoadTile = roadTilemap != null && roadTilemap.GetTile(cell) != null;
+                    if (paved && hasRoadTile) roadOverPaving.Add(cell);
+                    if (!paved && !hasRoadTile) roadUnpainted.Add(cell);
+
+                    // A join the player can SEE: revealed road touching fogged
+                    // road. Straight runs of these are the hard edges in the
+                    // screenshots.
+                    if (revealed && fog != null)
+                    {
+                        for (int k = 0; k < 4; k++)
+                        {
+                            var n = cell + Orth4[k];
+                            if (GetFeatureAt(n) != FeatureType.Road) continue;
+                            if (fog.GetTile(n) != null) { visibleJoins.Add(cell); break; }
+                        }
+                    }
+                }
+            }
+        }
+
+        Line(sb, "revealed but UNPAINTED (bare floor where a wall belongs)",
+             revealedUnpainted, sampleLimit);
+        Line(sb, "PAINTED but fogged (invisible wall)", paintedFogged, sampleLimit);
+        Line(sb, "road cell with NO road tile", roadUnpainted, sampleLimit);
+        Line(sb, "road tile sitting OVER site paving", roadOverPaving, sampleLimit);
+        Line(sb, "visible reveal joins (revealed road touching fogged road)",
+             visibleJoins, sampleLimit);
+
+        int bad = revealedUnpainted.Count + paintedFogged.Count
+                + roadUnpainted.Count + roadOverPaving.Count;
+        sb.AppendLine(bad == 0
+            ? "  PASS -- paint, reveal and framing agree on every cell."
+            : "  FAIL -- " + bad + " disagreeing cell(s).");
+        return sb.ToString();
+    }
+
+    private static readonly Vector3Int[] Orth4 =
+    {
+        new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
+        new Vector3Int(0, 1, 0), new Vector3Int(0, -1, 0),
+    };
+
+    /// <summary>Mirror of CaveWallRenderer's paint rule. Kept deliberately
+    /// literal rather than shared, so the report FAILS if the renderer's rule
+    /// drifts instead of agreeing with it by construction.</summary>
+    private bool WouldBePainted(Vector3Int cell, TileInfluenceManager inf)
+    {
+        if (inf.IsTileClaimed(cell)) return true;
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                var n = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                if (inf.IsTileMined(n)) return true;
+                if (revealedRiverCells.Contains(n)) return true;
+            }
+        return false;
+    }
+
+    private static void Line(System.Text.StringBuilder sb, string label,
+                             List<Vector3Int> cells, int sampleLimit)
+    {
+        sb.Append("  ").Append(cells.Count.ToString().PadLeft(6)).Append("  ").Append(label);
+        if (cells.Count > 0)
+        {
+            sb.Append("   e.g.");
+            for (int i = 0; i < cells.Count && i < sampleLimit; i++)
+                sb.Append(" (").Append(cells[i].x).Append(",").Append(cells[i].y).Append(")");
+        }
+        sb.AppendLine();
+    }
+
     /// <summary>Paints every segment on the floor, revealed or not. Fog is what
     /// hides a road the player has not found; the tilemap carries no secrets on
     /// its own. Called from ApplyRuinsOverrides on both the fresh and the load
