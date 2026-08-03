@@ -33,6 +33,16 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     [SerializeField, Min(32)] private int textureSize = 220;
     [SerializeField, Min(0)] private int paddingCells = 2;
 
+    [Tooltip("Smallest square the map will frame, in cells. A fresh floor holds " +
+             "only its starter chamber (starterRoomRadius ~3, so roughly 11-13 " +
+             "cells across with padding), and without a floor under the zoom the " +
+             "texture blows that up to ~18 pixels a cell -- one chamber filling " +
+             "the map, with the camera outline bigger than the frame it sits in. " +
+             "64 clears the viewport at max zoom in both axes, so the outline " +
+             "always fits inside rather than clamping. Capped at the floor's own " +
+             "diameter, so the frame never shows more void than there is floor.")]
+    [SerializeField, Min(8)] private int minSpanCells = 64;
+
     [Header("Tile Colours")]
     [SerializeField] private Color rockColour = new Color(0.06f, 0.06f, 0.10f);
     [SerializeField] private Color wallColour = new Color(0.28f, 0.26f, 0.34f);
@@ -279,6 +289,15 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
         {
             minX -= paddingCells; minY -= paddingCells; maxX += paddingCells; maxY += paddingCells;
         }
+        // Minimum framing, applied to whichever branch above produced the box.
+        // Only ever grows it: a floor with plenty claimed is untouched.
+        int floorSpan = floor != null && floor.Terrain != null
+                        ? floor.Terrain.CurrentRadius * 2 + 1
+                        : int.MaxValue;
+        int wantSpan = Mathf.Min(minSpanCells, floorSpan);
+        InflateToSpan(ref minX, ref maxX, wantSpan);
+        InflateToSpan(ref minY, ref maxY, wantSpan);
+
         paintBoundsMin = new Vector2Int(minX, minY);
         int spanX = maxX - minX + 1, spanY = maxY - minY + 1;
         paintScale = (float)textureSize / Mathf.Max(spanX, spanY);
@@ -334,6 +353,18 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
             for (int x = Mathf.Max(0, px0); x < Mathf.Min(textureSize, px1); x++)
                 pixels[row + x] = colour;
         }
+    }
+
+    /// <summary>Grows a cell range about its own centre until it spans at
+    /// least want cells. Never shrinks, so a well-claimed floor keeps the
+    /// tight framing it earned.</summary>
+    private static void InflateToSpan(ref int lo, ref int hi, int want)
+    {
+        int span = hi - lo + 1;
+        if (span >= want) return;
+        int grow = want - span;
+        lo -= grow / 2;
+        hi += grow - grow / 2;
     }
 
     private bool OnThisFloor(float worldY)
