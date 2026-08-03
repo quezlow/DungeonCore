@@ -60,6 +60,14 @@ public class TerrainResistanceTable : ScriptableObject
              "it should be felt as resistance before anything is said about it.")]
     [Min(0.1f)] public float roadClaimResistance = 8f;
 
+    [Tooltip("Claim cost multiplier for road on a floor carrying NO living " +
+             "dwarven site -- floor 4's dead network. No patrols, no caravans, " +
+             "nobody left to take offence, so the paving is priced level with " +
+             "the granite it was cut into rather than at the living road's 8x. " +
+             "Keeps cost agreeing with the granite holdings overlay, which " +
+             "paints living roads only.")]
+    [Min(0.1f)] public float deadRoadClaimResistance = 4f;
+
     [Tooltip("Claim cost multiplier for the carved interior of a Buried Age site. " +
              "A middle rung: dearer than a cleared chamber (already-excavated cave " +
              "floor, 1x) and cheaper than the road (8x), because the ruins were " +

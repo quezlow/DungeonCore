@@ -539,6 +539,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public bool IsSiteRevealed(int siteId)
         => featureData != null && featureData.revealedSiteIds.Contains(siteId);
 
+    /// <summary>True once site data exists to be asked about. Callers that
+    /// CACHE an answer derived from the site list must check this first --
+    /// GetOutpostSite returns null both for "no outpost" and for "not
+    /// generated yet", and caching the second as the first is silent and
+    /// permanent.</summary>
+    public bool HasSiteData => featureData != null && featureData.sites != null;
+
     /// <summary>This floor's dwarven outpost, or null. Placement guarantees at
     /// most one per floor, so the first match is the answer.</summary>
     public SiteData GetOutpostSite()

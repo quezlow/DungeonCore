@@ -202,6 +202,17 @@ public class AlertsLog : MonoBehaviour
                                   AlertCategory category)
     {
         var dn = DayNightCycle.Instance;
+
+        // Resolved at the SINK rather than at the forty-odd call sites, most
+        // of which take the -1 default. A -1 entry sent the click to the
+        // single-argument PanTo, which wrote a floor-0 world position while a
+        // deeper floor was active -- the confiner then slammed the camera to
+        // that floor's edge and pinned it there. An alert raised while floor N
+        // is active is about floor N; callers that know better still pass
+        // their own index and are untouched.
+        if (floorIndex < 0 && FloorManager.Instance != null)
+            floorIndex = FloorManager.Instance.ActiveFloorIndex;
+
         return new AlertEntry
         {
             Message = message ?? "",
@@ -302,13 +313,18 @@ public class AlertsLog : MonoBehaviour
         Vector3 capturedPos = entry.WorldPos;
         int capturedFloor = entry.FloorIndex;
 
+        // Saves written before the resolution above still carry -1 entries,
+        // and AlertEntrySaveData.floorIndex is persisted, so they would keep
+        // mis-panning forever. FloorRoot.WorldOriginY is floorIndex * -2000
+        // and the widest disc is 600 cells, so the stored Y recovers the floor
+        // unambiguously. No migration, and old alerts jump correctly.
+        if (capturedFloor < 0)
+            capturedFloor = Mathf.Max(0, Mathf.RoundToInt(capturedPos.y / -2000f));
+
         btn.onClick.RemoveAllListeners();
         btn.onClick.AddListener(() =>
         {
-            if (capturedFloor >= 0)
-                DungeonCameraController.Instance?.PanTo(capturedPos, capturedFloor);
-            else
-                DungeonCameraController.Instance?.PanTo(capturedPos);
+            DungeonCameraController.Instance?.PanTo(capturedPos, capturedFloor);
         });
     }
 

@@ -47,6 +47,10 @@ MonoBehaviour:
     once: 0
     text: Something new, remembered. It has settled into the codex - look when you
       like.
+  - id: merchant_first
+    once: 1
+    text: A wagon on the road. He has come a long way to sell to something like you
+      - do look at what he carries.
   - id: site_first
     once: 1
     text: Straight walls. Down here, that means hands. Somebody built this before
@@ -56,10 +60,6 @@ MonoBehaviour:
     text: A gate, and it is still shut. You stood at one of these once, at the end,
       and it was open - and three people you had met that morning found you there.
       Ask yourself who opened it.
-  - id: merchant_first
-    once: 1
-    text: A wagon on the road. He has come a long way to sell to something like you
-      - do look at what he carries.
   - id: outpost_first
     once: 1
     text: Lamps. Down here, and lit, and nobody up there knows. They kept the road,
@@ -76,6 +76,32 @@ MonoBehaviour:
     once: 1
     text: That is the first thing anyone down here has ever bought from them. They
       will remember it longer than you will.
+  - id: village_first
+    once: 1
+    text: A whole hold, lamplit and living. They never went up, so they never learned
+      to fear the shape of you. Walk soft - this is the oldest home the world still
+      keeps.
+  - id: village_greeting
+    once: 0
+    text: Hammers pause. Eyes follow. Not fear - bookkeeping. They will remember
+      what you touch.
+  - id: caravan_first
+    once: 1
+    text: A wagon on the deep road. Goods, guards' wages, somebody's whole year.
+      It will pass whether you watch or not - but you could do more than watch.
+  - id: caravan_toll_first
+    once: 1
+    text: 'It has crossed onto stone you hold. Old law: the road pays its keeper.
+      Click the wagon and choose - take it all and be a robber, take a toll and be
+      a power, or wave it through and be forgotten. One choice per wagon.'
+  - id: caravan_robbed
+    once: 1
+    text: Efficient. Unforgivable, in their ledgers - and they keep the ledgers.
+      The Holds will not send another soon.
+  - id: patrol_first
+    once: 1
+    text: Armed, unhurried, walking a road their grandfathers cut. They are not looking
+      for you. Try to keep it that way.
   - id: pressed_first
     once: 1
     text: Feel them jostle? Packed in a tunnel, your creatures foul one another's
@@ -210,24 +236,6 @@ MonoBehaviour:
     text: 'Nothing on you, and nothing in you when you came down. You arrived at
       this the same way you arrived at everything that last day: empty-handed, and
       free.'
-  - id: village_first
-    once: 1
-    text: 'A whole hold, lamplit and living. They never went up, so they never learned to fear the shape of you. Walk soft - this is the oldest home the world still keeps.'
-  - id: village_greeting
-    once: 0
-    text: 'Hammers pause. Eyes follow. Not fear - bookkeeping. They will remember what you touch.'
-  - id: caravan_first
-    once: 1
-    text: 'A wagon on the deep road. Goods, guards'' wages, somebody''s whole year. It will pass whether you watch or not - but you could do more than watch.'
-  - id: caravan_toll_first
-    once: 1
-    text: 'It has crossed onto stone you hold. Old law: the road pays its keeper. Click the wagon and choose - take it all and be a robber, take a toll and be a power, or wave it through and be forgotten. One choice per wagon.'
-  - id: caravan_robbed
-    once: 1
-    text: 'Efficient. Unforgivable, in their ledgers - and they keep the ledgers. The Holds will not send another soon.'
-  - id: patrol_first
-    once: 1
-    text: 'Armed, unhurried, walking a road their grandfathers cut. They are not looking for you. Try to keep it that way.'
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}

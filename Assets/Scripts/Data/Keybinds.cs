@@ -13,7 +13,10 @@ public enum GameAction
     ToggleTraps, ToggleAlerts, AvatarMenu,
     ToggleInfluenceOverlay,
     SpeedPause, SpeedNormal, SpeedDouble, SpeedQuintuple,
-    ToggleLoot, ToggleQuestLog, ToggleKnownParties, ToggleFactions, ToggleResearch
+    ToggleLoot, ToggleQuestLog, ToggleKnownParties, ToggleFactions, ToggleResearch,
+    // Appended. Bindings persist under PREF_PREFIX + the enum NAME, not its
+    // ordinal, so appending can never disturb a binding the player has set.
+    RecenterCamera
 }
 
 /// <summary>
@@ -49,6 +52,7 @@ public static class Keybinds
         { GameAction.ToggleKnownParties,  Key.K },
         { GameAction.ToggleFactions,      Key.G },
         { GameAction.ToggleResearch,      Key.R },
+        { GameAction.RecenterCamera,      Key.Home },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -77,7 +81,8 @@ public static class Keybinds
         GameAction.ToggleInfluenceOverlay,
         GameAction.SpeedPause, GameAction.SpeedNormal, GameAction.SpeedDouble, GameAction.SpeedQuintuple,
         GameAction.ToggleLoot, GameAction.ToggleQuestLog, GameAction.ToggleKnownParties,
-        GameAction.ToggleFactions, GameAction.ToggleResearch
+        GameAction.ToggleFactions, GameAction.ToggleResearch,
+        GameAction.RecenterCamera
     };
 
     /// <summary>Display labels for the Controls list.</summary>
@@ -104,6 +109,7 @@ public static class Keybinds
         GameAction.ToggleKnownParties => "Toggle Known Parties",
         GameAction.ToggleFactions => "Toggle Factions",
         GameAction.ToggleResearch => "Toggle Research Tree",
+        GameAction.RecenterCamera => "Recentre on Core",
         _ => a.ToString()
     };
 

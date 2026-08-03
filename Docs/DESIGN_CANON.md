@@ -1491,7 +1491,11 @@ correction below).**
 The bottom floor being God-gated is why the living settlements are NOT there:
 an inhabited hold and a second vendor reached only at God tier would arrive
 after the player has stopped needing either. The dead network has no such
-problem because it is exploration, not economy.
+problem because it is exploration, not economy. It is priced to match:
+road on a floor carrying no living holding claims at
+`deadRoadClaimResistance` (4x, level with Granite) rather than the living
+road's 8x, and takes no granite in the holdings overlay. Cost and colour
+agree, and both say the same thing -- old paving with nobody behind it.
 
 Radii come from `DungeonCoreProgressionTable`: floor 0 = 100, 1 = 150,
 2 = 250, 3 = 400, 4 = 600.
@@ -3959,3 +3963,20 @@ known, or when floor 0's revealed depth advances (`MarkDirty()`). A
 recalculation attempted while the terrain radius is still zero re-arms
 `boundsDirty` and retries next frame instead of baking in the viewport
 minimum -- the old per-claim rebuild was covering that case by accident.
+
+**Every camera jump carries a floor.** `PanTo(worldPos)` writes a position
+and nothing else, so calling it with a coordinate from another floor drives
+the camera into the active floor's bound and pins it at the edge. Alerts hit
+this: `AlertsLog.AddAlert` defaults `floorIndex` to -1 and most callers take
+the default, so a click on a floor-0 alert stranded the camera on whatever
+floor the player was standing on. `BuildEntry` now resolves -1 to
+`FloorManager.ActiveFloorIndex` at creation, and `BindButton` recovers the
+floor of an already-persisted -1 entry from the stored Y (floors are
+`floorIndex * -2000` apart and the widest disc is 600 cells, so the mapping
+is unambiguous). Anything else that pans across floors uses the two-argument
+overload.
+
+**Getting home.** `GameAction.RecenterCamera` (Home by default) pans to the
+ACTIVE floor's core cell via `DungeonCameraController.RecentreOnCore()`. Free
+roam makes it easy to be far out on the disc with no landmark in shot, and
+the F1-F4 bookmarks only help once they have been set.

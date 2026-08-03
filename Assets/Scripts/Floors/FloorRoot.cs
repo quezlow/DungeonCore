@@ -54,6 +54,26 @@ public class FloorRoot : MonoBehaviour
 
     public float WorldOriginY => floorIndex * -2000f;
 
+    // Does this floor carry a LIVING dwarven holding (outpost or village)?
+    // Drives the road claim price and, with it, the granite holdings overlay.
+    // Cached because sites are authored once at generation and never added
+    // later -- but only ONCE the site list exists, since GetOutpostSite
+    // answers null for "not generated yet" as well as for "none here".
+    private int livingDwarvenSite = -1;   // -1 unknown, 0 no, 1 yes
+
+    public bool HasLivingDwarvenSite
+    {
+        get
+        {
+            if (livingDwarvenSite >= 0) return livingDwarvenSite == 1;
+            if (featureGenerator == null || !featureGenerator.HasSiteData) return false;
+            bool has = featureGenerator.GetOutpostSite() != null
+                    || featureGenerator.GetVillageSite() != null;
+            livingDwarvenSite = has ? 1 : 0;
+            return has;
+        }
+    }
+
     // ── Lifecycle ─────────────────────────────────────────────────
 
     private void Awake()
@@ -141,7 +161,15 @@ public class FloorRoot : MonoBehaviour
             if (featureGenerator.IsChamber(cell))
                 return terrainTypeMap?.ResistanceTable?.chamberClaimResistance ?? 1f;
             if (featureGenerator.IsRoad(cell))
-                return terrainTypeMap?.ResistanceTable?.roadClaimResistance ?? 1f;
+            {
+                var table = terrainTypeMap?.ResistanceTable;
+                if (table == null) return 1f;
+                // A floor with no living holding carries the DEAD network. The
+                // road still resists, but at granite's price, not the living
+                // road's: there is nobody left down there to object.
+                return HasLivingDwarvenSite ? table.roadClaimResistance
+                                            : table.deadRoadClaimResistance;
+            }
             if (featureGenerator.IsAncientSite(cell))
                 return terrainTypeMap?.ResistanceTable?.siteClaimResistance ?? 1f;
         }
