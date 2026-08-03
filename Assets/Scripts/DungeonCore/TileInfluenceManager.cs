@@ -626,10 +626,30 @@ public class TileInfluenceManager : MonoBehaviour
 
         // PHASE 2 — Restore mined cells directly. No event firing needed; the
         // OnTileCountChanged below is the bulk update.
+        //
+        // REVEAL them as well, with the one-cell wall border. Claimed cells come
+        // back visible because the silent ClaimTile above still calls
+        // RevealTile; mined-and-unclaimed ground had nothing doing that, so
+        // every reload re-fogged the starter cavern's outer blob and any dug
+        // ground the player had not also claimed. The wall caps around it are
+        // still painted -- the renderer frames anything 8-adjacent to mined
+        // floor -- so they sat under fog, invisible. It measured clean when the
+        // site pass checked it by hand because that was a FRESH generation; the
+        // fault only exists after a load. This mirrors ClaimStarterArea, which
+        // reveals its blob AND a border for exactly this reason.
         if (data?.minedTiles != null)
         {
             foreach (var tile in data.minedTiles)
-                minedTiles.Add(tile.ToVector3Int());
+            {
+                var cell = tile.ToVector3Int();
+                minedTiles.Add(cell);
+                terrain?.RevealTile(cell);
+            }
+            foreach (var cell in minedTiles)
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        if (dx != 0 || dy != 0)
+                            terrain?.RevealTile(new Vector3Int(cell.x + dx, cell.y + dy, cell.z));
         }
 
         // Ever-claimed is additive history, not current state, so it is saved in

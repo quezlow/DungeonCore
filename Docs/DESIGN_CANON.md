@@ -4071,6 +4071,21 @@ Rules:
 - `Dungeon Core / Commands / Validate Execution Order Contract` checks the
   tier by reflection and fails loudly.
 
+**Load order is a contract too, and its failures are just as quiet.**
+`DungeonSaveController` restores a floor's FEATURES before its INFLUENCE.
+`TileInfluenceManager.LoadSaveData` opens with `minedTiles.Clear()` and rebuilds
+from the save, so every `MarkNaturalFloor` the feature load performed moments
+earlier is discarded -- while the reveals it performed survive, fog being a
+tilemap that call never touches. Ground therefore came back REVEALED but not
+OPEN, and the renderer frames nothing next to it, so it drew as bare floor.
+That call also restored mined cells without revealing them, so dug ground the
+player had not also claimed came back under fog with its wall caps painted
+beneath. Two symptoms, one ordering fault, and both invisible on a fresh
+generation: the site pass measured this clean by hand because it never
+reloaded. `TerrainFeatureGenerator.ReassertOpenGround()` runs after the
+influence restore, and `Dungeon Core / Commands / Validate Reveal Consistency`
+is the standing check -- run it after a LOAD, not after a generate.
+
 Preferred belt where a subscription is genuinely optional: subscribe in
 `Start()` rather than `OnEnable()`. Unity guarantees every `Awake` completes
 before any `Start`, which removes the race by language rule instead of by

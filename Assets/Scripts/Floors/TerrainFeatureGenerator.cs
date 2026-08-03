@@ -2954,6 +2954,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
         floor.TileInfluence?.MarkNaturalFloor(open);
     }
 
+    /// <summary>Re-runs the unfog and open passes. The save controller calls this
+    /// AFTER TileInfluence.LoadSaveData, and the ordering is the whole point:
+    /// features load first, mark their ground open, and then LoadSaveData does
+    /// minedTiles.Clear() and restores from the save -- silently discarding
+    /// every MarkNaturalFloor that just ran. The reveals survive, because fog is
+    /// a tilemap LoadSaveData never touches, so ground came back REVEALED but
+    /// not OPEN and nothing would frame the rock beside it. Site paving and
+    /// un-revealed road segments both reported revealed=Y mined=n in the
+    /// consistency report because of this. Both halves are idempotent, so the
+    /// second run costs only the walk.</summary>
+    public void ReassertOpenGround() => UnfogAllRevealedFeatures();
+
     private void UnfogAllRevealedFeatures()
     {
         if (featureData == null) return;

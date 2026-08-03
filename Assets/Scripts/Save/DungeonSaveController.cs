@@ -776,6 +776,13 @@ public class DungeonSaveController : MonoBehaviour
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
                 if (floor?.TileInfluence != null && floorData.tileData != null)
                     floor.TileInfluence.LoadSaveData(floorData.tileData);
+
+                // MUST follow LoadSaveData. That call clears minedTiles and
+                // rebuilds it from the save, which throws away everything the
+                // feature load marked open a few lines above. Re-assert it here
+                // rather than reordering the two: features have to load first so
+                // the influence restore has terrain to sit on.
+                floor?.FeatureGenerator?.ReassertOpenGround();
             }
 
             // Restore entrance via the build controller.
