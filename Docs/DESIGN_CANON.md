@@ -2352,8 +2352,13 @@ That is the arc's anti-spam decision.
 
 *One verb per caravan* (`CaravanActionPanel`, MerchantShopUI's open/close
 pattern, closed FIRST in the ESC chain). Rob takes all cargo, standing -25,
-`caravan_robbed`, wagon despawns, +4 extra days, and the alert notes the
-quiet road when the hit crosses into Tier 1. Tax needs a held stretch under
+`caravan_robbed`, +4 extra days, and the alert notes the quiet road when the
+hit crosses into Tier 1; the survivors FLEE rather than vanish -- to the
+nearest refuge along the road (the floor's own dwarven site, or the paired
+rim end when that is closer, so a wagon robbed near the rim runs off-floor),
+at hurry pace, day and night, with all toll detection off (`Fleeing = 8`,
+appended; a save taken mid-flee collapses to Idle on load, the schedule set
+at the rob standing). Tax needs a held stretch under
 the wagon (button live only then): 20% of ORIGINAL cargo min 1, standing -3,
 the wagon walks on lighter. Let pass spends the verb too. Closing the panel
 WITHOUT choosing settles nothing -- a misclick must never burn the decision.

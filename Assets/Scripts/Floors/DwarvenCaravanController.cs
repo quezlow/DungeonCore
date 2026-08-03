@@ -57,6 +57,7 @@ public class DwarvenCaravanController : MonoBehaviour
         LegBackVillage = 5,  // village -> rim
         TransitUp = 6,
         LegBackGate = 7,     // rim -> outpost
+        Fleeing = 8,         // robbed: survivors run for the nearest refuge
     }
 
     [Header("Sprites")]
@@ -126,6 +127,12 @@ public class DwarvenCaravanController : MonoBehaviour
     private List<Vector3> legWorld;                            // active leg, in order
     private float legLength, legSpeed, legDays;
     private FloorRoot legFloor;
+
+    // The rim terminus picked per floor at route build, kept so a robbed
+    // wagon can weigh "flee off-floor" against "flee home" without
+    // re-pairing the bearings.
+    private int gateRimRail = -1, gateRimIndex = -1;
+    private int villageRimRail = -1, villageRimIndex = -1;
 
     private readonly List<DwarfWalkerPuppet> walkers = new List<DwarfWalkerPuppet>();
     private DwarfWalkerPuppet Lead => walkers.Count > 0 ? walkers[0] : null;
@@ -217,6 +224,10 @@ public class DwarvenCaravanController : MonoBehaviour
             case JourneyState.Dwell:
                 phaseSeconds += Time.deltaTime;
                 if (phaseSeconds >= dwellDays * CalendarDaySeconds()) AdvanceState();
+                break;
+
+            case JourneyState.Fleeing:
+                TickFlee();
                 break;
 
             default:
@@ -330,6 +341,8 @@ public class DwarvenCaravanController : MonoBehaviour
 
         int gRimIdx = TerminusIndex(gateGraph, gateRim);
         int vRimIdx = TerminusIndex(villageGraph, villageRim);
+        gateRimRail = gateRim.railIndex; gateRimIndex = gRimIdx;
+        villageRimRail = villageRim.railIndex; villageRimIndex = vRimIdx;
 
         gateRouteOut = DeepRoadGraph.Route(gateGraph, oRail, oIdx, gateRim.railIndex, gRimIdx);
         villageRouteOut = DeepRoadGraph.Route(villageGraph, villageRim.railIndex, vRimIdx, vRail, vIdx);
@@ -548,7 +561,7 @@ public class DwarvenCaravanController : MonoBehaviour
 
         if (!features.IsRoadSegmentHeld(segmentId)) return;
 
-        if (!tollVignettePlayed)
+        if (!tollVignettePlayed && !verbUsed)
         {
             tollVignettePlayed = true;   // set FIRST: the beat must never double-fire
             StartCoroutine(TollVignette(lead));
@@ -653,12 +666,10 @@ public class DwarvenCaravanController : MonoBehaviour
                     message += " The deep road falls quiet.";
                 AlertsLog.Instance?.AddAlert(message, at, floorIndex, AlertCategory.System);
 
-                DespawnWalkers();
-                state = JourneyState.Idle;
-                legWorld = null;
                 int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
                 nextDepartureDay = day + Random.Range(gapDaysMin, gapDaysMax + 1)
                                        + robbedExtraDelayDays;
+                BeginFlee();
                 break;
             }
             case CaravanVerb.Tax:
@@ -676,6 +687,92 @@ public class DwarvenCaravanController : MonoBehaviour
                 break;
         }
         SetPanelHalt(false);
+    }
+
+    // -- The flee (Rob's exit) ------------------------------------------------
+
+    /// <summary>The robbed wagon's exit: survivors run for the nearest refuge
+    /// along the road -- this floor's own dwarven site, or the paired rim end
+    /// when that is closer, because a wagon robbed near the rim flees
+    /// off-floor rather than trudging back past its robber. Falls back to the
+    /// old instant exit when no road can be found under the wagon: this is
+    /// theatre, and theatre never earns an error dialog.</summary>
+    private void BeginFlee()
+    {
+        var lead = Lead;
+        if (lead == null || legFloor == null || legFloor.TileInfluence == null)
+        {
+            EndFlee();
+            return;
+        }
+
+        bool onGateFloor = legFloor == gateFloor;
+        var graph = onGateFloor ? gateGraph : villageGraph;
+        var site = onGateFloor
+            ? legFloor.FeatureGenerator.GetOutpostSite()
+            : legFloor.FeatureGenerator.GetVillageSite();
+        int rimRail = onGateFloor ? gateRimRail : villageRimRail;
+        int rimIndex = onGateFloor ? gateRimIndex : villageRimIndex;
+
+        var influence = legFloor.TileInfluence;
+        var here = influence.WorldToCell(lead.LogicalPosition);
+        List<Vector3Int> flee = null;
+        if (graph != null
+            && DeepRoadGraph.NearestWalkCell(graph, here, out int hereRail, out int hereIndex))
+        {
+            List<Vector3Int> toSite = null;
+            if (site != null && DeepRoadGraph.NearestWalkCell(graph,
+                    site.anchorCell.ToVector3Int(), out int siteRail, out int siteIndex))
+                toSite = DeepRoadGraph.Route(graph, hereRail, hereIndex, siteRail, siteIndex);
+            List<Vector3Int> toRim = rimRail >= 0
+                ? DeepRoadGraph.Route(graph, hereRail, hereIndex, rimRail, rimIndex)
+                : null;
+            flee = ShorterRoute(toSite, toRim);
+        }
+        if (flee == null || flee.Count < 2)
+        {
+            EndFlee();
+            return;
+        }
+
+        legWorld = new List<Vector3>(flee.Count);
+        foreach (var c in flee) legWorld.Add(influence.CellToWorld(c));
+        legLength = DeepRoadGraph.PathLength(flee);
+        // Hurry pace on top of whatever the leg derived -- fear, made speed.
+        legSpeed = Mathf.Max(0.5f, legSpeed) * hurryMultiplier;
+        walkedSeconds = 0f;
+        state = JourneyState.Fleeing;
+        foreach (var w in walkers)
+            if (w != null) { w.Speed = legSpeed; w.SetPath(legWorld); }
+        ApplyPositions();
+    }
+
+    private static List<Vector3Int> ShorterRoute(List<Vector3Int> a, List<Vector3Int> b)
+    {
+        bool okA = a != null && a.Count > 1;
+        bool okB = b != null && b.Count > 1;
+        if (okA && okB)
+            return DeepRoadGraph.PathLength(a) <= DeepRoadGraph.PathLength(b) ? a : b;
+        return okA ? a : (okB ? b : null);
+    }
+
+    /// <summary>Fleeing ignores night (a robbed caravan does not pitch camp
+    /// beside the robber), the panel (the verb is spent, clicks are gated
+    /// off), and all toll detection (the beat must never fire for a wagon
+    /// with nothing left to decide).</summary>
+    private void TickFlee()
+    {
+        foreach (var w in walkers) if (w != null) w.Frozen = false;
+        walkedSeconds += Time.deltaTime;
+        ApplyPositions();
+        if (legSpeed * walkedSeconds >= legLength) EndFlee();
+    }
+
+    private void EndFlee()
+    {
+        DespawnWalkers();
+        state = JourneyState.Idle;
+        legWorld = null;
     }
 
     // -- Save / restore (the merchant's static pattern) -----------------------
@@ -705,6 +802,10 @@ public class DwarvenCaravanController : MonoBehaviour
         int savedCargo, bool savedVerbUsed)
     {
         state = (JourneyState)savedState;
+        // The flee is theatre whose origin is not saved: a save taken
+        // mid-flee collapses to Idle on load, and the schedule set at the
+        // rob stands.
+        if (state == JourneyState.Fleeing) state = JourneyState.Idle;
         walkedSeconds = walked;
         phaseSeconds = phase;
         cargo = savedCargo;
