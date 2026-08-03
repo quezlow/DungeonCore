@@ -1805,9 +1805,7 @@ both the retype and the paving pass consult. Dwarven masonry claims at 9x:
 living, maintained walls outrank dead ruins and stay under consecration.
 Its on-screen tell is the influence boundary itself: the ring renderer
 writes a weight into the field texture's spare alpha channel -- 255 where
-an UNCLAIMED cell lies inside a living dwarven site's footprint (masonry,
-carved interior and paved carriageway, registered as a holdings set on
-`TerrainTypeMap` by the override pass; one set probe per texel), 0
+an UNCLAIMED cell lies inside dwarven ground the player has DISCOVERED, 0
 elsewhere -- and the ring shader lerps its colour toward
 `dwarvenRingColor` (warm bronze) by the bilinearly sampled weight. The
 boundary glows bronze exactly where dwarven ground -- wall or courtyard
@@ -2469,10 +2467,33 @@ fill at `overlayDwarvenLevel`, edge band peaking at the ramp midpoint, no
 time terms in either. Holdings remain static data; the claim-event rebuild
 already covers "changes only when the player takes a stretch", and
 conquered cells write zero weight, dissolving into the ordinary wash. No
-tilemap overlay was needed. Claiming the interior currently costs nothing
+tilemap overlay was needed.
+
+**Reveal gate and the road (as built).** The registry on `TerrainTypeMap`
+maps each holdings cell to the FEATURE that owns it -- a living site's whole
+footprint to the site, open carriageway to its road segment -- and the
+renderer paints only owners the player has revealed. Site-level for holds,
+segment-level for road, matching the reveal granularity already shipped on
+both: a trunk runs rim to rim, so lighting all of it off one touched cell
+would hand over the floor's layout. The gate is not optional. The camera
+roams the whole floor (Appendix C) and this quad sorts above Shadow, so fog
+cannot do the hiding; without the gate, pressing the overlay key on a fresh
+floor would draw the gatehouse's floor plan through unexplored dark. Open
+carriageway takes granite only on floors carrying a LIVING holding, so
+floor 4's dead network stays plain -- the same test that prices it at
+`deadRoadClaimResistance`, which keeps cost and colour saying one thing.
+The revealed subset is cached and rebuilt only when
+`TerrainFeatureGenerator.RevealVersion` moves, and the per-texel probe is
+hoisted behind an emptiness test, so floors with no dwarven ground skip it
+entirely.
+
+Claiming the interior currently costs nothing
 extra ON PURPOSE: the mechanical consequence is the road-claiming ladder's
-first rung ("terrain resistance slows the push"), and `IsHoldingsCell` is
-the ready-made ground query waiting for that arc.
+first rung ("terrain resistance slows the push"). The holdings registry is
+NOT that query: road and site cells are already priced by
+`FloorRoot.GetClaimCostMultiplier`, and the registry does not reach past a
+living floor. What it IS ready-made for is keying the ladder's standing
+PENALTY on dwarven ground.
 
 **Consequence, kept and shipped:** the moment the player's ring touches the
 holdings IS a visible event -- the living isoline lerps toward

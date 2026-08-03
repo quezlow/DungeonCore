@@ -341,6 +341,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         featureData = data ?? new FloorFeatureSaveData();
         RebuildLookup();
+        RevealVersion++;   // a load replaces the reveal sets wholesale
 
         UnfogAllRevealedFeatures();
         RepaintRevealedRiverWater();
@@ -477,6 +478,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// <summary>How many reveal segments this floor's roads split into.</summary>
     public int RoadSegmentCount => roadSegments.Count;
 
+    /// <summary>Bumped on every reveal and on load. Consumers CACHING anything
+    /// derived from reveal state compare this rather than subscribing: reveals
+    /// are rare, and a silently missed subscription is the exact bug class that
+    /// stranded the minimap for a whole session (canon Appendix D).</summary>
+    public int RevealVersion { get; private set; }
+
     /// <summary>How many road segments on this floor have been revealed. Drives
     /// the one-alert-per-floor rule in FeatureRevealController.</summary>
     public int RevealedRoadSegmentCount
@@ -493,6 +500,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData == null) return;
         if (featureData.revealedRoadSegmentIds.Contains(segmentId)) return;
         featureData.revealedRoadSegmentIds.Add(segmentId);
+        RevealVersion++;
         PaintRoadSegment(segmentId);
         UnfogRoadSegment(segmentId);
     }
@@ -583,6 +591,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData == null) return;
         if (featureData.revealedSiteIds.Contains(siteId)) return;
         featureData.revealedSiteIds.Add(siteId);
+        RevealVersion++;
         UnfogSite(siteId);
         SpawnSiteDecor(siteId);
     }
@@ -1197,6 +1206,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
         bool any = false;
         var cells = new List<Vector3Int>();
         map.ClearHoldingsCells();
+
+        // Open carriageway is dwarven ground, but only where dwarves are still
+        // alive to hold it. Floor 4 carries the DEAD network -- no patrols, no
+        // caravans, nobody left to take offence -- and it already claims at
+        // deadRoadClaimResistance rather than the living road's 8x, so it takes
+        // no granite either and cost agrees with colour.
+        //
+        // Registered BEFORE the site loop below on purpose: a site's own paved
+        // band is then overwritten with the SITE's key, so the paving through a
+        // hold lights with the hold rather than with the stretch passing
+        // through it.
+        if (floor.HasLivingDwarvenSite)
+            foreach (var seg in roadSegments)
+                map.RegisterHoldingsCells(seg.cells,
+                                          TerrainTypeMap.RoadOwnerKey(seg.segmentId));
+
         foreach (var s in featureData.sites)
         {
             if (s == null || s.ruinsCells == null || s.ruinsCells.Count == 0) continue;
@@ -1205,19 +1230,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
             map.ApplyFeatureOverride(cells, MasonryTypeFor(s));
 
             // Living dwarven sites register their WHOLE footprint -- masonry,
-            // carved interior and the paved carriageway -- as holdings, so
-            // the granite overlay fills the site rather than tracing its
-            // walls and the frontier flare fires on the courtyard too.
-            // Cleared and refilled above because this method re-runs on both
-            // the fresh and the load path. The set feeds the ring renderer's
-            // A weight, and is the ready-made ground query for the
-            // road-claiming ladder's "terrain resistance slows the push"
-            // rung when that arc builds.
+            // carved interior and the paved carriageway -- so the overlay
+            // fills the hold rather than tracing its walls. Cleared and
+            // refilled above because this method re-runs on both the fresh
+            // and the load path.
+            //
+            // NOT the query for the ladder's resistance rung, whatever the
+            // earlier comment here claimed: road and site cells are already
+            // priced by FloorRoot.GetClaimCostMultiplier, and this registry
+            // does not reach past a living floor. What it IS ready-made for
+            // is keying the ladder's standing PENALTY on dwarven ground.
             if (MasonryTypeFor(s) == TerrainType.DwarvenMasonry)
             {
-                map.RegisterHoldingsCells(s.ruinsCells);
-                map.RegisterHoldingsCells(s.cells);
-                map.RegisterHoldingsCells(s.pavedRoadCells);
+                int key = TerrainTypeMap.SiteOwnerKey(s.id);
+                map.RegisterHoldingsCells(s.ruinsCells, key);
+                map.RegisterHoldingsCells(s.cells, key);
+                map.RegisterHoldingsCells(s.pavedRoadCells, key);
             }
             any = true;
         }

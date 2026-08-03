@@ -68,7 +68,7 @@ public class TerrainTypeMap : MonoBehaviour
         floorRadius = Math.Max(1, radius);
         storedSeed = floorSeed;
         patchOverrides.Clear();
-        holdingsCells.Clear();
+        holdingsOwner.Clear();
 
         // Mix seed so terrain patch RNG is decoupled from feature RNG.
         unchecked
@@ -139,26 +139,65 @@ public class TerrainTypeMap : MonoBehaviour
     public bool HasFeatureOverride(Vector3Int cell, TerrainType type)
         => generated && patchOverrides.TryGetValue(cell, out var o) && o == type;
 
-    // Living dwarven site footprints -- masonry, carved interior and paved
-    // carriageway -- fed by TerrainFeatureGenerator.ApplyRuinsOverrides on
-    // both the fresh and the load path. Not serialized: derived data,
-    // rebuilt whenever the overrides are.
-    private readonly HashSet<Vector3Int> holdingsCells = new();
+    // Dwarven holdings, mapped to the FEATURE that owns each cell, so the
+    // granite overlay can gate on that feature's reveal state rather than
+    // painting a hold the player has never found. That gate is not optional:
+    // the camera roams the whole floor (canon Appendix C) and the ring quad
+    // sorts above Shadow, so fog cannot hide the overlay for us.
+    //
+    // A living site's WHOLE footprint -- masonry, carved interior, paved
+    // carriageway -- belongs to the site. Open carriageway belongs to its road
+    // SEGMENT. That matches the reveal granularity already shipped on both:
+    // touch the hold and all of it lights; touch a stretch and only that
+    // stretch does, because a trunk runs rim to rim.
+    //
+    // The owner key packs both kinds into one probe: >= 0 is a site id, < 0 is
+    // a road segment id encoded as -(segmentId + 1). Both number from zero, so
+    // a sign separates them without a second dictionary or a boxed struct.
+    //
+    // Not serialized: derived data, rebuilt whenever the overrides are.
+    private readonly Dictionary<Vector3Int, int> holdingsOwner = new();
 
-    public void ClearHoldingsCells() => holdingsCells.Clear();
+    public const int NoHoldingOwner = int.MinValue;
 
-    public void RegisterHoldingsCells(List<SerializableVector3Int> src)
+    public static int SiteOwnerKey(int siteId) => siteId;
+    public static int RoadOwnerKey(int segmentId) => -(segmentId + 1);
+    public static bool OwnerIsRoad(int ownerKey) => ownerKey < 0;
+    public static int OwnerRoadSegment(int ownerKey) => -ownerKey - 1;
+
+    /// <summary>True when this floor carries any dwarven ground at all.
+    /// Hoisted out of the ring renderer's per-texel loop: a floor with no
+    /// living site then skips over a million probes per rebuild on the deep
+    /// discs that could only ever answer no.</summary>
+    public bool HasHoldings => holdingsOwner.Count > 0;
+
+    /// <summary>The raw registry, for consumers building their own view of it
+    /// (the renderer caches the REVEALED subset).</summary>
+    public IReadOnlyDictionary<Vector3Int, int> Holdings => holdingsOwner;
+
+    public void ClearHoldingsCells() => holdingsOwner.Clear();
+
+    public void RegisterHoldingsCells(List<SerializableVector3Int> src, int ownerKey)
     {
         if (src == null) return;
-        foreach (var sv in src) holdingsCells.Add(sv.ToVector3Int());
+        foreach (var sv in src) holdingsOwner[sv.ToVector3Int()] = ownerKey;
     }
 
-    /// <summary>True when the cell lies inside a living dwarven site's
-    /// footprint. One set probe -- the ring renderer asks per texel per
-    /// claim-event rebuild for the granite holdings fill and the frontier
-    /// flare.</summary>
-    public bool IsHoldingsCell(Vector3Int cell)
-        => generated && holdingsCells.Contains(cell);
+    public void RegisterHoldingsCells(IReadOnlyList<Vector3Int> src, int ownerKey)
+    {
+        if (src == null) return;
+        for (int i = 0; i < src.Count; i++) holdingsOwner[src[i]] = ownerKey;
+    }
+
+    /// <summary>The feature owning this holdings cell, or NoHoldingOwner. One
+    /// dictionary probe.</summary>
+    public int HoldingOwnerAt(Vector3Int cell)
+        => generated && holdingsOwner.TryGetValue(cell, out int key) ? key : NoHoldingOwner;
+
+    /// <summary>True when the cell is dwarven ground, discovered or not. This
+    /// is the GROUND test; the overlay wants the visibility one and builds it
+    /// from Holdings above.</summary>
+    public bool IsHoldingsCell(Vector3Int cell) => HoldingOwnerAt(cell) != NoHoldingOwner;
 
     /// <summary>Deterministic buried-remains sites for this floor: cells in Stone or
     /// Granite, at least minDistFromCenter from the core cell (Chebyshev), inside the

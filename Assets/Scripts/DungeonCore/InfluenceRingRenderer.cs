@@ -391,6 +391,41 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     // ── Texture rebuild ───────────────────────────────────────────
 
+    // Holdings the player has actually DISCOVERED. The granite overlay paints
+    // this rather than the raw registry: the camera roams the whole floor and
+    // this quad sorts above Shadow, so without the gate the overlay would draw
+    // an undiscovered hold's floor plan straight through unexplored fog.
+    //
+    // Rebuilt only when RevealVersion moves -- a handful of times a session --
+    // rather than per rebuild or per texel.
+    private readonly HashSet<Vector3Int> visibleHoldings = new();
+    private int cachedRevealVersion = -1;
+
+    private void EnsureVisibleHoldings()
+    {
+        var features = floor != null ? floor.FeatureGenerator : null;
+        if (terrainMap == null || features == null) return;
+
+        if (!terrainMap.HasHoldings)
+        {
+            if (visibleHoldings.Count > 0) visibleHoldings.Clear();
+            cachedRevealVersion = features.RevealVersion;
+            return;
+        }
+        if (features.RevealVersion == cachedRevealVersion) return;
+
+        cachedRevealVersion = features.RevealVersion;
+        visibleHoldings.Clear();
+        foreach (var kv in terrainMap.Holdings)
+        {
+            int key = kv.Value;
+            bool revealed = TerrainTypeMap.OwnerIsRoad(key)
+                ? features.IsRoadSegmentRevealed(TerrainTypeMap.OwnerRoadSegment(key))
+                : features.IsSiteRevealed(key);
+            if (revealed) visibleHoldings.Add(kv.Key);
+        }
+    }
+
     private void RebuildTexture()
     {
         int total = texSize * texSize;
@@ -401,6 +436,12 @@ public class InfluenceRingRenderer : MonoBehaviour
         // Breach-safe radius (shared with the recede) and the auto-growth reach:
         // together they mark the exposed fringe — claimed ground pushed past the
         // reach and past the safe radius, i.e. exactly what a breach would reclaim.
+        EnsureVisibleHoldings();
+        // Hoisted out of the loop. A floor with nothing discovered skips the
+        // probe entirely, which on the 600-radius disc is 1.45M lookups per
+        // rebuild that could only ever answer no.
+        bool anyVisibleHoldings = visibleHoldings.Count > 0;
+
         float safeRadius = field.BreachSafeRadius();
         float safeRadiusSq = safeRadius * safeRadius;
         Vector3Int coreCell = floor.Terrain.CoreCell;
@@ -429,16 +470,14 @@ public class InfluenceRingRenderer : MonoBehaviour
                     float dy = cell.y - coreCell.y;
                     if (dx * dx + dy * dy > safeRadiusSq) b = 255;
                 }
-                // Dwarven holdings weight, baked into A (spare until now):
-                // 255 where an UNCLAIMED cell lies inside a living dwarven
-                // site's footprint -- masonry, carved interior and paved
-                // carriageway alike, so the granite overlay fills the site
-                // rather than tracing its walls, and the frontier flare
-                // fires on the courtyard too. IsHoldingsCell is one set
-                // probe, fed once per override pass; this runs per texel per
-                // claim-event rebuild.
+                // Dwarven holdings weight, baked into A: 255 where an
+                // UNCLAIMED cell lies inside a hold or stretch the player has
+                // DISCOVERED. Undiscovered dwarven ground writes 0, so the
+                // overlay can never draw a floor plan through unexplored fog
+                // -- it sorts above Shadow, so nothing else would stop it.
+                // One set probe against the cached revealed subset.
                 byte a = 0;
-                if (!claimed && terrainMap != null && terrainMap.IsHoldingsCell(cell))
+                if (!claimed && anyVisibleHoldings && visibleHoldings.Contains(cell))
                     a = 255;
                 pixels[i] = new Color32(0, g, b, a);
             }
