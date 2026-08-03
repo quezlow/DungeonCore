@@ -96,6 +96,17 @@ public class InfluenceRingRenderer : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float overlayClaimedLevel = 0.45f;
     [Tooltip("Wash level for CLAIMED-but-exposed ground — the pushed fringe a breach would reclaim. Kept below the claimed level so it reads as yours but at risk.")]
     [SerializeField, Range(0f, 1f)] private float overlayExposedLevel = 0.22f;
+    [Tooltip("Fill level for UNCLAIMED dwarven holdings in push mode -- flat and hard-edged " +
+             "(no waver, no pulse: yours breathes, theirs doesn't). Sits above the claimed " +
+             "level and below the in-reach wash so it reads as owned, not yours-soon.")]
+    [SerializeField, Range(0f, 1f)] private float overlayDwarvenLevel = 0.55f;
+    [Tooltip("Intensity of the hard surveyed edge line around dwarven holdings in push mode, " +
+             "cut in-shader from the field texture's bilinear A ramp.")]
+    [SerializeField, Range(0f, 2f)] private float overlayDwarvenEdge = 0.9f;
+    [Tooltip("Holdings fill and edge colour. COOL GREY GRANITE per canon's colour caution " +
+             "(gold ring, gold HUD, amber Earth cores leave no room for a bronze area); the " +
+             "bronze dwarvenRingColor stays a thin accent on the frontier flare only.")]
+    [SerializeField] private Color holdingsColor = new Color(0.55f, 0.58f, 0.64f, 1f);
 
     [Header("Field Encoding")]
     [Tooltip("Cells of signed distance encoded either side of the boundary.")]
@@ -370,6 +381,9 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_ReachEdge", 0.75f / reachNorm);
         material.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
         material.SetFloat("_OverlayExposedLevel", overlayExposedLevel);
+        material.SetFloat("_OverlayDwarvenLevel", overlayDwarvenLevel);
+        material.SetFloat("_OverlayDwarvenEdge", overlayDwarvenEdge);
+        material.SetColor("_HoldingsColor", holdingsColor);
         material.SetColor("_RingColorAlt", dwarvenRingColor);
     }
 

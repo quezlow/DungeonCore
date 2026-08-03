@@ -1806,6 +1806,10 @@ elsewhere -- and the ring shader lerps its colour toward
 boundary glows bronze exactly where dwarven wall is what the push mines
 next and reverts to the core hue once through: frontier cells only, by
 design -- the read is "what am I about to take", not "what did I take".
+In push mode (or with the overlay toggled), the same weight also paints
+the holdings themselves in cool granite grey -- see the Granite holdings
+overlay section, now shipped on this weight -- and the bronze frontier
+flare here is the visible touch event that section asked to keep.
 The `claimableRingTint` fields on `TerrainResistanceTable` are NOT this
 mechanism; they fed the claimable tilemap retired by the influence-ring
 rework (0431a991) and sit dormant, commented as such in code. The Deep
@@ -2422,10 +2426,14 @@ This reuses the Holy Ground pattern wholesale (entry 18): special terrain,
 procgen via `TerrainTypeMap`, visually distinct, with a faction consequence
 on desecration. No new pattern is needed.
 
-### Granite holdings overlay (DECIDED)
+### Granite holdings overlay (SHIPPED -- wall-family arc, edits4)
 
-Dwarven holdings render with their own boundary, shown when the player claims
-toward them, in COOL GREY GRANITE.
+Dwarven holdings render with their own boundary in COOL GREY GRANITE,
+shown whenever the push overlay is up (push mode or the overlay toggle).
+This supersedes the original claims-toward trigger on purpose: the
+ownership map reads before the first accidental 9x push lands, discovered
+or not -- the overlay draws above the fog by sorting, and the core senses
+rival claim.
 
 **It must not look like the influence ring.** `InfluenceRingRenderer` is
 deliberately ethereal -- the isoline wavers on two octaves of scrolling
@@ -2438,19 +2446,25 @@ the two can never be confused at a glance.
 **Colour caution.** The palette is crowded: the default ring colour is gold,
 the HUD accent is gold, and Earth cores are amber-umber. Stone, brass and
 bronze all collide with two things at once. Cool grey granite was chosen
-against that constraint.
+against that constraint, and the shipped fill and surveyed edge honour it
+(`holdingsColor`, serialized on the renderer). The single bronze element is
+the frontier flare, a thin accent rather than an area.
 
-**Implementation note.** Holdings are STATIC -- authored at generation,
-changing only when the player takes a stretch. No Dijkstra, no reach
-animation, no cost channel. A tilemap overlay redrawn on segment change is
-likely sufficient; the ring's shader path is not required. If it ever is, the
-field texture's A channel is free (R = boundary SDF, G = normalised growth
-cost, B = exposed fringe, A = unused).
+**Implementation note (as built).** The shader path after all, which this
+entry reserved: edits3 filled the field texture's spare A channel with the
+dwarven weight (255 on unclaimed DwarvenMasonry cells, recomputed on the
+same claim-driven rebuilds), and the holdings fill and surveyed edge are
+both cut in the fragment shader from that bilinear ramp -- hard-thresholded
+fill at `overlayDwarvenLevel`, edge band peaking at the ramp midpoint, no
+time terms in either. Holdings remain static data; the claim-event rebuild
+already covers "changes only when the player takes a stretch", and
+conquered cells write zero weight, dissolving into the ordinary wash. No
+tilemap overlay was needed.
 
-**Consequence worth keeping:** once both boundaries render, the moment the
-player's ring touches the dwarves' becomes a VISIBLE EVENT rather than a
-number in a panel -- which solves most of the "convey it to the player"
-problem for free.
+**Consequence, kept and shipped:** the moment the player's ring touches the
+holdings IS a visible event -- the living isoline lerps toward
+`dwarvenRingColor` (warm bronze) exactly where it abuts the dead grey
+survey, waver and pulse against hard stillness.
 
 ### Recommended build order
 

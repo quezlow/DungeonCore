@@ -39,6 +39,9 @@ Shader "DCR/InfluenceRing"
         _OverlayStrength ("Overlay Strength", Range(0, 1)) = 0
         _OverlayClaimedLevel ("Overlay Inside Level", Range(0, 1)) = 0.45
         _OverlayExposedLevel ("Overlay Exposed Level", Range(0, 1)) = 0.22
+        _OverlayDwarvenLevel ("Overlay Dwarven Fill", Range(0, 1)) = 0.55
+        _OverlayDwarvenEdge ("Overlay Dwarven Edge", Range(0, 2)) = 0.9
+        _HoldingsColor ("Holdings Color", Color) = (0.55, 0.58, 0.64, 1)
     }
 
     SubShader
@@ -74,6 +77,9 @@ Shader "DCR/InfluenceRing"
             float _OverlayStrength;
             float _OverlayClaimedLevel;
             float _OverlayExposedLevel;
+            float _OverlayDwarvenLevel;
+            float _OverlayDwarvenEdge;
+            fixed4 _HoldingsColor;
 
             struct appdata
             {
@@ -141,8 +147,9 @@ Shader "DCR/InfluenceRing"
                 float3 ringRGB = lerp(_RingColor.rgb, _RingColorAlt.rgb, f4.a);
                 float3 ring = ringRGB * band * _Intensity * pulse * _RingColor.a;
 
-                // Free-growth overlay, three tiers:
+                // Free-growth overlay, four tiers:
                 //   unclaimed within reach -> brightest (where creep will fill)
+                //   unclaimed dwarven      -> flat granite-grey fill + hard edge (theirs)
                 //   claimed & safe         -> mid wash (yours, breach-durable)
                 //   claimed & exposed      -> dim wash (yours, but a breach reclaims it)
                 // Unclaimed beyond reach stays dark. Claimed ground is washed
@@ -151,8 +158,25 @@ Shader "DCR/InfluenceRing"
                 float unclaimedSide = smoothstep(0.5, 0.46, sdf);
                 float claimedSide = 1.0 - unclaimedSide;
                 float claimedWash = lerp(_OverlayClaimedLevel, _OverlayExposedLevel, fs.b);
-                float wash = lerp(inReach, claimedWash, claimedSide);
-                float3 overlay = _RingColor.rgb * (wash * _OverlayStrength);
+                // Dwarven holdings (canon: Granite holdings overlay): a
+                // surveyed claim, not a living creep. The fill is
+                // hard-thresholded from the bilinear A ramp and the edge band
+                // is cut from the same ramp, so the border reads as a crisp
+                // drawn line. No waver, no pulse, no reach gate, no fog gate,
+                // all on purpose: yours breathes, theirs doesn't, and the
+                // core senses rival claim before an accidental 9x push. COOL
+                // GREY per canon's colour caution -- gold ring, gold HUD and
+                // amber Earth cores leave no room for a bronze AREA; bronze
+                // stays a thin accent on the frontier flare above. Claimed
+                // cells write A = 0, so conquered holdings dissolve into the
+                // ordinary wash.
+                float hold = smoothstep(0.45, 0.55, f4.a) * unclaimedSide;
+                float holdEdge = smoothstep(0.15, 0.5, f4.a) * smoothstep(0.85, 0.5, f4.a) * unclaimedSide;
+                float unclaimedWash = lerp(inReach, _OverlayDwarvenLevel, hold);
+                float wash = lerp(unclaimedWash, claimedWash, claimedSide);
+                float3 washCol = lerp(_RingColor.rgb, _HoldingsColor.rgb, hold);
+                float3 overlay = washCol * (wash * _OverlayStrength)
+                               + _HoldingsColor.rgb * (holdEdge * _OverlayDwarvenEdge * _OverlayStrength);
 
                 return fixed4(ring + overlay, 1.0);
             }
