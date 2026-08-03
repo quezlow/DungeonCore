@@ -33,15 +33,36 @@ public class CaveWallClassifier
     private static readonly Vector3Int E = new Vector3Int(1, 0, 0);
     private static readonly Vector3Int W = new Vector3Int(-1, 0, 0);
 
-    /// Solid = an IN-DISC cell that is not mined and not a river. Cells beyond the
-    /// floor disc are OPEN AIR — the surface — so no wall ever paints on the apron,
-    /// and the rim's outer edge is a true solid/open boundary where it borders
-    /// revealed ground (the breach corners).
+    /// Solid = an IN-DISC cell that is not mined and is neither water nor
+    /// carriageway. Cells beyond the floor disc are OPEN AIR — the surface — so
+    /// no wall ever paints on the apron, and the rim's outer edge is a true
+    /// solid/open boundary where it borders revealed ground (the breach
+    /// corners).
+    ///
+    /// ROADS join rivers in the exemption, and the asymmetry was a bug. Reveal
+    /// is per SEGMENT, and UnfogRoadSegment calls MarkNaturalFloor on that one
+    /// segment's cells, so the next stretch stayed un-mined and therefore
+    /// SOLID. Solid rock touching open floor is precisely what the renderer
+    /// frames, so it drew a cap and a face straight across the carriageway at
+    /// every segment join. Water never showed it because its exemption does not
+    /// depend on being discovered; the road's must not either. Note this is a
+    /// framing exemption only -- it does not unfog anything, so per-segment
+    /// reveal and its anti-layout-leak guarantee are untouched.
+    ///
+    /// One feature lookup covers both rather than two probes per call, and this
+    /// is called four times per wall cell in CapMask alone.
     public bool IsSolid(Vector3Int cell)
-        => influence != null
-        && !influence.IsTileMined(cell)
-        && !(features != null && features.IsRiver(cell))
-        && (terrain == null || terrain.IsWithinBounds(cell));
+    {
+        if (influence == null) return false;
+        if (influence.IsTileMined(cell)) return false;
+        if (terrain != null && !terrain.IsWithinBounds(cell)) return false;
+        if (features != null)
+        {
+            FeatureType f = features.GetFeatureAt(cell);
+            if (f == FeatureType.River || f == FeatureType.Road) return false;
+        }
+        return true;
+    }
 
     /// 16-mask over the four cardinal neighbours: N=1, E=2, S=4, W=8, set = solid.
     public int CapMask(Vector3Int cell)

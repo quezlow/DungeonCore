@@ -65,6 +65,17 @@ public class FeatureAlertBanner : MonoBehaviour
     public void Show(string message, Vector3 worldPos, int floorIndex)
     {
         if (!gameObject.activeSelf) gameObject.SetActive(true);
+
+        // activeSelf is not enough. It says nothing about a PARENT being
+        // inactive, and the alerts panel is research-gated -- AlertsLog
+        // deactivates it wholesale until tech.alerts is learned. With the gate
+        // closed this object's own flag is still true while activeInHierarchy
+        // is false, and StartCoroutine throws on anything not in the hierarchy.
+        // The caller has already written the AlertsLog entry, so a quiet skip
+        // costs the pop and nothing else; the discovery is still recorded and
+        // still clickable from the history panel once the gate opens.
+        if (!gameObject.activeInHierarchy) return;
+
         if (label != null) label.text = message;
 
         if (clickArea != null)

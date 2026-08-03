@@ -1879,7 +1879,13 @@ per-feature alerts because a floor holds a handful of each.
 **Reveal and claiming are per SEGMENT**, not per road. A trunk splits into runs
 of `segmentLength` centreline cells, each with its own id; `featureId` in the
 feature lookup is a segment id. Unfogging an 800-cell trunk from one touched
-cell would hand the player the floor's layout for free. Segment ids advance even
+cell would hand the player the floor's layout for free. WALL FRAMING is the one
+thing that is not per segment: `CaveWallClassifier.IsSolid` exempts road cells
+exactly as it exempts river cells, discovered or not. It has to. Reveal calls
+`MarkNaturalFloor` on the revealing segment alone, so without the exemption the
+next stretch still read as solid rock, and the renderer framed the join with a
+cap and a face straight across the carriageway. The exemption changes framing
+only and unfogs nothing, so the anti-leak guarantee above still holds. Segment ids advance even
 where a river ate a whole stretch, so saved reveal state stays aligned.
 
 **Cells are never serialised.** `RoadData` stores the polyline, width, segment
