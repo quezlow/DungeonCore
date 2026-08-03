@@ -7,10 +7,13 @@ using UnityEngine;
 /// floor's PolygonCollider2D (the "DungeonBounds" child of each FloorRoot).
 ///
 /// BEHAVIOUR
-///   - Listens to its floor's TileInfluenceManager.OnTileCountChanged.
-///   - On change, rebuilds the PolygonCollider2D points to an axis-aligned
-///     bounding box around all owned tiles, plus paddingCells of slack on
-///     every side.
+///   - The bound is the floor's own disc: a square around the core cell,
+///     floor radius + paddingCells on every side. The camera roams the
+///     whole floor. See canon Appendix C, Camera Bounds Contract.
+///   - Floor 0 additionally reaches the revealed surface depth, and no
+///     further -- past that edge no ground is painted at all.
+///   - Rebuilds only when that edge moves. The claimed-tile bounding box
+///     this used to walk on every claim event is gone.
 ///   - Enforces a minimum size derived from the actual camera viewport at
 ///     max zoom × viewportSafetyMultiplier — so a tiny starter dungeon never
 ///     produces bounds narrower than the camera frustum (which would cause
@@ -88,18 +91,6 @@ public class DungeonBoundsUpdater : MonoBehaviour
         }
     }
 
-    private void OnEnable()
-    {
-        if (influence != null)
-            influence.OnClaimedTileCountChanged += HandleTileCountChanged;
-    }
-
-    private void OnDisable()
-    {
-        if (influence != null)
-            influence.OnClaimedTileCountChanged -= HandleTileCountChanged;
-    }
-
     private void Start()
     {
         // Initial recalc — covers starter area on new floors and pre-loaded
@@ -116,8 +107,6 @@ public class DungeonBoundsUpdater : MonoBehaviour
 
     // ── Event Handlers ────────────────────────────────────────────
 
-    private void HandleTileCountChanged(int _) => boundsDirty = true;
-
     /// <summary>External dirty hook -- the surface generator calls this when
     /// research reveals a new band and as the sight-creep advances.</summary>
     public void MarkDirty() => boundsDirty = true;
@@ -128,87 +117,53 @@ public class DungeonBoundsUpdater : MonoBehaviour
     {
         if (poly == null || influence == null) return;
 
-        IReadOnlyCollection<Vector3Int> owned = influence.ClaimedTiles;
-
-        float minWorldX, maxWorldX, minWorldY, maxWorldY;
-
-        if (owned == null || owned.Count == 0)
+        // FREE ROAM: the bound is the floor disc, not the claimed footprint.
+        // Confining to claimed ground left the deeper floors feeling locked.
+        // The player had claimed almost nothing down there, so the camera
+        // could not reach a patrol, a caravan, or a road stretch -- and worse,
+        // it silently broke alerts, because DungeonCameraController.PanTo is
+        // clamped by this same confiner. Clicking an alert about anything
+        // outside the claimed box panned the camera into a wall and showed
+        // the player nothing. Floor 0 hid the fault: the surface union below
+        // had already widened that floor to its full disc.
+        var terrain = myFloor.Terrain;
+        int radius = terrain != null ? terrain.CurrentRadius : 0;
+        if (radius <= 0)
         {
-            // Defensive fallback: empty owned set.
-            (float minW, float minH) = ComputeMinSize();
-            Vector3 c = transform.position;
-            minWorldX = c.x - minW * 0.5f;
-            maxWorldX = c.x + minW * 0.5f;
-            minWorldY = c.y - minH * 0.5f;
-            maxWorldY = c.y + minH * 0.5f;
-        }
-        else
-        {
-            // Walk owned tiles once to find the cell-space AABB.
-            bool first = true;
-            int cellMinX = 0, cellMaxX = 0, cellMinY = 0, cellMaxY = 0;
-            foreach (var cell in owned)
-            {
-                if (first)
-                {
-                    cellMinX = cellMaxX = cell.x;
-                    cellMinY = cellMaxY = cell.y;
-                    first = false;
-                }
-                else
-                {
-                    if (cell.x < cellMinX) cellMinX = cell.x;
-                    if (cell.x > cellMaxX) cellMaxX = cell.x;
-                    if (cell.y < cellMinY) cellMinY = cell.y;
-                    if (cell.y > cellMaxY) cellMaxY = cell.y;
-                }
-            }
-
-            // Apply padding in cell space.
-            cellMinX -= paddingCells;
-            cellMaxX += paddingCells;
-            cellMinY -= paddingCells;
-            cellMaxY += paddingCells;
-
-            // CellToWorld returns the tile centre. Offset by half a cell on
-            // each side to get the outer edges of the min/max cells.
-            Vector3 minWorld = influence.CellToWorld(new Vector3Int(cellMinX, cellMinY, 0));
-            Vector3 maxWorld = influence.CellToWorld(new Vector3Int(cellMaxX, cellMaxY, 0));
-
-            // Measured half-cell extents (handles any grid scale).
-            Vector3 cellSpan = influence.CellToWorld(new Vector3Int(1, 1, 0))
-                             - influence.CellToWorld(new Vector3Int(0, 0, 0));
-            float halfCellX = Mathf.Abs(cellSpan.x) * 0.5f;
-            float halfCellY = Mathf.Abs(cellSpan.y) * 0.5f;
-
-            minWorldX = minWorld.x - halfCellX;
-            maxWorldX = maxWorld.x + halfCellX;
-            minWorldY = minWorld.y - halfCellY;
-            maxWorldY = maxWorld.y + halfCellY;
+            // Terrain has not generated yet. Retry next frame rather than
+            // baking the viewport minimum in for good. The old code survived
+            // this by accident -- a later claim event always re-dirtied the
+            // bounds. Nothing re-dirties them now, so the retry is
+            // load-bearing.
+            boundsDirty = true;
+            return;
         }
 
-        // Floor 0: union with the revealed surface disc so the camera can
-        // pan over researched forest bands (sight-creep widens this over
-        // roughly a day after each unlock).
+        Vector3 cellSpan = influence.CellToWorld(new Vector3Int(1, 1, 0))
+                         - influence.CellToWorld(Vector3Int.zero);
+        float cellSize = Mathf.Max(Mathf.Abs(cellSpan.x), Mathf.Abs(cellSpan.y));
+        Vector3 centre = influence.CellToWorld(terrain.CoreCell);
+
+        // Floor 0 reaches the researched surface depth as well, and must NEVER
+        // reach further. Forest bands paint in full the instant their research
+        // key unlocks, and past the revealed edge there is no painted ground
+        // at all, so this confiner is the only thing between the player and
+        // the void. Canon entry 24 rejects staged tile painting on exactly
+        // that basis, and that rejection depends on this ceiling holding.
+        float reachCells = radius + paddingCells;
         if (myFloor.FloorIndex == 0)
         {
             if (surfaceZone == null)
                 surfaceZone = myFloor.GetComponentInChildren<SurfaceZoneGenerator>(true);
             float revealed = surfaceZone != null ? surfaceZone.RevealedDepthCells : 0f;
-            if (revealed > 0f)
-            {
-                Vector3 span = influence.CellToWorld(new Vector3Int(1, 1, 0))
-                             - influence.CellToWorld(Vector3Int.zero);
-                float cellSize = Mathf.Max(Mathf.Abs(span.x), Mathf.Abs(span.y));
-                Vector3 c = influence.CellToWorld(myFloor.Terrain.CoreCell);
-                float worldR = (myFloor.Terrain.CurrentRadius + revealed + paddingCells)
-                             * cellSize;
-                minWorldX = Mathf.Min(minWorldX, c.x - worldR);
-                maxWorldX = Mathf.Max(maxWorldX, c.x + worldR);
-                minWorldY = Mathf.Min(minWorldY, c.y - worldR);
-                maxWorldY = Mathf.Max(maxWorldY, c.y + worldR);
-            }
+            if (revealed > 0f) reachCells = radius + revealed + paddingCells;
         }
+
+        float worldR = reachCells * cellSize;
+        float minWorldX = centre.x - worldR;
+        float maxWorldX = centre.x + worldR;
+        float minWorldY = centre.y - worldR;
+        float maxWorldY = centre.y + worldR;
 
         // Enforce minimum size by inflating around the AABB centre.
         // Min size is derived from the camera viewport at max zoom, so the
@@ -293,6 +248,6 @@ public class DungeonBoundsUpdater : MonoBehaviour
         Debug.Log($"[DungeonBoundsUpdater] Floor {myFloor?.FloorIndex} bounds (local): " +
                   $"{maxX - minX:F1} × {maxY - minY:F1} | " +
                   $"min size: {mw:F1} × {mh:F1} | " +
-                  $"owned tiles: {influence? .ClaimedTiles?.Count ?? 0}");
+                  $"floor radius: {myFloor?.Terrain?.CurrentRadius ?? 0}");
     }
 }

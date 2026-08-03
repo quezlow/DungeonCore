@@ -100,6 +100,7 @@ the supersession in one line.
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
 B. Sorting Layer Contract
+C. Camera Bounds Contract
 
 ---
 
@@ -2652,8 +2653,8 @@ unlocks; the camera bounds then creep outward to the new edge over roughly
 `creepDays` day-night cycles (default 1), on scaled time -- pause halts the
 spread, speed-up hastens it. The creep is monotonic (a chained unlock moves
 the target further out) and unsaved (loading lands at full researched depth).
-`DungeonBoundsUpdater` unions the revealed disc into the floor-0 confiner
-AABB and exposes `MarkDirty()` for the generator. An edge-fog ring
+`DungeonBoundsUpdater` sets the floor-0 bound to the revealed disc and
+exposes `MarkDirty()` for the generator (Appendix C). An edge-fog ring
 (generator-painted tilemap above the props: alpha eased quadratically
 across the last `fogFadeCells` (12) of painted ground, full solid landing
 two cells past the edge, then holding for
@@ -3922,3 +3923,39 @@ world.
 The Phase 3 cleanup inverted this order and silently broke cap occlusion,
 fog cover, and the town walk layers for three weeks. Any future layer
 change re-reads this entry first.
+## C. Camera Bounds Contract
+
+Status: RECORDED with the free-roam change. Verified: 2026-08-03.
+
+The camera roams the whole floor. Every FloorRoot carries a "DungeonBounds"
+child whose PolygonCollider2D is the Cinemachine confiner shape, and
+`DungeonBoundsUpdater` sets it to a square around the core cell measuring
+(floor radius + paddingCells) cells on every side.
+
+It used to be an axis-aligned box around CLAIMED tiles, rebuilt on every
+claim event, and that was wrong twice over. The deeper floors felt locked,
+because the player had claimed almost nothing there and could not pan to a
+patrol, a caravan, or a road stretch. Worse, it broke alerts silently:
+`DungeonCameraController.PanTo` is clamped by this confiner, so clicking an
+alert about anything outside the claimed box panned the camera into a wall
+and showed the player nothing. Floor 0 hid the fault, because the surface
+union had already widened that floor to its full disc.
+
+Floor 0 remains the ONE exception, and it is a ceiling rather than a floor:
+its bound reaches the researched surface depth and must never go further.
+Forest bands paint in full the instant their research key unlocks, and past
+the revealed edge no ground is painted at all, so this confiner is the only
+thing standing between the player and the void. Entry 24 rejects staged tile
+painting on exactly that basis, and that rejection depends on this ceiling.
+
+Reveal is fog's job, not the camera's. DungeonShadow covers unexplored
+ground on every floor, so a roaming camera sees darkness rather than
+secrets. Anything drawing ABOVE Shadow in the sorting order (Appendix B)
+bypasses fog and must therefore gate itself; the influence ring quad on
+AdjacentHighlight is the one that does.
+
+Consequence for callers: bounds change only when the floor radius is first
+known, or when floor 0's revealed depth advances (`MarkDirty()`). A
+recalculation attempted while the terrain radius is still zero re-arms
+`boundsDirty` and retries next frame instead of baking in the viewport
+minimum -- the old per-claim rebuild was covering that case by accident.

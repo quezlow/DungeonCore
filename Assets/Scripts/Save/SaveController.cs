@@ -97,7 +97,14 @@ public class SaveController : MonoBehaviour
             }
 
             // Map boundary — only restore if it exists in this scene
-            if (!string.IsNullOrEmpty(currentSaveData.mapBoundary))
+            // SKIPPED once the floor system exists: FloorManager owns the
+            // confiner and assigns the ACTIVE floor's collider on every
+            // switch. This legacy path resolves the boundary BY NAME, and
+            // every floor's child is called "DungeonBounds", so
+            // GameObject.Find returns whichever sits first in the
+            // hierarchy rather than the floor actually being loaded onto.
+            if (FloorManager.Instance == null
+                && !string.IsNullOrEmpty(currentSaveData.mapBoundary))
             {
                 GameObject boundaryObj = GameObject.Find(currentSaveData.mapBoundary);
                 PolygonCollider2D savedBoundary = boundaryObj?.GetComponent<PolygonCollider2D>();
