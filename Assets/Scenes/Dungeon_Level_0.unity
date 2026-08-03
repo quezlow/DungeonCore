@@ -5805,10 +5805,14 @@ MonoBehaviour:
     color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
   - type: 6
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
+  dwarvenRingColor: {r: 0.75, g: 0.62, b: 0.42, a: 1}
   overlayStrength: 0.1
   overlayFadeSpeed: 6
   overlayClaimedLevel: 0.45
   overlayExposedLevel: 0.22
+  overlayDwarvenLevel: 0.55
+  overlayDwarvenEdge: 0.9
+  holdingsColor: {r: 0.55, g: 0.58, b: 0.64, a: 1}
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!4 &177169428
@@ -15359,7 +15363,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99719554
+  m_Size: 0.99995655
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17634,7 +17638,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -45, y: 0}
+  m_AnchoredPosition: {x: -45, y: -90}
   m_SizeDelta: {x: 90, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &528681700
@@ -17662,7 +17666,7 @@ MonoBehaviour:
   m_ChildControlHeight: 0
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
+  m_ReverseArrangement: 1
 --- !u!114 &528681701
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50404,7 +50408,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000021143665}
+  m_AnchoredPosition: {x: 0, y: -0.000021747295}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57758,7 +57762,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9975942
+  m_Size: 0.99996275
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60344,7 +60348,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000021143665}
+  m_AnchoredPosition: {x: 0, y: -0.000021747295}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
