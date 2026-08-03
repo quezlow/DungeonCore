@@ -66,15 +66,22 @@ public class FeatureAlertBanner : MonoBehaviour
     {
         if (!gameObject.activeSelf) gameObject.SetActive(true);
 
-        // activeSelf is not enough. It says nothing about a PARENT being
-        // inactive, and the alerts panel is research-gated -- AlertsLog
-        // deactivates it wholesale until tech.alerts is learned. With the gate
-        // closed this object's own flag is still true while activeInHierarchy
-        // is false, and StartCoroutine throws on anything not in the hierarchy.
-        // The caller has already written the AlertsLog entry, so a quiet skip
-        // costs the pop and nothing else; the discovery is still recorded and
-        // still clickable from the history panel once the gate opens.
-        if (!gameObject.activeInHierarchy) return;
+        // activeSelf is not enough: it says nothing about a PARENT being
+        // inactive, and StartCoroutine throws on anything not in the hierarchy.
+        // The caller has already written the AlertsLog entry, so skipping the
+        // pop costs the animation and nothing else.
+        //
+        // It must NOT be silent, though. The first cut of this guard just
+        // returned, and the banner then went missing for a whole test session
+        // with nothing in the console to say why -- the same silent-skip shape
+        // that stranded the minimap. This class is designed to sit ACTIVE in
+        // the scene at all times (see the class notes), so anything reaching
+        // here is a hierarchy fault worth reading, not a state to code around.
+        if (!gameObject.activeInHierarchy)
+        {
+            WarnInactiveOnce();
+            return;
+        }
 
         if (label != null) label.text = message;
 
@@ -90,6 +97,25 @@ public class FeatureAlertBanner : MonoBehaviour
 
         if (animationCo != null) StopCoroutine(animationCo);
         animationCo = StartCoroutine(AnimateRoutine());
+    }
+
+    private bool warnedInactive;
+
+    /// <summary>Names the offending ancestor, once per session.</summary>
+    private void WarnInactiveOnce()
+    {
+        if (warnedInactive) return;
+        warnedInactive = true;
+
+        string path = "";
+        for (Transform t = transform; t != null; t = t.parent)
+        {
+            string node = t.name + (t.gameObject.activeSelf ? "" : "  <-- INACTIVE");
+            path = path.Length == 0 ? node : node + "  /  " + path;
+        }
+        Debug.LogWarning("[FeatureAlertBanner] Discovery banner skipped: not " +
+                         "activeInHierarchy. The AlertsLog entry was still written. " +
+                         "This banner is meant to stay active in the scene. Chain: " + path);
     }
 
     public void Hide()

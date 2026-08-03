@@ -1249,9 +1249,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
             }
             any = true;
         }
-        if (!any) return;
+        if (any) PaintSitePaving();
 
-        PaintSitePaving();
+        // Paint the ENTIRE network, not just the revealed segments, and do it
+        // AFTER PaintSitePaving -- that pass is what fills sitePavedRoad, and
+        // PaintRoadSegment must skip those cells or a road tile lands on top of
+        // the tinted paving and re-opens the pale band.
+        //
+        // Painting everything is free and invisible: fog hides unrevealed
+        // ground, exactly as it already does for site paving. Painting per
+        // segment instead left the one-cell halo that UnfogRoadSegment reveals
+        // spilling onto the NEXT segment, which had no road tile yet -- bare
+        // floor across the carriageway at every join. Reveal stays per segment;
+        // only the paint is global.
+        PaintAllRoads();
     }
 
     /// <summary>The terrain a site's masonry is retyped to -- the ONE place
@@ -1376,12 +1387,27 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // route.
         RevealWithBorder(terrain, site.cells);
 
+        // The carriageway THROUGH the hold. It was subtracted from site.cells at
+        // placement (the road is built AROUND a site, not cut through it), so it
+        // is not in the halo above, and it used to sit fogged until its own road
+        // segment happened to reveal -- a dark trench across a village the player
+        // had fully discovered. A hold you have found does not have a fogged
+        // strip through the middle of it.
+        if (site.pavedRoadCells != null && site.pavedRoadCells.Count > 0)
+            RevealWithBorder(terrain, site.pavedRoadCells);
+
         // Masonry needs no pass of its own. The skin -- the only masonry the
         // renderer ever paints -- is already inside the halo above, and anything
         // deeper must stay fogged or it shows as bare floor.
 
         var open = new List<Vector3Int>(site.cells.Count);
         foreach (var sv in site.cells) open.Add(sv.ToVector3Int());
+        // The paving opens with the hold too. Revealing it without marking it
+        // would recreate the exact fault the comment above warns about: the rock
+        // flanking it needs a MINED neighbour before the renderer will frame it,
+        // and unframed revealed rock shows as bare floor.
+        if (site.pavedRoadCells != null)
+            foreach (var sv in site.pavedRoadCells) open.Add(sv.ToVector3Int());
         floor.TileInfluence?.MarkNaturalFloor(open);
     }
 
@@ -2512,6 +2538,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (sitePavedRoad.Contains(c)) continue;
             roadTilemap.SetTile(c, roadTile);
         }
+    }
+
+    /// <summary>Paints every segment on the floor, revealed or not. Fog is what
+    /// hides a road the player has not found; the tilemap carries no secrets on
+    /// its own. Called from ApplyRuinsOverrides on both the fresh and the load
+    /// path, after PaintSitePaving has filled sitePavedRoad.</summary>
+    public void PaintAllRoads()
+    {
+        foreach (var seg in roadSegments) PaintRoadSegment(seg.segmentId);
     }
 
     /// <summary>Repaints every already-revealed road segment (used after a load).</summary>

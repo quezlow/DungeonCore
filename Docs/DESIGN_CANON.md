@@ -1885,7 +1885,22 @@ exactly as it exempts river cells, discovered or not. It has to. Reveal calls
 `MarkNaturalFloor` on the revealing segment alone, so without the exemption the
 next stretch still read as solid rock, and the renderer framed the join with a
 cap and a face straight across the carriageway. The exemption changes framing
-only and unfogs nothing, so the anti-leak guarantee above still holds. Segment ids advance even
+only and unfogs nothing, so the anti-leak guarantee above still holds.
+
+PAINT is not per segment either. `PaintAllRoads` lays the road tilemap over the
+WHOLE network at generation and on load, because fog is what hides an
+undiscovered road and the tilemap carries no secrets by itself. Painting per
+segment left the one-cell halo `UnfogRoadSegment` clears spilling onto the next,
+unpainted stretch, and revealed-but-unpainted ground shows as bare floor. It
+runs after `PaintSitePaving`, which is what fills `sitePavedRoad` -- paint that
+band twice and the pale band comes back.
+
+A revealed HOLD reveals the carriageway through it. Site placement subtracts the
+band from `site.cells` (the road is built around a site, not cut through it), so
+`UnfogSite`'s halo never covered it and it waited on its own road segment --
+leaving a fogged trench across a village the player had fully discovered. It is
+marked natural floor at the same moment, or the rock flanking it has no mined
+neighbour and goes unframed. Segment ids advance even
 where a river ate a whole stretch, so saved reveal state stays aligned.
 
 **Cells are never serialised.** `RoadData` stores the polyline, width, segment
