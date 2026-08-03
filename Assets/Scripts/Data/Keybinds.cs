@@ -109,7 +109,7 @@ public static class Keybinds
         GameAction.ToggleKnownParties => "Toggle Known Parties",
         GameAction.ToggleFactions => "Toggle Factions",
         GameAction.ToggleResearch => "Toggle Research Tree",
-        GameAction.RecenterCamera => "Recentre on Core",
+        GameAction.RecenterCamera => "Recenter on Core",
         _ => a.ToString()
     };
 

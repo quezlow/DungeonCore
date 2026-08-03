@@ -127,7 +127,7 @@ public class DungeonCameraController : MonoBehaviour
         if (HandlePan()) ClearFollowTarget();   // manual pan takes control
         HandleFollow();
         HandleBookmarks();
-        HandleRecentre();
+        HandleRecenter();
 
         // DAY 31 — Return-to-core auto-pan disabled per design change.
         // Re-enable by uncommenting if/when desired; ForceReturnToCore() still works
@@ -383,20 +383,20 @@ public class DungeonCameraController : MonoBehaviour
     }
 
     // ── Camera Bookmarks (Ctrl+F1–F4 set · F1–F4 jump · session-only) ──────
-    // Recentre on Core.
+    // Recenter on Core.
     // Free roam makes it easy to end up far out on the disc with nothing
     // recognisable in shot, and the F1-F4 bookmarks only help once they have
     // been set. This always works, and always on the floor you are standing
     // on rather than floor 0.
-    private void HandleRecentre()
+    private void HandleRecenter()
     {
         if (!Keybinds.WasPressed(GameAction.RecenterCamera)) return;
-        RecentreOnCore();
+        RecenterOnCore();
     }
 
     /// <summary>Pans to the ACTIVE floor's core cell. Public so menus and
     /// tutorial beats can call it without going through the keybind.</summary>
-    public void RecentreOnCore()
+    public void RecenterOnCore()
     {
         var floor = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloor : null;
         if (floor == null || floor.TileInfluence == null || floor.Terrain == null) return;

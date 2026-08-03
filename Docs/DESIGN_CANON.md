@@ -3977,6 +3977,6 @@ is unambiguous). Anything else that pans across floors uses the two-argument
 overload.
 
 **Getting home.** `GameAction.RecenterCamera` (Home by default) pans to the
-ACTIVE floor's core cell via `DungeonCameraController.RecentreOnCore()`. Free
+ACTIVE floor's core cell via `DungeonCameraController.RecenterOnCore()`. Free
 roam makes it easy to be far out on the disc with no landmark in shot, and
 the F1-F4 bookmarks only help once they have been set.
