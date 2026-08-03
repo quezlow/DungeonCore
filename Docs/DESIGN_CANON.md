@@ -1799,12 +1799,14 @@ both the retype and the paving pass consult. Dwarven masonry claims at 9x:
 living, maintained walls outrank dead ruins and stay under consecration.
 Its on-screen tell is the influence boundary itself: the ring renderer
 writes a weight into the field texture's spare alpha channel -- 255 where
-an UNCLAIMED cell is typed DwarvenMasonry (one `HasFeatureOverride` probe
-per texel; override-placed terrain is the only kind that can answer), 0
+an UNCLAIMED cell lies inside a living dwarven site's footprint (masonry,
+carved interior and paved carriageway, registered as a holdings set on
+`TerrainTypeMap` by the override pass; one set probe per texel), 0
 elsewhere -- and the ring shader lerps its colour toward
 `dwarvenRingColor` (warm bronze) by the bilinearly sampled weight. The
-boundary glows bronze exactly where dwarven wall is what the push mines
-next and reverts to the core hue once through: frontier cells only, by
+boundary glows bronze exactly where dwarven ground -- wall or courtyard
+-- is what the push takes next and reverts to the core hue once through:
+frontier cells only, by
 design -- the read is "what am I about to take", not "what did I take".
 In push mode (or with the overlay toggled), the same weight also paints
 the holdings themselves in cool granite grey -- see the Granite holdings
@@ -2451,15 +2453,20 @@ against that constraint, and the shipped fill and surveyed edge honour it
 the frontier flare, a thin accent rather than an area.
 
 **Implementation note (as built).** The shader path after all, which this
-entry reserved: edits3 filled the field texture's spare A channel with the
-dwarven weight (255 on unclaimed DwarvenMasonry cells, recomputed on the
-same claim-driven rebuilds), and the holdings fill and surveyed edge are
+entry reserved: the field texture's spare A channel carries the dwarven
+weight -- 255 on unclaimed cells of a living site's WHOLE footprint
+(masonry, carved interior, paved carriageway), fed from a holdings set the
+override pass registers on `TerrainTypeMap` and recomputed on the same
+claim-driven rebuilds -- and the holdings fill and surveyed edge are
 both cut in the fragment shader from that bilinear ramp -- hard-thresholded
 fill at `overlayDwarvenLevel`, edge band peaking at the ramp midpoint, no
 time terms in either. Holdings remain static data; the claim-event rebuild
 already covers "changes only when the player takes a stretch", and
 conquered cells write zero weight, dissolving into the ordinary wash. No
-tilemap overlay was needed.
+tilemap overlay was needed. Claiming the interior currently costs nothing
+extra ON PURPOSE: the mechanical consequence is the road-claiming ladder's
+first rung ("terrain resistance slows the push"), and `IsHoldingsCell` is
+the ready-made ground query waiting for that arc.
 
 **Consequence, kept and shipped:** the moment the player's ring touches the
 holdings IS a visible event -- the living isoline lerps toward

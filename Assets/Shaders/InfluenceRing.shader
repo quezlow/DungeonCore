@@ -4,8 +4,10 @@
 //   R = signed distance to the claimed boundary (0.5 = the boundary itself,
 //       encoded so one cell = 1 / (2 * sdfRangeCells))
 //   G = normalized free-growth cost from InfluenceField (1 = unreachable)
-//   A = dwarven-frontier weight (255 = unclaimed DwarvenMasonry cell); the
-//       ring colour lerps toward _RingColorAlt by the bilinear sample
+//   A = dwarven holdings weight (255 = unclaimed cell inside a living
+//       dwarven site footprint -- masonry, interior and carriageway); the
+//       ring colour lerps toward _RingColorAlt by the bilinear sample and
+//       the granite holdings fill cuts from the same ramp
 //
 // Bilinear filtering interpolates the per-cell values into organic curves.
 // Two octaves of scrolling value noise perturb the isoline (the waver — purely

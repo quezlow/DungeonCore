@@ -68,6 +68,7 @@ public class TerrainTypeMap : MonoBehaviour
         floorRadius = Math.Max(1, radius);
         storedSeed = floorSeed;
         patchOverrides.Clear();
+        holdingsCells.Clear();
 
         // Mix seed so terrain patch RNG is decoupled from feature RNG.
         unchecked
@@ -131,12 +132,33 @@ public class TerrainTypeMap : MonoBehaviour
     }
 
     /// <summary>True when the cell carries a feature override of exactly this
-    /// type. One dictionary probe -- no bedrock test, no band math -- which
-    /// is why InfluenceRingRenderer uses it per texel: override-placed
-    /// terrain (site masonry) is the only kind that can answer, and the ring
-    /// rebuild asks 1M+ times per claim event on the big floors.</summary>
+    /// type. One dictionary probe -- no bedrock test, no band math -- kept
+    /// cheap because callers may ask per cell in bulk. The ring renderer
+    /// consumed it for the frontier weight until the holdings set below
+    /// superseded it: walls alone traced a hollow survey.</summary>
     public bool HasFeatureOverride(Vector3Int cell, TerrainType type)
         => generated && patchOverrides.TryGetValue(cell, out var o) && o == type;
+
+    // Living dwarven site footprints -- masonry, carved interior and paved
+    // carriageway -- fed by TerrainFeatureGenerator.ApplyRuinsOverrides on
+    // both the fresh and the load path. Not serialized: derived data,
+    // rebuilt whenever the overrides are.
+    private readonly HashSet<Vector3Int> holdingsCells = new();
+
+    public void ClearHoldingsCells() => holdingsCells.Clear();
+
+    public void RegisterHoldingsCells(List<SerializableVector3Int> src)
+    {
+        if (src == null) return;
+        foreach (var sv in src) holdingsCells.Add(sv.ToVector3Int());
+    }
+
+    /// <summary>True when the cell lies inside a living dwarven site's
+    /// footprint. One set probe -- the ring renderer asks per texel per
+    /// claim-event rebuild for the granite holdings fill and the frontier
+    /// flare.</summary>
+    public bool IsHoldingsCell(Vector3Int cell)
+        => generated && holdingsCells.Contains(cell);
 
     /// <summary>Deterministic buried-remains sites for this floor: cells in Stone or
     /// Granite, at least minDistFromCenter from the core cell (Chebyshev), inside the

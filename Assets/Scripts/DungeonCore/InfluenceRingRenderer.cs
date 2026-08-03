@@ -7,7 +7,7 @@ using UnityEngine;
 ///
 /// Maintains a per-floor field texture (R = signed distance to the claimed
 /// boundary, G = normalized free-growth cost from InfluenceField, A = the
-/// dwarven-frontier weight for the boundary's bronze lerp) and drives a
+/// dwarven holdings weight for the granite fill and bronze flare) and drives a
 /// world-space quad running the DCR/InfluenceRing shader. Bilinear sampling
 /// turns the blocky per-cell boundary into organic curves; the shader wavers
 /// the isoline with two octaves of scrolling noise, glows asymmetrically (a
@@ -429,15 +429,16 @@ public class InfluenceRingRenderer : MonoBehaviour
                     float dy = cell.y - coreCell.y;
                     if (dx * dx + dy * dy > safeRadiusSq) b = 255;
                 }
-                // Dwarven frontier weight, baked into A (spare until now):
-                // 255 where an UNCLAIMED cell is typed DwarvenMasonry, 0
-                // elsewhere. HasFeatureOverride is one dictionary probe -- no
-                // bedrock test, no band math -- because override-placed
-                // terrain is the only kind that can be DwarvenMasonry and
-                // this runs per texel per claim-event rebuild.
+                // Dwarven holdings weight, baked into A (spare until now):
+                // 255 where an UNCLAIMED cell lies inside a living dwarven
+                // site's footprint -- masonry, carved interior and paved
+                // carriageway alike, so the granite overlay fills the site
+                // rather than tracing its walls, and the frontier flare
+                // fires on the courtyard too. IsHoldingsCell is one set
+                // probe, fed once per override pass; this runs per texel per
+                // claim-event rebuild.
                 byte a = 0;
-                if (!claimed && terrainMap != null
-                    && terrainMap.HasFeatureOverride(cell, TerrainType.DwarvenMasonry))
+                if (!claimed && terrainMap != null && terrainMap.IsHoldingsCell(cell))
                     a = 255;
                 pixels[i] = new Color32(0, g, b, a);
             }

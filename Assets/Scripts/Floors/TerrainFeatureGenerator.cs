@@ -1189,12 +1189,29 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         bool any = false;
         var cells = new List<Vector3Int>();
+        map.ClearHoldingsCells();
         foreach (var s in featureData.sites)
         {
             if (s == null || s.ruinsCells == null || s.ruinsCells.Count == 0) continue;
             cells.Clear();
             foreach (var sv in s.ruinsCells) cells.Add(sv.ToVector3Int());
             map.ApplyFeatureOverride(cells, MasonryTypeFor(s));
+
+            // Living dwarven sites register their WHOLE footprint -- masonry,
+            // carved interior and the paved carriageway -- as holdings, so
+            // the granite overlay fills the site rather than tracing its
+            // walls and the frontier flare fires on the courtyard too.
+            // Cleared and refilled above because this method re-runs on both
+            // the fresh and the load path. The set feeds the ring renderer's
+            // A weight, and is the ready-made ground query for the
+            // road-claiming ladder's "terrain resistance slows the push"
+            // rung when that arc builds.
+            if (MasonryTypeFor(s) == TerrainType.DwarvenMasonry)
+            {
+                map.RegisterHoldingsCells(s.ruinsCells);
+                map.RegisterHoldingsCells(s.cells);
+                map.RegisterHoldingsCells(s.pavedRoadCells);
+            }
             any = true;
         }
         if (!any) return;
