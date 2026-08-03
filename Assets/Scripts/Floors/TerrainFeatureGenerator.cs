@@ -497,6 +497,27 @@ public class TerrainFeatureGenerator : MonoBehaviour
         UnfogRoadSegment(segmentId);
     }
 
+    /// <summary>Every carriageway cell of one reveal segment, or null for an
+    /// unknown id. Read by the caravan route report; runtime data, rebuilt on
+    /// load like the rest of the segment layer.</summary>
+    public IReadOnlyList<Vector3Int> RoadSegmentCells(int segmentId)
+        => GetRoadSegment(segmentId)?.cells;
+
+    /// <summary>True when the player HOLDS this stretch: every carriageway
+    /// cell influence-claimed. The Living Holds' toll verb keys on this, and
+    /// step 8's claiming penalties will key on the same test -- which is why
+    /// it lives here rather than on the caravan.</summary>
+    public bool IsRoadSegmentHeld(int segmentId)
+    {
+        var segment = GetRoadSegment(segmentId);
+        if (segment == null || segment.cells.Count == 0) return false;
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (influence == null) return false;
+        foreach (var c in segment.cells)
+            if (!influence.IsTileClaimed(c)) return false;
+        return true;
+    }
+
     private RoadSegmentRuntime GetRoadSegment(int segmentId)
     {
         foreach (var s in roadSegments)

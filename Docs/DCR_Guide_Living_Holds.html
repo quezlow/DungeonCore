@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR Guide: The Living Holds</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0d0d1a; --panel:#16162a; --panel2:#1c1c33; --accent:#e94560; --gold:#c8902a; --text:#d8d4c8; --dim:#8a8798; --code-bg:#111122; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.6; }
+  .progress-wrap { position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:1px solid #2a2a44; padding:10px 24px; }
+  .progress-bar { height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .25s; }
+  .progress-text { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); margin-top:6px; display:flex; justify-content:space-between; }
+  .reset-btn { background:none; border:1px solid var(--dim); color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 10px; border-radius:4px; cursor:pointer; }
+  .reset-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .container { max-width:920px; margin:0 auto; padding:24px; }
+  h1 { font-family:'Cinzel',serif; color:var(--gold); font-size:34px; margin:18px 0 4px; }
+  .subtitle { color:var(--dim); font-style:italic; margin-bottom:22px; }
+  details { background:var(--panel); border:1px solid #2a2a44; border-radius:8px; margin:14px 0; overflow:hidden; }
+  summary { font-family:'Cinzel',serif; font-size:20px; color:var(--accent); padding:14px 18px; cursor:pointer; user-select:none; }
+  summary:hover { background:var(--panel2); }
+  .body { padding:4px 22px 18px; border-top:1px solid #2a2a44; }
+  code { font-family:'JetBrains Mono',monospace; font-size:14.5px; background:var(--code-bg); color:var(--gold); padding:1px 6px; border-radius:4px; }
+  pre { background:var(--code-bg); border:1px solid #2a2a44; border-radius:6px; padding:14px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.5; color:#c8d4e8; }
+  pre code { background:none; padding:0; color:inherit; }
+  .step { display:flex; gap:12px; align-items:flex-start; background:var(--panel2); border-radius:6px; padding:10px 14px; margin:10px 0; }
+  .step input[type="checkbox"] { margin-top:6px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+  .step label { cursor:pointer; }
+  .callout { border-left:3px solid var(--gold); background:var(--panel2); padding:10px 16px; margin:12px 0; border-radius:0 6px 6px 0; }
+  .callout.warn { border-left-color:var(--accent); }
+  .wisp { color:#9ec9e8; font-style:italic; }
+  b { color:#f0ead8; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:16px; }
+  th, td { border:1px solid #2a2a44; padding:6px 10px; text-align:left; }
+  th { font-family:'Cinzel',serif; color:var(--gold); font-weight:500; background:var(--panel2); }
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+  <div class="progress-text"><span id="ptext">0 / 0 steps complete</span><button class="reset-btn" id="reset">reset checkmarks</button></div>
+</div>
+<div class="container">
+<h1>The Living Holds</h1>
+<p class="subtitle">Canon 19, build order step 7 &mdash; walking villagers, road patrols, the multi-day caravan and its one verb, the held-stretch toll, and the entry-7 matrix made real.</p>
+
+<details open>
+<summary>1. What shipped, in one breath</summary>
+<div class="body">
+<p>The deep roads have people on them. The village's dwarves now <b>walk</b> short lane hops inside their own hold and stand still at night. A <b>patrol</b> paces a bounded beat through the gatehouse and <b>two more</b> wander the village floor's whole network, walking broken roads to where they stop, pausing to look at the collapse, and turning back. A <b>caravan</b> crosses between gatehouse and village on a multi-day schedule &mdash; a real journey with a camp at dusk, an unseen transit between floors, and a day's trading at the village before the road home.</p>
+<p>The player gets exactly one <b>verb per caravan</b>: click the wagon and Rob it (all the cargo, standing <b>-25</b>, the road goes quiet for extra days), Tax it (only while it stands on a road stretch you <b>hold</b> &mdash; every cell claimed &mdash; 20% of the original cargo, standing -3), or Let it pass. The <b>first</b> held crossing ever plays a scripted camera beat: the view glides to the wagon under input lock and the wisp explains the choice. Every later crossing is one alert; the panel only ever opens from a manual click.</p>
+<p>And the entry-7 matrix finally holds a real edge: <b>Dwarves &lt;-&gt; Holy Order is Hostile</b>, and it is <i>exercised</i> &mdash; patrols withdraw toward home when the Church's people come near, and caravans hurry past them.</p>
+<p>New files: <code>Floors/DeepRoadGraph.cs</code>, <code>Floors/DwarfWalkerPuppet.cs</code>, <code>Floors/DwarvenCaravanController.cs</code>, <code>Floors/DwarvenPatrolController.cs</code>, <code>UI/CaravanActionPanel.cs</code>. Edited: <code>TerrainFeatureGenerator</code> (held-segment test), <code>FactionRelations</code> (the edge), <code>DwarvenVillageController</code> (walkers), <code>PauseMenuController</code> (ESC chain), <code>WispScript.cs</code> + <code>WispScript.asset</code>, save data + controller, <code>Commands.cs</code> (route report), the canon.</p>
+<div class="callout warn"><b>Found at HEAD and fixed in this delivery:</b> <code>village_first</code> and <code>village_greeting</code> existed only in <code>WispScript.cs</code> code defaults &mdash; the saved <code>WispScript.asset</code> overrides those defaults and did not contain them, so the village wisp was silently <b>mute</b> in play. Both lines now ride the asset, alongside the four new ones.</div>
+</div>
+</details>
+
+<details>
+<summary>2. Scene setup in Unity</summary>
+<div class="body">
+<p>Two new controllers and one new panel. Everything else wires itself.</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c2s1"><label for="dcr-livingholds-v1-c2s1"><b>Controllers:</b> on the persistent manager GameObject (beside <code>DwarvenOutpostController</code> and <code>DwarvenVillageController</code>), add <code>DwarvenCaravanController</code> and <code>DwarvenPatrolController</code>. No per-floor wiring &mdash; both find their floors through <code>FloorManager</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c2s2"><label for="dcr-livingholds-v1-c2s2"><b>Caravan sprites:</b> fill <code>walkerSprites</code> on the caravan controller (the villager variants are fine until the art pass). <b>Left empty, caravans stay dormant and warn once</b> &mdash; an invisible wagon that can be robbed blind is worse than none. <code>cartSprite</code> is optional and trails the column when assigned; carts do not bob.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c2s3"><label for="dcr-livingholds-v1-c2s3"><b>Patrol sprites:</b> <code>patrolSprites</code> on the patrol controller may stay empty &mdash; it falls back to the caravan's <code>walkerSprites</code>, so one assigned list dresses every dwarf on the roads. Armed variants belong here once chapter 30 of the Content Authoring guide has been run.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c2s4"><label for="dcr-livingholds-v1-c2s4"><b>The panel:</b> under the main UI canvas, create <code>CaravanActionPanel</code> (add the component to a new child GameObject). Build a small panel and assign: <code>panelRoot</code> (a CanvasGroup on the panel body), <code>titleLabel</code>, <code>cargoLabel</code>, <code>robButton</code> + <code>robLabel</code>, <code>taxButton</code> + <code>taxLabel</code>, <code>letPassButton</code>, <code>closeButton</code>. Layout suggestion: title, cargo line, three verb buttons stacked, close in the corner &mdash; the merchant panel's look transfers directly.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c2s5"><label for="dcr-livingholds-v1-c2s5"><b>Verify the ESC chain:</b> open the caravan panel in play mode and press Esc &mdash; it must close the panel and nothing else. The chain closes it FIRST, before the merchant shop; the arbitration stays centralised in <code>PauseMenuController</code>.</label></div>
+</div>
+</details>
+
+<details>
+<summary>3. The road is the route: DeepRoadGraph</summary>
+<div class="body">
+<p><code>MarkNaturalFloor</code> put every road cell in <code>minedTiles</code>, so the pathfinder would happily carry a dwarven caravan through the player's own tunnels whenever they were shorter &mdash; exactly wrong. So nothing here pathfinds. <b>Walkers follow the road's own centreline cells</b>, which is what keeps them visibly on the carriageway, threads them through the village gates the site plans drew (the carriageway was subtracted from the sites, never the reverse), and wades them across river washouts.</p>
+<p><code>DeepRoadGraph</code> is pure static, like <code>RoadNetworkBuilder</code>, and for the same reason: the route report in <code>Commands.cs</code> must measure a route without play mode. It rebuilds the network as a graph from saved <code>RoadData</code>: rails (walkable centrelines), nodes (endpoint clusters merged at radius 6 &mdash; the exact rule <code>RebuildRoadAnchors</code> ships), and BFS routing with Bresenham stitches across junction mouths.</p>
+<p><b>Rim ends</b> are where a road leaves for another floor, in fiction. Identified from save data alone: <code>kind == Trunk</code> and the RAW polyline end within 2 cells of <code>clampRadius</code>, which is where <code>OnCircle</code> put it at generation. The broken gap never moves the raw endpoint, so this holds for floor index 3's collapsed rim trunks exactly as for floor index 2's unbroken one; spurs are <code>RoadKind.Spur</code> and never qualify. The caravan pairs one rim end per floor by <b>bearing</b>, so the wagon visibly leaves and arrives on "the same" road.</p>
+</div>
+</details>
+
+<details>
+<summary>4. Villagers walk</summary>
+<div class="body">
+<p><code>DwarvenVillageController</code> keeps its whole discovery contract &mdash; poll, establish, name roster, alert, wisp lines, click greeting &mdash; and swaps bare SpriteRenderers for <code>DwarfWalkerPuppet</code>s. Each villager waits 4&ndash;10 seconds, hops to a lane cell within 6 cells, and waits again. Hops are found by a <b>bounded BFS inside the site's own cells</b> (200 expansions, 4-neighbour), so nobody ever strays onto the carriageway or into the rock: the candidate rule that placed them &mdash; two carved north neighbours &mdash; still picks every destination.</p>
+<p>Night stills the lanes: villagers freeze at dusk and resume at dawn, the same clock the caravan camps by. <code>villagerCount</code> now defaults to <b>8</b> &mdash; the knob the arc was always going to grow. Walk speed 1.2, deliberately slower than any adventurer: these are people at home, not units.</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c4s1"><label for="dcr-livingholds-v1-c4s1"><b>Check:</b> reveal the village, watch two minutes. Villagers hop between lane cells, never onto the road running through the hold, never into walls. Click one mid-walk &mdash; the greeting still plays.</label></div>
+</div>
+</details>
+
+<details>
+<summary>5. Patrols</summary>
+<div class="body">
+<p><code>DwarvenPatrolController</code> is a scene singleton and <b>stateless on purpose</b> &mdash; patrols are ambient texture and re-derive each session; persisting a guard's footsteps would be save weight spent on nothing a player could notice.</p>
+<p><b>Gatehouse:</b> once the outpost is established, one patrol paces a bounded beat &mdash; 60 centreline cells either side of the outpost &mdash; through the gate, day and night. <b>Village floor:</b> once the village is established, two patrols set off from it in opposite directions and wander the whole network, picking a random connected road at each junction (no immediate about-face when the junction offers anywhere else to go). At a <b>broken end</b> &mdash; a spur's collapse or a rim trunk's swallowed end &mdash; the patrol walks to where the road stops, pauses three seconds <i>facing past the collapse along the road's own bearing</i>, and turns back. That is rung 5 of canon 19's warning ladder rehearsed on natural geometry; step 8 re-aims a beat that already works instead of inventing one.</p>
+<p><b>Reactions</b> exercise the matrix (chapter 8): any adventurer within 8 units halts the patrol to watch, facing the nearest; an adventurer of a <b>Hostile</b> faction sends it withdrawing toward home until nothing hostile is within 14. Scans are throttled to twice a second &mdash; the <code>ScanForHostiles</code> allocation lesson, not repeated.</p>
+<p>Patrol speed is a plain 2.2, not day-derived: a loop has no arrival to keep, so the days constraint does not bind it. The first time a patrol is seen on a revealed stretch, the wisp speaks <span class="wisp">patrol_first</span> (once ever, wisp-persisted).</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c5s1"><label for="dcr-livingholds-v1-c5s1"><b>Check:</b> stand an adventurer party near a patrol's road. The patrol halts and watches; if the party has a Pilgrim (Holy Order), the patrol turns and walks toward home instead.</label></div>
+</div>
+</details>
+
+<details>
+<summary>6. The caravan: a journey in days</summary>
+<div class="body">
+<p>The journey is <b>two legs and a gap</b>, because the gatehouse and the village are different floors and no walker crosses floors: outpost to rim end on the gatehouse floor (<b>0.75 days</b>), an unseen transit through the rock (<b>1 day</b>), rim trunk down the network to the village (<b>1.5 days</b>), a dwell at the market (<b>1 day</b>), and the same road home. One caravan at a time; the next departs 2&ndash;4 days after a journey completes (+<b>4 extra</b> after a robbery). Departures need the Deep Holds met (outpost or village established), both dwarven floors generated, and <b>Tier 0</b> standing &mdash; at Tier 1+ the road goes quiet while the gate still trades, which is the way back.</p>
+<p><b>Travel is authored in days, never tiles per second</b> &mdash; the canon constraint, kept: each leg's speed is <i>derived</i> as route length over authored days times <code>DayDuration</code>, so lengthening the day lengthens the crossing instead of silently halving it. Walking happens in the <b>day phase only</b>; the wagon visibly camps at dusk, which is what makes a multi-day presence legible. Transit and dwell elapse in calendar time (day plus night) &mdash; nothing is on screen to camp.</p>
+<div class="callout"><b>One refinement to the persistence fork, flagged:</b> the locked wording was "position is a pure function of the clock". Built literally against the wall clock, every halt &mdash; night, the vignette, an open panel &mdash; would end in a teleport catch-up. What ships preserves the intent exactly: the save carries <b>walked seconds this leg</b> (accrued only while actually walking) and phase seconds, and position is a pure function of <i>those</i>. Reload restores the wagon to the cell it stood on; halts simply do not accrue; no per-frame progress field exists to drift.</div>
+<p>Cargo rolls 80&ndash;200g per journey. The column is three walkers plus the optional cart, spaced 1.6 units along the path. While a Hostile-faction adventurer is within 10 units, the wagon <b>hurries</b> at 1.5x &mdash; fear on the road, the matrix felt.</p>
+<p><b>Sighting:</b> fog hides walkers on unrevealed road for free (the shadow tilemap renders above the Player layer). The first time ever the wagon rolls onto a stretch the player has revealed: one Discovery alert, <span class="wisp">caravan_first</span>, and <code>FactionIntel.NotifyEncounter</code> &mdash; a caravan can genuinely be the player's first meeting with the Holds.</p>
+</div>
+</details>
+
+<details>
+<summary>7. The one verb, and the toll</summary>
+<div class="body">
+<p>Click the wagon (once sighted) and the <code>CaravanActionPanel</code> opens; the wagon halts while the choice is open. <b>One verb per caravan</b>: Rob, Tax, or Let pass settles the wagon for its whole journey &mdash; Let pass consumes the verb too. <b>Closing without choosing settles nothing</b>: the wagon walks on and can be clicked later; a misclick must never burn the decision.</p>
+<table>
+<tr><th>Verb</th><th>Takes</th><th>Standing</th><th>Then</th></tr>
+<tr><td>Rob</td><td>all cargo</td><td>-25</td><td>wagon despawns; next departure +4 extra days; at Tier 1+ the road falls quiet</td></tr>
+<tr><td>Tax</td><td>20% of original cargo, min 1</td><td>-3</td><td>wagon walks on, lighter</td></tr>
+<tr><td>Let pass</td><td>nothing</td><td>&mdash;</td><td>wagon walks on; the verb is spent</td></tr>
+</table>
+<p><b>Tax needs a held road:</b> the button is live only while the wagon stands on a segment where <b>every carriageway cell is influence-claimed</b> &mdash; the new <code>TerrainFeatureGenerator.IsRoadSegmentHeld</code>, placed on the generator (not the caravan) because step 8's claiming penalties will key on the same test. Claiming itself carries no penalty yet; that is step 8.</p>
+<p><b>The first held crossing ever</b> plays the toll vignette: the camera glides to the wagon under input lock (the First Blood pattern &mdash; follow target, zoom 7, scaled waits so pausing holds the beat), the wisp gives the spiel &mdash; <span class="wisp">"...take it all and be a robber, take a toll and be a power, or wave it through and be forgotten. One choice per wagon."</span> &mdash; and the wagon holds a few grace seconds inviting the click. The beat is flag-persisted and never replays. <b>Every later crossing</b> of a held stretch is one System alert per segment per journey while the verb is unspent, and nothing more &mdash; the panel only ever opens from a manual click. That is the anti-spam decision of the arc.</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c7s1"><label for="dcr-livingholds-v1-c7s1"><b>Check:</b> claim a full road segment on the caravan's route, let it cross. First time: camera beat + spiel. Reload, let it cross another held stretch: one alert, no beat, no panel. Click it: panel, Tax live with the toll figure. Close without choosing, click again: still all three verbs.</label></div>
+</div>
+</details>
+
+<details>
+<summary>8. The matrix revisit (entry 7)</summary>
+<div class="body">
+<p><code>FactionRelations.Between</code> now writes the Deep Holds' first edge: <b>Dwarves &lt;-&gt; Holy Order is Hostile</b>. The deep-faith reading &mdash; divinity below, the Church's burning judgment above &mdash; earned its way into the matrix the day a shipped system could exercise it, and two now do: patrol withdrawal and caravan hurry. Deliberately <b>not</b> Allied to the Cultists: sharing an enemy of the Church is not sharing a cause with people who worship what the Holds merely live beside. Everything else stays Neutral; strengths stay 8 across the board.</p>
+</div>
+</details>
+
+<details>
+<summary>9. Save and load</summary>
+<div class="body">
+<p>Eight flat additive fields on <code>DungeonSaveData</code>: <code>caravanNextDepartureDay</code> (-1 = due), <code>caravanState</code>, <code>caravanWalkedSeconds</code>, <code>caravanPhaseSeconds</code>, <code>caravanCargo</code>, <code>caravanVerbUsed</code>, <code>caravanSighted</code>, <code>caravanTollVignettePlayed</code>. Old saves load the lot as zero/false/&minus;1 and the caravan simply departs on the first eligible day. The journey state enum serialises as ints &mdash; <b>append only, never reorder</b>.</p>
+<p>On load, routes are <b>not</b> in the save: they re-derive deterministically from the world (same floors, same graph, same bearing pairing), the current leg re-stages, and position falls out of the saved walking clock. Patrols persist nothing and respawn from the establish flags. The vignette flag and the sighting flag are static, merchant-pattern, and reset with <code>ResetForNewGame</code>.</p>
+</div>
+</details>
+
+<details>
+<summary>10. Testing: the route report first</summary>
+<div class="body">
+<p>Tooling before content: before watching a single wagon walk, prove the geometry headlessly.</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c10s1"><label for="dcr-livingholds-v1-c10s1"><b>Run the report:</b> Commands &rarr; <b>Test Generate All Floors</b>, then <b>Test Caravan Route Report</b>. It prints both floors' rim ends with bearings, the chosen pairing and its bearing delta, the anchor snaps, each leg's cell count and derived speed against the authored days, and how many segments along the route are currently held. A missing route prints a loud FAIL &mdash; the point is a defect in seconds, not on screen in minutes.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c10s2"><label for="dcr-livingholds-v1-c10s2"><b>Sanity the speeds:</b> at defaults, expect the gate leg around 130&ndash;230 cells in 0.75 days and the village leg around 200&ndash;700 cells in 1.5 days &mdash; derived speeds landing roughly between 1 and 3 units/second. A wildly higher figure means the route doubled back through the graph; re-run the report on another seed before touching code.</label></div>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c10s3"><label for="dcr-livingholds-v1-c10s3"><b>Smoke pass in play:</b> establish the outpost, next dawn watch the wagon leave the gate and camp at dusk mid-trunk. Save mid-leg, reload: same cell. Let a full journey complete; a new one departs 2&ndash;4 days later. Rob one: standing -25, gold up, road quiet for the extra delay.</label></div>
+</div>
+</details>
+
+<details>
+<summary>11. Update the Canon</summary>
+<div class="body">
+<p>The canon edits <b>ride the delivery script</b> &mdash; nothing here is a manual step. Recorded for review, the script rewrites five places:</p>
+<p><b>Entry 19 status header:</b> The Living Holds moves from GREENLIT to SHIPPED in the part-shipped list; only the granite overlay and road claiming remain DESIGN.</p>
+<p><b>Entry 19 village paragraph:</b> STATIC villagers become walkers &mdash; puppet wander, bounded BFS in site cells, night stillness, count default 8.</p>
+<p><b>Entry 19, "The Living Holds":</b> the GREENLIT paragraph becomes the full SHIPPED as-built section &mdash; the road graph, the puppet, patrols and their reactions, the caravan's two-leg day-authored journey, the walking-clock persistence (with the refinement rationale), the one-verb rule, the held test, the toll vignette, save fields, the dormant-without-sprites rule, and key files.</p>
+<p><b>Entry 19 build order, step 7:</b> GREENLIT &rarr; SHIPPED, pointing at the section above. Step 8's blocker note stands unchanged.</p>
+<p><b>Entry 7, "Faction-vs-faction":</b> the deferral paragraph becomes the as-built edge &mdash; Dwarves &lt;-&gt; Holy Order Hostile, exercised by walker reactions, deliberately not Allied to the Cultists.</p>
+<div class="step"><input type="checkbox" id="dcr-livingholds-v1-c11s1"><label for="dcr-livingholds-v1-c11s1"><b>Confirm after push:</b> open <code>Docs/DESIGN_CANON.md</code> at entry 19 and entry 7 and read the five edits in place.</label></div>
+</div>
+</details>
+
+</div>
+<script>
+(function () {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
+  var fill = document.getElementById('fill');
+  var text = document.getElementById('ptext');
+  var reset = document.getElementById('reset');
+
+  function refresh() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var pct = boxes.length ? Math.round(100 * done / boxes.length) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = done + ' / ' + boxes.length + ' steps complete';
+  }
+
+  boxes.forEach(function (b) {
+    try {
+      if (localStorage.getItem(b.id) === '1') b.checked = true;
+    } catch (e) {}
+    b.addEventListener('change', function () {
+      try { localStorage.setItem(b.id, b.checked ? '1' : '0'); } catch (e) {}
+      refresh();
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

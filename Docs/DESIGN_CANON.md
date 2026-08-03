@@ -448,15 +448,16 @@ They are unlike the other four in three ways that are all deliberate:
 first revealed. Listing them from day one would advertise a floor-index-2
 set-piece hundreds of days before a Diamond core can reach it.
 
-**Faction-vs-faction.** `FactionRelations.Between` already yields Neutral for
-the Deep Holds against all four -- the Cultist clause needs a lawful faction
-on the other side and they are not one -- so only an explicit martial strength
-was added. The deep-faith reading would put them beside the Cultists and
-against the Church; that is deliberately NOT written into the matrix, because
-no shipped system runs a dwarf encounter and a relationship nothing exercises
-is a claim that cannot yet be shown wrong. Revisit in The Living Holds arc
-(entry 19's build order, step 7), which greenlights caravans and patrols --
-the first dwarves a shipped system can meet in the field.
+**Faction-vs-faction.** The Living Holds (entry 19, step 7) wrote the Deep
+Holds' first matrix edge: Dwarves <-> Holy Order is Hostile -- the deep-faith
+reading (entry 20: divinity below, the Church's burning judgment above) made
+mechanical the day shipped systems could exercise it. Two now do: patrols
+withdraw toward home when a Holy Order adventurer comes near, and caravans
+hurry past them at 1.5x -- so the relationship is a claim play can show
+wrong. Deliberately NOT Allied to the Cultists: sharing an enemy of the
+Church is not sharing a cause with people who worship what the Holds merely
+live beside. Everything else stays Neutral; strengths stay 8 across the
+board.
 
 **Key files:** `Adventurer/FactionId.cs`, `Adventurer/FactionSystem.cs`,
 `Adventurer/FactionRelations.cs`, `Gameplay/FactionIntel.cs`,
@@ -1452,13 +1453,13 @@ the First Spark and The Drawn Breath (see entry 28A).
 ## 19. Buried Age Sites and the Deep Roads
 
 Status: PART SHIPPED. The road substrate, the sites, and the dwarves --
-faction, outpost, vendor, spoil economy, and now the village (part 3) -- are
-built and described as-built below. The granite overlay and road claiming
-remain DESIGN and do not exist in code; caravans and patrols are GREENLIT into
-The Living Holds arc (see the build order at the end of this entry). Do not
-assume the classes or APIs of anything still marked DESIGN here. The tier-up
-divine audiences that used to share this entry are now 19A and have no
-dependency on any of this.
+faction, outpost, vendor, spoil economy, the village (part 3), and now The
+Living Holds (step 7: walking villagers, road patrols, the caravan and its
+verbs, the entry-7 matrix revisit) -- are built and described as-built below.
+The granite overlay and road claiming remain DESIGN and do not exist in code.
+Do not assume the classes or APIs of anything still marked DESIGN here. The
+tier-up divine audiences that used to share this entry are now 19A and have
+no dependency on any of this.
 
 The deep floors get a civilisation instead of a difficulty curve. Scattered
 ruins alone read as set dressing; a ROAD through them reads as somewhere that
@@ -2189,15 +2190,19 @@ after a reload. On establish it rolls the settlement's name from an 8-name
 roster seeded by floor seed and site id (deterministic, so no save field),
 fires `FactionIntel.NotifyEncounter(Dwarves)` -- idempotent, and deliberately
 fired here as well as at the gatehouse, because stairs are player-placed and
-a run can genuinely reach the village first -- stands its STATIC villagers
+a run can genuinely reach the village first -- stands its villagers
 on interior cells picked by the builder's own walkable rule (which also keeps
 them off the carriageway), raises a Discovery alert naming the hold, and
 speaks `village_first` once. Clicking a villager repeats `village_greeting`.
 No vendor: they trade at the gate, they live here. Villager art is a
 variant list (`villagerSprites`), dealt by a seeded round-robin over a
 shuffled copy so counts stay as even as the list allows; null entries are
-skipped and an empty list draws nobody. `villagerCount` ships defaulting to 4
-for The Living Holds arc to raise. The discovery alert
+skipped and an empty list draws nobody. Since The Living Holds (step 7) the
+villagers WALK: `DwarfWalkerPuppet`s hopping between lane cells found by a
+bounded 4-neighbour BFS inside the site's own cells (200-expansion cap), so
+nobody strays onto the carriageway or into the rock; 4-10s pauses between
+hops of up to 6 cells, walk speed 1.2, frozen at night on the day clock.
+`villagerCount` ships defaulting to 8. The discovery alert
 re-fires once per session after a reload, exactly as the outpost's does --
 accepted.
 
@@ -2231,17 +2236,112 @@ components, room upgrades, deep-floor-only furniture. Two channels that stay
 meaningful independently, so losing the surface camp does not lock the player
 out of everything.
 
-**The Living Holds (GREENLIT, the next arc).** The dwarves who WALK:
-villagers with routines, patrols on the sparse network, and caravans crossing
-between gatehouse and village that the player may rob, let pass, or tax.
-Converting a held road stretch into a toll the player collects belongs here
-too. The caravan is a multi-day presence rather than a dawn-to-dusk visit --
-at 180s days and a 2.6 walk speed a traveller covers roughly 470 tiles per
-day, so crossing the village floor takes days. Travel MUST be authored in
-days with speed derived from it, never as tiles per second, or a longer day
-silently halves the crossing. This arc is also the trigger entry 7 defers the
-faction-vs-faction matrix to: patrols and caravans are the first dwarves a
-shipped system can meet in the field.
+**The Living Holds (SHIPPED, step 7).** The dwarves who walk: villagers,
+patrols, and the caravan with its verbs. Everything below is as-built.
+
+*The rail.* No walker pathfinds. `MarkNaturalFloor` put every road cell in
+`minedTiles`, so the pathfinder would carry a dwarven wagon through the
+player's own tunnels whenever they were shorter. Walkers follow the road's
+own centreline instead: `DeepRoadGraph` (pure static, like the road builder,
+so the Commands report can measure routes headlessly) rebuilds the network
+from saved `RoadData` -- rails are `Centreline()` runs, nodes are endpoint
+clusters merged at radius 6 (the exact `RebuildRoadAnchors` rule), routing is
+node-BFS with Bresenham stitches across junction mouths. Rim ends -- where a
+road leaves for another floor, in fiction -- are identified from save data
+alone: kind Trunk with the RAW polyline end within 2 cells of `clampRadius`
+(where `OnCircle` put it; the broken gap never moves the raw endpoint, so
+floor 3's collapsed rim trunks qualify exactly as floor 2's unbroken one, and
+spurs never do). All walkers are `DwarfWalkerPuppet`: one SpriteRenderer,
+distance-along-path movement, flipX and a small sine bob, scaled time, and
+NEVER registered with `FloorEntityRegistry` -- dwarves are not combat
+entities; a rob is a verb, not a fight. Fog hides walkers on unrevealed road
+for free (the shadow tilemap renders above the Player layer).
+
+*Patrols* (`DwarvenPatrolController`, stateless -- ambient texture re-derives
+each session). One paces a 60-cell beat either side of the outpost through
+the gatehouse, day and night; two more set off from the village in opposite
+directions and wander the whole network, picking a random connected road at
+each junction, no immediate about-face where the junction offers anywhere
+else. At a broken end the patrol walks to where the road stops, pauses 3s
+facing past the collapse along the road's own bearing, and turns back --
+warning-ladder rung 5 rehearsed on natural geometry, for step 8 to re-aim.
+Reactions (0.5s throttle): any adventurer within 8 halts the patrol to
+watch; a Hostile-faction adventurer sends it withdrawing toward home until
+nothing hostile is within 14. Patrol speed is a plain 2.2: a loop has no
+arrival to keep, so the authored-days constraint does not bind it. First
+sighting on revealed road speaks `patrol_first` (wisp-persisted once).
+
+*The caravan* (`DwarvenCaravanController`, scene singleton). The journey is
+two legs and a gap, because the floors are different and no walker crosses
+floors: outpost to a rim end (0.75 days authored), unseen transit (1 day),
+bearing-matched rim trunk down to the village (1.5 days), a dwell (1 day),
+then the same road home. Rim ends pair by bearing so the wagon leaves and
+arrives on "the same" road. Travel is authored in DAYS with speed derived
+(route length over authored days times `DayDuration`) -- the constraint this
+entry set, kept. Walking is day-phase only; the wagon visibly camps at dusk.
+Transit and dwell elapse in calendar time (day plus night) -- nothing is on
+screen to camp. One caravan at a time; the next departs 2-4 days after
+completion, +4 more after a robbery; departures need the Holds met (outpost
+or village established), both floors generated, and standing Tier 0 -- at
+Tier 1+ the road goes quiet while the gate still trades, which is the way
+back. Cargo rolls 80-200g. The column is three walkers plus an optional
+cart (carts do not bob), spaced 1.6 along the path; within 10 units of a
+Hostile-faction adventurer the wagon hurries at 1.5x. With no walker sprites
+assigned the system stays DORMANT and warns once -- an invisible wagon that
+can be robbed blind is worse than none.
+
+*Persistence is the walking clock.* The save carries walked seconds this leg
+(accrued only while actually walking) and phase seconds; position is a pure
+function of those. The fork's letter said "pure function of the clock" --
+built against the wall clock, every halt (night, vignette, open panel) ends
+in a teleport catch-up, so the clock persisted is the walking clock itself:
+reload restores the wagon to the cell it stood on, halts simply do not
+accrue, and no per-frame progress field exists to drift. Routes are NOT
+saved; they re-derive deterministically and the leg re-stages on load. Eight
+flat additive fields on `DungeonSaveData` (`caravanNextDepartureDay` -1 =
+due, `caravanState` append-only ints, walked/phase seconds, cargo, verbUsed,
+sighted, tollVignettePlayed); statics reset in `ResetForNewGame`, merchant
+pattern.
+
+*Sighting and the toll.* First time ever the wagon rolls onto a REVEALED
+segment: one Discovery alert, `caravan_first`, and
+`FactionIntel.NotifyEncounter` -- a caravan can genuinely be the player's
+first meeting with the Holds. A stretch is HELD when every carriageway cell
+of the segment is influence-claimed -- `TerrainFeatureGenerator.
+IsRoadSegmentHeld`, placed on the generator because step 8's claiming
+penalties key on the same test (claiming itself still carries no penalty;
+that is step 8). The FIRST held crossing ever plays the toll vignette: camera
+glides to the wagon under input lock (the First Blood pattern -- follow
+target, zoom 7, scaled waits so pause holds the beat), the wisp gives the
+spiel (`caravan_toll_first` -- the mechanic's tutorial), the wagon holds a
+grace beat inviting the click; flag-persisted, never replays. Later held
+crossings: one System alert per segment per journey while the verb is
+unspent, nothing more. The panel NEVER opens itself -- manual click only.
+That is the arc's anti-spam decision.
+
+*One verb per caravan* (`CaravanActionPanel`, MerchantShopUI's open/close
+pattern, closed FIRST in the ESC chain). Rob takes all cargo, standing -25,
+`caravan_robbed`, wagon despawns, +4 extra days, and the alert notes the
+quiet road when the hit crosses into Tier 1. Tax needs a held stretch under
+the wagon (button live only then): 20% of ORIGINAL cargo min 1, standing -3,
+the wagon walks on lighter. Let pass spends the verb too. Closing the panel
+WITHOUT choosing settles nothing -- a misclick must never burn the decision.
+The wagon halts while the panel is open.
+
+*Tooling.* `Commands / Test Caravan Route Report` proves the geometry
+headlessly after Test Generate All Floors: rim ends and bearings per floor,
+the chosen pairing and its delta, anchor snaps, per-leg cell counts and
+derived speeds against the authored days, and held segments along the route;
+a missing route is a loud FAIL.
+
+**Key files:** `Floors/DeepRoadGraph.cs`, `Floors/DwarfWalkerPuppet.cs`,
+`Floors/DwarvenCaravanController.cs`, `Floors/DwarvenPatrolController.cs`,
+`UI/CaravanActionPanel.cs`; edits in `TerrainFeatureGenerator` (held test),
+`FactionRelations` (the edge), `DwarvenVillageController` (walkers),
+`PauseMenuController`, `WispScript.cs` + `Assets/Wisp/WispScript.asset`
+(which was missing `village_first`/`village_greeting` at HEAD -- the saved
+asset overrides code defaults, so the village wisp was silently mute; fixed
+here), `DungeonSaveData`/`DungeonSaveController`, `TESTING/Commands.cs`.
 
 **Reuse note.** `WanderingMerchantController` is a singleton with a static
 next-visit day, bound to the surface arrival model (forest road, camp
@@ -2330,9 +2430,11 @@ lands on proven ground:
    the guaranteed village, the DwarvenVillage archetype, the name roster, and
    the static villagers (variant sprite list, count on the controller). See
    "The dwarves -- the village" above.
-7. THE LIVING HOLDS -- GREENLIT, the next arc, fresh chat: living dwarves,
-   patrols, caravans, and the entry-7 matrix revisit. Static villagers become
-   walkers; `villagerCount` on the controller is the knob that grows.
+7. THE LIVING HOLDS -- SHIPPED: walking villagers, road patrols, the
+   multi-day caravan with its one Rob/Tax/Let-pass verb, the held-stretch
+   toll and its first-time vignette, and the entry-7 matrix revisit
+   (Dwarves <-> Holy Order written Hostile, exercised by walker reactions).
+   See "The Living Holds (SHIPPED, step 7)" above.
 8. Later, and still DESIGN: the granite boundary, road claiming and the
    warning ladder (blocked on an alert severity layer that does not exist --
    `AlertEntry` carries categories only).

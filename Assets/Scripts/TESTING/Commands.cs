@@ -615,4 +615,128 @@ public class Commands : MonoBehaviour
         AdventurerSpawner.Instance.ForceSpawnParty();
         Debug.Log("[Commands] Adventurer party spawned (grade-scaled if assessed).");
     }
+
+    /// <summary>Headless proof of the caravan's geometry (The Living Holds):
+    /// rim ends and bearings on both dwarven floors, the bearing pairing, the
+    /// anchor snaps, each leg's cell count with the speed the authored days
+    /// derive, and how many segments along the route are currently held. Run
+    /// after Test Generate All Floors. A missing route prints a loud FAIL --
+    /// the point is a defect in seconds, not on screen in minutes.</summary>
+    [ContextMenu("Test Caravan Route Report")]
+    void TestCaravanRouteReport()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.Log("[Commands] No FloorManager in scene."); return; }
+
+        FloorRoot gateFloor = null, villageFloor = null;
+        SiteData outpost = null, village = null;
+        foreach (var floor in fm.AllFloors)
+        {
+            var f = floor?.FeatureGenerator;
+            if (f == null || !f.HasGenerated) continue;
+            if (f.GetOutpostSite() != null) { gateFloor = floor; outpost = f.GetOutpostSite(); }
+            if (f.GetVillageSite() != null) { villageFloor = floor; village = f.GetVillageSite(); }
+        }
+        if (gateFloor == null || villageFloor == null)
+        {
+            Debug.Log("[Commands] Caravan report FAIL: need both dwarven floors generated (outpost "
+                + (gateFloor != null) + ", village " + (villageFloor != null)
+                + "). Run Test Generate All Floors first.");
+            return;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Caravan route report - gatehouse floor "
+            + gateFloor.FloorIndex + ", village floor " + villageFloor.FloorIndex + ".");
+
+        var gGraph = DeepRoadGraph.Build(gateFloor.FeatureGenerator.FeatureData.roads);
+        var vGraph = DeepRoadGraph.Build(villageFloor.FeatureGenerator.FeatureData.roads);
+        DumpCaravanRims(sb, "gatehouse", gGraph);
+        DumpCaravanRims(sb, "village", vGraph);
+
+        var gRims = DeepRoadGraph.RimEnds(gGraph);
+        var vRims = DeepRoadGraph.RimEnds(vGraph);
+        if (gRims.Count == 0 || vRims.Count == 0)
+        {
+            sb.AppendLine("FAIL: a floor exposes no rim ends - no route can exist.");
+            Debug.Log(sb.ToString());
+            return;
+        }
+
+        float best = float.MaxValue;
+        var gPick = gRims[0];
+        var vPick = vRims[0];
+        foreach (var a in gRims)
+            foreach (var b in vRims)
+            {
+                float d = DeepRoadGraph.BearingDelta(a.bearingDegrees, b.bearingDegrees);
+                if (d < best) { best = d; gPick = a; vPick = b; }
+            }
+        sb.AppendLine("pairing: gate end " + gPick.walkTerminus + " <-> village end "
+            + vPick.walkTerminus + " (bearing delta " + best.ToString("0.0") + " deg).");
+
+        bool okO = DeepRoadGraph.NearestWalkCell(gGraph, outpost.anchorCell.ToVector3Int(),
+            out int oRail, out int oIdx);
+        bool okV = DeepRoadGraph.NearestWalkCell(vGraph, village.anchorCell.ToVector3Int(),
+            out int vRail, out int vIdx);
+        sb.AppendLine("anchor snaps: outpost "
+            + (okO ? gGraph.rails[oRail].walk[oIdx].ToString() : "FAIL")
+            + ", village " + (okV ? vGraph.rails[vRail].walk[vIdx].ToString() : "FAIL") + ".");
+        if (!okO || !okV) { Debug.Log(sb.ToString()); return; }
+
+        var gateRoute = DeepRoadGraph.Route(gGraph, oRail, oIdx,
+            gPick.railIndex, CaravanTerminusIndex(gGraph, gPick));
+        var villageRoute = DeepRoadGraph.Route(vGraph, vPick.railIndex,
+            CaravanTerminusIndex(vGraph, vPick), vRail, vIdx);
+
+        var days = DwarvenCaravanController.AuthoredDays();
+        float walkDay = DayNightCycle.Instance != null ? DayNightCycle.Instance.DayDuration : 180f;
+        DumpCaravanLeg(sb, "gate leg", gateRoute, days.gateLeg, walkDay, gateFloor);
+        DumpCaravanLeg(sb, "village leg", villageRoute, days.villageLeg, walkDay, villageFloor);
+        sb.AppendLine("transit " + days.transit + "d each way, dwell " + days.dwell
+            + "d - calendar time, nothing on screen to camp.");
+        Debug.Log(sb.ToString());
+    }
+
+    static int CaravanTerminusIndex(DeepRoadGraph.Graph g, DeepRoadGraph.RimEnd rim)
+    {
+        var rail = g.rails[rim.railIndex];
+        return rail.walk[0] == rim.walkTerminus ? 0 : rail.walk.Count - 1;
+    }
+
+    static void DumpCaravanRims(System.Text.StringBuilder sb, string name, DeepRoadGraph.Graph g)
+    {
+        var rims = DeepRoadGraph.RimEnds(g);
+        sb.Append(name + ": " + g.rails.Count + " rails, " + rims.Count + " rim end(s)");
+        foreach (var r in rims)
+            sb.Append(" [" + r.walkTerminus.x + "," + r.walkTerminus.y + " @ "
+                + r.bearingDegrees.ToString("0") + " deg]");
+        sb.AppendLine(".");
+    }
+
+    static void DumpCaravanLeg(System.Text.StringBuilder sb, string name,
+        System.Collections.Generic.List<Vector3Int> route, float authoredDays,
+        float walkDaySeconds, FloorRoot floor)
+    {
+        if (route == null || route.Count < 2)
+        {
+            sb.AppendLine(name + ": FAIL - no route (graph disconnected?).");
+            return;
+        }
+        float len = DeepRoadGraph.PathLength(route);
+        float speed = len / Mathf.Max(1f, authoredDays * walkDaySeconds);
+        int heldCount = 0, segCount = 0;
+        var seen = new System.Collections.Generic.HashSet<int>();
+        var features = floor.FeatureGenerator;
+        foreach (var c in route)
+            if (features.TryGetFeatureRef(c, out var fref) && fref.type == FeatureType.Road
+                && seen.Add(fref.featureId))
+            {
+                segCount++;
+                if (features.IsRoadSegmentHeld(fref.featureId)) heldCount++;
+            }
+        sb.AppendLine(name + ": " + route.Count + " cells, " + len.ToString("0")
+            + " units, " + authoredDays + "d -> " + speed.ToString("0.00")
+            + " u/s; " + segCount + " segments crossed, " + heldCount + " held.");
+    }
 }

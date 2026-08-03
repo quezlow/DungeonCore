@@ -210,6 +210,7 @@ public class DungeonSaveController : MonoBehaviour
         TutorialDirector.ResetForNewGame();        // fresh dungeon runs the guided opening again
         WispQuestDirector.ResetForNewGame();       // fresh dungeon reconciles its urgings from nothing
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
+        DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
 
         SaveGame();
 
@@ -322,6 +323,17 @@ public class DungeonSaveController : MonoBehaviour
 
         currentSave.tutorialComplete = TutorialDirector.TutorialComplete;
         currentSave.merchantNextVisitDay = WanderingMerchantController.NextVisitDayForSave;
+        currentSave.caravanNextDepartureDay = DwarvenCaravanController.NextDepartureDayForSave;
+        currentSave.caravanSighted = DwarvenCaravanController.SightedForSave;
+        currentSave.caravanTollVignettePlayed = DwarvenCaravanController.TollVignettePlayedForSave;
+        if (DwarvenCaravanController.Instance != null)
+        {
+            currentSave.caravanState = DwarvenCaravanController.Instance.StateForSave;
+            currentSave.caravanWalkedSeconds = DwarvenCaravanController.Instance.WalkedSecondsForSave;
+            currentSave.caravanPhaseSeconds = DwarvenCaravanController.Instance.PhaseSecondsForSave;
+            currentSave.caravanCargo = DwarvenCaravanController.Instance.CargoForSave;
+            currentSave.caravanVerbUsed = DwarvenCaravanController.Instance.VerbUsedForSave;
+        }
         currentSave.dwarvenSpoilUnsold = DwarvenSpoil.Unsold;
         currentSave.dwarvenSpoilLifetime = DwarvenSpoil.LifetimeSold;
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
@@ -810,6 +822,16 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.restArmed, currentSave.restAnnounced, currentSave.restFound);
             TutorialDirector.RestoreComplete(currentSave.tutorialComplete);
             WanderingMerchantController.RestoreNextVisitDay(currentSave.merchantNextVisitDay);
+            DwarvenCaravanController.RestoreScheduleFromSave(
+                currentSave.caravanNextDepartureDay,
+                currentSave.caravanSighted,
+                currentSave.caravanTollVignettePlayed);
+            DwarvenCaravanController.Instance?.RestoreJourneyFromSave(
+                currentSave.caravanState,
+                currentSave.caravanWalkedSeconds,
+                currentSave.caravanPhaseSeconds,
+                currentSave.caravanCargo,
+                currentSave.caravanVerbUsed);
             DwarvenSpoil.RestoreFromSave(currentSave.dwarvenSpoilUnsold,
                                          currentSave.dwarvenSpoilLifetime);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);

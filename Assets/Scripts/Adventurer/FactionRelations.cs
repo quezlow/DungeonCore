@@ -4,14 +4,14 @@ using UnityEngine;
 /// The faction-vs-faction relationship matrix and the encounter resolver - the data layer a
 /// future forest / dungeon-exterior encounter system will consult when two faction groups meet.
 ///
-/// DWARVES: the Deep Holds sit outside every quarrel in this matrix. Between()
-/// already yields Neutral for them against all four -- the Cultist clause needs a
-/// lawful faction on the other side and the Deep Holds are not one -- so nothing
-/// here needs a special case, only an explicit strength. That neutrality is a
-/// DELIBERATE floor rather than a lore claim: the deep-faith reading would put
-/// them beside the Cultists and against the Church, but no shipped system runs a
-/// dwarf encounter, and a relationship nothing exercises is a claim that cannot
-/// be wrong yet. Revisit when caravans and patrols exist.
+/// DWARVES: the Deep Holds now hold ONE written edge -- Hostile to the Holy
+/// Order. The deep-faith reading (entry 20: divinity below, the Church's
+/// burning judgment above) earned its way into the matrix the day a shipped
+/// system could exercise it: The Living Holds' patrols withdraw from Holy
+/// Order adventurers and its caravans hurry past them, so the relationship is
+/// now a claim play can show wrong. Deliberately NOT Allied to the Cultists --
+/// sharing an enemy of the Church is not sharing a cause with people who
+/// worship what the Holds merely live beside. Everything else stays Neutral.
 ///
 /// RELATIONSHIPS: only the lawful establishment against the heretic Cultists is hostile -
 /// {Guild &lt;-&gt; Cultists} and {Holy Order &lt;-&gt; Cultists}. Mercenaries take no side.
@@ -53,6 +53,9 @@ public static class FactionRelations
     public static Relationship Between(FactionId a, FactionId b)
     {
         if (a == b) return Relationship.Neutral;   // a faction is not hostile to itself
+        bool dwarfChurch = (a == FactionId.Dwarves && b == FactionId.HolyOrder)
+                        || (b == FactionId.Dwarves && a == FactionId.HolyOrder);
+        if (dwarfChurch) return Relationship.Hostile;   // entry 7: the deep faith and its judges
         bool cultistPair = (a == FactionId.Cultists) ^ (b == FactionId.Cultists);
         bool lawful = a == FactionId.AdventurersGuild || a == FactionId.HolyOrder
                    || b == FactionId.AdventurersGuild || b == FactionId.HolyOrder;

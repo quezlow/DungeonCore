@@ -794,6 +794,26 @@
     </div>
   </details>
 
+  <details>
+    <summary>30. Dwarves of the road: cart, armed patrol, pack walkers</summary>
+    <div class="body">
+      <p>Art for The Living Holds (canon 19, step 7). Three surfaces, no code: the caravan's
+      <code>walkerSprites</code> + <code>cartSprite</code> on <code>DwarvenCaravanController</code>, and
+      <code>patrolSprites</code> on <code>DwarvenPatrolController</code> (which falls back to the caravan's
+      list when empty, so one assigned list dresses every dwarf on the roads). Everything renders as a
+      64px-square walker frame except the cart. Villager variants already exist and are fine placeholders
+      for all three slots.</p>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c30s1"><label for="dcr-authoring-v1-c30s1"><b>The cart</b> is an OBJECT, so per the Style Contract: drop the tall-proportions clause and lead with the orthographic angle clause right after the subject noun. Prompt slot: <code>a small wooden dwarven trade cart, viewed from the front at a slight three-quarter orthographic angle, iron-banded wheels, roped crates and sacks stacked on the bed</code>. Canvas 1024x768 landscape (nudges flatter front-on angles); target 2 cells wide = 64px on the game grid; palette <code>dcr-props-1x.png</code>; background removal with INSPYRENET. The controller draws the cart trailing the column with bob disabled -- carts roll, they do not bounce -- so a level baseline matters more than on walkers.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c30s2"><label for="dcr-authoring-v1-c30s2"><b>The armed patrol dwarf</b> is a CREATURE: full fixed head and tail per the Style Contract, humanoid ~34x60 inside the 64px square. Subject slot: <code>a stout dwarven road warden in a mail shirt and open kettle helm, a short axe resting over one shoulder, unhurried watchful stance</code>. Two or three variants (axe / spear / shield at the back) read as a rotation rather than clones. Keep the silhouette calm -- patrols are texture, not threat telegraphs; the wisp line sells the menace.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c30s3"><label for="dcr-authoring-v1-c30s3"><b>Pack walkers</b> (optional flavour for the caravan column): the villager convention with a cargo clue -- <code>a dwarven caravan hand with a heavy pack frame and rolled bundles strapped high on the back</code>. One or two of these mixed into <code>walkerSprites</code> makes the column read as freight even before the cart lands.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c30s4"><label for="dcr-authoring-v1-c30s4"><b>Assign and verify:</b> caravan <code>walkerSprites</code> (order is the deal order: slot 0 leads), <code>cartSprite</code>, patrol <code>patrolSprites</code>. Then Commands &rarr; <b>Test Generate All Floors</b> &rarr; <b>Test Caravan Route Report</b> for the geometry, and one in-play dawn to see the column and its spacing. An empty caravan list keeps the whole caravan system dormant (single warning) -- that is the shipped guard, not a bug.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

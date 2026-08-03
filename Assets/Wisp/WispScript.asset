@@ -210,6 +210,24 @@ MonoBehaviour:
     text: 'Nothing on you, and nothing in you when you came down. You arrived at
       this the same way you arrived at everything that last day: empty-handed, and
       free.'
+  - id: village_first
+    once: 1
+    text: 'A whole hold, lamplit and living. They never went up, so they never learned to fear the shape of you. Walk soft - this is the oldest home the world still keeps.'
+  - id: village_greeting
+    once: 0
+    text: 'Hammers pause. Eyes follow. Not fear - bookkeeping. They will remember what you touch.'
+  - id: caravan_first
+    once: 1
+    text: 'A wagon on the deep road. Goods, guards'' wages, somebody''s whole year. It will pass whether you watch or not - but you could do more than watch.'
+  - id: caravan_toll_first
+    once: 1
+    text: 'It has crossed onto stone you hold. Old law: the road pays its keeper. Click the wagon and choose - take it all and be a robber, take a toll and be a power, or wave it through and be forgotten. One choice per wagon.'
+  - id: caravan_robbed
+    once: 1
+    text: 'Efficient. Unforgivable, in their ledgers - and they keep the ledgers. The Holds will not send another soon.'
+  - id: patrol_first
+    once: 1
+    text: 'Armed, unhurried, walking a road their grandfathers cut. They are not looking for you. Try to keep it that way.'
   barkSets:
   - personality: 0
     tint: {r: 0.72, g: 0.77, b: 0.82, a: 1}

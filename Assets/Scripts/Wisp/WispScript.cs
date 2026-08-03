@@ -139,6 +139,17 @@ public class WispScript : ScriptableObject
             new Line { id = "village_greeting", once = false,
                 text = "Hammers pause. Eyes follow. Not fear - bookkeeping. They will remember what you touch." },
 
+            // The Living Holds: the roads have people on them now. The toll
+            // spiel is the load-bearing one -- it is the mechanic's tutorial.
+            new Line { id = "caravan_first", once = true,
+                text = "A wagon on the deep road. Goods, guards' wages, somebody's whole year. It will pass whether you watch or not - but you could do more than watch." },
+            new Line { id = "caravan_toll_first", once = true,
+                text = "It has crossed onto stone you hold. Old law: the road pays its keeper. Click the wagon and choose - take it all and be a robber, take a toll and be a power, or wave it through and be forgotten. One choice per wagon." },
+            new Line { id = "caravan_robbed", once = true,
+                text = "Efficient. Unforgivable, in their ledgers - and they keep the ledgers. The Holds will not send another soon." },
+            new Line { id = "patrol_first", once = true,
+                text = "Armed, unhurried, walking a road their grandfathers cut. They are not looking for you. Try to keep it that way." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },
