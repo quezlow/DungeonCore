@@ -2564,6 +2564,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         var terrain = floor != null ? floor.Terrain : null;
         var inf = floor != null ? floor.TileInfluence : null;
+        var types = floor != null ? floor.TerrainTypeMap : null;
         if (terrain == null || inf == null || featureData == null)
         {
             sb.AppendLine("  ABORT: floor not ready.");
@@ -2581,6 +2582,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var roadOverPaving = new List<Vector3Int>();
         var visibleJoins = new List<Vector3Int>();
 
+        // Histograms keyed by the feature that CAUSED the disagreement, so a
+        // systemic source shows up as one bar instead of a list of
+        // coordinates. Plain arrays indexed by the enum: no allocation, and it
+        // cannot silently miss a value the way a switch can.
+        int featureCount = System.Enum.GetValues(typeof(FeatureType)).Length + 1;
+        var unpaintedBy = new int[featureCount];
+        var foggedBy = new int[featureCount];
+
         for (int dy = -radius; dy <= radius; dy++)
         {
             for (int dx = -radius; dx <= radius; dx++)
@@ -2590,10 +2599,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
                 bool revealed = fog == null || fog.GetTile(cell) == null;
                 bool solid = classifier.IsSolid(cell);
-                bool painted = solid && WouldBePainted(cell, inf);
+                bool painted = solid && WouldBePainted(cell, inf, out FeatureType cause);
 
-                if (revealed && solid && !painted) revealedUnpainted.Add(cell);
-                if (!revealed && painted) paintedFogged.Add(cell);
+                if (revealed && solid && !painted)
+                {
+                    revealedUnpainted.Add(cell);
+                    unpaintedBy[FeatureIndex(GetFeatureAt(cell))]++;
+                }
+                if (!revealed && painted)
+                {
+                    paintedFogged.Add(cell);
+                    foggedBy[FeatureIndex(cause)]++;
+                }
 
                 if (GetFeatureAt(cell) == FeatureType.Road)
                 {
@@ -2602,9 +2619,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     if (paved && hasRoadTile) roadOverPaving.Add(cell);
                     if (!paved && !hasRoadTile) roadUnpainted.Add(cell);
 
-                    // A join the player can SEE: revealed road touching fogged
-                    // road. Straight runs of these are the hard edges in the
-                    // screenshots.
                     if (revealed && fog != null)
                     {
                         for (int k = 0; k < 4; k++)
@@ -2620,7 +2634,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Line(sb, "revealed but UNPAINTED (bare floor where a wall belongs)",
              revealedUnpainted, sampleLimit);
+        Detail(sb, revealedUnpainted, sampleLimit, inf, types, fog, true);
+        Histogram(sb, "        by feature UNDER the cell:", unpaintedBy);
+
         Line(sb, "PAINTED but fogged (invisible wall)", paintedFogged, sampleLimit);
+        Detail(sb, paintedFogged, sampleLimit, inf, types, fog, false);
+        Histogram(sb, "        by feature that PAINTED it:", foggedBy);
+
         Line(sb, "road cell with NO road tile", roadUnpainted, sampleLimit);
         Line(sb, "road tile sitting OVER site paving", roadOverPaving, sampleLimit);
         Line(sb, "visible reveal joins (revealed road touching fogged road)",
@@ -2634,27 +2654,68 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return sb.ToString();
     }
 
-    private static readonly Vector3Int[] Orth4 =
+    private static int FeatureIndex(FeatureType f)
     {
-        new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
-        new Vector3Int(0, 1, 0), new Vector3Int(0, -1, 0),
-    };
+        int i = (int)f;
+        return (i < 0) ? 0 : i + 1;
+    }
 
-    /// <summary>Mirror of CaveWallRenderer's paint rule. Kept deliberately
-    /// literal rather than shared, so the report FAILS if the renderer's rule
-    /// drifts instead of agreeing with it by construction.</summary>
-    private bool WouldBePainted(Vector3Int cell, TileInfluenceManager inf)
+    private static void Histogram(System.Text.StringBuilder sb, string label, int[] counts)
     {
-        if (inf.IsTileClaimed(cell)) return true;
-        for (int dy = -1; dy <= 1; dy++)
-            for (int dx = -1; dx <= 1; dx++)
+        bool any = false;
+        for (int i = 0; i < counts.Length; i++) if (counts[i] > 0) { any = true; break; }
+        if (!any) return;
+
+        sb.AppendLine(label);
+        var values = System.Enum.GetValues(typeof(FeatureType));
+        if (counts[0] > 0) sb.AppendLine("            " + counts[0] + "  (none)");
+        foreach (FeatureType f in values)
+        {
+            int i = FeatureIndex(f);
+            if (i < counts.Length && counts[i] > 0)
+                sb.AppendLine("            " + counts[i] + "  " + f);
+        }
+    }
+
+    /// <summary>Per-cell reasons. This is the half v1 was missing: a count says
+    /// something is wrong, a reason says which mechanism did it.</summary>
+    private void Detail(System.Text.StringBuilder sb, List<Vector3Int> cells, int limit,
+                        TileInfluenceManager inf, TerrainTypeMap types,
+                        UnityEngine.Tilemaps.Tilemap fog, bool unpaintedCase)
+    {
+        for (int i = 0; i < cells.Count && i < limit; i++)
+        {
+            var c = cells[i];
+            int minedNbrs = 0, revealedNbrs = 0, riverNbrs = 0;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    var n = new Vector3Int(c.x + dx, c.y + dy, 0);
+                    if (inf.IsTileMined(n)) minedNbrs++;
+                    if (revealedRiverCells.Contains(n)) riverNbrs++;
+                    if (fog == null || fog.GetTile(n) == null) revealedNbrs++;
+                }
+
+            sb.Append("        (").Append(c.x).Append(",").Append(c.y).Append(")")
+              .Append("  feature=").Append(GetFeatureAt(c))
+              .Append("  terrain=").Append(types != null ? types.GetTerrainAt(c).ToString() : "?")
+              .Append("  claimed=").Append(inf.IsTileClaimed(c) ? "Y" : "n")
+              .Append("  minedNbrs=").Append(minedNbrs)
+              .Append("  riverNbrs=").Append(riverNbrs)
+              .Append("  revealedNbrs=").Append(revealedNbrs);
+
+            if (unpaintedCase)
             {
-                if (dx == 0 && dy == 0) continue;
-                var n = new Vector3Int(cell.x + dx, cell.y + dy, 0);
-                if (inf.IsTileMined(n)) return true;
-                if (revealedRiverCells.Contains(n)) return true;
+                // Why the renderer will NOT paint it: no claim and nothing open
+                // touching it. If minedNbrs is 0 the cell was revealed by
+                // something that opened nothing beside it.
+                sb.Append("  ->").Append(inf.IsTileClaimed(c) ? " claimed?!"
+                        : minedNbrs == 0 ? " revealed with NO open neighbour"
+                        : " unexpected");
             }
-        return false;
+            sb.AppendLine();
+        }
     }
 
     private static void Line(System.Text.StringBuilder sb, string label,
@@ -2668,6 +2729,31 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 sb.Append(" (").Append(cells[i].x).Append(",").Append(cells[i].y).Append(")");
         }
         sb.AppendLine();
+    }
+
+    private static readonly Vector3Int[] Orth4 =
+    {
+        new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
+        new Vector3Int(0, 1, 0), new Vector3Int(0, -1, 0),
+    };
+
+    /// <summary>Mirror of CaveWallRenderer's paint rule, and reports WHICH rule
+    /// fired. Kept deliberately literal rather than shared, so the report FAILS
+    /// if the renderer's rule drifts instead of agreeing with it by
+    /// construction.</summary>
+    private bool WouldBePainted(Vector3Int cell, TileInfluenceManager inf, out FeatureType cause)
+    {
+        cause = (FeatureType)(-1);
+        if (inf.IsTileClaimed(cell)) { cause = GetFeatureAt(cell); return true; }
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                var n = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                if (inf.IsTileMined(n)) { cause = GetFeatureAt(n); return true; }
+                if (revealedRiverCells.Contains(n)) { cause = FeatureType.River; return true; }
+            }
+        return false;
     }
 
     /// <summary>Paints every segment on the floor, revealed or not. Fog is what
