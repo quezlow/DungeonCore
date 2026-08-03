@@ -2599,7 +2599,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
                 bool revealed = fog == null || fog.GetTile(cell) == null;
                 bool solid = classifier.IsSolid(cell);
-                bool painted = solid && WouldBePainted(cell, inf, out FeatureType cause);
+                // Split rather than short-circuited. Written as
+                // `solid && WouldBePainted(..., out cause)` the call is skipped
+                // whenever solid is false, so `cause` is not definitely
+                // assigned on every path and C# refuses the later read (CS0165).
+                bool painted = false;
+                FeatureType cause = (FeatureType)(-1);
+                if (solid) painted = WouldBePainted(cell, inf, out cause);
 
                 if (revealed && solid && !painted)
                 {
