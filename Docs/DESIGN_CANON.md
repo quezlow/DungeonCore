@@ -3980,3 +3980,16 @@ overload.
 ACTIVE floor's core cell via `DungeonCameraController.RecenterOnCore()`. Free
 roam makes it easy to be far out on the disc with no landmark in shot, and
 the F1-F4 bookmarks only help once they have been set.
+
+**Anything that tracks the active floor tests IDENTITY, not just events.**
+`FloorManager` carries no `[DefaultExecutionOrder]`, so its `Awake` races the
+`OnEnable` of every default-order component that wants
+`OnActiveFloorChanged`. `Minimap` lost that race and skipped its subscription
+silently, then went on looking healthy on floor 0 for a whole session while
+following nothing -- label frozen, floor 0's tiles painted, and the camera
+view outline disappearing on every other floor because it clamps to the
+painted frame. Subscribing is an optimisation; the correctness guarantee is a
+per-frame comparison of the hooked floor against `FloorManager.ActiveFloor`.
+Other components subscribing to a singleton in `OnEnable` under the same
+`if (Instance != null)` guard are exposed to the same race; the ones reading
+`DungeonCore` are safe only because it sits at execution order -20.

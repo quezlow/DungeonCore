@@ -108,8 +108,7 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     private void OnEnable()
     {
         mainCam = Camera.main;
-        if (FloorManager.Instance != null)
-            FloorManager.Instance.OnActiveFloorChanged += OnFloorChanged;
+        TryHookFloorManager();
         HookFloor();
         dirty = true;
 
@@ -121,8 +120,27 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     {
         if (FloorManager.Instance != null)
             FloorManager.Instance.OnActiveFloorChanged -= OnFloorChanged;
+        floorEventsHooked = false;
         UnlockState.OnChanged -= HandleUnlockChanged;
         UnhookInfluence();
+    }
+
+    // FloorManager carries no [DefaultExecutionOrder], so its Awake races this
+    // component's OnEnable at scene load. When it lost, the subscription was
+    // skipped SILENTLY and never attempted again: the map still hooked floor
+    // 0's influence on the LateUpdate retry, so it looked perfectly healthy
+    // there, and then ignored every floor change for the rest of the session.
+    // The label froze at Floor 0, floor 0's tiles stayed painted, and the view
+    // outline vanished the moment the camera moved to another floor's Y offset
+    // (it clamps to the painted frame and hides itself when nothing is left).
+    // Retried until it takes; the identity check in LateUpdate is the net.
+    private bool floorEventsHooked;
+
+    private void TryHookFloorManager()
+    {
+        if (floorEventsHooked || FloorManager.Instance == null) return;
+        FloorManager.Instance.OnActiveFloorChanged += OnFloorChanged;
+        floorEventsHooked = true;
     }
 
     // Gated behind the Map the Deep Warren research node. The whole map hides
@@ -186,7 +204,17 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
         // never made. Retry until it takes -- otherwise nothing can ever mark the
         // map dirty again and it stays a flat rock fill until the panel is
         // toggled by hand.
-        if (influence == null) HookFloor();
+        //
+        // The floor IDENTITY test beside it is the safety net. Following the
+        // active floor must not depend on the subscription having been made,
+        // because when that race was lost the map went on looking correct on
+        // floor 0 and silently stopped following. One reference comparison per
+        // frame buys immunity from ever losing that race again.
+        TryHookFloorManager();
+        var activeFloor = FloorManager.Instance != null
+                        ? FloorManager.Instance.ActiveFloor : null;
+        if (influence == null || (activeFloor != null && floor != activeFloor))
+            HookFloor();
 
         // Only clear the flag once a repaint could actually draw something;
         // consuming it on a bailed paint is what stranded the map.
