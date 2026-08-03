@@ -130,6 +130,14 @@ public class TerrainTypeMap : MonoBehaviour
         return ComputeRadialBand(cell);
     }
 
+    /// <summary>True when the cell carries a feature override of exactly this
+    /// type. One dictionary probe -- no bedrock test, no band math -- which
+    /// is why InfluenceRingRenderer uses it per texel: override-placed
+    /// terrain (site masonry) is the only kind that can answer, and the ring
+    /// rebuild asks 1M+ times per claim event on the big floors.</summary>
+    public bool HasFeatureOverride(Vector3Int cell, TerrainType type)
+        => generated && patchOverrides.TryGetValue(cell, out var o) && o == type;
+
     /// <summary>Deterministic buried-remains sites for this floor: cells in Stone or
     /// Granite, at least minDistFromCenter from the core cell (Chebyshev), inside the
     /// bedrock rim. Same seed, same floor, same answer -- callers cache and consume.
@@ -164,6 +172,12 @@ public class TerrainTypeMap : MonoBehaviour
         return resistanceTable.GetResistance(GetTerrainAt(cell));
     }
 
+    /// <summary>DORMANT since the influence-ring rework (0431a991): the
+    /// per-terrain claimable tilemap this fed was retired for the shader
+    /// boundary ring, which colours by core type with a dwarven-frontier
+    /// lerp (InfluenceRingRenderer.dwarvenRingColor). Kept because the table
+    /// data is serialized and harmless; do not build new features on this
+    /// without wiring a consumer first.</summary>
     public Color GetTint(Vector3Int cell)
     {
         if (resistanceTable == null) return Color.white;

@@ -1797,13 +1797,23 @@ hold and the gatehouse outpost -- to `TerrainType.DwarvenMasonry` (appended
 value 7) through `TerrainFeatureGenerator.MasonryTypeFor`, the ONE function
 both the retype and the paving pass consult. Dwarven masonry claims at 9x:
 living, maintained walls outrank dead ruins and stay under consecration.
-Its claimable ring is warm bronze against the ruins lavender -- the single
-intended on-screen change the refactor shipped. The Deep Holds buy the
-spoil at 5 a cell either way (the counter does not ask provenance), mined
-dwarven masonry still teaches `ancient_masonry` -- the dwarves are the
-Buried Age's heirs -- and the first-claim toast names the terrain "dwarven
-masonry". Dead sites stay Ruins, which keeps the ossuary guarantee's
-reasoning true.
+Its on-screen tell is the influence boundary itself: the ring renderer
+writes a weight into the field texture's spare alpha channel -- 255 where
+an UNCLAIMED cell is typed DwarvenMasonry (one `HasFeatureOverride` probe
+per texel; override-placed terrain is the only kind that can answer), 0
+elsewhere -- and the ring shader lerps its colour toward
+`dwarvenRingColor` (warm bronze) by the bilinearly sampled weight. The
+boundary glows bronze exactly where dwarven wall is what the push mines
+next and reverts to the core hue once through: frontier cells only, by
+design -- the read is "what am I about to take", not "what did I take".
+The `claimableRingTint` fields on `TerrainResistanceTable` are NOT this
+mechanism; they fed the claimable tilemap retired by the influence-ring
+rework (0431a991) and sit dormant, commented as such in code. The Deep
+Holds buy the spoil at 5 a cell either way (the counter does not ask
+provenance), mined dwarven masonry still teaches `ancient_masonry` -- the
+dwarves are the Buried Age's heirs -- and the first-claim toast names the
+terrain "dwarven masonry". Dead sites stay Ruins, which keeps the ossuary
+guarantee's reasoning true.
 
 ### The generator (SHIPPED)
 

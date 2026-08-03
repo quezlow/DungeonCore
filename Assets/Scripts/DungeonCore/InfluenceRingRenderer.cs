@@ -6,7 +6,8 @@ using UnityEngine;
 /// The ethereal boundary ring — the visual identity of the claim rework.
 ///
 /// Maintains a per-floor field texture (R = signed distance to the claimed
-/// boundary, G = normalized free-growth cost from InfluenceField) and drives a
+/// boundary, G = normalized free-growth cost from InfluenceField, A = the
+/// dwarven-frontier weight for the boundary's bronze lerp) and drives a
 /// world-space quad running the DCR/InfluenceRing shader. Bilinear sampling
 /// turns the blocky per-cell boundary into organic curves; the shader wavers
 /// the isoline with two octaves of scrolling noise, glows asymmetrically (a
@@ -76,6 +77,15 @@ public class InfluenceRingRenderer : MonoBehaviour
         new TypeColor { type = DungeonType.Light, color = new Color(0.949f, 0.886f, 0.690f, 1f) }, // white-gold
     };
 
+    [Header("Terrain Ring Hue")]
+    [Tooltip("Boundary hue where the frontier abuts UNCLAIMED dwarven masonry -- the " +
+             "field texture's A channel weights a lerp from the core-type colour to " +
+             "this, so the ring reads bronze exactly where dwarven wall is what the " +
+             "push mines next and reverts once through. Lives here, not on " +
+             "TerrainResistanceTable: the table's claimableRingTint has been dormant " +
+             "since the ring rework (0431a991).")]
+    [SerializeField] private Color dwarvenRingColor = new Color(0.75f, 0.62f, 0.42f, 1f);
+
     [Header("Free-Growth Overlay")]
     [Tooltip("Fill strength of the reach overlay when visible.")]
     [SerializeField, Range(0f, 1f)] private float overlayStrength = 0.10f;
@@ -105,6 +115,7 @@ public class InfluenceRingRenderer : MonoBehaviour
     private FloorRoot floor;
     private TileInfluenceManager influence;
     private InfluenceField field;
+    private TerrainTypeMap terrainMap;
 
     private GameObject quadGO;
     private MeshRenderer quadRenderer;
@@ -227,6 +238,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         if (floor == null) return;
         if (influence == null) influence = floor.TileInfluence;
         if (field == null) field = floor.InfluenceField;
+        if (terrainMap == null) terrainMap = floor.TerrainTypeMap;
 
         if (!subscribedInfluence && influence != null)
         {
@@ -358,6 +370,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_ReachEdge", 0.75f / reachNorm);
         material.SetFloat("_OverlayClaimedLevel", overlayClaimedLevel);
         material.SetFloat("_OverlayExposedLevel", overlayExposedLevel);
+        material.SetColor("_RingColorAlt", dwarvenRingColor);
     }
 
 
@@ -402,7 +415,17 @@ public class InfluenceRingRenderer : MonoBehaviour
                     float dy = cell.y - coreCell.y;
                     if (dx * dx + dy * dy > safeRadiusSq) b = 255;
                 }
-                pixels[i] = new Color32(0, g, b, 255);
+                // Dwarven frontier weight, baked into A (spare until now):
+                // 255 where an UNCLAIMED cell is typed DwarvenMasonry, 0
+                // elsewhere. HasFeatureOverride is one dictionary probe -- no
+                // bedrock test, no band math -- because override-placed
+                // terrain is the only kind that can be DwarvenMasonry and
+                // this runs per texel per claim-event rebuild.
+                byte a = 0;
+                if (!claimed && terrainMap != null
+                    && terrainMap.HasFeatureOverride(cell, TerrainType.DwarvenMasonry))
+                    a = 255;
+                pixels[i] = new Color32(0, g, b, a);
             }
         }
 

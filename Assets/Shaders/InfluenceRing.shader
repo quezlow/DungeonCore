@@ -4,6 +4,8 @@
 //   R = signed distance to the claimed boundary (0.5 = the boundary itself,
 //       encoded so one cell = 1 / (2 * sdfRangeCells))
 //   G = normalized free-growth cost from InfluenceField (1 = unreachable)
+//   A = dwarven-frontier weight (255 = unclaimed DwarvenMasonry cell); the
+//       ring colour lerps toward _RingColorAlt by the bilinear sample
 //
 // Bilinear filtering interpolates the per-cell values into organic curves.
 // Two octaves of scrolling value noise perturb the isoline (the waver — purely
@@ -21,6 +23,7 @@ Shader "DCR/InfluenceRing"
     {
         _FieldTex ("Field (R=sdf, G=reach)", 2D) = "black" {}
         _RingColor ("Ring Color", Color) = (0.784, 0.565, 0.165, 1)
+        _RingColorAlt ("Ring Color Alt (A-weighted)", Color) = (0.75, 0.62, 0.42, 1)
         _Intensity ("Intensity", Float) = 1.15
         _InnerFalloff ("Inner Falloff (encoded)", Float) = 0.044
         _OuterFalloff ("Outer Falloff (encoded)", Float) = 0.2
@@ -55,6 +58,7 @@ Shader "DCR/InfluenceRing"
 
             sampler2D _FieldTex;
             fixed4 _RingColor;
+            fixed4 _RingColorAlt;
             float _Intensity;
             float _InnerFalloff;
             float _OuterFalloff;
@@ -111,7 +115,8 @@ Shader "DCR/InfluenceRing"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float3 fs = tex2D(_FieldTex, i.uv).rgb;
+                float4 f4 = tex2D(_FieldTex, i.uv);
+                float3 fs = f4.rgb;
                 float sdf = fs.r;
 
                 // Two scrolling octaves waver the isoline. Cosmetic only.
@@ -129,7 +134,12 @@ Shader "DCR/InfluenceRing"
                 band *= band; // soften the shoulders
 
                 float pulse = 1.0 + _PulseAmp * sin(t * _PulseSpeed);
-                float3 ring = _RingColor.rgb * band * _Intensity * pulse * _RingColor.a;
+                // Frontier hue: A carries the dwarven-masonry weight, so the
+                // band lerps toward _RingColorAlt where the boundary abuts
+                // unmined dwarven wall. The overlay below stays the core hue
+                // on purpose -- the wash answers reach, not material.
+                float3 ringRGB = lerp(_RingColor.rgb, _RingColorAlt.rgb, f4.a);
+                float3 ring = ringRGB * band * _Intensity * pulse * _RingColor.a;
 
                 // Free-growth overlay, three tiers:
                 //   unclaimed within reach -> brightest (where creep will fill)
