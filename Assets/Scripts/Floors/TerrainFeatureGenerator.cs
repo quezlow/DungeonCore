@@ -2573,6 +2573,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         var fog = terrain.FogTilemap;
         var classifier = new CaveWallClassifier(inf, this, terrain);
+        var owners = BuildOwnerMap();
         int radius = terrain.CurrentRadius;
         var core = terrain.CoreCell;
 
@@ -2640,11 +2641,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Line(sb, "revealed but UNPAINTED (bare floor where a wall belongs)",
              revealedUnpainted, sampleLimit);
-        Detail(sb, revealedUnpainted, sampleLimit, inf, types, fog, true);
+        Detail(sb, revealedUnpainted, sampleLimit, inf, types, fog, owners, true);
         Histogram(sb, "        by feature UNDER the cell:", unpaintedBy);
 
         Line(sb, "PAINTED but fogged (invisible wall)", paintedFogged, sampleLimit);
-        Detail(sb, paintedFogged, sampleLimit, inf, types, fog, false);
+        Detail(sb, paintedFogged, sampleLimit, inf, types, fog, owners, false);
         Histogram(sb, "        by feature that PAINTED it:", foggedBy);
 
         Line(sb, "road cell with NO road tile", roadUnpainted, sampleLimit);
@@ -2683,11 +2684,106 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
-    /// <summary>Per-cell reasons. This is the half v1 was missing: a count says
-    /// something is wrong, a reason says which mechanism did it.</summary>
+    /// <summary>Every cell this floor's generation knows about, tagged with the
+    /// structure that produced it and that structure's reveal state.
+    ///
+    /// v2 asked GetFeatureAt and got None for every cause on all five floors.
+    /// That is the wrong lens: the feature lookup carries carved interiors, not
+    /// the bank / ford / surface / tunnel / masonry sets that MarkNaturalFloor
+    /// and the unfog passes actually work on. This asks the save data instead.
+    ///
+    /// Later writers win, so the order runs general to specific -- a site's own
+    /// paved band should report as the site's, not as the road's.</summary>
+    private Dictionary<Vector3Int, string> BuildOwnerMap()
+    {
+        var m = new Dictionary<Vector3Int, string>();
+        if (featureData == null) return m;
+
+        if (featureData.coreCavern != null)
+        {
+            TagCells(m, featureData.coreCavern.cells, "coreCavern");
+            if (featureData.coreCavern.tunnels != null)
+                foreach (var t in featureData.coreCavern.tunnels)
+                    TagCells(m, t.cells, "coreCavern.tunnel");
+        }
+        if (featureData.entranceCave != null)
+            TagCells(m, featureData.entranceCave.cells, "entranceCave");
+
+        if (featureData.rivers != null)
+            foreach (var r in featureData.rivers)
+            {
+                string rev = featureData.revealedRiverIds != null
+                          && featureData.revealedRiverIds.Contains(r.id) ? "revealed" : "FOGGED";
+                TagCells(m, r.cells, "river" + r.id + ".water[" + rev + "]");
+                TagCells(m, r.bankCells, "river" + r.id + ".BANK[" + rev + "]");
+                TagCells(m, r.surfaceCells, "river" + r.id + ".surface[" + rev + "]");
+                TagCells(m, r.fordCells, "river" + r.id + ".FORD[" + rev + "]");
+            }
+
+        if (featureData.chambers != null)
+            foreach (var ch in featureData.chambers)
+                TagCells(m, ch.cells, "chamber" + ch.id);
+
+        foreach (var seg in roadSegments)
+            TagCells(m, seg.cells, "roadSeg" + seg.segmentId + "["
+                     + (IsRoadSegmentRevealed(seg.segmentId) ? "revealed" : "FOGGED") + "]");
+
+        if (featureData.sites != null)
+            foreach (var s in featureData.sites)
+            {
+                string rev = IsSiteRevealed(s.id) ? "revealed" : "FOGGED";
+                TagCells(m, s.ruinsCells, "site" + s.id + ".MASONRY[" + rev + "]");
+                TagCells(m, s.cells, "site" + s.id + ".interior[" + rev + "]");
+                TagCells(m, s.pavedRoadCells, "site" + s.id + ".paving[" + rev + "]");
+            }
+
+        return m;
+    }
+
+    private static void TagCells(Dictionary<Vector3Int, string> m,
+                                 List<SerializableVector3Int> cells, string label)
+    {
+        if (cells == null) return;
+        foreach (var sv in cells) m[sv.ToVector3Int()] = label;
+    }
+
+    private static void TagCells(Dictionary<Vector3Int, string> m,
+                                 List<Vector3Int> cells, string label)
+    {
+        if (cells == null) return;
+        for (int i = 0; i < cells.Count; i++) m[cells[i]] = label;
+    }
+
+    private string Describe(Vector3Int c, Dictionary<Vector3Int, string> owners,
+                            TileInfluenceManager inf, UnityEngine.Tilemaps.Tilemap fog)
+    {
+        string owner = (owners != null && owners.TryGetValue(c, out var o)) ? o : "UNTRACKED";
+        bool revealed = fog == null || fog.GetTile(c) == null;
+        return "(" + c.x + "," + c.y + ") in=" + owner
+             + " mined=" + (inf.IsTileMined(c) ? "Y" : "n")
+             + " revealed=" + (revealed ? "Y" : "n")
+             + " claimed=" + (inf.IsTileClaimed(c) ? "Y" : "n");
+    }
+
+    private static void Line(System.Text.StringBuilder sb, string label,
+                             List<Vector3Int> cells, int sampleLimit)
+    {
+        sb.Append("  ").Append(cells.Count.ToString().PadLeft(6)).Append("  ").Append(label);
+        if (cells.Count > 0)
+        {
+            sb.Append("   e.g.");
+            for (int i = 0; i < cells.Count && i < sampleLimit; i++)
+                sb.Append(" (").Append(cells[i].x).Append(",").Append(cells[i].y).Append(")");
+        }
+        sb.AppendLine();
+    }
+
+    /// <summary>Per-cell reasons, and the PRODUCER behind each. A count says
+    /// something is wrong; a producer says which pass did it.</summary>
     private void Detail(System.Text.StringBuilder sb, List<Vector3Int> cells, int limit,
                         TileInfluenceManager inf, TerrainTypeMap types,
-                        UnityEngine.Tilemaps.Tilemap fog, bool unpaintedCase)
+                        UnityEngine.Tilemaps.Tilemap fog,
+                        Dictionary<Vector3Int, string> owners, bool unpaintedCase)
     {
         for (int i = 0; i < cells.Count && i < limit; i++)
         {
@@ -2703,38 +2799,33 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     if (fog == null || fog.GetTile(n) == null) revealedNbrs++;
                 }
 
-            sb.Append("        (").Append(c.x).Append(",").Append(c.y).Append(")")
-              .Append("  feature=").Append(GetFeatureAt(c))
+            sb.Append("        ").Append(Describe(c, owners, inf, fog))
               .Append("  terrain=").Append(types != null ? types.GetTerrainAt(c).ToString() : "?")
-              .Append("  claimed=").Append(inf.IsTileClaimed(c) ? "Y" : "n")
               .Append("  minedNbrs=").Append(minedNbrs)
               .Append("  riverNbrs=").Append(riverNbrs)
-              .Append("  revealedNbrs=").Append(revealedNbrs);
+              .Append("  revealedNbrs=").Append(revealedNbrs)
+              .AppendLine();
 
-            if (unpaintedCase)
-            {
-                // Why the renderer will NOT paint it: no claim and nothing open
-                // touching it. If minedNbrs is 0 the cell was revealed by
-                // something that opened nothing beside it.
-                sb.Append("  ->").Append(inf.IsTileClaimed(c) ? " claimed?!"
-                        : minedNbrs == 0 ? " revealed with NO open neighbour"
-                        : " unexpected");
-            }
-            sb.AppendLine();
+            // For a fogged-but-painted cell: whatever OPENED the neighbour that
+            // paints it. For a revealed-but-unpainted cell: whatever REVEALED
+            // the ground around it. Either way, the pass that did it.
+            int shown = 0;
+            for (int dy = -1; dy <= 1 && shown < 3; dy++)
+                for (int dx = -1; dx <= 1 && shown < 3; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    var n = new Vector3Int(c.x + dx, c.y + dy, 0);
+                    bool nRevealed = fog == null || fog.GetTile(n) == null;
+                    bool interesting = unpaintedCase ? nRevealed : inf.IsTileMined(n);
+                    if (!interesting) continue;
+                    sb.Append("             ").Append(unpaintedCase ? "revealer " : "opener   ")
+                      .Append(Describe(n, owners, inf, fog)).AppendLine();
+                    shown++;
+                }
+            if (shown == 0)
+                sb.Append("             (no ").Append(unpaintedCase ? "revealed" : "mined")
+                  .AppendLine(" neighbour found)");
         }
-    }
-
-    private static void Line(System.Text.StringBuilder sb, string label,
-                             List<Vector3Int> cells, int sampleLimit)
-    {
-        sb.Append("  ").Append(cells.Count.ToString().PadLeft(6)).Append("  ").Append(label);
-        if (cells.Count > 0)
-        {
-            sb.Append("   e.g.");
-            for (int i = 0; i < cells.Count && i < sampleLimit; i++)
-                sb.Append(" (").Append(cells[i].x).Append(",").Append(cells[i].y).Append(")");
-        }
-        sb.AppendLine();
     }
 
     private static readonly Vector3Int[] Orth4 =
