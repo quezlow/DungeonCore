@@ -814,6 +814,28 @@
     </div>
   </details>
 
+  <details>
+    <summary>31. Wall Families (per-terrain masonry skins)</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s1"><label for="dcr-authoring-v1-c31s1"><b>Where they live.</b> <code>Data/CaveWallSheetLayout.asset</code> &rarr; the <b>Wall families</b> section. A family = terrain key + sheet texture + flat tint + <code>allowMoss</code> + 16 cap slots + 4 inner corners + 8+8 face slices + straight variants with a <code>plainWeight</code> + site paving slots. A wall cell whose terrain matches an entry renders that family; terrain with no entry renders stone. Two ship: Ruins (terrain 4) and Dwarven Masonry (terrain 7, born as an exact copy of ruins).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s2"><label for="dcr-authoring-v1-c31s2"><b>Add a family.</b> The <b>Add Family</b> button clones the LAST entry -- the intended workflow: add, retarget <code>terrain</code>, repoint art. The fallback ladder makes every slot optional: empty cap &rarr; family mask-11 cap (the base); empty face &rarr; family Straight face; family with NO base cap &rarr; stone (the pre-visual-pass look, never blank). Fill mask 11 first; nothing renders without it.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s3"><label for="dcr-authoring-v1-c31s3"><b>Slice contract.</b> 32 px cells, PPU 32 (one tile = one world unit). Caps and paving: pivot <b>Center</b>. Face slices: pivot <b>Bottom</b>. A straight wall draws a COLUMN of three matched slices -- cap on the wall cell, upper face one cell south, lower face two south -- so author variants as vertical triples that read as one drape. Slots take either (col, row-from-top) on the family sheet or a Sprite Editor override from any texture; overrides win, and the shipped fill is all overrides.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s4"><label for="dcr-authoring-v1-c31s4"><b>Wire the terrain.</b> New terrain value: APPEND to <code>TerrainType</code> only (values serialise by int into assets). Then: a <code>TerrainResistanceTable</code> entry (resistance, ring tint, stone tint, display name) -- a missing entry silently mines at 1.0x, the trap step 6 exists to catch; a <code>PatternDiscovery.TerrainPatternId</code> case (or it teaches nothing) and a <code>TerrainDisplayName</code> case (or the toast prints the enum name lowercased, e.g. "dwarvenmasonry"); a <code>DwarvenSpoil.ValueOf</code> line if the Deep Holds should pay for it.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s5"><label for="dcr-authoring-v1-c31s5"><b>Place the terrain.</b> Site masonry routes through <code>TerrainFeatureGenerator.MasonryTypeFor</code> -- the ONE place that maps a site to its masonry terrain, consumed by both the wall retype and the paving pass so they can never disagree. A new site-driven family extends that function; a band-placed terrain goes through <code>TerrainTypeMap</code> procgen instead.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s6"><label for="dcr-authoring-v1-c31s6"><b>Validate.</b> Layout asset &rarr; <b>Validate Layout</b> (per-family slot bounds, duplicate terrains, base-cap-missing notes), then <b>Dungeon Core &rarr; Validate Wall Families</b> (resistance-table coverage -- the silent 1.0x check -- plus pattern mapping and spoil value per family).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s7"><label for="dcr-authoring-v1-c31s7"><b>Repoint dwarven art</b> (the pending veto round): edit <code>families[1]</code> slot overrides in the Inspector -- no code, no script. Acceptance: before/after screenshots of the village hold (floor 3) and the gatehouse (floor 2); dead sites must not change.</label></div>
+      <p class="why">The refactor exists so a masonry skin is DATA: one list entry, five wiring
+      lines, zero renderer code. Both shipped families render tint white with moss off --
+      the castle art is already thematic, and moss hands back the organic read that worked
+      walls exist to defeat. <code>plainWeight</code> mixes the plain wall into the variant
+      pool (8 shipped: with one pilaster variant, one straight wall in nine is a variant;
+      0 = every wall a variant, on purpose). Site paving keys off the family too, resolved
+      through <code>MasonryTypeFor</code>. The claimable-ring colour is NOT family data --
+      it rides the resistance-table entry, which is why dwarven walls ring bronze while
+      ruins ring lavender.</p>
+    </div>
+  </details>
+
   
 </div>
 

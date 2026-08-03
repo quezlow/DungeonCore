@@ -127,8 +127,10 @@ public class SiteData
     public List<SerializableVector3Int> cells = new();
 
     /// <summary>The masonry. Deliberately NOT carved: these cells stay solid
-    /// rock and are retyped to TerrainType.Ruins, so they render as wall, cost
-    /// Ruins resistance to claim, and pay out the ancient_masonry pattern when
+    /// rock and are retyped to the site's masonry terrain -- decided by
+    /// TerrainFeatureGenerator.MasonryTypeFor: Ruins for every dead site,
+    /// DwarvenMasonry for the living dwarven ones -- so they render as wall,
+    /// cost that terrain's resistance, and pay out the ancient_masonry pattern when
     /// mined. Straight walls against organic chambers is the whole of what makes
     /// a site read as built rather than found.</summary>
     public List<SerializableVector3Int> ruinsCells = new();

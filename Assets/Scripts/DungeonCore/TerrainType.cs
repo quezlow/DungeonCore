@@ -7,8 +7,14 @@
 /// PLACEMENT NOTES
 ///   - Dirt / Sand / Stone / Granite are placed by TerrainTypeMap during
 ///     procgen (radial bands + random patches).
-///   - Ruins is reserved for DAY 70 (Ruins & Structures Expansion).
+///   - Ruins and DwarvenMasonry are placed on Buried Age site masonry by
+///     TerrainFeatureGenerator.MasonryTypeFor: DwarvenMasonry for the living
+///     dwarven structures (village hold, gatehouse outpost), Ruins for every
+///     dead site.
 ///   - HolyGround is reserved for a future hand-placed mechanic.
+///
+/// Values serialise by int into assets (resistance table, wall families):
+/// APPEND new members only; reordering or removal corrupts them silently.
 /// </summary>
 public enum TerrainType
 {
@@ -19,4 +25,5 @@ public enum TerrainType
     Ruins = 4,
     HolyGround = 5,
     Bedrock = 6,
+    DwarvenMasonry = 7,
 }

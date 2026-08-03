@@ -190,16 +190,26 @@ public class PatternDiscovery : MonoBehaviour
             case TerrainType.Stone: return "rough_stone";
             case TerrainType.Granite: return "veined_granite";
             case TerrainType.Ruins: return "ancient_masonry";
+            // The dwarves are the Buried Age's heirs; their living walls teach
+            // the same pattern their ancestors' dead ones do.
+            case TerrainType.DwarvenMasonry: return "ancient_masonry";
             case TerrainType.HolyGround: return "hallowed_stone";
             default: return null;   // Bedrock teaches nothing
         }
     }
+
+    /// <summary>Whether a terrain teaches a material pattern on first claim.
+    /// Editor-validator probe: TerrainPatternId itself stays private, this
+    /// exposes only the yes/no the wall-family validator needs.</summary>
+    public static bool HasTerrainPattern(TerrainType type)
+        => TerrainPatternId(type) != null;
 
     private static string TerrainDisplayName(TerrainType type)
     {
         switch (type)
         {
             case TerrainType.HolyGround: return "holy ground";
+            case TerrainType.DwarvenMasonry: return "dwarven masonry";
             default: return type.ToString().ToLowerInvariant();
         }
     }

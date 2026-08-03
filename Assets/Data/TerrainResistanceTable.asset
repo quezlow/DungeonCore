@@ -48,6 +48,11 @@ MonoBehaviour:
     claimableRingTint: {r: 0.3, g: 0.3, b: 0.35, a: 1}
     stoneTint: {r: 0.32, g: 0.33, b: 0.4, a: 1}
     displayName: Bedrock
+  - type: 7
+    resistance: 9
+    claimableRingTint: {r: 0.75, g: 0.62, b: 0.42, a: 1}
+    stoneTint: {r: 0.92, g: 0.86, b: 0.76, a: 1}
+    displayName: Dwarven Masonry
   riverClaimResistance: 15
   chamberClaimResistance: 1
   riverClaimableTint: {r: 0.45, g: 0.75, b: 0.95, a: 1}

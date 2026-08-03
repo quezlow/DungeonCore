@@ -37,6 +37,10 @@ public class TerrainResistanceTable : ScriptableObject
         new Entry { type = TerrainType.Ruins,      resistance = 8.0f,  claimableRingTint = new Color(0.65f, 0.55f, 0.70f, 1f), stoneTint = new Color(0.82f, 0.76f, 0.85f, 1f), displayName = "Ruins" },
         new Entry { type = TerrainType.HolyGround, resistance = 10.0f, claimableRingTint = new Color(1.00f, 0.90f, 0.70f, 1f), stoneTint = new Color(1.00f, 0.95f, 0.82f, 1f), displayName = "Holy Ground" },
         new Entry { type = TerrainType.Bedrock,    resistance = 9999f, claimableRingTint = new Color(0.30f, 0.30f, 0.35f, 1f), stoneTint = new Color(0.32f, 0.33f, 0.40f, 1f), displayName = "Bedrock" },
+        // 9x: living, maintained dwarven walls outrank dead ruins (8) and stay
+        // under consecration (10). The warm bronze ring against the ruins
+        // lavender is the ONE intended on-screen change of the family refactor.
+        new Entry { type = TerrainType.DwarvenMasonry, resistance = 9.0f, claimableRingTint = new Color(0.75f, 0.62f, 0.42f, 1f), stoneTint = new Color(0.92f, 0.86f, 0.76f, 1f), displayName = "Dwarven Masonry" },
     };
 
     [Header("Feature Overrides")]
@@ -68,6 +72,17 @@ public class TerrainResistanceTable : ScriptableObject
     {
         foreach (var e in entries) if (e.type == type) return e.resistance;
         return 1f;
+    }
+
+    /// <summary>Whether the table carries an explicit entry for a terrain.
+    /// GetResistance answers 1.0x for a MISSING entry -- indistinguishable
+    /// from a real 1.0x, which is how a new wall family could ship mining at
+    /// dirt cost with no error anywhere. The wall-family validator asks this
+    /// instead.</summary>
+    public bool HasEntry(TerrainType type)
+    {
+        foreach (var e in entries) if (e.type == type) return true;
+        return false;
     }
 
     public Color GetTint(TerrainType type)

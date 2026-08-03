@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,6 +15,15 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
 {
     private const float Thumb = 40f;
     private const float Pad = 4f;
+
+    // Which sheet a slot's thumbnail samples. The property path is the only
+    // identity a drawer gets; family slots live under
+    // "families.Array.data[N]....", so the family index is parsed out of the
+    // path and that family's sheet wins. The previous mechanism -- a "ruins"
+    // NAME prefix on every family field -- could not survive the move into a
+    // list, where every entry shares the same field names; parsing structure
+    // instead of names is why this one can.
+    private static readonly Regex FamilyPath = new Regex(@"^families\.Array\.data\[(\d+)\]");
 
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         => Thumb + Pad;
@@ -44,16 +54,26 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
         var sprRect = new Rect(x, lineY, rect.xMax - x - Thumb - 8f, EditorGUIUtility.singleLineHeight);
         EditorGUI.PropertyField(sprRect, overrideProp, GUIContent.none);
 
-        // Thumbnail. Ruins slots sample the ruins sheet; everything else the
-        // main sheet. The property path is the only identity a drawer gets, and
-        // every ruins field deliberately starts with "ruins" so this holds for
-        // nested paths (ruinsVariants.Array.data[0].cap) too.
         var thumbRect = new Rect(rect.xMax - Thumb, rect.y, Thumb, Thumb);
-        bool ruinsSlot = property.propertyPath.StartsWith("ruins");
-        DrawThumb(thumbRect, layout, cellProp.vector2IntValue, overrideProp.objectReferenceValue as Sprite, ruinsSlot);
+        Texture2D sheetTex = ResolveSheet(property, layout);
+        DrawThumb(thumbRect, layout, cellProp.vector2IntValue, overrideProp.objectReferenceValue as Sprite, sheetTex);
     }
 
-    private static void DrawThumb(Rect r, CaveWallSheetLayout layout, Vector2Int cell, Sprite over, bool ruinsSlot)
+    private static Texture2D ResolveSheet(SerializedProperty property, CaveWallSheetLayout layout)
+    {
+        if (layout == null) return null;
+        var m = FamilyPath.Match(property.propertyPath);
+        if (m.Success)
+        {
+            int i = int.Parse(m.Groups[1].Value);
+            if (layout.families != null && i >= 0 && i < layout.families.Count && layout.families[i] != null)
+                return layout.families[i].sheet;
+            return null;
+        }
+        return layout.sheet;
+    }
+
+    private static void DrawThumb(Rect r, CaveWallSheetLayout layout, Vector2Int cell, Sprite over, Texture2D tex)
     {
         EditorGUI.DrawRect(r, new Color(0f, 0f, 0f, 0.30f));
 
@@ -66,7 +86,6 @@ public class CaveWallSheetSlotDrawer : PropertyDrawer
             return;
         }
 
-        Texture2D tex = ruinsSlot ? layout != null ? layout.ruinsSheet : null : layout != null ? layout.sheet : null;
         if (layout == null || tex == null || cell.x < 0 || cell.y < 0) return;
 
         int cs = Mathf.Max(1, layout.cellSize);
@@ -100,7 +119,7 @@ public class CaveWallSheetLayoutEditor : Editor
                 "Coordinates are (column, row from top). Overrides win over coordinates.",
                 MessageType.None);
 
-        DrawLabeledArray("capSlots", CaveWallSheetLayout.CapMaskLabels,
+        DrawLabeledArray(serializedObject.FindProperty("capSlots"), CaveWallSheetLayout.CapMaskLabels,
             "Caps - one per mask (N=1, E=2, S=4, W=8; bit set = neighbour solid)", skipZero: false);
 
         EditorGUILayout.Space(6f);
@@ -110,9 +129,9 @@ public class CaveWallSheetLayoutEditor : Editor
         EditorGUILayout.PropertyField(serializedObject.FindProperty("innerNE"), new GUIContent("Inner NE"));
         EditorGUILayout.PropertyField(serializedObject.FindProperty("innerNW"), new GUIContent("Inner NW"));
 
-        DrawLabeledArray("faceUpperSlots", CaveWallSheetLayout.FaceLabels,
+        DrawLabeledArray(serializedObject.FindProperty("faceUpperSlots"), CaveWallSheetLayout.FaceLabels,
             "Face upper slices (by face variant)", skipZero: true);
-        DrawLabeledArray("faceLowerSlots", CaveWallSheetLayout.FaceLabels,
+        DrawLabeledArray(serializedObject.FindProperty("faceLowerSlots"), CaveWallSheetLayout.FaceLabels,
             "Face lower slices (by face variant)", skipZero: true);
 
         EditorGUILayout.Space(6f);
@@ -125,36 +144,71 @@ public class CaveWallSheetLayoutEditor : Editor
         EditorGUILayout.LabelField("Cap variety pools", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(serializedObject.FindProperty("capVariety"), true);
 
+        // -- Wall families (per-terrain masonry, canon 19) -------------------
+        // Every family field is drawn explicitly: this editor replaces the
+        // default Inspector wholesale, so any field it skips is INVISIBLE --
+        // the trap that hid the first ruins fields until they were wired in.
         EditorGUILayout.Space(10f);
-        EditorGUILayout.LabelField("Ruins family (Buried Age masonry)", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsSheet"));
-        if (layout.ruinsSheet != null)
-            EditorGUILayout.HelpBox(
-                $"Ruins sheet grid: {layout.RuinsSheetCols} x {layout.RuinsSheetRows} cells at {layout.cellSize}px. " +
-                "Every ruins slot is optional: empty caps fall back to the ruins mask-11 cap (the family base), " +
-                "empty faces to the ruins Straight face. Only a wholly unassigned family falls back to stone.",
-                MessageType.None);
+        EditorGUILayout.LabelField("Wall families (per-terrain masonry)", EditorStyles.boldLabel);
+        SerializedProperty famsProp = serializedObject.FindProperty("families");
+        int removeAt = -1;
+        for (int f = 0; f < famsProp.arraySize; f++)
+        {
+            SerializedProperty fam = famsProp.GetArrayElementAtIndex(f);
+            SerializedProperty terrainProp = fam.FindPropertyRelative("terrain");
+            string famName = ((TerrainType)terrainProp.intValue).ToString();
 
-        DrawLabeledArray("ruinsCapSlots", CaveWallSheetLayout.CapMaskLabels,
-            "Ruins caps - one per mask (mask 11 doubles as the family base cap)", skipZero: false);
+            EditorGUILayout.BeginHorizontal();
+            fam.isExpanded = EditorGUILayout.Foldout(fam.isExpanded, $"Family [{f}] -- {famName}", true);
+            if (GUILayout.Button("Remove", GUILayout.Width(64f))) removeAt = f;
+            EditorGUILayout.EndHorizontal();
+            if (!fam.isExpanded) continue;
 
-        EditorGUILayout.Space(6f);
-        EditorGUILayout.LabelField("Ruins concave corners", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerSE"), new GUIContent("Ruins inner SE"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerSW"), new GUIContent("Ruins inner SW"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerNE"), new GUIContent("Ruins inner NE"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsInnerNW"), new GUIContent("Ruins inner NW"));
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(terrainProp);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("sheet"));
+            var famObj = (layout.families != null && f < layout.families.Count) ? layout.families[f] : null;
+            if (famObj != null && famObj.sheet != null)
+                EditorGUILayout.HelpBox(
+                    $"Family sheet grid: {famObj.SheetCols(layout.cellSize)} x {famObj.SheetRows(layout.cellSize)} cells " +
+                    $"at {layout.cellSize}px. Every family slot is optional: empty caps fall back to the family " +
+                    "mask-11 cap (the family base), empty faces to the family Straight face. Only a family " +
+                    "with no base cap at all falls back to stone.",
+                    MessageType.None);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("tint"));
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("allowMoss"));
 
-        DrawLabeledArray("ruinsFaceUpperSlots", CaveWallSheetLayout.FaceLabels,
-            "Ruins face upper slices (by face variant)", skipZero: true);
-        DrawLabeledArray("ruinsFaceLowerSlots", CaveWallSheetLayout.FaceLabels,
-            "Ruins face lower slices (by face variant)", skipZero: true);
+            DrawLabeledArray(fam.FindPropertyRelative("capSlots"), CaveWallSheetLayout.CapMaskLabels,
+                "Family caps - one per mask (mask 11 doubles as the family base cap)", skipZero: false);
 
-        EditorGUILayout.Space(6f);
-        EditorGUILayout.LabelField("Ruins straight-wall variety and site paving", EditorStyles.boldLabel);
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsVariants"), true);
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsPlainWeight"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("ruinsPavingSlots"), true);
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField("Family concave corners", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("innerSE"), new GUIContent("Inner SE"));
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("innerSW"), new GUIContent("Inner SW"));
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("innerNE"), new GUIContent("Inner NE"));
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("innerNW"), new GUIContent("Inner NW"));
+
+            DrawLabeledArray(fam.FindPropertyRelative("faceUpperSlots"), CaveWallSheetLayout.FaceLabels,
+                "Family face upper slices (by face variant)", skipZero: true);
+            DrawLabeledArray(fam.FindPropertyRelative("faceLowerSlots"), CaveWallSheetLayout.FaceLabels,
+                "Family face lower slices (by face variant)", skipZero: true);
+
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField("Family straight-wall variety and site paving", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("variants"), true);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("plainWeight"));
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("pavingSlots"), true);
+            EditorGUI.indentLevel--;
+            EditorGUILayout.Space(4f);
+        }
+        if (removeAt >= 0)
+            famsProp.DeleteArrayElementAtIndex(removeAt);
+        if (GUILayout.Button("Add Family", GUILayout.Height(22f)))
+        {
+            // Unity clones the LAST element into the new slot, which is the
+            // intended workflow: add, retarget the terrain, repoint the art.
+            famsProp.arraySize++;
+        }
 
         EditorGUILayout.Space(10f);
         if (GUILayout.Button("Validate Layout", GUILayout.Height(26f)))
@@ -163,9 +217,8 @@ public class CaveWallSheetLayoutEditor : Editor
         serializedObject.ApplyModifiedProperties();
     }
 
-    private void DrawLabeledArray(string propName, string[] labels, string header, bool skipZero)
+    private void DrawLabeledArray(SerializedProperty prop, string[] labels, string header, bool skipZero)
     {
-        SerializedProperty prop = serializedObject.FindProperty(propName);
         if (prop == null) return;
 
         EditorGUILayout.Space(6f);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
@@ -16,6 +17,14 @@ using UnityEngine;
 ///   - same tiles, rearranged     -> edit the (col, row) coordinates; the Inspector
 ///     shows a live thumbnail per slot.
 ///   - different structure/mixed  -> assign override Sprites per slot.
+///
+/// Beyond the stone slots, the asset carries a list of per-terrain WALL FAMILIES
+/// (canon 19): a wall cell whose terrain type matches a family entry renders that
+/// family's caps, faces and variety instead of stone. Terrain with no entry, and
+/// a family whose base cap is empty, render the stone path -- so an unfilled
+/// family keeps the pre-visual-pass look rather than going blank. Ruins ships as
+/// the first family, dwarven masonry as the second; adding another masonry skin
+/// is one more list entry and zero code.
 ///
 /// A freshly created asset is pre-filled with the MainLev.png layout.
 /// </summary>
@@ -57,13 +66,82 @@ public class CaveWallSheetLayout : ScriptableObject
         public SheetSlot[] variants = Array.Empty<SheetSlot>();
     }
 
+    /// <summary>
+    /// One per-terrain wall skin. Every slot slices from THIS family's sheet
+    /// (overrides win as usual), and every slot is optional: empty caps fall
+    /// back to the family base cap (mask 11), empty faces to the family
+    /// Straight face, and only a family with no base cap at all falls back to
+    /// the stone slots. That fallback ladder keeps masonry reading as masonry
+    /// -- a corner rendered as straight masonry still reads as built, which
+    /// cave rock would not.
+    /// </summary>
+    [Serializable]
+    public class WallFamily
+    {
+        [Tooltip("Wall cells of this terrain type render this family instead of stone. " +
+                 "One entry per terrain; if two entries share a terrain the first wins " +
+                 "and Validate Layout flags it.")]
+        public TerrainType terrain = TerrainType.Ruins;
+
+        [Tooltip("Sheet this family's slots slice from. Slots with override sprites ignore it.")]
+        public Texture2D sheet;
+
+        [Tooltip("Flat tint for every cap and face of this family. White for masonry: the " +
+                 "castle art is already thematic, and the per-material stone tint that sells " +
+                 "retinted cave rock as masonry would muddy real masonry.")]
+        public Color tint = Color.white;
+
+        [Tooltip("When true, this family's straight walls may roll the SHARED green/gold " +
+                 "moss columns (sliced from the main sheet) at the floor's moss rate. Off " +
+                 "for masonry: moss hands back the organic read that worked walls exist " +
+                 "to defeat.")]
+        public bool allowMoss = false;
+
+        [Tooltip("Per-mask caps; same 16 masks as capSlots. Mask 11 doubles as the " +
+                 "family's base cap that every empty cap slot falls back to.")]
+        public SheetSlot[] capSlots = EmptySlots(16);
+
+        public SheetSlot innerSE = new SheetSlot();
+        public SheetSlot innerSW = new SheetSlot();
+        public SheetSlot innerNE = new SheetSlot();
+        public SheetSlot innerNW = new SheetSlot();
+
+        [Tooltip("Face slices, same 8 variants as faceUpperSlots. Empty variants fall " +
+                 "back to the family's Straight face.")]
+        public SheetSlot[] faceUpperSlots = EmptySlots(8);
+        public SheetSlot[] faceLowerSlots = EmptySlots(8);
+
+        [Tooltip("Straight-wall variety for this family (pilastered walls and the like). " +
+                 "A column's empty cap falls back to the family base cap, never to cave rock.")]
+        public WallColumn[] variants = new WallColumn[0];
+
+        [Tooltip("How many pool entries the PLAIN wall (base cap + Straight faces) counts " +
+                 "as in the straight variety roll. With 2 variants and weight 4, roughly " +
+                 "two walls in three are plain. 0 = every straight wall is a variant, " +
+                 "which is the all-pilaster look this knob exists to prevent.")]
+        [Min(0)] public int plainWeight = 4;
+
+        [Tooltip("Site paving: floor tiles painted over a site's carved interior when the " +
+                 "site's masonry is this family's terrain, one picked per cell by a stable " +
+                 "spatial hash. Empty list = the ordinary cave floor.")]
+        public SheetSlot[] pavingSlots = new SheetSlot[0];
+
+        public int SheetCols(int cellSize) => sheet != null ? sheet.width / Mathf.Max(1, cellSize) : 0;
+        public int SheetRows(int cellSize) => sheet != null ? sheet.height / Mathf.Max(1, cellSize) : 0;
+
+        public bool CellInBounds(Vector2Int cell, int cellSize)
+            => sheet != null && cell.x >= 0 && cell.y >= 0
+               && cell.x < SheetCols(cellSize) && cell.y < SheetRows(cellSize);
+    }
+
     // ── Sheet ─────────────────────────────────────────────────────
 
     [Tooltip("The wall sheet texture. Slots without an override sprite are sliced from it at runtime.")]
     public Texture2D sheet;
 
     [Tooltip("Tile size in pixels on the sheet. Also the pixels-per-unit of runtime-created " +
-             "sprites, so one tile always spans one world unit at any resolution.")]
+             "sprites, so one tile always spans one world unit at any resolution. Shared by " +
+             "every family sheet; a per-family cell size waits for a non-32px sheet to exist.")]
     [Min(1)] public int cellSize = 32;
 
     // ── Caps ──────────────────────────────────────────────────────
@@ -103,43 +181,24 @@ public class CaveWallSheetLayout : ScriptableObject
              "pick from the pool. Any mask 0-15 may have one.")]
     public CapVarietySet[] capVariety = DefaultCapVariety();
 
-    // -- Ruins family (Buried Age masonry, canon 19) ---------------
+    // -- Wall families (per-terrain masonry, canon 19) -------------
 
-    [Header("Ruins family")]
-    [Tooltip("Sheet the ruins slots slice from (castle_interriors). Ruins cells render this " +
-             "family instead of stone: no moss, white tint. EVERY ruins slot may be left " +
-             "empty; caps fall back to the ruins mask-11 cap, faces to the ruins Straight " +
-             "face, and only a wholly unassigned family falls back to the stone slots.")]
-    public Texture2D ruinsSheet;
+    [Tooltip("Per-terrain wall families. A wall cell whose terrain matches an entry renders " +
+             "that family; terrain with no entry renders the stone path. Ruins ships as the " +
+             "first entry, dwarven masonry as the second (an exact copy of ruins until its " +
+             "art lands -- repointing slots is Inspector work). Adding a masonry skin is one " +
+             "more entry and zero code.")]
+    public List<WallFamily> families = new List<WallFamily>();
 
-    [Tooltip("Per-mask ruins caps; same 16 masks as capSlots. Mask 11 doubles as the " +
-             "family's base cap that every empty ruins cap slot falls back to.")]
-    public SheetSlot[] ruinsCapSlots = EmptySlots(16);
-
-    public SheetSlot ruinsInnerSE = new SheetSlot();
-    public SheetSlot ruinsInnerSW = new SheetSlot();
-    public SheetSlot ruinsInnerNE = new SheetSlot();
-    public SheetSlot ruinsInnerNW = new SheetSlot();
-
-    [Tooltip("Ruins face slices, same 8 variants as faceUpperSlots. Empty variants fall " +
-             "back to the ruins Straight face -- a corner rendered as straight masonry " +
-             "still reads as masonry, which cave rock would not.")]
-    public SheetSlot[] ruinsFaceUpperSlots = EmptySlots(8);
-    public SheetSlot[] ruinsFaceLowerSlots = EmptySlots(8);
-
-    [Tooltip("Straight-wall variety for ruins cells (pilastered walls and the like). A " +
-             "column's empty cap falls back to the ruins base cap, never to cave rock.")]
-    public WallColumn[] ruinsVariants = new WallColumn[0];
-
-    [Tooltip("How many pool entries the PLAIN wall (base cap + Straight faces) counts as " +
-             "in the straight variety roll. With 2 variants and weight 4, roughly two " +
-             "walls in three are plain. 0 = every straight wall is a variant, which is " +
-             "the all-pilaster look this knob exists to prevent.")]
-    [Min(0)] public int ruinsPlainWeight = 4;
-
-    [Tooltip("Site paving: floor tiles painted over a site's carved interior, one picked " +
-             "per cell by a stable spatial hash. Empty list = the ordinary cave floor.")]
-    public SheetSlot[] ruinsPavingSlots = new SheetSlot[0];
+    /// <summary>First family entry for a terrain, or null when the terrain has
+    /// none. First-wins on duplicates; Validate Layout flags those.</summary>
+    public WallFamily FamilyFor(TerrainType terrain)
+    {
+        if (families == null) return null;
+        for (int i = 0; i < families.Count; i++)
+            if (families[i] != null && families[i].terrain == terrain) return families[i];
+        return null;
+    }
 
     // ── Labels (shared by the Inspector and the validator) ────────
 
@@ -237,12 +296,6 @@ public class CaveWallSheetLayout : ScriptableObject
     public bool CellInBounds(Vector2Int cell)
         => sheet != null && cell.x >= 0 && cell.y >= 0 && cell.x < SheetCols && cell.y < SheetRows;
 
-    public int RuinsSheetCols => ruinsSheet != null ? ruinsSheet.width / Mathf.Max(1, cellSize) : 0;
-    public int RuinsSheetRows => ruinsSheet != null ? ruinsSheet.height / Mathf.Max(1, cellSize) : 0;
-
-    public bool RuinsCellInBounds(Vector2Int cell)
-        => ruinsSheet != null && cell.x >= 0 && cell.y >= 0 && cell.x < RuinsSheetCols && cell.y < RuinsSheetRows;
-
     // ── Structural guards ─────────────────────────────────────────
 
     private void OnValidate()
@@ -251,9 +304,14 @@ public class CaveWallSheetLayout : ScriptableObject
         FixLength(ref capSlots, 16);
         FixLength(ref faceUpperSlots, 8);
         FixLength(ref faceLowerSlots, 8);
-        FixLength(ref ruinsCapSlots, 16);
-        FixLength(ref ruinsFaceUpperSlots, 8);
-        FixLength(ref ruinsFaceLowerSlots, 8);
+        if (families != null)
+            foreach (var fam in families)
+            {
+                if (fam == null) continue;
+                FixLength(ref fam.capSlots, 16);
+                FixLength(ref fam.faceUpperSlots, 8);
+                FixLength(ref fam.faceLowerSlots, 8);
+            }
         if (capVariety != null)
             foreach (var set in capVariety)
                 if (set != null) set.mask = Mathf.Clamp(set.mask, 0, 15);
@@ -346,50 +404,72 @@ public class CaveWallSheetLayout : ScriptableObject
                     Check(set.variants[i], $"Cap variety (mask {set.mask}) [{i}]", true, true);
             }
 
-        // -- Ruins family: everything optional by design, so only report what is
-        // assigned but wrong, plus notes on states that are legal but surprising.
-        void CheckRuins(SheetSlot slot, string label, bool capPivot)
+        // -- Wall families: everything optional by design, so only report what
+        // is assigned but wrong, plus notes on states that are legal but
+        // surprising. Each family's cells are bounds-checked against ITS sheet.
+        if (families == null || families.Count == 0)
         {
-            if (slot == null || slot.IsEmpty) return;
-            if (slot.overrideSprite != null) { Check(slot, label, capPivot, required: false); return; }
-            if (ruinsSheet == null)
-            { sb.AppendLine($"- {label}: cell assigned but no ruinsSheet texture."); issues++; return; }
-            if (!RuinsCellInBounds(slot.cell))
-            { sb.AppendLine($"- {label}: cell ({slot.cell.x}, {slot.cell.y}) is outside the {RuinsSheetCols} x {RuinsSheetRows} ruins sheet grid."); issues++; }
+            sb.AppendLine("- Note: no wall families; every terrain renders the stone path (the pre-visual-pass look).");
         }
-
-        bool ruinsAny = false;
-        for (int m = 0; m < 16 && m < ruinsCapSlots.Length; m++)
+        else
         {
-            if (ruinsCapSlots[m] != null && !ruinsCapSlots[m].IsEmpty) ruinsAny = true;
-            CheckRuins(ruinsCapSlots[m], $"Ruins cap [{CapMaskLabels[m]}]", capPivot: true);
-        }
-        CheckRuins(ruinsInnerSE, "Ruins inner SE", true);
-        CheckRuins(ruinsInnerSW, "Ruins inner SW", true);
-        CheckRuins(ruinsInnerNE, "Ruins inner NE", true);
-        CheckRuins(ruinsInnerNW, "Ruins inner NW", true);
-        for (int v = 1; v < 8 && v < ruinsFaceUpperSlots.Length; v++)
-        {
-            CheckRuins(ruinsFaceUpperSlots[v], $"Ruins face upper [{FaceLabels[v]}]", false);
-            CheckRuins(ruinsFaceLowerSlots[v], $"Ruins face lower [{FaceLabels[v]}]", false);
-        }
-        if (ruinsVariants != null)
-            for (int i = 0; i < ruinsVariants.Length; i++)
+            var seen = new HashSet<TerrainType>();
+            for (int f = 0; f < families.Count; f++)
             {
-                if (ruinsVariants[i] == null) continue;
-                CheckRuins(ruinsVariants[i].cap, $"Ruins variant [{i}] cap", true);
-                CheckRuins(ruinsVariants[i].upper, $"Ruins variant [{i}] upper", false);
-                CheckRuins(ruinsVariants[i].lower, $"Ruins variant [{i}] lower", false);
-                if (ruinsVariants[i].upper != null && !ruinsVariants[i].upper.IsEmpty) ruinsAny = true;
-            }
-        if (ruinsPavingSlots != null)
-            foreach (var p in ruinsPavingSlots) CheckRuins(p, "Ruins paving", capPivot: false);
+                var fam = families[f];
+                if (fam == null) { sb.AppendLine($"- Family[{f}]: null entry."); issues++; continue; }
+                string famName = $"Family[{f}] {fam.terrain}";
 
-        if (ruinsAny && (ruinsCapSlots[11] == null || ruinsCapSlots[11].IsEmpty))
-            sb.AppendLine("- Note: ruins slots are assigned but mask-11 (the family base cap) is empty; " +
-                          "caps without their own slot will fall back to STONE art.");
-        if (!ruinsAny)
-            sb.AppendLine("- Note: no ruins family assigned; Ruins cells render as tinted stone (the pre-visual-pass look).");
+                if (!seen.Add(fam.terrain))
+                {
+                    sb.AppendLine($"- {famName}: duplicate terrain -- the FIRST entry for a terrain wins and this one is dead weight.");
+                    issues++;
+                }
+
+                void CheckFam(SheetSlot slot, string label, bool capPivot)
+                {
+                    if (slot == null || slot.IsEmpty) return;
+                    if (slot.overrideSprite != null) { Check(slot, label, capPivot, required: false); return; }
+                    if (fam.sheet == null)
+                    { sb.AppendLine($"- {label}: cell assigned but the family has no sheet texture."); issues++; return; }
+                    if (!fam.CellInBounds(slot.cell, cellSize))
+                    { sb.AppendLine($"- {label}: cell ({slot.cell.x}, {slot.cell.y}) is outside the {fam.SheetCols(cellSize)} x {fam.SheetRows(cellSize)} family sheet grid."); issues++; }
+                }
+
+                bool famAny = false;
+                for (int m = 0; m < 16 && m < fam.capSlots.Length; m++)
+                {
+                    if (fam.capSlots[m] != null && !fam.capSlots[m].IsEmpty) famAny = true;
+                    CheckFam(fam.capSlots[m], $"{famName} cap [{CapMaskLabels[m]}]", capPivot: true);
+                }
+                CheckFam(fam.innerSE, $"{famName} inner SE", true);
+                CheckFam(fam.innerSW, $"{famName} inner SW", true);
+                CheckFam(fam.innerNE, $"{famName} inner NE", true);
+                CheckFam(fam.innerNW, $"{famName} inner NW", true);
+                for (int v = 1; v < 8 && v < fam.faceUpperSlots.Length; v++)
+                {
+                    CheckFam(fam.faceUpperSlots[v], $"{famName} face upper [{FaceLabels[v]}]", false);
+                    CheckFam(fam.faceLowerSlots[v], $"{famName} face lower [{FaceLabels[v]}]", false);
+                }
+                if (fam.variants != null)
+                    for (int i = 0; i < fam.variants.Length; i++)
+                    {
+                        if (fam.variants[i] == null) continue;
+                        CheckFam(fam.variants[i].cap, $"{famName} variant [{i}] cap", true);
+                        CheckFam(fam.variants[i].upper, $"{famName} variant [{i}] upper", false);
+                        CheckFam(fam.variants[i].lower, $"{famName} variant [{i}] lower", false);
+                        if (fam.variants[i].upper != null && !fam.variants[i].upper.IsEmpty) famAny = true;
+                    }
+                if (fam.pavingSlots != null)
+                    foreach (var p in fam.pavingSlots) CheckFam(p, $"{famName} paving", capPivot: false);
+
+                if (famAny && (fam.capSlots[11] == null || fam.capSlots[11].IsEmpty))
+                    sb.AppendLine($"- Note: {famName} has slots assigned but mask-11 (the family base cap) is empty; " +
+                                  "the family will NOT render and its cells fall back to STONE art.");
+                if (!famAny)
+                    sb.AppendLine($"- Note: {famName} is wholly unassigned; its cells render as tinted stone (the pre-visual-pass look).");
+            }
+        }
 
         if (issues == 0)
             Debug.Log($"[CaveWallSheetLayout] '{name}' validated: no issues.\n{sb}", this);

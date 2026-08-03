@@ -1547,9 +1547,12 @@ neither error can be corrected after the fact.
 
 **Two cell sets, and the read.** A site's carved interior is natural floor,
 revealed and marked exactly as a chamber is. Its MASONRY is deliberately not
-carved: those cells stay solid rock and are merely retyped to
-`TerrainType.Ruins`. They therefore render as cave wall, cost Ruins resistance
-to claim, and pay out the `ancient_masonry` pattern when mined -- all of which
+carved: those cells stay solid rock and are merely retyped to their masonry
+terrain -- `TerrainType.Ruins` for the dead sites, `DwarvenMasonry` for the
+living dwarven ones (the village hold, the gatehouse outpost), decided in one
+place by `TerrainFeatureGenerator.MasonryTypeFor`. They therefore render as
+cave wall, cost that terrain's resistance to claim, and pay out the
+`ancient_masonry` pattern when mined -- all of which
 the terrain system already did for an enum value that had been reserved and
 unplaced since it shipped. Straight walls against organic cellular-automata
 chambers is the entire read; no props and no new art are involved.
@@ -1724,38 +1727,53 @@ Sites LOOK built as well as reading built. Three layers, all shipped together
 and none of them touching behaviour -- masonry stays mineable, fog stays
 one-way, the drape stays two slices deep:
 
-**The ruins wall family.** `CaveWallSheetLayout` carries a parallel slot set
-(`ruinsSheet` + caps, inner corners, faces, straight variety, paving) sliced
-from `castle_interriors.png`, and `CaveWallRenderer` renders it for any wall
-cell typed `TerrainType.Ruins`. Ruins cells never roll moss and render with a
-WHITE tint -- the castle art is already thematic, and the lavender tint that
-sells retinted cave rock as masonry would muddy real masonry. Every ruins
-slot is optional: empty caps fall back to the ruins base cap (mask 11), empty
-faces to the ruins Straight face, and only a wholly unassigned family falls
-back to stone, keeping the pre-visual-pass look. Filling more masks and face
-variants is Inspector work on `Data/CaveWallSheetLayout.asset`; the layout's
-Validate Layout context menu checks bounds and flags surprising states. The
-shipped fill: base cap (2,4), Straight faces (1,6)/(2,8), two pilastered wall
-variants (7,9)-(7,10) and (10,9)-(10,10), no corner art yet.
+**Wall families.** `CaveWallSheetLayout` carries `families`, a list of
+per-terrain `WallFamily` blocks -- terrain key, sheet, flat tint, moss
+policy, sixteen cap slots plus four inner corners, 8+8 face slices,
+straight-wall variety with a plain weight, and site paving slots -- and
+`CaveWallRenderer` resolves the family per wall cell by its terrain type.
+Terrain with no entry renders the ordinary stone path; so does a family
+whose base cap (mask 11) is empty, keeping the pre-visual-pass look. Within
+a present family every slot stays optional: empty caps fall back to the
+family base cap, empty faces to the family Straight face. Family cells
+render the family's flat tint (WHITE for both shipped entries -- the castle
+art is already thematic, and the lavender that sells retinted cave rock as
+masonry would muddy real masonry) and roll moss only where `allowMoss` says
+so, which no shipped family does. Two entries ship, both sliced from
+`castle_interriors.png` by Sprite Editor overrides: RUINS (every cap mask,
+all four inner corners, all seven face variants, one pilastered straight
+variant, four paving tiles; the mask-15 interior cap deliberately samples
+MainLev so the deep interior of a masonry mass still reads as rock) and
+DWARVEN MASONRY, born an exact copy of the ruins entry so nothing changed
+on screen the day it landed -- repointing its overrides at dwarven art is
+pure Inspector work, and Add Family clones the last entry for the next
+skin. Validate Layout reports per family; `Dungeon Core -> Validate Wall
+Families` cross-checks every family terrain against the resistance table (a
+missing entry silently mines at 1.0x -- the failure that menu exists to
+catch), the pattern map and the spoil ledger. Authoring recipe: Content
+Authoring chapter 31.
 
-**Site paving.** The carved interior is painted with paving variants -- the
-shipped four are (15,37) and (16,37)-(16,39) -- one per cell by a spatial
-hash (no RNG, stable across reloads). The paint rides
-`ApplyRuinsOverrides`, which both the fresh-generation path and the load
-path call after the disc paint; if the lazy floor-paint backlog item ever
-lands, the paving pass must move with it. The carriageway is paved too:
-the road cells a site yields at placement -- carved AND wall-band overlap,
-so doorway crossings pave with the room -- are recorded
+**Site paving.** The carved interior is painted with the paving variants of
+the site's masonry FAMILY, resolved through the same
+`TerrainFeatureGenerator.MasonryTypeFor` call that types the walls -- one
+decision consulted twice, so paving and masonry can never disagree; the
+shipped four tiles, (15,37) and (16,37)-(16,39), currently serve both
+families -- one per cell by a spatial hash (no RNG, stable across reloads).
+The paint rides `ApplyRuinsOverrides`, which both the fresh-generation path
+and the load path call after the disc paint; if the lazy floor-paint
+backlog item ever lands, the paving pass must move with it. The carriageway
+is paved too: the road cells a site yields at placement -- carved AND
+wall-band overlap, so doorway crossings pave with the room -- are recorded
 (`SiteData.pavedRoadCells`, appended field, empty in old saves), painted on
 the FLOOR tilemap so they carry the floor tint (painting the untinted road
 tilemap was the pale-band bug), and cleared from the road tilemap.
 `PaintRoadSegment` skips those cells outright, because road segments paint
 lazily on reveal and a later reveal must not lay road tile back over the
 room floor. The room reads built around the road; a river through the band
-still washes it out. Straight-wall variety mixes the plain wall into the
-pool at `ruinsPlainWeight` (C# default 4; the asset ships 8, so with the
-two pilaster variants one straight wall in five is a variant); weight 0
-restores the all-pilaster look on purpose.
+still washes it out. Straight-wall variety mixes the plain wall into each
+family's pool at its `plainWeight` (C# default 4; the asset ships 8 for
+both families, so with the one shipped pilaster variant one straight wall
+in nine is a variant); weight 0 restores the all-pilaster look on purpose.
 
 **The decor-prefab hook.** `AncientSiteProfile.siteDecor` maps a plan's
 `@name` to a prefab of pure dressing (platforms, stairs, clutter -- no
@@ -1773,6 +1791,19 @@ Alongside the visual pass, Ruins claim resistance rose from 6x to 8x
 (`TerrainResistanceTable`, between Granite at 4 and Holy Ground at 10):
 older power resists, but the verb survives -- four shipped plans and the
 ossuary remains guarantee depend on mining staying the entry.
+
+The family refactor retypes the living dwarven structures -- the village
+hold and the gatehouse outpost -- to `TerrainType.DwarvenMasonry` (appended
+value 7) through `TerrainFeatureGenerator.MasonryTypeFor`, the ONE function
+both the retype and the paving pass consult. Dwarven masonry claims at 9x:
+living, maintained walls outrank dead ruins and stay under consecration.
+Its claimable ring is warm bronze against the ruins lavender -- the single
+intended on-screen change the refactor shipped. The Deep Holds buy the
+spoil at 5 a cell either way (the counter does not ask provenance), mined
+dwarven masonry still teaches `ancient_masonry` -- the dwarves are the
+Buried Age's heirs -- and the first-claim toast names the terrain "dwarven
+masonry". Dead sites stay Ruins, which keeps the ossuary guarantee's
+reasoning true.
 
 ### The generator (SHIPPED)
 

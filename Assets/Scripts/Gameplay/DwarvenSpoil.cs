@@ -43,6 +43,9 @@ public static class DwarvenSpoil
     {
         TerrainType.Granite => 3,
         TerrainType.Ruins => 5,
+        // Same dressed stone, same price: the Deep Holds' counter does not
+        // ask whether the wall was standing or fallen when it was mined.
+        TerrainType.DwarvenMasonry => 5,
         _ => 0,
     };
 

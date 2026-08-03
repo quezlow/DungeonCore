@@ -1168,15 +1168,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Retypes every site's masonry to TerrainType.Ruins. Idempotent, and called
-    /// from BOTH paths because the type map clears its overrides on GenerateNew:
-    /// FloorRoot.Bootstrap calls it after building the map on a new floor, and
-    /// LoadFromSave calls it once restored feature data is in hand.
+    /// Retypes every site's masonry to its family terrain -- MasonryTypeFor
+    /// decides per site: DwarvenMasonry for the living dwarven structures (the
+    /// village hold and the gatehouse outpost), Ruins for every dead site.
+    /// Idempotent, and called from BOTH paths because the type map clears its
+    /// overrides on GenerateNew: FloorRoot.Bootstrap calls it after building
+    /// the map on a new floor, and LoadFromSave calls it once restored feature
+    /// data is in hand.
     ///
-    /// Ruins already carries resistance and tints in TerrainResistanceTable and
-    /// already maps to the ancient_masonry pattern in PatternDiscovery, so this
-    /// one call is the whole of the wiring -- the enum value has been reserved
-    /// and unplaced since the terrain system shipped.
+    /// Both terrains carry resistance and tints in TerrainResistanceTable and
+    /// map to the ancient_masonry pattern in PatternDiscovery, so this one
+    /// call is the whole of the wiring; the name keeps its history (it placed
+    /// an enum value that had been reserved since the terrain system shipped).
     /// </summary>
     public void ApplyRuinsOverrides()
     {
@@ -1184,22 +1187,37 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var map = floor.TerrainTypeMap;
         if (map == null || !map.IsGenerated) return;
 
+        bool any = false;
         var cells = new List<Vector3Int>();
         foreach (var s in featureData.sites)
         {
-            if (s.ruinsCells == null) continue;
+            if (s == null || s.ruinsCells == null || s.ruinsCells.Count == 0) continue;
+            cells.Clear();
             foreach (var sv in s.ruinsCells) cells.Add(sv.ToVector3Int());
+            map.ApplyFeatureOverride(cells, MasonryTypeFor(s));
+            any = true;
         }
-        if (cells.Count == 0) return;
-        map.ApplyFeatureOverride(cells, TerrainType.Ruins);
+        if (!any) return;
 
         PaintSitePaving();
     }
 
+    /// <summary>The terrain a site's masonry is retyped to -- the ONE place
+    /// that decision lives, consumed by both the retype above and the paving
+    /// pass below, so the wall family a site renders and the paving it takes
+    /// can never disagree. Living dwarven structures (the village hold and
+    /// the gatehouse outpost) are DwarvenMasonry; every dead site stays
+    /// Ruins, which keeps the ossuary guarantee's Ruins-based reasoning
+    /// true.</summary>
+    public static TerrainType MasonryTypeFor(SiteData site)
+        => site != null && (site.reservedForVillage || site.reservedForOutpost)
+            ? TerrainType.DwarvenMasonry
+            : TerrainType.Ruins;
+
     // Cached child renderer for site paving; found once per floor lifetime.
     private CaveWallRenderer wallRendererForPaving;
 
-    /// <summary>Paints the ruins paving variants over every site's carved interior
+    /// <summary>Paints each site's family paving variants over its carved interior
     /// (canon 19). Runs from ApplyRuinsOverrides because both the fresh-generation
     /// path (FloorRoot) and the load path already call it AFTER the floor
     /// tilemap's disc paint, so one choke point covers both and nothing can
@@ -1214,9 +1232,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // otherwise repaint road over it.
     private readonly HashSet<Vector3Int> sitePavedRoad = new HashSet<Vector3Int>();
 
-    private TileBase SitePavingTileFor(Vector3Int cell)
+    private TileBase SitePavingTileFor(Vector3Int cell, TileBase[] paving)
     {
-        var paving = wallRendererForPaving != null ? wallRendererForPaving.SitePavingTiles : null;
         if (paving == null || paving.Length == 0) return null;
         int h = unchecked(cell.x * 73856093 ^ cell.y * 19349663 ^ (floor.FloorIndex + 1) * 83492791);
         return paving[(h & int.MaxValue) % paving.Length];
@@ -1230,18 +1247,27 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         if (wallRendererForPaving == null)
             wallRendererForPaving = floor.GetComponentInChildren<CaveWallRenderer>(true);
-        var paving = wallRendererForPaving != null ? wallRendererForPaving.SitePavingTiles : null;
-        if (paving == null || paving.Length == 0) return;
+        if (wallRendererForPaving == null) return;
 
         var map = terrain.FloorTilemap;
         sitePavedRoad.Clear();
         foreach (var s in featureData.sites)
         {
             if (s == null || s.cells == null) continue;
+
+            // Paving follows the site's masonry FAMILY, resolved through the
+            // same MasonryTypeFor call that types the walls -- one decision,
+            // consulted twice, so paving and masonry can never disagree. A
+            // family with no paving tiles skips the site entirely: no paving,
+            // and no road-cell claim either, exactly as the old global
+            // early-out behaved when the ruins list was empty.
+            var paving = wallRendererForPaving.PavingTilesFor(MasonryTypeFor(s));
+            if (paving == null || paving.Length == 0) continue;
+
             foreach (var sv in s.cells)
             {
                 var cell = sv.ToVector3Int();
-                var tile = SitePavingTileFor(cell);
+                var tile = SitePavingTileFor(cell, paving);
                 if (tile != null) map.SetTile(cell, tile);
             }
 
@@ -1254,7 +1280,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
             {
                 var cell = sv.ToVector3Int();
                 sitePavedRoad.Add(cell);
-                var tile = SitePavingTileFor(cell);
+                var tile = SitePavingTileFor(cell, paving);
                 if (tile != null) map.SetTile(cell, tile);
                 if (roadTilemap != null) roadTilemap.SetTile(cell, null);
             }
