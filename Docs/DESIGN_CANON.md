@@ -101,6 +101,7 @@ the supersession in one line.
 A. Content Registries and Authoring Keys
 B. Sorting Layer Contract
 C. Camera Bounds Contract
+D. Execution Order Contract
 
 ---
 
@@ -3993,3 +3994,49 @@ per-frame comparison of the hooked floor against `FloorManager.ActiveFloor`.
 Other components subscribing to a singleton in `OnEnable` under the same
 `if (Instance != null)` guard are exposed to the same race; the ones reading
 `DungeonCore` are safe only because it sits at execution order -20.
+## D. Execution Order Contract
+
+Status: RECORDED after the minimap subscription race. Verified: 2026-08-03.
+
+Manager singletons whose events are subscribed to from another component's
+`OnEnable` sit in a REGISTRY TIER at execution order -90:
+`FloorManager`, `DungeonBuildController`, `SpawnerSelectionController`,
+`DayNightCycle`. `DungeonCore` at -20 is grandfathered -- anything negative
+is early enough, so the tier is a ceiling, not an exact number.
+
+Why it is load-bearing. Thirteen components subscribe under the pattern
+`if (X.Instance != null) X.Instance.OnSomething += Handler;` inside
+`OnEnable`. At default order 0 that guard races the singleton's `Awake`, and
+Unity does not define which wins. The loser takes the null branch, skips the
+subscription, and never tries again -- no exception, no warning, nothing in
+the console. `Minimap` lost that race against `FloorManager` and spent whole
+sessions painting floor 0, its label frozen and its camera outline vanishing
+on every other floor, while looking perfectly healthy where the player
+happened to start.
+
+Rules:
+- A new manager singleton whose `Instance` is read from another component's
+  `OnEnable` joins the registry tier.
+- Nothing that SUBSCRIBES may sit below the tier; subscribers belong at
+  default order or later.
+- Registry-tier `Awake` bodies stay cheap and self-contained. The four above
+  set `Instance` and, in `DungeonBuildController`'s case, build two sprite
+  assets from nothing. None reads another singleton, which is why moving them
+  earlier is safe.
+- This project has NO `MonoManager.asset`, so there are no project-level
+  execution order overrides and the attributes are the complete picture. If
+  one is ever added, this entry stops being sufficient on its own.
+- `Dungeon Core / Commands / Validate Execution Order Contract` checks the
+  tier by reflection and fails loudly.
+
+Preferred belt where a subscription is genuinely optional: subscribe in
+`Start()` rather than `OnEnable()`. Unity guarantees every `Awake` completes
+before any `Start`, which removes the race by language rule instead of by
+ordering convention. `SpawnerSelectionController` already does this. It only
+works for subscriptions that never need re-making on re-enable.
+
+Best belt of all, where the signal has observable state behind it: do not
+depend on the event for correctness. `Minimap` re-hooks whenever its cached
+floor differs from `FloorManager.ActiveFloor`, so the subscription is an
+optimisation and a missed event costs one frame instead of a session
+(Appendix C).

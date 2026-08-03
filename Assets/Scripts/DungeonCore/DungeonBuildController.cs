@@ -24,6 +24,13 @@ public enum BuildMode
     None, 
 }
 
+// Registry tier (-90). Other components subscribe to this singleton's
+// events from their own OnEnable under an `if (Instance != null)` guard.
+// At default order that guard races this Awake, and the loser skips its
+// subscription silently and forever -- which is how the minimap spent a
+// whole session painting floor 0 and following nothing. See canon
+// Appendix D, Execution Order Contract, before changing this.
+[DefaultExecutionOrder(-90)]
 public class DungeonBuildController : MonoBehaviour
 {
     public static DungeonBuildController Instance { get; private set; }

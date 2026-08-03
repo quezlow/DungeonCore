@@ -11,6 +11,57 @@ public class Commands : MonoBehaviour
     [Tooltip("Where along the entrance->core approach to place the wall (0 = at core, 1 = at entrance).")]
     [SerializeField, Range(0.1f, 0.9f)] private float wallApproachFraction = 0.45f;
 
+    [ContextMenu("Validate Execution Order Contract")]
+    private void ValidateExecutionOrderContract()
+    {
+        // Canon Appendix D. Every manager singleton whose events are
+        // subscribed to from another component's OnEnable must sit in the
+        // registry tier, so its Awake has set Instance before any
+        // default-order OnEnable runs. This project has no MonoManager.asset,
+        // so the attribute is the whole story and reflection sees everything.
+        var required = new System.Type[]
+        {
+            typeof(FloorManager),
+            typeof(DungeonBuildController),
+            typeof(SpawnerSelectionController),
+            typeof(DayNightCycle),
+            typeof(DungeonCore),
+        };
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[ExecutionOrder] Registry tier must be <= " + REGISTRY_TIER_MAX + ".");
+        int bad = 0;
+        foreach (var t in required)
+        {
+            var attrs = t.GetCustomAttributes(typeof(DefaultExecutionOrder), false);
+            if (attrs.Length == 0)
+            {
+                sb.AppendLine("  MISSING  " + t.Name + " has no DefaultExecutionOrder.");
+                bad++;
+                continue;
+            }
+            int order = ((DefaultExecutionOrder)attrs[0]).order;
+            if (order > REGISTRY_TIER_MAX)
+            {
+                sb.AppendLine("  TOO LATE " + t.Name + " at " + order + ".");
+                bad++;
+            }
+            else
+            {
+                sb.AppendLine("  ok       " + t.Name + " at " + order + ".");
+            }
+        }
+        sb.AppendLine(bad == 0
+            ? "PASS -- every registry singleton is early enough."
+            : "FAIL -- " + bad + " singleton(s) can lose the subscription race.");
+        if (bad == 0) Debug.Log(sb.ToString());
+        else Debug.LogError(sb.ToString());
+    }
+
+    // DungeonCore sits at -20 and is early enough for a default-order OnEnable,
+    // so the tier is a ceiling rather than an exact value.
+    private const int REGISTRY_TIER_MAX = -20;
+
     [ContextMenu("Test Build No-Gap Trap Wall")]
     void TestBuildTrapWall()
     {
