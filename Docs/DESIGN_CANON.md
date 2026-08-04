@@ -1923,6 +1923,13 @@ the shadow paints only `MinedTiles` and the band is deliberately not mined: raw
 floor tile under thin fog against ground darkened to `unclaimedLight`. Its wall
 caps need no special handling; the cap pass snapshots `baseLight`'s keys.
 
+The band walk and the fade must share a CONNECTIVITY. The walk ran on four
+neighbours while the fade collected from eight, so road joined to the band only
+diagonally -- a carriageway's edge, every bend -- was lit by a neighbour's depth
+yet absent from the band, and the shadow never darkened it. Both are eight now,
+and the fade additionally refuses to thin over road the band does not cover, so
+a future disagreement fails to dark rather than to bright.
+
 The frontier fade seeds only where fog covers ROAD or RIVER -- ground a passage
 continues into. Fog behind a wall wants no softening: the wall is the edge and
 it is drawn. Seeding on any fog made a seed of every cell beside every wall, so

@@ -559,15 +559,24 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var cur = queue.Dequeue();
             int d = depth[cur];
             if (d >= roadPrepareCells) continue;
-            for (int k = 0; k < 4; k++)
-            {
-                var n = cur + Orth4[k];
-                if (!seen.Add(n)) continue;
-                if (GetFeatureAt(n) != FeatureType.Road) continue;
-                depth[n] = d + 1;
-                roadFeatherDepth[n] = d + 1;
-                queue.Enqueue(n);
-            }
+
+            // EIGHT-neighbour, matching the set ApplyRoadFogFade lights. Walking
+            // with Orth4 while the fade collected from the 8-neighbourhood left
+            // diagonally-joined road cells -- the edge of a carriageway, every
+            // bend -- lit by a neighbour's depth but absent from the band, so the
+            // shadow never darkened them and they rendered as bright squares
+            // along the edge. Whatever the fade can light, the walk must reach.
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    var n = new Vector3Int(cur.x + dx, cur.y + dy, cur.z);
+                    if (!seen.Add(n)) continue;
+                    if (GetFeatureAt(n) != FeatureType.Road) continue;
+                    depth[n] = d + 1;
+                    roadFeatherDepth[n] = d + 1;
+                    queue.Enqueue(n);
+                }
         }
     }
 
@@ -587,6 +596,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 {
                     var c = new Vector3Int(kv.Key.x + dx, kv.Key.y + dy, kv.Key.z);
                     if (fog.GetTile(c) == null) continue;   // already revealed
+
+                    // Never thin fog over ROAD the band does not cover. Road is
+                    // exempt from IsSolid, so it gets no wall cap, and it is only
+                    // darkened if the band put it in the light map -- an
+                    // unprepared road cell shown through thin fog is a bright
+                    // square. If the walk and the fade ever disagree again, this
+                    // fails to DARK, which is the right way round to fail.
+                    if (!roadFeatherDepth.ContainsKey(c)
+                        && GetFeatureAt(c) == FeatureType.Road) continue;
+
                     fadeScratch.Add(c);
                 }
 
