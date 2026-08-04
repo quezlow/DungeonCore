@@ -2196,7 +2196,7 @@ MonoBehaviour:
   claimedLight: 0.9
   unclaimedLight: 0.2
   breachFadeTiles: 7
-  frontierFadeTiles: 0
+  frontierFadeTiles: 4
   frontierFadeClaimed: 1
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}
