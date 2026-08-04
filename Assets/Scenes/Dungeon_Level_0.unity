@@ -5805,7 +5805,7 @@ MonoBehaviour:
     color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
   - type: 6
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
-  dwarvenRingColor: {r: 0.75, g: 0.62, b: 0.42, a: 1}
+  holdingsProximityCells: 16
   overlayStrength: 0.1
   overlayFadeSpeed: 6
   overlayClaimedLevel: 0.45
@@ -5813,6 +5813,8 @@ MonoBehaviour:
   overlayDwarvenLevel: 0.55
   overlayDwarvenEdge: 0.9
   holdingsColor: {r: 0.55, g: 0.58, b: 0.64, a: 1}
+  overlayHoldPoolLevel: 0.75
+  holdPoolReachCells: 7
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!4 &177169428
@@ -15363,7 +15365,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99646187
+  m_Size: 0.9999934
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -15492,7 +15494,8 @@ MonoBehaviour:
   roadProfile: {fileID: 0}
   siteProfile: {fileID: 0}
   roadTilemap: {fileID: 0}
-  roadFogFadeCells: 0
+  segmentSeamJitterCells: 3
+  roadPrepareCells: 6
   roadTile: {fileID: 0}
   waterTilemap: {fileID: 1113643928}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
@@ -21086,6 +21089,8 @@ MonoBehaviour:
   claimedLight: 0.7
   unclaimedLight: 0.2
   breachFadeTiles: 7
+  frontierFadeTiles: 4
+  frontierFadeClaimed: 1
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}
   cursorLightRadius: 4.5
@@ -50410,7 +50415,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00001531414}
+  m_AnchoredPosition: {x: 0, y: 0.000053131498}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57764,7 +57769,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9969649
+  m_Size: 0.99999434
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60350,7 +60355,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00001531414}
+  m_AnchoredPosition: {x: 0, y: 0.000053131498}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

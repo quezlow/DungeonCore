@@ -222,7 +222,6 @@ MonoBehaviour:
     color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
   - type: 6
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
-  dwarvenRingColor: {r: 0.75, g: 0.62, b: 0.42, a: 1}
   holdingsProximityCells: 16
   overlayStrength: 0.1
   overlayFadeSpeed: 6
@@ -231,6 +230,8 @@ MonoBehaviour:
   overlayDwarvenLevel: 0.55
   overlayDwarvenEdge: 0.9
   holdingsColor: {r: 0.55, g: 0.58, b: 0.64, a: 1}
+  overlayHoldPoolLevel: 1
+  holdPoolReachCells: 7
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!1 &575972343776861659
