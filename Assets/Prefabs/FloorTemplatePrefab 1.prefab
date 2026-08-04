@@ -2196,8 +2196,8 @@ MonoBehaviour:
   shadowTilemap: {fileID: 9002404537936008998}
   claimedLight: 0.9
   unclaimedLight: 0.2
-  breachFadeTiles: 7
-  frontierFadeTiles: 11
+  breachFadeTiles: 8
+  frontierFadeTiles: 6
   frontierFadeClaimed: 1
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}
