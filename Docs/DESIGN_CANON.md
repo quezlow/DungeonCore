@@ -1888,6 +1888,16 @@ in a fog edge that read as a wall, mid-corridor, with nothing to justify one.
 This moves an OWNERSHIP line only: every cell is opened, revealed and framed
 exactly as before.
 
+**The reveal edge is softened from the INSIDE.** `DungeonShadow` runs a
+frontier fade: a multi-source walk over `MinedTiles` from cells abutting fog,
+capped at `frontierFadeTiles` (4), easing light down to `voidLightFloor`. Open
+ground therefore darkens as it approaches the unexplored and meets it at the
+fog's own colour, since `fogMatchesVoid` already paints the fog
+`DeepVoidColor`, which is that same level. It mirrors the breach fade in the
+same file, seeded from the other kind of boundary. Confined to `MinedTiles` by
+design, not by thrift: that set is exactly what `CaveWallRenderer` has framed,
+so the fade can never touch ground with no wall drawn on it.
+
 **REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
 obvious answer, reusing entry 24's treeline curve, and it is a trap.
 `fog.GetTile(cell) == null` IS the reveal flag -- `ReachabilityDirector` and the

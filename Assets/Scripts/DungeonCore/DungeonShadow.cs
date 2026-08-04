@@ -54,6 +54,23 @@ public class DungeonShadow : MonoBehaviour
              "toward the claimed level.")]
     [SerializeField, Min(1)] private int breachFadeTiles = 7;
 
+    [Tooltip("Open ground within this many tiles of unexplored fog darkens toward " +
+             "voidLightFloor, so a revealed stretch fades into the dark instead of " +
+             "stopping at a line. A hard edge mid-corridor reads as a wall, because " +
+             "there is no architecture out there to justify one.\n\n" +
+             "This is the INSIDE of the boundary. Fading the fog's alpha outward " +
+             "instead cannot work: CaveWallRenderer frames only cells claimed or " +
+             "8-adjacent to mined floor, so anything made visible past that shows " +
+             "bare floor with no wall drawn on it.\n\n" +
+             "0 disables. Tighter than breachFadeTiles on purpose -- that one bleeds " +
+             "light INTO a space, this one recedes into dark.")]
+    [SerializeField, Min(0)] private int frontierFadeTiles = 4;
+
+    [Tooltip("Fade claimed ground at the fog boundary too. Off by default: the " +
+             "player's own domain keeps its flat light and the influence ring " +
+             "already sits on that edge. On, it softens every reveal boundary alike.")]
+    [SerializeField] private bool frontierFadeClaimed = false;
+
     [Header("Cursor")]
     [Tooltip("Cells within this radius of the cursor brighten toward full light (active floor only). 0 disables.")]
     [SerializeField, Min(0)] private int cursorRadius = 4;
@@ -126,6 +143,7 @@ public class DungeonShadow : MonoBehaviour
     // fresh every rebuild and grew with the claimed area, which is where the
     // multi-megabyte per-frame garbage came from.
     private readonly Dictionary<Vector3Int, int> breachDist = new();
+    private readonly Dictionary<Vector3Int, int> frontierDist = new();
     private readonly Dictionary<Vector3Int, int> voidDepth = new();
     private readonly Dictionary<Vector3Int, float> voidRim = new();
     private readonly Queue<Vector3Int> bfsQueue = new();
@@ -232,13 +250,17 @@ public class DungeonShadow : MonoBehaviour
         baseTint.Clear();
         voidCells.Clear();
 
-        // 1) base light on every mined cell: claimed flat, unclaimed with a breach fade.
+        // 1) base light on every mined cell: claimed flat, unclaimed with a breach
+        //    fade, then everything eased down toward the void at the fog frontier.
         BreachDistances();
+        FrontierDistances();
         Dictionary<Vector3Int, int> dist = breachDist;
+        bool fadeFrontier = frontierFadeTiles > 0 && frontierDist.Count > 0;
         foreach (Vector3Int cell in influence.MinedTiles)
         {
             float light;
-            if (influence.IsTileClaimed(cell))
+            bool claimed = influence.IsTileClaimed(cell);
+            if (claimed)
                 light = claimedLight;
             else
             {
@@ -246,6 +268,19 @@ public class DungeonShadow : MonoBehaviour
                 float t = 1f - Mathf.Clamp01((float)d / breachFadeTiles);
                 light = Mathf.Lerp(unclaimedLight, claimedLight, t);
             }
+
+            // FRONTIER FADE. Applied last so it wins: a cell against the fog is
+            // dark whatever the breach fade wanted for it. It lands on
+            // voidLightFloor, which is the level DeepVoidColor is built from and
+            // the colour fogMatchesVoid paints the fog, so the gradient meets the
+            // dark rather than butting against it.
+            if (fadeFrontier && (frontierFadeClaimed || !claimed)
+                && frontierDist.TryGetValue(cell, out int fd))
+            {
+                float ft = Mathf.Clamp01((float)fd / frontierFadeTiles);
+                light = Mathf.Lerp(voidLightFloor, light, ft);
+            }
+
             baseLight[cell] = light;
             baseTint[cell] = Color.black;
         }
@@ -430,6 +465,45 @@ public class DungeonShadow : MonoBehaviour
 
     private Color VoidHue()
         => ring != null ? ring.CurrentTypeColor : FallbackGold;
+
+    // Multi-source BFS over open floor from cells that ABUT UNEXPLORED FOG,
+    // capped at frontierFadeTiles. Same shape as BreachDistances below, seeded
+    // from the other kind of boundary.
+    //
+    // Confined to MinedTiles, which is the point rather than an optimisation:
+    // that set is exactly what CaveWallRenderer has framed, so a fade computed
+    // over it can never darken -- or reveal -- ground with no wall drawn on it.
+    private void FrontierDistances()
+    {
+        var dist = frontierDist; dist.Clear();
+        if (frontierFadeTiles <= 0) return;
+
+        var fog = floor != null && floor.Terrain != null ? floor.Terrain.FogTilemap : null;
+        if (fog == null) return;
+
+        var queue = bfsQueue; queue.Clear();
+        foreach (Vector3Int cell in influence.MinedTiles)
+        {
+            bool onFrontier = false;
+            foreach (Vector3Int dir in Dirs4)
+                if (fog.GetTile(cell + dir) != null) { onFrontier = true; break; }
+            if (onFrontier) { dist[cell] = 0; queue.Enqueue(cell); }
+        }
+
+        while (queue.Count > 0)
+        {
+            Vector3Int cur = queue.Dequeue();
+            int d = dist[cur];
+            if (d >= frontierFadeTiles) continue;
+            foreach (Vector3Int dir in Dirs4)
+            {
+                Vector3Int n = cur + dir;
+                if (dist.ContainsKey(n) || !influence.IsTileMined(n)) continue;
+                dist[n] = d + 1;
+                queue.Enqueue(n);
+            }
+        }
+    }
 
     // Multi-source BFS over open floor from claimed open cells, capped at breachFadeTiles.
     private void BreachDistances()
