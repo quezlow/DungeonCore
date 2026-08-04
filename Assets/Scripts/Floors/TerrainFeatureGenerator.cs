@@ -2641,6 +2641,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var roadUnpainted = new List<Vector3Int>();
         var roadOverPaving = new List<Vector3Int>();
         var hardJoins = new List<Vector3Int>();
+        // Owner on each side of a join, counted. A square cut across the
+        // carriageway can come from a segment seam OR from a site's paved band
+        // ending at its footprint, and the coordinates alone cannot tell them
+        // apart.
+        var joinPairs = new Dictionary<string, int>();
 
         // Histograms keyed by the feature that CAUSED the disagreement, so a
         // systemic source shows up as one bar instead of a list of
@@ -2693,6 +2698,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
                             if (GetFeatureAt(n) != FeatureType.Road) continue;
                             if (fog.GetTile(n) == null) continue;
                             hardJoins.Add(cell);
+
+                            string mine = owners.TryGetValue(cell, out var oA) ? oA : "UNTRACKED";
+                            string theirs = owners.TryGetValue(n, out var oB) ? oB : "UNTRACKED";
+                            string pair = mine + "  ->  " + theirs;
+                            joinPairs.TryGetValue(pair, out int seen);
+                            joinPairs[pair] = seen + 1;
                             break;
                         }
                     }
@@ -2720,6 +2731,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
         sb.Append("          longest straight run of join cells: ")
           .Append(LongestStraightRun(hardJoins))
           .AppendLine("   (5+ means a square cut, 1-2 means frayed)");
+        foreach (var kv in joinPairs)
+            sb.Append("          ").Append(kv.Value.ToString().PadLeft(4))
+              .Append("  ").AppendLine(kv.Key);
 
         int bad = revealedUnpainted.Count + paintedFogged.Count
                 + roadUnpainted.Count + roadOverPaving.Count;
