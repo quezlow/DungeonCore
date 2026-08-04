@@ -1890,13 +1890,30 @@ exactly as before.
 
 **The reveal edge is softened from the INSIDE.** `DungeonShadow` runs a
 frontier fade: a multi-source walk over `MinedTiles` from cells abutting fog,
-capped at `frontierFadeTiles` (4), easing light down to `voidLightFloor`. Open
+capped at `frontierFadeTiles` (4), easing light down to `voidLightFloor`. The
+seed test probes to CHEBYSHEV 2: every reveal path carries a one-cell border, so
+the wall fronting open floor is revealed and fog begins two cells out from mined
+ground, never one. Seeding at distance one found nothing on any floor and the
+fade did nothing at any setting -- silently, which is why
+`Log Frontier Fade State` now reports the seed count. Open
 ground therefore darkens as it approaches the unexplored and meets it at the
 fog's own colour, since `fogMatchesVoid` already paints the fog
 `DeepVoidColor`, which is that same level. It mirrors the breach fade in the
 same file, seeded from the other kind of boundary. Confined to `MinedTiles` by
 design, not by thrift: that set is exactly what `CaveWallRenderer` has framed,
 so the fade can never touch ground with no wall drawn on it.
+
+**The next stretch is PREPARED, so its fog can thin.** `roadPrepareCells` (6)
+of road past the revealed frontier forms a band: `CaveWallRenderer` frames the
+rock beside it -- the same explicit pass revealed river water already gets, road
+never having had one -- and the fog over exactly that band thins by depth,
+quadratic, reaching solid at the band's edge. One set feeds both, so the lit
+region and the framed region cannot drift apart. The band is NOT marked mined:
+`Minimap` paints every mined tile as floor, so that would draw the network on
+the minimap from turn one, which is the layout leak per-segment reveal exists to
+prevent. Bounded to the frontier, so the cost tracks how far the player has got
+rather than the size of the network, and cells that fall out of the band as it
+advances have their alpha restored.
 
 **REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
 obvious answer, reusing entry 24's treeline curve, and it is a trap.

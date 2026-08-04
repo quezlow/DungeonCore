@@ -185,6 +185,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "OWNERSHIP line only: every cell is still opened and framed " +
              "exactly as before.")]
     [SerializeField, Min(0)] private int segmentSeamJitterCells = 3;
+
+    [Tooltip("How far past a revealed stretch the road is PREPARED, in cells.\n\n" +
+             "Those cells are NOT revealed. The fog over them merely thins, and " +
+             "the rock beside them is framed with wall caps first -- which is what " +
+             "makes thinning safe. CaveWallRenderer draws a cap only next to mined " +
+             "floor, so fog thinned over unframed ground shows bare floor with no " +
+             "wall on it.\n\n" +
+             "The band is NOT marked mined: Minimap paints every mined tile as " +
+             "floor, which would draw the network on the minimap from turn one.\n\n" +
+             "Bounded to the frontier, so the cost tracks how far the player has " +
+             "got rather than the size of the network. 0 disables the framing and " +
+             "the fade together.")]
+    [SerializeField, Min(0)] private int roadPrepareCells = 6;
     [SerializeField] private TileBase roadTile;
 
     [Header("River Rendering")]
@@ -494,6 +507,124 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// are rare, and a silently missed subscription is the exact bug class that
     /// stranded the minimap for a whole session (canon Appendix D).</summary>
     public int RevealVersion { get; private set; }
+
+    // Road cells past the revealed frontier, mapped to their depth into the dark
+    // (1..roadPrepareCells). Rebuilt only when RevealVersion moves.
+    private readonly Dictionary<Vector3Int, int> roadFeatherDepth = new();
+    private readonly HashSet<Vector3Int> fadedFogCells = new();
+    private readonly HashSet<Vector3Int> fadeScratch = new();
+    private int preparedRevealVersion = -1;
+
+    /// <summary>Road past the revealed edge with its depth. CaveWallRenderer
+    /// frames the rock beside these cells so the fog over them can thin without
+    /// exposing anything undrawn -- one set feeding both, so the lit region and
+    /// the framed region cannot drift apart.</summary>
+    public IReadOnlyDictionary<Vector3Int, int> RoadFeatherBand => roadFeatherDepth;
+
+    /// <summary>Rebuilds the prepared band if reveal state has moved. Cheap to
+    /// call every frame; the version compare short-circuits.</summary>
+    public void EnsureRoadFeatherBand()
+    {
+        if (preparedRevealVersion == RevealVersion) return;
+        preparedRevealVersion = RevealVersion;
+
+        roadFeatherDepth.Clear();
+        if (roadPrepareCells > 0) BuildRoadFeatherBand();
+        ApplyRoadFogFade();
+    }
+
+    private void BuildRoadFeatherBand()
+    {
+        // Multi-source walk over ROAD cells only, out from every revealed stretch.
+        // Revealed cells seed it but never enter the band: they are already open,
+        // framed and unfogged, so there is nothing to prepare.
+        var seen = new HashSet<Vector3Int>();
+        var queue = new Queue<Vector3Int>();
+        var depth = new Dictionary<Vector3Int, int>();
+
+        foreach (var seg in roadSegments)
+        {
+            if (!IsRoadSegmentRevealed(seg.segmentId)) continue;
+            foreach (var c in seg.cells)
+                if (seen.Add(c)) { depth[c] = 0; queue.Enqueue(c); }
+        }
+        if (queue.Count == 0) return;
+
+        while (queue.Count > 0)
+        {
+            var cur = queue.Dequeue();
+            int d = depth[cur];
+            if (d >= roadPrepareCells) continue;
+            for (int k = 0; k < 4; k++)
+            {
+                var n = cur + Orth4[k];
+                if (!seen.Add(n)) continue;
+                if (GetFeatureAt(n) != FeatureType.Road) continue;
+                depth[n] = d + 1;
+                roadFeatherDepth[n] = d + 1;
+                queue.Enqueue(n);
+            }
+        }
+    }
+
+    private void ApplyRoadFogFade()
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        var fog = terrain != null ? terrain.FogTilemap : null;
+        if (fog == null) return;
+
+        // The band AND the rock flanking it. The wall renderer frames that rock,
+        // so it is safe to show -- and thinning the carriageway without it would
+        // leave the road fading between two hard black walls.
+        fadeScratch.Clear();
+        foreach (var kv in roadFeatherDepth)
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    var c = new Vector3Int(kv.Key.x + dx, kv.Key.y + dy, kv.Key.z);
+                    if (fog.GetTile(c) == null) continue;   // already revealed
+                    fadeScratch.Add(c);
+                }
+
+        // Restore anything that has LEFT the band. The frontier moves as stretches
+        // reveal, and a cell left half-lit behind it reads as a hole in the dark.
+        foreach (var c in fadedFogCells)
+        {
+            if (fadeScratch.Contains(c)) continue;
+            if (fog.GetTile(c) == null) continue;
+            var back = fog.GetColor(c);
+            if (back.a >= 1f) continue;
+            back.a = 1f;
+            fog.SetTileFlags(c, TileFlags.None);
+            fog.SetColor(c, back);
+        }
+
+        // Alpha by depth, quadratic: clears quickly just past the revealed edge
+        // and thickens toward the dark, reaching solid exactly at roadPrepareCells
+        // so it meets untouched fog with no step. Flanking rock takes the
+        // SHALLOWEST depth of the road it touches, so a wall reads at the same
+        // distance as the carriageway beside it.
+        foreach (var c in fadeScratch)
+        {
+            int d = int.MaxValue;
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    var r = new Vector3Int(c.x + dx, c.y + dy, c.z);
+                    if (roadFeatherDepth.TryGetValue(r, out int rd) && rd < d) d = rd;
+                }
+            if (d == int.MaxValue) continue;
+
+            float t = Mathf.Clamp01(d / (float)Mathf.Max(1, roadPrepareCells));
+            var col = fog.GetColor(c);
+            col.a = t * t;
+            fog.SetTileFlags(c, TileFlags.None);
+            fog.SetColor(c, col);
+        }
+
+        fadedFogCells.Clear();
+        foreach (var c in fadeScratch) fadedFogCells.Add(c);
+    }
 
     /// <summary>How many road segments on this floor have been revealed. Drives
     /// the one-alert-per-floor rule in FeatureRevealController.</summary>
@@ -3086,6 +3217,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var sid in featureData.revealedRoadSegmentIds) UnfogRoadSegment(sid);
         if (featureData.revealedSiteIds != null)
             foreach (var sid in featureData.revealedSiteIds) UnfogSite(sid);
+
+        // Once, at the end. Each UnfogRoadSegment above bumps RevealVersion, so
+        // rebuilding per segment would be quadratic on a floor with eighty of them.
+        EnsureRoadFeatherBand();
     }
 
     [ContextMenu("Clear Debug Overlay")]

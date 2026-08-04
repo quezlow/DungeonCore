@@ -435,6 +435,24 @@ public class CaveWallRenderer : MonoBehaviour
                     if (classifier.IsSolid(n)) wallScratch.Add(n);
                 }
 
+        // Road PAST the revealed edge is open-but-unmined in the same way, and
+        // unlike a river it is not revealed at all. Framing it costs nothing on
+        // screen -- fog still covers the caps -- but it is exactly what lets that
+        // fog THIN over the next stretch without showing bare floor where a wall
+        // belongs, which is what sank the first attempt at a feathered edge.
+        // Bounded to roadPrepareCells past the frontier, so the cost tracks how
+        // far the player has got rather than the size of the network.
+        if (feats != null)
+        {
+            feats.EnsureRoadFeatherBand();
+            foreach (var band in feats.RoadFeatherBand)
+                foreach (Vector3Int dir in Neighbours8)
+                {
+                    Vector3Int n = band.Key + dir;
+                    if (classifier.IsSolid(n)) wallScratch.Add(n);
+                }
+        }
+
         foreach (Vector3Int wall in wallScratch)
         {
             int mask = classifier.CapMask(wall);

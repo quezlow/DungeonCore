@@ -222,10 +222,14 @@ MonoBehaviour:
     color: {r: 0.541, g: 0.31, b: 0.784, a: 1}
   - type: 6
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
+  dwarvenRingColor: {r: 0.75, g: 0.62, b: 0.42, a: 1}
   overlayStrength: 0.1
   overlayFadeSpeed: 6
   overlayClaimedLevel: 0.45
   overlayExposedLevel: 0.22
+  overlayDwarvenLevel: 0.55
+  overlayDwarvenEdge: 0.9
+  holdingsColor: {r: 0.55, g: 0.58, b: 0.64, a: 1}
   sdfRangeCells: 4
   texturePadding: 2
 --- !u!1 &575972343776861659
@@ -2192,6 +2196,8 @@ MonoBehaviour:
   claimedLight: 0.9
   unclaimedLight: 0.2
   breachFadeTiles: 7
+  frontierFadeTiles: 0
+  frontierFadeClaimed: 1
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}
   cursorLightRadius: 4.5
@@ -2348,6 +2354,8 @@ MonoBehaviour:
   roadProfile: {fileID: 11400000, guid: e9217db15fe4c3f41b40e6787abc6019, type: 2}
   siteProfile: {fileID: 11400000, guid: 9c13ac2d3ee6b7d4392b47f93dd2900f, type: 2}
   roadTilemap: {fileID: 8472111960170152276}
+  segmentSeamJitterCells: 3
+  roadPrepareCells: 6
   roadTile: {fileID: 11400000, guid: b05dbd4e85d00a34aa4b40b44e0afb5f, type: 2}
   waterTilemap: {fileID: 2255533193577490305}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
@@ -2364,6 +2372,8 @@ MonoBehaviour:
   debugRiverTile: {fileID: 11400000, guid: f511e98797e23164290c445aa1d4069b, type: 2}
   debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
   debugRoadTile: {fileID: 0}
+  debugSiteTile: {fileID: 0}
+  logSiteGeneration: 1
 --- !u!1 &8415351630352997601
 GameObject:
   m_ObjectHideFlags: 0

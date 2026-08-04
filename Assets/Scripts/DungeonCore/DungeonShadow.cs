@@ -69,7 +69,7 @@ public class DungeonShadow : MonoBehaviour
     [Tooltip("Fade claimed ground at the fog boundary too. Off by default: the " +
              "player's own domain keeps its flat light and the influence ring " +
              "already sits on that edge. On, it softens every reveal boundary alike.")]
-    [SerializeField] private bool frontierFadeClaimed = false;
+    [SerializeField] private bool frontierFadeClaimed = true;
 
     [Header("Cursor")]
     [Tooltip("Cells within this radius of the cursor brighten toward full light (active floor only). 0 disables.")]
@@ -473,6 +473,36 @@ public class DungeonShadow : MonoBehaviour
     // Confined to MinedTiles, which is the point rather than an optimisation:
     // that set is exactly what CaveWallRenderer has framed, so a fade computed
     // over it can never darken -- or reveal -- ground with no wall drawn on it.
+    [ContextMenu("Log Frontier Fade State")]
+    private void LogFrontierFadeState()
+    {
+        var fog = floor != null && floor.Terrain != null ? floor.Terrain.FogTilemap : null;
+        int mined = influence != null ? influence.MinedTiles.Count : -1;
+
+        FrontierDistances();
+        int seeds = 0;
+        float lo = 1f, hi = 0f;
+        foreach (var kv in frontierDist)
+        {
+            if (kv.Value == 0) seeds++;
+            if (baseLight.TryGetValue(kv.Key, out float l))
+            {
+                if (l < lo) lo = l;
+                if (l > hi) hi = l;
+            }
+        }
+
+        Debug.Log("[FrontierFade] floor " + (floor != null ? floor.FloorIndex : -1)
+                + "  fadeTiles=" + frontierFadeTiles
+                + "  fadeClaimed=" + frontierFadeClaimed
+                + "  fog=" + (fog == null ? "MISSING" : "ok")
+                + "  mined=" + mined
+                + "  seeds=" + seeds
+                + "  fadedCells=" + frontierDist.Count
+                + "  lightRange=" + lo.ToString("F2") + ".." + hi.ToString("F2")
+                + "  (voidLightFloor=" + voidLightFloor.ToString("F2") + ")");
+    }
+
     private void FrontierDistances()
     {
         var dist = frontierDist; dist.Clear();
@@ -484,10 +514,34 @@ public class DungeonShadow : MonoBehaviour
         var queue = bfsQueue; queue.Clear();
         foreach (Vector3Int cell in influence.MinedTiles)
         {
-            bool onFrontier = false;
-            foreach (Vector3Int dir in Dirs4)
-                if (fog.GetTile(cell + dir) != null) { onFrontier = true; break; }
-            if (onFrontier) { dist[cell] = 0; queue.Enqueue(cell); }
+            // Interior cells cannot be near fog -- every neighbour is open floor.
+            // This culls most of the dug area before any tilemap probe, which is
+            // what keeps the pass affordable on a heavily mined floor.
+            bool perimeter = false;
+            for (int dx = -1; dx <= 1 && !perimeter; dx++)
+                for (int dy = -1; dy <= 1 && !perimeter; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    if (!influence.IsTileMined(new Vector3Int(cell.x + dx, cell.y + dy, cell.z)))
+                        perimeter = true;
+                }
+            if (!perimeter) continue;
+
+            // Probe to CHEBYSHEV 2, not 1. Every reveal path carries a one-cell
+            // border -- UnfogRoadSegment, UnfogSite, UnfogRiver, UnfogCoreCavern,
+            // ClaimStarterArea and the mined restore on load all reveal their
+            // cells plus a ring -- so the wall fronting open floor is revealed and
+            // fog starts TWO cells out. Probing one cell found nothing anywhere,
+            // on any floor, and the fade silently did nothing at every setting.
+            bool nearFog = false;
+            for (int dx = -2; dx <= 2 && !nearFog; dx++)
+                for (int dy = -2; dy <= 2 && !nearFog; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    if (fog.GetTile(new Vector3Int(cell.x + dx, cell.y + dy, cell.z)) != null)
+                        nearFog = true;
+                }
+            if (nearFog) { dist[cell] = 0; queue.Enqueue(cell); }
         }
 
         while (queue.Count > 0)
