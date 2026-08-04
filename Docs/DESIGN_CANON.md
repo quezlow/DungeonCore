@@ -1879,15 +1879,25 @@ per-feature alerts because a floor holds a handful of each.
 **Reveal and claiming are per SEGMENT**, not per road. A trunk splits into runs
 of `segmentLength` centreline cells, each with its own id; `featureId` in the
 feature lookup is a segment id. Unfogging an 800-cell trunk from one touched
-cell would hand the player the floor's layout for free. The fog at a stretch's
-end is FEATHERED rather than cut: `DungeonTerrain.FeatherFogOutward` eases the
-alpha out over `roadFogFadeCells` (8) with the same quadratic curve entry 24
-uses on the treeline, driven by a bounded walk outward from the revealed cells
-so it fits any reveal shape. A hard edge running straight across a carriageway
-reads as a wall, because there is no architecture out there to justify one;
-sites, rivers and chambers keep their hard edge deliberately, since theirs
-lands against masonry or rock. Alpha is only ever lowered, so where two
-stretches meet the nearer reveal wins. WALL FRAMING is the one
+cell would hand the player the floor's layout for free. The SEAM between two
+segments is frayed rather than square: chunks overlap by
+`segmentSeamJitterCells` (3) and a stable per-cell hash quantised to 2x2 blocks
+settles who keeps each contested cell. A square cut ran the boundary dead
+straight across a five-wide carriageway, and a revealed stretch therefore ended
+in a fog edge that read as a wall, mid-corridor, with nothing to justify one.
+This moves an OWNERSHIP line only: every cell is opened, revealed and framed
+exactly as before.
+
+**REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
+obvious answer, reusing entry 24's treeline curve, and it is a trap.
+`fog.GetTile(cell) == null` IS the reveal flag -- `ReachabilityDirector` and the
+consistency report both ask it -- so a part-transparent tile reads as
+UNREVEALED to everything while the player sees through it. Unrevealed ground is
+never prepared to be looked at: `CaveWallRenderer` frames only solid cells that
+are claimed or 8-adjacent to mined floor, so the fade band held no wall sprites
+at all and the disc-wide floor tile showed through as void. Any future partial
+transparency needs the framing extended to the fog boundary FIRST, and that is
+a change to the wall renderer, not to the fog. WALL FRAMING is the one
 thing that is not per segment: `CaveWallClassifier.IsSolid` exempts road cells
 exactly as it exempts river cells, discovered or not. It has to. Reveal calls
 `MarkNaturalFloor` on the revealing segment alone, so without the exemption the

@@ -175,13 +175,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "Road cells paint here as their segment is revealed. Null-safe.")]
     [SerializeField] private Tilemap roadTilemap;
 
-    [Tooltip("How far the fog eases out past a revealed road stretch, in cells. " +
-             "A stretch used to end in a hard edge straight across the " +
-             "carriageway, which reads as a wall rather than as the limit of " +
-             "sight -- it sits mid-corridor with no architecture to justify it. " +
-             "Set 0 for the old hard cut. Sites, rivers and chambers keep the " +
-             "hard edge on purpose: theirs lands against masonry or rock.")]
-    [SerializeField, Min(0)] private int roadFogFadeCells = 8;
+    [Tooltip("How far neighbouring road segments overlap at their seam, in " +
+             "cells. The chunk boundary was a square cut across the centreline, " +
+             "so a revealed stretch ended in a straight fog edge running the " +
+             "full width of the carriageway -- which reads as a wall, because " +
+             "mid-corridor there is no architecture to justify one. Contested " +
+             "cells in the overlap are settled by a stable per-cell hash, so " +
+             "the seam frays. Set 0 for the old square cut. This moves an " +
+             "OWNERSHIP line only: every cell is still opened and framed " +
+             "exactly as before.")]
+    [SerializeField, Min(0)] private int segmentSeamJitterCells = 3;
     [SerializeField] private TileBase roadTile;
 
     [Header("River Rendering")]
@@ -1019,16 +1022,45 @@ public class TerrainFeatureGenerator : MonoBehaviour
             for (int i = 0; i < line.Count; i += step)
             {
                 int count = Mathf.Min(step, line.Count - i);
-                var chunk = line.GetRange(i, count);
-                var dilated = RoadNetworkBuilder.Dilate(
-                    chunk, road.width, roadCentre, road.clampRadius);
+
+                // FRAYED SEAM. A square cut here put the boundary between two
+                // segments dead straight across a five-wide carriageway, and a
+                // revealed stretch therefore ended in a fog edge that read as a
+                // wall -- there is no architecture mid-corridor to justify one.
+                // Overlap into the next chunk instead and let a stable per-cell
+                // hash settle who keeps each contested cell.
+                //
+                // Ownership only. Every cell is still opened, revealed and
+                // framed exactly as before, so nothing here can expose ground
+                // the renderer has not prepared -- which is precisely what sank
+                // the alpha-feather attempt.
+                int over = Mathf.Clamp(segmentSeamJitterCells, 0, line.Count - (i + count));
+
+                // Ring d is the dilation of the chunk extended by d centreline
+                // cells, so the smallest d containing a cell is its depth into
+                // the overlap. Cheap: a handful of extra dilations per segment,
+                // at generation only.
+                var rings = new List<HashSet<Vector3Int>>(over + 1);
+                for (int d = 0; d <= over; d++)
+                    rings.Add(RoadNetworkBuilder.Dilate(
+                        line.GetRange(i, count + d), road.width, roadCentre, road.clampRadius));
 
                 // The id advances whether or not the segment survives, so saved
                 // reveal ids stay aligned even where a river ate a whole stretch.
                 var seg = new RoadSegmentRuntime { segmentId = nextSegmentId++, roadId = road.id };
-                foreach (var c in dilated)
+                foreach (var c in rings[over])
                 {
                     if (taken.Contains(c)) continue;
+
+                    if (over > 0)
+                    {
+                        int depth = 0;
+                        while (depth < over && !rings[depth].Contains(c)) depth++;
+                        // Beyond this cell's reach, so it belongs to the next
+                        // segment, whose own dilation covers it.
+                        if (depth > SeamReach(c, over)) continue;
+                    }
+
                     if (!roadCells.Add(c)) continue;   // one owner per cell
                     seg.cells.Add(c);
                 }
@@ -1037,6 +1069,25 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
 
         RebuildRoadAnchors();
+    }
+
+    /// <summary>How far into the overlap a contested cell lets the earlier
+    /// segment reach, 0..over.
+    ///
+    /// Quantised to 2x2 blocks on purpose. A per-cell coin flip frays the seam
+    /// into static; blocks give it teeth you can read as a broken edge. Stable
+    /// on the cell alone, so a reload partitions the road identically and saved
+    /// reveal ids keep meaning what they meant.</summary>
+    private static int SeamReach(Vector3Int c, int over)
+    {
+        unchecked
+        {
+            int h = (c.x >> 1) * 73856093 ^ (c.y >> 1) * 19349663;
+            h ^= h >> 13;
+            h *= 1274126177;
+            h ^= h >> 16;
+            return (h & 0x7fffffff) % (over + 1);
+        }
     }
 
     /// <summary>
@@ -2590,7 +2641,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var roadUnpainted = new List<Vector3Int>();
         var roadOverPaving = new List<Vector3Int>();
         var hardJoins = new List<Vector3Int>();
-        var featheredJoins = new List<Vector3Int>();
 
         // Histograms keyed by the feature that CAUSED the disagreement, so a
         // systemic source shows up as one bar instead of a list of
@@ -2642,12 +2692,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                             var n = cell + Orth4[k];
                             if (GetFeatureAt(n) != FeatureType.Road) continue;
                             if (fog.GetTile(n) == null) continue;
-                            // A feathered neighbour is still fogged, so the raw
-                            // count cannot tell whether the fix worked. Only a
-                            // near-solid neighbour is the hard wall of fog that
-                            // reads as architecture.
-                            if (fog.GetColor(n).a >= 0.9f) hardJoins.Add(cell);
-                            else featheredJoins.Add(cell);
+                            hardJoins.Add(cell);
                             break;
                         }
                     }
@@ -2666,10 +2711,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Line(sb, "road cell with NO road tile", roadUnpainted, sampleLimit);
         Line(sb, "road tile sitting OVER site paving", roadOverPaving, sampleLimit);
-        Line(sb, "HARD reveal joins (revealed road touching near-solid fog)",
+        Line(sb, "reveal joins (revealed road touching fogged road)",
              hardJoins, sampleLimit);
-        Line(sb, "feathered reveal joins (fog easing out -- these are fine)",
-             featheredJoins, sampleLimit);
+        // The COUNT cannot move under a seam-ownership change, so it could never
+        // say whether the fray worked. Straightness can: a square cut across a
+        // five-wide carriageway leaves a run of five or more, a frayed seam
+        // leaves ones and twos.
+        sb.Append("          longest straight run of join cells: ")
+          .Append(LongestStraightRun(hardJoins))
+          .AppendLine("   (5+ means a square cut, 1-2 means frayed)");
 
         int bad = revealedUnpainted.Count + paintedFogged.Count
                 + roadUnpainted.Count + roadOverPaving.Count;
@@ -2846,6 +2896,33 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
+    /// <summary>Longest run of join cells that are collinear and contiguous, on
+    /// either axis. The straightness of the seam is the thing the eye reads as
+    /// architecture, and it is the only part a seam-ownership change can move.</summary>
+    private static int LongestStraightRun(List<Vector3Int> cells)
+    {
+        if (cells == null || cells.Count == 0) return 0;
+        var set = new HashSet<Vector3Int>(cells);
+        int best = 1;
+        foreach (var c in cells)
+        {
+            // Count only from a run's start, so each run is measured once.
+            if (!set.Contains(new Vector3Int(c.x - 1, c.y, c.z)))
+            {
+                int n = 1;
+                while (set.Contains(new Vector3Int(c.x + n, c.y, c.z))) n++;
+                if (n > best) best = n;
+            }
+            if (!set.Contains(new Vector3Int(c.x, c.y - 1, c.z)))
+            {
+                int n = 1;
+                while (set.Contains(new Vector3Int(c.x, c.y + n, c.z))) n++;
+                if (n > best) best = n;
+            }
+        }
+        return best;
+    }
+
     private static readonly Vector3Int[] Orth4 =
     {
         new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
@@ -2901,24 +2978,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var seg = GetRoadSegment(segmentId);
         if (seg == null || seg.cells.Count == 0) return;
 
-        // Collected as we go: the feather needs the whole revealed footprint,
-        // halo included, or it would start its ramp a cell inside the edge.
-        var opened = new List<Vector3Int>(seg.cells.Count * 4);
         foreach (var c in seg.cells)
         {
             terrain.RevealTile(c);
-            opened.Add(c);
             for (int dx = -1; dx <= 1; dx++)
                 for (int dy = -1; dy <= 1; dy++)
                     if (dx != 0 || dy != 0)
-                    {
-                        var n = new Vector3Int(c.x + dx, c.y + dy, c.z);
-                        terrain.RevealTile(n);
-                        opened.Add(n);
-                    }
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
         }
-
-        terrain.FeatherFogOutward(opened, roadFogFadeCells);
 
         floor.TileInfluence?.MarkNaturalFloor(seg.cells);
     }

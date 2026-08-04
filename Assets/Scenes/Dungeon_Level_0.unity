@@ -15363,7 +15363,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99995655
+  m_Size: 0.99646187
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -15492,6 +15492,7 @@ MonoBehaviour:
   roadProfile: {fileID: 0}
   siteProfile: {fileID: 0}
   roadTilemap: {fileID: 0}
+  roadFogFadeCells: 0
   roadTile: {fileID: 0}
   waterTilemap: {fileID: 1113643928}
   waterTile: {fileID: 11400000, guid: 9ecd761a440bdf4438281f762fa846fc, type: 2}
@@ -36739,6 +36740,7 @@ MonoBehaviour:
   body: {fileID: 1363507809}
   textureSize: 220
   paddingCells: 2
+  minSpanCells: 64
   rockColour: {r: 0.06, g: 0.06, b: 0.1, a: 1}
   wallColour: {r: 0.28, g: 0.26, b: 0.34, a: 1}
   floorColour: {r: 0.62, g: 0.58, b: 0.5, a: 1}
@@ -50408,7 +50410,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000021747295}
+  m_AnchoredPosition: {x: 0, y: 0.00001531414}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57762,7 +57764,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99996275
+  m_Size: 0.9969649
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60348,7 +60350,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000021747295}
+  m_AnchoredPosition: {x: 0, y: 0.00001531414}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
