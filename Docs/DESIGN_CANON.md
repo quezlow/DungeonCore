@@ -1810,7 +1810,27 @@ its colour toward `dwarvenRingColor` (warm bronze) by the bilinearly sampled
 weight, so the boundary warms as it closes and is fully bronze where it
 touches. The flare is deliberately NOT reveal-gated: it is the warning that
 lands before the player knows what is out there, and being shapeless it gives
-away nothing the granite fill reserves for discovery. It is baked once per
+away nothing the granite fill reserves for discovery.
+
+In push mode the same weight also fills a POOL, reusing the exposed fringe's
+wash on the unclaimed side, because the flare alone reads as a hairline you have
+to know to look for. The pool is CLIPPED to the player's own frontier by the SDF
+in R, out to `holdPoolReachCells` (3): unclipped, A is a sixteen-cell dilation of
+the holding's footprint and the pool would trace the outline of a hold never
+found. Clipped, its shape is the frontier's own and it says only "near". It is
+suppressed inside a confirmed holding, the pool being the guess and the fill the
+answer.
+
+**The frontier flare is GRANITE, not bronze.** This overturns the Wall Family
+Refactor's DECIDED bronze flare, on that entry's own reasoning: the colour
+caution rules out a bronze AREA, gold ring and gold HUD and amber Earth cores
+leaving no room for one, and the pool is an area. Bronze survived while the
+signal was a hairline and stops being viable the moment it is not. The two
+signals separate by FORM instead, which is the stronger grammar anyway -- the
+pool is soft and edgeless, the confirmed holding carries the hard surveyed edge.
+`_RingColorAlt` is fed from `holdingsColor` in code rather than from a field of
+its own, because two Inspector colours meant to match are two colours that will
+eventually not. It is baked once per
 floor, holdings being authored at generation and never moving.
 
 The channel choice is forced. The flare reads its weight across the ring BAND,

@@ -77,15 +77,6 @@ public class InfluenceRingRenderer : MonoBehaviour
         new TypeColor { type = DungeonType.Light, color = new Color(0.949f, 0.886f, 0.690f, 1f) }, // white-gold
     };
 
-    [Header("Terrain Ring Hue")]
-    [Tooltip("Boundary hue where the frontier abuts UNCLAIMED dwarven masonry -- the " +
-             "field texture's A channel weights a lerp from the core-type colour to " +
-             "this, so the ring reads bronze exactly where dwarven wall is what the " +
-             "push mines next and reverts once through. Lives here, not on " +
-             "TerrainResistanceTable: the table's claimableRingTint has been dormant " +
-             "since the ring rework (0431a991).")]
-    [SerializeField] private Color dwarvenRingColor = new Color(0.75f, 0.62f, 0.42f, 1f);
-
     [Tooltip("How far from dwarven ground the boundary starts warming toward the " +
              "bronze frontier hue, in cells.\n\n" +
              "This is the SHAPELESS half of the warning: it says something has laid " +
@@ -116,8 +107,22 @@ public class InfluenceRingRenderer : MonoBehaviour
     [SerializeField, Range(0f, 2f)] private float overlayDwarvenEdge = 0.9f;
     [Tooltip("Holdings fill and edge colour. COOL GREY GRANITE per canon's colour caution " +
              "(gold ring, gold HUD, amber Earth cores leave no room for a bronze area); the " +
-             "bronze dwarvenRingColor stays a thin accent on the frontier flare only.")]
+             "frontier flare takes this same colour, fed from here in code so the two " +
+             "cannot drift apart.")]
     [SerializeField] private Color holdingsColor = new Color(0.55f, 0.58f, 0.64f, 1f);
+
+    [Tooltip("Fill level of the proximity POOL -- the soft granite wash that says " +
+             "dwarven ground is near without saying where. Sits above the confirmed " +
+             "holdings fill and below the in-reach wash, so approaching reads as " +
+             "lighter than arriving.")]
+    [SerializeField, Range(0f, 1f)] private float overlayHoldPoolLevel = 0.62f;
+
+    [Tooltip("How far the proximity pool reaches INSIDE the player's own frontier, " +
+             "in cells. This is what stops the pool tracing the outline of a hold " +
+             "the player has not found: unclipped it would simply be a dilation of " +
+             "the holding's footprint. Capped by sdfRangeCells, since the SDF cannot " +
+             "measure further than that from the boundary.")]
+    [SerializeField, Range(0.5f, 4f)] private float holdPoolReachCells = 3f;
 
     [Header("Field Encoding")]
     [Tooltip("Cells of signed distance encoded either side of the boundary.")]
@@ -395,7 +400,16 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_OverlayDwarvenLevel", overlayDwarvenLevel);
         material.SetFloat("_OverlayDwarvenEdge", overlayDwarvenEdge);
         material.SetColor("_HoldingsColor", holdingsColor);
-        material.SetColor("_RingColorAlt", dwarvenRingColor);
+        material.SetFloat("_OverlayHoldPoolLevel", overlayHoldPoolLevel);
+        material.SetFloat("_HoldPoolReach", holdPoolReachCells * cellToEncoded);
+
+        // The flare takes the FILL's colour rather than one of its own. They are
+        // meant to read as the same material, and two Inspector colours that are
+        // meant to match are two colours that will eventually not. Overturns the
+        // bronze frontier flare from the Wall Family Refactor: bronze survived as
+        // a hairline, but canon's colour caution rules it out as an area, and the
+        // pool below is an area.
+        material.SetColor("_RingColorAlt", holdingsColor);
     }
 
 

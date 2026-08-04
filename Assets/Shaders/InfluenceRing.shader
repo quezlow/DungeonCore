@@ -48,6 +48,8 @@ Shader "DCR/InfluenceRing"
         _OverlayDwarvenLevel ("Overlay Dwarven Fill", Range(0, 1)) = 0.55
         _OverlayDwarvenEdge ("Overlay Dwarven Edge", Range(0, 2)) = 0.9
         _HoldingsColor ("Holdings Color", Color) = (0.55, 0.58, 0.64, 1)
+        _OverlayHoldPoolLevel ("Overlay Holdings Pool Fill", Range(0, 1)) = 0.62
+        _HoldPoolReach ("Holdings Pool Reach (encoded)", Float) = 0.375
     }
 
     SubShader
@@ -86,6 +88,8 @@ Shader "DCR/InfluenceRing"
             float _OverlayDwarvenLevel;
             float _OverlayDwarvenEdge;
             fixed4 _HoldingsColor;
+            float _OverlayHoldPoolLevel;
+            float _HoldPoolReach;
 
             struct appdata
             {
@@ -186,9 +190,32 @@ Shader "DCR/InfluenceRing"
                 // masks away B's other meaning.
                 float hold = smoothstep(0.45, 0.55, fs.b) * unclaimedSide;
                 float holdEdge = smoothstep(0.15, 0.5, fs.b) * smoothstep(0.85, 0.5, fs.b) * unclaimedSide;
+
+                // PROXIMITY POOL. The same wash the exposed fringe uses, on the
+                // other side of the boundary and driven by A, so the warning is
+                // an AREA rather than a tint on a hairline.
+                //
+                // Clipped to the player's OWN frontier. Unclipped, A is a
+                // sixteen-cell dilation of the holding's footprint, so the pool
+                // would trace the outline of a hold the player has never found --
+                // the exact leak the split signal was chosen to avoid. Clipped,
+                // its shape is the frontier's and it says only "near".
+                //
+                // Suppressed inside a confirmed holding so the two do not stack:
+                // the pool is the guess, the fill is the answer, and once you have
+                // the answer the guess should be gone.
+                float poolClip = smoothstep(0.5 - _HoldPoolReach, 0.5, sdf) * unclaimedSide;
+                float pool = saturate(f4.a) * poolClip * (1.0 - hold);
+
                 float unclaimedWash = lerp(inReach, _OverlayDwarvenLevel, hold);
+                unclaimedWash = lerp(unclaimedWash, _OverlayHoldPoolLevel, pool);
                 float wash = lerp(unclaimedWash, claimedWash, claimedSide);
-                float3 washCol = lerp(_RingColor.rgb, _HoldingsColor.rgb, hold);
+
+                // Granite for both. Canon's colour caution rules out a bronze
+                // AREA -- gold ring, gold HUD and amber Earth cores leave no room
+                // for one -- so the two signals separate by FORM instead: the pool
+                // is soft and edgeless, the holding carries the hard surveyed edge.
+                float3 washCol = lerp(_RingColor.rgb, _HoldingsColor.rgb, max(hold, pool));
                 float3 overlay = washCol * (wash * _OverlayStrength)
                                + _HoldingsColor.rgb * (holdEdge * _OverlayDwarvenEdge * _OverlayStrength);
 
