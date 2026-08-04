@@ -521,6 +521,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// the framed region cannot drift apart.</summary>
     public IReadOnlyDictionary<Vector3Int, int> RoadFeatherBand => roadFeatherDepth;
 
+    /// <summary>Depth the band runs to. DungeonShadow needs it to ramp the band's
+    /// light across the same span the fog thins over, so the two agree.</summary>
+    public int RoadPrepareCells => roadPrepareCells;
+
     /// <summary>Rebuilds the prepared band if reveal state has moved. Cheap to
     /// call every frame; the version compare short-circuits.</summary>
     public void EnsureRoadFeatherBand()

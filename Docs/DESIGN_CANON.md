@@ -1915,6 +1915,19 @@ prevent. Bounded to the frontier, so the cost tracks how far the player has got
 rather than the size of the network, and cells that fall out of the band as it
 advances have their alpha restored.
 
+The band also joins `DungeonShadow`'s light map, at `unclaimedLight` where it
+meets the revealed stretch and ramping to `voidLightFloor` at its far edge --
+the same span the fog thins over, so light and fog agree instead of fighting.
+Without it the band rendered BRIGHTER than the revealed road beside it, because
+the shadow paints only `MinedTiles` and the band is deliberately not mined: raw
+floor tile under thin fog against ground darkened to `unclaimedLight`. Its wall
+caps need no special handling; the cap pass snapshots `baseLight`'s keys.
+
+The frontier fade seeds only where fog covers ROAD or RIVER -- ground a passage
+continues into. Fog behind a wall wants no softening: the wall is the edge and
+it is drawn. Seeding on any fog made a seed of every cell beside every wall, so
+whole floors dimmed uniformly with no gradient left to read.
+
 **REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
 obvious answer, reusing entry 24's treeline curve, and it is a trap.
 `fog.GetTile(cell) == null` IS the reveal flag -- `ReachabilityDirector` and the

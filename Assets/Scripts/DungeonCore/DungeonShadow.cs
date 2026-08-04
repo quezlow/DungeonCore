@@ -285,6 +285,29 @@ public class DungeonShadow : MonoBehaviour
             baseTint[cell] = Color.black;
         }
 
+        // 1b) the PREPARED ROAD BAND. Not mined, so the loop above skipped it, and
+        //     it rendered brighter than the revealed stretch beside it: raw floor
+        //     tile under thin fog, against ground the shadow had darkened to
+        //     unclaimedLight. Ground further into the unknown glowed.
+        //
+        //     Matched to the revealed road where the two meet, ramping to
+        //     voidLightFloor at the band's far edge -- the same span the fog thins
+        //     over, so light and fog agree rather than fighting. Wall caps come
+        //     free: step 3 snapshots baseLight's keys and gives every cell here
+        //     its rim.
+        var bandFeats = floor != null ? floor.FeatureGenerator : null;
+        if (bandFeats != null && bandFeats.RoadPrepareCells > 0)
+        {
+            int span = Mathf.Max(1, bandFeats.RoadPrepareCells - 1);
+            foreach (var band in bandFeats.RoadFeatherBand)
+            {
+                if (influence.IsTileMined(band.Key)) continue;   // handled above
+                float bt = 1f - Mathf.Clamp01((band.Value - 1) / (float)span);
+                baseLight[band.Key] = Mathf.Lerp(voidLightFloor, unclaimedLight, bt);
+                baseTint[band.Key] = Color.black;
+            }
+        }
+
         // 2) moss glow (green cols 0-3, gold 4-7): extra light + subtle colour on nearby mined cells.
         if (wallRenderer != null)
         {
@@ -511,6 +534,8 @@ public class DungeonShadow : MonoBehaviour
         var fog = floor != null && floor.Terrain != null ? floor.Terrain.FogTilemap : null;
         if (fog == null) return;
 
+        var seedFeats = floor != null ? floor.FeatureGenerator : null;
+
         var queue = bfsQueue; queue.Clear();
         foreach (Vector3Int cell in influence.MinedTiles)
         {
@@ -533,13 +558,21 @@ public class DungeonShadow : MonoBehaviour
             // cells plus a ring -- so the wall fronting open floor is revealed and
             // fog starts TWO cells out. Probing one cell found nothing anywhere,
             // on any floor, and the fade silently did nothing at every setting.
+            // AND the fog must cover ground the passage CONTINUES into. Fog behind
+            // a wall needs no softening: the wall is the edge, it is drawn, and it
+            // reads correctly. Seeding on any fog at all made a seed of every cell
+            // beside every wall, so whole corridors dimmed uniformly and there was
+            // no gradient left to see -- floor 1 went dark end to end.
             bool nearFog = false;
             for (int dx = -2; dx <= 2 && !nearFog; dx++)
                 for (int dy = -2; dy <= 2 && !nearFog; dy++)
                 {
                     if (dx == 0 && dy == 0) continue;
-                    if (fog.GetTile(new Vector3Int(cell.x + dx, cell.y + dy, cell.z)) != null)
-                        nearFog = true;
+                    var probe = new Vector3Int(cell.x + dx, cell.y + dy, cell.z);
+                    if (fog.GetTile(probe) == null) continue;
+                    FeatureType pf = seedFeats != null ? seedFeats.GetFeatureAt(probe)
+                                                       : FeatureType.None;
+                    if (pf == FeatureType.Road || pf == FeatureType.River) nearFog = true;
                 }
             if (nearFog) { dist[cell] = 0; queue.Enqueue(cell); }
         }
