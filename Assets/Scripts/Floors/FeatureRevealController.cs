@@ -44,6 +44,15 @@ public class FeatureRevealController : MonoBehaviour
              "Leave null to skip banner; AlertsLog entries still fire.")]
     [SerializeField] private FeatureAlertBanner discoveryBanner;
 
+    [Tooltip("How far out dwarven holdings announce themselves, in cells.\n\n" +
+             "Every other feature can be blundered into for free. Dwarven ground " +
+             "is the one place where arriving and CLAIMING are the same gesture " +
+             "and the claim costs standing, so a warning that lands on contact is " +
+             "not a warning at all -- the granite needs to be on screen before the " +
+             "frontier reaches it.\n\n" +
+             "0 restores reveal on contact.")]
+    [SerializeField, Min(0)] private int dwarvenWarnRangeCells = 4;
+
     /// <summary>The banner that can actually be shown.
     ///
     /// The serialized field above is only usable on floor 0. Every deeper floor
@@ -114,6 +123,48 @@ public class FeatureRevealController : MonoBehaviour
     private void HandleTileBecameClaimable(Vector3Int cell)
     {
         TryRevealFeatureAtCell(cell, silent: false);
+        TryWarnOfDwarvenGroundNear(cell);
+    }
+
+    /// <summary>Reveals dwarven holdings from a few cells out instead of on
+    /// contact, so the granite is on screen before the frontier arrives.
+    ///
+    /// Routed back through TryRevealFeatureAtCell rather than reimplemented, so
+    /// the one-alert-per-floor rule for roads, the per-site alert, the archetype
+    /// display names and the wisp's Buried Age lines all keep working. Masonry
+    /// is not in the feature lookup, so a probe landing on a wall resolves the
+    /// site through the holdings registry and reveals it from one of its carved
+    /// cells instead.</summary>
+    private void TryWarnOfDwarvenGroundNear(Vector3Int cell)
+    {
+        int r = dwarvenWarnRangeCells;
+        if (r <= 0 || floor == null || features == null) return;
+
+        var map = floor.TerrainTypeMap;
+        if (map == null || !map.HasHoldings) return;
+
+        for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                var probe = new Vector3Int(cell.x + dx, cell.y + dy, cell.z);
+                int owner = map.HoldingOwnerAt(probe);
+                if (owner == TerrainTypeMap.NoHoldingOwner) continue;
+
+                if (TerrainTypeMap.OwnerIsRoad(owner))
+                {
+                    // Carriageway is in the feature lookup, so the probe cell
+                    // itself is enough.
+                    TryRevealFeatureAtCell(probe, silent: false);
+                    continue;
+                }
+
+                if (features.IsSiteRevealed(owner)) continue;
+                var s = features.GetSiteById(owner);
+                if (s == null || s.cells == null || s.cells.Count == 0) continue;
+                TryRevealFeatureAtCell(s.cells[0].ToVector3Int(), silent: false);
+            }
     }
 
     // ── Public API ────────────────────────────────────────────────

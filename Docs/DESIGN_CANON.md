@@ -2540,7 +2540,21 @@ provider BEFORE a second vendor exists, not after.
 ### Claiming the road (DECIDED)
 
 The road is the first terrain in the game with an OPINION about being
-claimed. Pushing influence across it is a diplomatic act, not a mining
+claimed. The AMBIENT CREEP never takes it: `TryCreepOnce` skips any cell in
+the holdings set, beside the rivers and uncleared chambers it already skipped.
+Without that guard the creep claimed into a hold on a timer the moment
+influence sat adjacent, so the ladder would have billed the player for a choice
+they never made -- neither a diplomatic act nor a mining decision, but no
+decision at all. Floor 4's dead network is not in the holdings set, so the creep
+still crosses it freely.
+
+Holdings also announce themselves `dwarvenWarnRangeCells` (4) out rather than on
+contact. Reveal fires on the claimable ring, so discovery was already free, but
+on this ground arriving and claiming are one gesture and a warning that lands on
+contact is not a warning: the granite has to be on screen before the frontier
+reaches it.
+
+Pushing influence across it is a diplomatic act, not a mining
 decision.
 
 **Segmented, never binary.** Claiming is per-stretch, so standing loss scales

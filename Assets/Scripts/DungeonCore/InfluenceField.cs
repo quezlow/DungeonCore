@@ -397,6 +397,7 @@ public class InfluenceField : MonoBehaviour
     {
         float reach = EffectiveReach;
         var features = floor.FeatureGenerator;
+        var holdings = floor.TerrainTypeMap;
 
         Vector3Int best = default;
         float bestCost = float.MaxValue;
@@ -412,6 +413,16 @@ public class InfluenceField : MonoBehaviour
                 if (features.IsRiver(cell)) continue;                  // water stays player-decision territory
                 if (features.IsCellInUnclearedChamber(cell)) continue; // chamber gate
             }
+            // Dwarven ground is NEVER taken by the ambient creep. Canon calls
+            // pushing influence across the road a diplomatic act rather than a
+            // mining decision, and creep made it neither: the game claimed it
+            // FOR the player, on a timer, and the warning ladder would then have
+            // billed them for a choice they never made. Rivers sit two lines
+            // above under the same rule -- water stays a deliberate, player-paid
+            // act. Floor 4's dead network is not in the holdings set, so the
+            // creep still crosses it freely; there is nobody down there to mind.
+            if (holdings != null && holdings.IsHoldingsCell(cell)) continue;
+
             best = cell;
             bestCost = d;
             found = true;
