@@ -174,6 +174,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
     [Tooltip("Per-floor road tilemap, sorting above the floor and below units. " +
              "Road cells paint here as their segment is revealed. Null-safe.")]
     [SerializeField] private Tilemap roadTilemap;
+
+    [Tooltip("How far the fog eases out past a revealed road stretch, in cells. " +
+             "A stretch used to end in a hard edge straight across the " +
+             "carriageway, which reads as a wall rather than as the limit of " +
+             "sight -- it sits mid-corridor with no architecture to justify it. " +
+             "Set 0 for the old hard cut. Sites, rivers and chambers keep the " +
+             "hard edge on purpose: theirs lands against masonry or rock.")]
+    [SerializeField, Min(0)] private int roadFogFadeCells = 8;
     [SerializeField] private TileBase roadTile;
 
     [Header("River Rendering")]
@@ -2581,7 +2589,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var paintedFogged = new List<Vector3Int>();
         var roadUnpainted = new List<Vector3Int>();
         var roadOverPaving = new List<Vector3Int>();
-        var visibleJoins = new List<Vector3Int>();
+        var hardJoins = new List<Vector3Int>();
+        var featheredJoins = new List<Vector3Int>();
 
         // Histograms keyed by the feature that CAUSED the disagreement, so a
         // systemic source shows up as one bar instead of a list of
@@ -2632,7 +2641,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
                         {
                             var n = cell + Orth4[k];
                             if (GetFeatureAt(n) != FeatureType.Road) continue;
-                            if (fog.GetTile(n) != null) { visibleJoins.Add(cell); break; }
+                            if (fog.GetTile(n) == null) continue;
+                            // A feathered neighbour is still fogged, so the raw
+                            // count cannot tell whether the fix worked. Only a
+                            // near-solid neighbour is the hard wall of fog that
+                            // reads as architecture.
+                            if (fog.GetColor(n).a >= 0.9f) hardJoins.Add(cell);
+                            else featheredJoins.Add(cell);
+                            break;
                         }
                     }
                 }
@@ -2650,8 +2666,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
         Line(sb, "road cell with NO road tile", roadUnpainted, sampleLimit);
         Line(sb, "road tile sitting OVER site paving", roadOverPaving, sampleLimit);
-        Line(sb, "visible reveal joins (revealed road touching fogged road)",
-             visibleJoins, sampleLimit);
+        Line(sb, "HARD reveal joins (revealed road touching near-solid fog)",
+             hardJoins, sampleLimit);
+        Line(sb, "feathered reveal joins (fog easing out -- these are fine)",
+             featheredJoins, sampleLimit);
 
         int bad = revealedUnpainted.Count + paintedFogged.Count
                 + roadUnpainted.Count + roadOverPaving.Count;
@@ -2883,14 +2901,24 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var seg = GetRoadSegment(segmentId);
         if (seg == null || seg.cells.Count == 0) return;
 
+        // Collected as we go: the feather needs the whole revealed footprint,
+        // halo included, or it would start its ramp a cell inside the edge.
+        var opened = new List<Vector3Int>(seg.cells.Count * 4);
         foreach (var c in seg.cells)
         {
             terrain.RevealTile(c);
+            opened.Add(c);
             for (int dx = -1; dx <= 1; dx++)
                 for (int dy = -1; dy <= 1; dy++)
                     if (dx != 0 || dy != 0)
-                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+                    {
+                        var n = new Vector3Int(c.x + dx, c.y + dy, c.z);
+                        terrain.RevealTile(n);
+                        opened.Add(n);
+                    }
         }
+
+        terrain.FeatherFogOutward(opened, roadFogFadeCells);
 
         floor.TileInfluence?.MarkNaturalFloor(seg.cells);
     }

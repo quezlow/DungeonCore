@@ -220,6 +220,61 @@ public class DungeonTerrain : MonoBehaviour
 
     public void RevealTile(Vector3Int pos) => fogTilemap.SetTile(pos, null);
 
+    /// <summary>Eases the fog out across the cells beyond a reveal instead of
+    /// cutting to solid at its edge.
+    ///
+    /// Same quadratic curve SurfaceZoneGenerator uses on the treeline (canon
+    /// 24), but driven by a bounded BFS from the revealed cells rather than by
+    /// radius, so it works for any reveal shape and costs the annulus around
+    /// the reveal rather than the floor. Depth runs to fadeCells inclusive and
+    /// the ramp reaches full solid exactly there, so it meets untouched fog
+    /// with no step.
+    ///
+    /// Only the ALPHA is written, and only ever downward. Reading the existing
+    /// colour rather than composing one keeps this agnostic about whether the
+    /// fog's hue lives on the tile, the per-cell colour or the tilemap -- and
+    /// lowering only means that where two reveals overlap, the nearer one wins
+    /// and the further cannot re-thicken it.</summary>
+    public void FeatherFogOutward(ICollection<Vector3Int> revealed, int fadeCells)
+    {
+        if (fogTilemap == null || revealed == null || revealed.Count == 0) return;
+        if (fadeCells <= 0) return;
+
+        var visited = new HashSet<Vector3Int>(revealed);
+        var frontier = new List<Vector3Int>(revealed);
+        var next = new List<Vector3Int>();
+
+        for (int depth = 1; depth <= fadeCells; depth++)
+        {
+            float t = depth / (float)fadeCells;
+            float a = t * t;
+
+            next.Clear();
+            foreach (var c in frontier)
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        var n = new Vector3Int(c.x + dx, c.y + dy, c.z);
+                        if (!visited.Add(n)) continue;
+                        if (!IsWithinBounds(n)) continue;
+                        if (fogTilemap.GetTile(n) == null) continue;   // already open
+
+                        next.Add(n);
+                        fogTilemap.SetTileFlags(n, TileFlags.None);
+                        var col = fogTilemap.GetColor(n);
+                        if (a < col.a)
+                        {
+                            col.a = a;
+                            fogTilemap.SetColor(n, col);
+                        }
+                    }
+
+            var swap = frontier; frontier = next; next = swap;
+            if (frontier.Count == 0) break;
+        }
+    }
+
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;
     public int CurrentRadius => currentRadius;

@@ -1879,7 +1879,15 @@ per-feature alerts because a floor holds a handful of each.
 **Reveal and claiming are per SEGMENT**, not per road. A trunk splits into runs
 of `segmentLength` centreline cells, each with its own id; `featureId` in the
 feature lookup is a segment id. Unfogging an 800-cell trunk from one touched
-cell would hand the player the floor's layout for free. WALL FRAMING is the one
+cell would hand the player the floor's layout for free. The fog at a stretch's
+end is FEATHERED rather than cut: `DungeonTerrain.FeatherFogOutward` eases the
+alpha out over `roadFogFadeCells` (8) with the same quadratic curve entry 24
+uses on the treeline, driven by a bounded walk outward from the revealed cells
+so it fits any reveal shape. A hard edge running straight across a carriageway
+reads as a wall, because there is no architecture out there to justify one;
+sites, rivers and chambers keep their hard edge deliberately, since theirs
+lands against masonry or rock. Alpha is only ever lowered, so where two
+stretches meet the nearer reveal wins. WALL FRAMING is the one
 thing that is not per segment: `CaveWallClassifier.IsSolid` exempts road cells
 exactly as it exempts river cells, discovered or not. It has to. Reveal calls
 `MarkNaturalFloor` on the revealing segment alone, so without the exemption the
