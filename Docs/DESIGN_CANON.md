@@ -1804,10 +1804,22 @@ value 7) through `TerrainFeatureGenerator.MasonryTypeFor`, the ONE function
 both the retype and the paving pass consult. Dwarven masonry claims at 9x:
 living, maintained walls outrank dead ruins and stay under consecration.
 Its on-screen tell is the influence boundary itself: the ring renderer
-writes a weight into the field texture's spare alpha channel -- 255 where
-an UNCLAIMED cell lies inside dwarven ground the player has DISCOVERED, 0
-elsewhere -- and the ring shader lerps its colour toward
-`dwarvenRingColor` (warm bronze) by the bilinearly sampled weight. The
+writes PROXIMITY to dwarven ground into the field texture's alpha -- 255 on
+it, easing to 0 at `holdingsProximityCells` (16) -- and the ring shader lerps
+its colour toward `dwarvenRingColor` (warm bronze) by the bilinearly sampled
+weight, so the boundary warms as it closes and is fully bronze where it
+touches. The flare is deliberately NOT reveal-gated: it is the warning that
+lands before the player knows what is out there, and being shapeless it gives
+away nothing the granite fill reserves for discovery. It is baked once per
+floor, holdings being authored at generation and never moving.
+
+The channel choice is forced. The flare reads its weight across the ring BAND,
+and the band straddles the boundary, so its channel must mean one thing on both
+sides. B cannot: it carries the exposed fringe on claimed ground, and half the
+band would read that instead, flickering the bronze with breach state. So A is
+proximity, and the granite fill moved to B's unclaimed half -- which suits it,
+since the fill needs a hard edge on a binary value and an isoline cut from a
+smooth ramp would land out in open ground. The
 boundary glows bronze exactly where dwarven ground -- wall or courtyard
 -- is what the push takes next and reverts to the core hue once through:
 frontier cells only, by
@@ -1934,6 +1946,13 @@ The frontier fade seeds only where fog covers ROAD or RIVER -- ground a passage
 continues into. Fog behind a wall wants no softening: the wall is the edge and
 it is drawn. Seeding on any fog made a seed of every cell beside every wall, so
 whole floors dimmed uniformly with no gradient left to read.
+
+**DEFERRED: junction shaping.** `RoadNetworkBuilder.Dilate` uses one straight
+kernel, so two five-wide carriageways crossing dilate to a roughly nine-by-nine
+square with square corners, and a junction reads as a plaza rather than as a
+widened meeting. A rounded or chamfered kernel at junctions would fix it, in one
+function, and would also give the frayed seam something better to fray against.
+Not a reveal fault: the shape is there before any of that runs.
 
 **REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
 obvious answer, reusing entry 24's treeline curve, and it is a trap.

@@ -4,10 +4,14 @@
 //   R = signed distance to the claimed boundary (0.5 = the boundary itself,
 //       encoded so one cell = 1 / (2 * sdfRangeCells))
 //   G = normalized free-growth cost from InfluenceField (1 = unreachable)
-//   A = dwarven holdings weight (255 = unclaimed cell inside a living
-//       dwarven site footprint -- masonry, interior and carriageway); the
-//       ring colour lerps toward _RingColorAlt by the bilinear sample and
-//       the granite holdings fill cuts from the same ramp
+//   B = exposed fringe on CLAIMED ground, discovered dwarven holdings on
+//       UNCLAIMED ground -- mutually exclusive, each masked by its own side,
+//       and the granite fill cuts its hard edge from the unclaimed half
+//   A = proximity to dwarven ground (255 on it, easing to 0 at the flare's
+//       reach); the ring colour lerps toward _RingColorAlt by it, so the
+//       boundary warms as it closes on a hold and is fully bronze where it
+//       touches. The fill cannot use it: A is a smooth ramp, and a hard edge
+//       cut from it would land out in open ground
 //
 // Bilinear filtering interpolates the per-cell values into organic curves.
 // Two octaves of scrolling value noise perturb the isoline (the waver — purely
@@ -142,10 +146,13 @@ Shader "DCR/InfluenceRing"
                 band *= band; // soften the shoulders
 
                 float pulse = 1.0 + _PulseAmp * sin(t * _PulseSpeed);
-                // Frontier hue: A carries the dwarven-masonry weight, so the
-                // band lerps toward _RingColorAlt where the boundary abuts
-                // unmined dwarven wall. The overlay below stays the core hue
-                // on purpose -- the wash answers reach, not material.
+                // Frontier hue: A carries PROXIMITY to dwarven ground, so the
+                // band warms toward _RingColorAlt as the boundary closes on a
+                // hold and is fully bronze where it touches. It reads A rather
+                // than B because this band straddles the boundary, and B means
+                // something different on each side of it. The overlay below
+                // stays the core hue on purpose -- the wash answers reach, not
+                // ownership.
                 float3 ringRGB = lerp(_RingColor.rgb, _RingColorAlt.rgb, f4.a);
                 float3 ring = ringRGB * band * _Intensity * pulse * _RingColor.a;
 
@@ -172,8 +179,13 @@ Shader "DCR/InfluenceRing"
                 // stays a thin accent on the frontier flare above. Claimed
                 // cells write A = 0, so conquered holdings dissolve into the
                 // ordinary wash.
-                float hold = smoothstep(0.45, 0.55, f4.a) * unclaimedSide;
-                float holdEdge = smoothstep(0.15, 0.5, f4.a) * smoothstep(0.85, 0.5, f4.a) * unclaimedSide;
+                // The granite fill reads B, not A. It needs a HARD edge on a
+                // BINARY value; A is a smooth proximity ramp and cutting an
+                // isoline from it would put the granite's boundary somewhere out
+                // in open ground rather than on the hold. unclaimedSide already
+                // masks away B's other meaning.
+                float hold = smoothstep(0.45, 0.55, fs.b) * unclaimedSide;
+                float holdEdge = smoothstep(0.15, 0.5, fs.b) * smoothstep(0.85, 0.5, fs.b) * unclaimedSide;
                 float unclaimedWash = lerp(inReach, _OverlayDwarvenLevel, hold);
                 float wash = lerp(unclaimedWash, claimedWash, claimedSide);
                 float3 washCol = lerp(_RingColor.rgb, _HoldingsColor.rgb, hold);

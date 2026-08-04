@@ -223,6 +223,7 @@ MonoBehaviour:
   - type: 6
     color: {r: 0.949, g: 0.886, b: 0.69, a: 1}
   dwarvenRingColor: {r: 0.75, g: 0.62, b: 0.42, a: 1}
+  holdingsProximityCells: 16
   overlayStrength: 0.1
   overlayFadeSpeed: 6
   overlayClaimedLevel: 0.45
@@ -2196,7 +2197,7 @@ MonoBehaviour:
   claimedLight: 0.9
   unclaimedLight: 0.2
   breachFadeTiles: 7
-  frontierFadeTiles: 4
+  frontierFadeTiles: 11
   frontierFadeClaimed: 1
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}

@@ -86,6 +86,17 @@ public class InfluenceRingRenderer : MonoBehaviour
              "since the ring rework (0431a991).")]
     [SerializeField] private Color dwarvenRingColor = new Color(0.75f, 0.62f, 0.42f, 1f);
 
+    [Tooltip("How far from dwarven ground the boundary starts warming toward the " +
+             "bronze frontier hue, in cells.\n\n" +
+             "This is the SHAPELESS half of the warning: it says something has laid " +
+             "claim nearby without drawing WHAT, which is the reveal-gated granite " +
+             "fill's job. Being shapeless it can fire before discovery without " +
+             "giving anything away.\n\n" +
+             "Baked once per floor, because holdings are authored at generation and " +
+             "never move -- changing this needs a floor reload to take. 0 disables " +
+             "the flare.")]
+    [SerializeField, Min(0)] private int holdingsProximityCells = 16;
+
     [Header("Free-Growth Overlay")]
     [Tooltip("Fill strength of the reach overlay when visible.")]
     [SerializeField, Range(0f, 1f)] private float overlayStrength = 0.10f;
@@ -426,6 +437,70 @@ public class InfluenceRingRenderer : MonoBehaviour
         }
     }
 
+    // Distance from every texel to the nearest dwarven cell, eased to a byte.
+    // Baked ONCE: holdings are authored at generation and never move, so this is
+    // static data with no business in the per-claim rebuild.
+    private byte[] holdingsProximity;
+    private bool proximityBaked;
+
+    private void EnsureHoldingsProximity()
+    {
+        if (proximityBaked || !built) return;
+        // Sites are not generated yet. Leave the flag DOWN and retry next
+        // rebuild -- latching here would bake an empty field for the session.
+        if (terrainMap == null || !terrainMap.HasHoldings) return;
+
+        proximityBaked = true;
+        if (holdingsProximityCells <= 0) { holdingsProximity = null; return; }
+
+        int total = texSize * texSize;
+        var depth = new int[total];
+        for (int k = 0; k < total; k++) depth[k] = -1;
+
+        var queue = new Queue<int>();
+        foreach (var kv in terrainMap.Holdings)
+        {
+            int gx = kv.Key.x - texMin.x;
+            int gy = kv.Key.y - texMin.y;
+            if (gx < 0 || gy < 0 || gx >= texSize || gy >= texSize) continue;
+            int k = gy * texSize + gx;
+            if (depth[k] == 0) continue;
+            depth[k] = 0;
+            queue.Enqueue(k);
+        }
+
+        int reach = holdingsProximityCells;
+        while (queue.Count > 0)
+        {
+            int k = queue.Dequeue();
+            int d = depth[k];
+            if (d >= reach) continue;
+            int cx = k % texSize, cy = k / texSize;
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nx = cx + dx, ny = cy + dy;
+                    if (nx < 0 || ny < 0 || nx >= texSize || ny >= texSize) continue;
+                    int nk = ny * texSize + nx;
+                    if (depth[nk] >= 0) continue;
+                    depth[nk] = d + 1;
+                    queue.Enqueue(nk);
+                }
+        }
+
+        holdingsProximity = new byte[total];
+        for (int k = 0; k < total; k++)
+        {
+            if (depth[k] < 0) continue;
+            // Linear, so the warning builds evenly across the whole approach
+            // instead of staying invisible until the last few cells. 255 on
+            // dwarven ground, 0 at the edge of reach.
+            float t = 1f - (depth[k] / (float)reach);
+            holdingsProximity[k] = (byte)Mathf.RoundToInt(Mathf.Clamp01(t) * 255f);
+        }
+    }
+
     private void RebuildTexture()
     {
         int total = texSize * texSize;
@@ -437,6 +512,7 @@ public class InfluenceRingRenderer : MonoBehaviour
         // together they mark the exposed fringe — claimed ground pushed past the
         // reach and past the safe radius, i.e. exactly what a breach would reclaim.
         EnsureVisibleHoldings();
+        EnsureHoldingsProximity();
         // Hoisted out of the loop. A floor with nothing discovered skips the
         // probe entirely, which on the 600-radius disc is 1.45M lookups per
         // rebuild that could only ever answer no.
@@ -461,8 +537,12 @@ public class InfluenceRingRenderer : MonoBehaviour
                 byte g = 255;
                 if (hasCost)
                     g = (byte)Mathf.Clamp(Mathf.RoundToInt(255f * Mathf.Clamp01(cost / reachNorm)), 0, 254);
-                // Exposed fringe: claimed ground beyond the breach-safe radius —
-                // exactly the cells a breach reclaims. Baked into B.
+                // B carries TWO meanings, and safely, because they are mutually
+                // exclusive by construction. On CLAIMED ground it is the exposed
+                // fringe -- ground beyond the breach-safe radius, exactly what a
+                // breach reclaims. On UNCLAIMED ground it is dwarven holdings
+                // the player has DISCOVERED. The shader masks each by the side
+                // it belongs to, so neither ever reads the other's value.
                 byte b = 0;
                 if (claimed)
                 {
@@ -470,15 +550,22 @@ public class InfluenceRingRenderer : MonoBehaviour
                     float dy = cell.y - coreCell.y;
                     if (dx * dx + dy * dy > safeRadiusSq) b = 255;
                 }
-                // Dwarven holdings weight, baked into A: 255 where an
-                // UNCLAIMED cell lies inside a hold or stretch the player has
-                // DISCOVERED. Undiscovered dwarven ground writes 0, so the
-                // overlay can never draw a floor plan through unexplored fog
-                // -- it sorts above Shadow, so nothing else would stop it.
-                // One set probe against the cached revealed subset.
-                byte a = 0;
-                if (!claimed && anyVisibleHoldings && visibleHoldings.Contains(cell))
-                    a = 255;
+                else if (anyVisibleHoldings && visibleHoldings.Contains(cell))
+                {
+                    b = 255;
+                }
+
+                // A is PROXIMITY to dwarven ground, baked once per floor and
+                // meaning the same thing everywhere. The frontier flare reads it
+                // across the ring band, and the band STRADDLES the boundary, so
+                // it cannot live in B -- half the band would be reading exposed
+                // fringe and the bronze would flicker with breach state.
+                //
+                // Not reveal-gated, on purpose: this is the warning that lands
+                // BEFORE the player knows what is out there. It is shapeless, so
+                // it gives away nothing the granite fill reserves for discovery.
+                byte a = holdingsProximity != null ? holdingsProximity[i] : (byte)0;
+
                 pixels[i] = new Color32(0, g, b, a);
             }
         }
