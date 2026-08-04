@@ -99,7 +99,7 @@ public class HolyOrderStrike : MonoBehaviour
 
         AlertsLog.Instance?.AddAlert(
             "The Order has judged you, little core. Its crusade marches on the dungeon.",
-            Vector3.zero, 0, AlertCategory.Threat);
+            Vector3.zero, 0, AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     public HolyOrderStrikeSaveData GetSaveData()

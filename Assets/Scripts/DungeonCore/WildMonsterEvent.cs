@@ -118,7 +118,7 @@ public class WildMonsterEvent : MonoBehaviour
         DungeonSaveController.Instance?.RequestAutosave();
         AlertsLog.Instance?.AddAlert(
             "Something vast has scented your halls, little core, and it hungers. It comes to feed.",
-            EntrancePos, 0, AlertCategory.Threat);
+            EntrancePos, 0, AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     /// <summary>Spawn + fully configure a predator at a world position. Used by both the

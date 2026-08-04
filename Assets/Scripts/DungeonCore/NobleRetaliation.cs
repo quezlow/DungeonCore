@@ -110,7 +110,7 @@ public class NobleRetaliation : MonoBehaviour
         DungeonSaveController.Instance?.RequestAutosave();
         AlertsLog.Instance?.AddAlert(
             $"House {house} rides for your gate, little core, and they have not come to gawk.",
-            EntrancePos, 0, AlertCategory.Threat);
+            EntrancePos, 0, AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     /// <summary>The house is the final word of a "Title Given House" name.</summary>

@@ -349,6 +349,15 @@ public class TileInfluenceManager : MonoBehaviour
                     MyFloor.TerrainTypeMap.GetTerrainAt(pos),
                     CellToWorld(pos), MyFloor.FloorIndex);
 
+            // The price of dwarven ground (canon 19, the warning ladder).
+            // A direct call rather than a subscription, exactly as the line
+            // above is: a claim handler that missed its subscription would
+            // fail SILENTLY and hand the road over free, which is the bug
+            // class Appendix D was written about. Save-restore claims pass
+            // silent and never reach here, so a reload cannot re-bill
+            // ground the player already paid for.
+            DwarvenClaimLedger.NotifyCellClaimed(MyFloor, pos);
+
             OnTileClaimed?.Invoke(pos);
         }
     }

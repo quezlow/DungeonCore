@@ -318,7 +318,46 @@ public class DwarvenPatrolController : MonoBehaviour
             p.direction = -p.direction;
             return;
         }
+
+        // RUNG 5, re-aimed. The stop-and-look beat was written against
+        // natural geometry -- a collapse -- and canon step 8 always meant
+        // it to answer a CLAIMED stretch as well. Dwarven ground the player
+        // has taken is exactly holdings-and-claimed: two dictionary probes
+        // on the one cell the patrol is about to step into.
+        //
+        // Only at the EDGE. Without the test on the cell underfoot, a
+        // patrol whose whole beat had been claimed would turn on every
+        // step and jitter in place forever.
+        if (!StandsOnTakenGround(p, rail.walk[p.index])
+            && StandsOnTakenGround(p, rail.walk[next]))
+        {
+            p.pauseUntil = Time.time + brokenEndPauseSeconds;
+            if (p.puppet != null)
+            {
+                // Look PAST the edge, along the road's own bearing, the same
+                // way the collapse beat does.
+                var hereW = p.floor.TileInfluence.CellToWorld(rail.walk[p.index]);
+                var aheadW = p.floor.TileInfluence.CellToWorld(rail.walk[next]);
+                p.puppet.Face(aheadW + (aheadW - hereW));
+            }
+            p.direction = -p.direction;
+            return;
+        }
+
         p.index = next;
+    }
+
+    /// <summary>True when this cell is dwarven ground the player holds.
+    /// Holdings alone is not enough -- the whole beat runs on dwarven ground
+    /// by construction -- and claimed alone is not either, since a patrol
+    /// crossing the player's ordinary tunnels is not a diplomatic event.</summary>
+    private static bool StandsOnTakenGround(Patrol p, Vector3Int cell)
+    {
+        if (p.floor == null) return false;
+        var map = p.floor.TerrainTypeMap;
+        var inf = p.floor.TileInfluence;
+        if (map == null || inf == null || !map.HasHoldings) return false;
+        return map.IsHoldingsCell(cell) && inf.IsTileClaimed(cell);
     }
 
     /// <summary>True when this end of the rail is a collapse -- a broken spur

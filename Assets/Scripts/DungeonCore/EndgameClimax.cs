@@ -101,7 +101,7 @@ public class EndgameClimax : MonoBehaviour
         {
             armed = true;
             DungeonSaveController.Instance?.RequestAutosave();
-            Announce("You have grown vast, little core, and the world has taken note. Its answer gathers beyond your walls.");
+            Announce("You have grown vast, little core, and the world has taken note. Its answer gathers beyond your walls.", AlertSeverity.Warning);
         }
     }
 
@@ -135,8 +135,12 @@ public class EndgameClimax : MonoBehaviour
         DungeonSaveController.Instance?.RequestAutosave();
     }
 
-    private void Announce(string msg) =>
-        AlertsLog.Instance?.AddAlert(msg, EntrancePos, 0, AlertCategory.Threat);
+    /// <summary>Critical by default: every climax beat but the arming line is
+    /// the run changing shape, and each of the four dispatch lines fires at most
+    /// once because they are mutually exclusive. The arming line passes Warning
+    /// -- the answer is gathering, it has not arrived.</summary>
+    private void Announce(string msg, AlertSeverity severity = AlertSeverity.Critical) =>
+        AlertsLog.Instance?.AddAlert(msg, EntrancePos, 0, AlertCategory.Threat, severity);
 
     /// <summary>Pick the dominant provoked threat: most times manifested, ties broken by the
     /// most recent. If none was ever provoked, fall back to the best current profile fit.</summary>
@@ -203,7 +207,7 @@ public class EndgameClimax : MonoBehaviour
         DungeonSaveController.Instance?.RequestAutosave();
         AlertsLog.Instance?.AddAlert(
             "The world has spent its fury and you endure, little core. What waits beyond is not survival - it is apotheosis. Ascend.",
-            EntrancePos, 0, AlertCategory.System);
+            EntrancePos, 0, AlertCategory.System, AlertSeverity.Critical);
     }
 
     public EndgameClimaxSaveData GetSaveData() => new()

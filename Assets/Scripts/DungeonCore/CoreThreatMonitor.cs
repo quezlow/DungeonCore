@@ -123,7 +123,8 @@ public class CoreThreatMonitor : MonoBehaviour
         string msg = $"The core is under threat on Floor {floorIdx + 1}";
 
         Debug.LogWarning($"[CoreThreatMonitor] {msg}");
-        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat);
+        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat,
+                                     AlertSeverity.Critical);
     }
 
     // Peaceful approach — pilgrims, cultists, scholars, inspectors. Not a danger.

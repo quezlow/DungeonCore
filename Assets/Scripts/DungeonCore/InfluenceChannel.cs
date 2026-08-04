@@ -78,6 +78,11 @@ public class InfluenceChannel : MonoBehaviour
     private readonly List<Vector3Int> claimBuffer = new List<Vector3Int>();
     private readonly List<Vector3Int> fadeKeys = new List<Vector3Int>();
 
+    // Set by Tick each frame the push runs, so Inflate can ask about dwarven
+    // ground without taking a FloorRoot parameter through a private method
+    // whose signature four other members already agree on.
+    private TerrainTypeMap holdingsMap;
+
     private int lastFloorIndex = int.MinValue;
     private bool subscribedModeChanges;
 
@@ -158,6 +163,7 @@ public class InfluenceChannel : MonoBehaviour
             return;
         }
 
+        holdingsMap = floor.TerrainTypeMap;
         Inflate(floor.TileInfluence, floor.InfluenceField, floor.Terrain.CoreCell, hoverCell.Value);
     }
 
@@ -178,6 +184,11 @@ public class InfluenceChannel : MonoBehaviour
 
         bool smoothing = ReachedCursor(influence, cursor);
         float dt = Time.deltaTime;
+
+        // Hoisted out of the frontier loop: a floor with no dwarven ground
+        // then costs one null test per push rather than one probe per
+        // claimable cell per frame.
+        var holdings = holdingsMap != null && holdingsMap.HasHoldings ? holdingsMap : null;
 
         // Pass 1: accrue pressure on frontier cells in the corridor (and, once
         // reached, in concave notches near it). Selection only — the ring set is
@@ -202,6 +213,16 @@ public class InfluenceChannel : MonoBehaviour
             float p = (pressure.TryGetValue(cell, out float cur) ? cur : 0f) + w * pushStrength * dt;
             if (p >= cost) claimBuffer.Add(cell);
             else pressure[cell] = p;
+
+            // RUNG 2 of the warning ladder. Canon wants the wisp to speak
+            // BEFORE the first claim completes, and pressure is the only
+            // state in the system that exists while the decision is still
+            // reversible: the swell leans on a frontier cell for a while
+            // before it takes it, and leaning on dwarven ground is the
+            // intent signal. Nothing new is stored -- the ledger returns on
+            // a bool once it has spoken.
+            if (holdings != null && holdings.IsHoldingsCell(cell))
+                DwarvenClaimLedger.NotifyPressureOnHoldings();
         }
 
         // Pass 2: claim the ready cells, paying mana per cell scaled by terrain.

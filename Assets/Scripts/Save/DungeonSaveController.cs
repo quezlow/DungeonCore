@@ -211,6 +211,7 @@ public class DungeonSaveController : MonoBehaviour
         WispQuestDirector.ResetForNewGame();       // fresh dungeon reconciles its urgings from nothing
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
+        DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
 
         SaveGame();
 
@@ -336,6 +337,9 @@ public class DungeonSaveController : MonoBehaviour
         }
         currentSave.dwarvenSpoilUnsold = DwarvenSpoil.Unsold;
         currentSave.dwarvenSpoilLifetime = DwarvenSpoil.LifetimeSold;
+        currentSave.dwarvenClaimWarned = DwarvenClaimLedger.FreeWarningSpent;
+        currentSave.dwarvenPressureWarned = DwarvenClaimLedger.PressureWarned;
+        currentSave.dwarvenAlertedOwners = DwarvenClaimLedger.AlertedOwnersForSave();
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
 
         if (QuestController.Instance != null)
@@ -841,6 +845,9 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.caravanVerbUsed);
             DwarvenSpoil.RestoreFromSave(currentSave.dwarvenSpoilUnsold,
                                          currentSave.dwarvenSpoilLifetime);
+            DwarvenClaimLedger.RestoreFromSave(currentSave.dwarvenClaimWarned,
+                                               currentSave.dwarvenPressureWarned,
+                                               currentSave.dwarvenAlertedOwners);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);

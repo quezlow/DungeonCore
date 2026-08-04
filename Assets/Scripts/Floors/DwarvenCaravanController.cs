@@ -95,7 +95,10 @@ public class DwarvenCaravanController : MonoBehaviour
     [Tooltip("Fraction of the ORIGINAL cargo a toll takes.")]
     [SerializeField, Range(0.05f, 0.5f)] private float tollFraction = 0.20f;
     [SerializeField] private float robStandingLoss = 25f;
-    [SerializeField] private float taxStandingLoss = 3f;
+    // The tax standing field is DELETED, not zeroed. A serialized field keeps
+    // whatever the Inspector wrote the day the component was first saved, so
+    // changing its default to 0 would have changed nothing in the live scene
+    // and the toll would have gone on costing 3 a wagon in silence.
 
     [Header("Column")]
     [SerializeField, Min(1)] private int walkerCount = 3;
@@ -677,7 +680,15 @@ public class DwarvenCaravanController : MonoBehaviour
                 int toll = TollAmount;
                 cargo = Mathf.Max(0, cargo - toll);
                 DungeonCore.Instance?.AddGold(toll);
-                FactionSystem.Instance?.AddStanding(FactionId.Dwarves, -taxStandingLoss);
+                // The toll costs NO standing. Holding the stretch was the
+                // price, and it is now a real one: two hundred cells of
+                // dwarven road at -0.05 each is -10 before a single wagon is
+                // stopped. Charging again per crossing made tolling strictly
+                // worse than robbing -- from +15 the road fell silent at
+                // Tier 1 after about eleven tolls, roughly 300g, and never
+                // reopened, against a single Rob paying 80-200g for one hit.
+                // A toll nobody should ever take is not a verb. Claiming the
+                // road is the investment; the toll is what it yields.
                 AlertsLog.Instance?.AddAlert(
                     "Toll taken: " + toll + "g. The dwarves pay, and they count.",
                     at, floorIndex, AlertCategory.System);

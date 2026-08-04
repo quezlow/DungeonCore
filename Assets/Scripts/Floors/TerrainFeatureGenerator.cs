@@ -258,6 +258,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "only way to tell an empty roster from an unreachable band.")]
     [SerializeField] private bool logSiteGeneration = true;
 
+    [Tooltip("Kerb radius in cells for the junction fillet -- the structuring element " +
+             "of the morphological closing that rounds the inside corners where roads " +
+             "meet. 0 disables shaping and restores the square meeting. 3 against a " +
+             "five-wide carriageway rounds the corner over most of the carriageway's " +
+             "own half-width, which is what stops the meeting reading as a plaza.")]
+    [SerializeField, Range(0, 8)] private int junctionFilletRadius = 3;
+
+    /// <summary>Radius at which two road ends count as one junction node. The
+    /// exact rule DeepRoadGraph clusters by, kept as one constant because the
+    /// fillet and the site anchors must agree about where a meeting is.</summary>
+    public const int RoadJunctionMergeRadius = 6;
+
     // ── State ─────────────────────────────────────────────────────
 
     private FloorRoot floor;
@@ -1222,7 +1234,112 @@ public class TerrainFeatureGenerator : MonoBehaviour
             }
         }
 
+        // JUNCTION SHAPING (canon 19, was DEFERRED). One straight kernel dilated
+        // two crossing carriageways into a blocky square with square inside
+        // corners, so a meeting read as a plaza. A morphological closing at each
+        // node fillets those corners into the kerb radius a real junction has.
+        //
+        // Runs here, at the END of the shared rebuild, so generation and load
+        // produce byte-identical carriageways: the inputs are the saved
+        // polylines and the same taken set the segment loop above used, and
+        // nothing else. Sites are composed around a carriageway and already
+        // subtract road cells from their plans, so running BEFORE site
+        // generation is what keeps a filleted cell from ever landing under
+        // masonry on the load path.
+        FilletJunctionsIntoSegments(taken);
+
         RebuildRoadAnchors();
+    }
+
+    /// <summary>Cells added by the junction fillet, most recent rebuild. Read by
+    /// the headless road report; runtime data, like the segments themselves.</summary>
+    public int JunctionFilletCellCount { get; private set; }
+
+    /// <summary>How many junction nodes the last rebuild shaped.</summary>
+    public int JunctionNodeCount { get; private set; }
+
+    /// <summary>Runs the fillet and hands each new cell to a segment, so a
+    /// filleted corner reveals, opens and claims with the stretch it belongs to
+    /// rather than sitting outside every segment as unowned road.
+    ///
+    /// Ownership goes to the lowest segment id holding an 8-neighbour. Lowest
+    /// rather than nearest because it is stable: a tie broken by distance would
+    /// flip on a rounding difference and move a cell between segments across a
+    /// reload, which is the class of drift the frayed seam's stable hash exists
+    /// to avoid.</summary>
+    private void FilletJunctionsIntoSegments(HashSet<Vector3Int> taken)
+    {
+        JunctionFilletCellCount = 0;
+        JunctionNodeCount = 0;
+        if (junctionFilletRadius <= 0) return;
+        if (featureData == null || featureData.roads == null || featureData.roads.Count == 0) return;
+        if (roadSegments.Count == 0) return;
+
+        var nodes = RoadNetworkBuilder.JunctionNodes(featureData.roads, RoadJunctionMergeRadius);
+        JunctionNodeCount = nodes.Count;
+        if (nodes.Count == 0) return;
+
+        // Every road on a floor captured the same centre and clamp radius at
+        // generation, so the first road speaks for all of them. Read from the
+        // save rather than from the live profile for the same reason RoadData
+        // stores them at all: a later profile edit must not re-rasterise an
+        // existing floor.
+        var first = featureData.roads[0];
+        var centre = first.floorCentre != null ? first.floorCentre.ToVector3Int() : Vector3Int.zero;
+        int clampRadius = first.clampRadius;
+        int width = Mathf.Max(1, first.width);
+
+        var added = RoadNetworkBuilder.FilletJunctions(
+            roadCells, nodes, width, junctionFilletRadius, centre, clampRadius, taken);
+        if (added.Count == 0) return;
+
+        // Segment lookup built only over the node boxes. The whole network runs
+        // to tens of thousands of cells on floor index 4 and the fillet is
+        // node-local, so a full map would be paid for nothing.
+        int reach = ((width - 1) / 2) + junctionFilletRadius + 3;
+        var owners = new Dictionary<Vector3Int, int>();
+        for (int s = 0; s < roadSegments.Count; s++)
+        {
+            var seg = roadSegments[s];
+            for (int i = 0; i < seg.cells.Count; i++)
+            {
+                var c = seg.cells[i];
+                if (!NearAnyNode(c, nodes, reach)) continue;
+                if (!owners.ContainsKey(c) || owners[c] > seg.segmentId) owners[c] = seg.segmentId;
+            }
+        }
+
+        for (int i = 0; i < added.Count; i++)
+        {
+            var c = added[i];
+            int best = int.MaxValue;
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    if (owners.TryGetValue(new Vector3Int(c.x + dx, c.y + dy, 0), out int id) && id < best)
+                        best = id;
+                }
+            if (best == int.MaxValue) continue;      // touches no segment; leave it rock
+
+            var target = GetRoadSegment(best);
+            if (target == null) continue;
+            if (!roadCells.Add(c)) continue;
+            target.cells.Add(c);
+            owners[c] = best;
+            JunctionFilletCellCount++;
+        }
+    }
+
+    private static bool NearAnyNode(Vector3Int cell, List<Vector3Int> nodes, int reach)
+    {
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            if (Mathf.Abs(cell.x - nodes[i].x) > reach) continue;
+            if (Mathf.Abs(cell.y - nodes[i].y) > reach) continue;
+            return true;
+        }
+        return false;
     }
 
     /// <summary>How far into the overlap a contested cell lets the earlier
@@ -1277,18 +1394,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
 
         // Two road ends meeting inside this radius were one junction node before
-        // the network was split into edges. Cheaper and more robust than
-        // persisting the builder's own junction list.
-        const int JunctionMergeRadius = 6;
-        for (int i = 0; i < endpoints.Count; i++)
-            for (int j = i + 1; j < endpoints.Count; j++)
-            {
-                long dx = endpoints[i].x - endpoints[j].x;
-                long dy = endpoints[i].y - endpoints[j].y;
-                if (dx * dx + dy * dy > JunctionMergeRadius * JunctionMergeRadius) continue;
-                if (!roadJunctions.Contains(endpoints[i])) roadJunctions.Add(endpoints[i]);
-                break;
-            }
+        // the network was split into edges. Derived by RoadNetworkBuilder now,
+        // because junction shaping runs off the same node list and two
+        // derivations that disagreed by a cell would move carriageway ownership
+        // under an existing save.
+        roadJunctions.AddRange(
+            RoadNetworkBuilder.JunctionNodes(featureData.roads, RoadJunctionMergeRadius));
 
         // No roads at all is a legitimate state, not a failure: floor index 2
         // carries a site and no road layer. Every anchor preference in the

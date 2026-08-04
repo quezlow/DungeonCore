@@ -195,7 +195,8 @@ public class ReachabilityDirector : MonoBehaviour
         {
             AlertsLog.Instance?.AddAlert(
                 "No road runs from the mouth to the core -- the halls are broken.",
-                entrance.transform.position, 0, AlertCategory.Threat);
+                entrance.transform.position, 0, AlertCategory.Threat,
+                AlertSeverity.Critical);
             WispCompanion.Instance?.SpeakLine(
                 "Nothing can walk from the door to your heart. Whatever we carved, " +
                 "it does not join. Look for the gap.");

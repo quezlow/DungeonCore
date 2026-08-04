@@ -53,6 +53,17 @@ public class AlertsLog : MonoBehaviour
     [SerializeField] private ScrollRect scrollRect;
     [SerializeField] private bool autoScrollOnAdd = true;
 
+    [Header("Critical Severity")]
+    [Tooltip("SoundEffectManager key played when a Critical alert is raised. "
+           + "Leave EMPTY for silence -- an unassigned key must not throw or warn, "
+           + "because the severity layer has to be usable before the sting exists.")]
+    [SerializeField] private string criticalSfxKey = "";
+    [Tooltip("Critical alerts also raise the feature discovery banner. That banner "
+           + "is a static singleton, stays active in the hierarchy by design, and is "
+           + "documented safe to Show() from outside its own flow -- which is why it "
+           + "is reused rather than a second banner being wired by hand.")]
+    [SerializeField] private bool criticalRaisesBanner = true;
+
     [Header("Capacity")]
     [Tooltip("How many entries the ticker keeps alive before evicting oldest.")]
     [SerializeField, Min(1)] private int tickerVisibleCount = 12;
@@ -124,14 +135,20 @@ public class AlertsLog : MonoBehaviour
         AddAlert(message, worldPos, floorIndex, AlertCategory.System);
     }
 
+    /// <summary>Raise an alert. Severity is OPTIONAL: pass nothing and it is
+    /// derived from the category by AlertSeverityStyle.DefaultFor, so a caller
+    /// only names a severity when it disagrees with its category -- which in
+    /// practice means the short, hand-audited list of things that raise a
+    /// banner.</summary>
     public void AddAlert(string message, Vector3 worldPos, int floorIndex,
-                             AlertCategory category)
+                             AlertCategory category, AlertSeverity? severity = null)
     {
         // Gated behind the Ledger of Alarums research node. Until researched the
         // core keeps no account: nothing is recorded, tickered, or counted.
         if (!UnlockState.IsUnlocked("tech.alerts")) return;
 
-        var entry = BuildEntry(message, worldPos, floorIndex, category);
+        var entry = BuildEntry(message, worldPos, floorIndex, category,
+                               severity ?? AlertSeverityStyle.DefaultFor(category));
         AppendEntry(entry, fromLoad: false);
     }
 
@@ -199,7 +216,7 @@ public class AlertsLog : MonoBehaviour
     // ── Internals ─────────────────────────────────────────────────
 
     private AlertEntry BuildEntry(string message, Vector3 worldPos, int floorIndex,
-                                  AlertCategory category)
+                                  AlertCategory category, AlertSeverity severity)
     {
         var dn = DayNightCycle.Instance;
 
@@ -219,6 +236,7 @@ public class AlertsLog : MonoBehaviour
             WorldPos = worldPos,
             FloorIndex = floorIndex,
             Category = category,
+            Severity = severity,
             InGameDay = dn != null ? dn.CurrentDay : 1,
             Phase = dn != null ? dn.CurrentPhase : DayNightCycle.Phase.Day,
             RealTime = DateTime.Now,
@@ -238,7 +256,28 @@ public class AlertsLog : MonoBehaviour
             OnUnreadChanged?.Invoke(unreadCount);
         }
 
+        if (!fromLoad && entry.Severity == AlertSeverity.Critical) RaiseCritical(entry);
+
         OnAlertAdded?.Invoke(entry);
+    }
+
+    /// <summary>The Critical beat: a banner and a sting on top of the row.
+    ///
+    /// FeatureAlertBanner rather than BossAlertBanner on purpose. The feature
+    /// banner is a static singleton that never calls SetActive(false) on itself,
+    /// so an external Show() cannot hit the activation-and-Awake ordering quirk
+    /// that BossAlertBanner suffered when FeatureRevealController tried to drive
+    /// it -- and it is already wired in the scene, so no prefab work is needed.
+    ///
+    /// Never fires from a load. Restoring a save replays no history, and a stack
+    /// of banners for threats the player already answered would be worse than
+    /// silence.</summary>
+    private void RaiseCritical(AlertEntry entry)
+    {
+        if (criticalRaisesBanner && FeatureAlertBanner.Instance != null)
+            FeatureAlertBanner.Instance.Show(entry.Message, entry.WorldPos, entry.FloorIndex);
+        if (!string.IsNullOrEmpty(criticalSfxKey))
+            SoundEffectManager.Play(criticalSfxKey);
     }
 
     /// <summary>
@@ -289,7 +328,14 @@ public class AlertsLog : MonoBehaviour
     /// <summary>
     /// Shared button-row populator used by the ticker and AlertHistoryPanel.
     /// Two TMP_Text children = (timestamp, message); the message text is
-    /// tinted by category. One child = combined "[Day N · Phase] message".
+    /// tinted by CATEGORY and the timestamp carries the SEVERITY marker and
+    /// tint. One child = combined "[Day N · Phase] message".
+    ///
+    /// Severity lives on labels[0] because that is the label the shipped prefab
+    /// leaves untinted -- category already owns labels[1], and adding a third
+    /// child would be prefab work, which cannot be delivered by script. Info
+    /// writes no tint at all, so an ordinary row keeps whatever colour the
+    /// prefab authored.
     /// </summary>
     public static void BindButton(Button btn, AlertEntry entry)
     {
@@ -298,15 +344,21 @@ public class AlertsLog : MonoBehaviour
         var labels = btn.GetComponentsInChildren<TMP_Text>();
         string timestamp = entry.FormatTimestamp();
 
+        string marker = AlertSeverityStyle.Marker(entry.Severity);
+
         if (labels.Length >= 2)
         {
-            labels[0].text = timestamp;
+            labels[0].text = marker + timestamp;
+            if (AlertSeverityStyle.HasTint(entry.Severity))
+                labels[0].color = AlertSeverityStyle.GetColor(entry.Severity);
             labels[1].text = entry.Message;
             labels[1].color = AlertCategoryStyle.GetColor(entry.Category);
         }
         else if (labels.Length == 1)
         {
-            labels[0].text = $"[{timestamp}] {entry.Message}";
+            // One label has nowhere to put a severity tint without losing the
+            // category colour, so the marker carries it alone.
+            labels[0].text = $"{marker}[{timestamp}] {entry.Message}";
             labels[0].color = AlertCategoryStyle.GetColor(entry.Category);
         }
 

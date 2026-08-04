@@ -127,6 +127,128 @@ public static class RoadNetworkBuilder
         return dilated;
     }
 
+    /// <summary>The junction nodes of a road network, derived from the SAVED
+    /// polylines alone. Two road ends meeting inside mergeRadius were one node
+    /// before the network was split into edges -- cheaper and more robust than
+    /// persisting RoadNetworkResult.junctions, which is tooling-only and never
+    /// written to a save.
+    ///
+    /// This is the ONE derivation. The generator, the load path and the headless
+    /// road report all call it, because junction shaping changes which cells are
+    /// carriageway: two derivations that disagreed by a cell would repartition
+    /// segments differently on load and quietly move ownership under a save.</summary>
+    public static List<Vector3Int> JunctionNodes(List<RoadData> roads, int mergeRadius)
+    {
+        var nodes = new List<Vector3Int>();
+        if (roads == null) return nodes;
+
+        var endpoints = new List<Vector3Int>();
+        foreach (var road in roads)
+        {
+            var line = Centreline(road);
+            if (line.Count == 0) continue;
+            endpoints.Add(line[0]);
+            endpoints.Add(line[line.Count - 1]);
+        }
+
+        long rSq = (long)mergeRadius * mergeRadius;
+        for (int i = 0; i < endpoints.Count; i++)
+            for (int j = i + 1; j < endpoints.Count; j++)
+            {
+                long dx = endpoints[i].x - endpoints[j].x;
+                long dy = endpoints[i].y - endpoints[j].y;
+                if (dx * dx + dy * dy > rSq) continue;
+                if (!nodes.Contains(endpoints[i])) nodes.Add(endpoints[i]);
+                break;
+            }
+        return nodes;
+    }
+
+    /// <summary>Rounds the inside corners where roads meet, and returns the cells
+    /// ADDED in deterministic order.
+    ///
+    /// The defect this fixes: Dilate stamps one straight kernel, so two five-wide
+    /// carriageways crossing dilate to a roughly nine-by-nine square with square
+    /// corners -- a plaza rather than a widened meeting. The fix is a
+    /// morphological CLOSING restricted to a box around each node: dilate the
+    /// carriageway by a disc of filletRadius, then erode by the same disc. That
+    /// fills every concave notch smaller than the disc and leaves convex corners
+    /// alone, which is precisely the kerb radius a real junction carries.
+    ///
+    /// ADDITIVE on purpose. Chamfering the outer corners instead would REMOVE
+    /// cells, and road cells regenerate from the polyline on load while the mined
+    /// set is restored from the save file -- so every removed cell would come back
+    /// mined, revealed and no longer typed as road, drawing as bare floor beside
+    /// the carriageway. Adding cannot produce that state.
+    ///
+    /// Bounded to a node box so a shallow meeting (minJunctionAngleDegrees is 25)
+    /// cannot close a long thin wedge far out along two diverging arms. Blocked
+    /// cells -- reserved core cells and river water -- are never taken, and the
+    /// clamp disc is honoured exactly as Dilate honours it.</summary>
+    public static List<Vector3Int> FilletJunctions(
+        HashSet<Vector3Int> carriageway, List<Vector3Int> nodes,
+        int width, int filletRadius, Vector3Int floorCentre, int clampRadius,
+        HashSet<Vector3Int> blocked)
+    {
+        var added = new List<Vector3Int>();
+        if (carriageway == null || nodes == null || filletRadius <= 0) return added;
+
+        int r = filletRadius;
+        int rSq = r * r;
+
+        // Disc offsets, built once. This is the structuring element for both
+        // halves of the closing, so dilation and erosion cannot drift apart.
+        var disc = new List<Vector3Int>();
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= rSq) disc.Add(new Vector3Int(dx, dy, 0));
+
+        int w = Mathf.Max(1, width);
+        int half = (w - 1) / 2;
+        int extra = (w - 1) - 2 * half;
+        // Candidate box: half the carriageway, plus the disc, plus one cell of
+        // slack. Dilation is measured one disc further out again so erosion at
+        // the candidate edge sees the same neighbourhood it would see inside.
+        int reach = half + extra + r + 1;
+        long clampSq = (long)clampRadius * clampRadius;
+
+        var dilated = new HashSet<Vector3Int>();
+        var seen = new HashSet<Vector3Int>();
+
+        foreach (var node in nodes)
+        {
+            dilated.Clear();
+
+            int outer = reach + r;
+            for (int dy = -outer; dy <= outer; dy++)
+                for (int dx = -outer; dx <= outer; dx++)
+                {
+                    var p = new Vector3Int(node.x + dx, node.y + dy, 0);
+                    if (carriageway.Contains(p)) { dilated.Add(p); continue; }
+                    for (int k = 0; k < disc.Count; k++)
+                        if (carriageway.Contains(p + disc[k])) { dilated.Add(p); break; }
+                }
+
+            for (int dy = -reach; dy <= reach; dy++)
+                for (int dx = -reach; dx <= reach; dx++)
+                {
+                    var p = new Vector3Int(node.x + dx, node.y + dy, 0);
+                    if (carriageway.Contains(p)) continue;
+                    if (blocked != null && blocked.Contains(p)) continue;
+                    if (!seen.Add(p)) continue;          // a shared node box, counted once
+
+                    long ddx = p.x - floorCentre.x, ddy = p.y - floorCentre.y;
+                    if (ddx * ddx + ddy * ddy > clampSq) continue;
+
+                    bool eroded = true;
+                    for (int k = 0; k < disc.Count; k++)
+                        if (!dilated.Contains(p + disc[k])) { eroded = false; break; }
+                    if (eroded) added.Add(p);
+                }
+        }
+        return added;
+    }
+
     /// <summary>Bresenham between two cells. Kept here rather than borrowed from the
     /// feature generator so this class stays free of scene-side dependencies.</summary>
     public static IEnumerable<Vector3Int> Line(Vector3Int a, Vector3Int b)

@@ -458,6 +458,11 @@ public class Commands : MonoBehaviour
                   $"use 'Reveal All Features (debug)' to see what generated.");
     }
 
+    [Tooltip("Kerb radius the road report fillets junctions at. Mirror the value on " +
+             "TerrainFeatureGenerator.junctionFilletRadius or the report stops " +
+             "describing the network the game builds. 0 reports the raw square meeting.")]
+    [SerializeField, Range(0, 8)] private int roadReportFilletRadius = 3;
+
     [ContextMenu("Test Road Report (headless)")]
     void TestRoadReport()
     {
@@ -510,6 +515,24 @@ public class Commands : MonoBehaviour
                 if (d > maxDistSq) maxDistSq = d;
             }
         }
+
+        // JUNCTION SHAPING, measured on the same terms the generator applies it.
+        // Both call RoadNetworkBuilder.JunctionNodes, so a report that disagreed
+        // with the game about a node would be a real bug rather than a reporting
+        // quirk -- which is the point of measuring it here at all.
+        int rawCarriageway = all.Count;
+        var reportNodes = RoadNetworkBuilder.JunctionNodes(
+            result.roads, TerrainFeatureGenerator.RoadJunctionMergeRadius);
+        int filleted = 0;
+        if (reportNodes.Count > 0 && result.roads.Count > 0 && roadReportFilletRadius > 0)
+        {
+            var r0 = result.roads[0];
+            var fill = RoadNetworkBuilder.FilletJunctions(
+                all, reportNodes, r0.width, roadReportFilletRadius,
+                r0.floorCentre.ToVector3Int(), r0.clampRadius, null);
+            foreach (var c in fill) all.Add(c);
+            filleted = fill.Count;
+        }
         sw.Stop();
 
         Debug.Log(
@@ -517,7 +540,9 @@ public class Commands : MonoBehaviour
             $"seed {seed} ({(roadReportSeedOverride != 0 ? "override" : "derived")}), mode {entry.mode}.\n" +
             $"  roads {result.roads.Count} ({trunks} trunk, {spurs} spur, {broken} with a broken end), " +
             $"junctions {result.junctions.Count}, segments {segments}\n" +
-            $"  carriageway {all.Count} cells, longest road {longest} centreline cells, " +
+            $"  carriageway {all.Count} cells ({rawCarriageway} raw + {filleted} junction fillet " +
+            $"over {reportNodes.Count} derived nodes at radius {roadReportFilletRadius}), " +
+            $"longest road {longest} centreline cells, " +
             $"reach {(minDistSq == long.MaxValue ? 0 : (int)Mathf.Sqrt(minDistSq))}..{(int)Mathf.Sqrt(maxDistSq)} from centre\n" +
             $"  built in {sw.Elapsed.TotalMilliseconds:0.0} ms, no floor instantiated.");
 
@@ -692,6 +717,12 @@ public class Commands : MonoBehaviour
     /// derive, and how many segments along the route are currently held. Run
     /// after Test Generate All Floors. A missing route prints a loud FAIL --
     /// the point is a defect in seconds, not on screen in minutes.</summary>
+    /// <summary>What the ladder WOULD charge for the claimed carriageway on a
+    /// leg. Reported rather than read back off the ledger because the ledger
+    /// keeps no running total: standing is the accumulator, and it has other
+    /// contributors.</summary>
+    static float StandingCostOf(int cells) => cells * DwarvenClaimLedger.StandingPerCell;
+
     [ContextMenu("Test Caravan Route Report")]
     void TestCaravanRouteReport()
     {
@@ -805,8 +836,27 @@ public class Commands : MonoBehaviour
                 segCount++;
                 if (features.IsRoadSegmentHeld(fref.featureId)) heldCount++;
             }
+        // Diagnostics before fixes. A stretch that reads UNHELD with almost
+        // every cell claimed is the frayed seam or the junction fillet handing
+        // a corner to a neighbouring segment, and the raw counts say so at a
+        // glance instead of costing a test cycle to guess at.
+        int roadCells = 0, roadClaimed = 0;
+        var counted = new System.Collections.Generic.HashSet<int>();
+        foreach (var c in route)
+            if (features.TryGetFeatureRef(c, out var fr) && fr.type == FeatureType.Road
+                && counted.Add(fr.featureId))
+            {
+                var cells = features.RoadSegmentCells(fr.featureId);
+                if (cells == null) continue;
+                roadCells += cells.Count;
+                for (int i = 0; i < cells.Count; i++)
+                    if (floor.TileInfluence.IsTileClaimed(cells[i])) roadClaimed++;
+            }
+
         sb.AppendLine(name + ": " + route.Count + " cells, " + len.ToString("0")
             + " units, " + authoredDays + "d -> " + speed.ToString("0.00")
-            + " u/s; " + segCount + " segments crossed, " + heldCount + " held.");
+            + " u/s; " + segCount + " segments crossed, " + heldCount + " held; "
+            + roadClaimed + "/" + roadCells + " carriageway cells claimed ("
+            + (StandingCostOf(roadClaimed)).ToString("0.0") + " standing if billed).");
     }
 }

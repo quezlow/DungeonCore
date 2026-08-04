@@ -175,7 +175,7 @@ public class MercenaryContract : MonoBehaviour
         AlertsLog.Instance?.AddAlert(
             "The coin-lords have finished talking, little core. Bought steel marches down to teach " +
             "your halls the price of excess.",
-            EntrancePos, -1, AlertCategory.Threat);
+            EntrancePos, -1, AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     /// <summary>Pay gold to buy off a pending assault during the ultimatum. False if

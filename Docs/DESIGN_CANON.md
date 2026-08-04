@@ -1424,9 +1424,39 @@ Whispers of Intent, Explorer -> Deep Foundations.
 Decided so far: Holy Ground desecration is designed INTO the Holy Order
 trigger -- Holy Ground patches are procgen via `TerrainTypeMap`, desecrating
 one is unsealing a Church seal and feeds the trigger; recommended reward is a
-buried-skeleton Bestiary discovery. Alert severity tiers
-(info/warning/critical). Faction payoffs as the mid-game gold sink and the
-deliberate way to lower escalation tiers (see entry 7).
+buried-skeleton Bestiary discovery. Faction payoffs as the mid-game gold sink
+and the deliberate way to lower escalation tiers (see entry 7).
+
+**Alert severity tiers (SHIPPED).** `AlertEntry` carries an `AlertSeverity`
+-- Info / Warning / Critical -- PARALLEL to its category, persisted as an
+additive `severity` int on `AlertEntrySaveData` that reads back 0 (Info) from
+any older save. `AlertCategory` was not touched: its ints are append-only and
+severity is a second axis, not more category values.
+
+Severity is DERIVED from category unless a caller overrides it
+(`AlertSeverityStyle.DefaultFor`): Threat warns, everything else informs. That
+was chosen over sweeping seventy-nine call sites, which would have been a large
+untested diff whose real failure mode is the eightieth caller written next year
+defaulting to silence. Ten sites pass Critical explicitly -- core under threat,
+halls severed, the crusade, bought steel, the beast, the house riding, a Hero
+entering, the climax dispatch, ascension, and the first adventurer wave -- and
+that short list is short precisely because Critical raises a banner.
+
+**Zero prefab edits, and the constraint shaped the design.** Prefab work cannot
+ride a delivery script. The alert row is Button + TMP_Text children and
+`AlertsLog.BindButton` already spent labels[1] on the category colour, so
+severity took labels[0] -- the timestamp -- as a marker (`! ` / `!! `) plus a
+tint, and Info writes no tint at all so ordinary rows keep the prefab's own
+colour. Critical additionally raises `FeatureAlertBanner`, reused rather than
+duplicated: it is a static singleton, already scene-wired, and never calls
+SetActive(false) on itself, so an external `Show()` cannot hit the
+activation-ordering quirk `BossAlertBanner` suffers. It never fires from a
+load -- a stack of banners for threats already answered is worse than silence.
+The critical sting is a serialized `SoundEffectManager` key left EMPTY, so the
+layer is usable before the clip exists.
+
+Not built: severity filter pills in `AlertHistoryPanel`. Pills are prefab
+children.
 
 **Core spells / active abilities: GREENLIT, unscheduled.** The call is made;
 the build is not started. Two things unblock on it: the Sorcery research
@@ -1972,12 +2002,37 @@ continues into. Fog behind a wall wants no softening: the wall is the edge and
 it is drawn. Seeding on any fog made a seed of every cell beside every wall, so
 whole floors dimmed uniformly with no gradient left to read.
 
-**DEFERRED: junction shaping.** `RoadNetworkBuilder.Dilate` uses one straight
-kernel, so two five-wide carriageways crossing dilate to a roughly nine-by-nine
-square with square corners, and a junction reads as a plaza rather than as a
-widened meeting. A rounded or chamfered kernel at junctions would fix it, in one
-function, and would also give the frayed seam something better to fray against.
-Not a reveal fault: the shape is there before any of that runs.
+**SHIPPED: junction shaping.** `RoadNetworkBuilder.Dilate` uses one straight
+kernel, so two five-wide carriageways crossing dilated to a roughly nine-by-nine
+square with square corners, and a junction read as a plaza rather than as a
+widened meeting. `RoadNetworkBuilder.FilletJunctions` now runs a morphological
+CLOSING in a box around each junction node -- dilate the carriageway by a disc of
+`junctionFilletRadius` (3), erode by the same disc -- which fills every concave
+notch smaller than the disc and leaves convex corners untouched. That is exactly
+a kerb radius, and it also gives the frayed seam something better to fray
+against.
+
+ADDITIVE, and the choice matters. Chamfering the outer corners instead would
+REMOVE cells, and road cells regenerate from the polyline on load while the mined
+set is restored from the save file -- so every removed cell would come back
+mined, revealed and no longer typed as road, drawing as bare floor beside the
+carriageway. Adding cannot produce that state.
+
+Junction nodes have ONE derivation, `RoadNetworkBuilder.JunctionNodes`, called by
+the generator, the load path and the headless road report alike. Shaping changes
+which cells are carriageway, so two derivations disagreeing by a cell would
+repartition segments differently on load and move ownership under a save. The
+fillet runs at the end of `RebuildRoadCells` -- before site generation, which
+already subtracts road cells from its plans, so a filleted cell can never land
+under masonry on the load path -- and each new cell is handed to the lowest
+segment id holding an 8-neighbour. Lowest rather than nearest because it is
+stable under a reload, the same reason the frayed seam uses a hash rather than a
+coin flip.
+
+One consequence, accepted rather than migrated: an existing save re-rasterises
+its roads with the new shape, so a stretch the player HELD may come back a few
+cells short of held until they claim the corners. The toll is a live test rather
+than persisted state, so nothing is lost but the availability of the verb.
 
 **REJECTED: feathering the fog's alpha at the reveal edge.** It looked like the
 obvious answer, reusing entry 24's treeline curve, and it is a trap.
@@ -2537,7 +2592,7 @@ purchase path (including `PatternDiscovery.NotifyTraderPurchase`) do.
 `MerchantShopUI` should be decoupled from the merchant singleton onto a stock
 provider BEFORE a second vendor exists, not after.
 
-### Claiming the road (DECIDED)
+### Claiming the road (SHIPPED -- build order step 8)
 
 The road is the first terrain in the game with an OPINION about being
 claimed. The AMBIENT CREEP never takes it: `TryCreepOnce` skips any cell in
@@ -2572,9 +2627,87 @@ irreversible -- felt before told:
 4. The faction panel row drops visibly.
 5. A dwarf patrol stops, looks, and turns back. Diegetic and unmissable.
 
-This reuses the Holy Ground pattern wholesale (entry 18): special terrain,
-procgen via `TerrainTypeMap`, visually distinct, with a faction consequence
-on desecration. No new pattern is needed.
+**It does NOT reuse a Holy Ground pattern, and this entry used to claim it did.**
+There is no Holy Ground gameplay wiring anywhere: the enum value exists, a
+resistance row exists, `PatternDiscovery` maps it to a name, and that is the
+whole of it. `AlignmentSystem.Desecrate` is a stub with zero callers. This arc
+BUILT the pattern -- special terrain that a faction owns, a registry that says
+who owns which cell, a per-cell price for taking it, and a ladder of consequences
+around the taking. Holy Ground can now be placement plus a `Desecrate` call, and
+should be revisited on that basis.
+
+**As built.**
+
+*The penalty is PER CELL, and per DWARVEN cell rather than per road cell.*
+`DwarvenClaimLedger` (pure static, `DwarvenSpoil`'s pattern) is called from
+`TileInfluenceManager.ClaimTile`'s non-silent path, beside
+`PatternDiscovery.NotifyTerrainClaimed` -- a direct call rather than a
+subscription, because a claim handler that lost the subscription race would fail
+silently and hand the road over free, which is the bug class Appendix D exists
+for. Each cell of dwarven ground taken costs `StandingPerCell` (0.05), so a
+two-hundred-cell stretch costs -10 against 35 points of headroom from +15 to
+Tier 1, and a two-tile corridor grab costs about -0.6.
+
+Billing on `IsRoadSegmentHeld` was the obvious route and is wrong. That test
+wants EVERY carriageway cell of a ~200-cell segment while `InfluenceChannel` is a
+swelling boundary with `corridorHalfWidth` 6, so a push across a road takes about
+a dozen cells and stops: the ladder would have fired only for a deliberate
+two-hundred-cell campaign, which is binary claiming in a segment's clothes. The
+held test stays exactly where it was, pricing the toll.
+
+*The courtyard price, decided deliberately.* A living hold spans three claim
+costs -- masonry 9x, paved carriageway 8x, carved interior 3x -- and the road runs
+THROUGH the outpost rather than past it, so the cheapest ground in the hold is
+reachable without ever paying 9x. Rung 1 is therefore quietest exactly where the
+granite shouts loudest, and left alone the ladder inverts: told first, then not
+felt. The standing bill takes no interest in which of the three terrains a cell
+is, so the courtyard costs what the wall costs even though it digs easier. The
+holdings registry already maps a living site's whole footprint to the site, so
+this is one probe rather than a three-way test.
+
+*The one free warning.* The FIRST dwarven cell ever claimed, on any floor, costs
+no standing and raises the Warning alert plus `road_claim_first` instead. Free
+per floor and free per segment were both rejected: either makes a wide, shallow
+grab free forever, which is the play the penalty exists to price.
+
+*Alerts are per OWNER, never per cell* -- one Warning for the first ever, one
+Critical for each new stretch or hold after it. Two hundred alerts per stretch
+would bury the ticker under the act the ticker exists to make legible.
+
+*Rung 2 rides PRESSURE, not the claim.* `InfluenceChannel` accrues pressure on a
+frontier cell for a while before it takes it, and that is the only state in the
+system that exists while the decision is still reversible. Leaning on holdings
+speaks `road_claim_warn`, once ever. The probe is hoisted behind a per-push
+emptiness test, so a floor with no dwarven ground pays one null check rather than
+one lookup per claimable cell per frame.
+
+*Rung 5 re-aimed.* `DwarvenPatrolController`'s stop-and-look beat now also
+answers ground the player has TAKEN -- holdings-and-claimed, two dictionary probes
+on the cell the patrol is about to enter. Gated on the cell UNDERFOOT being
+untaken, so a patrol whose whole beat has been claimed walks it rather than
+jittering on the spot.
+
+*Rung 4 was already enough.* The faction panel's nightly snapshot shows the drop.
+Nothing was built.
+
+**The toll stopped being a trap.** Tax cost -3 standing per wagon on top of the
+claim, and from +15 that silenced the road at Tier 1 after roughly eleven tolls
+-- about 300g total, permanently -- against a single Rob paying 80-200g. A verb
+nobody should ever take is not a verb. The toll now costs NO standing: holding
+the stretch is the price, and per-cell claiming makes it a real one. The field
+was DELETED rather than zeroed, because a serialized field keeps whatever the
+Inspector wrote and a changed default would have moved nothing in the live scene.
+
+**Diagnostics.** `Commands / Test Caravan Route Report` already counted held
+segments per leg; it now also reports claimed-versus-total carriageway cells and
+what the ladder would charge for them. A stretch reading UNHELD with nearly every
+cell claimed is the frayed seam or the junction fillet handing a corner to a
+neighbouring segment, and the raw counts say so instead of costing a test cycle.
+
+**Key files:** `Gameplay/DwarvenClaimLedger.cs`; edits in `TileInfluenceManager`,
+`InfluenceChannel`, `DwarvenPatrolController`, `DwarvenCaravanController`,
+`WispScript.cs` (+ the asset, regenerated by hand),
+`DungeonSaveData`/`DungeonSaveController`, `TESTING/Commands.cs`.
 
 ### Granite holdings overlay (SHIPPED -- wall-family arc, edits4)
 
@@ -2673,9 +2806,10 @@ lands on proven ground:
    toll and its first-time vignette, and the entry-7 matrix revisit
    (Dwarves <-> Holy Order written Hostile, exercised by walker reactions).
    See "The Living Holds (SHIPPED, step 7)" above.
-8. Later, and still DESIGN: the granite boundary, road claiming and the
-   warning ladder (blocked on an alert severity layer that does not exist --
-   `AlertEntry` carries categories only).
+8. THE GRANITE BOUNDARY, ROAD CLAIMING AND THE WARNING LADDER -- SHIPPED.
+   The overlay landed with the wall-family arc; the ladder landed on the
+   alert severity layer (entry 18), which was built immediately before it
+   for exactly that reason. See "Claiming the road" above.
 
 ## 19A. Tier-Up Divine Audiences
 

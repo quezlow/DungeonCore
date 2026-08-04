@@ -150,6 +150,14 @@ public class WispScript : ScriptableObject
             new Line { id = "patrol_first", once = true,
                 text = "Armed, unhurried, walking a road their grandfathers cut. They are not looking for you. Try to keep it that way." },
 
+            // The warning ladder (canon 19). Rung 2 speaks while the push is
+            // still only LEANING on dwarven ground -- before the first cell is
+            // taken -- which is the one moment the choice is still free.
+            new Line { id = "road_claim_warn", once = true,
+                text = "Feel that? The stone pushes back. This is cut road, and it is theirs. Take it if you must - but take it knowing they will notice, and that they count." },
+            new Line { id = "road_claim_first", once = true,
+                text = "It is done. One stone of their road answers to you now, and that one is a gift - they will forgive a curious core once. Every stone after it goes in the ledger." },
+
             // First time the Pressed rule bites: creatures massed in a corridor.
             new Line { id = "pressed_first", once = true,
                 text = "Feel them jostle? Packed in a tunnel, your creatures foul one another's strikes. Give a garrison a room, or watch it fight below its worth." },

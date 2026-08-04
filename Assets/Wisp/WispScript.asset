@@ -102,6 +102,15 @@ MonoBehaviour:
     once: 1
     text: Armed, unhurried, walking a road their grandfathers cut. They are not looking
       for you. Try to keep it that way.
+  - id: road_claim_warn
+    once: 1
+    text: Feel that? The stone pushes back. This is cut road, and it is theirs. Take
+      it if you must - but take it knowing they will notice, and that they count.
+  - id: road_claim_first
+    once: 1
+    text: It is done. One stone of their road answers to you now, and that one is
+      a gift - they will forgive a curious core once. Every stone after it goes in
+      the ledger.
   - id: pressed_first
     once: 1
     text: Feel them jostle? Packed in a tunnel, your creatures foul one another's

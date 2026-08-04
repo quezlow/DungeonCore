@@ -93,6 +93,9 @@ public class WaveStageController : MonoBehaviour
         else if (stage == WaveStage.Commoners)
             log.AddAlert("Curious folk drift in from the surface - farmers, woodsmen, come to gawk at what stirs below. Easy prey.", pos, floor, AlertCategory.Threat);
         else if (stage == WaveStage.Adventurers)
-            log.AddAlert("The surface has heard of us at last. Adventurers approach. The real hunt begins.", pos, floor, AlertCategory.Threat);
+            // Critical once per run. Start() seeds `announced` from the current
+            // stage, so a reload re-derives rather than re-announcing, and the
+            // banner cannot repeat every time the save is opened.
+            log.AddAlert("The surface has heard of us at last. Adventurers approach. The real hunt begins.", pos, floor, AlertCategory.Threat, AlertSeverity.Critical);
     }
 }

@@ -93,7 +93,7 @@ public class InspectorEscalation : MonoBehaviour
         AdventurerSpawner.Instance?.DispatchHeroParty();
         AlertsLog.Instance?.AddAlert(
             "A Hero has entered the dungeon.",
-            EntrancePos, -1, AlertCategory.Threat);
+            EntrancePos, -1, AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     // ── Save / Load ───────────────────────────────────────────────
