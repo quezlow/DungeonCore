@@ -1814,8 +1814,13 @@ away nothing the granite fill reserves for discovery.
 
 In push mode the same weight also fills a POOL, reusing the exposed fringe's
 wash on the unclaimed side, because the flare alone reads as a hairline you have
-to know to look for. The pool is CLIPPED to the player's own frontier by the SDF
-in R, out to `holdPoolReachCells` (3): unclipped, A is a sixteen-cell dilation of
+to know to look for. The pool is CLIPPED to the player's own frontier out to
+`holdPoolReachCells` (7), against `chamferOut` on the CPU rather than against
+the SDF in the shader -- R is pinned past `sdfRangeCells` (4), so a clip cut
+from it could never reach further than four cells however it was set, and the
+pool read as too faint to find. The chamfer's cap widens to match, which is
+free: the relaxation sweeps the grid twice either way, and the encode clamps, so
+measuring further cannot disturb the ring.  Clipping matters because: unclipped, A is a sixteen-cell dilation of
 the holding's footprint and the pool would trace the outline of a hold never
 found. Clipped, its shape is the frontier's own and it says only "near". It is
 suppressed inside a confirmed holding, the pool being the guess and the fill the

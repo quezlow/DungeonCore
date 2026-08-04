@@ -117,12 +117,18 @@ public class InfluenceRingRenderer : MonoBehaviour
              "lighter than arriving.")]
     [SerializeField, Range(0f, 1f)] private float overlayHoldPoolLevel = 0.62f;
 
-    [Tooltip("How far the proximity pool reaches INSIDE the player's own frontier, " +
-             "in cells. This is what stops the pool tracing the outline of a hold " +
-             "the player has not found: unclipped it would simply be a dilation of " +
-             "the holding's footprint. Capped by sdfRangeCells, since the SDF cannot " +
-             "measure further than that from the boundary.")]
-    [SerializeField, Range(0.5f, 4f)] private float holdPoolReachCells = 3f;
+    [Tooltip("How far the proximity pool reaches out from the player's own frontier, " +
+             "in cells. This is what stops the pool tracing the outline of a hold the " +
+             "player has not found: unclipped it is simply a dilation of the holding's " +
+             "footprint.\n\n" +
+             "Applied on the CPU against chamferOut, NOT in the shader against the " +
+             "SDF. The SDF is pinned past sdfRangeCells (4), so a shader-side clip " +
+             "could never see further than four cells however this was set -- which " +
+             "is why the pool read as too subtle to find.\n\n" +
+             "The chamfer's cap rises to match, which is free: the relaxation is a " +
+             "fixed two-pass sweep either way, and the SDF encode clamps, so measuring " +
+             "further cannot disturb the ring.")]
+    [SerializeField, Range(1f, 12f)] private float holdPoolReachCells = 7f;
 
     [Header("Field Encoding")]
     [Tooltip("Cells of signed distance encoded either side of the boundary.")]
@@ -401,7 +407,6 @@ public class InfluenceRingRenderer : MonoBehaviour
         material.SetFloat("_OverlayDwarvenEdge", overlayDwarvenEdge);
         material.SetColor("_HoldingsColor", holdingsColor);
         material.SetFloat("_OverlayHoldPoolLevel", overlayHoldPoolLevel);
-        material.SetFloat("_HoldPoolReach", holdPoolReachCells * cellToEncoded);
 
         // The flare takes the FILL's colour rather than one of its own. They are
         // meant to read as the same material, and two Inspector colours that are
@@ -518,7 +523,11 @@ public class InfluenceRingRenderer : MonoBehaviour
     private void RebuildTexture()
     {
         int total = texSize * texSize;
-        float far = sdfRangeCells + 2f;
+        // The chamfer cap is just the seed value, so widening it to cover the pool
+        // reach costs nothing -- the relaxation sweeps the grid twice regardless.
+        // It cannot disturb the SDF either: the encode below is Mathf.Clamp01 and
+        // already discards anything past sdfRangeCells.
+        float far = Mathf.Max(sdfRangeCells + 2f, holdPoolReachCells + 2f);
 
         // Base fill: claimed mask, both chamfer seeds, and G = normalized
         // free-growth cost (255 = unreachable) straight from the field.
@@ -578,6 +587,9 @@ public class InfluenceRingRenderer : MonoBehaviour
                 // Not reveal-gated, on purpose: this is the warning that lands
                 // BEFORE the player knows what is out there. It is shapeless, so
                 // it gives away nothing the granite fill reserves for discovery.
+                // Written RAW here and clipped to the frontier in the second loop,
+                // once chamferOut has been relaxed. There is no distance to clip
+                // against yet at this point.
                 byte a = holdingsProximity != null ? holdingsProximity[i] : (byte)0;
 
                 pixels[i] = new Color32(0, g, b, a);
@@ -599,6 +611,21 @@ public class InfluenceRingRenderer : MonoBehaviour
             float enc = Mathf.Clamp01(0.5f + signedCells / (2f * sdfRangeCells));
             Color32 p = pixels[i];
             p.r = (byte)Mathf.Clamp(Mathf.RoundToInt(enc * 255f), 0, 255);
+
+            // Clip the proximity pool to the player's own FRONTIER. Unclipped, A
+            // is a dilation of the holding's footprint and the pool would trace
+            // the outline of a hold never found; clipped, its shape is the
+            // frontier's own and it says only "near".
+            //
+            // chamferOut is distance-to-claimed and is 0 on claimed ground, so the
+            // clip is 1 right across the ring band and the frontier flare is
+            // untouched by this.
+            if (p.a != 0)
+            {
+                float clip = Mathf.Clamp01(1f - chamferOut[i] / holdPoolReachCells);
+                p.a = (byte)Mathf.Clamp(Mathf.RoundToInt(p.a * clip), 0, 255);
+            }
+
             pixels[i] = p;
         }
 

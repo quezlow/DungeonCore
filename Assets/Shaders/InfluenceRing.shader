@@ -49,7 +49,6 @@ Shader "DCR/InfluenceRing"
         _OverlayDwarvenEdge ("Overlay Dwarven Edge", Range(0, 2)) = 0.9
         _HoldingsColor ("Holdings Color", Color) = (0.55, 0.58, 0.64, 1)
         _OverlayHoldPoolLevel ("Overlay Holdings Pool Fill", Range(0, 1)) = 0.62
-        _HoldPoolReach ("Holdings Pool Reach (encoded)", Float) = 0.375
     }
 
     SubShader
@@ -89,7 +88,6 @@ Shader "DCR/InfluenceRing"
             float _OverlayDwarvenEdge;
             fixed4 _HoldingsColor;
             float _OverlayHoldPoolLevel;
-            float _HoldPoolReach;
 
             struct appdata
             {
@@ -204,8 +202,11 @@ Shader "DCR/InfluenceRing"
                 // Suppressed inside a confirmed holding so the two do not stack:
                 // the pool is the guess, the fill is the answer, and once you have
                 // the answer the guess should be gone.
-                float poolClip = smoothstep(0.5 - _HoldPoolReach, 0.5, sdf) * unclaimedSide;
-                float pool = saturate(f4.a) * poolClip * (1.0 - hold);
+                // The frontier clip lives on the CPU now: A arrives already
+                // multiplied by distance-to-claimed. It had to move -- R is pinned
+                // past sdfRangeCells, so a clip cut from it could never reach more
+                // than four cells and the pool stayed too faint to find.
+                float pool = saturate(f4.a) * unclaimedSide * (1.0 - hold);
 
                 float unclaimedWash = lerp(inReach, _OverlayDwarvenLevel, hold);
                 unclaimedWash = lerp(unclaimedWash, _OverlayHoldPoolLevel, pool);
