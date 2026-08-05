@@ -192,6 +192,18 @@ public class SiteFloorEntry
              "Either way the archetype sits in no pool, so the fill loop can " +
              "never serve or double-place a village.")]
     public string villagePlanName = "";
+
+    [Tooltip("Floor index 4 only. Guarantees ONE DeadCoreVault: the Church's vault " +
+             "around a dead core, on the oldest ground in the game. A guarantee " +
+             "rather than a pool entry so it cannot be rolled twice or displace a " +
+             "seal -- the same reasoning as reserveVillage.")]
+    public bool reserveDeadCore = false;
+
+    [Tooltip("Optional pin. Empty rolls among every authored DeadCoreVault plan; a " +
+             "name narrows it to that one, for checking a specific vault without " +
+             "unlisting the others. Three plans at 75 by 75 want looking at one at " +
+             "a time.")]
+    public string deadCorePlanName = "";
 }
 
 /// <summary>

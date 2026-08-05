@@ -2928,6 +2928,17 @@ a platform edge must be masonry except at stairs, a platform must have at least
 one stair, and a stair run must be three cells wide -- the door rule in the one
 place it genuinely applies, since this is a real passage everything has to path.
 
+One vault per dungeon, guaranteed on floor index 4 by `reserveDeadCore` and
+rolled among every authored plan, with `deadCorePlanName` as an optional pin
+for checking one at a time. `PlaceDeadCore` mirrors `PlaceVillage` with one
+difference that had to be found by reading it: the guarantee paths emit floor
+and wall only, and the HEART is emitted by the general fill loop alone. A
+vault placed without it would report NO HEART and could never be unsealed --
+and nothing would say so until someone dug to the middle of a seventy-five
+cell vault and found it inert. `PlaceDeadCore` emits the heart through the
+same transform as its masonry, and REJECTS a placement whose heart fell
+outside the clamp disc rather than shipping an inert vault.
+
 Masonry is mineable, so a player who would rather not walk around can cut their
 own ramp onto a platform. Left deliberately: cutting a ramp is a reasonable thing
 for a dungeon core to do, and forbidding it would need an unmineable terrain flag

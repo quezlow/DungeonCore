@@ -29,6 +29,8 @@ MonoBehaviour:
     outpostAnchor: 2
     reserveVillage: 0
     villagePlanName: 
+    reserveDeadCore: 0
+    deadCorePlanName: 
   - floorIndex: 1
     minSites: 1
     maxSites: 2
@@ -45,6 +47,8 @@ MonoBehaviour:
     outpostAnchor: 2
     reserveVillage: 0
     villagePlanName: 
+    reserveDeadCore: 0
+    deadCorePlanName: 
   - floorIndex: 2
     minSites: 1
     maxSites: 2
@@ -61,6 +65,8 @@ MonoBehaviour:
     outpostAnchor: 2
     reserveVillage: 0
     villagePlanName: 
+    reserveDeadCore: 0
+    deadCorePlanName: 
   - floorIndex: 3
     minSites: 3
     maxSites: 5
@@ -77,6 +83,8 @@ MonoBehaviour:
     outpostAnchor: 2
     reserveVillage: 1
     villagePlanName: 
+    reserveDeadCore: 0
+    deadCorePlanName: 
   - floorIndex: 4
     minSites: 9
     maxSites: 13
@@ -93,6 +101,8 @@ MonoBehaviour:
     outpostAnchor: 2
     reserveVillage: 0
     villagePlanName: 
+    reserveDeadCore: 1
+    deadCorePlanName: 
   authoredPlans:
   - {fileID: 4900000, guid: 27e5b9c40a8d41f6ae3b2c7d5109f84b, type: 3}
   - {fileID: 4900000, guid: 5b0c8d13f42a496e97ad6e2b8c4f0173, type: 3}

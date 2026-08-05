@@ -68,6 +68,13 @@ public class AncientSiteResult
     /// prints it, so rotation variety is verifiable headlessly by stepping
     /// the report seed instead of walking the map.</summary>
     public string villagePlanPicked = "";
+
+    /// <summary>Whether the guaranteed vault landed. False on a floor that never
+    /// asked; false AND loud on a floor that did.</summary>
+    public bool deadCorePlaced;
+
+    /// <summary>Which vault the seeded roll chose, for the report.</summary>
+    public string deadCorePlanPicked = "";
     public int inBandJunctions;
     public int inBandRoadCells;
     public int inBandRoadEnds;
@@ -206,6 +213,14 @@ public static class AncientSiteBuilder
             PlaceVillage(rng, entry, centre, inner, outer, usable,
                          junctions, roadCells, roadEnds,
                          authoredPlans, anchorsUsed, minSpacingSq, result);
+
+        // The vault takes its ground before the fill loop does, like the
+        // other two guarantees. At 75 cells across it is the least likely
+        // thing on the floor to find room later.
+        if (entry.reserveDeadCore)
+            PlaceDeadCore(rng, entry, centre, inner, outer, usable,
+                          junctions, roadCells, roadEnds,
+                          authoredPlans, anchorsUsed, minSpacingSq, result);
 
         // Guarantee-only plans (authored "@general: no") never reach the fill
         // loop. A guarantee that took one already removed it; this strips
@@ -511,6 +526,116 @@ public static class AncientSiteBuilder
             " failed to place its guaranteed village in 240 attempts. That floor " +
             "will have no dwarves at home. Most likely cause: the placement band " +
             "holds no road cells -- check inBandRoadCells in the site report.");
+    }
+
+    /// <summary>
+    /// The guaranteed vault. PlaceVillage's shape almost exactly, with ONE
+    /// difference that matters: it emits the HEART.
+    ///
+    /// The guarantee paths emit floor and wall and stop; only the general fill
+    /// loop carries the heart across. A vault placed here without that would
+    /// report NO HEART and could never be unsealed -- there would be no stone to
+    /// break, and nothing in the game would say so until someone dug to the
+    /// middle of a seventy-five cell vault and found it inert. The heart rides
+    /// the SAME transform as the masonry it sits in, for the same reason it does
+    /// in the fill loop: computing it separately lets it drift the moment a
+    /// rotation or the disc clamp treats it differently.
+    /// </summary>
+    private static void PlaceDeadCore(
+        System.Random rng, SiteFloorEntry entry, Vector3Int centre,
+        int inner, int outer, int usable,
+        IReadOnlyList<Vector3Int> junctions,
+        IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadEnds,
+        IReadOnlyList<AuthoredSitePlan> authoredPlans,
+        List<Vector3Int> anchorsUsed, int minSpacingSq,
+        AncientSiteResult result)
+    {
+        var candidates = new List<AuthoredSitePlan>();
+        if (authoredPlans != null)
+            foreach (var p in authoredPlans)
+                if (p != null && p.archetype == SiteArchetype.DeadCoreVault)
+                    candidates.Add(p);
+        if (!string.IsNullOrEmpty(entry.deadCorePlanName))
+            candidates.RemoveAll(p => p.name != entry.deadCorePlanName);
+        if (candidates.Count == 0)
+        {
+            Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+                " asked for a guaranteed dead core vault but no authored " +
+                "DeadCoreVault plan is available" +
+                (string.IsNullOrEmpty(entry.deadCorePlanName) ? "" :
+                 " matching deadCorePlanName '" + entry.deadCorePlanName + "'") +
+                ". Check the profile's authoredPlans list" +
+                (string.IsNullOrEmpty(entry.deadCorePlanName) ? "." :
+                 " and the plan's @name header."));
+            return;
+        }
+
+        int pick = rng.Next(candidates.Count);
+        AuthoredSitePlan plan = candidates[pick];
+
+        var anchorKind = plan.hasAnchorOverride
+            ? plan.anchorOverride
+            : AncientSiteProfile.AnchorFor(SiteArchetype.DeadCoreVault);
+
+        long clampSq = (long)usable * usable;
+
+        for (int attempt = 0; attempt < 240; attempt++)
+        {
+            if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
+                               junctions, roadCells, roadEnds,
+                               anchorsUsed, minSpacingSq, out var anchor))
+                continue;
+
+            LocalPlan shape = FromAuthored(plan);
+            if (shape == null) continue;
+
+            bool rotatable = plan.allowRotation;
+            int rot = rotatable ? rng.Next(0, 4) : 0;
+            bool mirror = rotatable && rng.Next(0, 2) == 0;
+
+            var placed = new AncientSitePlan
+            {
+                archetype = SiteArchetype.DeadCoreVault,
+                variant = pick,
+                planName = plan.name,
+                anchor = anchor,
+            };
+            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+
+            if (shape.heart.Count > 0)
+            {
+                var heartOut = new List<Vector3Int>();
+                EmitTransformed(shape.heart, anchor, rot, mirror, centre, clampSq, heartOut);
+                if (heartOut.Count > 0)
+                {
+                    placed.heartCell = heartOut[0];
+                    placed.hasHeart = true;
+                }
+            }
+
+            if (placed.cells.Count < 12) continue;
+            if (CountWalkable(placed.cells) < MinWalkableCells) continue;
+
+            // A vault whose heart fell outside the clamp disc is a vault that
+            // cannot be unsealed. Reject the placement rather than ship an inert
+            // one -- there are 240 attempts and only one vault per dungeon.
+            if (!placed.hasHeart) continue;
+
+            placed.id = result.sites.Count;
+            result.sites.Add(placed);
+            anchorsUsed.Add(anchor);
+            result.deadCorePlaced = true;
+            result.deadCorePlanPicked = plan.name;
+            return;
+        }
+
+        Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
+            " failed to place its guaranteed dead core vault in 240 attempts. " +
+            "That dungeon has no vault at all. A vault is 75 cells across, so the " +
+            "likeliest cause is a placement band too narrow to hold it -- check " +
+            "bandInner and bandOuter against the floor radius in the site report.");
     }
 
     /// <summary>

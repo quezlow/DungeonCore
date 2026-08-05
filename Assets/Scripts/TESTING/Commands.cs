@@ -740,6 +740,12 @@ public class Commands : MonoBehaviour
     /// generated this session: a floor restored from a save never ran the
     /// placement loop, and the report says so rather than printing zeroes that
     /// look like rejections.</summary>
+    /// <summary>True when this floor's result carries vault bookkeeping at
+    /// all. A floor that never asked for one should say nothing rather than
+    /// report a false negative every time the command runs.</summary>
+    static bool entryAsksForVault(AncientSiteResult r)
+        => r != null && (r.deadCorePlaced || !string.IsNullOrEmpty(r.deadCorePlanPicked));
+
     [ContextMenu("Log Site Placement")]
     void LogSitePlacement()
     {
@@ -806,6 +812,13 @@ public class Commands : MonoBehaviour
                 // A pool of zero is the one failure that looks identical to "this
                 // floor was not meant to have sites", so it is called out rather
                 // than left as a number among numbers.
+                if (entryAsksForVault(diag))
+                    sb.Append("    vault: ")
+                      .Append(diag.deadCorePlaced
+                          ? "placed (" + diag.deadCorePlanPicked + ")"
+                          : "!! NOT PLACED -- see the error above")
+                      .Append('\n');
+
                 if (diag.planPoolSize == 0)
                     sb.Append("    !! PLAN POOL EMPTY -- the floor entry's pool names ")
                       .Append("archetypes with no authored plan and no procedural variant.\n");
