@@ -4,6 +4,25 @@ using UnityEngine;
 using UnityEngine.Tilemaps;
 
 /// <summary>
+/// Why a floor laid no sites. Exists because "LastSitePlacement is null" has
+/// four causes and the report collapsed all four into "(restored from save)" --
+/// which was then printed for a floor on a brand new game, sending the
+/// diagnosis in exactly the wrong direction.
+///
+/// Runtime only, never serialized. NotRun is the correct value for a floor that
+/// came through the load path, and it is the DEFAULT so a floor that never
+/// reached GenerateSites reads honestly rather than claiming a reason.
+/// </summary>
+public enum SitePlacementSkip
+{
+    NotRun = 0,
+    Placed = 1,
+    NoProfileAssigned = 2,
+    NoFloor = 3,
+    NoEntryForFloor = 4,
+}
+
+/// <summary>
 /// DAY 30 — Per-floor procedural feature generator.
 /// DAY 31 PART 1 — Reveal API, conditional debug paint, pathfinding/fording knobs.
 /// DAY 31 PART 2 — Wild monster pool, OnChamberRevealed event, chamber helpers + cleared API.
@@ -719,6 +738,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     public AncientSiteResult LastSitePlacement => lastSitePlacement;
     private AncientSiteResult lastSitePlacement;
 
+    /// <summary>Why the last placement run laid nothing, when it laid
+    /// nothing. NotRun until GenerateSites executes on this floor, which is
+    /// itself the answer for a floor restored from a save.</summary>
+    public SitePlacementSkip LastSitePlacementSkip => lastSitePlacementSkip;
+    private SitePlacementSkip lastSitePlacementSkip = SitePlacementSkip.NotRun;
+
     public int SiteCount => featureData?.sites?.Count ?? 0;
 
     /// <summary>How many sites on this floor have been revealed. Drives the
@@ -1424,11 +1449,31 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private void GenerateSites(System.Random rng, Vector3Int centerCell, int floorRadius)
     {
         siteCells.Clear();
-        if (siteProfile == null || floor == null) return;
+
+        // Every exit from here records WHY. The report used to print one
+        // sentence for four different silences, and printed it for floor 0 on
+        // a new game -- which pointed the diagnosis at the save system when the
+        // cause was somewhere else entirely.
+        if (siteProfile == null)
+        {
+            lastSitePlacementSkip = SitePlacementSkip.NoProfileAssigned;
+            Debug.LogWarning("[Sites] Floor " + (floor != null ? floor.FloorIndex : -1) +
+                ": no AncientSiteProfile assigned on this TerrainFeatureGenerator, " +
+                "so no sites. This was previously a silent return.");
+            return;
+        }
+        if (floor == null)
+        {
+            lastSitePlacementSkip = SitePlacementSkip.NoFloor;
+            Debug.LogError("[Sites] GenerateSites ran with a null FloorRoot. " +
+                "That is an execution order fault -- see canon Appendix D.");
+            return;
+        }
 
         var entry = siteProfile.GetEntry(floor.FloorIndex);
         if (entry == null)
         {
+            lastSitePlacementSkip = SitePlacementSkip.NoEntryForFloor;
             // Not an error -- most floors carry no sites. Logged all the same,
             // because "the profile has no entry for this floor" is by far the
             // most likely reason for an unexpectedly empty floor.
@@ -1449,6 +1494,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
             roadJunctions, roadAnchorCells, roadEndCells,
             siteProfile.GetAuthoredPlans());
         lastSitePlacement = result;
+        lastSitePlacementSkip = SitePlacementSkip.Placed;
 
         foreach (var plan in result.sites)
         {

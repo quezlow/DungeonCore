@@ -764,8 +764,29 @@ public class Commands : MonoBehaviour
             var diag = features.LastSitePlacement;
             if (diag == null)
             {
-                sb.Append("    (restored from save -- placement counters are only ")
-                  .Append("recorded on the session that generated the floor)\n");
+                // Four different silences used to print the same sentence. They
+                // do not any more.
+                switch (features.LastSitePlacementSkip)
+                {
+                    case SitePlacementSkip.NoProfileAssigned:
+                        sb.Append("    !! NO SITE PROFILE assigned on this floor's ")
+                          .Append("TerrainFeatureGenerator. Placement never ran.\n");
+                        break;
+                    case SitePlacementSkip.NoFloor:
+                        sb.Append("    !! FloorRoot was null when placement ran -- an ")
+                          .Append("execution order fault, see canon Appendix D.\n");
+                        break;
+                    case SitePlacementSkip.NoEntryForFloor:
+                        sb.Append("    no SiteFloorEntry for floor index ").Append(i)
+                          .Append(" on the profile. Placement ran and correctly did ")
+                          .Append("nothing; add an entry if this floor should carry sites.\n");
+                        break;
+                    default:
+                        sb.Append("    placement never ran on this floor in this session ")
+                          .Append("(restored from a save, or generated before this build). ")
+                          .Append("Counters are recorded only where GenerateSites executed.\n");
+                        break;
+                }
             }
             else
             {
