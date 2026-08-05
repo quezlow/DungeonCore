@@ -2901,6 +2901,38 @@ authored plans, which is the point of hand-authoring them. The eight are fixed
 at 21-23 cells across, carved counts 150-246 -- one to two cave chambers, well
 clear of the three-thousand-cell figure a 62-span site reaches.
 
+**SHIPPED: the dead core vault, and the platform glyphs.** `DeadCoreVault` is
+appended at 13 -- the Church's vault around a dead core, one per dungeon on floor
+index 4, placed by guarantee rather than by pool so it can neither be rolled
+twice nor displace a seal. Authored-only, and enormous by design: the three
+plans run 75 by 75 at 2458-2884 carved cells against the largest dwarven village
+at 2588.
+
+The plan format gained two more glyphs, and the reason they are worth having is
+that the raise is MECHANICALLY REAL with no elevation system at all.
+`PlayerMovement` is Rigidbody2D with collider-based blocking rather than tile
+pathing, so a platform edge drawn as masonry already stops the avatar, the
+tile-pathed monsters and the adventurers alike -- and the stairs are simply the
+only gap in that edge. Nothing had to be built for it.
+
+  `'='`  platform floor -- parsed into `floor` too, so every existing consumer
+         sees ordinary walkable ground
+  `'^'`  stairs -- likewise floor, and the only opening in the platform edge
+
+Both are marked in the PLAN rather than left to the decor prefab, because the
+geometry has to be the single source of truth: a prefab can be redrawn without
+anyone noticing the plan no longer agrees with it, and the validator can only
+check what the plan states. Three rules ride with them, all catching faults that
+are invisible in the grid and only bite once something walks the geometry:
+a platform edge must be masonry except at stairs, a platform must have at least
+one stair, and a stair run must be three cells wide -- the door rule in the one
+place it genuinely applies, since this is a real passage everything has to path.
+
+Masonry is mineable, so a player who would rather not walk around can cut their
+own ramp onto a platform. Left deliberately: cutting a ramp is a reasonable thing
+for a dungeon core to do, and forbidding it would need an unmineable terrain flag
+for no gain. The stairs are the intended route, not the enforced one.
+
 **A SEPARATE registry, deliberately.** `TerrainTypeMap.holySiteOwner` maps cell
 to site id, parallel to the dwarven holdings dictionary rather than folded into
 it. Folding would have bought the warn-range reveal for free, since

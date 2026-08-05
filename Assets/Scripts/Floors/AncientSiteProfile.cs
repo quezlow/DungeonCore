@@ -54,6 +54,16 @@ public enum SiteArchetype
     /// <summary>A spring taken over and capped. The oldest kind of holy site
     /// there is, and the one the Church had most reason to shut.</summary>
     BlessedSpring = 12,
+
+    /// <summary>The vault the Church built around a DEAD CORE, on the oldest
+    /// ground there is. One per dungeon, on floor index 4, placed by guarantee
+    /// rather than by pool -- so it can neither be rolled twice nor displace a
+    /// seal, exactly as the dwarven village works.
+    ///
+    /// Authored-only and enormous: the three plans run 75 by 75 at 2458 to 2884
+    /// carved cells, against the largest village at 2588. Nothing else in the
+    /// game is this size on purpose.</summary>
+    DeadCoreVault = 13,
 }
 
 /// <summary>
@@ -398,6 +408,9 @@ public class AncientSiteProfile : ScriptableObject
         SiteArchetype.SealedCrypt => 0,
         SiteArchetype.WardChapel => 0,
         SiteArchetype.BlessedSpring => 0,
+        // Authored-only like the rest of the Church family, and more so:
+        // there is one vault per dungeon and all three plans are drawn.
+        SiteArchetype.DeadCoreVault => 0,
         _ => 3,
     };
 

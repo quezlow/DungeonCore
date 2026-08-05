@@ -114,6 +114,41 @@ public static class SitePlanValidator
                       .Append("\n            least seven by seven around it.\n");
                 }
 
+
+                // THE PLATFORM AND ITS STAIRS. All three faults below are
+                // invisible in the grid and only bite once something has to walk
+                // the geometry -- which, with the avatar system, will be a player.
+                if (plan.platform.Count > 0)
+                {
+                    int leaks = CountPlatformLeaks(plan);
+                    if (leaks > 0)
+                    {
+                        failures++;
+                        sb.Append("  PLATFORM FAIL: '").Append(plan.sourceName)
+                          .Append("' has ").Append(leaks)
+                          .Append(" platform edge(s) opening onto ordinary floor.")
+                          .Append("\n         -> a raised edge must be masonry except at stairs,")
+                          .Append("\n            or the platform is walkable from anywhere.\n");
+                    }
+                    if (plan.stairs.Count == 0)
+                    {
+                        failures++;
+                        sb.Append("  PLATFORM FAIL: '").Append(plan.sourceName)
+                          .Append("' has a raised platform and no stairs.")
+                          .Append("\n         -> nothing can reach it once the edge is solid.\n");
+                    }
+                }
+
+                int narrowStair = NarrowStairRun(plan);
+                if (narrowStair > 0)
+                {
+                    failures++;
+                    sb.Append("  STAIR FAIL: '").Append(plan.sourceName)
+                      .Append("' has a stair run ").Append(narrowStair).Append(" cells wide.")
+                      .Append("\n         -> three, the door rule where it genuinely applies:")
+                      .Append("\n            this is a real passage and everything must path it.\n");
+                }
+
                 int worst = int.MaxValue, best = 0;
                 int worstRot = 0;
                 bool worstMirror = false;
@@ -186,6 +221,71 @@ public static class SitePlanValidator
             Debug.Log("[SitePlanValidator]" + sb);
     }
 
+
+    /// <summary>Platform cells with a neighbour that is neither platform, nor
+    /// masonry, nor stairs -- an opening in the raised edge. One is a hole the
+    /// whole design leaks through, so this counts rather than returning a bool:
+    /// a count tells you whether you mis-drew one cell or the entire edge.</summary>
+    private static int CountPlatformLeaks(AuthoredSitePlan plan)
+    {
+        var plat = new HashSet<Vector2Int>(plan.platform);
+        var solid = new HashSet<Vector2Int>(plan.wall);
+        var steps = new HashSet<Vector2Int>(plan.stairs);
+        var dirs = new[]
+        {
+            new Vector2Int(1, 0), new Vector2Int(-1, 0),
+            new Vector2Int(0, 1), new Vector2Int(0, -1),
+        };
+
+        int leaks = 0;
+        foreach (var p in plat)
+            foreach (var d in dirs)
+            {
+                var q = new Vector2Int(p.x + d.x, p.y + d.y);
+                if (plat.Contains(q) || solid.Contains(q) || steps.Contains(q)) continue;
+                leaks++;
+            }
+        return leaks;
+    }
+
+    /// <summary>The width of the narrowest stair run, or 0 if every run is three
+    /// or more. Measured on both axes because a stair reads along whichever axis
+    /// it was drawn, and a plan may carry stairs on all four sides.</summary>
+    private static int NarrowStairRun(AuthoredSitePlan plan)
+    {
+        if (plan.stairs.Count == 0) return 0;
+        var steps = new HashSet<Vector2Int>(plan.stairs);
+
+        for (int axis = 0; axis < 2; axis++)
+        {
+            var lines = new Dictionary<int, List<int>>();
+            foreach (var c in steps)
+            {
+                int key = axis == 0 ? c.y : c.x;
+                int val = axis == 0 ? c.x : c.y;
+                if (!lines.TryGetValue(key, out var list)) lines[key] = list = new List<int>();
+                list.Add(val);
+            }
+
+            foreach (var kv in lines)
+            {
+                var vs = kv.Value;
+                vs.Sort();
+                int start = 0;
+                for (int i = 1; i <= vs.Count; i++)
+                {
+                    if (i < vs.Count && vs[i] == vs[i - 1] + 1) continue;
+                    int len = i - start;
+                    // A single cell on this axis is a run seen edge-on -- the
+                    // three-wide run on the OTHER axis. Only two is unambiguously
+                    // a narrow stair.
+                    if (len == 2) return 2;
+                    start = i;
+                }
+            }
+        }
+        return 0;
+    }
 
     /// <summary>Three clear floor cells beyond the heart's own SOLID COMPONENT,
     /// on all four sides.

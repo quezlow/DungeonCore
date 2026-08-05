@@ -1694,7 +1694,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         => a == SiteArchetype.ChurchSeal
         || a == SiteArchetype.SealedCrypt
         || a == SiteArchetype.WardChapel
-        || a == SiteArchetype.BlessedSpring;
+        || a == SiteArchetype.BlessedSpring
+        || a == SiteArchetype.DeadCoreVault;
 
     // Cached child renderer for site paving; found once per floor lifetime.
     private CaveWallRenderer wallRendererForPaving;

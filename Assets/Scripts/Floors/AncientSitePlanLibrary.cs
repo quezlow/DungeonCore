@@ -44,6 +44,24 @@ public class AuthoredSitePlan
     /// A list rather than a nullable so the parser can report "two hearts" as
     /// an authoring error instead of silently keeping the last one.</summary>
     public readonly List<Vector2Int> heart = new List<Vector2Int>();
+
+    /// <summary>Raised platform floor, from the plan's '=' cells. Parsed into
+    /// `floor` as well, so every existing consumer -- rendering, walkability,
+    /// reveal, the drape -- sees ordinary open ground and needs no special case.
+    ///
+    /// The raise is REAL without any elevation system, because PlayerMovement is
+    /// Rigidbody2D with collider-based blocking rather than tile pathing: the
+    /// platform edge is masonry, which already stops the avatar, and the stairs
+    /// are the only gap in it. This list exists so the raised floor sprites know
+    /// their extent, and so the validator can prove the edge has no accidental
+    /// hole in it.</summary>
+    public readonly List<Vector2Int> platform = new List<Vector2Int>();
+
+    /// <summary>Stair cells, from '^'. Floor, like the platform, and the only
+    /// opening in its edge. Marked in the PLAN rather than left to the decor
+    /// prefab so the geometry is the single source of truth: a prefab can be
+    /// redrawn without anyone noticing the plan no longer agrees with it.</summary>
+    public readonly List<Vector2Int> stairs = new List<Vector2Int>();
 }
 
 /// <summary>
@@ -55,6 +73,12 @@ public class AuthoredSitePlan
 ///   Everything else is the grid, read top to bottom as NORTH to SOUTH:
 ///     '#'  masonry  -- stays solid rock, retyped to the family terrain
 ///     '.'  carved   -- open floor
+///     '='  raised PLATFORM floor -- open ground, plus a marker. The
+///          raise is real without any elevation system: draw the
+///          platform's edge as masonry and it already blocks the
+///          Rigidbody2D avatar and every tile-pathed walker.
+///     '^'  STAIRS -- open ground, and the only gap you leave in that
+///          edge. Three cells wide; everything has to path it.
 ///     'X'  the HEART -- masonry, AND the one cell carrying the
 ///          site's meaning: altar, grave slab, capped font,
 ///          seal-stone. Solid, because unsealing means mining it.
@@ -167,6 +191,8 @@ public static class AncientSitePlanLibrary
         var floor = new List<Vector2Int>();
         var wall = new List<Vector2Int>();
         var heart = new List<Vector2Int>();
+        var platform = new List<Vector2Int>();
+        var stairs = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -175,6 +201,20 @@ public static class AncientSitePlanLibrary
                 // Top of the file is NORTH, so the row index runs down -Y.
                 if (row[c] == '#') wall.Add(new Vector2Int(c, -r));
                 else if (row[c] == '.') floor.Add(new Vector2Int(c, -r));
+                else if (row[c] == '=')
+                {
+                    // Floor AND platform, the same trick 'X' uses for
+                    // masonry: downstream sees ordinary open ground.
+                    var pf = new Vector2Int(c, -r);
+                    floor.Add(pf);
+                    platform.Add(pf);
+                }
+                else if (row[c] == '^')
+                {
+                    var sc = new Vector2Int(c, -r);
+                    floor.Add(sc);
+                    stairs.Add(sc);
+                }
                 else if (row[c] == 'X')
                 {
                     // Masonry AND heart. Downstream sees an ordinary
@@ -223,6 +263,8 @@ public static class AncientSitePlanLibrary
         var wallSet = new HashSet<Vector2Int>();
         foreach (var p in wall) wallSet.Add(p - offset);
         foreach (var p in heart) plan.heart.Add(p - offset);
+        foreach (var p in platform) plan.platform.Add(p - offset);
+        foreach (var p in stairs) plan.stairs.Add(p - offset);
 
         foreach (var p in floor)
         {
@@ -270,7 +312,7 @@ public static class AncientSitePlanLibrary
         // BuildPlanPool's useAllArchetypes cap, which deliberately stops at
         // TollHouse so an authored-only archetype is opted in per floor and
         // never swept in by "all".
-        for (int i = 0; i <= (int)SiteArchetype.BlessedSpring; i++)
+        for (int i = 0; i <= (int)SiteArchetype.DeadCoreVault; i++)
         {
             var candidate = (SiteArchetype)i;
             if (candidate.ToString().ToLowerInvariant() == k)
