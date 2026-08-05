@@ -713,6 +713,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // -- Ancient Site Reveal API -----------------------------------
 
     /// <summary>How many Buried Age sites this floor carries.</summary>
+    /// <summary>The last placement run's full result, rejection counters and
+    /// all. Null until this floor generates in THIS session -- a floor
+    /// restored from a save never ran the placement loop.</summary>
+    public AncientSiteResult LastSitePlacement => lastSitePlacement;
+    private AncientSiteResult lastSitePlacement;
+
     public int SiteCount => featureData?.sites?.Count ?? 0;
 
     /// <summary>How many sites on this floor have been revealed. Drives the
@@ -1432,10 +1438,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
             return;
         }
 
+        // Kept rather than discarded. Every rejection counter on the result
+        // is the answer to "why is this floor empty", and throwing them away
+        // meant that question could only ever be guessed at. Runtime only:
+        // never serialized, and null on a floor restored from a save, which
+        // the report states rather than printing zeroes that read as
+        // rejections.
         var result = AncientSiteBuilder.Build(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
             roadJunctions, roadAnchorCells, roadEndCells,
             siteProfile.GetAuthoredPlans());
+        lastSitePlacement = result;
 
         foreach (var plan in result.sites)
         {

@@ -90,13 +90,14 @@ public static class SitePlanValidator
                 Debug.Log($"PLAN LOADED: '{plan.sourceName}' floor={plan.floor.Count} wall={plan.wall.Count}");
 
 
-                // THE HEART and THE DOOR RULE. Both were learned by drawing the
-                // eight Church plans and failing seven of them: an alcove two
-                // cells deep leaves a two-cell run pinched between wall above
-                // and wall below, and that seals under the drape on some
-                // quarter turns. The walkability count above does not catch it,
-                // because the room stays walkable while the alcove quietly
-                // stops being reachable.
+                // THE HEART. The door-rule gate that used to sit here is gone:
+                // it failed twelve shipped, working plans by flagging every
+                // decorative niche as a sealed passage. A site is MINED into
+                // rather than walked into through a door, so neither a narrow
+                // alcove nor a fragmented interior is fatal, and a gate that
+                // calls working plans broken only teaches you to skip the
+                // report. What survives is the connectivity figure, printed on
+                // every plan line as information.
                 if (plan.heart.Count > 1)
                 {
                     failures++;
@@ -111,16 +112,6 @@ public static class SitePlanValidator
                       .Append("' has a heart with fewer than three clear cells on one side.")
                       .Append("\n         -> a free-standing heart needs a chamber of at")
                       .Append("\n            least seven by seven around it.\n");
-                }
-
-                var pinch = FindPinch(plan);
-                if (pinch.HasValue)
-                {
-                    failures++;
-                    sb.Append("  DOOR RULE FAIL: '").Append(plan.sourceName)
-                      .Append("' has an open run shorter than three cells pinched")
-                      .Append(" between solid at ").Append(pinch.Value)
-                      .Append(".\n         -> widen it to three, or make the recess three deep.\n");
                 }
 
                 int worst = int.MaxValue, best = 0;
@@ -159,6 +150,17 @@ public static class SitePlanValidator
                   .Append("  masonry ").Append(plan.wall.Count)
                   .Append("  walkable ").Append(worst).Append("..").Append(best);
 
+                // Connectivity of the WORST orientation, as information only.
+                // A single piece is ideal; anything lower says the interior
+                // does not hang together under the drape, which is usually
+                // what a drawing that did not come out right looks like in
+                // numbers. It gates nothing -- see WalkableConnectivity.
+                WalkableConnectivity(WalkableSet(plan.floor, worstRot, worstMirror),
+                                     out int pieces, out int largestPiece);
+                sb.Append("  linked ").Append(pieces).Append("pc/")
+                  .Append(worst > 0 ? Mathf.RoundToInt(100f * largestPiece / worst) : 100)
+                  .Append('%');
+
                 if (!plan.allowRotation) sb.Append("  [rotation off]");
                 if (plan.hasAnchorOverride) sb.Append("  [anchor ").Append(plan.anchorOverride).Append(']');
 
@@ -185,67 +187,128 @@ public static class SitePlanValidator
     }
 
 
-    /// <summary>Three clear cells on all four sides of the heart. Anything less
-    /// and the run beside it is a two-cell pinch, which seals under the drape.</summary>
+    /// <summary>Three clear floor cells beyond the heart's own SOLID COMPONENT,
+    /// on all four sides.
+    ///
+    /// The component matters and the first version of this check missed it. A
+    /// heart set in a plinth -- `#####` over `##X##` over `#####` -- has masonry
+    /// for its immediate neighbours by design, so measuring from the heart CELL
+    /// failed six of the eight plans the rule was written to protect, while the
+    /// two with a free-standing stone passed. Flooding the solid blob first and
+    /// measuring from its edge treats both shapes correctly and reduces to the
+    /// old behaviour when the blob is a single cell.
+    ///
+    /// A heart set into a WALL rather than standing in a room is exempt: past
+    /// the size cutoff the blob is the building, not a plinth, and there is
+    /// nothing meaningful to measure clearance around.</summary>
     private static bool HeartHasClearance(AuthoredSitePlan plan)
     {
         var open = new HashSet<Vector2Int>(plan.floor);
-        var h = plan.heart[0];
+        var solid = new HashSet<Vector2Int>(plan.wall);
         var dirs = new[]
         {
             new Vector2Int(1, 0), new Vector2Int(-1, 0),
             new Vector2Int(0, 1), new Vector2Int(0, -1),
         };
+
+        var blob = new HashSet<Vector2Int> { plan.heart[0] };
+        var stack = new Stack<Vector2Int>();
+        stack.Push(plan.heart[0]);
+        while (stack.Count > 0)
+        {
+            var p = stack.Pop();
+            foreach (var d in dirs)
+            {
+                var q = new Vector2Int(p.x + d.x, p.y + d.y);
+                if (solid.Contains(q) && blob.Add(q)) stack.Push(q);
+            }
+        }
+
+        // Nine by nine. Anything larger is a wall the heart was set into.
+        if (blob.Count > 81) return true;
+
         foreach (var d in dirs)
+        {
+            var edge = plan.heart[0];
+            int bestDot = int.MinValue;
+            foreach (var p in blob)
+            {
+                int dot = p.x * d.x + p.y * d.y;
+                if (dot > bestDot) { bestDot = dot; edge = p; }
+            }
             for (int i = 1; i <= 3; i++)
-                if (!open.Contains(new Vector2Int(h.x + d.x * i, h.y + d.y * i))) return false;
+                if (!open.Contains(new Vector2Int(edge.x + d.x * i, edge.y + d.y * i)))
+                    return false;
+        }
         return true;
     }
 
-    /// <summary>The first open run under three cells long with solid on BOTH
-    /// ends, on either axis. Rotation-independent: a pinch is a pinch on every
-    /// quarter turn, so this is checked once rather than eight times.</summary>
-    private static Vector2Int? FindPinch(AuthoredSitePlan plan)
+    /// <summary>How many disconnected pieces the drape-filtered walkable set
+    /// falls into, and how much of it the largest piece holds.
+    ///
+    /// REPORTED, NEVER FAILED. This started life as a DOOR RULE check and the
+    /// data retired it: SunkenPlaza_TheCountingFloor fragments into seven pieces
+    /// with the largest at 33 per cent, TollHouse_TheWeighingHouse sits at 41,
+    /// and both ship and both work -- because a site is MINED into rather than
+    /// walked into through a door, so the player carves their own way and
+    /// internal fragmentation is not fatal. A gate that calls twelve working
+    /// plans broken is worse than no gate, because it teaches you to skip the
+    /// report.
+    ///
+    /// It stays visible because it is still worth seeing. A low percentage says
+    /// the interior does not hang together under the wall drape, which is
+    /// usually what "this drawing did not come out right" looks like in
+    /// numbers.</summary>
+    /// <summary>The drape-filtered walkable set at one orientation. Same rule as
+    /// CountWalkable, which counts it -- kept as two methods rather than one so
+    /// the hot count path does not allocate a set it never uses.</summary>
+    private static HashSet<Vector2Int> WalkableSet(List<Vector2Int> cells, int rot, bool mirror)
     {
-        var open = new HashSet<Vector2Int>(plan.floor);
-        var solid = new HashSet<Vector2Int>(plan.wall);
+        var set = new HashSet<Vector2Int>();
+        foreach (var c in cells) set.Add(Transform(c, rot, mirror));
 
-        for (int axis = 0; axis < 2; axis++)
+        var walk = new HashSet<Vector2Int>();
+        foreach (var c in set)
         {
-            var lines = new Dictionary<int, List<int>>();
-            foreach (var c in open)
-            {
-                int key = axis == 0 ? c.y : c.x;
-                int val = axis == 0 ? c.x : c.y;
-                if (!lines.TryGetValue(key, out var list)) lines[key] = list = new List<int>();
-                list.Add(val);
-            }
-
-            foreach (var kv in lines)
-            {
-                var vs = kv.Value;
-                vs.Sort();
-                int start = 0;
-                for (int i = 1; i <= vs.Count; i++)
-                {
-                    if (i < vs.Count && vs[i] == vs[i - 1] + 1) continue;
-                    int len = i - start;
-                    if (len < 3)
-                    {
-                        var before = Cell(axis, kv.Key, vs[start] - 1);
-                        var after = Cell(axis, kv.Key, vs[i - 1] + 1);
-                        if (solid.Contains(before) && solid.Contains(after))
-                            return Cell(axis, kv.Key, vs[start]);
-                    }
-                    start = i;
-                }
-            }
+            if (!set.Contains(new Vector2Int(c.x, c.y + 1))) continue;
+            if (!set.Contains(new Vector2Int(c.x, c.y + 2))) continue;
+            walk.Add(c);
         }
-        return null;
+        return walk;
     }
 
-    private static Vector2Int Cell(int axis, int key, int val)
-        => axis == 0 ? new Vector2Int(val, key) : new Vector2Int(key, val);
+    private static void WalkableConnectivity(HashSet<Vector2Int> walkable,
+                                             out int pieces, out int largest)
+    {
+        pieces = 0;
+        largest = 0;
+        var seen = new HashSet<Vector2Int>();
+        var dirs = new[]
+        {
+            new Vector2Int(1, 0), new Vector2Int(-1, 0),
+            new Vector2Int(0, 1), new Vector2Int(0, -1),
+        };
+
+        foreach (var start in walkable)
+        {
+            if (!seen.Add(start)) continue;
+            pieces++;
+            int size = 0;
+            var stack = new Stack<Vector2Int>();
+            stack.Push(start);
+            while (stack.Count > 0)
+            {
+                var p = stack.Pop();
+                size++;
+                foreach (var d in dirs)
+                {
+                    var q = new Vector2Int(p.x + d.x, p.y + d.y);
+                    if (walkable.Contains(q) && seen.Add(q)) stack.Push(q);
+                }
+            }
+            if (size > largest) largest = size;
+        }
+    }
 
     private static void Extend(Vector2Int c, ref int minX, ref int maxX, ref int minY, ref int maxY)
     {

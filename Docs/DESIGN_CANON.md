@@ -2872,14 +2872,28 @@ is solid and everything downstream treats it as ordinary masonry -- desecration
 is unsealing, and an open floor cell cannot be mined. Exactly one per plan; two
 is a parse error rather than a silent last-wins.
 
-Two authoring rules came out of drawing the eight and failing seven, and both
-are now enforced by `Dungeon Core / Validate Site Plans`:
-- A wall recess must be THREE deep. Two leaves a two-cell open run pinched
-  between wall above and wall below, and that seals under the drape on some
-  quarter turns. The walkability count does not catch it, because the room stays
-  walkable while the recess quietly stops being reachable.
-- A free-standing heart needs THREE clear cells on all four sides, which forces
-  a chamber of at least seven by seven. A plinth block needs the same clearance.
+One authoring rule came out of drawing the eight, and it is enforced by
+`Dungeon Core / Validate Site Plans`:
+- A heart needs THREE clear cells on all four sides of its own SOLID
+  COMPONENT. For a stone standing alone that is a seven-by-seven chamber; for
+  a heart set in a plinth it is measured at the plinth's edge. Measuring from
+  the heart CELL was the first attempt and it failed six of the eight plans it
+  existed to protect, because a plinth-set heart has masonry for neighbours by
+  design.
+
+A second rule was attempted and RETIRED, and the retirement is the more useful
+record. A door-rule gate -- any open run under three cells with solid at both
+ends -- failed twelve shipped, working plans, because it flagged every
+decorative niche as a sealed passage. The honest version, connectivity of the
+drape-filtered walkable set, failed them too: `SunkenPlaza_TheCountingFloor`
+fragments into seven pieces with the largest at 33 per cent and
+`TollHouse_TheWeighingHouse` sits at 41. Both are fine, because a site is MINED
+into rather than walked into through a door -- the player carves their own way
+and internal fragmentation is not fatal. THE DOOR RULE remains an authoring
+principle for doors and passages and does not reduce to a local geometric test.
+The connectivity figure is now printed on every plan line as information and
+gates nothing; a low percentage is what "this drawing did not come out right"
+looks like in numbers, which is why `HollowSanctum_ThePilgrimsWay` reads 46.
 
 The per-archetype span clamp discussed during design turned out to be
 unnecessary: `AncientSiteBuilder` already ignores `minSpan`/`maxSpan` for

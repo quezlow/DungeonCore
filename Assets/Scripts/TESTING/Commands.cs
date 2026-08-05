@@ -727,6 +727,88 @@ public class Commands : MonoBehaviour
     /// whether its heart is still in place. Reported rather than inferred from
     /// alignment, which has half a dozen other contributors and cannot answer
     /// "did that seal actually register" on its own.</summary>
+    /// <summary>Where the sites actually went, and why any that did not go
+    /// anywhere did not.
+    ///
+    /// AncientSiteResult has carried per-stage rejection counters and in-band
+    /// anchor counts since the site system shipped, and GenerateSites threw the
+    /// whole object away after copying the sites out -- so "no sites on that
+    /// floor" has only ever been answerable by guessing. It is not any more.
+    ///
+    /// Reads the LIVE floors, so it describes the dungeon in front of you rather
+    /// than a fresh headless roll. Counters are only available for a floor
+    /// generated this session: a floor restored from a save never ran the
+    /// placement loop, and the report says so rather than printing zeroes that
+    /// look like rejections.</summary>
+    [ContextMenu("Log Site Placement")]
+    void LogSitePlacement()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.LogWarning("[Commands] No FloorManager."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("[Commands] SITE PLACEMENT\n");
+
+        for (int i = 0; i < 8; i++)
+        {
+            var floor = fm.GetFloor(i);
+            if (floor == null) continue;
+            var features = floor.FeatureGenerator;
+            if (features == null) continue;
+
+            var core = floor.Terrain != null ? floor.Terrain.CoreCell : Vector3Int.zero;
+            sb.Append("  floor index ").Append(i)
+              .Append(": ").Append(features.SiteCount).Append(" site(s), ")
+              .Append(features.RevealedSiteCount).Append(" revealed\n");
+
+            var diag = features.LastSitePlacement;
+            if (diag == null)
+            {
+                sb.Append("    (restored from save -- placement counters are only ")
+                  .Append("recorded on the session that generated the floor)\n");
+            }
+            else
+            {
+                sb.Append("    wanted ").Append(diag.wanted)
+                  .Append(", got ").Append(diag.sites.Count)
+                  .Append(", plan pool ").Append(diag.planPoolSize)
+                  .Append(", attempts ").Append(diag.attempts).Append('\n');
+                sb.Append("    rejected: noAnchor ").Append(diag.rejectedNoAnchor)
+                  .Append(", tooClose ").Append(diag.rejectedTooClose)
+                  .Append(", nullShape ").Append(diag.rejectedNullShape)
+                  .Append(", tooSmall ").Append(diag.rejectedTooSmall)
+                  .Append(", unwalkable ").Append(diag.rejectedUnwalkable).Append('\n');
+                sb.Append("    anchors in band: junctions ").Append(diag.inBandJunctions)
+                  .Append(", roadCells ").Append(diag.inBandRoadCells)
+                  .Append(", roadEnds ").Append(diag.inBandRoadEnds).Append('\n');
+
+                // A pool of zero is the one failure that looks identical to "this
+                // floor was not meant to have sites", so it is called out rather
+                // than left as a number among numbers.
+                if (diag.planPoolSize == 0)
+                    sb.Append("    !! PLAN POOL EMPTY -- the floor entry's pool names ")
+                      .Append("archetypes with no authored plan and no procedural variant.\n");
+            }
+
+            for (int id = 0; id < features.SiteCount; id++)
+            {
+                var s = features.GetSiteById(id);
+                if (s == null) continue;
+                var a = s.anchorCell != null ? s.anchorCell.ToVector3Int() : Vector3Int.zero;
+                int dx = a.x - core.x, dy = a.y - core.y;
+                int dist = Mathf.RoundToInt(Mathf.Sqrt(dx * dx + dy * dy));
+                sb.Append("    site ").Append(s.id).Append(' ').Append(s.archetype)
+                  .Append(" '").Append(s.planName).Append("' at ").Append(a)
+                  .Append(", ").Append(dist).Append(" cells from core, ")
+                  .Append(s.cells != null ? s.cells.Count : 0).Append(" carved, ")
+                  .Append(features.IsSiteRevealed(s.id) ? "revealed" : "unfound");
+                if (TerrainFeatureGenerator.IsHolySite(s)) sb.Append("  [HOLY]");
+                sb.Append('\n');
+            }
+        }
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Log Holy Ground State")]
     void LogHolyGroundState()
     {
