@@ -1496,6 +1496,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         lastSitePlacement = result;
         lastSitePlacementSkip = SitePlacementSkip.Placed;
 
+        // THE ONE SAFE WINDOW. The loop below subtracts road cells from every
+        // site's footprint, so a road that is going to yield to the vault must
+        // yield BEFORE that subtraction reads roadCells -- otherwise the vault
+        // still loses its cells to a carriageway that no longer exists. Gated on
+        // the same entry flag as the vault itself, so it is floor index 4 only.
+        if (entry.reserveDeadCore) TruncateRoadsAroundVault(result);
+
         foreach (var plan in result.sites)
         {
             // The road and the core keep their cells outright. A site yields to
@@ -1566,6 +1573,113 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     "says which stage discarded them. Note that sites are only VISIBLE once " +
                     "influence reaches them -- check the count here before hunting a render bug.");
         }
+    }
+
+    /// <summary>
+    /// Floor index 4 only: the deep roads YIELD to the dead core vault.
+    ///
+    /// Everywhere else a site yields to the road -- the carriageway was carved
+    /// first, and the loop in GenerateSites subtracts road cells from every site
+    /// it places. On the vault that cost 2106 carved cells against 2576
+    /// authored, an eighteen per cent hole through the largest hand-drawn thing
+    /// in the game. Floor 4 carries no caravans and no patrols, so severing a leg
+    /// of the dead network there costs nothing; on a living floor it would cost a
+    /// trade route, which is why the inconsistency is deliberate and floor-gated
+    /// rather than made general.
+    ///
+    /// SAFE ON LOAD, and that is what makes truncating at generation the right
+    /// place. RoadData.polyline is persisted, so the cut happens exactly once and
+    /// the load path simply rasterises the already-cut polyline -- there is no
+    /// second truncation to keep in agreement with this one. RebuildRoadCells is
+    /// the shared generate/load entry point and RebuildLookup calls it on both
+    /// paths, so the authoritative segment partition is the final one either way
+    /// and the rebuild in the middle of this method is transient. Nothing between
+    /// here and that final rebuild reads a segment id.
+    ///
+    /// VERIFIED RATHER THAN TRUSTED. After the rebuild this counts the vault
+    /// cells still under carriageway. It should be zero: the clearance radius
+    /// leaves the carriageway two cells clear of the vault at width 5. But
+    /// FilletJunctions is ADDITIVE and reaches junctionFilletRadius beyond the
+    /// carriageway at a node, and a clipped end is a NEW road end that could pair
+    /// with another inside RoadJunctionMergeRadius. So if the check fires, the
+    /// clip is re-run once at a clearance widened by exactly that fillet radius,
+    /// and the result is persisted -- so the load path reproduces the wider cut
+    /// without needing to know why.
+    /// </summary>
+    private void TruncateRoadsAroundVault(AncientSiteResult result)
+    {
+        if (result == null || featureData == null || featureData.roads == null) return;
+        if (featureData.roads.Count == 0) return;
+
+        AncientSitePlan vault = null;
+        foreach (var plan in result.sites)
+            if (plan != null && plan.archetype == SiteArchetype.DeadCoreVault)
+            {
+                vault = plan;
+                break;
+            }
+
+        // No vault is not this method's error to report. PlaceDeadCore already
+        // logs loudly when its 240 attempts run out, and a second complaint here
+        // would send the next reader to the wrong file.
+        if (vault == null) return;
+
+        var blocked = new HashSet<Vector3Int>();
+        foreach (var c in vault.cells) blocked.Add(c);
+        foreach (var c in vault.ruinsCells) blocked.Add(c);
+        if (blocked.Count == 0) return;
+
+        int before = CountUnderRoad(blocked);
+
+        var report = RoadNetworkBuilder.TruncateAroundBlocked(featureData.roads, blocked, 0);
+        if (!report.AnythingChanged)
+        {
+            Debug.Log("[Sites] Floor " + floor.FloorIndex + " vault sits clear of " +
+                      "every road; nothing truncated. " + report.Summary());
+            return;
+        }
+
+        RebuildRoadCells();
+        int after = CountUnderRoad(blocked);
+        int widened = 0;
+
+        if (after > 0)
+        {
+            // The junction fillet is the only thing that can add carriageway
+            // outside the clearance, so widen by exactly it and cut once more.
+            widened = Mathf.Max(1, junctionFilletRadius);
+            var second = RoadNetworkBuilder.TruncateAroundBlocked(
+                featureData.roads, blocked, widened);
+            RebuildRoadCells();
+            after = CountUnderRoad(blocked);
+            foreach (var n in second.notes) report.notes.Add("(widened) " + n);
+        }
+
+        Debug.Log("[Sites] Floor " + floor.FloorIndex + " ROAD TRUNCATION around the " +
+                  "vault: " + report.Summary() + ". Vault cells under carriageway: " +
+                  before + " before, " + after + " after" +
+                  (widened > 0 ? " (clearance widened by " + widened +
+                                 " and re-cut once)" : "") + ".");
+        foreach (var n in report.notes) Debug.Log("    " + n);
+
+        if (after > 0)
+            Debug.LogError("[Sites] Floor " + floor.FloorIndex + ": " + after +
+                " vault cell(s) are STILL under carriageway after truncating and " +
+                "re-cutting at a widened clearance. Those cells will be subtracted " +
+                "from the vault's footprint below, exactly as before this ran. " +
+                "Read RoadNetworkBuilder.TruncateAroundBlocked's clearance " +
+                "arithmetic against FilletJunctions before changing anything else.");
+    }
+
+    /// <summary>How many of these cells the carriageway currently covers. The
+    /// only figure that answers "did the truncation actually buy the vault its
+    /// cells back", and it is measured on both sides rather than predicted.</summary>
+    private int CountUnderRoad(HashSet<Vector3Int> cells)
+    {
+        int n = 0;
+        foreach (var c in cells)
+            if (roadCells.Contains(c)) n++;
+        return n;
     }
 
     /// <summary>

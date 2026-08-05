@@ -2939,6 +2939,87 @@ cell vault and found it inert. `PlaceDeadCore` emits the heart through the
 same transform as its masonry, and REJECTS a placement whose heart fell
 outside the clamp disc rather than shipping an inert vault.
 
+**On floor index 4, the ROAD yields to the vault** -- and nowhere else does
+anything yield to a site. `GenerateSites` subtracts road cells from every site's
+footprint, which is right on a living floor: the carriageway was carved first and
+a ruin built around it reads correctly. On the vault it cost 2106 carved cells
+against 2576 authored, an eighteen per cent hole through the largest hand-drawn
+thing in the game. So on this floor the road stops at the vault wall instead,
+with NO continuation, gated on the same `reserveDeadCore` entry as the vault
+itself.
+
+The inconsistency is the point and is recorded so it is not "fixed" later: seals
+on living floors yield to roads because a severed leg there costs a trade route,
+and floor 4 carries no caravans and no patrols, so severing one costs nothing.
+
+`RoadNetworkBuilder.TruncateAroundBlocked` keeps each road's LONGEST unblocked
+run, ties to the earlier one, and leaves orphaned spurs as fragments -- a stub of
+dead network is a correct thing to find down there. A run shorter than the road
+is wide is dropped instead, because that is a smear rather than a fragment. A
+road with nothing left keeps its `RoadData` entry and loses its polyline:
+removing the entry looks tidier and is not, because
+`FilletJunctionsIntoSegments` reads `roads[0]` for the network's width, centre
+and clamp radius, so dropping one can swap a five-wide trunk for a two-wide spur
+and change fillet geometry across the whole floor. Every derivation already
+guards on an empty polyline.
+
+**Three things had to be read rather than assumed, and each would have shipped a
+defect.**
+
+*The window is one statement wide.* Truncation runs AFTER the vault is placed and
+BEFORE the road-cell subtraction, with `RebuildRoadCells()` between -- otherwise
+the vault still loses its cells to a carriageway that no longer exists. That is
+inside `GenerateSites`, between `AncientSiteBuilder.Build` returning and the
+placement loop. It is safe on load because `RoadData.polyline` is persisted: the
+cut happens once and the load path rasterises the already-cut polyline, so there
+is no second truncation to keep in agreement. `RebuildLookup` calls
+`RebuildRoadCells` on both paths, so the authoritative segment partition is the
+final one either way and the rebuild in the middle is transient -- nothing
+between it and that final rebuild reads a segment id, which is what the reveal
+alerts and `IsRoadSegmentHeld` key on.
+
+*`Centreline` spends `brokenGapCells` on the tail of the whole line*, and floor
+4's roads carry a gap of six. The clip therefore analyses `Centreline(road)`,
+already gap-trimmed, and ZEROES `brokenGapCells` on any road it cuts. Analysing
+the raw polyline instead would leave the measured run and the rasterised cells
+disagreeing by six cells at the very end, which is the end the vault is usually
+at.
+
+*Bresenham restarted at an interior lattice point does not reproduce the tail,
+and this was assumed the other way round when the approach was sketched.* The
+compact polyline keeps the run's two ends plus the original waypoints strictly
+inside it, so the line is RE-DRAWN rather than copied, and "Centreline reproduces
+the kept cells exactly" is simply false. Counterexample in
+`RoadNetworkBuilder.Line` itself: (0,0) to (6,4) passes through (2,1), (3,2),
+(4,3), while (2,1) to (6,4) gives (3,2), (4,2). Nor is it an edge case --
+measured over 51,081 restarts of random lines, 45,858 of them, ninety per cent,
+diverge from the tail they restart on. What saves the approach is that both paths
+stay within half a cell of the true line, so the divergence is bounded at ONE
+cell Chebyshev, which was the worst observed across all 51,081. The clearance
+radius is `width/2 + 1` and that `+1` is exactly this margin, not padding: remove
+it and the carriageway reaches the wall. Cell counts are consequently MEASURED
+after the rebuild, never predicted from a run length.
+
+`Tools/sim_road_truncation.py` is the headless check, and it is the reason this
+shipped without a test cycle spent on it. It ports `Line`, `Centreline`,
+`Dilate`, `BuildEdgePolyline` and the clip, builds floor-4-shaped meandering
+roads across a 75-cell vault, and re-derives the carriageway after clipping. Over
+3000 seeds, 2180 of which actually crossed the vault: zero carriageway cells
+survive inside it, no clipped polyline folds back on itself, and the polylines
+stay compact at a mean of 17 waypoints and a worst of 31.
+
+**And it is verified rather than trusted.** After the rebuild the generator counts
+vault cells still under carriageway. It should be zero, but `FilletJunctions` is
+ADDITIVE and reaches `junctionFilletRadius` beyond the carriageway at a node, and
+a clipped end is a NEW road end that could pair with another inside
+`RoadJunctionMergeRadius`. If the count is not zero the clip re-runs once at a
+clearance widened by exactly that fillet radius, and the result is persisted, so
+the load path reproduces the wider cut without needing to know why. Still
+non-zero after that is a `LogError` naming the arithmetic to read. The report
+prints which roads were truncated or dropped, how many centreline cells went, and
+the vault-cells-under-carriageway figure on both sides -- the only number that
+answers whether the truncation actually bought the vault its cells back.
+
 Masonry is mineable, so a player who would rather not walk around can cut their
 own ramp onto a platform. Left deliberately: cutting a ramp is a reasonable thing
 for a dungeon core to do, and forbidding it would need an unmineable terrain flag
