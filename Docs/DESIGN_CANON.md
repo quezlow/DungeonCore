@@ -2974,8 +2974,91 @@ backlog.
 
 **Floors 0 and 1 gained site entries.** The profile asset carried indices 2, 3
 and 4 only. Floor 0 takes exactly one seal from a `ChurchSeal`-only pool at
-`bandInner` 0.35, far enough out that the arrival area stays clear; floor 1
-takes one or two from a wider pool.
+`bandInner` 0.35, far enough out that the arrival area stays clear.
+
+### The holy sub-quota (SHIPPED)
+
+The seals were originally rolled from each floor's ORDINARY plan pool, which put
+them in competition with the Buried Age ruins for the same slots -- and entry 21
+draws exactly the line that says they should not be. `SiteFloorEntry` therefore
+carries `minHolySites` / `maxHolySites` / `holyPool`, drawn by a pass that runs
+BEFORE the general fill and OUTSIDE its budget.
+
+| Floor | Holy | General | Guarantee | minSpacing | Radius |
+|---|---|---|---|---|---|
+| 0 | 1 | 0 | -- | 60 | 100 |
+| 1 | 2-3 | 0 | -- | 60 (from 70) | 150 |
+| 2 | 3-4 | 1-2 | outpost | 70 | 250 |
+| 3 | 5-6 | 3-5 | village | 90 (from 110) | 400 |
+| 4 | 0 | 9-13 | vault | 90 | 600 |
+
+Floor 0's pool is `ChurchSeal` alone; floor 1 adds `SealedCrypt` and
+`BlessedSpring` but NOT `WardChapel`, which anchors `AlongRoad` and would degrade
+to a free pick on a floor with no roads -- the chapel a sealing was administered
+from, stranded where nobody could reach it. Floors 2 and 3 take all four. Floor 4
+takes none: the dead floor's Church presence is the vault.
+
+**TWO STRUCTURAL TRAPS, both found by reading `AncientSiteBuilder.Build` rather
+than by running it.**
+
+*The early returns skipped the guarantees.* `Build` returned immediately on
+`want == 0` and on an empty plan pool, and BOTH tests sat ahead of
+`PlaceOutpost`, `PlaceVillage` and `PlaceDeadCore`. Harmless while every floor
+rolled ruins -- and fatal the moment floor 0's `ChurchSeal` moved into
+`holyPool`, because its general pool was then empty and its general count zero,
+so the floor returned before the holy pass AND before its guarantees and shipped
+nothing at all. A guarantee an unrelated roster can skip is not a guarantee. The
+two returns are now one test on whether the floor has anything to place by ANY
+route, and it names all three sources when it fires.
+
+*Holy sites must not spend the general budget.* The fill loop read
+`result.sites.Count < want`, and the guarantees add to `sites` before it runs --
+so floor index 4 reported thirteen sites INCLUDING its vault, meaning the vault
+had displaced a ruin on the one floor authored to be full. `AncientSiteResult`
+now carries `extraPlaced`, incremented by the holy pass and by `PlaceDeadCore`,
+and the condition is `sites.Count - extraPlaced < want`. The outpost and the
+village still count toward `want` DELIBERATELY: the gatehouse floor is authored
+as "the hold plus at most one ruin", and that reading depends on it.
+
+**The fill body was extracted, not duplicated.** `Fill` is the placement loop,
+called once per pool, with a `countsAsExtra` flag deciding only how progress is
+measured -- the general pass against `sites.Count - extraPlaced`, the holy pass
+against its own count, since a shared count would let the outpost finish the seal
+quota. The holy pass gets `HolyAttemptsPerSite` 24 against the general pass's 12:
+the gatehouse floor wants six anchors in an annulus of 75 to 162 at a spacing of
+70, and a holy attempt is cheap because every seal is an authored plan and a
+rejected attempt never runs `Compose`. A shortfall against `minHolySites` logs a
+warning and prints on the site report, because a floor quietly shipping two seals
+of five is otherwise only findable by walking it.
+
+**The quotas were simulated before they were authored.** A headless model of the
+band arithmetic, `TryPickAnchor`'s sample budgets, `TooClose` and both fill loops
+meets every floor's holy minimum on 2000 seeds out of 2000. It also meets them at
+the OLD spacings and at a 12x holy budget, so neither tunable is load-bearing
+under that model -- they are kept as margin against the two things the model
+cannot see, both of which push the same way: it samples anchors uniformly whereas
+`TryPickAnchor` tries the ROAD source first for `AlongRoad` archetypes and so
+clusters candidates onto the carriageway, and it omits the rotation-dependent
+walkability rejection, which burns real attempts.
+
+**The guarantees now go down largest first** -- vault (75x75, 5625 cells of
+footprint), village (61x61, 3721), outpost (39x23, 897) -- so the hardest thing
+to fit picks its ground before the floor is chewed up by anchors and spacing. No
+floor on the shipped profile carries two guarantees, so this is rng-neutral
+today; it becomes load-bearing the moment one wants a hold and a vault, which is
+precisely when nobody would think to check.
+
+**`BuildPlanPool` split into a roster step and `BuildPlanPoolFrom`**, shared by
+both pools so the no-repeat rule, the authored-plan variant numbering and the
+Fisher-Yates shuffle exist once. The holy pool has no `useAllArchetypes`
+equivalent on purpose, and strips `@general: no` plans as the general pool does.
+An archetype in `holyPool` that `TerrainFeatureGenerator.IsHolyArchetype` does
+not recognise is WARNED and still placed -- silently dropping an authored entry
+is the ambiguity this project refuses elsewhere.
+
+**Adding the holy roll changed the rng draw order**, so every floor lays out
+differently from this commit onward. Existing saves keep their floors; new games
+do not reproduce old seeds.
 
 **Two authored plans on disk are deliberately unregistered** and should stay
 that way: `DwarvenVillage_TheHearthOfTheDeep` (the original village, too small)

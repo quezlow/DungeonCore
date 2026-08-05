@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AncientSiteProfile
   floors:
   - floorIndex: 0
-    minSites: 1
-    maxSites: 1
+    minSites: 0
+    maxSites: 0
     bandInner: 0.35
     bandOuter: 0.55
     minSpacing: 60
@@ -23,7 +23,10 @@ MonoBehaviour:
     maxSpan: 23
     rimMargin: 12
     useAllArchetypes: 0
-    pool: 09000000
+    pool: 
+    minHolySites: 1
+    maxHolySites: 1
+    holyPool: 09000000
     reserveOutpost: 0
     outpostArchetype: 5
     outpostAnchor: 2
@@ -32,16 +35,19 @@ MonoBehaviour:
     reserveDeadCore: 0
     deadCorePlanName: 
   - floorIndex: 1
-    minSites: 1
-    maxSites: 2
+    minSites: 0
+    maxSites: 0
     bandInner: 0.2
     bandOuter: 0.65
-    minSpacing: 70
+    minSpacing: 60
     minSpan: 21
     maxSpan: 23
     rimMargin: 12
     useAllArchetypes: 0
-    pool: 090000000a0000000c000000
+    pool: 
+    minHolySites: 2
+    maxHolySites: 3
+    holyPool: 090000000a0000000c000000
     reserveOutpost: 0
     outpostArchetype: 5
     outpostAnchor: 2
@@ -60,6 +66,9 @@ MonoBehaviour:
     rimMargin: 12
     useAllArchetypes: 0
     pool: 0100000005000000060000000400000007000000
+    minHolySites: 3
+    maxHolySites: 4
+    holyPool: 090000000a0000000b0000000c000000
     reserveOutpost: 1
     outpostArchetype: 5
     outpostAnchor: 2
@@ -72,12 +81,15 @@ MonoBehaviour:
     maxSites: 5
     bandInner: 0.15
     bandOuter: 0.65
-    minSpacing: 110
+    minSpacing: 90
     minSpan: 20
     maxSpan: 34
     rimMargin: 12
     useAllArchetypes: 0
     pool: 01000000060000000400000007000000
+    minHolySites: 5
+    maxHolySites: 6
+    holyPool: 090000000a0000000b0000000c000000
     reserveOutpost: 0
     outpostArchetype: 5
     outpostAnchor: 2
@@ -96,6 +108,9 @@ MonoBehaviour:
     rimMargin: 12
     useAllArchetypes: 1
     pool: 
+    minHolySites: 0
+    maxHolySites: 0
+    holyPool: 
     reserveOutpost: 0
     outpostArchetype: 5
     outpostAnchor: 2

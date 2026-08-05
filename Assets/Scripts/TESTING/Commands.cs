@@ -809,6 +809,19 @@ public class Commands : MonoBehaviour
                   .Append(", roadCells ").Append(diag.inBandRoadCells)
                   .Append(", roadEnds ").Append(diag.inBandRoadEnds).Append('\n');
 
+                // The holy pass on its own line, so a floor that filled its ruins
+                // and starved its seals cannot read as a floor that went fine.
+                // Silent-by-wording on a floor that asked for none.
+                sb.Append("    ").Append(diag.HolySummary()).Append('\n');
+                if (diag.holyWanted > 0 && diag.holyPlaced < diag.holyWanted)
+                    sb.Append("    !! HOLY SHORTFALL -- ")
+                      .Append(diag.holyWanted - diag.holyPlaced)
+                      .Append(" seal(s) short of the roll. Check minSpacing ")
+                      .Append("against the placement band.\n");
+                if (diag.extraPlaced > 0)
+                    sb.Append("    ").Append(diag.extraPlaced)
+                      .Append(" site(s) outside the general budget (seals, vault)\n");
+
                 // A pool of zero is the one failure that looks identical to "this
                 // floor was not meant to have sites", so it is called out rather
                 // than left as a number among numbers.

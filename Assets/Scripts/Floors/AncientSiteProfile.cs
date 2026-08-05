@@ -154,6 +154,31 @@ public class SiteFloorEntry
              "but never the same plan twice.")]
     public List<SiteArchetype> pool = new List<SiteArchetype>();
 
+    // -- The holy sub-quota (canon 18/20) ---------------------------------
+    //
+    // A SECOND pool, drawn by its own pass BEFORE the general fill and, unlike
+    // the outpost and the village, OUTSIDE the general budget. The seals are not
+    // Buried Age ruins competing for the same slots -- canon 21 draws exactly
+    // that line -- so a floor carries so many ruins AND so many seals, and one
+    // cannot starve the other. Floors 0 and 1 are seals only, which is why their
+    // minSites and maxSites are now zero, and why Build's early returns had to
+    // stop firing on an empty general pool.
+
+    [Header("Holy sub-quota (canon 18/20)")]
+    [Tooltip("Inclusive range of Church seals rolled for this floor, ON TOP of " +
+             "minSites/maxSites rather than inside them. Zero on a floor with no " +
+             "seals, and the pass is then skipped entirely.")]
+    [Min(0)] public int minHolySites = 0;
+    [Min(0)] public int maxHolySites = 0;
+
+    [Tooltip("Church archetypes eligible on this floor. Separate from `pool` and " +
+             "drawn by its own pass, so seals and ruins cannot displace one " +
+             "another. Keep WardChapel OUT of a roadless floor's list: it anchors " +
+             "AlongRoad and degrades to a free pick where there is no road, which " +
+             "strands the chapel a sealing was administered from somewhere nobody " +
+             "can reach.")]
+    public List<SiteArchetype> holyPool = new List<SiteArchetype>();
+
     [Tooltip("Place the dwarven outpost on this floor. This GUARANTEES it: the " +
              "outpost is placed first, before the random roster, and a floor that " +
              "cannot fit it logs an error rather than quietly shipping without " +

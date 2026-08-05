@@ -57,6 +57,32 @@ public class AncientSiteResult
     public int rejectedNullShape;
     public int rejectedTooSmall;
     public int rejectedUnwalkable;
+
+    /// <summary>Sites in `sites` that do NOT count against `wanted`: the holy
+    /// sub-quota and the dead core vault.
+    ///
+    /// The fill loop's condition is `sites.Count - extraPlaced` against
+    /// `wanted`, and this field is the whole reason it is not simply
+    /// `sites.Count`. The guarantees add to `sites` BEFORE the loop reads its
+    /// target, so floor index 4 reported thirteen sites INCLUDING its vault --
+    /// the vault had silently displaced a ruin on the one floor authored to be
+    /// full. The outpost and the village still count toward `wanted`
+    /// deliberately: the gatehouse floor is authored as "the hold plus at most
+    /// one ruin", and that reading depends on it.</summary>
+    public int extraPlaced;
+
+    // The holy pass keeps its own tallies. Folding them into the general ones
+    // would make "this floor placed four seals of six" unanswerable: a floor can
+    // fill its ruins and starve its seals, and that is exactly the failure worth
+    // being able to see.
+    public int holyWanted;
+    public int holyPlanPoolSize;
+    public int holyPlaced;
+    public int holyAttempts;
+    public int holyRejectedTooClose;
+    public int holyRejectedNullShape;
+    public int holyRejectedTooSmall;
+    public int holyRejectedUnwalkable;
     /// <summary>Whether this floor's guaranteed outpost actually landed. False on
     /// a floor that never asked for one; false AND loud on a floor that did.</summary>
     public bool outpostPlaced;
@@ -97,13 +123,26 @@ public class AncientSiteResult
     {
         if (!string.IsNullOrEmpty(abortReason))
             return "aborted before placing: " + abortReason;
-        return $"placed {sites.Count}/{wanted} from a pool of {planPoolSize} plans " +
-               $"in {attempts} attempts; rejected: no-anchor {rejectedNoAnchor}, " +
-               $"too-close {rejectedTooClose}, null-shape {rejectedNullShape}, " +
-               $"too-small {rejectedTooSmall}, unwalkable {rejectedUnwalkable}. " +
+        return $"placed {sites.Count - extraPlaced}/{wanted} general (plus " +
+               $"{extraPlaced} outside the budget, {sites.Count} in all) from a " +
+               $"pool of {planPoolSize} plans in {attempts} attempts; rejected: " +
+               $"no-anchor {rejectedNoAnchor}, too-close {rejectedTooClose}, " +
+               $"null-shape {rejectedNullShape}, too-small {rejectedTooSmall}, " +
+               $"unwalkable {rejectedUnwalkable}. " +
                $"In band: {inBandJunctions} junctions, {inBandRoadCells} road samples, " +
                $"{inBandRoadEnds} road ends";
     }
+
+    /// <summary>The holy pass, printed apart from the general one. A floor that
+    /// rolled no seals says so rather than reporting zeroes that read as
+    /// failures -- the same distinction SitePlacementSkip exists for.</summary>
+    public string HolySummary() =>
+        holyWanted == 0
+            ? "holy: none asked for"
+            : $"holy: placed {holyPlaced}/{holyWanted} from a pool of " +
+              $"{holyPlanPoolSize} plans in {holyAttempts} attempts; rejected: " +
+              $"too-close {holyRejectedTooClose}, null-shape {holyRejectedNullShape}, " +
+              $"too-small {holyRejectedTooSmall}, unwalkable {holyRejectedUnwalkable}";
 }
 
 /// <summary>
@@ -173,54 +212,127 @@ public static class AncientSiteBuilder
 
         int want = Mathf.Max(0, RandomRange(rng, entry.minSites, entry.maxSites));
         result.wanted = want;
-        if (want == 0)
-        {
-            result.abortReason = $"rolled 0 sites from minSites {entry.minSites} / maxSites {entry.maxSites}";
-            return result;
-        }
+
+        int holyWant = Mathf.Max(0, RandomRange(rng, entry.minHolySites, entry.maxHolySites));
+        result.holyWanted = holyWant;
 
         var plans = BuildPlanPool(rng, entry, authoredPlans);
         result.planPoolSize = plans.Count;
-        if (plans.Count == 0)
+
+        var holyPlans = BuildHolyPlanPool(rng, entry, authoredPlans);
+        result.holyPlanPoolSize = holyPlans.Count;
+
+        // THE ABORT IS NOW ABOUT THE WHOLE FLOOR, and it had to become so.
+        //
+        // These were two separate early returns -- one on `want == 0`, one on an
+        // empty plan pool -- and BOTH sat ahead of PlaceOutpost, PlaceVillage and
+        // PlaceDeadCore. Harmless while every floor rolled ruins. Fatal the
+        // moment floor index 0's ChurchSeal moved into holyPool: its general pool
+        // was then empty AND its general count zero, so the floor returned before
+        // the holy pass and before its guarantees, and shipped nothing at all.
+        //
+        // A guarantee an unrelated roster can skip is not a guarantee. The test
+        // is now whether there is anything to place by ANY route, and it names
+        // all three when it fires.
+        bool anyGeneral = want > 0 && plans.Count > 0;
+        bool anyHoly = holyWant > 0 && holyPlans.Count > 0;
+        bool anyGuarantee = entry.reserveOutpost || entry.reserveVillage || entry.reserveDeadCore;
+        if (!anyGeneral && !anyHoly && !anyGuarantee)
         {
-            result.abortReason = "plan pool is EMPTY -- the floor entry's roster resolved to no " +
-                                 "archetypes at all. Check useAllArchetypes / the pool list.";
+            result.abortReason =
+                $"nothing to place: general rolled {want} from minSites {entry.minSites} / " +
+                $"maxSites {entry.maxSites} against a pool of {plans.Count}; holy rolled " +
+                $"{holyWant} from minHolySites {entry.minHolySites} / maxHolySites " +
+                $"{entry.maxHolySites} against a pool of {holyPlans.Count}; and the floor " +
+                "reserves no outpost, village or vault. Check useAllArchetypes, pool " +
+                "and holyPool.";
             return result;
         }
 
         var anchorsUsed = new List<Vector3Int>();
         int minSpacingSq = Mathf.Max(1, entry.minSpacing) * Mathf.Max(1, entry.minSpacing);
 
-        // The outpost goes down FIRST and on purpose. The old rule latched
-        // reservedForOutpost onto whichever Sealed Gate the shuffled pool happened
-        // to serve, which failed two different ways on the gatehouse floor: the roster
-        // holds five archetypes and the floor rolls three to five sites, so a run
-        // could finish with no Sealed Gate and therefore no dwarves at all; and the
-        // Sealed Gate's own RoadEnd preference resolves, on a rim-to-rim trunk with
-        // no broken ends, to the two rim endpoints -- both outside the placement
-        // band -- so it degraded to a free pick and put the outpost nowhere near the
-        // road it is supposed to hold.
-        if (entry.reserveOutpost)
-            PlaceOutpost(rng, entry, centre, inner, outer, usable,
-                         junctions, roadCells, roadEnds,
-                         plans, anchorsUsed, minSpacingSq, result);
+        // THE GUARANTEES GO DOWN LARGEST FIRST, and the ordering is measured
+        // rather than assumed. From the authored plans on disk: the vault is
+        // 75x75 at 5625 cells of footprint, the largest village 61x61 at 3721,
+        // the outpost 39x23 at 897. The biggest set-piece is the one least
+        // likely to find room once the floor has been chewed up by anchors and
+        // spacing, so it picks first and the rest fit around it.
+        //
+        // No floor on the shipped profile carries two guarantees -- index 2 the
+        // outpost, 3 the village, 4 the vault -- so today this is rng-NEUTRAL:
+        // only the source order of the three tests changes and no floor executes
+        // two of them. It becomes load-bearing the moment a floor wants a hold
+        // AND a vault, which is precisely when nobody would think to check.
 
-        // The village rides the same guarantee, selected BY NAME from the
-        // authored set rather than through the pool -- its archetype sits in no
-        // roster, so the fill loop can never serve it and there is no pool
-        // bookkeeping to do on success.
+        // The vault. At 75 cells across it is the least likely thing in the game
+        // to find room later, so nothing goes before it.
+        if (entry.reserveDeadCore)
+            PlaceDeadCore(rng, entry, centre, inner, outer, usable,
+                          junctions, roadCells, roadEnds,
+                          authoredPlans, anchorsUsed, minSpacingSq, result);
+
+        // The village, selected BY NAME from the authored set rather than
+        // through the pool -- its archetype sits in no roster, so the fill loop
+        // can never serve it and there is no pool bookkeeping to do on success.
         if (entry.reserveVillage)
             PlaceVillage(rng, entry, centre, inner, outer, usable,
                          junctions, roadCells, roadEnds,
                          authoredPlans, anchorsUsed, minSpacingSq, result);
 
-        // The vault takes its ground before the fill loop does, like the
-        // other two guarantees. At 75 cells across it is the least likely
-        // thing on the floor to find room later.
-        if (entry.reserveDeadCore)
-            PlaceDeadCore(rng, entry, centre, inner, outer, usable,
-                          junctions, roadCells, roadEnds,
-                          authoredPlans, anchorsUsed, minSpacingSq, result);
+        // The outpost, which must precede the fill loop for its own reason as
+        // well as for size. The old rule latched reservedForOutpost onto
+        // whichever Sealed Gate the shuffled pool happened to serve, and that
+        // failed two ways on the gatehouse floor: the roster holds five
+        // archetypes and the floor rolls three to five sites, so a run could
+        // finish with no Sealed Gate and therefore no dwarves at all; and the
+        // Sealed Gate's own RoadEnd preference resolves, on a rim-to-rim trunk
+        // with no broken ends, to the two rim endpoints -- both outside the
+        // placement band -- so it degraded to a free pick and put the outpost
+        // nowhere near the road it is supposed to hold.
+        if (entry.reserveOutpost)
+            PlaceOutpost(rng, entry, centre, inner, outer, usable,
+                         junctions, roadCells, roadEnds,
+                         plans, anchorsUsed, minSpacingSq, result);
+
+        // How much of each anchor source actually falls inside the placement band.
+        // A source can be large and still be useless: road ENDS sit at the rim by
+        // definition and the band stops at 65 per cent of the radius, so most of
+        // them are out of bounds before spacing is ever considered.
+        //
+        // Hoisted above the holy pass so a floor whose seals starved still
+        // reports its anchor sources, which is the first question about one.
+        result.inBandJunctions = CountInBand(junctions, centre, inner, outer);
+        result.inBandRoadCells = CountInBand(roadCells, centre, inner, outer);
+        result.inBandRoadEnds = CountInBand(roadEnds, centre, inner, outer);
+
+        // THE HOLY PASS. Before the general fill, on its own pool, its own
+        // attempt budget and its own counters.
+        if (anyHoly)
+        {
+            var holy = Fill(rng, entry, centre, inner, outer, usable,
+                            junctions, roadCells, roadEnds,
+                            holyPlans, holyWant, HolyAttemptsPerSite,
+                            anchorsUsed, minSpacingSq, result, true);
+            result.holyPlaced = holy.placed;
+            result.holyAttempts = holy.attempts;
+            result.holyRejectedTooClose = holy.rejectedTooClose;
+            result.holyRejectedNullShape = holy.rejectedNullShape;
+            result.holyRejectedTooSmall = holy.rejectedTooSmall;
+            result.holyRejectedUnwalkable = holy.rejectedUnwalkable;
+
+            // Loud on a shortfall against the MINIMUM rather than against the
+            // roll. The seals are this arc's content, and a floor quietly
+            // shipping two of five is a failure that would otherwise only be
+            // found by walking the map.
+            if (holy.placed < entry.minHolySites)
+                Debug.LogWarning("[AncientSiteBuilder] Floor " + entry.floorIndex +
+                    " placed " + holy.placed + " holy site(s) against a minimum of " +
+                    entry.minHolySites + " (rolled " + holyWant + ") from a pool of " +
+                    holyPlans.Count + ". " + result.HolySummary() +
+                    ". The likeliest cause is minSpacing against the placement " +
+                    "band -- check the site report.");
+        }
 
         // Guarantee-only plans (authored "@general: no") never reach the fill
         // loop. A guarantee that took one already removed it; this strips
@@ -228,22 +340,96 @@ public static class AncientSiteBuilder
         // index 4's all-archetypes roster being the case that motivated it.
         plans.RemoveAll(p => p.authored != null && !p.authored.generalPool);
 
+        // THE GENERAL FILL, whose target counts the guarantees but not the
+        // extras.
+        var general = Fill(rng, entry, centre, inner, outer, usable,
+                           junctions, roadCells, roadEnds,
+                           plans, want, GeneralAttemptsPerSite,
+                           anchorsUsed, minSpacingSq, result, false);
+        result.attempts = general.attempts;
+        result.rejectedTooClose = general.rejectedTooClose;
+        result.rejectedNullShape = general.rejectedNullShape;
+        result.rejectedTooSmall = general.rejectedTooSmall;
+        result.rejectedUnwalkable = general.rejectedUnwalkable;
+
+        return result;
+    }
+
+    /// <summary>Attempts per wanted site in the general fill. Unchanged.</summary>
+    private const int GeneralAttemptsPerSite = 12;
+
+    /// <summary>Attempts per wanted site in the holy pass, and DOUBLE the general
+    /// figure on purpose. The gatehouse floor asks for an outpost plus three or
+    /// four seals plus a ruin inside an annulus of 75 to 162 cells at a minimum
+    /// spacing of 70 -- six anchors in a band that holds perhaps ten, and the
+    /// tail of that is genuinely hard to sample. A holy attempt is also cheap
+    /// next to a general one: every seal is an authored plan at a fixed size, so
+    /// a rejected attempt never runs Compose.</summary>
+    private const int HolyAttemptsPerSite = 24;
+
+    /// <summary>One pass of the placement loop's tallies. Returned rather than
+    /// written straight onto the result, because the two passes keep separate
+    /// counters and the loop body should not have to know which one it is
+    /// running as.</summary>
+    private struct FillTally
+    {
+        public int attempts;
+        public int placed;
+        public int rejectedTooClose;
+        public int rejectedNullShape;
+        public int rejectedTooSmall;
+        public int rejectedUnwalkable;
+    }
+
+    /// <summary>
+    /// The placement loop, run once per pool. Extracted from Build verbatim when
+    /// the holy sub-quota landed: duplicating a hundred lines of anchor,
+    /// transform, clamp and walkability handling would have guaranteed the two
+    /// copies drifted apart.
+    ///
+    /// THE TWO PASSES COUNT PROGRESS DIFFERENTLY, which is all `countsAsExtra`
+    /// decides:
+    ///
+    ///   general (false) -- `result.sites.Count - result.extraPlaced` against
+    ///       `want`. The guarantees added to `sites` BEFORE this runs, and the
+    ///       outpost and the village are MEANT to count against the target: the
+    ///       gatehouse floor is authored as "the hold plus at most one ruin".
+    ///       Subtracting `extraPlaced` removes only the seals and the vault,
+    ///       which are not ruins and must not displace one. Floor index 4
+    ///       previously reported thirteen sites including its vault.
+    ///
+    ///   holy (true) -- its own placed count, because `sites` already holds
+    ///       whatever the guarantees put there and a shared count would have the
+    ///       outpost finishing the seal quota.
+    /// </summary>
+    private static FillTally Fill(
+        System.Random rng, SiteFloorEntry entry, Vector3Int centre,
+        int inner, int outer, int usable,
+        IReadOnlyList<Vector3Int> junctions,
+        IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadEnds,
+        List<PlanRef> plans, int want, int attemptsPerSite,
+        List<Vector3Int> anchorsUsed, int minSpacingSq,
+        AncientSiteResult result, bool countsAsExtra)
+    {
+        var tally = new FillTally();
+
+        // Guarded rather than assumed: the body divides by plans.Count, and
+        // floors 0 and 1 now legitimately reach here with a general pool of
+        // zero.
+        if (plans == null || plans.Count == 0 || want <= 0) return tally;
+
         int planCursor = 0;
-        int attempts = 0;
-        int maxAttempts = want * 12;
+        int maxAttempts = want * Mathf.Max(1, attemptsPerSite);
 
-        // How much of each anchor source actually falls inside the placement band.
-        // A source can be large and still be useless: road ENDS sit at the rim by
-        // definition and the band stops at 65 per cent of the radius, so most of
-        // them are out of bounds before spacing is ever considered.
-        result.inBandJunctions = CountInBand(junctions, centre, inner, outer);
-        result.inBandRoadCells = CountInBand(roadCells, centre, inner, outer);
-        result.inBandRoadEnds = CountInBand(roadEnds, centre, inner, outer);
-
-        while (result.sites.Count < want && attempts < maxAttempts)
+        while (tally.attempts < maxAttempts)
         {
-            attempts++;
-            result.attempts = attempts;
+            int progress = countsAsExtra
+                ? tally.placed
+                : result.sites.Count - result.extraPlaced;
+            if (progress >= want) break;
+
+            tally.attempts++;
 
             // The plan pool is walked in shuffled order and only wraps once it is
             // exhausted, so a floor exhausts every distinct plan before repeating.
@@ -262,7 +448,7 @@ public static class AncientSiteBuilder
                 // The sampler already exhausted its budget looking for somewhere
                 // both in band and clear of the sites already placed, so this is a
                 // genuinely full floor rather than one unlucky draw.
-                result.rejectedTooClose++;
+                tally.rejectedTooClose++;
                 continue;
             }
 
@@ -281,7 +467,7 @@ public static class AncientSiteBuilder
             }
             if (site == null)
             {
-                result.rejectedNullShape++;
+                tally.rejectedNullShape++;
                 continue;
             }
 
@@ -320,7 +506,7 @@ public static class AncientSiteBuilder
             // A site reduced to a handful of cells by the disc clamp is not a site.
             if (placed.cells.Count < 12)
             {
-                result.rejectedTooSmall++;
+                tally.rejectedTooSmall++;
                 continue;
             }
 
@@ -334,17 +520,23 @@ public static class AncientSiteBuilder
             // so the loop re-rolls the rotation and tries the same plan again.
             if (CountWalkable(placed.cells) < MinWalkableCells)
             {
-                result.rejectedUnwalkable++;
+                tally.rejectedUnwalkable++;
                 continue;
             }
 
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(anchor);
+            tally.placed++;
+
+            // The holy pass and the vault sit OUTSIDE the general budget, which
+            // is what this counter buys: without it a seal placed here would
+            // move the general loop's own target and cost the floor a ruin.
+            if (countsAsExtra) result.extraPlaced++;
             // Cursor already advanced at the top of the attempt.
         }
 
-        return result;
+        return tally;
     }
 
     /// <summary>
@@ -626,6 +818,14 @@ public static class AncientSiteBuilder
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(anchor);
+
+            // The vault does NOT count against the general budget, unlike the
+            // outpost and the village. Floor index 4 reported thirteen sites
+            // INCLUDING the vault, which meant the vault had displaced a ruin on
+            // the densest floor in the game -- the one floor authored to be full.
+            // The other two keep counting deliberately: their floors are authored
+            // as "the hold plus a couple".
+            result.extraPlaced++;
             result.deadCorePlaced = true;
             result.deadCorePlanPicked = plan.name;
             return;
@@ -698,6 +898,65 @@ public static class AncientSiteBuilder
                 if (!roster.Contains(a)) roster.Add(a);
         }
 
+        return BuildPlanPoolFrom(rng, roster, authoredPlans);
+    }
+
+    /// <summary>
+    /// The floor's HOLY pool: the Church seals, drawn by their own pass.
+    ///
+    /// Separate from the general roster and never merged into it, because the
+    /// two are placed against separate quotas -- see
+    /// AncientSiteResult.extraPlaced. There is deliberately no
+    /// useAllArchetypes equivalent: sweeping every Church archetype onto a floor
+    /// is exactly the mistake WardChapel makes visible, since it anchors
+    /// AlongRoad and degrades to a free pick on a floor with no roads.
+    /// </summary>
+    private static List<PlanRef> BuildHolyPlanPool(
+        System.Random rng, SiteFloorEntry entry,
+        IReadOnlyList<AuthoredSitePlan> authoredPlans)
+    {
+        var roster = new List<SiteArchetype>();
+        if (entry.holyPool != null)
+        {
+            foreach (var a in entry.holyPool)
+            {
+                // Warned, not skipped. The list is named for what belongs in it
+                // and an ordinary ruin listed here is almost certainly a slip --
+                // but silently dropping an authored entry is the ambiguity this
+                // project refuses everywhere else, so it is placed AND said.
+                //
+                // TerrainFeatureGenerator.IsHolyArchetype is called rather than a
+                // second predicate written here: canon 20 makes that method the
+                // ONE place the terrain override, the holy registry and the
+                // desecration layer agree on what a seal is, and a fourth opinion
+                // is how they would come to disagree. It is a pure static and
+                // touches no scene, so this class stays scene-free.
+                if (!TerrainFeatureGenerator.IsHolyArchetype(a))
+                    Debug.LogWarning("[AncientSiteBuilder] Floor " + entry.floorIndex +
+                        " lists " + a + " in holyPool, which is not a Church " +
+                        "archetype. It will be placed by the holy pass and counted " +
+                        "against the holy quota, which is probably not what was " +
+                        "meant -- move it to `pool` instead.");
+                if (!roster.Contains(a)) roster.Add(a);
+            }
+        }
+
+        var pool = BuildPlanPoolFrom(rng, roster, authoredPlans);
+
+        // A "@general: no" plan belongs to a guarantee pass and to nothing else.
+        // No Church plan carries the flag today; stripping it here means one
+        // authored later for a guarantee cannot quietly become a rollable seal.
+        pool.RemoveAll(p => p.authored != null && !p.authored.generalPool);
+        return pool;
+    }
+
+    /// <summary>Builds and shuffles a plan pool from an explicit roster. Shared
+    /// by the general and the holy pools, so the no-repeat rule, the authored-plan
+    /// variant numbering and the Fisher-Yates shuffle exist exactly once.</summary>
+    private static List<PlanRef> BuildPlanPoolFrom(
+        System.Random rng, List<SiteArchetype> roster,
+        IReadOnlyList<AuthoredSitePlan> authoredPlans)
+    {
         var pool = new List<PlanRef>();
         foreach (var a in roster)
         {
