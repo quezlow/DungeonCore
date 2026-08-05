@@ -22,6 +22,38 @@ public enum SiteArchetype
     /// pool, and is placed solely by name through SiteFloorEntry.reserveVillage
     /// -- which is why useAllArchetypes deliberately does not sweep it in.</summary>
     DwarvenVillage = 8,
+
+    // ---- The Church seals (canon 18/20/21) --------------------------------
+    // NOT more Buried Age sites. Canon 21 draws the line: the Buried Age ruins
+    // are the deep-faith's own -- welcoming, no desecration penalty -- while
+    // these are Church seals laid OVER what that faith left, and hostile. Two
+    // flavours of sacred underground on one axis of history.
+    //
+    // AUTHORED-ONLY, like DwarvenVillage: VariantCountFor returns 0, so a pool
+    // holds exactly the hand-drawn plans. A seal is a made object, and
+    // procedural jitter reads as a collapsed ruin -- which is the other
+    // family's whole job.
+    //
+    // Opt-in per floor. BuildPlanPool's useAllArchetypes cap stops at
+    // TollHouse, so floor index 4's all-archetypes roster cannot sweep these in;
+    // they appear only where a floor entry names them in its pool.
+
+    /// <summary>A ring of dressed stone around a capped plinth. No door and no
+    /// window: nobody was ever meant to come in.</summary>
+    ChurchSeal = 9,
+
+    /// <summary>Slab graves, and one at the head still capped. What the Church
+    /// buried here it did not intend to be dug up.</summary>
+    SealedCrypt = 10,
+
+    /// <summary>The chapel the sealing was administered from. Not a seal
+    /// itself, which is why it anchors to a road -- nobody administers anything
+    /// somewhere nobody can reach.</summary>
+    WardChapel = 11,
+
+    /// <summary>A spring taken over and capped. The oldest kind of holy site
+    /// there is, and the one the Church had most reason to shut.</summary>
+    BlessedSpring = 12,
 }
 
 /// <summary>
@@ -359,6 +391,13 @@ public class AncientSiteProfile : ScriptableObject
     public static int VariantCountFor(SiteArchetype a) => a switch
     {
         SiteArchetype.DwarvenVillage => 0,
+        // Authored-only for the same reason the village is: a seal
+        // is a made object, and procedural jitter reads as a
+        // collapsed ruin, which is the Buried Age's job.
+        SiteArchetype.ChurchSeal => 0,
+        SiteArchetype.SealedCrypt => 0,
+        SiteArchetype.WardChapel => 0,
+        SiteArchetype.BlessedSpring => 0,
         _ => 3,
     };
 

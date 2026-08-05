@@ -153,6 +153,17 @@ public class WispScript : ScriptableObject
             // The warning ladder (canon 19). Rung 2 speaks while the push is
             // still only LEANING on dwarven ground -- before the first cell is
             // taken -- which is the one moment the choice is still free.
+            // Holy Ground (canon 18/20). The murmur lands on the first
+            // CLAIM of hallowed ground -- free, and before the stone.
+            new Line { id = "holy_first_touch", once = true,
+                text = "Careful. This stone is dressed, and it is cold in a way stone is not. A seal - the Church laid it over something, and holding it costs you nothing. Breaking it is the other thing." },
+            new Line { id = "holy_break", once = true,
+                text = "It is open. Whatever they bound is loose, and somewhere above, someone keeping a list has just crossed a line off it." },
+            // The echo. CoreMemory speaks this only for a core that lit a
+            // candle in the life it lived; it is silent for everyone else.
+            new Line { id = "echo_candle", once = true,
+                text = "You lit one of these, once. Small hands, a shrine, a wick that would not take. You have just put out something much older, and it was easier." },
+
             new Line { id = "road_claim_warn", once = true,
                 text = "Feel that? The stone pushes back. This is cut road, and it is theirs. Take it if you must - but take it knowing they will notice, and that they count." },
             new Line { id = "road_claim_first", once = true,

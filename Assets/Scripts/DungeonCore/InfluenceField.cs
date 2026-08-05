@@ -423,6 +423,15 @@ public class InfluenceField : MonoBehaviour
             // creep still crosses it freely; there is nobody down there to mind.
             if (holdings != null && holdings.IsHoldingsCell(cell)) continue;
 
+            // Church seals, on the same rule and for the same reason.
+            // Taking one is a decision with a consequence attached; creep
+            // would make it neither, claiming the seal FOR the player on a
+            // timer and then charging them for it. `holdings` is the
+            // dwarven registry, so this needs its own probe -- the two are
+            // separate dictionaries precisely so the granite overlay and
+            // the dwarven standing penalty never see a seal.
+            if (holdings != null && holdings.IsHolyCell(cell)) continue;
+
             best = cell;
             bestCost = d;
             found = true;

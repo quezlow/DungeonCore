@@ -1,0 +1,30 @@
+@archetype: WardChapel
+@name: The Lamp Chapel
+@anchor: AlongRoad
+
+// A roadside chapel: not a seal in itself but the place the sealing was
+// administered from. Lamp niches cut three deep into a heavy wall, and the
+// altar in the middle of the floor. Anchored AlongRoad - a chapel nobody
+// could reach was never a chapel.
+
+#####################
+#####################
+#####################
+#####...........#####
+#####...........#####
+#####...........#####
+##.................##
+##.................##
+##.................##
+#####...###...#######
+#####...#X#...#######
+#####...###...#######
+##.................##
+##.................##
+##.................##
+#####...........#####
+#####...........#####
+#####...........#####
+#####################
+#####################
+#####################

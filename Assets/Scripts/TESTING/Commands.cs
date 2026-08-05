@@ -723,6 +723,65 @@ public class Commands : MonoBehaviour
     /// contributors.</summary>
     static float StandingCostOf(int cells) => cells * DwarvenClaimLedger.StandingPerCell;
 
+    /// <summary>Every seal on the loaded floors, what it has cost so far and
+    /// whether its heart is still in place. Reported rather than inferred from
+    /// alignment, which has half a dozen other contributors and cannot answer
+    /// "did that seal actually register" on its own.</summary>
+    [ContextMenu("Log Holy Ground State")]
+    void LogHolyGroundState()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.LogWarning("[Commands] No FloorManager."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append("[Commands] HOLY GROUND -- alignment ")
+          .Append(AlignmentSystem.Instance != null
+              ? AlignmentSystem.Instance.Alignment.ToString("0.0") : "n/a")
+          .Append(", murmured ").Append(HolyGroundLedger.TouchMurmured)
+          .Append(", seals broken ").Append(HolyGroundLedger.BrokenSealCount)
+          .Append('\n');
+
+        for (int i = 0; i < 8; i++)
+        {
+            var floor = fm.GetFloor(i);
+            var features = floor != null ? floor.FeatureGenerator : null;
+            var map = floor != null ? floor.TerrainTypeMap : null;
+            if (features == null || map == null || !map.HasHolySites) continue;
+
+            int holyCells = map.HolySites.Count, mined = 0, claimed = 0;
+            foreach (var kv in map.HolySites)
+            {
+                if (floor.TileInfluence == null) break;
+                if (floor.TileInfluence.IsTileClaimed(kv.Key)) claimed++;
+                if (floor.TileInfluence.IsTileMined(kv.Key)) mined++;
+            }
+            sb.Append("  floor index ").Append(i).Append(": ")
+              .Append(holyCells).Append(" hallowed cells, ")
+              .Append(claimed).Append(" claimed, ").Append(mined).Append(" mined (")
+              .Append((mined * HolyGroundLedger.AlignmentPerCell).ToString("0.0"))
+              .Append(" alignment spent on cells alone)\n");
+
+            // Site ids are assigned sequentially as sites are appended,
+            // so id doubles as the index. There is no list accessor and
+            // adding one for a diagnostic would widen the surface for
+            // nothing -- SiteCount plus GetSiteById is the shipped pair.
+            for (int id = 0; id < features.SiteCount; id++)
+            {
+                var site = features.GetSiteById(id);
+                if (!TerrainFeatureGenerator.IsHolySite(site)) continue;
+                bool heartGone = site.heartCell != null && floor.TileInfluence != null
+                    && floor.TileInfluence.IsTileMined(site.heartCell.ToVector3Int());
+                sb.Append("    site ").Append(site.id).Append(' ')
+                  .Append(site.archetype).Append(" '").Append(site.planName).Append("' ")
+                  .Append(features.IsSiteRevealed(site.id) ? "revealed" : "unfound")
+                  .Append(site.heartCell == null ? ", NO HEART (authoring fault)"
+                                                : heartGone ? ", heart BROKEN" : ", heart intact")
+                  .Append('\n');
+            }
+        }
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Test Caravan Route Report")]
     void TestCaravanRouteReport()
     {

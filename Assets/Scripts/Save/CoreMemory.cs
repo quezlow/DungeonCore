@@ -36,6 +36,7 @@ public static class CoreMemory
     public const string FirstDescent = "first_descent";   // a deeper floor is entered
     public const string FirstTrap    = "first_trap";      // a trap fires on the living
     public const string FirstBuried  = "first_buried";    // old bones come out of stone
+    public const string FirstDesecration = "first_desecration";  // a Church seal is broken
 
     // -- The table -------------------------------------------------
     // One row per echo: the moment, the deed in life it answers, the WispScript
@@ -58,6 +59,12 @@ public static class CoreMemory
         new Row { moment = FirstDescent, flag = TutorialFlags.MillClimb,    lineId = "echo_climb" },
         new Row { moment = FirstTrap,    flag = TutorialFlags.Quench,       lineId = "echo_quench" },
         new Row { moment = FirstBuried,  flag = TutorialFlags.PrayShrine,   lineId = "echo_stone" },
+        // Entry 32 rejected a desecration echo on the grounds that
+        // AlignmentSystem.Desecrate had no caller. It has one now.
+        // LightCandle rather than PrayShrine: praying is already spent on
+        // the buried echo, and the candle is the sharper pairing anyway --
+        // in life you lit one at a shrine, and here you break one.
+        new Row { moment = FirstDesecration, flag = TutorialFlags.LightCandle, lineId = "echo_candle" },
     };
 
     /// <summary>The empty-handed voice. Spoken in order, one per qualifying

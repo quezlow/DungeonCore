@@ -1479,6 +1479,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 variant = plan.variant,
                 planName = plan.planName,
                 anchorCell = SerializableVector3Int.From(plan.anchor),
+                heartCell = plan.hasHeart
+                    ? SerializableVector3Int.From(plan.heartCell) : null,
                 cells = ToSerializable(plan.cells),
                 ruinsCells = ToSerializable(plan.ruinsCells),
                 pavedRoadCells = pavedRoad,
@@ -1530,6 +1532,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         bool any = false;
         var cells = new List<Vector3Int>();
         map.ClearHoldingsCells();
+        map.ClearHolySiteCells();
 
         // Open carriageway is dwarven ground, but only where dwarves are still
         // alive to hold it. Floor 4 carries the DEAD network -- no patrols, no
@@ -1571,6 +1574,26 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 map.RegisterHoldingsCells(s.cells, key);
                 map.RegisterHoldingsCells(s.pavedRoadCells, key);
             }
+
+            // A Church seal's GROUND is hallowed, not merely its wall, so
+            // the carved interior is retyped too -- unlike every Buried Age
+            // site, which retypes masonry alone. The interior then resists
+            // at HolyGround's 10x rather than siteClaimResistance's 3x.
+            //
+            // This inverts the dwarven courtyard finding (canon 19) on
+            // purpose. There the cheapest ground in the hold sat behind the
+            // loudest announcement, and the ladder read told-then-not-felt.
+            // Here the announcement and the cost agree.
+            if (IsHolySite(s))
+            {
+                cells.Clear();
+                foreach (var sv in s.cells) cells.Add(sv.ToVector3Int());
+                map.ApplyFeatureOverride(cells, TerrainType.HolyGround);
+
+                int holyKey = TerrainTypeMap.SiteOwnerKey(s.id);
+                map.RegisterHolySiteCells(s.ruinsCells, holyKey);
+                map.RegisterHolySiteCells(s.cells, holyKey);
+            }
             any = true;
         }
         if (any) PaintSitePaving();
@@ -1597,9 +1620,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// Ruins, which keeps the ossuary guarantee's Ruins-based reasoning
     /// true.</summary>
     public static TerrainType MasonryTypeFor(SiteData site)
-        => site != null && (site.reservedForVillage || site.reservedForOutpost)
+        => IsHolySite(site) ? TerrainType.HolyGround
+         : site != null && (site.reservedForVillage || site.reservedForOutpost)
             ? TerrainType.DwarvenMasonry
             : TerrainType.Ruins;
+
+    /// <summary>True for the four Church archetypes. One place, because the
+    /// terrain override, the holy registry and the desecration layer must never
+    /// disagree about what counts as a seal.</summary>
+    public static bool IsHolySite(SiteData site)
+        => site != null && IsHolyArchetype(site.archetype);
+
+    public static bool IsHolyArchetype(SiteArchetype a)
+        => a == SiteArchetype.ChurchSeal
+        || a == SiteArchetype.SealedCrypt
+        || a == SiteArchetype.WardChapel
+        || a == SiteArchetype.BlessedSpring;
 
     // Cached child renderer for site paving; found once per floor lifetime.
     private CaveWallRenderer wallRendererForPaving;

@@ -26,6 +26,14 @@ public class AncientSitePlan
     /// what makes a site read as built rather than found.</summary>
     public List<Vector3Int> ruinsCells = new List<Vector3Int>();
 
+    /// <summary>The heart cell in WORLD space, once placed. Default
+    /// (0,0,0) means the plan declared none -- every procedural recipe,
+    /// and any authored plan without an 'X'. Callers test
+    /// hasHeart rather than comparing against zero, because the origin
+    /// is a legitimate cell on a floor centred there.</summary>
+    public Vector3Int heartCell;
+    public bool hasHeart;
+
     public bool reservedForOutpost;
 
     /// <summary>The guaranteed village, when SiteFloorEntry.reserveVillage placed
@@ -278,6 +286,22 @@ public static class AncientSiteBuilder
             EmitTransformed(site.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(site.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
 
+            // The heart rides the SAME transform as the masonry it is part
+            // of. Computing it independently would drift the moment a
+            // rotation or the disc clamp treated it differently from the
+            // wall set, and a seal whose heart is not where the altar is
+            // drawn is a bug nobody would see until they mined it.
+            if (site.heart.Count > 0)
+            {
+                var heartOut = new List<Vector3Int>();
+                EmitTransformed(site.heart, anchor, rot, mirror, centre, clampSq, heartOut);
+                if (heartOut.Count > 0)
+                {
+                    placed.heartCell = heartOut[0];
+                    placed.hasHeart = true;
+                }
+            }
+
             // A site reduced to a handful of cells by the disc clamp is not a site.
             if (placed.cells.Count < 12)
             {
@@ -527,6 +551,7 @@ public static class AncientSiteBuilder
         if (authored == null) return null;
         var p = new LocalPlan();
         foreach (var c in authored.wall) p.wall.Add(c);
+        foreach (var c in authored.heart) p.heart.Add(c);
         foreach (var c in authored.floor)
             if (!p.wall.Contains(c)) p.floor.Add(c);
         return p.floor.Count == 0 ? null : p;
@@ -696,6 +721,11 @@ public static class AncientSiteBuilder
     {
         public readonly HashSet<Vector2Int> floor = new HashSet<Vector2Int>();
         public readonly HashSet<Vector2Int> wall = new HashSet<Vector2Int>();
+
+        /// <summary>The heart, for authored plans that declare one.
+        /// Empty for every procedural recipe -- a composed ruin has no
+        /// single cell that means anything.</summary>
+        public readonly HashSet<Vector2Int> heart = new HashSet<Vector2Int>();
 
         public void Floor(int x0, int y0, int w, int h)
         {

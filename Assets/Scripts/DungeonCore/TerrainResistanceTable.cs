@@ -39,7 +39,13 @@ public class TerrainResistanceTable : ScriptableObject
         // (four shipped plans and the ossuary remains depend on that verb) but a
         // breach is a project, not a doorway.
         new Entry { type = TerrainType.Ruins,      resistance = 8.0f,  claimableRingTint = new Color(0.65f, 0.55f, 0.70f, 1f), stoneTint = new Color(0.82f, 0.76f, 0.85f, 1f), displayName = "Ruins" },
-        new Entry { type = TerrainType.HolyGround, resistance = 10.0f, claimableRingTint = new Color(1.00f, 0.90f, 0.70f, 1f), stoneTint = new Color(1.00f, 0.95f, 0.82f, 1f), displayName = "Holy Ground" },
+        // Cold white-blue, moved off the original pale gold. Gold is the
+        // most crowded hue in the game -- the influence ring, the HUD
+        // accent and the amber Earth cores all sit there -- and a seal has
+        // to read as NOT yours at a glance. Blue-white also puts it as far
+        // from the dwarves' warm granite grey as the palette allows, which
+        // matters because the two families can share a floor.
+        new Entry { type = TerrainType.HolyGround, resistance = 10.0f, claimableRingTint = new Color(0.72f, 0.82f, 0.95f, 1f), stoneTint = new Color(0.86f, 0.92f, 1.00f, 1f), displayName = "Holy Ground" },
         new Entry { type = TerrainType.Bedrock,    resistance = 9999f, claimableRingTint = new Color(0.30f, 0.30f, 0.35f, 1f), stoneTint = new Color(0.32f, 0.33f, 0.40f, 1f), displayName = "Bedrock" },
         // 9x: living, maintained dwarven walls outrank dead ruins (8) and stay
         // under consecration (10). The ring tint below is dormant (see the

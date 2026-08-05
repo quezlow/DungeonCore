@@ -1,0 +1,33 @@
+@archetype: SealedCrypt
+@name: The Silent Ward
+@anchor: Free
+
+// An antechamber, then a wall, then the ward itself. Whatever was interred
+// here was not interred with the rest. The only way through is a passage
+// three cells wide - two would seal under the wall drape on a quarter turn,
+// and the ward would be unreachable on half the orientations the generator
+// rolls.
+
+#####################
+#####################
+#####################
+###...............###
+###...............###
+###...............###
+###...............###
+###...............###
+#########...#########
+#########...#########
+#########...#########
+###...............###
+###...............###
+###...............###
+###......###......###
+###......#X#......###
+###......###......###
+###...............###
+###...............###
+###...............###
+#####################
+#####################
+#####################

@@ -1,0 +1,30 @@
+@archetype: ChurchSeal
+@name: The Bound Stone
+@anchor: Free
+@rotate: no
+
+// The plainest seal the Church builds: a ring of dressed stone around a
+// capped plinth, with no door and no window. Nobody was ever meant to come
+// in. The plinth is the seal-stone - break it and whatever the ring was
+// drawn around is no longer bound.
+//
+// @rotate: no because the four buttresses read as cardinal. Rotation is
+// exact, but a seal that is not square to the world stops reading as made.
+
+#####################
+#####################
+#####################
+###...............###
+###...............###
+###...............###
+###...............###
+###.....#####.....###
+###.....##X##.....###
+###.....#####.....###
+###...............###
+###...............###
+###...............###
+###...............###
+#####################
+#####################
+#####################

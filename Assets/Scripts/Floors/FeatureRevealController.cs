@@ -53,6 +53,12 @@ public class FeatureRevealController : MonoBehaviour
              "0 restores reveal on contact.")]
     [SerializeField, Min(0)] private int dwarvenWarnRangeCells = 4;
 
+    [Tooltip("Cells out from the frontier at which a Church seal reveals. "
+           + "Matches the dwarven warn range: the cold blue has to be on "
+           + "screen before the frontier reaches it, or the warning arrives "
+           + "after the decision. 0 reverts to reveal-on-contact.")]
+    [SerializeField, Min(0)] private int holyWarnRangeCells = 4;
+
     /// <summary>The banner that can actually be shown.
     ///
     /// The serialized field above is only usable on floor 0. Every deeper floor
@@ -124,6 +130,7 @@ public class FeatureRevealController : MonoBehaviour
     {
         TryRevealFeatureAtCell(cell, silent: false);
         TryWarnOfDwarvenGroundNear(cell);
+        TryWarnOfHolyGroundNear(cell);
     }
 
     /// <summary>Reveals dwarven holdings from a few cells out instead of on
@@ -161,6 +168,42 @@ public class FeatureRevealController : MonoBehaviour
                 }
 
                 if (features.IsSiteRevealed(owner)) continue;
+                var s = features.GetSiteById(owner);
+                if (s == null || s.cells == null || s.cells.Count == 0) continue;
+                TryRevealFeatureAtCell(s.cells[0].ToVector3Int(), silent: false);
+            }
+    }
+
+    /// <summary>The same early reveal the dwarven holdings get, for Church
+    /// seals. A seal the player only sees once the frontier is standing on it
+    /// is a seal they were never warned about, and the whole point of the cold
+    /// blue is that it lands before the decision does.
+    ///
+    /// A SEPARATE probe rather than a second owner kind in the holdings
+    /// registry: holdings drive the granite overlay and the dwarven standing
+    /// penalty, and a seal belongs in neither. Routed back through
+    /// TryRevealFeatureAtCell so the per-site alert, the display names and the
+    /// wisp lines all keep working. Masonry is not in the feature lookup, so a
+    /// probe landing on a wall resolves the site through the registry and
+    /// reveals it from one of its carved cells instead.</summary>
+    private void TryWarnOfHolyGroundNear(Vector3Int cell)
+    {
+        int r = holyWarnRangeCells;
+        if (r <= 0 || floor == null || features == null) return;
+
+        var map = floor.TerrainTypeMap;
+        if (map == null || !map.HasHolySites) return;
+
+        for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                var probe = new Vector3Int(cell.x + dx, cell.y + dy, cell.z);
+                int owner = map.HolySiteAt(probe);
+                if (owner == TerrainTypeMap.NoHoldingOwner) continue;
+                if (features.IsSiteRevealed(owner)) continue;
+
                 var s = features.GetSiteById(owner);
                 if (s == null || s.cells == null || s.cells.Count == 0) continue;
                 TryRevealFeatureAtCell(s.cells[0].ToVector3Int(), silent: false);

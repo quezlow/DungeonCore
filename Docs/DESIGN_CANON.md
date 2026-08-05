@@ -2842,6 +2842,158 @@ remnant. Holy Ground patches are Church-maintained seals; desecration is
 unsealing. This explains Pilgrims worshipping at cores, the Cultists, the
 Holy Order's hatred of Dark cores, buried shrines, and the game's title.
 
+### Holy Ground (SHIPPED -- placement)
+
+`TerrainType.HolyGround` carried a resistance row (10, the highest in the
+table), tints, a display name and a `PatternDiscovery` mapping to
+`hallowed_stone` from the day the terrain system shipped, and was never once
+placed. Three shipped assets sat dead behind that: `HallowedStone.asset` (whose
+`sourceHint`, "Ground that stings to hold", was written for this arc),
+`TheSearingGlance.asset` -- `trap_blinding_flash`, tier 3, **Light** affinity --
+and `Trap_BlindingFlash.asset`. The pattern's only source is claiming Holy
+Ground, so the Light core's own elemental trap was unreachable. That, rather
+than the desecration beat, is why this arc was worth doing.
+
+**Four Church archetypes, eight authored plans.** `ChurchSeal`, `SealedCrypt`,
+`WardChapel` and `BlessedSpring`, appended to `SiteArchetype` at 9-12 -- the
+enum serialises into saves as an int, so appending is the only legal move. They
+are AUTHORED-ONLY (`VariantCountFor` returns 0), because a seal is a made object
+and procedural jitter reads as a collapsed ruin, which is the Buried Age's job.
+They are opt-in per floor: `BuildPlanPool`'s `useAllArchetypes` cap stops at
+`TollHouse`, so floor index 4's all-archetypes roster cannot sweep them in.
+
+They are NOT more Buried Age sites, and entry 21 is why. The Buried Age ruins
+are the deep-faith's own -- welcoming, no desecration penalty. These are Church
+seals laid over what that faith left, and hostile.
+
+**The plan format gained one glyph.** `'X'` is the HEART: the altar, grave slab,
+capped font or seal-stone. It parses into `wall` as well as its own list, so it
+is solid and everything downstream treats it as ordinary masonry -- desecration
+is unsealing, and an open floor cell cannot be mined. Exactly one per plan; two
+is a parse error rather than a silent last-wins.
+
+Two authoring rules came out of drawing the eight and failing seven, and both
+are now enforced by `Dungeon Core / Validate Site Plans`:
+- A wall recess must be THREE deep. Two leaves a two-cell open run pinched
+  between wall above and wall below, and that seals under the drape on some
+  quarter turns. The walkability count does not catch it, because the room stays
+  walkable while the recess quietly stops being reachable.
+- A free-standing heart needs THREE clear cells on all four sides, which forces
+  a chamber of at least seven by seven. A plinth block needs the same clearance.
+
+The per-archetype span clamp discussed during design turned out to be
+unnecessary: `AncientSiteBuilder` already ignores `minSpan`/`maxSpan` for
+authored plans, which is the point of hand-authoring them. The eight are fixed
+at 21-23 cells across, carved counts 150-246 -- one to two cave chambers, well
+clear of the three-thousand-cell figure a 62-span site reaches.
+
+**A SEPARATE registry, deliberately.** `TerrainTypeMap.holySiteOwner` maps cell
+to site id, parallel to the dwarven holdings dictionary rather than folded into
+it. Folding would have bought the warn-range reveal for free, since
+`FeatureRevealController`'s warn probe reads holdings -- and would also have
+handed every seal to `InfluenceRingRenderer`'s granite overlay, which fills
+discovered holdings grey and knows nothing about factions, and to
+`DwarvenClaimLedger`, which bills the Deep Holds for every holdings cell
+claimed. A Church seal painted as a dwarven hold and charged to the dwarves.
+
+**Masonry AND interior retype to `HolyGround`**, unlike a Buried Age site which
+retypes only its walls. A seal's ground is hallowed, not just its wall, so the
+interior resists at 10x rather than `siteClaimResistance`'s 3x. This inverts the
+dwarven courtyard finding (entry 19) on purpose: there the cheapest ground in
+the hold sat behind the loudest announcement, and here the announcement and the
+cost agree.
+
+**The overlay is NOT built, and the reason is a channel budget.** The field
+texture is RGBA32 with every channel spent: R the signed distance field, G
+normalised cost, B exposed fringe on claimed ground and discovered dwarven
+holdings on unclaimed, A proximity to dwarven ground. B cannot be subdivided --
+the shader reads it as `smoothstep(0.45, 0.55, fs.b)` precisely because the
+texture is bilinear-sampled, so a third value at 128 lands on the threshold and
+half-fills. What ships instead is the part of the dwarven warning that is not
+rendering at all: the cold white-blue lives in `TerrainResistanceTable`'s tints,
+which `CaveWallRenderer` already consumes, and the early reveal is a second warn
+probe. A second mask texture or a three-band rework of B are both on the
+backlog.
+
+**Floors 0 and 1 gained site entries.** The profile asset carried indices 2, 3
+and 4 only. Floor 0 takes exactly one seal from a `ChurchSeal`-only pool at
+`bandInner` 0.35, far enough out that the arrival area stays clear; floor 1
+takes one or two from a wider pool.
+
+**Two authored plans on disk are deliberately unregistered** and should stay
+that way: `DwarvenVillage_TheHearthOfTheDeep` (the original village, too small)
+and `HollowSanctum_ThePilgrimsWay` (an abandoned hand-drawing). They are not an
+oversight, and re-registering them is not a fix.
+
+### Holy Ground desecration (SHIPPED)
+
+`AlignmentSystem.Desecrate` finally has a caller. `HolyGroundLedger` (pure
+static, `DwarvenSpoil`'s pattern) is driven by DIRECT CALLS from
+`TileInfluenceManager`'s live claim and mine paths -- not subscriptions, because
+a handler that lost the subscription race would fail silently and give the seals
+away free, which is what Appendix D exists for. Restores are silent on both
+paths, so a reload can neither re-bill the alignment nor pay the discovery out
+twice.
+
+**CLAIMING TEACHES, MINING DESECRATES, and that split is the design rather than
+an implementation detail.** `hallowed_stone` pays out on CLAIM through the
+`PatternDiscovery` hook wired since the terrain system shipped, at no alignment
+cost. `trap_blinding_flash` is LIGHT affinity, so the core with the most to lose
+from a low alignment is the one whose exclusive elemental trap sits behind that
+pattern; charging alignment for the pattern would have forced a Light core to go
+dark to reach its own content. Hold the ground and you learn the stone. Break
+the stone and you answer for it.
+
+**The price.** `AlignmentPerCell` 0.5 per hallowed cell mined, plus
+`AlignmentForHeart` 10 when the heart goes. A whole seal runs to about thirty,
+against `killPeaceful` at eight and `HolyOrderStrike` wanting alignment at or
+below minus forty -- four peaceful murders' worth. The weighting is deliberate:
+chewing a corner off a seal is a small thing, and taking the altar is the act.
+
+**Nothing is wired into the Holy Order trigger directly.** It already reads
+alignment, so desecration simply becomes the largest alignment sink in the game.
+A separate notoriety bump or a `FactionId.HolyOrder` standing hit would have been
+a second number saying the same thing.
+
+**The reward is at the heart.** Entry 20 has the seals warding rebirth sites, so
+breaking one hands back a buried discovery through
+`BuriedRemainsController.GrantExternalDiscovery` -- an entry point whose own doc
+comment named this arc long before it had a caller. Edges cost and give nothing.
+
+**The ladder.** One wisp murmur on the first CLAIM of hallowed ground, which is
+free and therefore lands while the real decision is still ahead of the player. A
+Warning alert on the first seal broken anywhere, Critical on every one after, on
+the severity layer from entry 19's arc.
+
+**Entry 32's rejection is reversed.** That entry rejected a Holy Ground
+desecration echo because `Desecrate` was a stub with no caller. `CoreMemory`
+now carries `FirstDesecration`, bound to `TutorialFlags.LightCandle` rather than
+`PrayShrine` -- praying is already spent on the buried echo, and the candle is
+the sharper pairing anyway: in life you lit one at a shrine, and here you break
+one.
+
+**Diagnostics.** `Commands / Log Holy Ground State` reports alignment, hallowed
+cells claimed and mined per floor, what those cells have cost, and per seal
+whether it is revealed and whether its heart is still in place. Alignment has
+half a dozen contributors and cannot answer "did that seal register" on its own.
+
+**Floor 0's band was corrected to 0.55 outer** once the floor's radius was
+measured at 100 cells. At 0.7 a seal could anchor 70 cells out, and entry 19's
+reach arithmetic puts a plausible late run at roughly 65 per cent of the radius
+-- a seal nobody reaches is content that does not exist.
+
+**Not built:** a deed definition for `first_desecration`. The call site exists
+and is a no-op until one is authored; the CoreMemory echo does not depend on it.
+Art for the four Church families is deferred to the sprite backlog -- they render
+on the shared stone family for now.
+
+**Key files:** `AncientSiteProfile.cs`, `AncientSitePlanLibrary.cs`,
+`AncientSiteBuilder.cs`, `FloorFeatureSaveData.cs`, `TerrainTypeMap.cs`,
+`TerrainFeatureGenerator.cs`, `TerrainResistanceTable.cs`, `InfluenceField.cs`,
+`FeatureRevealController.cs`, `Editor/SitePlanValidator.cs`,
+`ScriptableObjects/Floors/AncientSiteProfile.asset`, and eight plans under
+`ScriptableObjects/Sites/Plans/`.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

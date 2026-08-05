@@ -212,6 +212,7 @@ public class DungeonSaveController : MonoBehaviour
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
+        HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
 
         SaveGame();
 
@@ -340,6 +341,9 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.dwarvenClaimWarned = DwarvenClaimLedger.FreeWarningSpent;
         currentSave.dwarvenPressureWarned = DwarvenClaimLedger.PressureWarned;
         currentSave.dwarvenAlertedOwners = DwarvenClaimLedger.AlertedOwnersForSave();
+        currentSave.holyTouchMurmured = HolyGroundLedger.TouchMurmured;
+        currentSave.holyFirstBreakDone = HolyGroundLedger.FirstBreakDone;
+        currentSave.holyBrokenSeals = HolyGroundLedger.BrokenSealsForSave();
         if (PrisonController.Instance != null) currentSave.prisonReactionDay = PrisonController.Instance.ReactionDayForSave;
 
         if (QuestController.Instance != null)
@@ -845,6 +849,9 @@ public class DungeonSaveController : MonoBehaviour
                 currentSave.caravanVerbUsed);
             DwarvenSpoil.RestoreFromSave(currentSave.dwarvenSpoilUnsold,
                                          currentSave.dwarvenSpoilLifetime);
+            HolyGroundLedger.RestoreFromSave(currentSave.holyTouchMurmured,
+                                             currentSave.holyFirstBreakDone,
+                                             currentSave.holyBrokenSeals);
             DwarvenClaimLedger.RestoreFromSave(currentSave.dwarvenClaimWarned,
                                                currentSave.dwarvenPressureWarned,
                                                currentSave.dwarvenAlertedOwners);

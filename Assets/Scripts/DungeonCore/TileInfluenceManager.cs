@@ -358,6 +358,12 @@ public class TileInfluenceManager : MonoBehaviour
             // ground the player already paid for.
             DwarvenClaimLedger.NotifyCellClaimed(MyFloor, pos);
 
+            // The wisp names hallowed ground the first time the frontier
+            // takes any. Claiming a seal costs NOTHING -- the price is on
+            // the mine -- so this lands while the real decision is still
+            // ahead of the player rather than behind them.
+            HolyGroundLedger.NotifyCellClaimed(MyFloor, pos);
+
             OnTileClaimed?.Invoke(pos);
         }
     }
@@ -410,6 +416,14 @@ public class TileInfluenceManager : MonoBehaviour
         minedTiles.Add(pos);
         // No RevealTile needed — cell was already revealed at claim time.
         // No claimableTilemap update — mining doesn't change the ring.
+
+        // Unsealing (canon 18/20). A direct call rather than a subscription
+        // to the event on the line below, for the same reason the claim path
+        // uses one: a handler that lost the subscription race would fail
+        // SILENTLY and give the seals away free. Restores mine nothing --
+        // this path is live digs only -- so a reload can neither re-bill the
+        // alignment nor pay the discovery out twice.
+        HolyGroundLedger.NotifyCellMined(MyFloor, pos);
 
         OnTileMined?.Invoke(pos);
         OnTileCountChanged?.Invoke(minedTiles.Count);

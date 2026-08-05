@@ -34,6 +34,16 @@ public class AuthoredSitePlan
     /// <summary>Local cells, centred on the plan's bounding box.</summary>
     public readonly List<Vector2Int> floor = new List<Vector2Int>();
     public readonly List<Vector2Int> wall = new List<Vector2Int>();
+
+    /// <summary>The heart cell, from the plan's single 'X': the altar, grave
+    /// slab, capped font or seal-stone. SOLID -- it is added to `wall` as well
+    /// as here, because desecration is UNSEALING and an open floor cell cannot
+    /// be mined. This is a marker on a cell that is already masonry, not a
+    /// third kind of cell.
+    ///
+    /// A list rather than a nullable so the parser can report "two hearts" as
+    /// an authoring error instead of silently keeping the last one.</summary>
+    public readonly List<Vector2Int> heart = new List<Vector2Int>();
 }
 
 /// <summary>
@@ -43,9 +53,22 @@ public class AuthoredSitePlan
 ///   Lines beginning '@' are metadata: "@archetype: SealedGate", "@name: ...",
 ///   "@anchor: RoadEnd", "@rotate: no". Lines beginning '//' are comments.
 ///   Everything else is the grid, read top to bottom as NORTH to SOUTH:
-///     '#'  masonry  -- stays solid rock, retyped to Ruins
+///     '#'  masonry  -- stays solid rock, retyped to the family terrain
 ///     '.'  carved   -- open floor
+///     'X'  the HEART -- masonry, AND the one cell carrying the
+///          site's meaning: altar, grave slab, capped font,
+///          seal-stone. Solid, because unsealing means mining it.
+///          Exactly one per plan; two is a parse error.
 ///     anything else (including space) is not part of the site at all
+///
+///   TWO RULES THE GRID WILL NOT SHOW YOU, both learned by drawing
+///   eight plans and failing seven:
+///     - A wall recess must be THREE deep. Two leaves a two-cell run
+///       pinched between wall above and wall below, and that seals
+///       under the drape on some quarter turns.
+///     - A free-standing heart needs THREE clear cells on all four
+///       sides, so a chamber of at least seven by seven.
+///   Dungeon Core / Validate Site Plans enforces both.
 ///
 ///   Rows may be ragged; short rows are simply short. The grid is centred on
 ///   its own bounding box automatically, so the author never thinks about
@@ -143,6 +166,7 @@ public static class AncientSitePlanLibrary
 
         var floor = new List<Vector2Int>();
         var wall = new List<Vector2Int>();
+        var heart = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -151,6 +175,16 @@ public static class AncientSitePlanLibrary
                 // Top of the file is NORTH, so the row index runs down -Y.
                 if (row[c] == '#') wall.Add(new Vector2Int(c, -r));
                 else if (row[c] == '.') floor.Add(new Vector2Int(c, -r));
+                else if (row[c] == 'X')
+                {
+                    // Masonry AND heart. Downstream sees an ordinary
+                    // solid cell, so rendering, resistance and the
+                    // pattern payout need no special case; the heart
+                    // list is only a marker on it.
+                    var h = new Vector2Int(c, -r);
+                    wall.Add(h);
+                    heart.Add(h);
+                }
             }
         }
 
@@ -179,8 +213,16 @@ public static class AncientSitePlanLibrary
         }
         var offset = new Vector2Int((minX + maxX) / 2, (minY + maxY) / 2);
 
+        if (heart.Count > 1)
+        {
+            error = "grid has " + heart.Count
+                  + " heart cells ('X'); exactly one is allowed";
+            return null;
+        }
+
         var wallSet = new HashSet<Vector2Int>();
         foreach (var p in wall) wallSet.Add(p - offset);
+        foreach (var p in heart) plan.heart.Add(p - offset);
 
         foreach (var p in floor)
         {
@@ -228,7 +270,7 @@ public static class AncientSitePlanLibrary
         // BuildPlanPool's useAllArchetypes cap, which deliberately stops at
         // TollHouse so an authored-only archetype is opted in per floor and
         // never swept in by "all".
-        for (int i = 0; i <= (int)SiteArchetype.DwarvenVillage; i++)
+        for (int i = 0; i <= (int)SiteArchetype.BlessedSpring; i++)
         {
             var candidate = (SiteArchetype)i;
             if (candidate.ToString().ToLowerInvariant() == k)

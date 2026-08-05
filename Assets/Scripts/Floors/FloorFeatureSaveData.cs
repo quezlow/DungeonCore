@@ -123,6 +123,12 @@ public class SiteData
 
     public SerializableVector3Int anchorCell;
 
+    /// <summary>The heart cell for a Church seal -- altar, grave slab,
+    /// capped font, seal-stone. Null on every other site and on every
+    /// save written before the seals existed, which is exactly the
+    /// "no heart" case, so no migration runs.</summary>
+    public SerializableVector3Int heartCell;
+
     /// <summary>Carved interior -- natural floor on reveal.</summary>
     public List<SerializableVector3Int> cells = new();
 

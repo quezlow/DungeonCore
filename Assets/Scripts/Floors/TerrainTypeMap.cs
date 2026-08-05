@@ -158,6 +158,49 @@ public class TerrainTypeMap : MonoBehaviour
     // Not serialized: derived data, rebuilt whenever the overrides are.
     private readonly Dictionary<Vector3Int, int> holdingsOwner = new();
 
+    // Holy Ground sites, mapped cell -> site id. A SEPARATE registry from the
+    // dwarven holdings above, and the separation is the whole point.
+    //
+    // Registering seals in `holdingsOwner` would have bought the warn-range
+    // reveal for free, since FeatureRevealController's warn probe reads that
+    // dictionary. It would ALSO have handed every seal to
+    // InfluenceRingRenderer's granite overlay -- which fills discovered
+    // holdings grey and knows nothing about factions -- and to
+    // DwarvenClaimLedger, which bills the Deep Holds for every holdings cell
+    // claimed. A Church seal painted as a dwarven hold and charged to the
+    // dwarves. Two lines of reuse would have made two shipped systems quietly
+    // wrong; a parallel dictionary costs a few more and touches neither.
+    //
+    // Not serialized: derived data, rebuilt whenever the overrides are.
+    private readonly Dictionary<Vector3Int, int> holySiteOwner = new();
+
+    /// <summary>True when this floor carries any Holy Ground at all. Callers
+    /// probing per cell in bulk test this first.</summary>
+    public bool HasHolySites => holySiteOwner.Count > 0;
+
+    public IReadOnlyDictionary<Vector3Int, int> HolySites => holySiteOwner;
+
+    public void ClearHolySiteCells() => holySiteOwner.Clear();
+
+    public void RegisterHolySiteCells(List<SerializableVector3Int> src, int siteId)
+    {
+        if (src == null) return;
+        foreach (var sv in src) holySiteOwner[sv.ToVector3Int()] = siteId;
+    }
+
+    public void RegisterHolySiteCells(IReadOnlyList<Vector3Int> src, int siteId)
+    {
+        if (src == null) return;
+        for (int i = 0; i < src.Count; i++) holySiteOwner[src[i]] = siteId;
+    }
+
+    /// <summary>The seal owning this cell, or NoHoldingOwner. Site ids only --
+    /// there is no road equivalent here, so no sign packing is needed.</summary>
+    public int HolySiteAt(Vector3Int cell)
+        => generated && holySiteOwner.TryGetValue(cell, out int id) ? id : NoHoldingOwner;
+
+    public bool IsHolyCell(Vector3Int cell) => HolySiteAt(cell) != NoHoldingOwner;
+
     public const int NoHoldingOwner = int.MinValue;
 
     public static int SiteOwnerKey(int siteId) => siteId;

@@ -13,6 +13,38 @@ MonoBehaviour:
   m_Name: AncientSiteProfile
   m_EditorClassIdentifier: Assembly-CSharp::AncientSiteProfile
   floors:
+  - floorIndex: 0
+    minSites: 1
+    maxSites: 1
+    bandInner: 0.35
+    bandOuter: 0.55
+    minSpacing: 60
+    minSpan: 21
+    maxSpan: 23
+    rimMargin: 12
+    useAllArchetypes: 0
+    pool: 09000000
+    reserveOutpost: 0
+    outpostArchetype: 5
+    outpostAnchor: 2
+    reserveVillage: 0
+    villagePlanName: 
+  - floorIndex: 1
+    minSites: 1
+    maxSites: 2
+    bandInner: 0.2
+    bandOuter: 0.65
+    minSpacing: 70
+    minSpan: 21
+    maxSpan: 23
+    rimMargin: 12
+    useAllArchetypes: 0
+    pool: 090000000a0000000c000000
+    reserveOutpost: 0
+    outpostArchetype: 5
+    outpostAnchor: 2
+    reserveVillage: 0
+    villagePlanName: 
   - floorIndex: 2
     minSites: 1
     maxSites: 2
@@ -78,4 +110,12 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 9a5e3c8f1d6b47204b9c7e5a3f1d8062, type: 3}
   - {fileID: 4900000, guid: 2b7d4a9c6f3e48157d2b9a4c6e8f3510, type: 3}
   - {fileID: 4900000, guid: 7c1f5b8d3a6e49268e7c1f5b9d3a6084, type: 3}
+  - {fileID: 4900000, guid: bddf5d1655125b81ee1b3575ebb9ae96, type: 3}
+  - {fileID: 4900000, guid: 325a71f687771d35cd1f91c5525aa565, type: 3}
+  - {fileID: 4900000, guid: a0047ec67cada19887a5e655d427e840, type: 3}
+  - {fileID: 4900000, guid: cd7c67561c71711284b1a5028bf96e9c, type: 3}
+  - {fileID: 4900000, guid: 978595485e44f4f0169d6664d3b7f886, type: 3}
+  - {fileID: 4900000, guid: 072892e7ec9852ed668df997fb274cbd, type: 3}
+  - {fileID: 4900000, guid: 729bd21725f5e29ae25e9c57b5ec3010, type: 3}
+  - {fileID: 4900000, guid: b16d22aaab4990e28dc93a379a2fd79a, type: 3}
   siteDecor: []

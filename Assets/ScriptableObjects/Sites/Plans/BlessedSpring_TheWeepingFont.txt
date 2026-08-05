@@ -1,0 +1,30 @@
+@archetype: BlessedSpring
+@name: The Weeping Font
+@anchor: Free
+
+// A spring the Church took over and capped. The font stands alone on an
+// octagonal drawing floor, with three clear cells on every side of it -
+// nothing here pinches, so the basin reads the same on all eight
+// orientations.
+
+#####################
+#####################
+#####################
+#######.......#######
+#######.......#######
+#######.......#######
+###...............###
+###...............###
+###...............###
+###...............###
+###.......X.......###
+###...............###
+###...............###
+###...............###
+###...............###
+#######.......#######
+#######.......#######
+#######.......#######
+#####################
+#####################
+#####################
