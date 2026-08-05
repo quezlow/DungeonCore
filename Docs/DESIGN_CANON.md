@@ -3001,11 +3001,25 @@ pattern; charging alignment for the pattern would have forced a Light core to go
 dark to reach its own content. Hold the ground and you learn the stone. Break
 the stone and you answer for it.
 
-**The price.** `AlignmentPerCell` 0.5 per hallowed cell mined, plus
-`AlignmentForHeart` 10 when the heart goes. A whole seal runs to about thirty,
-against `killPeaceful` at eight and `HolyOrderStrike` wanting alignment at or
-below minus forty -- four peaceful murders' worth. The weighting is deliberate:
-chewing a corner off a seal is a small thing, and taking the altar is the act.
+**The price, and it is HEART-ONLY.** `AlignmentForHeart` 10 when an ordinary
+seal's heart goes, `AlignmentForVaultHeart` 25 for the dead core vault, and
+nothing whatever for the ground around them. Against `killPeaceful` at eight and
+`HolyOrderStrike` wanting alignment at or below minus forty, an altar is a shade
+worse than a murdered pilgrim and four altars bring the Order.
+
+**The per-cell bill was DELETED, and the correction is the useful record.**
+`AlignmentPerCell` 0.5 shipped and was wrong by roughly four times, in a way
+invisible from its call site. A site's carved interior is opened by
+`MarkNaturalFloor` on REVEAL, which never touches the mine path -- so only the
+MASONRY was ever billable, and a 21-cell seal carries 200 to 280 masonry cells.
+That is minus 100 to minus 140 to clear ONE seal, against a trigger threshold of
+minus forty, with some fourteen seals in a run. The figure this entry previously
+gave, "about thirty", described a seal nobody could actually mine. The constant
+was deleted rather than zeroed so it cannot be switched back on without reading
+why it went, and its one other consumer -- the holy report in `Commands.cs` --
+went with it. The edges are free now, which is what the weighting always
+claimed: chewing a corner off a seal is nothing, and taking the altar is the
+act.
 
 **Nothing is wired into the Holy Order trigger directly.** It already reads
 alignment, so desecration simply becomes the largest alignment sink in the game.
@@ -3017,10 +3031,31 @@ breaking one hands back a buried discovery through
 `BuriedRemainsController.GrantExternalDiscovery` -- an entry point whose own doc
 comment named this arc long before it had a caller. Edges cost and give nothing.
 
+**And the vault pays properly.** On top of that discovery, breaking the dead
+core vault's heart grants `VaultResearchPoints` 60 research and a full level of
+XP. Sixty is sized against the tree it spends into rather than picked round:
+`LitanyofGraves` at 60 is the dearest node in the game and `TheSearingGlance` --
+tier 3, and the Light core's own trap -- is 30, so this is one top node or two
+tier-3 ones, against the buried-remains duplicate fallback's 10. The XP grant is
+`XPToNextLevel`, which is the WHOLE threshold for the current level rather than
+the remainder, so a player near the top of the bar banks the overflow instead of
+being shortchanged for having earned it. Nothing is lost to that overflow:
+`CheckLevelUp` neither loops nor levels -- it raises `LevelUpAvailable` and the
+player confirms -- and `ConfirmLevelUp` subtracts exactly one threshold before
+re-checking against the next.
+
+The vault also takes its OWN alert copy and its own wisp line (`holy_break_vault`),
+and is ALWAYS Critical rather than sharing the seal ladder's first-break Warning.
+There is one vault in a dungeon and it is built around a dead core, which is to
+say around what the player is; that is not a beat to learn about from a quiet row
+in the log.
+
 **The ladder.** One wisp murmur on the first CLAIM of hallowed ground, which is
 free and therefore lands while the real decision is still ahead of the player. A
 Warning alert on the first seal broken anywhere, Critical on every one after, on
-the severity layer from entry 19's arc.
+the severity layer from entry 19's arc -- and the vault outside that ladder
+entirely, always Critical, though it does consume the first-break rung so a seal
+taken afterwards is Critical too.
 
 **Entry 32's rejection is reversed.** That entry rejected a Holy Ground
 desecration echo because `Desecrate` was a stub with no caller. `CoreMemory`

@@ -159,6 +159,11 @@ public class WispScript : ScriptableObject
                 text = "Careful. This stone is dressed, and it is cold in a way stone is not. A seal - the Church laid it over something, and holding it costs you nothing. Breaking it is the other thing." },
             new Line { id = "holy_break", once = true,
                 text = "It is open. Whatever they bound is loose, and somewhere above, someone keeping a list has just crossed a line off it." },
+            // The vault is a different beat from an altar and does not share its
+            // string: canon 20 built it around a DEAD CORE, so the line has to
+            // land on what that is rather than on what was broken.
+            new Line { id = "holy_break_vault", once = true,
+                text = "There. Under all their stone - a core, cold and long finished, and once as new as you. They built the vault around the fear of it waking. It never did, and everything it knew is yours." },
             // The echo. CoreMemory speaks this only for a core that lit a
             // candle in the life it lived; it is silent for everyone else.
             new Line { id = "echo_candle", once = true,

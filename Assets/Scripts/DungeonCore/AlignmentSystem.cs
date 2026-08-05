@@ -105,7 +105,11 @@ public class AlignmentSystem : MonoBehaviour
         Shift(gain);
     }
 
-    /// <summary>Desecration input for Holy Ground (stub; wired when that feature lands).</summary>
+    /// <summary>Desecration input for Holy Ground (canon 18/20). No longer a
+    /// stub: HolyGroundLedger calls it when a Church seal's heart is broken, and
+    /// nothing else does. Charged at the HEART only -- the ground around a seal
+    /// is free, because the per-cell bill it originally shipped with could only
+    /// ever reach masonry and so ran about four times heavy.</summary>
     public void Desecrate(float amount) => Shift(-Mathf.Abs(amount));
 
     public AlignmentSaveData GetSaveData() => new AlignmentSaveData { alignment = alignment };

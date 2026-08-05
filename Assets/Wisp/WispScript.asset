@@ -111,6 +111,11 @@ MonoBehaviour:
     once: 1
     text: It is open. Whatever they bound is loose, and somewhere above, someone
       keeping a list has just crossed a line off it.
+  - id: holy_break_vault
+    once: 1
+    text: There. Under all their stone - a core, cold and long finished, and
+      once as new as you. They built the vault around the fear of it waking. It
+      never did, and everything it knew is yours.
   - id: echo_candle
     once: 1
     text: You lit one of these, once. Small hands, a shrine, a wick that would not

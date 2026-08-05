@@ -843,6 +843,14 @@ public class Commands : MonoBehaviour
         Debug.Log(sb.ToString());
     }
 
+    /// <summary>What taking this heart costs, signed, for the holy report. The
+    /// vault is priced apart from a seal, and the report has to say which figure
+    /// it is quoting or the number is unreadable.</summary>
+    static string HeartBill(SiteArchetype a)
+        => (-(a == SiteArchetype.DeadCoreVault
+                ? HolyGroundLedger.AlignmentForVaultHeart
+                : HolyGroundLedger.AlignmentForHeart)).ToString("0.#");
+
     [ContextMenu("Log Holy Ground State")]
     void LogHolyGroundState()
     {
@@ -871,11 +879,13 @@ public class Commands : MonoBehaviour
                 if (floor.TileInfluence.IsTileClaimed(kv.Key)) claimed++;
                 if (floor.TileInfluence.IsTileMined(kv.Key)) mined++;
             }
+            // No per-cell figure any more, because there is no per-cell bill.
+            // Hallowed ground is free to hold and free to chew; the charge is at
+            // the heart, so it is printed per seal below, where it is incurred.
             sb.Append("  floor index ").Append(i).Append(": ")
               .Append(holyCells).Append(" hallowed cells, ")
-              .Append(claimed).Append(" claimed, ").Append(mined).Append(" mined (")
-              .Append((mined * HolyGroundLedger.AlignmentPerCell).ToString("0.0"))
-              .Append(" alignment spent on cells alone)\n");
+              .Append(claimed).Append(" claimed, ").Append(mined)
+              .Append(" mined (no alignment cost -- edges are free)\n");
 
             // Site ids are assigned sequentially as sites are appended,
             // so id doubles as the index. There is no list accessor and
@@ -890,8 +900,11 @@ public class Commands : MonoBehaviour
                 sb.Append("    site ").Append(site.id).Append(' ')
                   .Append(site.archetype).Append(" '").Append(site.planName).Append("' ")
                   .Append(features.IsSiteRevealed(site.id) ? "revealed" : "unfound")
-                  .Append(site.heartCell == null ? ", NO HEART (authoring fault)"
-                                                : heartGone ? ", heart BROKEN" : ", heart intact")
+                  .Append(site.heartCell == null
+                              ? ", NO HEART (authoring fault)"
+                              : heartGone
+                                  ? ", heart BROKEN (" + HeartBill(site.archetype) + " alignment)"
+                                  : ", heart intact (" + HeartBill(site.archetype) + " if taken)")
                   .Append('\n');
             }
         }
