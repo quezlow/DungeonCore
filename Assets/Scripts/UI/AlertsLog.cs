@@ -64,6 +64,22 @@ public class AlertsLog : MonoBehaviour
            + "is reused rather than a second banner being wired by hand.")]
     [SerializeField] private bool criticalRaisesBanner = true;
 
+    [Tooltip("Critical alerts wash the screen this colour. Defaults to the red "
+           + "the climax beast's pushback already uses, so the two read as one "
+           + "language rather than as two unrelated effects.")]
+    [SerializeField] private Color criticalFlashColour = new Color(0.75f, 0.05f, 0.05f, 1f);
+
+    [Tooltip("Seconds the flash takes to fade to nothing. Matches the climax "
+           + "flash. Zero disables the flash entirely.")]
+    [SerializeField, Min(0f)] private float criticalFlashSeconds = 0.45f;
+
+    [Tooltip("Shortest gap between two FLASHES or two STINGS, in unscaled "
+           + "seconds. Three Criticals can land in the same breath -- a wave "
+           + "stage, a strike and a breach -- and three stacked flashes is worse "
+           + "than one. Every alert still logs and still banners; only the two "
+           + "loud channels are rate-limited.")]
+    [SerializeField, Min(0f)] private float criticalLoudCooldown = 3f;
+
     [Header("Capacity")]
     [Tooltip("How many entries the ticker keeps alive before evicting oldest.")]
     [SerializeField, Min(1)] private int tickerVisibleCount = 12;
@@ -79,6 +95,11 @@ public class AlertsLog : MonoBehaviour
     private readonly List<AlertEntry> history = new();
     private readonly List<Button> tickerEntries = new();
     private int unreadCount = 0;
+
+    /// <summary>Unscaled time the last flash or sting fired. Unscaled because a
+    /// Critical can land while the game is paused, and a cooldown measured in
+    /// scaled time would then never expire.</summary>
+    private float lastLoudAt = -999f;
 
     // ── Events ────────────────────────────────────────────────────
 
@@ -143,12 +164,31 @@ public class AlertsLog : MonoBehaviour
     public void AddAlert(string message, Vector3 worldPos, int floorIndex,
                              AlertCategory category, AlertSeverity? severity = null)
     {
+        var resolved = severity ?? AlertSeverityStyle.DefaultFor(category);
+
         // Gated behind the Ledger of Alarums research node. Until researched the
         // core keeps no account: nothing is recorded, tickered, or counted.
-        if (!UnlockState.IsUnlocked("tech.alerts")) return;
+        //
+        // CRITICAL IS THE ONE EXCEPTION, and it is deliberately PARTIAL. What the
+        // Ledger sells is the account -- the ticker, the history, the unread
+        // count, the ability to look back. It was never supposed to be selling
+        // the alarm. Before this, a player who had not bought the node watched
+        // the core go down with no banner, no flash and no sound, which is the
+        // one moment in the game that cannot be allowed to pass quietly.
+        //
+        // So a Critical still raises its banner, flash and sting, and still
+        // records NOTHING: no history row, no ticker row, no unread count, and
+        // no OnAlertAdded. Nothing downstream can tell the difference between
+        // this and the alert never having existed, which is what keeps the
+        // research node worth buying.
+        if (!UnlockState.IsUnlocked("tech.alerts"))
+        {
+            if (resolved == AlertSeverity.Critical)
+                RaiseCritical(BuildEntry(message, worldPos, floorIndex, category, resolved));
+            return;
+        }
 
-        var entry = BuildEntry(message, worldPos, floorIndex, category,
-                               severity ?? AlertSeverityStyle.DefaultFor(category));
+        var entry = BuildEntry(message, worldPos, floorIndex, category, resolved);
         AppendEntry(entry, fromLoad: false);
     }
 
@@ -274,10 +314,50 @@ public class AlertsLog : MonoBehaviour
     /// silence.</summary>
     private void RaiseCritical(AlertEntry entry)
     {
+        // The banner is NOT rate-limited. It replaces its own text rather than
+        // stacking, so a second Critical simply retitles it, and losing the more
+        // recent of two messages would be worse than showing both in turn.
         if (criticalRaisesBanner && FeatureAlertBanner.Instance != null)
             FeatureAlertBanner.Instance.Show(entry.Message, entry.WorldPos, entry.FloorIndex);
-        if (!string.IsNullOrEmpty(criticalSfxKey))
+
+        // The flash and the sting ARE, and share one window. Three Criticals in
+        // the same breath is not hypothetical -- a wave stage, a Holy Order
+        // strike and a core breach can all land on the same frame -- and three
+        // washes of red on top of each other reads as a rendering fault rather
+        // than as three pieces of bad news.
+        bool loudAllowed = Time.unscaledTime - lastLoudAt >= criticalLoudCooldown;
+        if (!loudAllowed) return;
+        lastLoudAt = Time.unscaledTime;
+
+        // Suppressed by the accessibility preference, and by that ALONE: the
+        // sting and the banner still fire, because a player who cannot take a
+        // full-screen flash still needs to be told the core is being broken.
+        if (criticalFlashSeconds > 0f && !SettingsAccess.ReduceFlashing)
+            ScreenFlash.Instance?.Flash(criticalFlashColour, criticalFlashSeconds);
+
+        PlayCriticalSting();
+    }
+
+    /// <summary>The sting, guarded. SoundEffectManager.Play dereferences a
+    /// static SoundEffectLibrary that is only assigned in the manager's own
+    /// Awake, so calling it with no manager in the scene throws outright rather
+    /// than failing quiet -- and an alert layer that can hard-error on a scene
+    /// missing an audio object is worse than one that is silent. The key ships
+    /// EMPTY and stays that way until a clip and a library entry exist.</summary>
+    private void PlayCriticalSting()
+    {
+        if (string.IsNullOrEmpty(criticalSfxKey)) return;
+        try
+        {
             SoundEffectManager.Play(criticalSfxKey);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[AlertsLog] Critical sting '" + criticalSfxKey +
+                "' could not play: " + e.Message + ". Clear criticalSfxKey, or " +
+                "add the clip to SoundEffectLibrary and put a SoundEffectManager " +
+                "in the scene.");
+        }
     }
 
     /// <summary>

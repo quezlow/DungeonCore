@@ -504,11 +504,25 @@ public class DungeonCore : MonoBehaviour
 
     // ── Core Destruction ──────────────────────────────────────────
 
+    /// <summary>
+    /// THE BREACH IS ALERTED HERE, and until now it was not alerted anywhere.
+    /// CoreThreatMonitor announced a threat APPROACHING and this method announced
+    /// nothing at all, so the loudest moment in the game reached the player only
+    /// as an influence ring quietly receding.
+    ///
+    /// There is no "HP critical" tier to route, because the core has no HP. It
+    /// has a breach COUNT: the first breach opens an instability window worth
+    /// instabilityDuration seconds, and a second breach inside that window ends
+    /// the run. So the first breach IS the critical-health beat -- one life left,
+    /// on a timer -- and it takes one alert rather than two for the same instant.
+    /// </summary>
     public void DestroyCore()
     {
         if (IsInTransit)
         {
             Debug.Log("[DungeonCore] BREACH DURING TRANSIT — instant game over.");
+            AnnounceBreach("Breached in flight, with nothing beneath to catch it. " +
+                           "There is no ground left to fall to.");
             OnGameOver?.Invoke();
             return;
         }
@@ -524,6 +538,10 @@ public class DungeonCore : MonoBehaviour
             currentXP = Mathf.Max(0f, currentXP - xpPenaltyOnBreach);
             OnXPChanged?.Invoke(currentXP, XPToNextLevel);
 
+            AnnounceBreach("THE CORE IS BREACHED. It holds, barely, and the walls " +
+                           "are drawing back. One more before it settles and there " +
+                           "is nothing left to hold.");
+
             // Influence recede is handled per floor by InfluenceField, which
             // subscribes to OnFirstBreach (fired below) and unclaims territory
             // beyond the suppressed reach on every floor. Mined tunnels persist.
@@ -534,8 +552,24 @@ public class DungeonCore : MonoBehaviour
         else
         {
             isUnstable = false;
+            AnnounceBreach("THE CORE IS BROKEN. There was one chance left and it " +
+                           "has been spent.");
             OnGameOver?.Invoke();
         }
+    }
+
+    /// <summary>Raises the breach alert at Critical. Called BEFORE the event that
+    /// ends or destabilises the run, so the banner, flash and sting land while the
+    /// player is still looking at a live dungeon rather than at a game-over
+    /// screen. Critical passes the tech.alerts gate for its loud channels even
+    /// unresearched -- see AlertsLog.AddAlert -- so this is heard on the first run
+    /// as well as the twentieth.</summary>
+    private void AnnounceBreach(string message)
+    {
+        int floorIdx = FloorManager.Instance != null
+            ? FloorManager.Instance.CoreFloorIndex : 0;
+        AlertsLog.Instance?.AddAlert(message, transform.position, floorIdx,
+                                     AlertCategory.Threat, AlertSeverity.Critical);
     }
 
     // ── Save / Load ───────────────────────────────────────────────

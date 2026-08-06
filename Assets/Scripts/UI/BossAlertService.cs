@@ -104,6 +104,26 @@ public class BossAlertService : MonoBehaviour
 public static class SettingsAccess
 {
     private const string Key_BossAlertMode = "Settings.BossAlertMode";
+    private const string Key_ReduceFlashing = "Settings.ReduceFlashing";
+
+    /// <summary>Suppresses the full-screen flash on a Critical alert. Nothing
+    /// else: the banner and the sting still fire, because this is an opt-out
+    /// from a photosensitivity hazard rather than from being told bad news.
+    ///
+    /// Lives here rather than in DcrVideoSettings because that class is
+    /// resolution, fullscreen and vsync -- things that need Screen.SetResolution
+    /// and an Apply pass -- while this is a bool read at the moment of use. It
+    /// has no settings-menu row yet; the row is prefab work, and a preference
+    /// with no UI still beats a flash with no opt-out.</summary>
+    public static bool ReduceFlashing
+    {
+        get => PlayerPrefs.GetInt(Key_ReduceFlashing, 0) != 0;
+        set
+        {
+            PlayerPrefs.SetInt(Key_ReduceFlashing, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
 
     public static BossAlertService.DisplayMode BossAlertMode
     {

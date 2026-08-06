@@ -289,25 +289,59 @@ public class FeatureRevealController : MonoBehaviour
     }
 
     /// <summary>
-    /// The wisp's two lines about the Buried Age. Both are authored once = true,
-    /// so the shipped spoken-line save field does the remembering and this needs
-    /// no state of its own.
+    /// The wisp's lines about the Buried Age. All authored once = true, so the
+    /// shipped spoken-line save field does the remembering and this needs no
+    /// state of its own.
     ///
     /// The Sealed Gate line is gated on CoreMemory.Lived rather than on a deed
     /// flag, and is deliberately NOT a memory echo: canon 34 records that the
     /// player died at an OPENED SEAL regardless of what they did that last day,
     /// so the memory belongs to every lived core and to no particular flag.
+    ///
+    /// THE WARDEN LINES ARE NOT GATED ON Lived AT ALL, and the difference is the
+    /// point. The Sealed Gate memory is the PLAYER'S. The dead core and the
+    /// sealing are the WISP'S, and a core that skipped the prologue has not
+    /// thereby erased the wisp's own history.
+    ///
+    /// Speak ENQUEUES rather than clobbers, so the vault's two lines play in
+    /// order. Two rather than three: holdSeconds is 3.2 and ShowLine is
+    /// deliberately unskippable, so each line is about four seconds of standing
+    /// still. Eight seconds is what the largest set-piece in the game earns;
+    /// twelve, mid-mine, with no way out, is not.
     /// </summary>
     private void SpeakForSite(SiteData site, bool firstOnFloor)
     {
         var wisp = WispCompanion.Instance;
         if (wisp == null) return;
 
+        // The vault is tested FIRST because TerrainFeatureGenerator.
+        // IsHolyArchetype counts it among the Church sites, and for the terrain
+        // layer that is right -- but it is not a seal of theirs. It is the older
+        // thing the Church built over, and the wisp knows the difference even if
+        // the retype rules do not.
+        if (site != null && site.archetype == SiteArchetype.DeadCoreVault)
+        {
+            wisp.Speak("site_dead_core");
+            wisp.Speak("site_dead_core_before");
+            return;
+        }
+
         if (site != null && site.archetype == SiteArchetype.SealedGate && CoreMemory.Lived)
         {
             wisp.Speak("site_sealed_gate");
             return;
         }
+
+        // The first Church seal of the run, from the other side of it. Authored
+        // once = true, so this is the FIRST one revealed and never again; which
+        // of the four archetypes it happens to be does not matter, because the
+        // wisp is talking about the practice rather than the building.
+        if (site != null && TerrainFeatureGenerator.IsHolyArchetype(site.archetype))
+        {
+            wisp.Speak("site_church_seal");
+            return;
+        }
+
         if (firstOnFloor) wisp.Speak("site_first");
     }
 

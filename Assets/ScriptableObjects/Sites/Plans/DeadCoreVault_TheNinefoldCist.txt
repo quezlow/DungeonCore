@@ -1,6 +1,6 @@
 @archetype: DeadCoreVault
 @name: The Ninefold Cist
-@anchor: Free
+@anchor: RoadEnd
 @rotate: no
 
 // Ring inside ring inside ring, each with a single passage and no two

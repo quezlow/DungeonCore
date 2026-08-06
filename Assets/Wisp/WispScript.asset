@@ -60,6 +60,22 @@ MonoBehaviour:
     text: A gate, and it is still shut. You stood at one of these once, at the end,
       and it was open - and three people you had met that morning found you there.
       Ask yourself who opened it.
+  - id: site_dead_core
+    once: 1
+    text: Stop. I know this shape - stone laid in a ring, and at the middle of
+      it something that used to think. They did not raise this to keep a thing
+      out. They raised it to sit with what was already finished.
+  - id: site_dead_core_before
+    once: 1
+    text: I have stood where you are standing, and not with you. They asked me
+      the same questions in the same order, the others, and I have never found a
+      better answer than go carefully. Some of them are still down here.
+  - id: site_church_seal
+    once: 1
+    text: The Church did not invent the sealing. They inherited it and forgot
+      who from, the way a man inherits a house and never asks who dug the
+      cellar. Older hands than theirs laid the first of these, and for a kinder
+      reason.
   - id: outpost_first
     once: 1
     text: Lamps. Down here, and lit, and nobody up there knows. They kept the road,

@@ -117,6 +117,27 @@ public class WispScript : ScriptableObject
             new Line { id = "site_sealed_gate", once = true,
                 text = "A gate, and it is still shut. You stood at one of these once, at the end, and it was open - and three people you had met that morning found you there. Ask yourself who opened it." },
 
+            // THE WARDEN LINES (canon 34). Entry 34 records the reading that the
+            // wisp is plausibly a warden of the old deep-faith, doing a job it
+            // has done before for cores that failed. These are where that stops
+            // being a reading and starts being something the player hears.
+            //
+            // Implied and never confirmed, deliberately: canon keeps the wisp's
+            // nature an open question, and a line that settles it spends
+            // something no later entry can get back. It says it has been here
+            // before. It does not say what it is.
+            //
+            // NOT gated on CoreMemory.Lived, unlike the Sealed Gate line above.
+            // That one is gated because the memory belongs to the player's own
+            // death. This memory is the WISP'S, and a skipped prologue does not
+            // erase the wisp's history.
+            new Line { id = "site_dead_core", once = true,
+                text = "Stop. I know this shape - stone laid in a ring, and at the middle of it something that used to think. They did not raise this to keep a thing out. They raised it to sit with what was already finished." },
+            new Line { id = "site_dead_core_before", once = true,
+                text = "I have stood where you are standing, and not with you. They asked me the same questions in the same order, the others, and I have never found a better answer than go carefully. Some of them are still down here." },
+            new Line { id = "site_church_seal", once = true,
+                text = "The Church did not invent the sealing. They inherited it and forgot who from, the way a man inherits a house and never asks who dug the cellar. Older hands than theirs laid the first of these, and for a kinder reason." },
+
             // The dwarven outpost (canon 19). The first line is the discovery;
             // the greeting is deliberately NOT a one-shot, because in part 2 it
             // becomes the line that plays whenever the counter is closed.

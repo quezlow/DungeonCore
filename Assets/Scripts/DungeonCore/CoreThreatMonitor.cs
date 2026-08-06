@@ -40,6 +40,7 @@ public class CoreThreatMonitor : MonoBehaviour
 
     private float pollTimer;
     private bool visitorsPresent;
+    private bool invaderNearCore;
 
     private void Awake()
     {
@@ -73,6 +74,7 @@ public class CoreThreatMonitor : MonoBehaviour
 
         DungeonAdventurer nearestThreat = null;
         DungeonAdventurer nearestVisitor = null;
+        DungeonMonster nearestInvader = null;
         if (coreFloor.Entities != null)
         {
             // Only core-breaching goals (Mercenary / Hero / Suicidal) count as a threat.
@@ -88,6 +90,15 @@ public class CoreThreatMonitor : MonoBehaviour
                 adv => adv.State != AdventurerState.Retreating &&
                        adv.State != AdventurerState.UsingStairs &&
                        !adv.ThreatensCore);
+
+            // Invaders are MONSTERS, not adventurers, and this monitor scanned
+            // only adventurers -- so a wild or climax beast marching on the core
+            // was invisible here and the first the player heard of it was
+            // DungeonMonster calling DestroyCore at invaderBreachDistance. Same
+            // radius as an adventurer threat, because it is the same question.
+            nearestInvader = coreFloor.Entities.Nearest<DungeonMonster>(
+                corePos, coreThreatRadius,
+                m => m != null && m.IsInvader);
         }
 
         bool wasThreatened = IsCoreThreatened;
@@ -100,6 +111,16 @@ public class CoreThreatMonitor : MonoBehaviour
             if (IsCoreThreatened) FireThreatAlert(nearestThreat);
         }
 
+        // DELIBERATELY OUTSIDE IsCoreThreatened, which is not merely a report:
+        // DungeonMonster reads it to decide whether to rally to the core, and
+        // NearestThreat is typed DungeonAdventurer. Folding invaders into it
+        // would change monster behaviour and the field's type in one go. This
+        // watch raises an alert and nothing else; whether the garrison should
+        // turn out for a beast as well as for a Destroyer is a separate call.
+        bool hadInvader = invaderNearCore;
+        invaderNearCore = nearestInvader != null;
+        if (invaderNearCore && !hadInvader) FireInvaderAlert(nearestInvader);
+
         bool hadVisitors = visitorsPresent;
         visitorsPresent = nearestVisitor != null;
         if (visitorsPresent && !hadVisitors) FireVisitorAlert(nearestVisitor);
@@ -108,6 +129,11 @@ public class CoreThreatMonitor : MonoBehaviour
     private void Clear()
     {
         visitorsPresent = false;
+
+        // Reset with the rest, or a floor change would leave the flag latched
+        // and the next invader to arrive would raise no alert at all.
+        invaderNearCore = false;
+
         if (!IsCoreThreatened) return;
         IsCoreThreatened = false;
         NearestThreat = null;
@@ -121,6 +147,22 @@ public class CoreThreatMonitor : MonoBehaviour
             ? FloorManager.Instance.CoreFloorIndex : 0;
         Vector3 pos = threat.transform.position;
         string msg = $"The core is under threat on Floor {floorIdx + 1}";
+
+        Debug.LogWarning($"[CoreThreatMonitor] {msg}");
+        AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat,
+                                     AlertSeverity.Critical);
+    }
+
+    /// <summary>A beast is inside the core's radius. Critical, on the same footing
+    /// as a Destroyer arriving, because it ends the same way: DungeonMonster calls
+    /// DestroyCore the moment it closes to invaderBreachDistance.</summary>
+    private void FireInvaderAlert(DungeonMonster invader)
+    {
+        if (invader == null) return;
+        int floorIdx = FloorManager.Instance != null
+            ? FloorManager.Instance.CoreFloorIndex : 0;
+        Vector3 pos = invader.transform.position;
+        string msg = $"A beast has reached the core on Floor {floorIdx + 1}";
 
         Debug.LogWarning($"[CoreThreatMonitor] {msg}");
         AlertsLog.Instance?.AddAlert(msg, pos, floorIdx, AlertCategory.Threat,

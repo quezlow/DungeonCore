@@ -1455,8 +1455,86 @@ load -- a stack of banners for threats already answered is worse than silence.
 The critical sting is a serialized `SoundEffectManager` key left EMPTY, so the
 layer is usable before the clip exists.
 
-Not built: severity filter pills in `AlertHistoryPanel`. Pills are prefab
-children.
+**The loud half (SHIPPED, backlog item o).** The layer above shipped with a
+banner and an empty sting key. The rest of item (o) is this.
+
+*Critical washes the screen.* `ScreenFlash` already existed, self-builds its own
+overlay canvas, is live in the scene and was already driving the climax beast's
+pushback flash, so the alert flash reuses its colour and duration -- `0.75,
+0.05, 0.05` over 0.45s -- and the two read as one language instead of two
+unrelated effects. No new component and no prefab work.
+
+*The flash and the sting are COALESCED; the banner is not.* Three Criticals can
+land in the same breath -- a wave stage, a Holy Order strike and a core breach --
+and three washes of red stacked on each other reads as a rendering fault rather
+than as three pieces of bad news. Both loud channels share one three-second
+window on UNSCALED time, because a Critical can land while the game is paused and
+a scaled cooldown would never expire. The banner is exempt: it replaces its own
+text rather than stacking, so rate-limiting it would just lose the newer message.
+
+*`SettingsAccess.ReduceFlashing` suppresses the flash and NOTHING else.* The
+sting and the banner still fire, because this is an opt-out from a
+photosensitivity hazard, not from being told bad news. It lives beside
+`BossAlertMode` rather than in `DcrVideoSettings`, which is resolution,
+fullscreen and vsync -- things needing an Apply pass -- while this is a bool read
+at the moment of use. There is no settings-menu row yet; rows are prefab
+children, and a preference with no UI still beats a flash with no opt-out.
+
+**Critical BYPASSES the `tech.alerts` gate, partially and on purpose.** What the
+Ledger of Alarums sells is the ACCOUNT: the ticker, the history, the unread
+count, the ability to look back. It was never supposed to be selling the alarm.
+Before this, a player who had not bought the node watched the core go down with
+no banner, no flash and no sound. So a Critical now raises its banner, flash and
+sting unresearched, and still records nothing -- no history row, no ticker row,
+no unread count, no `OnAlertAdded`. Nothing downstream can tell the difference
+between that and the alert never existing, which is what keeps the node worth
+buying.
+
+**The breach finally says something.** `DungeonCore.DestroyCore` raised no alert
+at all: `CoreThreatMonitor` announced a threat APPROACHING and the breach itself
+was silent, so the loudest moment in the game reached the player as an influence
+ring quietly receding. First breach, second breach and the breached-in-transit
+instant loss now each raise Critical, before the event that ends or destabilises
+the run, so the banner lands while the player is still looking at a live dungeon.
+
+*There is no "HP critical" tier, because the core has no HP.* It has a breach
+COUNT: the first breach opens an instability window of `instabilityDuration`
+seconds and a second breach inside it ends the run. The first breach IS the
+critical-health beat -- one life left, on a timer -- so it takes one alert for
+that instant rather than two.
+
+**`CoreThreatMonitor` watches invaders as well as Destroyers.** "Destroyer" is
+the player-facing name for the Mercenary party type, whose goal is `BreachCore`,
+and the monitor already fired Critical when one came inside `coreThreatRadius`.
+But invaders are MONSTERS, not adventurers, and the monitor scanned only
+`DungeonAdventurer` -- so a wild or climax beast marching on the core was
+invisible to it, and the first the player heard was `DungeonMonster` calling
+`DestroyCore` at `invaderBreachDistance`. Same radius, same severity, because it
+is the same question. `DungeonMonster.IsInvader` was added for it: `IsWild` is
+also true for wild-chamber dwellers, which wander their own chamber and threaten
+nothing.
+
+*The invader watch is ALERT-ONLY and sits outside `IsCoreThreatened`.* That flag
+is not merely a report -- `DungeonMonster` reads it to decide whether to rally to
+the core, and `NearestThreat` is typed `DungeonAdventurer` -- so folding invaders
+in would change monster behaviour and a field's type in one move. Whether the
+garrison should turn out for a beast as well as for a Destroyer is left open.
+
+**The sting is guarded rather than trusted.** `SoundEffectManager.Play`
+dereferences a static `SoundEffectLibrary` assigned only in the manager's own
+`Awake`, so calling it with no manager in the scene throws outright. An alert
+layer that can hard-error on a scene missing an audio object is worse than one
+that is silent. `criticalSfxKey` still ships EMPTY: only `Chest` and `Footstep`
+exist in the library, and a clip plus a library entry is editor work that cannot
+ride a delivery script. The flash and the banner do not wait on it.
+
+Not built, and each for a reason: severity filter pills in `AlertHistoryPanel`
+(pills are prefab children); a mass-death detector (monsters are supposed to
+die, and the proximity rule above is the beat that was actually wanted); boss
+death re-tiered above Info; `BossAlertService.bossDeathSting`, an unwired
+`AudioClip` predating `SoundEffectManager`; and generalising `BossAlertBanner`,
+which the backlog asked for but which `AlertsLog` deliberately declines in favour
+of `FeatureAlertBanner` for the activation-ordering reason above.
 
 **Core spells / active abilities: GREENLIT, unscheduled.** The call is made;
 the build is not started. Two things unblock on it: the Sorcery research
@@ -3208,6 +3286,14 @@ being shortchanged for having earned it. Nothing is lost to that overflow:
 player confirms -- and `ConfirmLevelUp` subtracts exactly one threshold before
 re-checking against the next.
 
+**And the wisp knows it when it sees it.** Revealing the vault speaks two lines
+from entry 34's warden reading -- the wisp has stood where the player is standing
+before, and not with them. Entry 34 records why those are not gated on
+`CoreMemory.Lived` when the Sealed Gate line is, and why the vault is tested
+ahead of `IsHolyArchetype` in `SpeakForSite`: the terrain layer is right to count
+the vault among the Church sites, but it is not a seal of theirs. It is the older
+thing the Church built over.
+
 The vault also takes its OWN alert copy and its own wisp line (`holy_break_vault`),
 and is ALWAYS Critical rather than sharing the seal ladder's first-break Warning.
 There is one vault in a dungeon and it is built around a dead core, which is to
@@ -4430,13 +4516,44 @@ and where Serra's maps came from** -- which points directly at entry 21 and the
 Sealed Gates of entry 19. That question stays open on purpose, and the answer
 may be shared with whatever the dwarves will not go below.
 
-**The wisp was already there.** It read the player's life back from flags it
-had no business seeing, waiting at the rebirth site -- and entry 20 records
-that deep shrines warded rebirth sites. It is plausibly a warden of the old
-deep-faith doing a job it has done many times before, for cores that failed.
-This reframes every prologue line at zero cost, explains the rare `Ancient`
-and `Reverent` temperaments, and gives it standing to recognise a dead core's
-ruin when one is found.
+**The wisp was already there. SHIPPED.** It read the player's life back from
+flags it had no business seeing, waiting at the rebirth site -- and entry 20
+records that deep shrines warded rebirth sites. It is plausibly a warden of the
+old deep-faith doing a job it has done many times before, for cores that failed.
+This reframes every prologue line at zero cost, explains the rare `Ancient` and
+`Reverent` temperaments, and gives it standing to recognise a dead core's ruin
+when one is found.
+
+That ruin is the `DeadCoreVault` of entry 20, and the recognition is now three
+lines in `FeatureRevealController.SpeakForSite`. On revealing the VAULT the wisp
+speaks twice -- it knows the shape, and it has stood where the player is standing
+before and not with them, and some of the others are still down here. On
+revealing the first CHURCH SEAL of the run it speaks once, from the other side of
+the practice: the Church inherited the sealing and forgot who from.
+
+**Implied, never confirmed, and that is a constraint rather than a preference.**
+The wisp says it has been here before. It does not say what it is. Canon keeps
+its nature an open question and a line that settles it spends something no later
+entry can get back -- the same discipline entry 34 applies to what seal the
+player had opened and where Serra's maps came from.
+
+**NOT gated on `CoreMemory.Lived`, unlike `site_sealed_gate`.** That line is
+gated because the memory is the PLAYER'S -- they died at an opened seal. These
+are the WISP'S, and a core that skipped the prologue has not thereby erased the
+wisp's own history. Getting this backwards would have made the deepest lore in
+the game invisible to exactly the players who chose the shortest opening.
+
+**Two lines at the vault rather than three**, because `WispCompanion.Speak`
+enqueues rather than clobbers -- so a chain plays in order -- but `holdSeconds`
+is 3.2 and `ShowLine` is deliberately unskippable, which puts each line at about
+four seconds of standing still. Eight seconds is what a once-ever discovery of
+the largest set-piece in the game earns; twelve, mid-mine, with no way out, is
+not.
+
+Not touched: `holy_break_vault`, which already carries "once as new as you" and
+does not need a second pass at the same beat; and the floor-4 descent, where
+`CoreMemory.FirstDescent` already speaks through `MillClimb` and a second line on
+the same trigger would collide.
 
 ### What came back, and what did not
 

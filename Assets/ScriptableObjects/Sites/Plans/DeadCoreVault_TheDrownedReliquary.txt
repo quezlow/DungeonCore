@@ -1,6 +1,6 @@
 @archetype: DeadCoreVault
 @name: The Drowned Reliquary
-@anchor: Free
+@anchor: RoadEnd
 @rotate: no
 
 // One enormous hall, long dry, with the core raised on an island at the

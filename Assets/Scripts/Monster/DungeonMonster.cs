@@ -259,6 +259,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public bool IsBoss => bossDefinition != null;
     public bool IsWild => wildChamberId >= 0 || isInvader;
+
+    /// <summary>Specifically an INVADER -- a beast marching on the core -- and
+    /// not merely wild. IsWild is true for wild-chamber dwellers too, and those
+    /// wander their own chamber and threaten nothing, so anything that cares
+    /// about the core being charged has to ask this instead.</summary>
+    public bool IsInvader => isInvader;
     public bool IsVeteran => isVeteran;
     public int PatrolIndex => patrolIndex;
     public int WildChamberId => wildChamberId;
