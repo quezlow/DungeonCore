@@ -1,7 +1,7 @@
 @archetype: ChurchSeal
 @name: The Nine Chains
 @anchor: Free
-@doors: unmarked
+@doors: marked
 
 // Anchor recesses cut into the ring wall, chained to the stone at the
 // centre. The chains are long gone; the sockets they were bolted into are
@@ -11,9 +11,9 @@
 // Every recess is THREE rows deep. Two would leave a two-cell run pinched
 // between wall above and wall below, and that seals under the drape.
 
-#####################
-#####################
-#####################
+#########+++#########
+#########...#########
+#########...#########
 ######.........######
 ######.........######
 ######.........######
@@ -29,6 +29,6 @@
 ######.........######
 ######.........######
 ######.........######
-#####################
-#####################
-#####################
+#########...#########
+#########...#########
+#########+++#########

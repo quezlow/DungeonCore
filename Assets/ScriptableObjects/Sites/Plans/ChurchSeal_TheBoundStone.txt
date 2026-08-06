@@ -2,7 +2,7 @@
 @name: The Bound Stone
 @anchor: Free
 @rotate: no
-@doors: unmarked
+@doors: marked
 
 // The plainest seal the Church builds: a ring of dressed stone around a
 // capped plinth, with no door and no window. Nobody was ever meant to come
@@ -26,6 +26,6 @@
 ###...............###
 ###...............###
 ###...............###
-#####################
-#####################
-#####################
+#########...#########
+#########...#########
+#########+++#########

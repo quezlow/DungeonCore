@@ -1,6 +1,6 @@
 @archetype: GuardPost
 @name: The Cold Watch
-@doors: unmarked
+@doors: marked
 
 // A road watch of two rooms and a brazier yard. Small, because it was
 // never meant to hold -- only to see, and to send word down the road in
@@ -11,9 +11,9 @@
 #...............#
 #...............#
 #...####..####..#
-#...#..........##
-#...#..........##
-#...#..........##
++...#..........##
++...#..........##
++...#..........##
 #...####..####..#
 #...............#
 #...............#

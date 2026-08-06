@@ -1,11 +1,11 @@
 @archetype: HollowSanctum
 @name: The Drowned Choir
-@doors: unmarked
+@doors: marked
 
 // Concentric. The outer ambulatory is open; the inner sanctum is
 // still sealed and has to be mined into. Whatever they kept is inside.
 
-##################################
+###############+++++##############
 #................................#
 #................................#
 #................................#
@@ -23,4 +23,4 @@
 #................................#
 #................................#
 #................................#
-##################################
+###############+++++##############

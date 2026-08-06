@@ -1,6 +1,6 @@
 @archetype: SunkenPlaza
 @name: The Gallows Court
-@doors: unmarked
+@doors: none
 
 // The other kind of plaza. Bare paving, a processional axis marked by
 // pillar stubs, and a raised masonry platform at the centre that still

@@ -1,14 +1,14 @@
 @archetype: WardChapel
 @name: The Watchful Nave
 @anchor: AlongRoad
-@doors: unmarked
+@doors: marked
 
 // A cross-plan chapel with the altar block standing at the crossing, where
 // the two aisles meet and everyone who walks either one has to pass it.
 
-#####################
-#####################
-#####################
+#########+++#########
+#########...#########
+#########...#########
 #######.......#######
 #######.......#######
 #######.......#######
@@ -24,6 +24,6 @@
 #######.......#######
 #######.......#######
 #######.......#######
-#####################
-#####################
-#####################
+#########...#########
+#########...#########
+#########+++#########

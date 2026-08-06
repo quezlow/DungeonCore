@@ -1,12 +1,12 @@
 @archetype: CollapsedArchive
 @name: The Burned Wing
-@doors: unmarked
+@doors: marked
 
 // Two reading halls. The west hall kept its stacks. The east hall kept
 // nothing: the Light burned it clean, shelves and all, and the floor is
 // bare where they stood. Time ruins evenly; judgment does not.
 
-################################
+######+++#############+++#######
 #..............#...............#
 #..#######.....#...............#
 #..............#...............#
@@ -20,4 +20,4 @@
 #..............#...............#
 #..#######.....#...............#
 #..............#...............#
-################################
+######+++#############+++#######

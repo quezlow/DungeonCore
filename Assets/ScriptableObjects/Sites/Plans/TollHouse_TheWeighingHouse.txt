@@ -1,17 +1,17 @@
 @archetype: TollHouse
 @name: The Weighing House
-@doors: unmarked
+@doors: marked
 
 // Two halls astride the road, and the road passed between them under a
 // gate that is long gone. The west hall kept the weighing floor -- the
 // masonry counter still stands. The same institution the dwarves still
 // run below, two eras before they ran it.
 
-##########.....##########
+##########+++++##########
 #........#.....#........#
 #........#.....#........#
 #..####..#.....#........#
 #..####..#.....#........#
 #........#.....#........#
 #........#.....#........#
-##########.....##########
+##########+++++##########
