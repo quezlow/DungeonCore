@@ -2468,8 +2468,8 @@ floor and never swept in by "all".
 **The plans.** Three holds rotate, sharing one contract: four 5-wide gates
 on every bearing (an AlongRoad anchor lands on any local heading -- the
 gatehouse arithmetic), interiors partitioned so no single empty rectangle
-reads as a hole, and THE DOOR RULE recorded in every file -- all doors,
-passages, stall gaps and grave rows are 3 cells long, because the wall drape
+reads as a hole, and THE DOOR RULE recorded in every file -- DECLARED doors
+and passages are 3 cells long, because the wall drape
 seals 2-long gaps that rotation turns east/west (the Hearth's draft lost a
 45-cell interior to that; the Market's draft, a 66-cell stall lane when the
 rule was not yet applied to furniture). Each hold validated in all eight
@@ -3299,6 +3299,53 @@ and is ALWAYS Critical rather than sharing the seal ladder's first-break Warning
 There is one vault in a dungeon and it is built around a dead core, which is to
 say around what the player is; that is not a beat to learn about from a quiet row
 in the log.
+
+### The door rule, rebuilt on declaration (SHIPPED)
+
+The first door-rule gate was retired for failing twelve shipped, working plans.
+It is back, and the reason it cannot repeat that is MEASURED rather than argued.
+
+The tightest structural definition of a door available without a glyph is a
+floor run of two or fewer cells bounded by masonry at BOTH ends -- a passage
+THROUGH a wall, which by construction exempts a niche, since a niche is bounded
+at one end only. Scanned across the 29 shipped plans, that definition returns
+**815 hits in 15 of them**, 213 in `TheShrinehold` alone. None are doors. They
+are stall gaps, grave rows and column spacing, and a two-cell gap between two
+grave slabs is structurally IDENTICAL to a two-cell doorway. No inference can
+separate them, so the author declares: `'+'` is the door glyph, floor plus a
+marker exactly as `'='` and `'^'` are, and the gate reads only `'+'` cells.
+
+**This entry's own claim is therefore narrowed.** It previously recorded the
+rule as covering "all doors, passages, stall gaps and grave rows". Those 815
+furniture gaps are shipped, working geometry, so the rule never applied to them
+in practice and now does not claim to. Declared doors and passages, and nothing
+else.
+
+**Three is demonstrated, not derived** -- the first derivation was wrong and
+predicted a 3-gap would seal under rotation. Two chambers separated by a wall
+with a gap of N, at wall thicknesses of one, two and three cells: a gap of 2
+leaves the interior in two disconnected pieces in the orientation it was drawn
+in, and a gap of 3 or more is a single piece in all eight orientations. Wall
+thickness is irrelevant. The drape is the mechanism: a floor cell is walkable
+only when y+1 AND y+2 are also floor, and a two-cell run never gives its bottom
+cell both.
+
+**`@doors:` is REQUIRED, with three states.** `unmarked` (not yet annotated --
+passes, and the report keeps a roll-call), `none` (genuinely has none), `marked`
+(doors drawn with `'+'`, rule enforced). A missing header FAILS, so "not filled
+in yet" can never be mistaken for "nothing to fill in" -- the ambiguous-default
+trap this project refuses everywhere else. A wrong VALUE is a parse error rather
+than a silent fall back to absent, because "unknown @doors 'markd'" sends the
+author to the right line and "missing @doors header" sends them hunting for one
+that is already there.
+
+All 29 shipped plans were stamped `unmarked`. Which gaps are doors is authoring
+judgement, and guessing at it is precisely what killed the first gate.
+
+Not in this pass: tunnel termination -- that a tunnel must meet a door and there
+either end or continue out a separate one -- which waits until the glyph has
+been annotated and there is something to check against. Nor door colouring in
+`SitePlanPreviewWindow`; the validator's per-run report is what annotation needs.
 
 **The ladder.** One wisp murmur on the first CLAIM of hallowed ground, which is
 free and therefore lands while the real decision is still ahead of the player. A

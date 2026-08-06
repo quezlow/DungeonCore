@@ -1,6 +1,7 @@
 @archetype: WardChapel
 @name: The Lamp Chapel
 @anchor: AlongRoad
+@doors: unmarked
 
 // A roadside chapel: not a seal in itself but the place the sealing was
 // administered from. Lamp niches cut three deep into a heavy wall, and the

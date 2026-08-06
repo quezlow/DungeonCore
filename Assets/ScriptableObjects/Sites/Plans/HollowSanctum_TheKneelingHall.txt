@@ -1,5 +1,6 @@
 @archetype: HollowSanctum
 @name: The Kneeling Hall
+@doors: unmarked
 
 // A nave running the long axis, side chapels off both flanks,
 // and an apse at the head that never lost its roof.

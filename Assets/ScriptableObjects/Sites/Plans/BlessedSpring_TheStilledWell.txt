@@ -1,6 +1,7 @@
 @archetype: BlessedSpring
 @name: The Stilled Well
 @anchor: Free
+@doors: unmarked
 
 // A well shaft with a stone cap mortared over it, ringed by the drawing
 // floor and then ringed again. One passage in, three cells wide. Whoever

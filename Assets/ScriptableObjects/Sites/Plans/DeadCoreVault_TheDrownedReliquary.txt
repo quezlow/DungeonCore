@@ -2,6 +2,7 @@
 @name: The Drowned Reliquary
 @anchor: RoadEnd
 @rotate: no
+@doors: unmarked
 
 // One enormous hall, long dry, with the core raised on an island at the
 // centre and four causeways reaching it. The opposite silhouette to the Cist:

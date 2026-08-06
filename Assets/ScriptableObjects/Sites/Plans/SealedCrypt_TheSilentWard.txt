@@ -1,6 +1,7 @@
 @archetype: SealedCrypt
 @name: The Silent Ward
 @anchor: Free
+@doors: unmarked
 
 // An antechamber, then a wall, then the ward itself. Whatever was interred
 // here was not interred with the rest. The only way through is a passage

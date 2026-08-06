@@ -1,5 +1,6 @@
 @archetype: Ossuary
 @name: The Ten Thousand Quiet
+@doors: unmarked
 
 // Concentric bone galleries wound around a central well. The doorways
 // never line up: each ring must be walked half-round to reach the next,

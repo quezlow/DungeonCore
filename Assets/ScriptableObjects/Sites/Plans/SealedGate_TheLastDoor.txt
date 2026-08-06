@@ -1,6 +1,7 @@
 @archetype: SealedGate
 @name: The Last Door
 @anchor: RoadEnd
+@doors: unmarked
 
 // The road arrives and stops. You can walk right up to the portal;
 // it is a recess three cells deep that dead-ends against solid rock.

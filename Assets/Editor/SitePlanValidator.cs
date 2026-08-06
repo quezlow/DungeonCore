@@ -83,6 +83,11 @@ public static class SitePlanValidator
                 continue;
             }
 
+            // Names rather than a count: the roll-call is a to-do list for
+            // annotation, and a number tells you there is work without telling
+            // you where.
+            var unmarked = new List<string>();
+
             foreach (var plan in plans)
             {
                 totalPlans++;
@@ -90,7 +95,56 @@ public static class SitePlanValidator
                 Debug.Log($"PLAN LOADED: '{plan.sourceName}' floor={plan.floor.Count} wall={plan.wall.Count}");
 
 
-                // THE HEART. The door-rule gate that used to sit here is gone:
+                // THE DOOR RULE, back and on a footing that cannot repeat the
+                // first gate's failure. It reads ONLY '+' cells, so the 815
+                // stall gaps, grave rows and column spacings that the old
+                // inference flagged are exempt by construction rather than by
+                // exception. A plan that declares nothing is checked for
+                // nothing -- and says so in the roll-call.
+                if (plan.doorPolicy == DoorPolicy.Absent)
+                {
+                    failures++;
+                    sb.Append("  DOORS FAIL: '").Append(plan.sourceName)
+                      .Append("' has no '@doors:' header.")
+                      .Append("\n         -> write one of: unmarked (not yet annotated),")
+                      .Append("\n            none (genuinely has none), marked (doors are '+').")
+                      .Append("\n            Omission is not a third answer.\n");
+                }
+                else if (plan.doorPolicy == DoorPolicy.None && plan.door.Count > 0)
+                {
+                    failures++;
+                    sb.Append("  DOORS FAIL: '").Append(plan.sourceName)
+                      .Append("' says '@doors: none' but draws ")
+                      .Append(plan.door.Count).Append(" '+' cell(s).\n");
+                }
+                else if (plan.doorPolicy == DoorPolicy.Marked)
+                {
+                    if (plan.door.Count == 0)
+                    {
+                        failures++;
+                        sb.Append("  DOORS FAIL: '").Append(plan.sourceName)
+                          .Append("' says '@doors: marked' and draws no '+' cells.")
+                          .Append("\n         -> use 'none' if it genuinely has no doors.\n");
+                    }
+                    int shortRuns = ShortDoorRuns(plan, out int runs, out int worstRun);
+                    if (shortRuns > 0)
+                    {
+                        failures++;
+                        sb.Append("  DOORS FAIL: '").Append(plan.sourceName)
+                          .Append("' has ").Append(shortRuns).Append(" of ").Append(runs)
+                          .Append(" door run(s) under three cells (shortest ")
+                          .Append(worstRun).Append(").")
+                          .Append("\n         -> three. Two seals in the drawn orientation:")
+                          .Append("\n            the drape needs y+1 AND y+2 clear, and a")
+                          .Append("\n            two-cell run never gives the bottom cell both.\n");
+                    }
+                }
+                else if (plan.doorPolicy == DoorPolicy.Unmarked)
+                {
+                    unmarked.Add(plan.sourceName);
+                }
+
+                // THE HEART. The old door-rule gate that used to sit here is gone:
                 // it failed twelve shipped, working plans by flagging every
                 // decorative niche as a sealed passage. A site is MINED into
                 // rather than walked into through a door, so neither a narrow
@@ -214,6 +268,19 @@ public static class SitePlanValidator
 
         sb.Append("\n").Append(totalPlans).Append(" plan(s) checked, ")
           .Append(failures).Append(" failure(s).\n");
+
+        // THE ROLL-CALL. Not a failure -- an unannotated plan is not a broken
+        // one, it is one nobody has looked at yet, and the whole point of the
+        // third policy state is that those two are different. Printed so the
+        // annotation backlog is visible instead of implied.
+        if (unmarked.Count > 0)
+        {
+            sb.Append(unmarked.Count).Append(" plan(s) still '@doors: unmarked' -- ")
+              .Append("the door rule checks nothing on these:\n");
+            foreach (var n in unmarked) sb.Append("    ").Append(n).Append('\n');
+            sb.Append("  -> set 'marked' and draw the '+' cells, or 'none' if there ")
+              .Append("are genuinely no doors.\n");
+        }
 
         if (failures > 0)
             Debug.LogError("[SitePlanValidator]" + sb);
@@ -341,6 +408,64 @@ public static class SitePlanValidator
                     return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// Door runs under three cells. Counts MAXIMAL straight runs of declared
+    /// door cells along whichever axis the run actually lies on, and measures
+    /// the run in that direction.
+    ///
+    /// THREE, and the figure is demonstrated rather than argued. Two chambers
+    /// separated by a wall with a gap of N, at every wall thickness from one to
+    /// three cells: a gap of 2 leaves the interior in two disconnected pieces in
+    /// the orientation it was drawn in, and a gap of 3 or more is a single piece
+    /// in all eight orientations. The drape is why -- a floor cell is walkable
+    /// only when y+1 AND y+2 are also floor, and a two-cell run never gives its
+    /// bottom cell both.
+    ///
+    /// A single isolated '+' counts as a run of one and fails, which is correct:
+    /// a one-cell door is the worst version of the fault this exists to catch.
+    /// </summary>
+    private static int ShortDoorRuns(AuthoredSitePlan plan, out int runs, out int worstRun)
+    {
+        runs = 0;
+        worstRun = int.MaxValue;
+        int bad = 0;
+
+        var set = new HashSet<Vector2Int>(plan.door);
+        var counted = new HashSet<Vector2Int>();
+
+        foreach (var cell in plan.door)
+        {
+            if (counted.Contains(cell)) continue;
+
+            // Which way does this run lie? A door drawn in a vertical wall runs
+            // vertically; one in a horizontal wall runs horizontally. A lone
+            // cell belongs to neither and is measured as a run of one.
+            bool horiz = set.Contains(new Vector2Int(cell.x + 1, cell.y))
+                      || set.Contains(new Vector2Int(cell.x - 1, cell.y));
+            var step = horiz ? new Vector2Int(1, 0) : new Vector2Int(0, 1);
+
+            // Walk to the run's start, then along it.
+            var start = cell;
+            while (set.Contains(start - step)) start -= step;
+
+            int len = 0;
+            var c = start;
+            while (set.Contains(c))
+            {
+                counted.Add(c);
+                len++;
+                c += step;
+            }
+
+            runs++;
+            if (len < worstRun) worstRun = len;
+            if (len < 3) bad++;
+        }
+
+        if (worstRun == int.MaxValue) worstRun = 0;
+        return bad;
     }
 
     /// <summary>How many disconnected pieces the drape-filtered walkable set

@@ -1,5 +1,6 @@
 @archetype: CollapsedArchive
 @name: The Ash Stacks
+@doors: unmarked
 
 // Shelving stacks in parallel runs, reading aisles between them. The east
 // wing went down whole -- a solid collapse to mine through to learn what

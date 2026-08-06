@@ -1,6 +1,7 @@
 @archetype: DwarvenVillage
 @name: The Deep Market
 @anchor: AlongRoad
+@doors: unmarked
 
 // The Deep Market: the crossroads town the sparse network implies. 71x49,
 // 2374 carved / 1105 masonry as drawn (footprint 2.07x the retired Hearth,

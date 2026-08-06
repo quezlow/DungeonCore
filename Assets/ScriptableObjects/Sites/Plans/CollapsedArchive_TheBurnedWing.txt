@@ -1,5 +1,6 @@
 @archetype: CollapsedArchive
 @name: The Burned Wing
+@doors: unmarked
 
 // Two reading halls. The west hall kept its stacks. The east hall kept
 // nothing: the Light burned it clean, shelves and all, and the floor is

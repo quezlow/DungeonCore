@@ -1,6 +1,7 @@
 @archetype: HollowSanctum
 @name: The Pilgrims Way
 @anchor: AlongRoad
+@doors: unmarked
 
 ##############.....#############
 ###########.............########

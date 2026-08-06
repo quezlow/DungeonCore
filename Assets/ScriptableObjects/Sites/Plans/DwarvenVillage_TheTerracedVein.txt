@@ -1,6 +1,7 @@
 @archetype: DwarvenVillage
 @name: The Terraced Vein
 @anchor: AlongRoad
+@doors: unmarked
 
 // The Terraced Vein: the mining town. 57x57, 2314 carved / 935 masonry as
 // drawn (footprint 1.93x the retired Hearth). North-west and south-west carry

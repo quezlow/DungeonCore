@@ -1,6 +1,7 @@
 @archetype: SealedCrypt
 @name: The Coffin Row
 @anchor: Free
+@doors: unmarked
 
 // Slab graves cut three deep into the north and south walls, either side of
 // a processional floor, and one grave at the head that is larger than the

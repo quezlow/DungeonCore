@@ -1,6 +1,7 @@
 @archetype: BlessedSpring
 @name: The Weeping Font
 @anchor: Free
+@doors: unmarked
 
 // A spring the Church took over and capped. The font stands alone on an
 // octagonal drawing floor, with three clear cells on every side of it -

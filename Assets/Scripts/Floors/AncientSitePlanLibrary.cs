@@ -8,11 +8,36 @@ using UnityEngine;
 /// the whole placement layer -- band, anchors, spacing, disc clamp, rotation,
 /// the walkability guard, save, reveal and terrain override -- unchanged.
 /// </summary>
+/// <summary>
+/// What a plan says about its own doors. AUTHORING-TIME ONLY -- this never
+/// reaches a save, so it carries no append-only obligation.
+///
+/// Three states rather than two, and the third is the one that earns its keep.
+/// With only "none" and "marked", a plan nobody has annotated yet is
+/// indistinguishable from a plan with genuinely nothing to annotate, and the
+/// gate silently protects nothing. `Unmarked` says "not looked at", so the
+/// report can keep a roll-call.
+///
+/// `Absent` is not a state an author can write. It means the header is missing,
+/// and the validator FAILS on it, so the question cannot be dodged by omission.
+/// </summary>
+public enum DoorPolicy
+{
+    Absent = 0,
+    Unmarked,
+    None,
+    Marked,
+}
+
 public class AuthoredSitePlan
 {
     public string name = "";
     public string sourceName = "";
     public SiteArchetype archetype = SiteArchetype.GuardPost;
+
+    /// <summary>From "@doors:". Absent unless the plan says otherwise, and the
+    /// validator will not pass a plan that leaves it Absent.</summary>
+    public DoorPolicy doorPolicy = DoorPolicy.Absent;
 
     /// <summary>Set only when the plan declared its own @anchor. Otherwise the
     /// archetype's fixed preference applies.</summary>
@@ -62,6 +87,20 @@ public class AuthoredSitePlan
     /// prefab so the geometry is the single source of truth: a prefab can be
     /// redrawn without anyone noticing the plan no longer agrees with it.</summary>
     public readonly List<Vector2Int> stairs = new List<Vector2Int>();
+
+    /// <summary>Door cells, from '+'. Floor plus a marker, exactly as '=' and
+    /// '^' are, so rendering, walkability, reveal and the drape all see ordinary
+    /// open ground and no consumer needs a special case.
+    ///
+    /// DECLARED RATHER THAN INFERRED, and that is the whole design. The tightest
+    /// structural definition of a door -- a floor run of two or fewer cells with
+    /// masonry at BOTH ends -- returns 815 hits across the shipped plans, 213 in
+    /// TheShrinehold alone, and every one of them is a stall gap, a grave row or
+    /// column spacing rather than a door. A two-cell gap between grave slabs is
+    /// structurally identical to a two-cell doorway. The first door-rule gate
+    /// tried to tell them apart and failed twelve working plans doing it; this
+    /// one does not guess.</summary>
+    public readonly List<Vector2Int> door = new List<Vector2Int>();
 }
 
 /// <summary>
@@ -83,7 +122,27 @@ public class AuthoredSitePlan
 ///          site's meaning: altar, grave slab, capped font,
 ///          seal-stone. Solid, because unsealing means mining it.
 ///          Exactly one per plan; two is a parse error.
-///     anything else (including space) is not part of the site at all
+///     '+'  a DOOR -- open ground, plus a marker. Declared rather
+///          than inferred: a two-cell gap between grave slabs is
+///          structurally identical to a two-cell doorway, so
+///          nothing but the author can tell them apart. Every
+///          declared door must be THREE cells in its run; two
+///          seals. Only '+' cells are checked, so stall gaps and
+///          grave rows are exempt by construction.
+///     anything else (including space) is not part of the site at all.
+///          This is LOAD-BEARING, not a fallthrough:
+///          BrokenAqueduct_TheDrySpan is two separate reaches with a
+///          void between them where the middle span fell, and the
+///          void is spaces. Do not tighten this into an error.
+///
+///   '@doors:' is REQUIRED and takes one of three values:
+///     unmarked  not yet annotated. Passes, and the report keeps a
+///               roll-call of them.
+///     none      genuinely has no doors. Passes silently.
+///     marked    doors are drawn with '+' and the three-cell rule is
+///               enforced on them.
+///   A missing header FAILS, so "not filled in yet" can never be
+///   mistaken for "nothing to fill in".
 ///
 ///   TWO RULES THE GRID WILL NOT SHOW YOU, both learned by drawing
 ///   eight plans and failing seven:
@@ -169,6 +228,24 @@ public static class AncientSitePlanLibrary
                                           || val.ToLowerInvariant() == "false"
                                           || val == "0");
                         break;
+                    case "doors":
+                        // A wrong value is an ERROR rather than a silent fall
+                        // back to Absent. Absent already fails the validator, so
+                        // a typo would be caught either way -- but "unknown
+                        // @doors 'markd'" sends the author to the right line,
+                        // and "missing @doors header" sends them looking for a
+                        // line that is already there.
+                        switch (val.ToLowerInvariant())
+                        {
+                            case "unmarked": plan.doorPolicy = DoorPolicy.Unmarked; break;
+                            case "none": plan.doorPolicy = DoorPolicy.None; break;
+                            case "marked": plan.doorPolicy = DoorPolicy.Marked; break;
+                            default:
+                                error = "unknown @doors '" + val +
+                                        "' -- expected unmarked, none or marked";
+                                return null;
+                        }
+                        break;
                 }
                 continue;
             }
@@ -193,6 +270,7 @@ public static class AncientSitePlanLibrary
         var heart = new List<Vector2Int>();
         var platform = new List<Vector2Int>();
         var stairs = new List<Vector2Int>();
+        var door = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -214,6 +292,12 @@ public static class AncientSitePlanLibrary
                     var sc = new Vector2Int(c, -r);
                     floor.Add(sc);
                     stairs.Add(sc);
+                }
+                else if (row[c] == '+')
+                {
+                    var dc = new Vector2Int(c, -r);
+                    floor.Add(dc);
+                    door.Add(dc);
                 }
                 else if (row[c] == 'X')
                 {
@@ -265,6 +349,7 @@ public static class AncientSitePlanLibrary
         foreach (var p in heart) plan.heart.Add(p - offset);
         foreach (var p in platform) plan.platform.Add(p - offset);
         foreach (var p in stairs) plan.stairs.Add(p - offset);
+        foreach (var p in door) plan.door.Add(p - offset);
 
         foreach (var p in floor)
         {

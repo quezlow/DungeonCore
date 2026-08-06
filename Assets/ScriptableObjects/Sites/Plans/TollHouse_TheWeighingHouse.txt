@@ -1,5 +1,6 @@
 @archetype: TollHouse
 @name: The Weighing House
+@doors: unmarked
 
 // Two halls astride the road, and the road passed between them under a
 // gate that is long gone. The west hall kept the weighing floor -- the

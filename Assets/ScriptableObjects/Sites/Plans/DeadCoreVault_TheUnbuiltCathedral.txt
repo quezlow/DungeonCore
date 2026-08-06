@@ -2,6 +2,7 @@
 @name: The Unbuilt Cathedral
 @anchor: RoadEnd
 @rotate: no
+@doors: unmarked
 
 // A cathedral the Church began and abandoned mid-construction. Nave and
 // transepts finished, the outer courses stopping ragged where the masons

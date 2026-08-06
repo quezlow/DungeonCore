@@ -2,6 +2,7 @@
 @name: The Ninefold Cist
 @anchor: RoadEnd
 @rotate: no
+@doors: unmarked
 
 // Ring inside ring inside ring, each with a single passage and no two
 // passages on the same side. You spiral inward. The Church did not trust one

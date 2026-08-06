@@ -1,6 +1,7 @@
 @archetype: DwarvenVillage
 @name: The Hearth of the Deep
 @anchor: AlongRoad
+@doors: unmarked
 
 // The dwarven village: the hold the Deep Holds are named for, one floor below
 // the gatehouse that guards the way to it. Placed by name through
