@@ -55996,7 +55996,7 @@ MonoBehaviour:
   minPatchCells: 5
   maxPatchCells: 12
   patchExclusionFromCenter: 4
-  minRingThickness: 3
+  minRingThickness: 4
   maxRingThickness: 6
   ringNoiseScale: 2.5
 --- !u!4 &1894963498

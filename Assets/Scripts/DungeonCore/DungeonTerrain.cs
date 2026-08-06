@@ -52,7 +52,20 @@ public class DungeonTerrain : MonoBehaviour
     private bool initialised = false;
     private FloorRoot myFloor;
     private Tile runtimeFogTile;
-    private List<Vector3Int> rimRing;   // cached rim facade footprint; see RimRingCells
+    private Dictionary<Vector3Int, int> rimLayers;   // facade cell -> depth from the edge, 0 = outermost
+    private HashSet<Vector3Int> rimNubs;             // the four cardinal protrusions, demoted out of the wall
+    private List<Vector3Int> rimOuter;               // rimLayers where depth == 0
+    private bool rimArmed;
+    private static readonly Dictionary<Vector3Int, int> EmptyRimLayers = new Dictionary<Vector3Int, int>();
+    private static readonly Vector3Int[] Card4 =
+        { Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right };
+
+    [Header("Rim facade (floor 0 only)")]
+    [Tooltip("How many cells deep the rim facade runs inward from the disc edge. The " +
+             "shadow ramp fades across this depth, so 1 leaves nothing to fade over. " +
+             "Clamped per cell to the bedrock ring, because the bedrock wall family only " +
+             "skins Bedrock and a band cell past it renders grey stone mid-cliff.")]
+    [SerializeField, Min(1)] private int rimFacadeDepth = 3;
 
     /// <summary>
     /// Resolve the owning floor as early as Unity allows. This CANNOT wait for
@@ -107,12 +120,11 @@ public class DungeonTerrain : MonoBehaviour
         currentRadius = RadiusForThisFloor();
         PaintTerrain(coreCell, currentRadius);
 
-        // Floor 0 alone. Its rim borders the forest rather than the void -- band
-        // 0 grass starts one cell past it -- so the outermost ring is unfogged
-        // here, in the one place the disc's fog is ever painted, and both the
-        // fresh and the load path reach it. Lower floors keep a fogged rim: a
-        // lit ring with nothing outside it reads as a rendering fault.
-        if (myFloor != null && myFloor.FloorIndex == 0) RevealRimRing();
+        // The rim facade used to be armed here. It cannot be: it clamps itself to
+        // the bedrock ring, and TerrainTypeMap.IsBedrock answers false until
+        // GenerateNew has run, which is AFTER this. SurfaceZoneGenerator.TryArm
+        // calls ArmRimFacade instead -- floor 0 only by construction, polling
+        // until ready, and one call site covering the fresh and the load path.
     }
 
     /// <summary>Fog is colour-driven; the sprite only needs to be solid and
@@ -232,61 +244,137 @@ public class DungeonTerrain : MonoBehaviour
     public Vector3Int CoreCell => coreCell;
     public int CurrentRadius => currentRadius;
 
+    /// <summary>Facade cell -> depth from the disc edge, 0 = outermost. Empty on
+    /// every floor but 0, and until ArmRimFacade succeeds.</summary>
+    public IReadOnlyDictionary<Vector3Int, int> RimFacadeLayers => rimLayers ?? EmptyRimLayers;
+
+    /// <summary>The facade's outermost ring: the cells whose GROUND belongs to the
+    /// surface rather than the dungeon, because on an outer corner cap the part of
+    /// the cell the rock does not cover is ground beyond the wall.</summary>
+    public IReadOnlyList<Vector3Int> RimFacadeOuter
+        => rimOuter ?? (IReadOnlyList<Vector3Int>)System.Array.Empty<Vector3Int>();
+
+    /// <summary>The four cardinal protrusions, demoted out of the wall.</summary>
+    public IReadOnlyCollection<Vector3Int> RimNubCells
+        => rimNubs ?? (IReadOnlyCollection<Vector3Int>)System.Array.Empty<Vector3Int>();
+
+    public int RimFacadeDepth => rimFacadeDepth;
+    public bool IsRimFacade(Vector3Int cell) => rimLayers != null && rimLayers.ContainsKey(cell);
+
+    /// <summary>A cell the facade demoted: in the disc, but rendering as forest.
+    /// CaveWallClassifier.IsSolid exempts these, which is the whole mechanism --
+    /// leave them solid and the run behind them keeps its S bit set and loses its
+    /// face drape, trading a rock nub for a one-column gap in the wall front.</summary>
+    public bool IsRimNub(Vector3Int cell) => rimNubs != null && rimNubs.Contains(cell);
+
     /// <summary>
-    /// The outermost in-disc cells: every cell inside the radius with at least
-    /// one cardinal neighbour outside it. This is the rim facade's footprint --
-    /// floor 0 unfogs it at generation and CaveWallRenderer caps it, so the
-    /// dungeon reads as a walled edge from the forest instead of the fog simply
-    /// stopping at a circle.
+    /// Builds the rim facade and applies the two one-way changes it needs. Safe to
+    /// call every frame; returns false while the terrain type map is still
+    /// ungenerated so the caller can simply try again.
     ///
-    /// Built once and cached, because the radius is set once per floor and never
-    /// grows, so the ring never moves. The scan walks the whole disc rather than
-    /// stepping the boundary row by row: 31,417 cells at floor 0's radius, once
-    /// per floor lifetime. The clever version has to reason about three rows at
-    /// once to catch the north and south arcs, and that is bug surface bought
-    /// with nothing. Lazy, so the floors that never ask never pay.
+    /// Not called from GenerateAt, deliberately: the band clamps to the bedrock
+    /// ring, and IsBedrock answers false until TerrainTypeMap.GenerateNew runs,
+    /// which is after terrain generation on both the fresh and the load path.
     /// </summary>
-    public IReadOnlyList<Vector3Int> RimRingCells
+    public bool ArmRimFacade()
     {
-        get
+        if (rimArmed) return true;
+        if (!initialised) return false;
+        if (myFloor == null || myFloor.FloorIndex != 0) { rimArmed = true; return true; }
+
+        var types = myFloor.TerrainTypeMap;
+        if (types == null || !types.IsGenerated) return false;
+
+        BuildRimFacade(types);
+
+        // Fog off across the band and the nubs. One-way, and a fixed-radius ring
+        // carries no layout: the only information in it is where the ring BREAKS,
+        // at the entrance channel and each river mouth, and both notches are wanted.
+        if (fogTilemap != null)
         {
-            if (rimRing != null) return rimRing;
+            foreach (var kv in rimLayers) fogTilemap.SetTile(kv.Key, null);
+            foreach (var c in rimNubs) fogTilemap.SetTile(c, null);
+        }
 
-            // Answer empty WITHOUT caching before GenerateAt has run: caching an
-            // empty list here would pin it for the object's whole life, and the
-            // facade would silently never appear. Nothing asks this early today
-            // (the renderer's first rebuild is a LateUpdate, well after Start),
-            // but the poisoned-cache failure is invisible if it ever does.
-            if (!initialised) return System.Array.Empty<Vector3Int>();
+        // The outer ring's ground and the nubs belong to the SURFACE. Clearing the
+        // dungeon floor tile is the whole job: ClaimedStoneLayer is wired to
+        // nothing -- its Tilemap is referenced only by its own GameObject -- so
+        // FloorLayer is the only dungeon ground under these cells, and grass on the
+        // surface tilemap has nothing left to lose a sorting tie against.
+        // Inner layers KEEP their floor tile: they sit under solid interior caps,
+        // and grass under a deep cap would show green where rock should be.
+        if (floorTilemap != null)
+        {
+            for (int i = 0; i < rimOuter.Count; i++) floorTilemap.SetTile(rimOuter[i], null);
+            foreach (var c in rimNubs) floorTilemap.SetTile(c, null);
+        }
 
-            var ring = new List<Vector3Int>();
-            for (int dy = -currentRadius; dy <= currentRadius; dy++)
-                for (int dx = -currentRadius; dx <= currentRadius; dx++)
+        rimArmed = true;
+        return true;
+    }
+
+    private void BuildRimFacade(TerrainTypeMap types)
+    {
+        rimNubs = new HashSet<Vector3Int>();
+        rimLayers = new Dictionary<Vector3Int, int>();
+        rimOuter = new List<Vector3Int>();
+
+        // PASS 1 -- the protrusions. A cell with at most one in-disc cardinal
+        // neighbour is a one-cell spur off the edge. On a rasterised circle they
+        // land at the four cardinals, where the widest row sticks out past the row
+        // behind it; that spur is the nub, and the cell behind it had all four
+        // cardinal neighbours in-disc, so it never reached the old ring and never
+        // got unfogged -- the black square. One pass is enough: removing a spur
+        // leaves its neighbour with three, not one.
+        for (int dy = -currentRadius; dy <= currentRadius; dy++)
+            for (int dx = -currentRadius; dx <= currentRadius; dx++)
+            {
+                var cell = new Vector3Int(coreCell.x + dx, coreCell.y + dy, 0);
+                if (!IsWithinBounds(cell)) continue;
+                int n = 0;
+                for (int i = 0; i < Card4.Length; i++)
+                    if (IsWithinBounds(cell + Card4[i])) n++;
+                if (n <= 1) rimNubs.Add(cell);
+            }
+
+        // PASS 2 -- breadth-first inward, treating a nub as OUTSIDE so the flat run
+        // behind it becomes layer 0 and takes the face drape the nub was stealing.
+        // Layer 0 is not bedrock-tested: it is the disc boundary, so it is inside
+        // the ring by definition. Inner layers are, which is what stops the band
+        // spilling onto ordinary stone where the ring undulates thin.
+        int depth = Mathf.Max(1, rimFacadeDepth);
+        var frontier = new List<Vector3Int>();
+        for (int dy = -currentRadius; dy <= currentRadius; dy++)
+            for (int dx = -currentRadius; dx <= currentRadius; dx++)
+            {
+                var cell = new Vector3Int(coreCell.x + dx, coreCell.y + dy, 0);
+                if (!InFacadeSpace(cell)) continue;
+                bool edge = false;
+                for (int i = 0; i < Card4.Length && !edge; i++)
+                    if (!InFacadeSpace(cell + Card4[i])) edge = true;
+                if (!edge) continue;
+                rimLayers[cell] = 0;
+                rimOuter.Add(cell);
+                frontier.Add(cell);
+            }
+        for (int layer = 1; layer < depth; layer++)
+        {
+            var next = new List<Vector3Int>();
+            for (int i = 0; i < frontier.Count; i++)
+                for (int d = 0; d < Card4.Length; d++)
                 {
-                    var cell = new Vector3Int(coreCell.x + dx, coreCell.y + dy, 0);
-                    if (!IsWithinBounds(cell)) continue;
-                    if (IsWithinBounds(cell + Vector3Int.up)
-                     && IsWithinBounds(cell + Vector3Int.down)
-                     && IsWithinBounds(cell + Vector3Int.left)
-                     && IsWithinBounds(cell + Vector3Int.right)) continue;
-                    ring.Add(cell);
+                    var n = frontier[i] + Card4[d];
+                    if (!InFacadeSpace(n) || rimLayers.ContainsKey(n)) continue;
+                    if (!types.IsBedrock(n)) continue;
+                    rimLayers[n] = layer;
+                    next.Add(n);
                 }
-            rimRing = ring;
-            return rimRing;
+            frontier = next;
         }
     }
 
-    /// <summary>Clears fog from the rim ring so the facade is there on the first
-    /// frame. Fog is one-way and this is the direction it already travels; a
-    /// circle at a fixed radius gives away no layout. The only information in it
-    /// is where the ring BREAKS -- the entrance channel and any river mouth --
-    /// and both notches are wanted.</summary>
-    public void RevealRimRing()
-    {
-        if (fogTilemap == null) return;
-        var ring = RimRingCells;
-        for (int i = 0; i < ring.Count; i++) fogTilemap.SetTile(ring[i], null);
-    }
+    private bool InFacadeSpace(Vector3Int cell)
+        => IsWithinBounds(cell) && (rimNubs == null || !rimNubs.Contains(cell));
 
     private bool IsWithinRadius(Vector3Int pos, int radius)
     {

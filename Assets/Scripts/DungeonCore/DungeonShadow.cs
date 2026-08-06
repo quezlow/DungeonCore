@@ -103,6 +103,12 @@ public class DungeonShadow : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float voidLightFloor = 0.22f;
     [Tooltip("Cells over which rim light falls to the floor level, then plateaus.")]
     [SerializeField, Min(1)] private int voidFalloffCells = 1;
+
+    [Tooltip("Light on the OUTERMOST cell of floor 0's rim facade -- the face the forest " +
+             "sees. It ramps inward across the facade's depth to voidLightFloor, which is " +
+             "the level DeepVoidColor is built from, so the lit rim meets the dark instead " +
+             "of stopping against it in one cell. 1 is full daylight.")]
+    [SerializeField, Range(0f, 1f)] private float rimFacadeLight = 1f;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
     [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0f;
     [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
@@ -305,6 +311,26 @@ public class DungeonShadow : MonoBehaviour
                 float bt = 1f - Mathf.Clamp01((band.Value - 1) / (float)span);
                 baseLight[band.Key] = Mathf.Lerp(voidLightFloor, unclaimedLight, bt);
                 baseTint[band.Key] = Color.black;
+            }
+        }
+
+        // 1c) the RIM FACADE band. Same shape of problem as 1b and the same cure:
+        //     an unmined band that nothing else enters into the light map, so it
+        //     rendered at full brightness and then hit black in a single cell.
+        //     Ramped from rimFacadeLight on the outermost row to voidLightFloor at
+        //     the band's inner edge -- the level DeepVoidColor is built from and
+        //     the colour fogMatchesVoid paints the fog, so the wall fades into the
+        //     dark rather than butting against it.
+        var rimTerr = floor != null ? floor.Terrain : null;
+        if (rimTerr != null && rimTerr.RimFacadeLayers.Count > 0)
+        {
+            int rimSpan = Mathf.Max(1, rimTerr.RimFacadeDepth - 1);
+            foreach (var rimCell in rimTerr.RimFacadeLayers)
+            {
+                if (influence.IsTileMined(rimCell.Key)) continue;
+                float rt = 1f - Mathf.Clamp01(rimCell.Value / (float)rimSpan);
+                baseLight[rimCell.Key] = Mathf.Lerp(voidLightFloor, rimFacadeLight, rt);
+                baseTint[rimCell.Key] = Color.black;
             }
         }
 

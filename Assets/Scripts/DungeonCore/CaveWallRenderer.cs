@@ -312,7 +312,20 @@ public class CaveWallRenderer : MonoBehaviour
         int t = (int)terrainTypeMap.GetTerrainAt(cell);
         if (t < 0 || t >= familyByTerrain.Length) return null;
         var b = familyByTerrain[t];
-        return b != null && b.present ? b : null;
+        if (b == null || !b.present) return null;
+
+        // Per-CELL facade gate. Terrain alone is not enough for bedrock: the
+        // cells flanking the carved entrance channel are bedrock too, and they
+        // land in the ordinary wall set because they are solid and touch mined
+        // floor. Skinned with the cliff family they read as grass-topped chunks
+        // floating inside the dungeon. Gated, they fall back to the stone path
+        // and the channel is lined with cave walls at no extra cost.
+        if (b.source != null && b.source.rimFacadeOnly)
+        {
+            var terr = floor != null ? floor.Terrain : null;
+            if (terr == null || !terr.IsRimFacade(cell)) return null;
+        }
+        return b;
     }
 
     private static CaveWallSheetLayout.SheetSlot SlotAt(CaveWallSheetLayout.SheetSlot[] arr, int index)
@@ -427,16 +440,18 @@ public class CaveWallRenderer : MonoBehaviour
             if (classifier.IsSolid(c)) wallScratch.Add(c);
 
         // Floor 0's rim is the outside of the world, not the edge of a dark
-        // mass: band 0 grass starts one cell past it. Its outermost ring is
-        // therefore capped unconditionally, before anything has been dug, so
-        // the dungeon reads as a walled edge from the treeline. IsSolid does
-        // the rest -- the entrance channel and any river mouth are open there,
-        // so the ring breaks at both with no special case, and those notches
-        // are the read we want. Bedrock is never claimable and so never mined:
-        // the facade cannot be breached. Lower floors are untouched.
+        // mass: band 0 grass starts one cell past it. The whole facade BAND is
+        // capped unconditionally, before anything has been dug, so the dungeon
+        // reads as a walled edge from the treeline. A band rather than a ring
+        // because a single ring left an unrevealed hole behind each cardinal
+        // protrusion. IsSolid does the rest -- the entrance channel and any
+        // river mouth are open there, so the wall breaks at both with no
+        // special case, and those notches are the read we want. Bedrock is
+        // never claimable and so never mined: the facade cannot be breached.
+        // Lower floors are untouched.
         if (floor != null && floor.FloorIndex == 0 && floor.Terrain != null)
-            foreach (Vector3Int c in floor.Terrain.RimRingCells)
-                if (classifier.IsSolid(c)) wallScratch.Add(c);
+            foreach (var kv in floor.Terrain.RimFacadeLayers)
+                if (classifier.IsSolid(kv.Key)) wallScratch.Add(kv.Key);
         foreach (Vector3Int open in influence.MinedTiles)
             foreach (Vector3Int dir in Neighbours8)
             {

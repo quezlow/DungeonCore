@@ -238,6 +238,7 @@ MonoBehaviour:
     allowMoss: 0
     restrictToFloors: 0
     floors: 
+    rimFacadeOnly: 0
     capSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: -1211611643, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
@@ -343,6 +344,7 @@ MonoBehaviour:
     allowMoss: 0
     restrictToFloors: 0
     floors: 
+    rimFacadeOnly: 0
     capSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: -1211611643, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
@@ -448,6 +450,7 @@ MonoBehaviour:
     allowMoss: 0
     restrictToFloors: 0
     floors: 
+    rimFacadeOnly: 0
     capSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: -1211611643, guid: 018b2863951c4d04691c93268f64ceaf, type: 3}
@@ -548,11 +551,12 @@ MonoBehaviour:
     - cell: {x: 16, y: 39}
       overrideSprite: {fileID: 0}
   - terrain: 6
-    sheet: {fileID: 2800000, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
-    tint: {r: 1, g: 0.95, b: 0.82, a: 1}
+    sheet: {fileID: 2800000, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
+    tint: {r: 1, g: 1, b: 1, a: 1}
     allowMoss: 0
-    restrictToFloors: 0
-    floors: 
+    restrictToFloors: 1
+    floors: 00000000
+    rimFacadeOnly: 1
     capSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
@@ -561,112 +565,112 @@ MonoBehaviour:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: 546920754, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 546920754, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -297326407, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -297326407, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: 8716093, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 8716093, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -940618774, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -940618774, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: 2, y: 4}
-      overrideSprite: {fileID: -1070349754, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1070349754, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1964481837, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1964481837, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: 2082690977, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 2082690977, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1698463417, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1698463417, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: -308428128, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
     innerSE:
       cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -2116788901, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -2116788901, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     innerSW:
       cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -235451414, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -235451414, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     innerNE:
       cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1588068997, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1588068997, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     innerNW:
       cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1355755467, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1355755467, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     faceUpperSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: 1, y: 6}
-      overrideSprite: {fileID: 1112566273, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 1112566273, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1616929591, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1616929591, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1767362819, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1767362819, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1616929591, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1616929591, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1767362819, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1767362819, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     faceLowerSlots:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: 2, y: 8}
-      overrideSprite: {fileID: -1351225773, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1351225773, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1075278371, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1075278371, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -321745943, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -321745943, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -1075278371, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -1075278371, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -321745943, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -321745943, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: 0}
     variants:
     - cap:
         cell: {x: -1, y: -1}
-        overrideSprite: {fileID: -1070349754, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -1070349754, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       upper:
         cell: {x: 7, y: 9}
-        overrideSprite: {fileID: 1112566273, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: 1112566273, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       lower:
         cell: {x: 7, y: 10}
-        overrideSprite: {fileID: -314947904, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -314947904, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cap:
         cell: {x: -1, y: -1}
-        overrideSprite: {fileID: -1070349754, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -1070349754, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       upper:
         cell: {x: 7, y: 9}
-        overrideSprite: {fileID: 1218529539, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: 1218529539, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       lower:
         cell: {x: 7, y: 10}
-        overrideSprite: {fileID: -314947904, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -314947904, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cap:
         cell: {x: -1, y: -1}
-        overrideSprite: {fileID: -1070349754, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -1070349754, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       upper:
         cell: {x: 7, y: 9}
-        overrideSprite: {fileID: 1218529539, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: 1218529539, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
       lower:
         cell: {x: 7, y: 10}
-        overrideSprite: {fileID: -1351225773, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+        overrideSprite: {fileID: -1351225773, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     plainWeight: 8
     pavingSlots:
     - cell: {x: 0, y: 0}
-      overrideSprite: {fileID: 8765297898444631108, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 8765297898444631108, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: 0, y: 0}
-      overrideSprite: {fileID: -5519051278557835307, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -5519051278557835307, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: 0, y: 0}
-      overrideSprite: {fileID: 2963411684039260603, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: 2963411684039260603, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: 0, y: 0}
-      overrideSprite: {fileID: -4725923292034538642, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
+      overrideSprite: {fileID: -4725923292034538642, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}

@@ -3443,6 +3443,48 @@ There is one vault in a dungeon and it is built around a dead core, which is to
 say around what the player is; that is not a beat to learn about from a quiet row
 in the log.
 
+### The lane, and roads that thread sites (PART SHIPPED)
+
+A road crossing a site used to punch its own hole: `GenerateSites` subtracted
+road cells from both `cells` and `ruinsCells`, so the interior walls vanished
+where the carriageway passed and the gap was paved to read as built-around. With
+the holy sub-quota adding three to six `AlongRoad` sites per floor, that stopped
+being an occasional crossing and became routine, and a 45-degree road takes a
+long diagonal bite out of a hold.
+
+The replacement is authored rather than inferred, like the doors before it.
+`'~'` is the LANE: the route a road takes THROUGH a site, door to door. The site
+keeps every cell and renders its own paving over the whole lane; the road is
+ROUTED through it -- polyline, caravan graph, walkability -- but never drawn
+there. A site with no lane has no through-route, and a road reaches its door and
+stops, which is what the sealed vaults want.
+
+**Three cells wide minimum, five to match a five-wide gate.** Measured: a lane
+one or two wide has ZERO walkable cells in half the orientations, because a
+floor cell is walkable only when y+1 and y+2 are also floor. One wide happens to
+work north-south and fails the moment the plan rotates -- correct in the
+orientation it was drawn in, which is the worst kind of fault.
+
+**The validator checks it by PATHFIND, not by width.** Width is a proxy and
+proxies drift from what they stand for; the question that matters is whether a
+walker can get from one door to another through the lane, so that is what is
+asked, in every orientation the plan is allowed to take and no more. A
+`@rotate: no` vault is checked in its one orientation -- failing it for a
+quarter turn it never takes is the false positive that retired the first door
+gate.
+
+A lane in more than one piece FAILS: a road is a path, not an archipelago. A
+lane reaching fewer than two doors WARNS and is decorative. A door on the lane
+with nothing opposite it WARNS, because a road entering north and leaving east
+turns ninety degrees and orphans everything behind it. A lane narrower than the
+door it meets WARNS -- legal, but the street pinches at the gate.
+
+**Not yet built:** the routing itself. A road meeting a door-bearing site will
+take waypoints along the lane and leave by the most-opposite door the lane
+reaches, and the site-cell subtraction goes away. That waits until there are
+lanes authored to run it against, rather than being written against imagined
+geometry.
+
 ### The door rule, rebuilt on declaration (SHIPPED)
 
 The first door-rule gate was retired for failing twelve shipped, working plans.
@@ -3786,10 +3828,65 @@ at 3 so nothing spawns under the two-cell drape. The rubble ring uses its own
 hash salt and touches only cells that were previously skipped outright, so
 enabling it cannot move a tree that already stood.
 
-`Log Rim Facade` on the Commands object reports ring cells, how many are capped,
-how many are notched, how many drape a face, and how many are still fogged --
-which should be zero. Diagnostics first: the failure modes here are all visual,
-and this turns them into numbers.
+`Log Rim Facade` on the Commands object reports band and outer cells, how many
+are capped, how many are notched, how many drape a face, how many are still
+fogged (want zero) and how many nubs were demoted (want four). Diagnostics
+first: the failure modes here are all visual, and this turns them into numbers.
+
+**The first build shipped four defects, three of them one bug.** Recorded
+because the cause was geometric rather than a slip.
+
+A one-cell ring is the wrong footprint. On a rasterised circle the widest row
+sticks out a cell past the row behind it, so each of the four cardinals grew a
+one-cell nub; and the cell directly behind a nub has all four cardinal
+neighbours in-disc, so it never met the ring's test, never unfogged, and read as
+a black square punched through the wall. The facade is now a BAND
+(`rimFacadeDepth`, 3) built by breadth-first walk inward, which covers the black
+squares, and the four protrusions -- in-disc cells with at most one in-disc
+cardinal neighbour -- are DEMOTED out of the wall. `CaveWallClassifier.IsSolid`
+exempts them, which is the load-bearing half: left solid but uncapped, the run
+behind them keeps its S bit set and loses its face drape, trading a rock nub for
+a one-column gap in the wall front. The walk treats a nub as outside, so that
+run becomes layer 0 and takes the drape.
+
+The band clamps per cell to the bedrock ring, because the wall family only skins
+Bedrock and a band cell past it renders grey stone mid-cliff. That clamp forced
+the arming out of `GenerateAt`: `IsBedrock` answers false until
+`TerrainTypeMap.GenerateNew` runs, which is after terrain generation on both
+paths. `SurfaceZoneGenerator.TryArm` calls `ArmRimFacade` instead -- floor 0
+only by construction, already polling for generation, idempotent -- so one call
+site replaces the two that would otherwise have to be kept in step. Floor 0's
+`minRingThickness` went 3 -> 4 for margin on top of the clamp.
+
+**The outer ring's GROUND belongs to the surface.** An outer corner cap does not
+fill its cell, and the part it leaves uncovered is ground beyond the wall -- it
+was showing dungeon floor. `ArmRimFacade` clears the floor tile under the outer
+ring and the nubs, and `SurfaceZoneGenerator.PaintRimSurfaceGround` paints grass
+and full-strength gloom there. `ClaimedStoneLayer` turned out to be wired to
+nothing -- its Tilemap is referenced only by its own GameObject, like
+`ClaimableLayer` before it -- so `FloorLayer` was the only competitor and no
+sorting change was needed. Inner layers keep their floor tile: they sit under
+solid interior caps, and grass under a deep cap would show green where rock
+should be. River and road cells on the ring are skipped; grass over open water
+would be worse than what it replaced.
+
+**The bright-rim-to-black-void step is closed by the light map, not by paving.**
+`DungeonShadow` had already solved this exact shape for the prepared road band
+(step 1b): an unmined band nothing entered into `baseLight`, rendering brighter
+than the revealed ground beside it. Step 1c does the same for the facade,
+ramping from `rimFacadeLight` on the outermost row to `voidLightFloor` at the
+inner edge. Paving the inner band was considered and dropped -- it needs the
+inner cells excluded from the wall set or their caps draw over it, and the light
+map already owns this problem.
+
+**Terrain alone cannot gate a masonry skin.** The cells flanking the carved
+entrance channel are bedrock too, and they are solid and touch mined floor, so
+they land in the ORDINARY wall set and wore the cliff skin -- grass-topped
+chunks floating inside the dungeon. `WallFamily.rimFacadeOnly` gates the family
+per CELL on facade membership, so bedrock rendering as an interior wall falls
+back to the stone path and the entrance channel is lined with cave walls at no
+extra cost. Generalisable: any skin that belongs to a place rather than to a
+material wants this rather than a new `TerrainType`.
 
 **Three canon corrections rode this arc**, all found by reading the shipped
 assets rather than the prose: band depths are 60 / 100 / 180 / 260, not

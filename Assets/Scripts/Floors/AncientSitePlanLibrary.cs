@@ -121,6 +121,16 @@ public class AuthoredSitePlan
     /// geometry that decides where a vault goes and the geometry that decides
     /// whether its door is legal drift apart.</summary>
     public readonly List<DoorRun> doorRuns = new List<DoorRun>();
+
+    /// <summary>Lane cells, from '~': the route a road takes THROUGH this site.
+    /// Floor plus a marker, so nothing downstream needs a special case.
+    ///
+    /// Authored rather than derived, for the same reason doors are. A road
+    /// crossing a site used to punch its own hole and the site lost those cells;
+    /// the lane says instead where the site EXPECTS a road, so the building
+    /// keeps its shape and the road keeps its route. A site with no lane has no
+    /// through-route: a road reaches its door and stops.</summary>
+    public readonly List<Vector2Int> lane = new List<Vector2Int>();
 }
 
 /// <summary>One straight run of '+' cells: where it is, how long, and which way
@@ -152,6 +162,18 @@ public struct DoorRun
 ///          site's meaning: altar, grave slab, capped font,
 ///          seal-stone. Solid, because unsealing means mining it.
 ///          Exactly one per plan; two is a parse error.
+///     '~'  a LANE -- open ground, plus a marker: the route a road
+///          takes THROUGH the site, door to door. Where the lane is cut
+///          through MASONRY it needs three cells, and five to match a
+///          five-wide gate: a floor cell is walkable only when y+1 and
+///          y+2 are also floor, so a one-wide east-west lane is buried
+///          under the drape, and a one-wide north-south lane works
+///          until the plan rotates, which is worse. Across OPEN floor
+///          a narrow lane is fine, because the open ground supplies the
+///          clearance. The validator does not check width at all -- it
+///          walks the lane and tells you whether a road could. A site
+///          with no lane has no through-route and a road stops at its
+///          door.
 ///     '+'  a DOOR -- open ground, plus a marker. Declared rather
 ///          than inferred: a two-cell gap between grave slabs is
 ///          structurally identical to a two-cell doorway, so
@@ -313,6 +335,7 @@ public static class AncientSitePlanLibrary
         var platform = new List<Vector2Int>();
         var stairs = new List<Vector2Int>();
         var door = new List<Vector2Int>();
+        var lane = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -340,6 +363,12 @@ public static class AncientSitePlanLibrary
                     var dc = new Vector2Int(c, -r);
                     floor.Add(dc);
                     door.Add(dc);
+                }
+                else if (row[c] == '~')
+                {
+                    var lc = new Vector2Int(c, -r);
+                    floor.Add(lc);
+                    lane.Add(lc);
                 }
                 else if (row[c] == 'X')
                 {
@@ -392,6 +421,7 @@ public static class AncientSitePlanLibrary
         foreach (var p in platform) plan.platform.Add(p - offset);
         foreach (var p in stairs) plan.stairs.Add(p - offset);
         foreach (var p in door) plan.door.Add(p - offset);
+        foreach (var p in lane) plan.lane.Add(p - offset);
 
         foreach (var p in floor)
         {

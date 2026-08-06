@@ -872,7 +872,7 @@ public class Commands : MonoBehaviour
         var terrain = floor != null ? floor.Terrain : null;
         if (terrain == null) { Debug.LogWarning("[Commands] No floor 0 terrain."); return; }
 
-        var ring = terrain.RimRingCells;
+        var ring = terrain.RimFacadeOuter;
         var classifier = new CaveWallClassifier(floor.TileInfluence, floor.FeatureGenerator, terrain);
         int solid = 0, southFacing = 0, fogged = 0;
         foreach (var c in ring)
@@ -886,10 +886,13 @@ public class Commands : MonoBehaviour
             foreach (var c in ring)
                 if (fog.GetTile(c) != null) fogged++;
 
-        Debug.Log($"[Commands] RIM FACADE floor 0 (radius {terrain.CurrentRadius}): " +
-                  $"{ring.Count} ring cells, {solid} capped, {ring.Count - solid} notched " +
-                  $"(entrance channel plus river mouths), {southFacing} draping a face, " +
-                  $"{fogged} still fogged -- want 0.");
+        int band = terrain.RimFacadeLayers.Count;
+        int nubs = terrain.RimNubCells.Count;
+        Debug.Log($"[Commands] RIM FACADE floor 0 (radius {terrain.CurrentRadius}, " +
+                  $"depth {terrain.RimFacadeDepth}): {band} band cells over {ring.Count} " +
+                  $"outer, {solid} capped, {ring.Count - solid} notched (entrance channel " +
+                  $"plus river mouths), {southFacing} draping a face, {fogged} still fogged " +
+                  $"-- want 0. {nubs} nubs demoted -- want 4 at a circular rim.");
     }
 
     [ContextMenu("Log Holy Ground State")]

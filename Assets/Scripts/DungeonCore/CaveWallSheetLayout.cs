@@ -114,6 +114,14 @@ public class CaveWallSheetLayout : ScriptableObject
         /// <summary>Whether this family bakes on the given floor. Unrestricted
         /// families apply everywhere, so the two masonry skins behave exactly as
         /// they did before the gate existed.</summary>
+        [Tooltip("On = this family only skins cells in floor 0's rim facade, not every " +
+                 "cell of its terrain. Bedrock needs it: the cells flanking the carved " +
+                 "entrance channel are bedrock as well, and they render as ordinary " +
+                 "interior walls, so without this they wear the cliff skin and read as " +
+                 "grass-topped chunks floating inside the dungeon. Off for every other " +
+                 "family -- it is meaningless away from floor 0's rim.")]
+        public bool rimFacadeOnly = false;
+
         public bool AppliesToFloor(int floorIndex)
         {
             if (!restrictToFloors) return true;
@@ -458,7 +466,14 @@ public class CaveWallSheetLayout : ScriptableObject
                                   "so this family renders NOWHERE. List a floor index, or turn the toggle off.");
                     issues++;
                 }
-                else if (fam.restrictToFloors)
+                else if (fam.rimFacadeOnly && !fam.restrictToFloors)
+                {
+                    sb.AppendLine($"- Note: {famName} is Rim Facade Only but not floor-restricted. " +
+                                  "Harmless (the facade exists on floor 0 alone), but Restrict To " +
+                                  "Floors [0] states the intent and skips the bake elsewhere.");
+                }
+
+                if (fam.restrictToFloors && fam.floors != null && fam.floors.Length > 0)
                 {
                     sb.AppendLine($"- Note: {famName} is restricted to floor(s) " +
                                   string.Join(", ", fam.floors) + "; every other floor renders stone there.");

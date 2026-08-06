@@ -184,6 +184,7 @@ public class CaveWallSheetLayoutEditor : Editor
             EditorGUILayout.PropertyField(fam.FindPropertyRelative("restrictToFloors"));
             if (famObj != null && famObj.restrictToFloors)
                 EditorGUILayout.PropertyField(fam.FindPropertyRelative("floors"), true);
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("rimFacadeOnly"));
 
             DrawLabeledArray(fam.FindPropertyRelative("capSlots"), CaveWallSheetLayout.CapMaskLabels,
                 "Family caps - one per mask (mask 11 doubles as the family base cap)", skipZero: false);

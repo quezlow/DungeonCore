@@ -158,6 +158,14 @@ public class SurfaceZoneGenerator : MonoBehaviour
 
         center = floor.Terrain.CoreCell;
         rim = floor.Terrain.CurrentRadius;
+
+        // The rim facade arms here rather than in DungeonTerrain.GenerateAt: it
+        // clamps to the bedrock ring, and IsBedrock answers false until the
+        // terrain type map has generated, which is after terrain generation on
+        // both paths. This poll is already the thing that waits for generation,
+        // it only ever runs on floor 0, and ArmRimFacade is idempotent -- so one
+        // call site here replaces two that could drift apart.
+        if (!floor.Terrain.ArmRimFacade()) return;
         Vector3Int mouth = cave.mouthCell.ToVector3Int();
         roadBearingDeg = cave.angleDegrees;
         float rad = roadBearingDeg * Mathf.Deg2Rad;
@@ -192,6 +200,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
 
         PaintFogRing(0, paintedDepth);
         PaintInnerGloom();
+        PaintRimSurfaceGround();
         revealedDepth = targetDepth = paintedDepth;   // no creep on load
         armed = true;
         MarkBoundsDirty();
@@ -767,6 +776,56 @@ public class SurfaceZoneGenerator : MonoBehaviour
     /// site can band close to it, so that is a layout leak -- unlike the notch a
     /// river mouth cuts in the ring, which gives away only a mouth.
     /// </summary>
+    /// <summary>
+    /// Paints forest ground on the cells the facade handed to the surface: its
+    /// outermost ring, and the four demoted nubs.
+    ///
+    /// The ring needs it because an outer corner cap does not fill its cell, and
+    /// the part it leaves uncovered is ground BEYOND the wall -- it was showing
+    /// dungeon floor. The nubs need it because they carry no wall at all now.
+    /// DungeonTerrain has already cleared the dungeon floor tile beneath both, and
+    /// ClaimedStoneLayer paints nothing, so grass on the surface tilemap has
+    /// nothing to lose a sorting tie against.
+    ///
+    /// They also take the gloom at full strength. Without it the nubs would sit
+    /// brighter than the grass they touch, since gloom is only painted outside the
+    /// disc and these cells are inside it.
+    /// </summary>
+    private void PaintRimSurfaceGround()
+    {
+        var terr = floor != null ? floor.Terrain : null;
+        if (terr == null || surfaceTilemap == null || profile == null || profile.grassTile == null) return;
+
+        bool doGloom = fogTilemap != null && fogTile != null
+                       && rimGloomCells > 0 && rimGloomMaxAlpha > 0f;
+        var gloom = new Color(rimGloomColor.r, rimGloomColor.g, rimGloomColor.b, rimGloomMaxAlpha);
+        var feats = floor.FeatureGenerator;
+        var infl = floor.TileInfluence;
+
+        foreach (var cell in terr.RimFacadeOuter) PaintRimGround(cell, feats, infl, doGloom, gloom);
+        foreach (var cell in terr.RimNubCells) PaintRimGround(cell, feats, infl, doGloom, gloom);
+    }
+
+    private void PaintRimGround(Vector3Int cell, TerrainFeatureGenerator feats,
+                                TileInfluenceManager infl, bool doGloom, Color gloom)
+    {
+        // A river mouth or the entrance channel can sit on the ring. Grass over
+        // open water or over the carved road would be worse than the dungeon floor
+        // this replaces, so those cells keep whatever already owns them.
+        if (infl != null && infl.IsTileMined(cell)) return;
+        if (feats != null)
+        {
+            FeatureType f = feats.GetFeatureAt(cell);
+            if (f == FeatureType.River || f == FeatureType.Road) return;
+        }
+
+        surfaceTilemap.SetTile(cell, profile.grassTile);
+        if (!doGloom) return;
+        fogTilemap.SetTile(cell, fogTile);
+        fogTilemap.SetTileFlags(cell, TileFlags.None);
+        fogTilemap.SetColor(cell, gloom);
+    }
+
     private void PaintInnerGloom()
     {
         if (fogTilemap == null || fogTile == null) return;

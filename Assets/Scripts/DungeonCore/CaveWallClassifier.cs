@@ -56,6 +56,11 @@ public class CaveWallClassifier
         if (influence == null) return false;
         if (influence.IsTileMined(cell)) return false;
         if (terrain != null && !terrain.IsWithinBounds(cell)) return false;
+        // Rim facade nubs: in the disc, but demoted to forest so the four cardinal
+        // walls read flat. They MUST report open here, not merely go uncapped --
+        // left solid, the run behind them keeps its S bit and loses its face drape,
+        // which trades a one-cell rock nub for a one-column gap in the wall front.
+        if (terrain != null && terrain.IsRimNub(cell)) return false;
         if (features != null)
         {
             FeatureType f = features.GetFeatureAt(cell);
