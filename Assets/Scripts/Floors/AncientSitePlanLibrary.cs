@@ -392,7 +392,6 @@ public static class AncientSitePlanLibrary
         foreach (var p in platform) plan.platform.Add(p - offset);
         foreach (var p in stairs) plan.stairs.Add(p - offset);
         foreach (var p in door) plan.door.Add(p - offset);
-        BuildDoorRuns(plan, wallSet);
 
         foreach (var p in floor)
         {
@@ -401,6 +400,34 @@ public static class AncientSitePlanLibrary
             if (!wallSet.Contains(q)) plan.floor.Add(q);
         }
         plan.wall.AddRange(wallSet);
+
+        // LAST, and the order is the whole point. This reads plan.floor AND
+        // plan.wall to decide which side of a door is outside the building, so
+        // it cannot run until both are populated -- and plan.floor is filled
+        // twenty lines above this, not where the door cells were offset. Called
+        // there, it saw an empty floor list, judged both sides of every edge
+        // door to be outside, gave every run a zero normal, and turned door
+        // anchoring into a silent no-op.
+        BuildDoorRuns(plan, wallSet);
+
+        // Loud, because the failure it catches is invisible. A plan that asks
+        // for door anchoring and offers no usable normal does not break, does
+        // not throw and does not look wrong in the editor -- it just quietly
+        // places on its centre like every other site, which is exactly what it
+        // was doing before the feature existed. The validator catches this too,
+        // but only when someone runs it.
+        if (plan.anchorOnDoor)
+        {
+            bool usable = false;
+            foreach (var run in plan.doorRuns)
+                if (run.outward != Vector2Int.zero) { usable = true; break; }
+            if (!usable)
+                Debug.LogWarning("[AncientSitePlanLibrary] '" + plan.sourceName +
+                    "' is @anchor_on: door but no door run faces outward. Door " +
+                    "anchoring will not engage and the plan will place on its " +
+                    "centre. A door must open onto rock -- check it sits on the " +
+                    "plan's edge rather than an interior wall.");
+        }
 
         return plan;
     }
