@@ -131,7 +131,31 @@ public static class SitePlanValidator
                           .Append("' says '@doors: marked' and draws no '+' cells.")
                           .Append("\n         -> use 'none' if it genuinely has no doors.\n");
                     }
-                    int shortRuns = ShortDoorRuns(plan, out int runs, out int worstRun);
+                    int shortRuns = 0, runs = plan.doorRuns.Count, worstRun = int.MaxValue;
+                    foreach (var dr in plan.doorRuns)
+                    {
+                        if (dr.length < worstRun) worstRun = dr.length;
+                        if (dr.length < 3) shortRuns++;
+                    }
+                    if (worstRun == int.MaxValue) worstRun = 0;
+
+                    // Door anchoring needs a normal, and a run with none is one
+                    // the placement will silently skip. Say so here instead.
+                    if (plan.anchorOnDoor)
+                    {
+                        int usable = 0;
+                        foreach (var dr in plan.doorRuns)
+                            if (dr.outward != Vector2Int.zero) usable++;
+                        if (usable == 0)
+                        {
+                            failures++;
+                            sb.Append("  DOORS FAIL: '").Append(plan.sourceName)
+                              .Append("' is '@anchor_on: door' but no door run faces ")
+                              .Append("outward.")
+                              .Append("\n         -> a door must open onto rock. Check it is ")
+                              .Append("on the plan's edge, not an interior wall.\n");
+                        }
+                    }
                     if (shortRuns > 0)
                     {
                         failures++;
@@ -413,64 +437,6 @@ public static class SitePlanValidator
                     return false;
         }
         return true;
-    }
-
-    /// <summary>
-    /// Door runs under three cells. Counts MAXIMAL straight runs of declared
-    /// door cells along whichever axis the run actually lies on, and measures
-    /// the run in that direction.
-    ///
-    /// THREE, and the figure is demonstrated rather than argued. Two chambers
-    /// separated by a wall with a gap of N, at every wall thickness from one to
-    /// three cells: a gap of 2 leaves the interior in two disconnected pieces in
-    /// the orientation it was drawn in, and a gap of 3 or more is a single piece
-    /// in all eight orientations. The drape is why -- a floor cell is walkable
-    /// only when y+1 AND y+2 are also floor, and a two-cell run never gives its
-    /// bottom cell both.
-    ///
-    /// A single isolated '+' counts as a run of one and fails, which is correct:
-    /// a one-cell door is the worst version of the fault this exists to catch.
-    /// </summary>
-    private static int ShortDoorRuns(AuthoredSitePlan plan, out int runs, out int worstRun)
-    {
-        runs = 0;
-        worstRun = int.MaxValue;
-        int bad = 0;
-
-        var set = new HashSet<Vector2Int>(plan.door);
-        var counted = new HashSet<Vector2Int>();
-
-        foreach (var cell in plan.door)
-        {
-            if (counted.Contains(cell)) continue;
-
-            // Which way does this run lie? A door drawn in a vertical wall runs
-            // vertically; one in a horizontal wall runs horizontally. A lone
-            // cell belongs to neither and is measured as a run of one.
-            bool horiz = set.Contains(new Vector2Int(cell.x + 1, cell.y))
-                      || set.Contains(new Vector2Int(cell.x - 1, cell.y));
-            var step = horiz ? new Vector2Int(1, 0) : new Vector2Int(0, 1);
-
-            // Walk to the run's start, then along it.
-            var start = cell;
-            while (set.Contains(start - step)) start -= step;
-
-            int len = 0;
-            var c = start;
-            while (set.Contains(c))
-            {
-                counted.Add(c);
-                len++;
-                c += step;
-            }
-
-            runs++;
-            if (len < worstRun) worstRun = len;
-            if (len < 3) bad++;
-        }
-
-        if (worstRun == int.MaxValue) worstRun = 0;
-        return bad;
     }
 
     /// <summary>How many disconnected pieces the drape-filtered walkable set

@@ -2,6 +2,7 @@
 @name: The Unbuilt Cathedral
 @anchor: AlongRoad
 @rotate: no
+@anchor_on: door
 @doors: marked
 
 // A cathedral the Church began and abandoned mid-construction. Nave and

@@ -293,6 +293,22 @@ public static class RoadNetworkBuilder
             $"{roadsDropped} dropped, {centrelineCellsRemoved} centreline cells removed";
     }
 
+    /// <summary>
+    /// A way through the blocked region: a doorway the road is allowed to reach.
+    ///
+    /// Deliberately NOT a site type. This file knows about roads and cells and
+    /// nothing else -- it already takes a neutral cell set rather than a site,
+    /// and the caller converts. `outward` points away from the building, and only
+    /// cells on that side of `mid` are opened, so a road stops AT the threshold
+    /// instead of driving through the hall behind it.
+    /// </summary>
+    public struct RoadGate
+    {
+        public Vector3Int mid;
+        public Vector2Int outward;
+        public int halfWidth;
+    }
+
     /// <summary>A run shorter than the road is wide is not a road, it is a
     /// smear. Runs at or above this survive as fragments, which is deliberate --
     /// a severed spur reading as a stub of dead network is correct on floor
@@ -337,7 +353,8 @@ public static class RoadNetworkBuilder
     /// already guards on an empty polyline.
     /// </summary>
     public static RoadTruncation TruncateAroundBlocked(
-        List<RoadData> roads, HashSet<Vector3Int> blocked, int extraClearance)
+        List<RoadData> roads, HashSet<Vector3Int> blocked, int extraClearance,
+        IReadOnlyList<RoadGate> gates = null)
     {
         var report = new RoadTruncation();
         if (roads == null || blocked == null || blocked.Count == 0) return report;
@@ -352,6 +369,12 @@ public static class RoadNetworkBuilder
 
             int width = Mathf.Max(1, road.width);
             int reach = (width / 2) + 1 + Mathf.Max(0, extraClearance);
+
+            // The corridor is as wide as the DOOR or the ROAD, whichever is
+            // wider, so a trunk never has to squeeze through a narrow opening --
+            // it wears the jamb back to its own width instead, which reads as
+            // age rather than as damage. Computed per road because width varies.
+            int gateHalf = (width / 2);
             int minRun = Mathf.Max(2, width * MinSurvivingRunFactor);
 
             // Longest unblocked run; ties keep the earlier one, so the result is
@@ -359,7 +382,7 @@ public static class RoadNetworkBuilder
             int bestStart = -1, bestLen = 0, runStart = -1;
             for (int i = 0; i < line.Count; i++)
             {
-                if (NearBlocked(line[i], blocked, reach))
+                if (!InGate(line[i], gates, gateHalf) && NearBlocked(line[i], blocked, reach))
                 {
                     runStart = -1;
                     continue;
@@ -431,6 +454,40 @@ public static class RoadNetworkBuilder
     /// blocked set: the vault runs to some five thousand cells and dilating it by
     /// three would build a set of a hundred and forty thousand to answer a few
     /// thousand questions.</summary>
+    /// <summary>
+    /// Whether a cell lies in a doorway's approach, and is therefore exempt from
+    /// the blocked test.
+    ///
+    /// Only the OUTWARD side counts, the door line included: `along` at or above
+    /// zero. That is what makes the road stop at the threshold rather than run
+    /// on through the building -- the interior is still blocked, so the surviving
+    /// run ends on the door itself.
+    ///
+    /// Lateral extent is the wider of the door and the road, so the carriageway
+    /// reaches the opening rather than clipping its edges. Measured: a cone of
+    /// thirty degrees with a corridor of two reaches the door on every bearing;
+    /// a narrower corridor leaves a tail that is cut five cells short.
+    /// </summary>
+    private static bool InGate(Vector3Int cell, IReadOnlyList<RoadGate> gates, int roadHalf)
+    {
+        if (gates == null) return false;
+        for (int i = 0; i < gates.Count; i++)
+        {
+            var g = gates[i];
+            if (g.outward.x == 0 && g.outward.y == 0) continue;
+
+            int dx = cell.x - g.mid.x, dy = cell.y - g.mid.y;
+            int along = dx * g.outward.x + dy * g.outward.y;
+            if (along < 0) continue;
+
+            // The perpendicular component. The outward normal is axis-aligned by
+            // construction, so this is the other axis rather than a cross product.
+            int lateral = g.outward.x == 0 ? Mathf.Abs(dx) : Mathf.Abs(dy);
+            if (lateral <= Mathf.Max(g.halfWidth, roadHalf)) return true;
+        }
+        return false;
+    }
+
     private static bool NearBlocked(Vector3Int cell, HashSet<Vector3Int> blocked, int reach)
     {
         for (int dx = -reach; dx <= reach; dx++)

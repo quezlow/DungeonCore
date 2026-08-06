@@ -40,6 +40,24 @@ public class AncientSitePlan
     /// this plan. Carried into SiteData so DwarvenVillageController can find its
     /// site the same way the outpost controller finds the hold.</summary>
     public bool reservedForVillage;
+
+    /// <summary>Declared doors in WORLD space, once placed. Truncation reads
+    /// these to leave the road a way in: a road that meets a site with a door
+    /// runs TO the door rather than stopping at the footprint.
+    ///
+    /// Emitted by PlaceDeadCore alone at present, because truncation is
+    /// floor-index-4 gated and the vault is the only site it handles. Any other
+    /// placement path that wants it is one EmitDoorRuns call.</summary>
+    public List<PlacedDoor> doors = new List<PlacedDoor>();
+}
+
+/// <summary>A door run after placement: where its middle sits, which way it
+/// opens, and how wide it is. Rotation and mirroring are already applied.</summary>
+public struct PlacedDoor
+{
+    public Vector3Int mid;
+    public Vector2Int outward;
+    public int halfWidth;
 }
 
 public class AncientSiteResult
@@ -786,20 +804,50 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
+            // DOOR ANCHORING. The anchor TryPickAnchor handed back is a road
+            // cell; what lands on it is the plan's centre unless the plan asked
+            // otherwise. See DoorFacingCos for why the heading test is not
+            // optional.
+            var placeAt = anchor;
+            if (shape.hasDoorAnchor)
+            {
+                if (!TryRoadHeading(roadCells, anchor, out var heading)) continue;
+
+                var outward = RotateLocal(shape.doorOut, rot, mirror);
+                var outv = new Vector2(outward.x, outward.y).normalized;
+
+                // Undirected: a road has no forward, so a door facing east is
+                // served equally by a road heading east or west.
+                if (Mathf.Abs(Vector2.Dot(heading.normalized, outv)) < DoorFacingCos)
+                    continue;
+
+                var shift = RotateLocal(shape.doorMid, rot, mirror);
+                placeAt = new Vector3Int(anchor.x - shift.x, anchor.y - shift.y, 0);
+
+                // RE-VALIDATE. TryPickAnchor vetted the ROAD cell, and the
+                // building now sits some thirty-seven cells away from it, so
+                // every test it passed describes somewhere the vault is not.
+                long dx = placeAt.x - centre.x, dy = placeAt.y - centre.y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < (long)inner * inner || distSq > (long)outer * outer) continue;
+                if (TooClose(placeAt, anchorsUsed, minSpacingSq)) continue;
+            }
+
             var placed = new AncientSitePlan
             {
                 archetype = SiteArchetype.DeadCoreVault,
                 variant = pick,
                 planName = plan.name,
-                anchor = anchor,
+                anchor = placeAt,
             };
-            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
-            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (shape.heart.Count > 0)
             {
                 var heartOut = new List<Vector3Int>();
-                EmitTransformed(shape.heart, anchor, rot, mirror, centre, clampSq, heartOut);
+                EmitTransformed(shape.heart, placeAt, rot, mirror, centre, clampSq, heartOut);
                 if (heartOut.Count > 0)
                 {
                     placed.heartCell = heartOut[0];
@@ -817,7 +865,7 @@ public static class AncientSiteBuilder
 
             placed.id = result.sites.Count;
             result.sites.Add(placed);
-            anchorsUsed.Add(anchor);
+            anchorsUsed.Add(placeAt);
 
             // The vault does NOT count against the general budget, unlike the
             // outpost and the village. Floor index 4 reported thirteen sites
@@ -879,6 +927,23 @@ public static class AncientSiteBuilder
         foreach (var c in authored.heart) p.heart.Add(c);
         foreach (var c in authored.floor)
             if (!p.wall.Contains(c)) p.floor.Add(c);
+
+        // The first run with a usable outward normal. A vault has one door by
+        // design; if a plan ever declares several, the first is taken and the
+        // rest are ordinary doors -- picking "best" would need a road heading
+        // this function does not have and should not learn about.
+        if (authored.anchorOnDoor)
+        {
+            foreach (var run in authored.doorRuns)
+            {
+                if (run.outward == Vector2Int.zero) continue;
+                p.hasDoorAnchor = true;
+                p.doorMid = run.mid;
+                p.doorOut = run.outward;
+                break;
+            }
+        }
+
         return p.floor.Count == 0 ? null : p;
     }
 
@@ -1110,6 +1175,12 @@ public static class AncientSiteBuilder
         /// Empty for every procedural recipe -- a composed ruin has no
         /// single cell that means anything.</summary>
         public readonly HashSet<Vector2Int> heart = new HashSet<Vector2Int>();
+
+        /// <summary>Set only for an authored plan that asked for door anchoring
+        /// AND declared a usable door run. Procedural recipes never set it.</summary>
+        public bool hasDoorAnchor;
+        public Vector2Int doorMid;
+        public Vector2Int doorOut;
 
         public void Floor(int x0, int y0, int w, int h)
         {
@@ -1504,6 +1575,24 @@ public static class AncientSiteBuilder
 
     // ---- Transform and emit ----------------------------------------
 
+    /// <summary>The plan-space transform, extracted so that EVERY consumer turns
+    /// a local cell into a world offset the same way. Door anchoring needs the
+    /// rotated position of one cell without emitting anything, and a second copy
+    /// of this switch is how the door would end up a quarter turn from the
+    /// building it belongs to.</summary>
+    private static Vector2Int RotateLocal(Vector2Int p, int rot, bool mirror)
+    {
+        int x = mirror ? -p.x : p.x;
+        int y = p.y;
+        switch (rot & 3)
+        {
+            case 1: return new Vector2Int(-y, x);
+            case 2: return new Vector2Int(-x, -y);
+            case 3: return new Vector2Int(y, -x);
+            default: return new Vector2Int(x, y);
+        }
+    }
+
     private static void EmitTransformed(
         HashSet<Vector2Int> local, Vector3Int anchor, int rot, bool mirror,
         Vector3Int floorCentre, long clampSq, List<Vector3Int> into)
@@ -1511,17 +1600,8 @@ public static class AncientSiteBuilder
         var seen = new HashSet<Vector3Int>();
         foreach (var p in local)
         {
-            int x = mirror ? -p.x : p.x;
-            int y = p.y;
-
-            int rx, ry;
-            switch (rot & 3)
-            {
-                case 1: rx = -y; ry = x; break;
-                case 2: rx = -x; ry = -y; break;
-                case 3: rx = y; ry = -x; break;
-                default: rx = x; ry = y; break;
-            }
+            var r = RotateLocal(p, rot, mirror);
+            int rx = r.x, ry = r.y;
 
             var c = new Vector3Int(anchor.x + rx, anchor.y + ry, 0);
             long dx = c.x - floorCentre.x, dy = c.y - floorCentre.y;
@@ -1533,6 +1613,92 @@ public static class AncientSiteBuilder
     /// <summary>Fewest walkable cells a placed site may have. Below this the ruin
     /// reads as a room and behaves as a wall, which is worse than not generating it.</summary>
     private const int MinWalkableCells = 16;
+
+    /// <summary>How far off the door's outward normal a road's local heading may
+    /// be before the anchor is rejected, as a cosine.
+    ///
+    /// THIRTY DEGREES, and the cone is chosen WITH the door corridor rather
+    /// than on its own -- the two only work as a pair. A road arriving steeply
+    /// drifts out of the corridor before it reaches the door and is cut anyway.
+    /// Measured, worst-case distance from the road's surviving end to the door:
+    ///
+    ///     cone 45, corridor +/-1 .. 5.7    cone 30, corridor +/-1 .. 4.5
+    ///     cone 45, corridor +/-2 .. 5.7    cone 30, corridor +/-2 .. 0.0
+    ///     cone 45, corridor +/-3 .. 0.0    cone 20, corridor +/-1 .. 0.0
+    ///
+    /// 30 with +/-2 reaches every time at a corridor exactly one trunk wide.
+    /// 45 would need +/-3, which is wider than any authored door and would eat
+    /// jamb beyond it; 20 buys nothing more and throws away anchors. Acceptance
+    /// falls from about half of all bearings to about a third, which is ample
+    /// against PlaceDeadCore's 240 attempts.</summary>
+    private const float DoorFacingCos = 0.8660f;
+
+    /// <summary>Radius in cells over which a road's local heading is estimated.</summary>
+    private const int RoadHeadingRadius = 6;
+
+    /// <summary>Puts the plan's declared door runs into world space on the
+    /// placed site, rotation and mirroring applied. Every OUTWARD-FACING run is
+    /// emitted, not merely the anchored one, so a road arriving at any door of a
+    /// multi-door site connects to it.</summary>
+    private static void EmitDoorRuns(
+        AuthoredSitePlan plan, Vector3Int placeAt, int rot, bool mirror,
+        AncientSitePlan placed)
+    {
+        if (plan == null || plan.doorRuns == null) return;
+        foreach (var run in plan.doorRuns)
+        {
+            if (run.outward == Vector2Int.zero) continue;
+            var mid = RotateLocal(run.mid, rot, mirror);
+            var outward = RotateLocal(run.outward, rot, mirror);
+            placed.doors.Add(new PlacedDoor
+            {
+                mid = new Vector3Int(placeAt.x + mid.x, placeAt.y + mid.y, 0),
+                outward = outward,
+                halfWidth = Mathf.Max(0, run.length / 2),
+            });
+        }
+    }
+
+    /// <summary>
+    /// The local direction of the road at a cell, as an unsigned axis.
+    ///
+    /// Estimated from the road CELLS rather than read off a polyline, because
+    /// Build is handed a flat cell list and threading the polyline through would
+    /// widen four signatures to answer one question. Least squares over the
+    /// cells within RoadHeadingRadius: the principal axis of their spread is the
+    /// carriageway's direction, which is what a road is.
+    ///
+    /// Returns false when there is too little road nearby to say -- and the
+    /// caller then rejects the anchor, because an unverifiable heading is not a
+    /// passing one.
+    /// </summary>
+    private static bool TryRoadHeading(
+        IReadOnlyList<Vector3Int> roadCells, Vector3Int at, out Vector2 heading)
+    {
+        heading = Vector2.zero;
+        if (roadCells == null) return false;
+
+        double sxx = 0, syy = 0, sxy = 0;
+        int n = 0;
+        int r2 = RoadHeadingRadius * RoadHeadingRadius;
+        foreach (var c in roadCells)
+        {
+            int dx = c.x - at.x, dy = c.y - at.y;
+            if (dx * dx + dy * dy > r2) continue;
+            sxx += (double)dx * dx;
+            syy += (double)dy * dy;
+            sxy += (double)dx * dy;
+            n++;
+        }
+
+        // Three cells is the fewest that can describe a direction rather than a
+        // dot or a pair; below that the principal axis is noise.
+        if (n < 3) return false;
+
+        double theta = 0.5 * System.Math.Atan2(2.0 * sxy, sxx - syy);
+        heading = new Vector2((float)System.Math.Cos(theta), (float)System.Math.Sin(theta));
+        return heading.sqrMagnitude > 0.0001f;
+    }
 
     /// <summary>
     /// Cells a unit could actually stand on, under the same rule the pathfinder

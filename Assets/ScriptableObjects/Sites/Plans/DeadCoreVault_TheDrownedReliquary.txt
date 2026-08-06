@@ -2,6 +2,7 @@
 @name: The Drowned Reliquary
 @anchor: AlongRoad
 @rotate: no
+@anchor_on: door
 @doors: marked
 
 // One enormous hall, long dry, with the core raised on an island at the

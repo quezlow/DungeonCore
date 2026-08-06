@@ -39,6 +39,16 @@ public class AuthoredSitePlan
     /// validator will not pass a plan that leaves it Absent.</summary>
     public DoorPolicy doorPolicy = DoorPolicy.Absent;
 
+    /// <summary>Set by "@anchor_on: door". The placement then offsets the plan
+    /// so a DECLARED DOOR lands on the anchor rather than the bounding-box
+    /// centre, and rejects anchors the door does not face.
+    ///
+    /// Opt-in per plan, because it is wrong for most of them. A dwarven hold
+    /// WANTS the road cutting through it -- that is what its four gates are for.
+    /// A sealed vault wants the road arriving at its one entrance and stopping.
+    /// </summary>
+    public bool anchorOnDoor;
+
     /// <summary>Set only when the plan declared its own @anchor. Otherwise the
     /// archetype's fixed preference applies.</summary>
     public SiteAnchor anchorOverride = SiteAnchor.Free;
@@ -101,6 +111,26 @@ public class AuthoredSitePlan
     /// tried to tell them apart and failed twelve working plans doing it; this
     /// one does not guess.</summary>
     public readonly List<Vector2Int> door = new List<Vector2Int>();
+
+    /// <summary>The door cells grouped into RUNS, each with its middle cell and
+    /// the direction it opens outward.
+    ///
+    /// Computed once, here, because two things need it and they must not
+    /// disagree: the validator's three-cell rule, and door anchoring's offset
+    /// and heading test. A second run-finder in the editor layer is how the
+    /// geometry that decides where a vault goes and the geometry that decides
+    /// whether its door is legal drift apart.</summary>
+    public readonly List<DoorRun> doorRuns = new List<DoorRun>();
+}
+
+/// <summary>One straight run of '+' cells: where it is, how long, and which way
+/// it faces. `outward` is the perpendicular whose neighbouring cell is outside
+/// the plan entirely -- a door opens onto the rock, not onto more building.</summary>
+public struct DoorRun
+{
+    public Vector2Int mid;
+    public Vector2Int outward;
+    public int length;
 }
 
 /// <summary>
@@ -228,6 +258,18 @@ public static class AncientSitePlanLibrary
                                           || val.ToLowerInvariant() == "false"
                                           || val == "0");
                         break;
+                    case "anchor_on":
+                        switch (val.ToLowerInvariant())
+                        {
+                            case "door": plan.anchorOnDoor = true; break;
+                            case "centre":
+                            case "center": plan.anchorOnDoor = false; break;
+                            default:
+                                error = "unknown @anchor_on '" + val +
+                                        "' -- expected door or centre";
+                                return null;
+                        }
+                        break;
                     case "doors":
                         // A wrong value is an ERROR rather than a silent fall
                         // back to Absent. Absent already fails the validator, so
@@ -350,6 +392,7 @@ public static class AncientSitePlanLibrary
         foreach (var p in platform) plan.platform.Add(p - offset);
         foreach (var p in stairs) plan.stairs.Add(p - offset);
         foreach (var p in door) plan.door.Add(p - offset);
+        BuildDoorRuns(plan, wallSet);
 
         foreach (var p in floor)
         {
@@ -360,6 +403,64 @@ public static class AncientSitePlanLibrary
         plan.wall.AddRange(wallSet);
 
         return plan;
+    }
+
+    /// <summary>
+    /// Groups '+' cells into maximal straight runs and works out which way each
+    /// one faces.
+    ///
+    /// A run's axis is decided by whether it has a horizontal neighbour: a door
+    /// in a vertical wall runs vertically, one in a horizontal wall runs
+    /// horizontally, and a single cell belongs to neither and is measured as a
+    /// run of one -- which the validator then fails, correctly, because a
+    /// one-cell door is the worst version of the fault the rule exists for.
+    ///
+    /// `outward` is the perpendicular whose neighbour is in NEITHER floor nor
+    /// wall, i.e. outside the plan. If both sides are outside, or neither is,
+    /// the run gets a zero normal and door anchoring will not use it -- better
+    /// an unusable run than a vault pointed at its own interior.
+    /// </summary>
+    private static void BuildDoorRuns(AuthoredSitePlan plan, HashSet<Vector2Int> wallSet)
+    {
+        plan.doorRuns.Clear();
+        if (plan.door.Count == 0) return;
+
+        var doors = new HashSet<Vector2Int>(plan.door);
+        var inside = new HashSet<Vector2Int>(wallSet);
+        foreach (var f in plan.floor) inside.Add(f);
+
+        var counted = new HashSet<Vector2Int>();
+        foreach (var cell in plan.door)
+        {
+            if (counted.Contains(cell)) continue;
+
+            bool horiz = doors.Contains(new Vector2Int(cell.x + 1, cell.y))
+                      || doors.Contains(new Vector2Int(cell.x - 1, cell.y));
+            var step = horiz ? new Vector2Int(1, 0) : new Vector2Int(0, 1);
+            var perp = horiz ? new Vector2Int(0, 1) : new Vector2Int(1, 0);
+
+            var start = cell;
+            while (doors.Contains(start - step)) start -= step;
+
+            int len = 0;
+            var c = start;
+            while (doors.Contains(c))
+            {
+                counted.Add(c);
+                len++;
+                c += step;
+            }
+
+            var mid = start + step * (len / 2);
+
+            bool plusOutside = !inside.Contains(mid + perp) && !doors.Contains(mid + perp);
+            bool minusOutside = !inside.Contains(mid - perp) && !doors.Contains(mid - perp);
+            var outward = Vector2Int.zero;
+            if (plusOutside && !minusOutside) outward = perp;
+            else if (minusOutside && !plusOutside) outward = -perp;
+
+            plan.doorRuns.Add(new DoorRun { mid = mid, outward = outward, length = len });
+        }
     }
 
     /// <summary>Parses a whole set, logging and skipping anything malformed.

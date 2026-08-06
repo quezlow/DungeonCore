@@ -1629,9 +1629,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
         foreach (var c in vault.ruinsCells) blocked.Add(c);
         if (blocked.Count == 0) return;
 
+        // The vault's declared doors, as gates the road may reach. A site with no
+        // door truncates exactly as before -- the list is simply empty.
+        var gates = new List<RoadNetworkBuilder.RoadGate>();
+        foreach (var d in vault.doors)
+            gates.Add(new RoadNetworkBuilder.RoadGate
+            {
+                mid = d.mid,
+                outward = d.outward,
+                halfWidth = d.halfWidth,
+            });
+
         int before = CountUnderRoad(blocked);
 
-        var report = RoadNetworkBuilder.TruncateAroundBlocked(featureData.roads, blocked, 0);
+        var report = RoadNetworkBuilder.TruncateAroundBlocked(
+            featureData.roads, blocked, 0, gates);
         if (!report.AnythingChanged)
         {
             Debug.Log("[Sites] Floor " + floor.FloorIndex + " vault sits clear of " +
@@ -1640,7 +1652,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
 
         RebuildRoadCells();
-        int after = CountUnderRoad(blocked);
+
+        // Widest carriageway on the floor, for the gate test. Trunks are the
+        // wide ones and the vault is what they run to.
+        int roadHalf = 1;
+        foreach (var r in featureData.roads)
+            if (r != null) roadHalf = Mathf.Max(roadHalf, Mathf.Max(1, r.width) / 2);
+
+        int atDoor = CountUnderRoad(blocked) - CountUnderRoadOutsideGates(blocked, gates, roadHalf);
+        int after = CountUnderRoadOutsideGates(blocked, gates, roadHalf);
         int widened = 0;
 
         if (after > 0)
@@ -1649,15 +1669,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             // outside the clearance, so widen by exactly it and cut once more.
             widened = Mathf.Max(1, junctionFilletRadius);
             var second = RoadNetworkBuilder.TruncateAroundBlocked(
-                featureData.roads, blocked, widened);
+                featureData.roads, blocked, widened, gates);
             RebuildRoadCells();
-            after = CountUnderRoad(blocked);
+            after = CountUnderRoadOutsideGates(blocked, gates, roadHalf);
             foreach (var n in second.notes) report.notes.Add("(widened) " + n);
         }
 
         Debug.Log("[Sites] Floor " + floor.FloorIndex + " ROAD TRUNCATION around the " +
                   "vault: " + report.Summary() + ". Vault cells under carriageway: " +
-                  before + " before, " + after + " after" +
+                  before + " before, " + after + " after outside the doorway, " +
+                  atDoor + " at the doorway (intended)" +
                   (widened > 0 ? " (clearance widened by " + widened +
                                  " and re-cut once)" : "") + ".");
         foreach (var n in report.notes) Debug.Log("    " + n);
@@ -1679,6 +1700,34 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int n = 0;
         foreach (var c in cells)
             if (roadCells.Contains(c)) n++;
+        return n;
+    }
+
+    /// <summary>The same count, ignoring cells inside a doorway's approach.
+    ///
+    /// The plain count stopped being the right question the moment roads were
+    /// allowed to reach doors: the carriageway now covers the threshold ON
+    /// PURPOSE, some fifteen cells of it, and a verifier that reads intended
+    /// overlap as failure would LogError on every correct floor. This asks the
+    /// question that still matters -- is the road anywhere it was never invited.</summary>
+    private int CountUnderRoadOutsideGates(
+        HashSet<Vector3Int> cells, List<RoadNetworkBuilder.RoadGate> gates, int roadHalf)
+    {
+        int n = 0;
+        foreach (var c in cells)
+        {
+            if (!roadCells.Contains(c)) continue;
+            bool inGate = false;
+            foreach (var g in gates)
+            {
+                if (g.outward.x == 0 && g.outward.y == 0) continue;
+                int dx = c.x - g.mid.x, dy = c.y - g.mid.y;
+                if (dx * g.outward.x + dy * g.outward.y < 0) continue;
+                int lateral = g.outward.x == 0 ? Mathf.Abs(dx) : Mathf.Abs(dy);
+                if (lateral <= Mathf.Max(g.halfWidth, roadHalf)) { inGate = true; break; }
+            }
+            if (!inGate) n++;
+        }
         return n;
     }
 

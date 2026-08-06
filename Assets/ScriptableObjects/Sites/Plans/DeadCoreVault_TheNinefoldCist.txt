@@ -2,6 +2,7 @@
 @name: The Ninefold Cist
 @anchor: AlongRoad
 @rotate: no
+@anchor_on: door
 @doors: marked
 
 // Ring inside ring inside ring, each with a single passage and no two

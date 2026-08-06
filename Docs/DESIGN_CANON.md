@@ -3019,6 +3019,87 @@ cell vault and found it inert. `PlaceDeadCore` emits the heart through the
 same transform as its masonry, and REJECTS a placement whose heart fell
 outside the clamp disc rather than shipping an inert vault.
 
+### Door anchoring (SHIPPED)
+
+An `AlongRoad` anchor lands a plan's bounding-box CENTRE on the carriageway.
+For the vault that is wrong twice: the road drives through the middle of a
+75-cell building, and its one door faces wherever the plan drew it. Truncation
+then cuts the road out of the footprint, so it dies forty cells short of an
+entrance it never pointed at.
+
+**No plan-only fix works, and the measurement is the reason.** Over 20,000
+random bearings, the tangential offset from the door to the road's surviving
+end: one 3-wide door as shipped puts the road on the door **1.5%** of the time;
+four 3-wide doors, 6.2%; four 15-wide, 25%; four 25-wide, 40%. Allowing rotation
+and picking the facing quarter-turn scores 6.2% -- identical to four doors,
+because both only guarantee a door on the wall the road exits, not at the point
+it exits. Corners are the killer: a road at 45 degrees leaves a square 37 cells
+from any wall's midpoint. Widening and multiplying doors optimises the wrong
+variable.
+
+`@anchor_on: door` offsets the plan so a declared door lands on the anchor:
+`adjustedAnchor = anchor - RotateLocal(doorMid)`. `EmitTransformed` is untouched
+and simply receives a different anchor. `RotateLocal` was extracted from it so
+the door and the building it belongs to cannot end up a quarter turn apart.
+
+**The heading filter is not optional.** Door anchoring alone leaves a road
+running PARALLEL to the vault's face inside the truncation dilation along its
+whole length, cut 41 cells from the entrance. Rejecting anchors whose local road
+heading is off the door's outward normal fixes it. Heading is estimated by least
+squares over road cells within six, because `Build` receives a flat cell list
+and threading the polyline through would widen four signatures to answer one
+question; too few cells to judge REJECTS the anchor, since an unverifiable
+heading is not a passing one.
+
+**And the road RUNS TO THE DOOR rather than stopping outside it.** Anchoring and
+the heading filter together still left the carriageway four to six cells short,
+because the truncation dilation blocks the approach as well as the building.
+`RoadNetworkBuilder.RoadGate` opens a corridor through the blocked set: cells on
+the OUTWARD side of a door line, within the wider of the door and the road. Only
+outward, so the road stops at the threshold instead of driving through the hall
+behind it; a site with no declared door has an empty gate list and truncates
+exactly as before.
+
+**The cone and the corridor are one decision, not two.** A road arriving steeply
+drifts out of a narrow corridor before it reaches the door and is cut anyway.
+Measured worst-case distance from the surviving road end to the door:
+
+| cone | corridor +/-1 | +/-2 | +/-3 |
+|---|---|---|---|
+| 45 deg | 5.7 | 5.7 | 0.0 |
+| 30 deg | 4.5 | **0.0** | 0.0 |
+| 20 deg | 0.0 | 0.0 | 0.0 |
+
+Thirty degrees with a corridor of two reaches the door on every bearing at a
+corridor exactly one trunk wide. Forty-five would need three, wider than any
+authored door, and would eat jamb beyond it. Twenty buys nothing further and
+throws away anchors -- acceptance falls from about half of all bearings to about
+a third, which is still ample against 240 attempts.
+
+**The threshold overlap is intended and costs about fifteen cells.** A five-wide
+carriageway reaching a doorway covers it; on a five-wide door that takes no jamb
+at all, on the Ninefold Cist's three-wide door it wears one cell either side to
+road width. Against 2884 carved it is under one per cent, and most of those
+cells are the outermost ring corridor, which was already open ground. The
+verifier was made GATE-AWARE for it: the plain count would have read intended
+overlap as failure and logged an error on every correct floor.
+
+**The adjusted anchor is re-validated against band and spacing.**
+`TryPickAnchor` vetted the road cell, and the building ends up some 37 cells
+away from it, so every test it passed describes somewhere the vault is not.
+
+**Door runs are computed once, in the library**, with their outward normal --
+the perpendicular whose neighbour lies outside the plan, because a door opens
+onto rock rather than onto more building. The validator's own run-finder was
+DELETED in favour of them: the geometry that decides where a vault goes and the
+geometry that decides whether its door is legal must be the same geometry.
+
+**No plan geometry changed**, and the vaults' own headers are why. Extra doors
+would break *"each with a single passage and no two passages on the same side"*;
+rotation would break *"@rotate: no -- the dais offsets are hand-placed in the
+decor prefab"* and trip the validator's decor rule. Both routes were confirmed
+dead by reading the plans rather than by trying them.
+
 **On floor index 4, the ROAD yields to the vault** -- and nowhere else does
 anything yield to a site. `GenerateSites` subtracts road cells from every site's
 footprint, which is right on a living floor: the carriageway was carved first and
