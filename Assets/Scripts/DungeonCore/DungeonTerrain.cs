@@ -52,6 +52,7 @@ public class DungeonTerrain : MonoBehaviour
     private bool initialised = false;
     private FloorRoot myFloor;
     private Tile runtimeFogTile;
+    private List<Vector3Int> rimRing;   // cached rim facade footprint; see RimRingCells
 
     /// <summary>
     /// Resolve the owning floor as early as Unity allows. This CANNOT wait for
@@ -105,6 +106,13 @@ public class DungeonTerrain : MonoBehaviour
         coreCell = centre;
         currentRadius = RadiusForThisFloor();
         PaintTerrain(coreCell, currentRadius);
+
+        // Floor 0 alone. Its rim borders the forest rather than the void -- band
+        // 0 grass starts one cell past it -- so the outermost ring is unfogged
+        // here, in the one place the disc's fog is ever painted, and both the
+        // fresh and the load path reach it. Lower floors keep a fogged rim: a
+        // lit ring with nothing outside it reads as a rendering fault.
+        if (myFloor != null && myFloor.FloorIndex == 0) RevealRimRing();
     }
 
     /// <summary>Fog is colour-driven; the sprite only needs to be solid and
@@ -223,6 +231,62 @@ public class DungeonTerrain : MonoBehaviour
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;
     public int CurrentRadius => currentRadius;
+
+    /// <summary>
+    /// The outermost in-disc cells: every cell inside the radius with at least
+    /// one cardinal neighbour outside it. This is the rim facade's footprint --
+    /// floor 0 unfogs it at generation and CaveWallRenderer caps it, so the
+    /// dungeon reads as a walled edge from the forest instead of the fog simply
+    /// stopping at a circle.
+    ///
+    /// Built once and cached, because the radius is set once per floor and never
+    /// grows, so the ring never moves. The scan walks the whole disc rather than
+    /// stepping the boundary row by row: 31,417 cells at floor 0's radius, once
+    /// per floor lifetime. The clever version has to reason about three rows at
+    /// once to catch the north and south arcs, and that is bug surface bought
+    /// with nothing. Lazy, so the floors that never ask never pay.
+    /// </summary>
+    public IReadOnlyList<Vector3Int> RimRingCells
+    {
+        get
+        {
+            if (rimRing != null) return rimRing;
+
+            // Answer empty WITHOUT caching before GenerateAt has run: caching an
+            // empty list here would pin it for the object's whole life, and the
+            // facade would silently never appear. Nothing asks this early today
+            // (the renderer's first rebuild is a LateUpdate, well after Start),
+            // but the poisoned-cache failure is invisible if it ever does.
+            if (!initialised) return System.Array.Empty<Vector3Int>();
+
+            var ring = new List<Vector3Int>();
+            for (int dy = -currentRadius; dy <= currentRadius; dy++)
+                for (int dx = -currentRadius; dx <= currentRadius; dx++)
+                {
+                    var cell = new Vector3Int(coreCell.x + dx, coreCell.y + dy, 0);
+                    if (!IsWithinBounds(cell)) continue;
+                    if (IsWithinBounds(cell + Vector3Int.up)
+                     && IsWithinBounds(cell + Vector3Int.down)
+                     && IsWithinBounds(cell + Vector3Int.left)
+                     && IsWithinBounds(cell + Vector3Int.right)) continue;
+                    ring.Add(cell);
+                }
+            rimRing = ring;
+            return rimRing;
+        }
+    }
+
+    /// <summary>Clears fog from the rim ring so the facade is there on the first
+    /// frame. Fog is one-way and this is the direction it already travels; a
+    /// circle at a fixed radius gives away no layout. The only information in it
+    /// is where the ring BREAKS -- the entrance channel and any river mouth --
+    /// and both notches are wanted.</summary>
+    public void RevealRimRing()
+    {
+        if (fogTilemap == null) return;
+        var ring = RimRingCells;
+        for (int i = 0; i < ring.Count; i++) fogTilemap.SetTile(ring[i], null);
+    }
 
     private bool IsWithinRadius(Vector3Int pos, int radius)
     {

@@ -864,6 +864,34 @@ public class Commands : MonoBehaviour
                 ? HolyGroundLedger.AlignmentForVaultHeart
                 : HolyGroundLedger.AlignmentForHeart)).ToString("0.#");
 
+    [ContextMenu("Log Rim Facade")]
+    void LogRimFacade()
+    {
+        var fm = FloorManager.Instance;
+        var floor = fm != null ? fm.GetFloor(0) : null;
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null) { Debug.LogWarning("[Commands] No floor 0 terrain."); return; }
+
+        var ring = terrain.RimRingCells;
+        var classifier = new CaveWallClassifier(floor.TileInfluence, floor.FeatureGenerator, terrain);
+        int solid = 0, southFacing = 0, fogged = 0;
+        foreach (var c in ring)
+        {
+            if (!classifier.IsSolid(c)) continue;
+            solid++;
+            if (!classifier.IsSolid(c + Vector3Int.down)) southFacing++;
+        }
+        var fog = terrain.FogTilemap;
+        if (fog != null)
+            foreach (var c in ring)
+                if (fog.GetTile(c) != null) fogged++;
+
+        Debug.Log($"[Commands] RIM FACADE floor 0 (radius {terrain.CurrentRadius}): " +
+                  $"{ring.Count} ring cells, {solid} capped, {ring.Count - solid} notched " +
+                  $"(entrance channel plus river mouths), {southFacing} draping a face, " +
+                  $"{fogged} still fogged -- want 0.");
+    }
+
     [ContextMenu("Log Holy Ground State")]
     void LogHolyGroundState()
     {

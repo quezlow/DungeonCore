@@ -97,6 +97,32 @@ public class CaveWallSheetLayout : ScriptableObject
                  "to defeat.")]
         public bool allowMoss = false;
 
+        [Tooltip("Off = this family renders on EVERY floor, which is what both masonry " +
+                 "families want. On = it renders only on the floor indices listed below. " +
+                 "The gate is applied once, when a floor bakes its tiles, so it costs " +
+                 "nothing per cell -- every floor has its own renderer. NOTE: site paving " +
+                 "resolves through the same baked table, so restricting a family that " +
+                 "carries paving slots also drops its paving on every excluded floor.")]
+        public bool restrictToFloors = false;
+
+        [Tooltip("Floor indices this family renders on while Restrict To Floors is on. " +
+                 "0 is the surface floor. An EMPTY list with the toggle ON means NOWHERE, " +
+                 "and Validate Layout flags it: the toggle is the explicit statement of " +
+                 "intent, so an empty list is a mistake rather than shorthand for 'all'.")]
+        public int[] floors = new int[0];
+
+        /// <summary>Whether this family bakes on the given floor. Unrestricted
+        /// families apply everywhere, so the two masonry skins behave exactly as
+        /// they did before the gate existed.</summary>
+        public bool AppliesToFloor(int floorIndex)
+        {
+            if (!restrictToFloors) return true;
+            if (floors == null) return false;
+            for (int i = 0; i < floors.Length; i++)
+                if (floors[i] == floorIndex) return true;
+            return false;
+        }
+
         [Tooltip("Per-mask caps; same 16 masks as capSlots. Mask 11 doubles as the " +
                  "family's base cap that every empty cap slot falls back to.")]
         public SheetSlot[] capSlots = EmptySlots(16);
@@ -424,6 +450,18 @@ public class CaveWallSheetLayout : ScriptableObject
                 {
                     sb.AppendLine($"- {famName}: duplicate terrain -- the FIRST entry for a terrain wins and this one is dead weight.");
                     issues++;
+                }
+
+                if (fam.restrictToFloors && (fam.floors == null || fam.floors.Length == 0))
+                {
+                    sb.AppendLine($"- {famName}: Restrict To Floors is ON with no floors listed, " +
+                                  "so this family renders NOWHERE. List a floor index, or turn the toggle off.");
+                    issues++;
+                }
+                else if (fam.restrictToFloors)
+                {
+                    sb.AppendLine($"- Note: {famName} is restricted to floor(s) " +
+                                  string.Join(", ", fam.floors) + "; every other floor renders stone there.");
                 }
 
                 void CheckFam(SheetSlot slot, string label, bool capPivot)

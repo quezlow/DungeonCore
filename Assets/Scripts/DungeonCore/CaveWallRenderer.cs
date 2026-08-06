@@ -230,6 +230,15 @@ public class CaveWallRenderer : MonoBehaviour
         foreach (var fam in fams)
         {
             if (fam == null) continue;
+
+            // Per-floor gate (canon 24). Applied HERE, once per family per floor,
+            // rather than per cell: each floor owns its renderer, so the bake
+            // already knows which floor it is for and a skipped family simply
+            // leaves a null slot that FamilyAt reads as "no family". The bedrock
+            // facade is why it exists -- that skin belongs to floor 0's rim and
+            // must not retexture the rim on floors the player has dug out to.
+            if (floor != null && !fam.AppliesToFloor(floor.FloorIndex)) continue;
+
             int idx = (int)fam.terrain;
             // First entry per terrain wins; Validate Layout flags duplicates.
             if (familyByTerrain[idx] != null) continue;
@@ -416,6 +425,18 @@ public class CaveWallRenderer : MonoBehaviour
         wallScratch.Clear();
         foreach (Vector3Int c in influence.ClaimedTiles)
             if (classifier.IsSolid(c)) wallScratch.Add(c);
+
+        // Floor 0's rim is the outside of the world, not the edge of a dark
+        // mass: band 0 grass starts one cell past it. Its outermost ring is
+        // therefore capped unconditionally, before anything has been dug, so
+        // the dungeon reads as a walled edge from the treeline. IsSolid does
+        // the rest -- the entrance channel and any river mouth are open there,
+        // so the ring breaks at both with no special case, and those notches
+        // are the read we want. Bedrock is never claimable and so never mined:
+        // the facade cannot be breached. Lower floors are untouched.
+        if (floor != null && floor.FloorIndex == 0 && floor.Terrain != null)
+            foreach (Vector3Int c in floor.Terrain.RimRingCells)
+                if (classifier.IsSolid(c)) wallScratch.Add(c);
         foreach (Vector3Int open in influence.MinedTiles)
             foreach (Vector3Int dir in Neighbours8)
             {

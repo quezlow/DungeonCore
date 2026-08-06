@@ -43,6 +43,24 @@ public class SurfaceZoneGenerator : MonoBehaviour
     [SerializeField, Min(1)] private int fogSolidMarginCells = 24;
     [SerializeField] private Color fogColor = new Color(0.05f, 0.06f, 0.10f, 1f);
 
+    [Header("Rim gloom")]
+    [Tooltip("Cells of grass, measured outward from the rim, across which the ground " +
+             "darkens toward the facade. 0 disables it. Painted on the SURFACE fog " +
+             "tilemap, which the scene puts on Player order 100: over the grass and " +
+             "over the wall's draped face (a contact shadow), UNDER the caps on " +
+             "WalkBehind and under the dungeon's own fog on Shadow.")]
+    [SerializeField, Min(0)] private int rimGloomCells = 8;
+    [Tooltip("Alpha at the wall itself, easing to 0 at Rim Gloom Cells out.")]
+    [SerializeField, Range(0f, 1f)] private float rimGloomMaxAlpha = 0.45f;
+    [Tooltip("Falloff exponent. 1 = linear; 2 = quadratic, which keeps most of the " +
+             "darkening hugging the wall and avoids a second visible edge where the " +
+             "gloom ends.")]
+    [SerializeField, Range(1f, 4f)] private float rimGloomFalloff = 2f;
+    [Tooltip("Shadow tone. Deliberately NOT the edge fog colour: that one is a pale " +
+             "mist hiding the void past the last band, and this one is the pit's own " +
+             "shadow falling on the grass.")]
+    [SerializeField] private Color rimGloomColor = new Color(0.10f, 0.11f, 0.16f, 1f);
+
     [Header("City gate ids")]
     [Tooltip("Arrival SpawnPoint id inside the City scene.")]
     [SerializeField] private string citySpawnId = "FromForestRoad";
@@ -59,6 +77,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
     private float roadBearingDeg;
     private int baseSeed;
     private List<GameObject> scatterPool;
+    private List<GameObject> screePool;   // rocks only, for the rubble ring at the rim
 
     // -- generated state (session-only; rebuilt deterministically) ----------
     private int paintedDepth;
@@ -153,6 +172,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
         scatterPool.AddRange(profile.treePrefabs);
         scatterPool.AddRange(profile.rockPrefabs);
         scatterPool.AddRange(profile.decorPrefabs);
+        screePool = new List<GameObject>(profile.rockPrefabs);
 
         surfaceTilemap.ClearAllTiles();
         ClearChildren(propParent);
@@ -171,6 +191,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
         }
 
         PaintFogRing(0, paintedDepth);
+        PaintInnerGloom();
         revealedDepth = targetDepth = paintedDepth;   // no creep on load
         armed = true;
         MarkBoundsDirty();
@@ -261,7 +282,13 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 long sq = (long)dx * dx + (long)dy * dy;
                 if (sq <= innerSq || sq > outerSq) continue;
                 float depth = Mathf.Sqrt(sq) - rim;
-                if (depth < profile.treeFreeInnerBand) continue;
+                if (depth < profile.screeInnerBand) continue;
+                // Inside treeFreeInnerBand only rubble scatters, so the facade's
+                // foot breaks up instead of standing on a bald circle. Cells at
+                // or beyond that depth roll exactly as before -- same hash, same
+                // salt, same density -- so switching the rubble ring on cannot
+                // reshuffle forest that already exists.
+                bool scree = depth < profile.treeFreeInnerBand;
                 var cell = new Vector3Int(center.x + dx, center.y + dy, 0);
                 float along = dx * outward.x + dy * outward.y;
                 float across = Mathf.Abs(dx * outward.y - dy * outward.x);
@@ -270,9 +297,10 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 if (NearSurfaceRiver(cell)) continue;   // clear banks, not just the water
                 if (InAnyCamp(cell, 0f)) continue;
                 float t = Mathf.InverseLerp(inner, outer, depth);
-                float density = Mathf.Lerp(band.densityInner, band.densityOuter, t);
+                float density = scree ? profile.screeDensity
+                                      : Mathf.Lerp(band.densityInner, band.densityOuter, t);
                 if (Hash01(cell.x, cell.y, baseSeed) >= density) continue;
-                SpawnScatter(cell);
+                SpawnScatter(cell, scree);
             }
 
         PlaceNodes(bandIndex, band, inner, outer);
@@ -283,12 +311,16 @@ public class SurfaceZoneGenerator : MonoBehaviour
         if (outer == profile.MaxDepth()) SpawnGate(outer);
     }
 
-    private void SpawnScatter(Vector3Int cell)
+    private void SpawnScatter(Vector3Int cell, bool scree)
     {
-        if (scatterPool == null || scatterPool.Count == 0) return;
-        int idx = Mathf.Min(scatterPool.Count - 1,
-            (int)(Hash01(cell.x, cell.y, baseSeed ^ 0x5CA77E4) * scatterPool.Count));
-        var prefab = scatterPool[idx];
+        var pool = scree ? screePool : scatterPool;
+        if (pool == null || pool.Count == 0) return;
+        // A distinct salt for the rubble ring keeps its picks independent of the
+        // forest's, so enabling it can never perturb a tree that already stood.
+        int salt = scree ? (baseSeed ^ 0x5C4EE1) : (baseSeed ^ 0x5CA77E4);
+        int idx = Mathf.Min(pool.Count - 1,
+            (int)(Hash01(cell.x, cell.y, salt) * pool.Count));
+        var prefab = pool[idx];
         if (prefab == null) return;
         var go = Instantiate(prefab, floor.TileInfluence.CellToWorld(cell),
                              Quaternion.identity,
@@ -711,6 +743,62 @@ public class SurfaceZoneGenerator : MonoBehaviour
                 fogTilemap.SetTile(cell, fogTile);
                 fogTilemap.SetTileFlags(cell, TileFlags.None);
                 fogTilemap.SetColor(cell, new Color(fogColor.r, fogColor.g, fogColor.b, a));
+            }
+    }
+
+    /// <summary>
+    /// Darkens the grass as it approaches the rim, so the eye travels bright
+    /// forest -> shaded ground -> facade -> void instead of taking the whole
+    /// drop across one cell. Painted once at arm time and never repainted: the
+    /// rim does not move, and ClearFogRing only ever wipes from
+    /// rim + paintedDepth - fogFadeCells outward, which the reach clamp below
+    /// keeps this band clear of.
+    ///
+    /// The SURFACE fog tilemap is the right canvas because of where the scene
+    /// puts it -- Player, order 100 -- so the gloom lands over the grass and
+    /// over the wall's draped face (a contact shadow at its foot) but under the
+    /// caps on WalkBehind and under the dungeon's fog on Shadow. Nothing had to
+    /// be restacked for that.
+    ///
+    /// The OTHER side is deliberately left alone. DungeonShadow's fogMatchesVoid
+    /// sets the dungeon fog's colour layer-wide, so a per-cell colour there could
+    /// only multiply it darker; and softening it by ALPHA would show whatever
+    /// sits beneath the fog near the rim. Floor 0's rivers start ON the rim and a
+    /// site can band close to it, so that is a layout leak -- unlike the notch a
+    /// river mouth cuts in the ring, which gives away only a mouth.
+    /// </summary>
+    private void PaintInnerGloom()
+    {
+        if (fogTilemap == null || fogTile == null) return;
+        if (rimGloomCells <= 0 || rimGloomMaxAlpha <= 0f) return;
+
+        // Stay clear of the band-edge fog: the next unlock calls ClearFogRing,
+        // which wipes everything from rim + paintedDepth - fogFadeCells outward.
+        // Gloom painted out there would vanish the first time a band opened,
+        // which would look like a bug appearing hours into a run.
+        int reach = Mathf.Min(rimGloomCells, paintedDepth - fogFadeCells - 1);
+        if (reach <= 0) return;
+        if (reach < rimGloomCells)
+            Debug.LogWarning($"[SurfaceZoneGenerator] Rim gloom clamped to {reach} cells " +
+                             $"(asked for {rimGloomCells}): band 0 is {paintedDepth} deep " +
+                             $"and the edge fog reaches back {fogFadeCells}.");
+
+        long innerSq = (long)rim * rim;
+        int outerR = rim + reach;
+        long outerSq = (long)outerR * outerR;
+        for (int dx = -outerR; dx <= outerR; dx++)
+            for (int dy = -outerR; dy <= outerR; dy++)
+            {
+                long sq = (long)dx * dx + (long)dy * dy;
+                if (sq <= innerSq || sq > outerSq) continue;
+                float depth = Mathf.Sqrt(sq) - rim;
+                float t = Mathf.Clamp01(depth / reach);
+                float a = rimGloomMaxAlpha * Mathf.Pow(1f - t, rimGloomFalloff);
+                var cell = new Vector3Int(center.x + dx, center.y + dy, 0);
+                fogTilemap.SetTile(cell, fogTile);
+                fogTilemap.SetTileFlags(cell, TileFlags.None);
+                fogTilemap.SetColor(cell, new Color(rimGloomColor.r, rimGloomColor.g,
+                                                    rimGloomColor.b, a));
             }
     }
 

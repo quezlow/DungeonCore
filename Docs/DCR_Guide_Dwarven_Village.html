@@ -35,6 +35,26 @@
   #reset { float:right; background:none; border:1px solid #3a3a66; color:var(--dim); border-radius:4px; padding:2px 10px; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:12px; }
   #reset:hover { color:var(--accent); border-color:var(--accent); }
   .k { color:#7ec8a0; }
+
+/* dcr-mobile-wrap-v1 -- appended after a real overflow report on mobile.
+   Kept LAST so the td-code rule above is overridden by cascade order rather
+   than edited out of every guide separately.
+   overflow-wrap:anywhere, not break-word: only `anywhere` also shrinks an
+   element's min-content width, and that is what lets a flex item or a table
+   cell narrow at all. `.step` is display:flex, whose items default to
+   min-width:auto and refuse to shrink below their content -- which is also
+   why the overflow-x already on `pre` never engaged inside a step. */
+body{overflow-wrap:break-word;}
+code,kbd{overflow-wrap:anywhere;}
+pre{max-width:100%;overflow-x:auto;}
+table{max-width:100%;}
+th,td{overflow-wrap:anywhere;}
+td code{white-space:normal;}
+.step{min-width:0;}
+.step label{min-width:0;}
+.step pre{max-width:100%;}
+summary{min-width:0;}
+summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
 </style>
 </head>
 <body>

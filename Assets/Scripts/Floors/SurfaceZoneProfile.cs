@@ -25,8 +25,18 @@ public class SurfaceZoneProfile : ScriptableObject
     [Header("Road (continues the seeded pilgrim bearing)")]
     [Min(0)] public int roadHalfWidth = 2;
     [Min(0)] public int roadClearance = 3;
-    [Tooltip("Scatter-free ring hugging the rim so wall caps stay visible.")]
+    [Tooltip("Tree-free ring hugging the rim so wall caps stay visible.")]
     [Min(0)] public int treeFreeInnerBand = 4;
+    [Tooltip("Rubble ring: rocks, and only rocks, scatter from this depth out to Tree " +
+             "Free Inner Band, so the facade's foot gets scree instead of a bald circle " +
+             "of grass -- which is what reads as artificial, more than the brightness " +
+             "step does. Keep it at 3 or above: the wall's face drapes two cells past " +
+             "the rim and a prop under it reads as a bug. Setting it at or above Tree " +
+             "Free Inner Band turns the rubble ring off.")]
+    [Min(0)] public int screeInnerBand = 3;
+    [Tooltip("Scatter chance per cell inside the rubble ring. Flat rather than the " +
+             "band's inner-to-outer lerp: a cliff foot does not thin with distance.")]
+    [Range(0f, 1f)] public float screeDensity = 0.35f;
 
     [Header("Scatter pools (merged, picked by position hash)")]
     public List<GameObject> treePrefabs = new List<GameObject>();

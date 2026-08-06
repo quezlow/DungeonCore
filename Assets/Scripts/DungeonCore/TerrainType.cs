@@ -11,7 +11,9 @@
 ///     TerrainFeatureGenerator.MasonryTypeFor: DwarvenMasonry for the living
 ///     dwarven structures (village hold, gatehouse outpost), Ruins for every
 ///     dead site.
-///   - HolyGround is reserved for a future hand-placed mechanic.
+///   - HolyGround is placed on the four Church seal archetypes and the dead
+///     core vault by that same MasonryTypeFor call -- masonry AND carved
+///     interior, unlike a Buried Age site, which retypes its walls only.
 ///
 /// Values serialise by int into assets (resistance table, wall families):
 /// APPEND new members only; reordering or removal corrupts them silently.

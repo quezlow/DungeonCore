@@ -48,6 +48,26 @@
   th { background: var(--panel2); color: var(--gold); font-family: 'Cinzel', Georgia, serif; font-size: 13px; }
   td code { font-size: 12.5px; }
   .rule { color: var(--gold); font-weight: bold; }
+
+/* dcr-mobile-wrap-v1 -- appended after a real overflow report on mobile.
+   Kept LAST so the td-code rule above is overridden by cascade order rather
+   than edited out of every guide separately.
+   overflow-wrap:anywhere, not break-word: only `anywhere` also shrinks an
+   element's min-content width, and that is what lets a flex item or a table
+   cell narrow at all. `.step` is display:flex, whose items default to
+   min-width:auto and refuse to shrink below their content -- which is also
+   why the overflow-x already on `pre` never engaged inside a step. */
+body{overflow-wrap:break-word;}
+code,kbd{overflow-wrap:anywhere;}
+pre{max-width:100%;overflow-x:auto;}
+table{max-width:100%;}
+th,td{overflow-wrap:anywhere;}
+td code{white-space:normal;}
+.step{min-width:0;}
+.step label{min-width:0;}
+.step pre{max-width:100%;}
+summary{min-width:0;}
+summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
 </style>
 </head>
 <body>
@@ -817,13 +837,16 @@
   <details>
     <summary>31. Wall Families (per-terrain masonry skins)</summary>
     <div class="body">
-      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s1"><label for="dcr-authoring-v1-c31s1"><b>Where they live.</b> <code>Data/CaveWallSheetLayout.asset</code> &rarr; the <b>Wall families</b> section. A family = terrain key + sheet texture + flat tint + <code>allowMoss</code> + 16 cap slots + 4 inner corners + 8+8 face slices + straight variants with a <code>plainWeight</code> + site paving slots. A wall cell whose terrain matches an entry renders that family; terrain with no entry renders stone. Two ship: Ruins (terrain 4) and Dwarven Masonry (terrain 7, born as an exact copy of ruins).</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s1"><label for="dcr-authoring-v1-c31s1"><b>Where they live.</b> <code>Data/CaveWallSheetLayout.asset</code> &rarr; the <b>Wall families</b> section. A family = terrain key + sheet texture + flat tint + <code>allowMoss</code> + 16 cap slots + 4 inner corners + 8+8 face slices + straight variants with a <code>plainWeight</code> + site paving slots. A wall cell whose terrain matches an entry renders that family; terrain with no entry renders stone. Three are decided: Ruins (terrain 4), Dwarven Masonry (terrain 7, born as an exact copy of ruins) and Holy Ground (terrain 5, entry pending art).</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s2"><label for="dcr-authoring-v1-c31s2"><b>Add a family.</b> The <b>Add Family</b> button clones the LAST entry -- the intended workflow: add, retarget <code>terrain</code>, repoint art. The fallback ladder makes every slot optional: empty cap &rarr; family mask-11 cap (the base); empty face &rarr; family Straight face; family with NO base cap &rarr; stone (the pre-visual-pass look, never blank). Fill mask 11 first; nothing renders without it.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s3"><label for="dcr-authoring-v1-c31s3"><b>Slice contract.</b> 32 px cells, PPU 32 (one tile = one world unit). Caps and paving: pivot <b>Center</b>. Face slices: pivot <b>Bottom</b>. A straight wall draws a COLUMN of three matched slices -- cap on the wall cell, upper face one cell south, lower face two south -- so author variants as vertical triples that read as one drape. Slots take either (col, row-from-top) on the family sheet or a Sprite Editor override from any texture; overrides win, and the shipped fill is all overrides.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s4"><label for="dcr-authoring-v1-c31s4"><b>Wire the terrain.</b> New terrain value: APPEND to <code>TerrainType</code> only (values serialise by int into assets). Then: a <code>TerrainResistanceTable</code> entry (resistance, ring tint, stone tint, display name) -- a missing entry silently mines at 1.0x, the trap step 6 exists to catch; a <code>PatternDiscovery.TerrainPatternId</code> case (or it teaches nothing) and a <code>TerrainDisplayName</code> case (or the toast prints the enum name lowercased, e.g. "dwarvenmasonry"); a <code>DwarvenSpoil.ValueOf</code> line if the Deep Holds should pay for it.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s5"><label for="dcr-authoring-v1-c31s5"><b>Place the terrain.</b> Site masonry routes through <code>TerrainFeatureGenerator.MasonryTypeFor</code> -- the ONE place that maps a site to its masonry terrain, consumed by both the wall retype and the paving pass so they can never disagree. A new site-driven family extends that function; a band-placed terrain goes through <code>TerrainTypeMap</code> procgen instead.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s6"><label for="dcr-authoring-v1-c31s6"><b>Validate.</b> Layout asset &rarr; <b>Validate Layout</b> (per-family slot bounds, duplicate terrains, base-cap-missing notes), then <b>Dungeon Core &rarr; Validate Wall Families</b> (resistance-table coverage -- the silent 1.0x check -- plus pattern mapping and spoil value per family).</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s7"><label for="dcr-authoring-v1-c31s7"><b>Repoint dwarven art</b> (the pending veto round): edit <code>families[1]</code> slot overrides in the Inspector -- no code, no script. Acceptance: before/after screenshots of the village hold (floor 3) and the gatehouse (floor 2); dead sites must not change.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s8"><label for="dcr-authoring-v1-c31s8"><b>Skin from a NEW sheet.</b> Import it as Texture Type <b>Sprite (2D and UI)</b>, Filter Mode <b>Point</b>, Compression <b>None</b>, <b>Alpha Is Transparency</b> on, Mip Maps off, Max Size at least the sheet's dimensions; Read/Write is not required, and Sprite Mode <b>Multiple</b> only if you intend to slice it for overrides. Then assign it to the FAMILY's own <code>sheet</code> field and fill <b>(col, row) coordinates</b> rather than override sprites: live thumbnails, bounds-checked by Validate Layout, and no per-slot pivot or PPU to get wrong -- the renderer sets those itself (Center for caps and paving, Bottom for faces). Overrides exist for MIXING sources, which is the only reason ruins uses them: its mask-15 cap comes from MainLev.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s9"><label for="dcr-authoring-v1-c31s9"><b>The cell size is shared.</b> <code>layout.cellSize</code> sets both the slice rect and the sprite PPU for EVERY family, so a coordinate-filled sheet must sit on the same grid as the others (32 px today). A sheet on a different grid must use an override Sprite in every slot, where the import PPU applies instead -- or gain a per-family cell size, which is code, not Inspector work.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c31s10"><label for="dcr-authoring-v1-c31s10"><b>Fill order, so you always see something.</b> Mask 11 plus the Straight upper and lower faces is the whole minimum: the fallback ladder points every empty cap at the base cap and every empty face at Straight, so a half-filled family reads as plain masonry rather than as a hole. Paving is independent -- <code>PavingTilesFor</code> is not gated on the base cap -- so paving slots alone will re-floor every site of that terrain before a single wall slot is filled. Useful when the floor art arrives before the wall art.</label></div>
       <p class="why">The refactor exists so a masonry skin is DATA: one list entry, five wiring
       lines, zero renderer code. Both shipped families render tint white with moss off --
       the castle art is already thematic, and moss hands back the organic read that worked
@@ -833,6 +856,21 @@
       through <code>MasonryTypeFor</code>. The claimable-ring colour is NOT family data --
       it rides the resistance-table entry, which is why dwarven walls ring bronze while
       ruins ring lavender.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>32. The Rim Facade (floor 0's bedrock skin)</summary>
+    <div class="body">
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c32s1"><label for="dcr-authoring-v1-c32s1"><b>What it is.</b> Floor 0's outermost in-disc ring is unfogged at generation and capped by the ordinary wall pipeline, so the dungeon reads as a walled edge from the forest. 564 cells at radius 100, 201 of them draping a face south over the grass. The ring breaks by itself at the entrance channel and at every river mouth, because <code>IsSolid</code> already exempts both.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c32s2"><label for="dcr-authoring-v1-c32s2"><b>Skinning it.</b> Add a family keyed to <code>TerrainType.Bedrock</code> (terrain 6) and fill it exactly like any other -- same slice contract, same fallback ladder, same 32 px grid. With no family the ring renders the stone path at bedrock's slate <code>stoneTint</code>, which is a legitimate shipping state.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c32s3"><label for="dcr-authoring-v1-c32s3"><b>Gate it to floor 0.</b> Turn on <b>Restrict To Floors</b> and list <code>0</code>. Without this the bedrock skin also retextures the rim on floors 1-4 anywhere the player has dug out to it. The gate is applied once when a floor bakes, so it is free at runtime. An empty list with the toggle on renders NOWHERE and Validate Layout says so.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c32s4"><label for="dcr-authoring-v1-c32s4"><b>Tuning the transition.</b> Three knobs, cheapest first: the family's flat <b>Tint</b> (one colour, no code); the generator's <b>Rim Gloom</b> group (cells, max alpha, falloff, colour) which shades the grass toward the wall; and the profile's <b>Scree Inner Band</b> / <b>Scree Density</b>, which put rubble at the wall's foot. Keep Scree Inner Band at 3 or above -- the face drapes two cells past the rim.</label></div>
+      <p class="why">Soften on the grass side, never on the void side. The dungeon fog's
+      colour is set layer-wide by <code>DungeonShadow</code>, so per-cell colour can only go
+      darker; and thinning it by alpha would show what sits under the fog near the rim, where
+      floor 0's rivers start. The void behind a wall is a legitimate hard edge -- it is what a
+      wall is for.</p>
     </div>
   </details>
 

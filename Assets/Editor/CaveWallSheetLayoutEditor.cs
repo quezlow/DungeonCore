@@ -178,6 +178,13 @@ public class CaveWallSheetLayoutEditor : Editor
             EditorGUILayout.PropertyField(fam.FindPropertyRelative("tint"));
             EditorGUILayout.PropertyField(fam.FindPropertyRelative("allowMoss"));
 
+            // Drawn explicitly like everything else here: this Inspector lists
+            // fields by name, which is the trap that hid the first ruins fields
+            // until they were wired in.
+            EditorGUILayout.PropertyField(fam.FindPropertyRelative("restrictToFloors"));
+            if (famObj != null && famObj.restrictToFloors)
+                EditorGUILayout.PropertyField(fam.FindPropertyRelative("floors"), true);
+
             DrawLabeledArray(fam.FindPropertyRelative("capSlots"), CaveWallSheetLayout.CapMaskLabels,
                 "Family caps - one per mask (mask 11 doubles as the family base cap)", skipZero: false);
 

@@ -42,6 +42,16 @@ public static class SitePlanValidator
         }
 
         int totalPlans = 0, failures = 0;
+
+        // Names rather than a count: the roll-call is a to-do list for
+        // annotation, and a number tells you there is work without telling you
+        // where.
+        //
+        // METHOD scope, beside the counters it is printed with. It began inside
+        // the per-profile loop, where it did not compile -- and would have
+        // under-reported even if it had, because the roll-call prints once for
+        // the whole run while plans can span more than one profile.
+        var unmarked = new List<string>();
         var sb = new StringBuilder();
 
         foreach (var profile in profiles)
@@ -82,11 +92,6 @@ public static class SitePlanValidator
                 sb.Append("  (none assigned; all sites will use the procedural recipes)\n");
                 continue;
             }
-
-            // Names rather than a count: the roll-call is a to-do list for
-            // annotation, and a number tells you there is work without telling
-            // you where.
-            var unmarked = new List<string>();
 
             foreach (var plan in plans)
             {

@@ -1861,7 +1861,9 @@ MainLev so the deep interior of a masonry mass still reads as rock) and
 DWARVEN MASONRY, born an exact copy of the ruins entry so nothing changed
 on screen the day it landed -- repointing its overrides at dwarven art is
 pure Inspector work, and Add Family clones the last entry for the next
-skin. Validate Layout reports per family; `Dungeon Core -> Validate Wall
+skin. A THIRD family, HOLY GROUND (terrain 5), is decided and awaiting
+art -- canon 20, "The seal's own masonry". Validate Layout reports per
+family; `Dungeon Core -> Validate Wall
 Families` cross-checks every family terrain against the resistance table (a
 missing entry silently mines at 1.0x -- the failure that menu exists to
 catch), the pattern map and the spoil ledger. Authoring recipe: Content
@@ -3126,14 +3128,74 @@ holdings on unclaimed, A proximity to dwarven ground. B cannot be subdivided --
 the shader reads it as `smoothstep(0.45, 0.55, fs.b)` precisely because the
 texture is bilinear-sampled, so a third value at 128 lands on the threshold and
 half-fills. What ships instead is the part of the dwarven warning that is not
-rendering at all: the cold white-blue lives in `TerrainResistanceTable`'s tints,
+rendering at all: HolyGround carries its own row in `TerrainResistanceTable`,
 which `CaveWallRenderer` already consumes, and the early reveal is a second warn
 probe. A second mask texture or a three-band rework of B are both on the
 backlog.
 
+Two claims made here about that tint were wrong and are corrected rather than
+quietly dropped, because both would mislead anyone choosing the seal's art. It
+is not a cold white-blue: the shipped row is WARM -- `stoneTint` (1, 0.95,
+0.82), ring tint (1, 0.9, 0.7). And it is not permanent. `CaveWallRenderer`
+reads `StoneTintFor` only for cells whose terrain has no wall FAMILY (`Color
+tint = fam != null ? fam.source.tint : StoneTintFor(wall)`), so the moment a
+HolyGround family is present the resistance-table stone tint stops reaching
+seal walls at all and only the claimable-ring tint survives. That is the whole
+reason the section below exists.
+
 **Floors 0 and 1 gained site entries.** The profile asset carried indices 2, 3
 and 4 only. Floor 0 takes exactly one seal from a `ChurchSeal`-only pool at
 `bandInner` 0.35, far enough out that the arrival area stays clear.
+
+### The seal's own masonry (DECIDED -- art pending)
+
+Seal walls render TINTED CAVE ROCK today, and have since the seals shipped.
+That contradicts this entry's own reason for making the eight plans
+authored-only -- a seal is a made object, and procedural jitter reads as a
+collapsed ruin -- so the skin is worth having for the same reason the plans
+are hand-drawn.
+
+**Nothing has to be built for it.** `TerrainFeatureGenerator.MasonryTypeFor`
+already returns `TerrainType.HolyGround` for all five holy archetypes, and it
+is the ONE decision both the wall retype and `PaintSitePaving` consult. So a
+single `CaveWallSheetLayout` family entry keyed to terrain 5 skins seal walls
+AND seal paving with zero renderer code, exactly as canon 19 promised a
+masonry skin would. This was true from the day the seals landed and nobody
+noticed, which is why it is recorded here rather than treated as new work.
+
+ONE family covers all five archetypes, the dead core vault included, because
+they share terrain 5. Splitting the vault onto a skin of its own would need an
+appended `TerrainType` plus a resistance row, a pattern id, a display name and
+a spoil value -- and would change what the vault's ground resists at, which is
+a balance decision made for a cosmetic reason. Rejected on that.
+
+**Unlike DWARVEN MASONRY, this entry is not invisible on landing day.** Dwarven
+walls were already Ruins terrain rendering the ruins family, so an identical
+clone changed nothing on screen; holy walls have no family at all. The clone
+therefore carries HolyGround's cream resistance-table tint rather than white
+until the marble art is repointed, so the seal keeps the tell it had while the
+slots are filled one at a time. White returns with the art, matching both
+older families.
+
+`Add Family` clones the LAST entry, so the holy entry inherits dwarven's
+mask-15 MainLev rock cap. Kept, on the ruins reasoning: the deep interior of a
+masonry mass still reads as rock.
+
+Paving is deliberately not gated on the base cap -- `PavingTilesFor` returns
+the family's tiles whether or not mask 11 is filled -- so hallowed FLOORS can
+land before a single wall slot is repointed. That staging is a property of the
+shipped code, not a workaround.
+
+One constraint that bounds the sheet choice: `cellSize` is shared by every
+family. `MakeTileFrom` uses `layout.cellSize` for both the slice rect and the
+sprite PPU, so a family filled by (col, row) coordinates must sit on the same
+grid as the others -- 32 px today. A sheet on a different grid needs either an
+override Sprite in every slot, where the import PPU applies instead, or a
+per-family cell size, which is code and has no reason to exist yet.
+
+Flips to SHIPPED when the slots are filled and both `Validate Layout` and
+`Dungeon Core -> Validate Wall Families` report clean. Authoring recipe:
+Content Authoring chapter 31; walkthrough: `Docs/DCR_Guide_Holy_Masonry.html`.
 
 ### The holy sub-quota (SHIPPED)
 
@@ -3486,9 +3548,9 @@ concentric forest bands ring the floor-0 bedrock rim. There is no separate
 surface scene, no scene load, and no hand-built surface content -- the old
 apron is simply band 0 of the forest.
 
-**Bands and research:** band 0 (32 cells deep beyond the rim) is always on
-and reproduces the old apron's look. Bands 1-3 reach total depths 45 / 70 /
-100 and are gated by the authored scout chain `tech.scout_1/2/3` (Sight
+**Bands and research:** band 0 (60 cells deep beyond the rim) is always on
+and reproduces the old apron's look. Bands 1-3 reach total depths 100 / 180 /
+260 and are gated by the authored scout chain `tech.scout_1/2/3` (Sight
 Beyond the Threshold, Eyes on the Deep Wood, The Far Marches -- entrance-
 discovery visibility, chained prerequisites). Research IS the cost of sight:
 there is no per-second scouting mana and no scout trip.
@@ -3501,9 +3563,9 @@ the target further out) and unsaved (loading lands at full researched depth).
 `DungeonBoundsUpdater` sets the floor-0 bound to the revealed disc and
 exposes `MarkDirty()` for the generator (Appendix C). An edge-fog ring
 (generator-painted tilemap above the props: alpha eased quadratically
-across the last `fogFadeCells` (12) of painted ground, full solid landing
+across the last `fogFadeCells` (16) of painted ground, full solid landing
 two cells past the edge, then holding for
-`fogSolidMarginCells` (24) past it) hides the unpainted void at every
+`fogSolidMarginCells` (60) past it) hides the unpainted void at every
 band edge and keeps the world's outermost rim misty forever.
 
 **Determinism:** per-cell ground and scatter use a position hash of
@@ -3565,13 +3627,106 @@ saved, seeded, or simulated.
 commented orphan: the enum int-serialises in scene triggers, and removing a
 middle entry re-targets every hand-placed door after it.
 
+### The rim facade (SHIPPED)
+
+The disc's edge used to be a colour change: forest grass on one side of a
+circle, void-toned fog on the other, with nothing drawn between them. Floor 0's
+rim now carries a WALL, so the dungeon reads as a built edge from the treeline
+before anything has been dug.
+
+**It is the existing wall pipeline, pointed at the rim.** `DungeonTerrain`
+exposes `RimRingCells` -- every in-disc cell with a cardinal neighbour outside
+the radius, computed once and cached, since the radius is set at floor creation
+and never grows. `GenerateAt` unfogs that ring on floor 0, which is the one
+place the disc's fog is painted and therefore covers the fresh and the load path
+together. `CaveWallRenderer` adds the ring to its wall set on floor 0, and caps,
+faces, the drape, `CaveWallFade` and `DungeonShadow` all apply with no special
+case.
+
+The facade could NOT be drawn outside the disc, and the reason is worth keeping.
+`CaveWallClassifier.IsSolid` treats every out-of-disc cell as open air, and
+`TileInfluenceManager.IsUnderOverhang` deliberately mirrors it so walkability and
+visuals agree at the breach. Moving the facade outward means editing that pair,
+which reaches mining, pathing and the breach at once, to buy a ring of decoration.
+
+Three things then fall out free rather than being built:
+- Bedrock is never claimable and so never mined: the facade cannot be breached.
+- The entrance channel's cells are open, so the ring BREAKS at the mouth. The
+  gate is a hole, not a prop.
+- Rivers start on the rim and `IsSolid` exempts river cells, so each river
+  mouth notches the cliff from the first frame. Accepted deliberately: it gives
+  away a mouth, not a course, and a river mouth in a cliff is what the geometry
+  actually is.
+
+Measured at floor 0's radius of 100: 564 ring cells, of which 201 are
+south-facing and draw a two-slice face over the grass. The northern arc takes
+caps only, which is correct for the projection -- you see the top of a wall from
+behind it.
+
+**Floor 0 only, and the gate is in two places.** The ring itself is added to the
+wall set only on floor index 0; lower floors have nothing outside their rim, and
+a lit ring in blackness reads as a fault. Separately, `WallFamily` gained
+`restrictToFloors` plus a floor list, applied ONCE per family per floor inside
+`BuildFamilyTiles` -- each floor owns its renderer, so the bake already knows
+which floor it is for, and the gate costs nothing per cell. Without it a bedrock
+skin would retexture the rim on floors 1-4 anywhere the player had dug out to
+it, which they can and do. The toggle is explicit rather than an empty-list
+convention, per the standing rule; Validate Layout flags the toggle-on-with-no-
+floors state, which renders nowhere. One consequence recorded because it will
+bite something else later: site paving resolves through the same baked table, so
+restricting a family that carries paving slots also drops its paving on every
+excluded floor.
+
+**Softening the step is done on the GRASS side, never on the void side.** The
+traverse is bright forest, then wall, then dark interior, and the wall is
+already two to three cells of mid-tone. What was missing was anything between
+grass and wall. `SurfaceZoneGenerator.PaintInnerGloom` darkens the ground toward
+the rim across `rimGloomCells`, easing by `rimGloomFalloff` from
+`rimGloomMaxAlpha` at the wall to nothing outward. It paints on the SURFACE fog
+tilemap because of where the scene already puts it -- Player, order 100 -- so
+the gloom lands over the grass and over the wall's draped face, giving a contact
+shadow at its foot, but UNDER the caps on WalkBehind and under the dungeon's fog
+on Shadow. Nothing was restacked. Its colour is a separate field from the edge
+fog's on purpose: that one is a pale mist hiding the void past the last band,
+this one is the pit's shadow.
+
+Ramping the dungeon fog inward was rejected on two counts. `DungeonShadow`'s
+`fogMatchesVoid` sets that tilemap's colour layer-wide, so a per-cell colour
+could only multiply it darker; and softening it by ALPHA would show what sits
+beneath the fog near the rim, where floor 0's rivers start and a site can band
+close. That is a layout leak, which the river notch is not.
+
+**The bald ring mattered more than the brightness.** `treeFreeInnerBand` (4)
+skipped ALL scatter, leaving a perfect circle of empty grass hugging the wall,
+and a perfect circle is what reads as machine-made. `screeInnerBand` (3) opens
+that gap to rocks alone, at a flat `screeDensity` rather than the band's
+inner-to-outer lerp, because a cliff foot does not thin with distance. It starts
+at 3 so nothing spawns under the two-cell drape. The rubble ring uses its own
+hash salt and touches only cells that were previously skipped outright, so
+enabling it cannot move a tree that already stood.
+
+`Log Rim Facade` on the Commands object reports ring cells, how many are capped,
+how many are notched, how many drape a face, and how many are still fogged --
+which should be zero. Diagnostics first: the failure modes here are all visual,
+and this turns them into numbers.
+
+**Three canon corrections rode this arc**, all found by reading the shipped
+assets rather than the prose: band depths are 60 / 100 / 180 / 260, not
+32 / 45 / 70 / 100; `fogFadeCells` is 16, not 12; `fogSolidMarginCells` is 60,
+not 24.
+
 **Key files:** `Floors/SurfaceZoneGenerator.cs`, `Floors/SurfaceZoneProfile.cs`
 (+ `SurfaceBand`, `SurfaceNodeType`), `Overworld/CampZoneMarker.cs`,
 `Overworld/ResourceNodeStub.cs`; touches `DungeonCore/DungeonBoundsUpdater.cs`
 (surface AABB union + `MarkDirty`), `Save/DungeonSaveController.cs`
 (`RunContext` publish removed), `TESTING/Commands.cs` (scout toggles),
 `Overworld/SceneTransitionTrigger.cs` and `Save/SpawnPoint.cs` (runtime
-`Configure` initialisers for the gate).
+`Configure` initialisers for the gate). The rim facade adds
+`DungeonCore/DungeonTerrain.cs` (`RimRingCells`, `RevealRimRing`),
+`DungeonCore/CaveWallRenderer.cs` (the floor-0 ring and the per-floor family
+gate), `DungeonCore/CaveWallSheetLayout.cs` (`restrictToFloors`),
+`Editor/CaveWallSheetLayoutEditor.cs` and `TESTING/Commands.cs`
+(`Log Rim Facade`).
 Supersedes `Floors/SurfaceApronGenerator.cs` (deleted; band 0 replaces it --
 same parameters, freshly hashed layout, acceptable in alpha).
 
