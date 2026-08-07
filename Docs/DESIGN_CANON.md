@@ -3873,11 +3873,30 @@ would be worse than what it replaced.
 **The bright-rim-to-black-void step is closed by the light map, not by paving.**
 `DungeonShadow` had already solved this exact shape for the prepared road band
 (step 1b): an unmined band nothing entered into `baseLight`, rendering brighter
-than the revealed ground beside it. Step 1c does the same for the facade,
-ramping from `rimFacadeLight` on the outermost row to `voidLightFloor` at the
-inner edge. Paving the inner band was considered and dropped -- it needs the
-inner cells excluded from the wall set or their caps draw over it, and the light
-map already owns this problem.
+than the revealed ground beside it. Step 1c does the same for the facade.
+Paving the inner band was considered and dropped -- it needs the inner cells
+excluded from the wall set or their caps draw over it, and the light map already
+owns this problem.
+
+The first version of that ramp fell PAST the void rather than onto it, and the
+reason is worth keeping because it will catch anything else added to
+`baseLight`. There are two paint paths: `voidCells` are painted OPAQUE as
+`voidBaseColor * light`, a lit rock tone; everything else is ALPHA-DARKENED, so
+it renders as its own art multiplied down. Cliff art is darker than
+`voidBaseColor`, so a facade row and a void cell at the same light do NOT match
+-- the facade lands below it, and the band read darker than the dark it was
+fading into. Fixed by registering the innermost facade row in `voidCells`, which
+makes the meeting point the same function of the same number by construction,
+and ending the overlay rows at `rimFacadeInnerLight` (0.5) instead of diving to
+`voidLightFloor`.
+
+A second defect from the same arc: `ArmRimFacade` cleared the dungeon floor tile
+on every outer-ring cell, while the surface pass declined to paint grass over
+river, road and mined cells. Two predicates for one decision, and they
+disagreed: a road cell on the ring lost its floor and gained nothing, so the
+shadow overlay rendered over an empty cell as a flat untextured block, right
+where the forest road meets the entrance. The clear now sits inside
+`PaintRimGround` past every skip, so one predicate governs both.
 
 **Terrain alone cannot gate a masonry skin.** The cells flanking the carved
 entrance channel are bedrock too, and they are solid and touch mined floor, so

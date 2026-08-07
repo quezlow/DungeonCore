@@ -296,18 +296,17 @@ public class DungeonTerrain : MonoBehaviour
             foreach (var c in rimNubs) fogTilemap.SetTile(c, null);
         }
 
-        // The outer ring's ground and the nubs belong to the SURFACE. Clearing the
-        // dungeon floor tile is the whole job: ClaimedStoneLayer is wired to
-        // nothing -- its Tilemap is referenced only by its own GameObject -- so
-        // FloorLayer is the only dungeon ground under these cells, and grass on the
-        // surface tilemap has nothing left to lose a sorting tie against.
-        // Inner layers KEEP their floor tile: they sit under solid interior caps,
-        // and grass under a deep cap would show green where rock should be.
-        if (floorTilemap != null)
-        {
-            for (int i = 0; i < rimOuter.Count; i++) floorTilemap.SetTile(rimOuter[i], null);
-            foreach (var c in rimNubs) floorTilemap.SetTile(c, null);
-        }
+        // The outer ring's ground and the nubs belong to the SURFACE, but the
+        // dungeon floor tile beneath them is NOT cleared here. It used to be, and
+        // that was a bug: the surface pass declines to paint grass over a river
+        // mouth or the carved road, so those cells lost their floor and gained
+        // nothing, leaving no ground art at all and showing the shadow overlay
+        // over an empty cell as a flat untextured block. Clearing now happens in
+        // SurfaceZoneGenerator.PaintRimGround, one line before the paint, so a
+        // single predicate governs both and they cannot disagree again.
+        //
+        // Inner layers keep their floor tile regardless: they sit under solid
+        // interior caps, and grass under a deep cap shows green where rock should be.
 
         rimArmed = true;
         return true;

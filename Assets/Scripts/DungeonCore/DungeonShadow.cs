@@ -109,6 +109,15 @@ public class DungeonShadow : MonoBehaviour
              "the level DeepVoidColor is built from, so the lit rim meets the dark instead " +
              "of stopping against it in one cell. 1 is full daylight.")]
     [SerializeField, Range(0f, 1f)] private float rimFacadeLight = 1f;
+
+    [Tooltip("Light on the LAST overlay row of the rim facade -- the row before the " +
+             "innermost, which is painted as void. Deliberately well above " +
+             "voidLightFloor: these rows carry real cliff art and are ALPHA-DARKENED, " +
+             "so art x light lands below the void's opaque voidBaseColor x light at " +
+             "the same number. Ramping them to the floor made the band read DARKER " +
+             "than the void it was fading into. Raise it if the band still reads dark, " +
+             "lower it if the fade looks abrupt.")]
+    [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.5f;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
     [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0f;
     [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
@@ -317,19 +326,35 @@ public class DungeonShadow : MonoBehaviour
         // 1c) the RIM FACADE band. Same shape of problem as 1b and the same cure:
         //     an unmined band that nothing else enters into the light map, so it
         //     rendered at full brightness and then hit black in a single cell.
-        //     Ramped from rimFacadeLight on the outermost row to voidLightFloor at
-        //     the band's inner edge -- the level DeepVoidColor is built from and
-        //     the colour fogMatchesVoid paints the fog, so the wall fades into the
-        //     dark rather than butting against it.
+        //     Ramped from rimFacadeLight on the outermost row to rimFacadeInnerLight
+        //     on the last row carrying art, with the INNERMOST row registered as
+        //     void so it paints at the void's own level through the void's own
+        //     function. The wall fades onto the dark rather than past it.
         var rimTerr = floor != null ? floor.Terrain : null;
         if (rimTerr != null && rimTerr.RimFacadeLayers.Count > 0)
         {
-            int rimSpan = Mathf.Max(1, rimTerr.RimFacadeDepth - 1);
+            int rimLast = Mathf.Max(0, rimTerr.RimFacadeDepth - 1);
+            int rimSpan = Mathf.Max(1, rimLast);
             foreach (var rimCell in rimTerr.RimFacadeLayers)
             {
                 if (influence.IsTileMined(rimCell.Key)) continue;
+
+                // The INNERMOST row is registered as void, so step 5 paints it with
+                // VoidColorFor at the void's own level rather than alpha-darkening
+                // the cliff art. That makes the meeting point exact by construction:
+                // the two are the same function of the same number. Ramping the art
+                // rows down to voidLightFloor instead made the band read darker than
+                // the void, because art x light sits below voidBaseColor x light.
+                if (rimCell.Value >= rimLast)
+                {
+                    baseLight[rimCell.Key] = voidLightFloor;
+                    baseTint[rimCell.Key] = Color.black;
+                    voidCells.Add(rimCell.Key);
+                    continue;
+                }
+
                 float rt = 1f - Mathf.Clamp01(rimCell.Value / (float)rimSpan);
-                baseLight[rimCell.Key] = Mathf.Lerp(voidLightFloor, rimFacadeLight, rt);
+                baseLight[rimCell.Key] = Mathf.Lerp(rimFacadeInnerLight, rimFacadeLight, rt);
                 baseTint[rimCell.Key] = Color.black;
             }
         }

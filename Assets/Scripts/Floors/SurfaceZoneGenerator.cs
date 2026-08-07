@@ -819,6 +819,13 @@ public class SurfaceZoneGenerator : MonoBehaviour
             if (f == FeatureType.River || f == FeatureType.Road) return;
         }
 
+        // Clear the dungeon floor HERE, past every skip above, so the cell can
+        // never end up stripped of ground without gaining any. ClaimedStoneLayer
+        // is wired to nothing, so FloorLayer is the only dungeon ground under
+        // these cells and grass has no sorting tie left to lose.
+        var dungeonFloor = floor.Terrain.FloorTilemap;
+        if (dungeonFloor != null) dungeonFloor.SetTile(cell, null);
+
         surfaceTilemap.SetTile(cell, profile.grassTile);
         if (!doGloom) return;
         fogTilemap.SetTile(cell, fogTile);
