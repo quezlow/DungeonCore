@@ -461,7 +461,8 @@ public static class AncientSiteBuilder
                 : AncientSiteProfile.AnchorFor(plan.archetype);
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
                                junctions, roadCells, roadEnds,
-                               anchorsUsed, minSpacingSq, out var anchor))
+                               anchorsUsed, minSpacingSq, out var anchor,
+                               plan.authored != null && plan.authored.anchorRequired))
             {
                 // The sampler already exhausted its budget looking for somewhere
                 // both in band and clear of the sites already placed, so this is a
@@ -1087,7 +1088,7 @@ public static class AncientSiteBuilder
         IReadOnlyList<Vector3Int> roadCells,
         IReadOnlyList<Vector3Int> roadEnds,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
-        out Vector3Int anchor)
+        out Vector3Int anchor, bool requireAnchor = false)
     {
         IReadOnlyList<Vector3Int> source = null;
         switch (kind)
@@ -1115,6 +1116,12 @@ public static class AncientSiteBuilder
         // Degrade to Free. A preference that cannot be met is not a failure --
         // it is a floor where that kind of road does not exist, or one whose
         // roads are already lined with ruins.
+        //
+        // UNLESS the plan says otherwise. See AuthoredSitePlan.anchorRequired:
+        // for a building whose meaning is its position, being placed anywhere is
+        // worse than not being placed at all.
+        if (requireAnchor) { anchor = default; return false; }
+
         for (int i = 0; i < 96; i++)
         {
             int dx = rng.Next(-outer, outer + 1);

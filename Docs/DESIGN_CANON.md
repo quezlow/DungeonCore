@@ -3443,6 +3443,57 @@ There is one vault in a dungeon and it is built around a dead core, which is to
 say around what the player is; that is not a beat to learn about from a quiet row
 in the log.
 
+### A heart under the carriageway (BUG, now guarded)
+
+`GenerateSites` subtracts road cells from `plan.ruinsCells`, and the heart lives
+in that band. `SiteData.heartCell` was then written from `plan.heartCell`
+UNCONDITIONALLY, so a heart under a road left a site claiming a heart at a cell
+that had become open carriageway. It could never be mined, so the seal could
+never be broken -- no alignment cost, no research, no wisp line, no Holy Order
+pressure -- and nothing reported it.
+
+Both `WardChapel` plans put their heart on the plan CENTRE and anchor
+`AlongRoad`, which lands the centre on the carriageway by construction rather
+than by chance. Every Ward Chapel rolled since the holy sub-quota shipped has
+therefore been a dead seal. The three vaults do the same thing and are spared
+only because floor-4 truncation cuts the road out of the footprint before the
+subtraction runs -- protected by an accident of ordering on one floor.
+
+The guard DROPS the heart claim and logs an error naming the plan, on the same
+reasoning as the outpost guard beside it: a site with no heart is merely
+undecorated, while a site with an unreachable one is broken in a way nothing
+downstream can detect. The validator also fails a centred heart on an
+`AlongRoad` plan outright, because that costs nothing to catch at authoring time
+and a full run to notice otherwise.
+
+**The routing work removes the cause.** Once a site keeps every cell and the
+road is routed through an authored lane rather than carved through the building,
+nothing subtracts a heart. The guard stays afterwards as a tripwire.
+
+### The anchor fallback is now refusable (SHIPPED)
+
+`TryPickAnchor` degrades to a free pick when its preference cannot be met, which
+is right for a ruin -- a floor may simply have no junctions -- and wrong for a
+building whose meaning IS its position. A Ward Chapel is the chapel a sealing was
+administered from; stranded in open rock by a fallback, it explains nothing.
+`@anchor_required: yes` refuses the degrade, and the plan is SKIPPED with a
+reason rather than misplaced. Same principle as the three-state `@doors:` header:
+a silent fallback that looks identical to success is the failure mode this
+project keeps paying for.
+
+### The symbol reference (SHIPPED)
+
+`Assets/ScriptableObjects/Sites/Plans/_SYMBOLS.txt` carries every glyph and
+header, with the drape arithmetic written where it bites. It is never parsed --
+plans are an explicit `TextAsset` list on the profile, not a folder scan -- and
+it sits with the plans because that is where you are when you need it.
+
+**The authoring guide is `Docs/DCR_Guide_Content_Authoring.html`, in this repo.**
+Recording it here because it has been looked for in the wrong place twice: it is
+NOT in the project-knowledge folder, and `DCR_Guide_Site_Plans_Authored.html`
+there is a different, older document. The repo copy is canonical for site-plan
+format.
+
 ### The lane, and roads that thread sites (PART SHIPPED)
 
 A road crossing a site used to punch its own hole: `GenerateSites` subtracted

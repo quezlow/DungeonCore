@@ -100,6 +100,23 @@ public static class SitePlanValidator
                 Debug.Log($"PLAN LOADED: '{plan.sourceName}' floor={plan.floor.Count} wall={plan.wall.Count}");
 
 
+                // A CENTRED HEART ON AN ALONGROAD PLAN IS A DEAD SEAL. The
+                // anchor puts the plan's centre on the carriageway, the road
+                // subtraction takes the wall band, and the heart goes with it --
+                // every time, not sometimes. Caught here because it costs
+                // nothing to catch here and a full run to notice otherwise.
+                if (plan.hasAnchorOverride && plan.anchorOverride == SiteAnchor.AlongRoad
+                    && plan.heart.Count > 0 && plan.heart.Contains(Vector2Int.zero))
+                {
+                    failures++;
+                    sb.Append("  HEART FAIL: '").Append(plan.sourceName)
+                      .Append("' anchors AlongRoad with its heart on the plan centre.")
+                      .Append("\n         -> the centre lands ON the carriageway, the road")
+                      .Append("\n            subtraction takes the wall band, and the seal")
+                      .Append("\n            becomes unbreakable. Move the heart off centre,")
+                      .Append("\n            or use a different anchor.\n");
+                }
+
                 // THE LANE. Checked by PATHFIND rather than by width, because
                 // width is a proxy and the thing that matters is whether a
                 // walker can actually get from one door to another through the

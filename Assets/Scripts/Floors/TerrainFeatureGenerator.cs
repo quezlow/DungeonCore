@@ -1523,6 +1523,31 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
             plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
+
+            // THE HEART MUST SURVIVE THE SUBTRACTION, and until this guard it
+            // did not have to. The heart lives in the wall band, so a
+            // carriageway across it deletes the cell -- and heartCell was then
+            // written from plan.heartCell unconditionally, leaving a site
+            // claiming a heart at a cell that is now open road. It can never be
+            // mined, so the seal can never be broken: no alignment cost, no
+            // research, no wisp line, no Holy Order pressure, and not a word
+            // said. Both WardChapel plans put their heart on the plan centre and
+            // anchor AlongRoad, which puts it under the carriageway BY
+            // CONSTRUCTION rather than by chance.
+            //
+            // The claim is dropped rather than kept, because a site with no
+            // heart is merely undecorated while a site with an unreachable one
+            // is broken in a way nothing downstream can detect.
+            if (plan.hasHeart && !plan.ruinsCells.Contains(plan.heartCell))
+            {
+                Debug.LogError("[TerrainFeatureGenerator] '" + plan.planName +
+                    "' lost its HEART to the carriageway at " + plan.heartCell +
+                    ". The seal would have been unbreakable. The heart claim is " +
+                    "dropped. Move the heart off the plan's centre, or stop the " +
+                    "plan anchoring AlongRoad -- a centred heart on an AlongRoad " +
+                    "plan lands under the road every time.");
+                plan.hasHeart = false;
+            }
             if (plan.cells.Count < 12)
             {
                 // The builder's own size check ran BEFORE the carriageway was

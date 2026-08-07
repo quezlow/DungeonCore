@@ -1,0 +1,128 @@
+SITE PLAN SYMBOLS -- quick reference
+====================================
+
+Not a plan. Plans are an explicit TextAsset list on AncientSiteProfile, not a
+folder scan, so this file is never parsed. Keep it here anyway: this is where
+you are when you need it.
+
+The full explanation lives in Docs/DCR_Guide_Content_Authoring.html.
+Canon is Docs/DESIGN_CANON.md and outranks both.
+
+
+GLYPHS
+------
+
+  #   MASONRY. Solid, mineable, retyped to the site's family terrain.
+
+  .   CARVED FLOOR. Open ground. Opened by MarkNaturalFloor on REVEAL, which
+      bypasses the mine path -- which is why mining a site never bills anything
+      except its heart.
+
+  X   THE HEART. Exactly one per plan; two is a parse error. Masonry AND the
+      one cell carrying the site's meaning -- altar, grave slab, capped font,
+      seal-stone. Solid, because unsealing it means mining it.
+
+      DO NOT put the heart on the plan's centre if the plan anchors AlongRoad.
+      The centre lands on the carriageway, the road subtraction takes the cell,
+      and the seal becomes unbreakable. The validator now fails this.
+
+  =   PLATFORM. Floor, raised. Real: it carries a Rigidbody2D collider.
+
+  ^   STAIRS. Floor, and the only opening in a platform's edge. At least one
+      per platform, and a stair run is three cells wide.
+
+  +   DOOR. Floor plus a marker. THREE CELLS in its run, never two.
+      Declared, never inferred -- a two-cell gap between grave slabs is
+      structurally identical to a two-cell doorway, and 815 furniture gaps
+      across the shipped plans prove nothing can tell them apart. Only '+'
+      cells are checked, so stall gaps and grave rows are exempt.
+
+  ~   LANE. Floor plus a marker: where a road may run THROUGH the site, door
+      to door. A REGION, not a line -- paint the ground a road may use and let
+      obstacles stand in it. The lane parts around a font or a plinth on its
+      own; you only draw a separate branch to reach a THIRD door.
+
+      Width is not a fixed rule. Through MASONRY a lane needs three cells,
+      because a floor cell is walkable only when y+1 AND y+2 are also floor --
+      so one and two wide are buried under the drape. Across OPEN floor a
+      narrow lane is fine, since the open ground supplies the clearance. The
+      validator does not measure width: it walks the lane and tells you whether
+      a road could.
+
+      Match the gate. A five-wide door feeding a three-wide lane pinches.
+
+      No lane means no through-route: a road reaches the door and stops. That
+      is what the sealed vaults want.
+
+  ' ' SPACE -- not part of the site at all. LOAD-BEARING, not a fallthrough:
+      BrokenAqueduct_TheDrySpan is two separate reaches with a void between
+      them where the middle span fell. Do not tighten this into an error.
+
+  Anything else is ignored the same way as space.
+
+
+HEADERS
+-------
+
+  @archetype:    Required. A SiteArchetype name.
+  @name:         Required. Used by the decor registry and the guarantee pins.
+
+  @anchor:       Free | AlongRoad | Junction | Crossing | RoadEnd
+                 Where the plan wants to sit. Falls back to a free pick when
+                 the preference cannot be met -- see @anchor_required.
+
+  @anchor_required: yes | no   (default no)
+                 Refuse the fallback. A plan whose meaning IS its position --
+                 a chapel on the road a sealing was administered from -- is
+                 better skipped than stranded in open rock. Skipped placements
+                 are reported by name and reason in the site report.
+
+  @anchor_on:    door | centre   (default centre)
+                 Land a declared DOOR on the anchor instead of the bounding-box
+                 centre, and reject anchors the door does not face. Roads then
+                 arrive AT the entrance rather than at whatever wall the bearing
+                 happened to cross.
+
+  @rotate:       yes | no   (default yes)
+                 Four quarter turns and a mirror. Say WHY when you turn it off;
+                 two plans currently carry no reason and one carries a circular
+                 one, and a constraint nobody can explain gets removed by
+                 somebody eventually.
+
+  @doors:        unmarked | none | marked   REQUIRED.
+                 unmarked -- not yet annotated. Passes, and the report keeps a
+                            roll-call of them.
+                 none     -- genuinely has no doors. Passes silently.
+                 marked   -- doors are drawn with '+', rule enforced.
+                 A MISSING header fails. Omission is not a third answer.
+
+  @general:      yes | no   (default yes)
+                 'no' keeps the plan out of the general pool, reserving it for
+                 a guarantee pass.
+
+
+THE RULES THAT CATCH PEOPLE OUT
+-------------------------------
+
+THE DRAPE. A floor cell is walkable only when the cells at y+1 and y+2 are
+also floor. Walls are drawn draping downward, and a cell with less than two
+clear above it is buried. Everything below follows from this one fact.
+
+  - A two-cell gap seals. Three does not. Wall thickness is irrelevant.
+  - A one-wide east-west corridor has NO walkable cells.
+  - A one-wide north-south corridor works until the plan rotates, which is
+    worse than failing outright -- correct in the orientation it was drawn in.
+  - The two cells directly below any solid cell are unwalkable. A road always
+    parts around a centred font; nothing passes beneath it at any width.
+
+A WALL RECESS IS THREE DEEP. Two leaves a pinched run that seals under the
+drape.
+
+HEART CLEARANCE IS MEASURED AROUND THE HEART'S SOLID COMPONENT, not the heart
+cell. Measuring from the cell failed six of eight plans, because a plinth-set
+heart has masonry neighbours by design.
+
+CONNECTIVITY GATES NOTHING. A site is MINED into, not walked into, so a
+disconnected chamber is a room the player opens with a pick.
+SunkenPlaza_TheCountingFloor is seven pieces and entirely correct. The figure
+is reported because it is informative, not because it is a rule.

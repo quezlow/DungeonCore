@@ -49,6 +49,14 @@ public class AuthoredSitePlan
     /// </summary>
     public bool anchorOnDoor;
 
+    /// <summary>Set by "@anchor_required: yes". TryPickAnchor normally degrades
+    /// to a free pick when a preference cannot be met, which is right for a ruin
+    /// and wrong for a building whose meaning IS its position: a Ward Chapel is
+    /// the chapel a sealing was administered from, and a free pick strands it in
+    /// open rock with nothing to explain it. A plan that refuses the fallback is
+    /// SKIPPED, with a reason, rather than misplaced.</summary>
+    public bool anchorRequired;
+
     /// <summary>Set only when the plan declared its own @anchor. Otherwise the
     /// archetype's fixed preference applies.</summary>
     public SiteAnchor anchorOverride = SiteAnchor.Free;
@@ -279,6 +287,11 @@ public static class AncientSitePlanLibrary
                         plan.generalPool = !(val.ToLowerInvariant() == "no"
                                           || val.ToLowerInvariant() == "false"
                                           || val == "0");
+                        break;
+                    case "anchor_required":
+                        plan.anchorRequired = !(val.ToLowerInvariant() == "no"
+                                             || val.ToLowerInvariant() == "false"
+                                             || val == "0");
                         break;
                     case "anchor_on":
                         switch (val.ToLowerInvariant())
