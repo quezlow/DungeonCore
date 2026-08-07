@@ -3,6 +3,8 @@
 @anchor: AlongRoad
 @doors: marked
 
+// INTENTIONALLY LEFT OUT, NOT IN USE
+
 // The dwarven village: the hold the Deep Holds are named for, one floor below
 // the gatehouse that guards the way to it. Placed by name through
 // SiteFloorEntry.reserveVillage, never through the roster -- so no @general

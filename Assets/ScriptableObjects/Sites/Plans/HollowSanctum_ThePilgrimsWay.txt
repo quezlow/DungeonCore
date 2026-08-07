@@ -3,6 +3,8 @@
 @anchor: AlongRoad
 @doors: unmarked
 
+// INTENTIONALLY LEFT OUT, NOT IN USE
+
 ##############.....#############
 ###########.............########
 #########.................######
