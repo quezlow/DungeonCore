@@ -564,18 +564,24 @@ public class Commands : MonoBehaviour
         {
             var junctions = result.junctions;
             var centrelines = new List<Vector3Int>();
+            // The undecimated line, for the door-heading test only. Kept in step
+            // with TerrainFeatureGenerator.RebuildRoadAnchors: the report is
+            // worth nothing if it feeds the builder different anchors from the
+            // ones the game does.
+            var headingCells = new List<Vector3Int>();
             var ends = new List<Vector3Int>();
             foreach (var road in result.roads)
             {
                 var line = RoadNetworkBuilder.Centreline(road);
                 for (int i = 0; i < line.Count; i += 12) centrelines.Add(line[i]);
+                headingCells.AddRange(line);
                 if (line.Count > 0) ends.Add(line[line.Count - 1]);
             }
 
             siteResult = AncientSiteBuilder.Build(
                 new System.Random(seed), Vector3Int.zero, radius, siteEntry,
-                roadReportExclusionRadius, junctions, centrelines, ends,
-                siteReportProfile.GetAuthoredPlans());
+                roadReportExclusionRadius, junctions, centrelines, headingCells,
+                ends, siteReportProfile.GetAuthoredPlans());
 
             int floorCells = 0, masonry = 0;
             var tally = new Dictionary<SiteArchetype, int>();
@@ -804,7 +810,9 @@ public class Commands : MonoBehaviour
                   .Append(", tooClose ").Append(diag.rejectedTooClose)
                   .Append(", nullShape ").Append(diag.rejectedNullShape)
                   .Append(", tooSmall ").Append(diag.rejectedTooSmall)
-                  .Append(", unwalkable ").Append(diag.rejectedUnwalkable).Append('\n');
+                  .Append(", unwalkable ").Append(diag.rejectedUnwalkable)
+                  .Append(", noDoorHeading ").Append(diag.rejectedNoDoorHeading)
+                  .Append('\n');
                 sb.Append("    anchors in band: junctions ").Append(diag.inBandJunctions)
                   .Append(", roadCells ").Append(diag.inBandRoadCells)
                   .Append(", roadEnds ").Append(diag.inBandRoadEnds).Append('\n');

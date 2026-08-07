@@ -313,10 +313,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // plaza wants; roadAnchorCells is a THINNED sample of centreline, because the
     // full set runs to tens of thousands of cells and the builder samples it on
     // every placement attempt; roadEndCells are the broken and rim-bound ends a
-    // Sealed Gate wants to stand at. Runtime only -- all three are rebuilt from
+    // Sealed Gate wants to stand at. Runtime only -- all four are rebuilt from
     // the polylines and never serialised.
+    //
+    // roadHeadingCells is that SAME centreline UNDECIMATED, and it is a separate
+    // list because sampling and direction-finding are separate questions.
+    // TryRoadHeading fits a principal axis to the road cells within six of a
+    // point and refuses on fewer than three; fed the stride-12 sample it finds
+    // three only where several roads converge. Measured over the shipped road
+    // profiles, a sampled anchor resolved a heading 12.6 per cent of the time on
+    // floor index 2, 5.8 on 3 and 5.3 on 4 -- so door anchoring was not a facing
+    // test but a road-density lottery with a facing test riding on it. Fed the
+    // full centreline it resolves on every anchor of all three. Anchor SAMPLING
+    // stays thinned; that is what the stride is for.
     private readonly List<Vector3Int> roadJunctions = new();
     private readonly List<Vector3Int> roadAnchorCells = new();
+    private readonly List<Vector3Int> roadHeadingCells = new();
     private readonly List<Vector3Int> roadEndCells = new();
 
     // Every carved site interior cell on this floor, so chamber generation can be
@@ -1402,6 +1414,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     {
         roadJunctions.Clear();
         roadAnchorCells.Clear();
+        roadHeadingCells.Clear();
         roadEndCells.Clear();
         if (featureData == null || featureData.roads == null) return;
 
@@ -1415,6 +1428,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
             for (int i = 0; i < line.Count; i += SampleStride)
                 roadAnchorCells.Add(line[i]);
+
+            // The whole line, kept rather than discarded. It was already
+            // computed on the way to the sample above, so this costs a copy and
+            // nothing else, and only the heading test reads it.
+            roadHeadingCells.AddRange(line);
 
             endpoints.Add(line[0]);
             endpoints.Add(line[line.Count - 1]);
@@ -1491,7 +1509,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // rejections.
         var result = AncientSiteBuilder.Build(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
-            roadJunctions, roadAnchorCells, roadEndCells,
+            roadJunctions, roadAnchorCells, roadHeadingCells, roadEndCells,
             siteProfile.GetAuthoredPlans());
         lastSitePlacement = result;
         lastSitePlacementSkip = SitePlacementSkip.Placed;
@@ -1590,7 +1608,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 $"{dropped} lost to road/core overlap. " +
                 $"Kept {featureData.sites.Count}. " +
                 $"Anchors available: {roadJunctions.Count} junctions, " +
-                $"{roadAnchorCells.Count} road samples, {roadEndCells.Count} road ends.");
+                $"{roadAnchorCells.Count} road samples, " +
+                $"{roadHeadingCells.Count} centreline cells for the heading test, " +
+                $"{roadEndCells.Count} road ends.");
 
             if (featureData.sites.Count == 0)
                 Debug.LogWarning(

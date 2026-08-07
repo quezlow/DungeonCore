@@ -3611,12 +3611,89 @@ have gate middles buried under the drape, and `SunkenPlaza_TheGallowsCourt`
 cannot route one axis of its roundabout.
 
 **Not yet built:** `SiteData.laneCells`, footprint protection in
-`RebuildRoadCells`, `EmitDoorRuns` on the general placement path, the anchorable
-run LIST in `FromAuthored` (the first-run-only rule is right for a vault's single
-door and wrong for a crossroads, which can otherwise only be entered from the
-north), `@anchor_on: door` honoured in `Fill`, and the `GenerateSites` restructure
-that writes site data before rerouting so both the generate and load paths read
-one source of truth.
+`RebuildRoadCells`, the Free-anchored keep-clear rule, `RouteRoadsThroughLanes`
+itself, and the `GenerateSites` restructure that writes site data before
+rerouting so both the generate and load paths read one source of truth.
+`EmitDoorRuns` on the general path, the anchorable run LIST and `@anchor_on:
+door` in `Fill` all SHIPPED -- see the entry below.
+
+### The door anchor, shared and fed a whole line (SHIPPED)
+
+Lane routing's placement half. No road is rerouted here and nothing about
+walkers changes; what lands is the machinery a laned site needs to be standing
+in the right place before a road can be threaded through it, plus the one number
+that says why a floor came up short.
+
+**The heading test was a density lottery wearing a facing test's clothes.**
+`TryRoadHeading` fits a principal axis to the road cells within six of a point
+and refuses on fewer than three. It was fed `roadAnchorCells`, which is a
+stride-12 sample -- so three cells within six turned up only where several roads
+converged, and door anchoring accepted or refused an anchor mostly on how busy
+that corner of the floor was. Measured over the shipped road profiles with
+`Tools/sim_door_anchor.py`: a sampled anchor resolved a heading **12.6 per cent**
+of the time on floor index 2, **5.8** on 3 and **5.3** on 4. `RebuildRoadAnchors`
+already computed the full centreline on its way to building that sample and then
+threw it away; kept in `roadHeadingCells` and handed to the heading test alone,
+resolution is **100 per cent on all three floors**. Anchor SAMPLING stays
+thinned, because that is what the stride is for.
+
+This also explains why the vault places at all today. At about one anchor in
+twenty resolving, and roughly a third of those facing the gate, a single attempt
+succeeds perhaps one and a half times in a hundred -- but `PlaceDeadCore` has 240
+of them, so it lands almost always. The arithmetic that said door anchoring must
+be failing was right about the rate and wrong about the outcome, and one
+generated floor settled it. Do not assert runtime behaviour from arithmetic.
+
+**`@anchor_on: door` was a vault-only feature by accident.** The block lived
+inside `PlaceDeadCore`; `Fill`, `PlaceOutpost` and `PlaceVillage` never read the
+flag, so the header on any plan those paths could serve did nothing and the plan
+placed on its centre exactly as it had before the feature existed -- the same
+silent no-op as `anchorRequired` being honoured inside `TryPickAnchor` and passed
+by nobody. It is now one `TryDoorAnchor` called by all four, and a plan that
+declares no anchorable run returns `placeAt == anchor`, so every procedural
+placement is unchanged by construction rather than by inspection.
+
+**`LocalPlan` keeps a LIST of anchorable runs.** The first-run-only rule is right
+for a vault, which has one door by design, and wrong for anything with two or
+four: the building could only ever be entered from whichever side was scanned
+first. `FromAuthored` still learns nothing about headings -- the choice moved to
+the placement, because that is where the heading is.
+
+**The rng draw is conditional, and that is not a nicety.** `rot` and `mirror` are
+INPUTS to the helper, drawn by each caller before it, because moving those draws
+would change every world for a given seed. The choice among qualifying runs is
+the only new draw, and it fires only when more than one qualifies. All three
+authored `DeadCoreVault` plans declare exactly one outward-facing run, so the
+vault path consumes not one extra draw and stays bit-identical in its rng stream.
+Its accepted anchors DO change, because the heading data underneath it changed --
+that is the point.
+
+Where two runs qualify they are always an opposing pair: the test is an absolute
+dot product, so a normal and its negation score identically. The roll therefore
+decides which side of the carriageway the building sits on, which is variety
+rather than a coin flip standing in for a rule nobody worked out.
+
+**`rejectedNoDoorHeading`, general and holy.** One counter covering both ways the
+gate can refuse -- no heading resolvable, or no gate facing one -- because with
+the line undecimated the first case has all but vanished and the two collapse to
+one meaning. Failures of the RE-VALIDATION after the shift are counted as
+`too-close` instead, where `TryPickAnchor`'s own band-and-spacing failure already
+lands: the site moved tens of cells and every test the anchor passed describes
+somewhere the building is not. The guarantee paths cannot use these counters at
+all -- `Build` overwrites `result.rejected*` from the general fill after they run
+-- so each folds its own figure into its existing failure message.
+
+**Nothing was stamped.** Only the three vaults and `GuardPost_TheColdWatch` carry
+`@anchor_on: door`; no laned plan does. Stamping is authoring, it buys no visual
+change until the routing half exists, and it would move floors 2 to 4 under their
+seeds twice instead of once. The sim priced it in advance over 300 seeds: with
+the two `WardChapel` plans stamped, floor 3 still fills its holy minimum in every
+seed; with every road-anchored laned plan stamped it still does, but floor 2's
+outpost misses 7 times in 300 and floor 3's village once. So the stamps are
+affordable and are not free, and the outpost is the one to watch.
+
+**Key files:** `AncientSiteBuilder.cs`, `TerrainFeatureGenerator.cs`,
+`TESTING/Commands.cs`, `Tools/sim_door_anchor.py`.
 
 ### The preview window learns the markers (SHIPPED)
 

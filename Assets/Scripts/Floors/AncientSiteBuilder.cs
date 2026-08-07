@@ -45,9 +45,11 @@ public class AncientSitePlan
     /// these to leave the road a way in: a road that meets a site with a door
     /// runs TO the door rather than stopping at the footprint.
     ///
-    /// Emitted by PlaceDeadCore alone at present, because truncation is
-    /// floor-index-4 gated and the vault is the only site it handles. Any other
-    /// placement path that wants it is one EmitDoorRuns call.</summary>
+    /// Emitted by EVERY placement path now rather than by PlaceDeadCore alone.
+    /// Truncation still reads only the vault's, because it is floor-index-4
+    /// gated; the rest is data laid down for the routing half, which has to know
+    /// where a laned site's other gates ended up without re-deriving the
+    /// transform that put them there.</summary>
     public List<PlacedDoor> doors = new List<PlacedDoor>();
 }
 
@@ -76,6 +78,18 @@ public class AncientSiteResult
     public int rejectedTooSmall;
     public int rejectedUnwalkable;
 
+    /// <summary>Attempts thrown away because the plan asked to be anchored on a
+    /// door and no road faced one -- either the local heading could not be
+    /// resolved at all, or it resolved and no gate pointed within DoorFacingCos
+    /// of it.
+    ///
+    /// Its own counter rather than a share of rejectedTooClose, because the two
+    /// have opposite fixes. A floor starving for spacing wants minSpacing or the
+    /// band changed; a floor starving here wants the cone, the plan's gates or
+    /// the road layout changed. Without this number both floors report
+    /// identically, which is the whole reason this delivery exists.</summary>
+    public int rejectedNoDoorHeading;
+
     /// <summary>Sites in `sites` that do NOT count against `wanted`: the holy
     /// sub-quota and the dead core vault.
     ///
@@ -101,6 +115,7 @@ public class AncientSiteResult
     public int holyRejectedNullShape;
     public int holyRejectedTooSmall;
     public int holyRejectedUnwalkable;
+    public int holyRejectedNoDoorHeading;
     /// <summary>Whether this floor's guaranteed outpost actually landed. False on
     /// a floor that never asked for one; false AND loud on a floor that did.</summary>
     public bool outpostPlaced;
@@ -146,7 +161,8 @@ public class AncientSiteResult
                $"pool of {planPoolSize} plans in {attempts} attempts; rejected: " +
                $"no-anchor {rejectedNoAnchor}, too-close {rejectedTooClose}, " +
                $"null-shape {rejectedNullShape}, too-small {rejectedTooSmall}, " +
-               $"unwalkable {rejectedUnwalkable}. " +
+               $"unwalkable {rejectedUnwalkable}, " +
+               $"no-door-heading {rejectedNoDoorHeading}. " +
                $"In band: {inBandJunctions} junctions, {inBandRoadCells} road samples, " +
                $"{inBandRoadEnds} road ends";
     }
@@ -160,7 +176,8 @@ public class AncientSiteResult
             : $"holy: placed {holyPlaced}/{holyWanted} from a pool of " +
               $"{holyPlanPoolSize} plans in {holyAttempts} attempts; rejected: " +
               $"too-close {holyRejectedTooClose}, null-shape {holyRejectedNullShape}, " +
-              $"too-small {holyRejectedTooSmall}, unwalkable {holyRejectedUnwalkable}";
+              $"too-small {holyRejectedTooSmall}, unwalkable {holyRejectedUnwalkable}, " +
+              $"no-door-heading {holyRejectedNoDoorHeading}";
 }
 
 /// <summary>
@@ -201,6 +218,7 @@ public static class AncientSiteBuilder
         SiteFloorEntry entry, int coreExclusionRadius,
         IReadOnlyList<Vector3Int> junctions,
         IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
         IReadOnlyList<Vector3Int> roadEnds,
         IReadOnlyList<AuthoredSitePlan> authoredPlans = null)
     {
@@ -287,7 +305,7 @@ public static class AncientSiteBuilder
         // to find room later, so nothing goes before it.
         if (entry.reserveDeadCore)
             PlaceDeadCore(rng, entry, centre, inner, outer, usable,
-                          junctions, roadCells, roadEnds,
+                          junctions, roadCells, roadHeadingCells, roadEnds,
                           authoredPlans, anchorsUsed, minSpacingSq, result);
 
         // The village, selected BY NAME from the authored set rather than
@@ -295,7 +313,7 @@ public static class AncientSiteBuilder
         // can never serve it and there is no pool bookkeeping to do on success.
         if (entry.reserveVillage)
             PlaceVillage(rng, entry, centre, inner, outer, usable,
-                         junctions, roadCells, roadEnds,
+                         junctions, roadCells, roadHeadingCells, roadEnds,
                          authoredPlans, anchorsUsed, minSpacingSq, result);
 
         // The outpost, which must precede the fill loop for its own reason as
@@ -310,7 +328,7 @@ public static class AncientSiteBuilder
         // nowhere near the road it is supposed to hold.
         if (entry.reserveOutpost)
             PlaceOutpost(rng, entry, centre, inner, outer, usable,
-                         junctions, roadCells, roadEnds,
+                         junctions, roadCells, roadHeadingCells, roadEnds,
                          plans, anchorsUsed, minSpacingSq, result);
 
         // How much of each anchor source actually falls inside the placement band.
@@ -329,7 +347,7 @@ public static class AncientSiteBuilder
         if (anyHoly)
         {
             var holy = Fill(rng, entry, centre, inner, outer, usable,
-                            junctions, roadCells, roadEnds,
+                            junctions, roadCells, roadHeadingCells, roadEnds,
                             holyPlans, holyWant, HolyAttemptsPerSite,
                             anchorsUsed, minSpacingSq, result, true);
             result.holyPlaced = holy.placed;
@@ -338,6 +356,7 @@ public static class AncientSiteBuilder
             result.holyRejectedNullShape = holy.rejectedNullShape;
             result.holyRejectedTooSmall = holy.rejectedTooSmall;
             result.holyRejectedUnwalkable = holy.rejectedUnwalkable;
+            result.holyRejectedNoDoorHeading = holy.rejectedNoDoorHeading;
 
             // Loud on a shortfall against the MINIMUM rather than against the
             // roll. The seals are this arc's content, and a floor quietly
@@ -361,7 +380,7 @@ public static class AncientSiteBuilder
         // THE GENERAL FILL, whose target counts the guarantees but not the
         // extras.
         var general = Fill(rng, entry, centre, inner, outer, usable,
-                           junctions, roadCells, roadEnds,
+                           junctions, roadCells, roadHeadingCells, roadEnds,
                            plans, want, GeneralAttemptsPerSite,
                            anchorsUsed, minSpacingSq, result, false);
         result.attempts = general.attempts;
@@ -369,6 +388,7 @@ public static class AncientSiteBuilder
         result.rejectedNullShape = general.rejectedNullShape;
         result.rejectedTooSmall = general.rejectedTooSmall;
         result.rejectedUnwalkable = general.rejectedUnwalkable;
+        result.rejectedNoDoorHeading = general.rejectedNoDoorHeading;
 
         return result;
     }
@@ -397,6 +417,7 @@ public static class AncientSiteBuilder
         public int rejectedNullShape;
         public int rejectedTooSmall;
         public int rejectedUnwalkable;
+        public int rejectedNoDoorHeading;
     }
 
     /// <summary>
@@ -425,6 +446,7 @@ public static class AncientSiteBuilder
         int inner, int outer, int usable,
         IReadOnlyList<Vector3Int> junctions,
         IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
         IReadOnlyList<Vector3Int> roadEnds,
         List<PlanRef> plans, int want, int attemptsPerSite,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
@@ -494,17 +516,33 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
+            // DOOR ANCHORING, on the general path at last. This loop never read
+            // the flag before, so "@anchor_on: door" on any plan the fill could
+            // serve did nothing at all -- the same silent no-op as anchorRequired
+            // being honoured inside TryPickAnchor and passed by nobody. A plan
+            // that declares no anchorable run comes back with placeAt == anchor
+            // and every procedural placement is unchanged.
+            if (!TryDoorAnchor(rng, site, rot, mirror, anchor, centre, inner, outer,
+                               roadHeadingCells, anchorsUsed, minSpacingSq,
+                               out var placeAt, out bool headingFault))
+            {
+                if (headingFault) tally.rejectedNoDoorHeading++;
+                else tally.rejectedTooClose++;
+                continue;
+            }
+
             var placed = new AncientSitePlan
             {
                 archetype = plan.archetype,
                 variant = plan.variant,
                 planName = plan.authored != null ? plan.authored.name : "",
-                anchor = anchor,
+                anchor = placeAt,
             };
 
             long clampSq = (long)usable * usable;
-            EmitTransformed(site.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
-            EmitTransformed(site.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(site.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(site.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             // The heart rides the SAME transform as the masonry it is part
             // of. Computing it independently would drift the moment a
@@ -514,7 +552,7 @@ public static class AncientSiteBuilder
             if (site.heart.Count > 0)
             {
                 var heartOut = new List<Vector3Int>();
-                EmitTransformed(site.heart, anchor, rot, mirror, centre, clampSq, heartOut);
+                EmitTransformed(site.heart, placeAt, rot, mirror, centre, clampSq, heartOut);
                 if (heartOut.Count > 0)
                 {
                     placed.heartCell = heartOut[0];
@@ -545,7 +583,7 @@ public static class AncientSiteBuilder
 
             placed.id = result.sites.Count;
             result.sites.Add(placed);
-            anchorsUsed.Add(anchor);
+            anchorsUsed.Add(placeAt);
             tally.placed++;
 
             // The holy pass and the vault sit OUTSIDE the general budget, which
@@ -576,6 +614,7 @@ public static class AncientSiteBuilder
         int inner, int outer, int usable,
         IReadOnlyList<Vector3Int> junctions,
         IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
         IReadOnlyList<Vector3Int> roadEnds,
         List<PlanRef> plans, List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result)
@@ -598,6 +637,12 @@ public static class AncientSiteBuilder
 
         long clampSq = (long)usable * usable;
 
+        // Counted locally rather than onto the result, because Build overwrites
+        // result.rejected* from the general fill's tally AFTER this runs. The
+        // figure rides the failure message instead, which is where anyone
+        // reading about a missing outpost already is.
+        int headingRejects = 0;
+
         for (int attempt = 0; attempt < 240; attempt++)
         {
             var plan = candidates[attempt % candidates.Count];
@@ -617,23 +662,32 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
+            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
+                               roadHeadingCells, anchorsUsed, minSpacingSq,
+                               out var placeAt, out bool headingFault))
+            {
+                if (headingFault) headingRejects++;
+                continue;
+            }
+
             var placed = new AncientSitePlan
             {
                 archetype = plan.archetype,
                 variant = plan.variant,
                 planName = plan.authored != null ? plan.authored.name : "",
-                anchor = anchor,
+                anchor = placeAt,
                 reservedForOutpost = true,
             };
-            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
-            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
             if (CountWalkable(placed.cells) < MinWalkableCells) continue;
 
             placed.id = result.sites.Count;
             result.sites.Add(placed);
-            anchorsUsed.Add(anchor);
+            anchorsUsed.Add(placeAt);
             plans.Remove(plan);
             result.outpostPlaced = true;
             return;
@@ -642,7 +696,9 @@ public static class AncientSiteBuilder
         Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
             " failed to place its guaranteed outpost in 240 attempts. That floor " +
             "will have no dwarves. Most likely cause: the placement band holds no " +
-            "road cells -- check inBandRoadCells in the site report.");
+            "road cells -- check inBandRoadCells in the site report. " +
+            headingRejects + " of those attempts died on the door heading, which " +
+            "points at the hold's gates rather than at the band.");
     }
 
     /// <summary>
@@ -659,6 +715,7 @@ public static class AncientSiteBuilder
         int inner, int outer, int usable,
         IReadOnlyList<Vector3Int> junctions,
         IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
         IReadOnlyList<Vector3Int> roadEnds,
         IReadOnlyList<AuthoredSitePlan> authoredPlans,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
@@ -695,6 +752,10 @@ public static class AncientSiteBuilder
 
         long clampSq = (long)usable * usable;
 
+        // Local, for the same reason PlaceOutpost's is: Build overwrites
+        // result.rejected* from the general fill after this returns.
+        int headingRejects = 0;
+
         for (int attempt = 0; attempt < 240; attempt++)
         {
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
@@ -709,6 +770,14 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
+            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
+                               roadHeadingCells, anchorsUsed, minSpacingSq,
+                               out var placeAt, out bool headingFault))
+            {
+                if (headingFault) headingRejects++;
+                continue;
+            }
+
             var placed = new AncientSitePlan
             {
                 archetype = SiteArchetype.DwarvenVillage,
@@ -716,18 +785,19 @@ public static class AncientSiteBuilder
                 // breadcrumb for which hold this world rolled.
                 variant = pick,
                 planName = plan.name,
-                anchor = anchor,
+                anchor = placeAt,
                 reservedForVillage = true,
             };
-            EmitTransformed(shape.floor, anchor, rot, mirror, centre, clampSq, placed.cells);
-            EmitTransformed(shape.wall, anchor, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
             if (CountWalkable(placed.cells) < MinWalkableCells) continue;
 
             placed.id = result.sites.Count;
             result.sites.Add(placed);
-            anchorsUsed.Add(anchor);
+            anchorsUsed.Add(placeAt);
             result.villagePlaced = true;
             result.villagePlanPicked = plan.name;
             return;
@@ -736,7 +806,9 @@ public static class AncientSiteBuilder
         Debug.LogError("[AncientSiteBuilder] Floor " + entry.floorIndex +
             " failed to place its guaranteed village in 240 attempts. That floor " +
             "will have no dwarves at home. Most likely cause: the placement band " +
-            "holds no road cells -- check inBandRoadCells in the site report.");
+            "holds no road cells -- check inBandRoadCells in the site report. " +
+            headingRejects + " of those attempts died on the door heading, which " +
+            "points at the hold's gates rather than at the band.");
     }
 
     /// <summary>
@@ -757,6 +829,7 @@ public static class AncientSiteBuilder
         int inner, int outer, int usable,
         IReadOnlyList<Vector3Int> junctions,
         IReadOnlyList<Vector3Int> roadCells,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
         IReadOnlyList<Vector3Int> roadEnds,
         IReadOnlyList<AuthoredSitePlan> authoredPlans,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
@@ -791,6 +864,10 @@ public static class AncientSiteBuilder
 
         long clampSq = (long)usable * usable;
 
+        // Local, for the same reason PlaceOutpost's is: Build overwrites
+        // result.rejected* from the general fill after this returns.
+        int headingRejects = 0;
+
         for (int attempt = 0; attempt < 240; attempt++)
         {
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
@@ -805,33 +882,17 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
-            // DOOR ANCHORING. The anchor TryPickAnchor handed back is a road
-            // cell; what lands on it is the plan's centre unless the plan asked
-            // otherwise. See DoorFacingCos for why the heading test is not
-            // optional.
-            var placeAt = anchor;
-            if (shape.hasDoorAnchor)
+            // DOOR ANCHORING. The block that used to sit here is now
+            // TryDoorAnchor, shared with the three paths that were silently
+            // ignoring the flag. The vault's behaviour is unchanged: all three
+            // authored plans declare exactly one outward-facing run, so the
+            // helper's conditional rng draw never fires for it.
+            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
+                               roadHeadingCells, anchorsUsed, minSpacingSq,
+                               out var placeAt, out bool headingFault))
             {
-                if (!TryRoadHeading(roadCells, anchor, out var heading)) continue;
-
-                var outward = RotateLocal(shape.doorOut, rot, mirror);
-                var outv = new Vector2(outward.x, outward.y).normalized;
-
-                // Undirected: a road has no forward, so a door facing east is
-                // served equally by a road heading east or west.
-                if (Mathf.Abs(Vector2.Dot(heading.normalized, outv)) < DoorFacingCos)
-                    continue;
-
-                var shift = RotateLocal(shape.doorMid, rot, mirror);
-                placeAt = new Vector3Int(anchor.x - shift.x, anchor.y - shift.y, 0);
-
-                // RE-VALIDATE. TryPickAnchor vetted the ROAD cell, and the
-                // building now sits some thirty-seven cells away from it, so
-                // every test it passed describes somewhere the vault is not.
-                long dx = placeAt.x - centre.x, dy = placeAt.y - centre.y;
-                long distSq = dx * dx + dy * dy;
-                if (distSq < (long)inner * inner || distSq > (long)outer * outer) continue;
-                if (TooClose(placeAt, anchorsUsed, minSpacingSq)) continue;
+                if (headingFault) headingRejects++;
+                continue;
             }
 
             var placed = new AncientSitePlan
@@ -884,7 +945,9 @@ public static class AncientSiteBuilder
             " failed to place its guaranteed dead core vault in 240 attempts. " +
             "That dungeon has no vault at all. A vault is 75 cells across, so the " +
             "likeliest cause is a placement band too narrow to hold it -- check " +
-            "bandInner and bandOuter against the floor radius in the site report.");
+            "bandInner and bandOuter against the floor radius in the site report. " +
+            headingRejects + " of those attempts died on the door heading, which " +
+            "points at the road layout rather than at the band.");
     }
 
     /// <summary>
@@ -929,19 +992,18 @@ public static class AncientSiteBuilder
         foreach (var c in authored.floor)
             if (!p.wall.Contains(c)) p.floor.Add(c);
 
-        // The first run with a usable outward normal. A vault has one door by
-        // design; if a plan ever declares several, the first is taken and the
-        // rest are ordinary doors -- picking "best" would need a road heading
-        // this function does not have and should not learn about.
+        // EVERY run with a usable outward normal, not merely the first. Which
+        // one a placement uses is decided against the road's local heading, and
+        // this function still has no heading and should not learn about one --
+        // the choice moved to TryDoorAnchor, which is where the heading lives.
+        // A run with a zero normal is skipped rather than kept: it faces its own
+        // interior, and anchoring on it would point the building inward.
         if (authored.anchorOnDoor)
         {
             foreach (var run in authored.doorRuns)
             {
                 if (run.outward == Vector2Int.zero) continue;
-                p.hasDoorAnchor = true;
-                p.doorMid = run.mid;
-                p.doorOut = run.outward;
-                break;
+                p.doorAnchors.Add(run);
             }
         }
 
@@ -1183,11 +1245,19 @@ public static class AncientSiteBuilder
         /// single cell that means anything.</summary>
         public readonly HashSet<Vector2Int> heart = new HashSet<Vector2Int>();
 
-        /// <summary>Set only for an authored plan that asked for door anchoring
-        /// AND declared a usable door run. Procedural recipes never set it.</summary>
-        public bool hasDoorAnchor;
-        public Vector2Int doorMid;
-        public Vector2Int doorOut;
+        /// <summary>Every run this plan may be anchored on: the declared doors
+        /// with a usable outward normal, and only when the plan asked for door
+        /// anchoring. Empty for every procedural recipe, and empty for an
+        /// authored plan that did not ask -- which is what keeps the whole
+        /// placement layer behaving exactly as it did.
+        ///
+        /// A LIST rather than the single run this held before, and the
+        /// crossroads is the reason. Taking whichever run was scanned first is
+        /// right for a vault, which has one door by design; on a plan with two
+        /// or four gates it means the building can only ever be entered from the
+        /// side that happened to be scanned first, so a four-gated hold would
+        /// take a road at its north gate and nowhere else.</summary>
+        public readonly List<DoorRun> doorAnchors = new List<DoorRun>();
 
         public void Floor(int x0, int y0, int w, int h)
         {
@@ -1667,6 +1737,95 @@ public static class AncientSiteBuilder
     }
 
     /// <summary>
+    /// Shifts a plan so one of its declared doors lands on the anchor, or
+    /// refuses the anchor outright.
+    ///
+    /// EXTRACTED, because this used to live inside PlaceDeadCore alone. Fill,
+    /// PlaceOutpost and PlaceVillage never read the flag, so "@anchor_on: door"
+    /// on any plan those paths could serve was a silent no-op -- the plan simply
+    /// placed on its centre like every other site, which is exactly what it did
+    /// before the feature existed. Same class of fault as anchorRequired being
+    /// honoured inside TryPickAnchor and passed by nobody.
+    ///
+    /// A plan declaring no anchorable run returns true with placeAt == anchor,
+    /// so every procedural path is unchanged by construction rather than by
+    /// inspection.
+    ///
+    /// ROTATION AND MIRRORING ARE INPUTS. Every caller draws them from rng
+    /// before reaching here, and moving those draws inside would change every
+    /// world for a given seed. rng is touched here ONLY when more than one run
+    /// qualifies -- which is why the vault is bit-identical: all three authored
+    /// DeadCoreVault plans declare exactly one outward-facing run, so the draw
+    /// never fires on that path.
+    ///
+    /// headingFault separates the two ways this can fail. True means the door
+    /// gate refused -- no heading, or no gate facing one. False means the SHIFT
+    /// left the band or collided with a placed site, which is a spacing problem
+    /// wearing a door's clothes and belongs in the spacing counter.
+    /// </summary>
+    private static bool TryDoorAnchor(
+        System.Random rng, LocalPlan shape, int rot, bool mirror,
+        Vector3Int anchor, Vector3Int centre, int inner, int outer,
+        IReadOnlyList<Vector3Int> roadHeadingCells,
+        List<Vector3Int> anchorsUsed, int minSpacingSq,
+        out Vector3Int placeAt, out bool headingFault)
+    {
+        placeAt = anchor;
+        headingFault = false;
+        if (shape == null || shape.doorAnchors.Count == 0) return true;
+
+        // An unverifiable heading is not a passing one. Fed the undecimated
+        // centreline this now resolves at every road anchor; fed the stride-12
+        // sample it resolved at about one in twenty, which is what made this
+        // test read as a facing rule while behaving as a density rule.
+        if (!TryRoadHeading(roadHeadingCells, anchor, out var heading))
+        {
+            headingFault = true;
+            return false;
+        }
+
+        var facing = new List<DoorRun>();
+        var unit = heading.normalized;
+        foreach (var run in shape.doorAnchors)
+        {
+            var outward = RotateLocal(run.outward, rot, mirror);
+            var outv = new Vector2(outward.x, outward.y).normalized;
+
+            // Undirected: a road has no forward, so a gate facing east is served
+            // equally by a road heading east or west.
+            if (Mathf.Abs(Vector2.Dot(unit, outv)) < DoorFacingCos) continue;
+            facing.Add(run);
+        }
+        if (facing.Count == 0)
+        {
+            headingFault = true;
+            return false;
+        }
+
+        // CONDITIONAL on purpose. One qualifying run must cost no draw at all,
+        // or every world with a vault in it moves under its old seed. Where two
+        // do qualify they are an opposing pair -- the undirected test scores a
+        // normal and its negation identically -- so the choice is which side of
+        // the carriageway the building sits on, and a roll is the honest answer.
+        var chosen = facing.Count == 1
+            ? facing[0]
+            : facing[rng.Next(0, facing.Count)];
+
+        var shift = RotateLocal(chosen.mid, rot, mirror);
+        placeAt = new Vector3Int(anchor.x - shift.x, anchor.y - shift.y, 0);
+
+        // RE-VALIDATE. TryPickAnchor vetted the ROAD cell, and the building now
+        // sits tens of cells away from it -- thirty-seven on a village -- so
+        // every test it passed describes somewhere the site is not.
+        long dx = placeAt.x - centre.x, dy = placeAt.y - centre.y;
+        long distSq = dx * dx + dy * dy;
+        if (distSq < (long)inner * inner || distSq > (long)outer * outer) return false;
+        if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
+
+        return true;
+    }
+
+    /// <summary>
     /// The local direction of the road at a cell, as an unsigned axis.
     ///
     /// Estimated from the road CELLS rather than read off a polyline, because
@@ -1674,6 +1833,15 @@ public static class AncientSiteBuilder
     /// widen four signatures to answer one question. Least squares over the
     /// cells within RoadHeadingRadius: the principal axis of their spread is the
     /// carriageway's direction, which is what a road is.
+    ///
+    /// Fed roadHeadingCells, the UNDECIMATED centreline, and not the stride-12
+    /// anchor sample it used to get. Three cells within six is trivial on a
+    /// dense line and rare on a thinned one, so the sample turned this into a
+    /// lottery on how many roads happened to converge: measured at 12.6 per cent
+    /// of anchors on floor index 2, 5.8 on 3 and 5.3 on 4, against 100 per cent
+    /// on all three once the line is whole. Scanning the longer list is a linear
+    /// pass per attempt over roughly 3,400 cells on the largest floor, a few
+    /// hundred times a floor, and does not show up.
     ///
     /// Returns false when there is too little road nearby to say -- and the
     /// caller then rejects the anchor, because an unverifiable heading is not a
