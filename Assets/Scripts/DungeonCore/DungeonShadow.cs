@@ -118,7 +118,20 @@ public class DungeonShadow : MonoBehaviour
              "against the void's 15, that lands near 0.15. BRIGHTER art needs a LOWER " +
              "number here, not a higher one -- getting that backwards is what left a " +
              "fifty-point cliff in the first build.")]
-    [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.5f;
+    // 0.15, not the 0.5 this shipped with: the scene was corrected but the code
+    // default was left behind, so a NEW floor would have inherited the wrong number
+    // and reproduced the original cliff.
+    [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.15f;
+
+    [Tooltip("Curve of the rim facade ramp. 1 is linear, which spent most of its rows " +
+             "in the bright half. Higher drops the light sooner, so the rows nearest " +
+             "the void are darker while the outermost row still meets the forest. At " +
+             "depth 6 the art rows run, in luma against the void's 15: 98/77/56/36/15 " +
+             "at 1, 98/62/36/20/15 at 2, 98/50/25/16/15 at 3. BOTH ENDS ARE FIXED " +
+             "whatever this is -- the last art row always lands on rimFacadeInnerLight " +
+             "-- so if you want the final row darker than the void itself, lower THAT " +
+             "instead and accept a seam where they meet.")]
+    [SerializeField, Range(1f, 4f)] private float rimFacadeFalloff = 2f;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
     [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0f;
     [Tooltip("Paint void cells opaque (base colour x light + hue) instead of alpha-darkening. " +
@@ -346,32 +359,40 @@ public class DungeonShadow : MonoBehaviour
             {
                 if (influence.IsTileMined(rimCell.Key)) continue;
 
-                // Only solid ROCK may become void. rimLayers is built from geometry
-                // alone, so it contains the river cells where a river crosses the
-                // rim -- and registering those as void painted an opaque black block
-                // straight over open water at the river mouth. Water and road keep
-                // the alpha overlay instead, so they darken into the cave.
-                bool rimRock = true;
+                // The ramp belongs to the RIM TILES and to nothing else. rimLayers is
+                // built from geometry alone, so it also holds the river cells where a
+                // river crosses the rim. An earlier pass stopped those being painted
+                // opaque but left them IN the ramp, which dragged a heavy gradient
+                // across open water. Skipping them outright leaves the water rendering
+                // exactly as it does anywhere else, which is how it looked before any
+                // of this and was never the thing that needed fixing.
                 if (rimFeats != null)
                 {
                     FeatureType rimF = rimFeats.GetFeatureAt(rimCell.Key);
-                    if (rimF == FeatureType.River || rimF == FeatureType.Road) rimRock = false;
+                    if (rimF == FeatureType.River || rimF == FeatureType.Road) continue;
                 }
 
-                // The innermost ROCK row is registered as void, so step 5 paints it
-                // through VoidColorFor at the void's own level. That makes the
-                // meeting point exact by construction -- the same function of the
-                // same number -- rather than something to tune by eye.
+                // The innermost row is registered as void, so step 5 paints it through
+                // VoidColorFor at the void's own level. That makes the meeting point
+                // exact by construction -- the same function of the same number --
+                // rather than something to tune by eye.
                 if (rimCell.Value >= rimLast)
                 {
                     baseLight[rimCell.Key] = voidLightFloor;
                     baseTint[rimCell.Key] = Color.black;
-                    if (rimRock) voidCells.Add(rimCell.Key);
+                    voidCells.Add(rimCell.Key);
                     continue;
                 }
 
+                // Curved, not linear. A straight lerp spent most of its rows in the
+                // bright half and left the last row before the void brighter than it
+                // reads as. The exponent only moves the SHAPE: rt is 1 on the
+                // outermost row and 0 on the last art row either way, so both joins
+                // are unchanged.
                 float rt = 1f - Mathf.Clamp01(rimCell.Value / (float)rimArtSpan);
-                baseLight[rimCell.Key] = Mathf.Lerp(rimFacadeInnerLight, rimFacadeLight, rt);
+                baseLight[rimCell.Key] =
+                    rimFacadeInnerLight
+                    + (rimFacadeLight - rimFacadeInnerLight) * Mathf.Pow(rt, rimFacadeFalloff);
                 baseTint[rimCell.Key] = Color.black;
             }
         }

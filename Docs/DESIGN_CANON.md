@@ -3902,14 +3902,32 @@ The bedrock clamp came off at the same time. It existed so a band cell could not
 spill past the ring and render ordinary stone mid-cliff, but it was redundant --
 the wall family resolves by terrain, so a non-bedrock cell falls back to the
 stone path unaided -- and it capped the band at the ring's 4-6 cells when the
-ramp wants more rows than that. Depth 6 with the span fixed gives 98, 77, 56,
-36, 15, void 15.
+ramp wants more rows than that.
 
-One further defect from registering a row as void: `rimLayers` is built from
-geometry alone, so it contains the river cells where a river crosses the rim,
-and the opaque fill landed on open water as a hard black block at the river
-mouth. Only cells that are solid ROCK are void-registered; river, road and mined
-cells keep the alpha overlay and darken into the cave instead.
+The ramp is a CURVE, `rimFacadeFalloff` (2), not a straight lerp: linear spent
+most of its rows in the bright half and left the last row before the void
+reading brighter than it should. At depth 6 the art rows run, in luma against
+the void's 15, 98/77/56/36/15 at falloff 1 and 98/62/36/20/15 at 2. The exponent
+moves only the shape -- both ends are pinned, the outermost row on
+`rimFacadeLight` and the last art row on `rimFacadeInnerLight` -- so a darker
+final row than the void means lowering the inner light and accepting a seam,
+not raising the falloff.
+
+**The ramp applies to RIM TILES only.** `rimLayers` is built from geometry
+alone, so it also holds the river cells where a river crosses the rim. Two
+passes were needed to get this right: the first painted them opaque and punched
+a black block through open water at the river mouth, the second stopped the
+opaque fill but left them in the ramp, which dragged a heavy gradient across the
+water instead. They are now skipped outright, so water at the rim renders as it
+does anywhere else.
+
+**A postscript on diagnosis.** Most of the visible ugliness at this edge turned
+out to be a wrong interior-fill slot in `CaveWallSheetLayout`, not the light
+ramp -- and the ramp was genuinely broken as well, so fixing either alone
+changed little and the two masked each other for several rounds. Where a
+rendering fault has both a DATA and a CODE candidate, check the data slot first:
+it is the one that can be confirmed in the Inspector in seconds, against a test
+cycle that costs a full build.
 
 **The forest floor carries into the mouth.** The channel became dungeon ground
 the instant it crossed the disc boundary, so the entrance read as a doorway
