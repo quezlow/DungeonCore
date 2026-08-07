@@ -3890,6 +3890,30 @@ makes the meeting point the same function of the same number by construction,
 and ending the overlay rows at `rimFacadeInnerLight` (0.5) instead of diving to
 `voidLightFloor`.
 
+**The forest floor carries into the mouth.** The channel became dungeon ground
+the instant it crossed the disc boundary, so the entrance read as a doorway
+rather than as a hole the forest runs into.
+`SurfaceZoneGenerator.PaintMouthGrass` extends grass `mouthGrassCells` (4) in
+from `EntranceCaveData.mouthCell`, feathered across the last
+`mouthGrassFeather` (2) by the same stable hash the scatter uses, so the ragged
+edge survives a reload with nothing serialised.
+
+Only MINED cells take it, and that single test does all the shaping: the channel
+is the mined part, so the grass follows it in and the rock flanking it is
+untouched with no geometry to get wrong. Lighting is deliberately left alone --
+those cells are in `DungeonShadow`'s light map, so the grass darkens going in,
+which is what a cave mouth should do and what makes the feather and the falloff
+reinforce each other rather than fight.
+
+Two facts made this fifteen lines rather than an arc, and both are worth keeping
+because they bound what else is cheap here. Floor 0 has exactly ONE ground
+tilemap, `FloorLayer` on `DungeonTerrain`: `MinedFloorLayer` and
+`ClaimedStoneLayer` are referenced by nothing but their own GameObjects, dead in
+the same way `ClaimableLayer` is. And `floorTilemap` is painted once, by
+`PaintTerrain`'s `SetTilesBlock`; mining never repaints it, so a cell cleared at
+arm time stays cleared however much the player digs beside it later, and the
+load path repaints the disc before this runs again.
+
 A second defect from the same arc: `ArmRimFacade` cleared the dungeon floor tile
 on every outer-ring cell, while the surface pass declined to paint grass over
 river, road and mined cells. Two predicates for one decision, and they

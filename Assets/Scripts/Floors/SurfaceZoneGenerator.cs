@@ -61,6 +61,20 @@ public class SurfaceZoneGenerator : MonoBehaviour
              "shadow falling on the grass.")]
     [SerializeField] private Color rimGloomColor = new Color(0.10f, 0.11f, 0.16f, 1f);
 
+    [Header("Entrance mouth")]
+    [Tooltip("How far the forest floor carries INSIDE the disc from the cave mouth, so " +
+             "the entrance reads as a hole the forest runs into rather than as a doorway " +
+             "where one ground type stops and another starts. Only MINED cells take it, " +
+             "which confines it to the channel floor and leaves the flanking rock alone. " +
+             "0 disables.")]
+    [SerializeField, Min(0)] private int mouthGrassCells = 4;
+    [Tooltip("How many of those cells are the thinning edge. Grass is solid up to " +
+             "(Mouth Grass Cells - this), then drops out by chance across the rest. A " +
+             "hard radius reads as a stamp; the roll uses the same stable hash as the " +
+             "scatter, so the ragged edge is identical on every reload with nothing " +
+             "serialised. Clamped below Mouth Grass Cells.")]
+    [SerializeField, Min(0)] private int mouthGrassFeather = 2;
+
     [Header("City gate ids")]
     [Tooltip("Arrival SpawnPoint id inside the City scene.")]
     [SerializeField] private string citySpawnId = "FromForestRoad";
@@ -73,6 +87,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
     private bool armed;
     private Vector3Int center;
     private int rim;
+    private Vector3Int mouthCell;   // cave mouth on the rim; the mouth grass measures from it
     private Vector2 outward;
     private float roadBearingDeg;
     private int baseSeed;
@@ -167,6 +182,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
         // call site here replaces two that could drift apart.
         if (!floor.Terrain.ArmRimFacade()) return;
         Vector3Int mouth = cave.mouthCell.ToVector3Int();
+        mouthCell = mouth;
         roadBearingDeg = cave.angleDegrees;
         float rad = roadBearingDeg * Mathf.Deg2Rad;
         outward = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
@@ -201,6 +217,7 @@ public class SurfaceZoneGenerator : MonoBehaviour
         PaintFogRing(0, paintedDepth);
         PaintInnerGloom();
         PaintRimSurfaceGround();
+        PaintMouthGrass();
         revealedDepth = targetDepth = paintedDepth;   // no creep on load
         armed = true;
         MarkBoundsDirty();
@@ -791,6 +808,66 @@ public class SurfaceZoneGenerator : MonoBehaviour
     /// brighter than the grass they touch, since gloom is only painted outside the
     /// disc and these cells are inside it.
     /// </summary>
+    /// <summary>
+    /// Carries the forest floor a few cells inside the disc at the cave mouth.
+    ///
+    /// Only MINED cells qualify. That one test does all the shaping: the channel
+    /// is the mined part, so the grass follows it in and the rock flanking it is
+    /// untouched without any geometry to get wrong. The outer cells drop out by a
+    /// stable hash rather than stopping at a radius, because a clean arc across a
+    /// cave mouth reads as a stamp.
+    ///
+    /// Clearing the dungeon floor tile is safe and permanent: floorTilemap is
+    /// painted once by PaintTerrain's SetTilesBlock and mining never repaints it,
+    /// so a cell cleared here stays cleared even if the player digs alongside it
+    /// later. On load PaintTerrain repaints the disc and this runs again after.
+    ///
+    /// Lighting is deliberately NOT touched. These cells are mined, so they sit in
+    /// DungeonShadow's light map and the grass darkens going in -- which is what a
+    /// cave mouth should do, and it composes with the feather, so the grass thins
+    /// out as the light drops instead of fighting it.
+    /// </summary>
+    private void PaintMouthGrass()
+    {
+        if (mouthGrassCells <= 0) return;
+        var terr = floor != null ? floor.Terrain : null;
+        if (terr == null || surfaceTilemap == null || profile == null || profile.grassTile == null) return;
+
+        var infl = floor.TileInfluence;
+        var feats = floor.FeatureGenerator;
+        if (infl == null) return;
+
+        // A feather at or past the full reach would leave no solid core at all.
+        int feather = Mathf.Clamp(mouthGrassFeather, 0, Mathf.Max(0, mouthGrassCells - 1));
+        int solid = mouthGrassCells - feather;
+        var dungeonFloor = terr.FloorTilemap;
+
+        for (int dy = -mouthGrassCells; dy <= mouthGrassCells; dy++)
+            for (int dx = -mouthGrassCells; dx <= mouthGrassCells; dx++)
+            {
+                var cell = new Vector3Int(mouthCell.x + dx, mouthCell.y + dy, 0);
+                if (!terr.IsWithinBounds(cell)) continue;   // outside is already forest
+                if (!infl.IsTileMined(cell)) continue;      // the channel, and only the channel
+
+                if (feats != null)
+                {
+                    FeatureType f = feats.GetFeatureAt(cell);
+                    if (f == FeatureType.River || f == FeatureType.Road) continue;
+                }
+
+                float d = Mathf.Sqrt((float)(dx * dx + dy * dy));
+                if (d > mouthGrassCells) continue;
+                if (d > solid && feather > 0)
+                {
+                    float t = Mathf.Clamp01((d - solid) / feather);
+                    if (Hash01(cell.x, cell.y, baseSeed ^ 0x4F0E57) < t) continue;
+                }
+
+                if (dungeonFloor != null) dungeonFloor.SetTile(cell, null);
+                surfaceTilemap.SetTile(cell, profile.grassTile);
+            }
+    }
+
     private void PaintRimSurfaceGround()
     {
         var terr = floor != null ? floor.Terrain : null;
