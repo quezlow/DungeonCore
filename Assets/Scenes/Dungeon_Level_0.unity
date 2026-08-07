@@ -15375,7 +15375,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9984044
+  m_Size: 0.99954104
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -48595,7 +48595,7 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: 74c9413d65178c945a1614ccc2244878, type: 2}
   fogTile: {fileID: 11400000, guid: 4905cbe117df6fa44a43a1cd042a2b34, type: 2}
   fallbackRadius: 100
-  rimFacadeDepth: 5
+  rimFacadeDepth: 4
 --- !u!1 &1640345983
 GameObject:
   m_ObjectHideFlags: 0
@@ -50430,7 +50430,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.0000069363}
+  m_AnchoredPosition: {x: 0, y: -0.000027103764}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57784,7 +57784,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9986312
+  m_Size: 0.99960625
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60370,7 +60370,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.0000069363}
+  m_AnchoredPosition: {x: 0, y: -0.000027103764}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
