@@ -3938,8 +3938,11 @@ art happens to equal `voidBaseColor`. The innermost row is registered in
 `voidCells` so the meeting point is the same function of the same number by
 construction, and the art rows ramp to `rimFacadeInnerLight` above it.
 
-The number for `rimFacadeInnerLight` is an equation, not a taste: art x light
-must equal `voidBaseColor * voidLightFloor`. The first attempt set 0.5 on the
+`rimFacadeInnerLight` ships at 0.10, a little UNDER the derived match, so the
+wall's inner edge reads as a shadowed lip rather than dissolving into the void.
+Undershooting is the forgiving direction; overshooting bright is what produced
+the cliff described below. The derived number is an equation, not a taste:
+art x light must equal `voidBaseColor * voidLightFloor`. The first attempt set 0.5 on the
 reasoning that cliff art is DARKER than `voidBaseColor` and so had to stop short
 of the floor. That is backwards for this art -- the cliff top is grass, measured
 at 98 luma against the void's 15 -- so the correct value is about 0.15, and

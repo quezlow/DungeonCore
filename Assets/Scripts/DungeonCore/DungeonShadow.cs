@@ -118,10 +118,15 @@ public class DungeonShadow : MonoBehaviour
              "against the void's 15, that lands near 0.15. BRIGHTER art needs a LOWER " +
              "number here, not a higher one -- getting that backwards is what left a " +
              "fifty-point cliff in the first build.")]
-    // 0.15, not the 0.5 this shipped with: the scene was corrected but the code
-    // default was left behind, so a NEW floor would have inherited the wrong number
-    // and reproduced the original cliff.
-    [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.15f;
+    // Settled at 0.10 by eye. 0.15 is the DERIVED number -- the light at which the
+    // last art row exactly matches the void, art x light == voidBaseColor x
+    // voidLightFloor -- and the wall reads better a little under it, so its inner
+    // edge is a shadowed lip instead of dissolving into the dark. Undershooting is
+    // the forgiving direction: it was overshooting BRIGHT that produced the
+    // fifty-point cliff this ramp was built to fix. Below about 0.05 the lip starts
+    // reading as a black outline. The scene carries the same value; both move
+    // together so a new floor cannot inherit a stale one.
+    [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.1f;
 
     [Tooltip("Curve of the rim facade ramp. 1 is linear, which spent most of its rows " +
              "in the bright half. Higher drops the light sooner, so the rows nearest " +

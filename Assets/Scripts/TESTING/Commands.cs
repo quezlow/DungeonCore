@@ -937,8 +937,10 @@ public class Commands : MonoBehaviour
         Debug.Log($"[Commands] RIM FACADE floor 0 (radius {terrain.CurrentRadius}, " +
                   $"depth {terrain.RimFacadeDepth}): {band} band cells over {ring.Count} " +
                   $"outer, {solid} capped, {ring.Count - solid} notched (entrance channel " +
-                  $"plus river mouths), {southFacing} draping a face, {fogged} still fogged " +
-                  $"-- want 0. {nubs} nubs demoted -- want 4 at a circular rim.");
+                  $"plus river mouths), {southFacing} draping a face, {fogged} fogged " +
+                  $"(the river cells the rock filter skips -- a few is right, 0 means " +
+                  $"the filter stopped working). {nubs} nubs demoted -- want 4 at a " +
+                  $"circular rim.");
     }
 
     [ContextMenu("Log Holy Ground State")]
