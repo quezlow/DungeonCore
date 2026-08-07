@@ -3878,17 +3878,38 @@ Paving the inner band was considered and dropped -- it needs the inner cells
 excluded from the wall set or their caps draw over it, and the light map already
 owns this problem.
 
-The first version of that ramp fell PAST the void rather than onto it, and the
-reason is worth keeping because it will catch anything else added to
-`baseLight`. There are two paint paths: `voidCells` are painted OPAQUE as
-`voidBaseColor * light`, a lit rock tone; everything else is ALPHA-DARKENED, so
-it renders as its own art multiplied down. Cliff art is darker than
-`voidBaseColor`, so a facade row and a void cell at the same light do NOT match
--- the facade lands below it, and the band read darker than the dark it was
-fading into. Fixed by registering the innermost facade row in `voidCells`, which
-makes the meeting point the same function of the same number by construction,
-and ending the overlay rows at `rimFacadeInnerLight` (0.5) instead of diving to
-`voidLightFloor`.
+That ramp took two goes to get right, and the reason is worth keeping because it
+will catch anything else added to `baseLight`. There are two paint paths:
+`voidCells` are painted OPAQUE as `voidBaseColor * light`, a fixed rock tone;
+everything else is ALPHA-DARKENED, so it renders as its own art multiplied down.
+A facade row and a void cell at the SAME light therefore do not match unless the
+art happens to equal `voidBaseColor`. The innermost row is registered in
+`voidCells` so the meeting point is the same function of the same number by
+construction, and the art rows ramp to `rimFacadeInnerLight` above it.
+
+The number for `rimFacadeInnerLight` is an equation, not a taste: art x light
+must equal `voidBaseColor * voidLightFloor`. The first attempt set 0.5 on the
+reasoning that cliff art is DARKER than `voidBaseColor` and so had to stop short
+of the floor. That is backwards for this art -- the cliff top is grass, measured
+at 98 luma against the void's 15 -- so the correct value is about 0.15, and
+brighter art needs a LOWER number here rather than a higher one. Combined with a
+span that divided by the void row as though it were a ramp step, so the inner
+light was never reached by anything, the shipped ramp ran 98, 82, 65, then 15:
+a fifty-point drop across one cell that no value on the GRASS side could have
+touched, because the discontinuity was entirely on the void side.
+
+The bedrock clamp came off at the same time. It existed so a band cell could not
+spill past the ring and render ordinary stone mid-cliff, but it was redundant --
+the wall family resolves by terrain, so a non-bedrock cell falls back to the
+stone path unaided -- and it capped the band at the ring's 4-6 cells when the
+ramp wants more rows than that. Depth 6 with the span fixed gives 98, 77, 56,
+36, 15, void 15.
+
+One further defect from registering a row as void: `rimLayers` is built from
+geometry alone, so it contains the river cells where a river crosses the rim,
+and the opaque fill landed on open water as a hard black block at the river
+mouth. Only cells that are solid ROCK are void-registered; river, road and mined
+cells keep the alpha overlay and darken into the cave instead.
 
 **The forest floor carries into the mouth.** The channel became dungeon ground
 the instant it crossed the disc boundary, so the entrance read as a doorway

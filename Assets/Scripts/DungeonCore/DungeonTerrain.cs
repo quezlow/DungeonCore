@@ -285,7 +285,7 @@ public class DungeonTerrain : MonoBehaviour
         var types = myFloor.TerrainTypeMap;
         if (types == null || !types.IsGenerated) return false;
 
-        BuildRimFacade(types);
+        BuildRimFacade();
 
         // Fog off across the band and the nubs. One-way, and a fixed-radius ring
         // carries no layout: the only information in it is where the ring BREAKS,
@@ -312,7 +312,10 @@ public class DungeonTerrain : MonoBehaviour
         return true;
     }
 
-    private void BuildRimFacade(TerrainTypeMap types)
+    // No TerrainTypeMap parameter any more: the bedrock clamp was the only thing
+    // that used it. ArmRimFacade still gates on the map having generated, which is
+    // what keeps this off the too-early path.
+    private void BuildRimFacade()
     {
         rimNubs = new HashSet<Vector3Int>();
         rimLayers = new Dictionary<Vector3Int, int>();
@@ -364,7 +367,15 @@ public class DungeonTerrain : MonoBehaviour
                 {
                     var n = frontier[i] + Card4[d];
                     if (!InFacadeSpace(n) || rimLayers.ContainsKey(n)) continue;
-                    if (!types.IsBedrock(n)) continue;
+                    // No bedrock clamp. It was here so a band cell could not spill past
+                    // the ring and render ordinary stone mid-cliff, but that guard was
+                    // redundant -- the wall family resolves by TERRAIN, so a
+                    // non-bedrock band cell already falls back to the stone path by
+                    // itself. Meanwhile the clamp capped the band at the ring's 4-6
+                    // cells, and the shadow ramp needs MORE rows than that to carry the
+                    // lit rim down to the void without a step. The rows deep enough to
+                    // be affected sit at light 0.36 and below, where texture cannot be
+                    // read anyway.
                     rimLayers[n] = layer;
                     next.Add(n);
                 }

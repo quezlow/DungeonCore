@@ -110,13 +110,14 @@ public class DungeonShadow : MonoBehaviour
              "of stopping against it in one cell. 1 is full daylight.")]
     [SerializeField, Range(0f, 1f)] private float rimFacadeLight = 1f;
 
-    [Tooltip("Light on the LAST overlay row of the rim facade -- the row before the " +
-             "innermost, which is painted as void. Deliberately well above " +
-             "voidLightFloor: these rows carry real cliff art and are ALPHA-DARKENED, " +
-             "so art x light lands below the void's opaque voidBaseColor x light at " +
-             "the same number. Ramping them to the floor made the band read DARKER " +
-             "than the void it was fading into. Raise it if the band still reads dark, " +
-             "lower it if the fade looks abrupt.")]
+    [Tooltip("Light on the LAST art row of the rim facade -- the row before the " +
+             "innermost, which is painted as void. It must satisfy one equation, not " +
+             "taste: art x light has to equal the void's voidBaseColor x voidLightFloor, " +
+             "or the last art row and the void beside it are different brightnesses and " +
+             "the fade ends in a step. With grass-topped cliff art measured at 98 luma " +
+             "against the void's 15, that lands near 0.15. BRIGHTER art needs a LOWER " +
+             "number here, not a higher one -- getting that backwards is what left a " +
+             "fifty-point cliff in the first build.")]
     [SerializeField, Range(0f, 1f)] private float rimFacadeInnerLight = 0.5f;
     [Tooltip("How much of the core type's colour bleeds into deep rock. 0 disables.")]
     [SerializeField, Range(0f, 1f)] private float coreHueStrength = 0f;
@@ -334,26 +335,42 @@ public class DungeonShadow : MonoBehaviour
         if (rimTerr != null && rimTerr.RimFacadeLayers.Count > 0)
         {
             int rimLast = Mathf.Max(0, rimTerr.RimFacadeDepth - 1);
-            int rimSpan = Mathf.Max(1, rimLast);
+            // Span the ART rows only. Dividing by rimLast counted the void row as a
+            // ramp step, so rimFacadeInnerLight was never reached by anything: at
+            // depth 4 the last art row landed on 0.667 instead of 0.5 and then fell
+            // straight to the void.
+            int rimArtSpan = Mathf.Max(1, rimLast - 1);
+            var rimFeats = floor != null ? floor.FeatureGenerator : null;
+
             foreach (var rimCell in rimTerr.RimFacadeLayers)
             {
                 if (influence.IsTileMined(rimCell.Key)) continue;
 
-                // The INNERMOST row is registered as void, so step 5 paints it with
-                // VoidColorFor at the void's own level rather than alpha-darkening
-                // the cliff art. That makes the meeting point exact by construction:
-                // the two are the same function of the same number. Ramping the art
-                // rows down to voidLightFloor instead made the band read darker than
-                // the void, because art x light sits below voidBaseColor x light.
+                // Only solid ROCK may become void. rimLayers is built from geometry
+                // alone, so it contains the river cells where a river crosses the
+                // rim -- and registering those as void painted an opaque black block
+                // straight over open water at the river mouth. Water and road keep
+                // the alpha overlay instead, so they darken into the cave.
+                bool rimRock = true;
+                if (rimFeats != null)
+                {
+                    FeatureType rimF = rimFeats.GetFeatureAt(rimCell.Key);
+                    if (rimF == FeatureType.River || rimF == FeatureType.Road) rimRock = false;
+                }
+
+                // The innermost ROCK row is registered as void, so step 5 paints it
+                // through VoidColorFor at the void's own level. That makes the
+                // meeting point exact by construction -- the same function of the
+                // same number -- rather than something to tune by eye.
                 if (rimCell.Value >= rimLast)
                 {
                     baseLight[rimCell.Key] = voidLightFloor;
                     baseTint[rimCell.Key] = Color.black;
-                    voidCells.Add(rimCell.Key);
+                    if (rimRock) voidCells.Add(rimCell.Key);
                     continue;
                 }
 
-                float rt = 1f - Mathf.Clamp01(rimCell.Value / (float)rimSpan);
+                float rt = 1f - Mathf.Clamp01(rimCell.Value / (float)rimArtSpan);
                 baseLight[rimCell.Key] = Mathf.Lerp(rimFacadeInnerLight, rimFacadeLight, rt);
                 baseTint[rimCell.Key] = Color.black;
             }
