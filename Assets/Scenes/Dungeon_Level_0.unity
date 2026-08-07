@@ -1029,6 +1029,10 @@ MonoBehaviour:
   fogFadeCells: 16
   fogSolidMarginCells: 60
   fogColor: {r: 0.72, g: 0.76, b: 0.84, a: 1}
+  rimGloomCells: 8
+  rimGloomMaxAlpha: 0.45
+  rimGloomFalloff: 2
+  rimGloomColor: {r: 0.1, g: 0.11, b: 0.16, a: 1}
   citySpawnId: FromForestRoad
   returnSpawnId: FromCity
 --- !u!114 &34309512
@@ -10513,6 +10517,9 @@ MonoBehaviour:
   autoScrollOnAdd: 1
   criticalSfxKey: 
   criticalRaisesBanner: 1
+  criticalFlashColour: {r: 0.75, g: 0.05, b: 0.05, a: 1}
+  criticalFlashSeconds: 0.45
+  criticalLoudCooldown: 3
   tickerVisibleCount: 12
   historyCapacity: 200
   historyPersistCount: 100
@@ -15368,7 +15375,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9988487
+  m_Size: 0.9984044
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -21106,6 +21113,8 @@ MonoBehaviour:
   mossTintStrength: 0.15
   voidLightFloor: 0.22
   voidFalloffCells: 1
+  rimFacadeLight: 1
+  rimFacadeInnerLight: 0.5
   coreHueStrength: 0
   voidOpaqueFill: 1
   voidBaseColor: {r: 0.26666668, g: 0.26666668, b: 0.26666668, a: 1}
@@ -48586,6 +48595,7 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: 74c9413d65178c945a1614ccc2244878, type: 2}
   fogTile: {fileID: 11400000, guid: 4905cbe117df6fa44a43a1cd042a2b34, type: 2}
   fallbackRadius: 100
+  rimFacadeDepth: 5
 --- !u!1 &1640345983
 GameObject:
   m_ObjectHideFlags: 0
@@ -50420,7 +50430,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000012721371}
+  m_AnchoredPosition: {x: 0, y: -0.0000069363}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57774,7 +57784,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99901235
+  m_Size: 0.9986312
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60360,7 +60370,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000012721371}
+  m_AnchoredPosition: {x: 0, y: -0.0000069363}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
