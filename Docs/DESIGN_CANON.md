@@ -3510,11 +3510,18 @@ ROUTED through it -- polyline, caravan graph, walkability -- but never drawn
 there. A site with no lane has no through-route, and a road reaches its door and
 stops, which is what the sealed vaults want.
 
-**Three cells wide minimum, five to match a five-wide gate.** Measured: a lane
-one or two wide has ZERO walkable cells in half the orientations, because a
-floor cell is walkable only when y+1 and y+2 are also floor. One wide happens to
-work north-south and fails the moment the plan rotates -- correct in the
-orientation it was drawn in, which is the worst kind of fault.
+**Three cells wide WHERE THE LANE CUTS MASONRY, five to match a five-wide
+gate.** Width is an authoring rule of thumb for a corridor, not the rule: across
+open floor a narrow lane is fine, because the open ground either side supplies
+the drape clearance the corridor would have had to supply itself. Corrected
+here because the earlier wording read as a flat minimum and the validator does
+not measure width at all.
+
+Measured, for the corridor case: a lane one or two wide has ZERO walkable cells
+in half the orientations, because a floor cell is walkable only when y+1 and y+2
+are also floor. One wide happens to work north-south and fails the moment the
+plan rotates -- correct in the orientation it was drawn in, which is the worst
+kind of fault.
 
 **The validator checks it by PATHFIND, not by width.** Width is a proxy and
 proxies drift from what they stand for; the question that matters is whether a
@@ -3530,11 +3537,86 @@ with nothing opposite it WARNS, because a road entering north and leaving east
 turns ninety degrees and orphans everything behind it. A lane narrower than the
 door it meets WARNS -- legal, but the street pinches at the gate.
 
-**Not yet built:** the routing itself. A road meeting a door-bearing site will
-take waypoints along the lane and leave by the most-opposite door the lane
-reaches, and the site-cell subtraction goes away. That waits until there are
-lanes authored to run it against, rather than being written against imagined
-geometry.
+### Lane routing, measured before it was written (DECIDED)
+
+The routing itself is designed and simulated but NOT shipped. `Tools/sim_lane_routing.py`
+is the headless check, and it is recorded here because it settled four questions
+that would each have cost a test cycle, and killed two designs that read fine on
+paper.
+
+**A road reaches a gate because the SITE moves, not the road.** `@anchor_on: door`
+shifts a plan by -doorMid so its gate lands on the anchor cell, and refuses the
+anchor unless the road's local heading is within `DoorFacingCos` of the gate's
+normal. That is shipped machinery -- `PlaceDeadCore` has used it since the vault
+-- and it is what makes routing tractable at all. Without it a village's gate
+sits thirty-seven cells from its anchor, and a road at any angle has drifted
+past it by then: measured, a 37-cell reach drifts 12 cells at 18 degrees and 21
+at 30.
+
+**One gate is exact and the other is not.** Anchoring fixes ONE of a laned site's
+gates onto the carriageway. The far gate is at a vector the plan fixes, and the
+road's own heading over that span is a different vector, so the road must bend to
+reach it. Both approaches are therefore sized from their OWN miss. Sizing both
+from the exit's miss put the whole correction on an ingress budgeted for nothing
+and bent it 57 degrees at the gate mouth.
+
+**Placement is undirected; routing is directed.** A road is travelled both ways,
+so the heading test uses an absolute dot product and a gate facing east is served
+by a road heading either way. A polyline runs from one end to the other, so the
+rewrite must be laid down in that order. Conflating the two produced 180-degree
+doublebacks on half of all placements: the anchored gate was used as the entry
+regardless of which side of the site it sat on.
+
+**A lane is entered SQUARE, from the middle of the gate.** Any threshold cell
+satisfies the validator, which only asks whether a route exists. Routing has to
+lay a polyline, and a start offset sideways along the run makes the segment from
+the gate to the first waypoint DIAGONAL -- a fixed 26.6-degree corner just inside
+every gate that no amount of approach budget could touch, because it was never in
+the approach. Where the gate's middle is buried, the router REFUSES rather than
+falling back to a sideways cell: the fallback is what put a re-drawn line through
+the GallowsCourt gallows platform.
+
+**The corner at the gate mouth IS the placement cone,** and no geometry buys it
+down. A quadratic Bezier was tried, leaving the gate along the wall's normal and
+arriving along the road's heading; it lost at every setting -- 41.6 degrees
+against 39.4 for a plain straight segment, two extra waypoints a site, and no
+sample count or approach length recovered the difference. The control point sits
+where the tangents meet, which on a shallow miss is far off, so the curve swings
+wide. Do not re-add it without re-running the sim.
+
+A rasterised road presents only sixteen bearings, at 0, 11.31, 18.43 and 45
+degrees off the nearest axis, four of each. The cone therefore has four real
+settings and nothing lives between them:
+
+| cone | bearings usable | worst elbow |
+| ---- | --------------- | ----------- |
+| 45 degrees | 16 of 16 | 45 |
+| **30 degrees (kept)** | **12 of 16** | **30** |
+| 15 degrees | 8 of 16 | 11 |
+
+**Thirty is kept.** Fifteen buys the elbow down to 11 but throws out every 18-degree
+road, a third of every anchor a laned site can use, and floor 3 must seat a
+village, an outpost and five or six holy sites at `minSpacing` 90. A missed holy
+minimum is a real bug; a 30-degree kink at a town gate is a road going into a
+town. `MIN_APPROACH` is 48, two meander steps -- 24 gives a worst corner of 39.4
+degrees, 48 gives 36.7, and past that what is left is the cone.
+
+Over 8880 placements -- every laned plan, sixteen bearings, every rotation the
+cone allows, the anchor jittered across the carriageway width -- the re-derived
+centreline touches masonry ZERO times, no approach clips a building, no
+centreline cell is drape-blocked anywhere but a gate threshold, and the worst
+polyline runs to 20 waypoints. Three plans fall back at some rotations and the
+sim names each: `SealedCrypt_TheCoffinRow` and `HollowSanctum_TheKneelingHall`
+have gate middles buried under the drape, and `SunkenPlaza_TheGallowsCourt`
+cannot route one axis of its roundabout.
+
+**Not yet built:** `SiteData.laneCells`, footprint protection in
+`RebuildRoadCells`, `EmitDoorRuns` on the general placement path, the anchorable
+run LIST in `FromAuthored` (the first-run-only rule is right for a vault's single
+door and wrong for a crossroads, which can otherwise only be entered from the
+north), `@anchor_on: door` honoured in `Fill`, and the `GenerateSites` restructure
+that writes site data before rerouting so both the generate and load paths read
+one source of truth.
 
 ### The preview window learns the markers (SHIPPED)
 
