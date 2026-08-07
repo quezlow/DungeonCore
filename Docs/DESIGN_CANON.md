@@ -3536,6 +3536,49 @@ reaches, and the site-cell subtraction goes away. That waits until there are
 lanes authored to run it against, rather than being written against imagined
 geometry.
 
+### The preview window learns the markers (SHIPPED)
+
+`Dungeon Core / Site Plan Preview` drew floor and masonry and nothing else, so
+the three glyphs an author most needs to see while drawing them -- `'+'`, `'~'`
+and `'X'` -- rendered as ordinary floor and ordinary stone. The window exists to
+show what the grid cannot, and the markers were the part of the grid it was not
+showing.
+
+**Markers are drawn in HUE, never in VALUE.** Painting a marker as one flat
+colour would have hidden the three faults the window exists for underneath it,
+and a drape-blocked lane cell would then have looked exactly like a working one.
+So every marker carries a PAIR: bright for the passing case, dark for the
+failing one. The walkable/drape-blocked read and the drawn/never-drawn read
+survive the annotation rather than being painted over by it. The heart is
+magenta rather than a second red, because ColWallDead is already a loud red on
+the cell beside it and two reds meaning two different things at three pixels a
+cell is a guess, not a legend.
+
+The LANE pair is the one that earns its keep. A lane cell buried under the drape
+is a road that cannot thread the building, and it is orientation-dependent --
+the drape is always in world +Y, so a lane can be clear on one quarter turn and
+sealed on the next. The rotation slider therefore matters more on a laned plan
+than on any other, and the window now says so in a HelpBox rather than leaving
+it to be found by counting pixels.
+
+Three counters ride along, because a number carries at three pixels a cell where
+a colour does not: lane cells and how many are drape-blocked, door cells grouped
+into runs, and **how many runs have no outward normal**. That last is reported
+because a zero normal is the silent failure that turned door anchoring into a
+no-op -- nothing throws, nothing looks wrong, and the plan simply places on its
+centre like every other site. It is read from the UNTRANSFORMED plan: a normal
+rotates with the plan, so a zero normal is zero in all eight orientations.
+
+Platform `'='` and stair `'^'` are deliberately NOT coloured. They are floor
+markers like the others and the same pair rule would fit them unchanged; they
+are left out because nothing has cost a round on them yet and the legend is
+already three rows. Adding them is two colours and two branches when it does.
+
+**This entry reverses the "not in this pass" note below.** That note argued the
+validator's per-run report was what annotation needed. It was right about the
+report and wrong about the window: a report tells you a plan is wrong, and the
+window tells you WHERE.
+
 ### The door rule, rebuilt on declaration (SHIPPED)
 
 The first door-rule gate was retired for failing twelve shipped, working plans.
@@ -3580,8 +3623,8 @@ judgement, and guessing at it is precisely what killed the first gate.
 
 Not in this pass: tunnel termination -- that a tunnel must meet a door and there
 either end or continue out a separate one -- which waits until the glyph has
-been annotated and there is something to check against. Nor door colouring in
-`SitePlanPreviewWindow`; the validator's per-run report is what annotation needs.
+been annotated and there is something to check against. The preview window's
+own marker colouring DID land, and has an entry of its own above.
 
 **The ladder.** One wisp murmur on the first CLAIM of hallowed ground, which is
 free and therefore lands while the real decision is still ahead of the player. A
