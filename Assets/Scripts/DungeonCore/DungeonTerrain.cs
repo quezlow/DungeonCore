@@ -290,9 +290,26 @@ public class DungeonTerrain : MonoBehaviour
         // Fog off across the band and the nubs. One-way, and a fixed-radius ring
         // carries no layout: the only information in it is where the ring BREAKS,
         // at the entrance channel and each river mouth, and both notches are wanted.
+        //
+        // ROCK ONLY, the same rule the shadow ramp follows. rimLayers is geometry
+        // alone, so it holds the river cells where a river crosses the rim -- and an
+        // UNDISCOVERED river has no water tile yet, only the dungeon floor tile from
+        // PaintTerrain. Unfogging it put a slab of bare dungeon floor out in the
+        // forest and gave away the river's course before it had been found. Left
+        // fogged it reads as void, and the ordinary river reveal takes over on
+        // discovery.
         if (fogTilemap != null)
         {
-            foreach (var kv in rimLayers) fogTilemap.SetTile(kv.Key, null);
+            var revealFeats = myFloor != null ? myFloor.FeatureGenerator : null;
+            foreach (var kv in rimLayers)
+            {
+                if (revealFeats != null)
+                {
+                    FeatureType rf = revealFeats.GetFeatureAt(kv.Key);
+                    if (rf == FeatureType.River || rf == FeatureType.Road) continue;
+                }
+                fogTilemap.SetTile(kv.Key, null);
+            }
             foreach (var c in rimNubs) fogTilemap.SetTile(c, null);
         }
 

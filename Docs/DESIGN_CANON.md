@@ -3921,6 +3921,15 @@ opaque fill but left them in the ramp, which dragged a heavy gradient across the
 water instead. They are now skipped outright, so water at the rim renders as it
 does anywhere else.
 
+**The facade reveal is rock-only too.** `rimLayers` is geometry alone, so
+`ArmRimFacade` was unfogging the river cells where a river crosses the rim -- and
+an UNDISCOVERED river has no water tile yet, only the dungeon floor tile from
+`PaintTerrain`. The result was a slab of bare dungeon floor sitting out in the
+forest, which also gave away the river's course before it had been found. Rock
+only: undiscovered water stays fogged and reads as void, and the ordinary river
+reveal takes over on discovery. That is now the rule in three places -- reveal,
+ramp and surface ground -- and the wall set gets it free from `IsSolid`.
+
 **A postscript on diagnosis.** Most of the visible ugliness at this edge turned
 out to be a wrong interior-fill slot in `CaveWallSheetLayout`, not the light
 ramp -- and the ramp was genuinely broken as well, so fixing either alone

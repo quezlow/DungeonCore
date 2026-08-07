@@ -888,6 +888,52 @@ public class Commands : MonoBehaviour
 
         int band = terrain.RimFacadeLayers.Count;
         int nubs = terrain.RimNubCells.Count;
+
+        // Per-layer light readout. A screenshot cannot tell "the ramp never reached
+        // this row" from "the ramp reached it and something overwrote it", and those
+        // point at completely different places, so print both.
+        var shadow = FindAnyObjectByType<DungeonShadow>();
+        if (shadow == null) Debug.LogWarning("[Commands] No DungeonShadow; ramp readout skipped.");
+        else
+        {
+            int depth = Mathf.Max(1, terrain.RimFacadeDepth);
+            var count = new int[depth];
+            var lit = new int[depth];
+            var voids = new int[depth];
+            var lo = new float[depth];
+            var hi = new float[depth];
+            var sum = new float[depth];
+            for (int i = 0; i < depth; i++) { lo[i] = 1f; hi[i] = 0f; }
+
+            foreach (var kv in terrain.RimFacadeLayers)
+            {
+                int L = Mathf.Clamp(kv.Value, 0, depth - 1);
+                count[L]++;
+                if (shadow.IsVoidCell(kv.Key)) voids[L]++;
+                if (!shadow.TryGetBaseLight(kv.Key, out float light)) continue;
+                lit[L]++;
+                sum[L] += light;
+                if (light < lo[L]) lo[L] = light;
+                if (light > hi[L]) hi[L] = light;
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("[Commands] RIM FACADE ramp, per layer (0 = outermost):");
+            for (int L = 0; L < depth; L++)
+            {
+                if (lit[L] == 0)
+                {
+                    sb.AppendLine($"  layer {L}: {count[L],5} cells, NONE lit -- the ramp never reached this row.");
+                    continue;
+                }
+                sb.AppendLine($"  layer {L}: {count[L],5} cells, {lit[L],5} lit, " +
+                              $"light min {lo[L]:F3} mean {sum[L] / lit[L]:F3} max {hi[L]:F3}, " +
+                              $"{voids[L]} void");
+            }
+            sb.AppendLine("  expected at depth 6 / falloff 2 / inner 0.15: " +
+                          "1.000, 0.628, 0.363, 0.203, 0.150, then VOID.");
+            Debug.Log(sb.ToString());
+        }
         Debug.Log($"[Commands] RIM FACADE floor 0 (radius {terrain.CurrentRadius}, " +
                   $"depth {terrain.RimFacadeDepth}): {band} band cells over {ring.Count} " +
                   $"outer, {solid} capped, {ring.Count - solid} notched (entrance channel " +

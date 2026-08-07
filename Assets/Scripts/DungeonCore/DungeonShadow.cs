@@ -567,6 +567,16 @@ public class DungeonShadow : MonoBehaviour
 
     /// <summary>Shadow colour for a cell: opaque paint for void cells (when
     /// enabled), the classic alpha-darkening overlay for everything else.</summary>
+    /// <summary>The light this cell was last baked with, for diagnostics. Answers
+    /// false when the cell never entered the light map at all, which is a different
+    /// failure from entering it at the wrong value and worth telling apart.</summary>
+    public bool TryGetBaseLight(Vector3Int cell, out float light)
+        => baseLight.TryGetValue(cell, out light);
+
+    /// <summary>Whether this cell is painted through VoidColorFor rather than as an
+    /// alpha overlay on its own art. For diagnostics.</summary>
+    public bool IsVoidCell(Vector3Int cell) => voidCells.Contains(cell);
+
     private Color ShadeFor(Vector3Int cell, float light)
         => voidOpaqueFill && voidCells.Contains(cell)
             ? VoidColorFor(light)
