@@ -589,7 +589,7 @@ MonoBehaviour:
     - cell: {x: -1, y: -1}
       overrideSprite: {fileID: -1698463417, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
     - cell: {x: -1, y: -1}
-      overrideSprite: {fileID: -308428128, guid: dbfb3ec652bc935419bb330df5753bf8, type: 3}
+      overrideSprite: {fileID: 8765297898444631108, guid: 563d776e19595554b9d270920c2d7a8d, type: 3}
     innerSE:
       cell: {x: -1, y: -1}
       overrideSprite: {fileID: -2116788901, guid: 6b02ca59da9c10d48b21047c3802917a, type: 3}
