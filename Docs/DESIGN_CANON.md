@@ -4100,6 +4100,50 @@ feeds. The list is now always empty, so the field is vestigial rather than wrong
 and removing a serialised field is a save-shape change that belongs in its own
 pass rather than riding this one.
 
+### Stage 2e: a lane is a declaration, and roads keep clear (SHIPPED)
+
+Two faults found on the first live floor after 2d, both visible in one
+screenshot: a road drawn straight down the middle of a dwarven village, its
+masonry mined away along the way, and not one gate connected.
+
+**A LANE IS A DECLARATION THAT THE ROAD COMES THROUGH.** `FromAuthored` filled
+`doorAnchors` only `if (authored.anchorOnDoor)`, and exactly four plans in the
+set carry `@anchor_on: door` -- the three `DeadCoreVault` plans and
+`GuardPost_TheColdWatch`. **Not one laned plan does.** So every village, and the
+outpost, reached `TryDoorAnchor` with an empty list, returned from its first
+line, never seated a gate against the chord and never split anything. The vault
+looked correct for the same reason inverted: it was the only archetype the
+directive ever reached. A plan that drew a `~` has said where it expects a road,
+which is the statement `@anchor_on: door` makes, made in the tilemap instead of
+the header -- so a lane now fills `doorAnchors` too. Only the header still makes
+meeting a road MANDATORY, carried on `LocalPlan.requireDoorAnchor`: a laned plan
+that finds no chord is placed unthreaded, a plan that declared the directive and
+finds no chord is refused.
+
+**Roads keep clear of what they cannot enter.** Nothing subtracts a carriageway
+out of a site any more, and that removed the thing that used to hide this: a
+chord crossing a site does not quietly cost it cells, it MINES the masonry it
+crosses and leaves the site claiming walls that are not there. `MarkNaturalFloor`
+puts every road cell in `minedTiles`, and a mined cell cannot render as masonry.
+`FootprintClearsChords` now refuses any placement whose footprint meets a chord,
+with one exemption: the chord the site itself answered to. That one is the point
+-- a laned site splits it at its own gates, and an unlaned doored one is meant to
+have the road reach its door. Any other chord through the building was asked for
+by nothing.
+
+Measured on the bounding circle, conservative in the safe direction: it can
+refuse a placement that would have fitted, never accept one that would not.
+Sampling in-band positions against 20 planned networks per floor, the worst case
+is the largest village on floor 2 at 54 per cent of positions clear, and
+everything else falls between 85 and 100 -- affordable against 12 to 24 attempts
+per site, and 240 for the guarantees.
+
+**Consequence for the five Free-anchored laned plans.** `ChurchSeal_TheNineChains`,
+`BlessedSpring_TheWeepingFont` and `SealedCrypt_TheCoffinRow` anchor `Free` and so
+answer to no chord; they are now placed unthreaded and kept clear of every road,
+which is what their decorative lanes have always effectively meant. Changing
+their `@anchor:` is still an open authoring call, not a code one.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

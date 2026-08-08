@@ -1021,7 +1021,31 @@ public static class AncientSiteBuilder
         // the choice moved to TryDoorAnchor, which is where the heading lives.
         // A run with a zero normal is skipped rather than kept: it faces its own
         // interior, and anchoring on it would point the building inward.
-        if (authored.anchorOnDoor)
+        // A LANE IS A DECLARATION THAT THE ROAD COMES THROUGH.
+        //
+        // This used to read `if (authored.anchorOnDoor)`, and only four plans in
+        // the whole set carry `@anchor_on: door` -- the three DeadCoreVault
+        // plans and GuardPost_TheColdWatch. Not one LANED plan does. So every
+        // village and the outpost arrived at TryDoorAnchor with an empty
+        // doorAnchors list, returned from its first line, never seated a gate on
+        // the chord and never split anything: the road was drawn straight
+        // through the middle of the hold, mining its masonry on the way. The
+        // vault looked right for the same reason in reverse -- it was the only
+        // archetype the directive reached.
+        //
+        // A plan that drew a '~' has said where it expects a road. That is the
+        // same statement `@anchor_on: door` makes, made in the tilemap instead
+        // of the header, and it is honoured here.
+        foreach (var c in authored.lane) p.lane.Add(c);
+        foreach (var c in authored.door) p.door.Add(c);
+
+        // EVERY run with a usable outward normal, not merely the first. Which
+        // one a placement uses is decided against the chord's direction, and
+        // this function still has no direction and should not learn about one --
+        // the choice lives in TryDoorAnchor. A run with a zero normal is skipped
+        // rather than kept: it faces its own interior, and anchoring on it would
+        // point the building inward.
+        if (authored.anchorOnDoor || p.lane.Count > 0)
         {
             foreach (var run in authored.doorRuns)
             {
@@ -1030,8 +1054,11 @@ public static class AncientSiteBuilder
             }
         }
 
-        foreach (var c in authored.lane) p.lane.Add(c);
-        foreach (var c in authored.door) p.door.Add(c);
+        // Only the HEADER makes it mandatory. A laned plan that finds no chord
+        // is placed unthreaded and keeps clear of the roads instead; a plan that
+        // declared @anchor_on: door and finds no chord is refused, because that
+        // directive is the whole of what it asked for.
+        p.requireDoorAnchor = authored.anchorOnDoor;
 
         return p.floor.Count == 0 ? null : p;
     }
@@ -1580,6 +1607,10 @@ public static class AncientSiteBuilder
         /// threshold and every route refuses at its own front door.</summary>
         public readonly HashSet<Vector2Int> door = new HashSet<Vector2Int>();
 
+        /// <summary>Set by `@anchor_on: door`. A plan with a lane also fills
+        /// doorAnchors, but only this makes meeting a road MANDATORY.</summary>
+        public bool requireDoorAnchor;
+
         public void Floor(int x0, int y0, int w, int h)
         {
             for (int x = x0; x < x0 + w; x++)
@@ -2093,7 +2124,17 @@ public static class AncientSiteBuilder
         // definitely assigned before every return, and there is no compiler in
         // the delivery container to say so.
         seat = null;
-        if (shape == null || shape.doorAnchors.Count == 0) return true;
+        if (shape == null) return true;
+
+        // KEEP CLEAR, for anything that cannot take a road through it. Nothing
+        // subtracts a carriageway out of a site any more, so a chord crossing a
+        // site no longer costs the site its cells quietly -- it MINES the
+        // masonry it crosses and leaves the site claiming walls that are not
+        // there. A site that cannot be threaded must therefore not be crossed at
+        // all.
+        if (shape.doorAnchors.Count == 0)
+            return FootprintClearsChords(shape, placeAt, rot, mirror,
+                                         roadPlan, chordIndex);
 
         // THE HEADING IS EXACT NOW. It is the chord's own direction, not a least
         // squares fit over nearby cells, so it resolves at every anchor a chord
@@ -2101,8 +2142,18 @@ public static class AncientSiteBuilder
         // TryRoadHeading and the undecimated centreline copy come out.
         if (!ChordDirection(roadPlan, chordIndex, out var heading))
         {
-            headingFault = true;
-            return false;
+            // No chord to answer to. A plan that DECLARED @anchor_on: door is
+            // refused -- that directive is the whole of what it asked for. A
+            // plan that merely drew a lane is placed where it is and keeps clear
+            // of the roads instead, which is what the five Free-anchored laned
+            // plans have always effectively been.
+            if (shape.requireDoorAnchor)
+            {
+                headingFault = true;
+                return false;
+            }
+            return FootprintClearsChords(shape, placeAt, rot, mirror,
+                                         roadPlan, chordIndex);
         }
 
         // ROTATION IS CHOSEN, NOT ROLLED, and the cone is gone with it.
@@ -2214,6 +2265,13 @@ public static class AncientSiteBuilder
             seat.hasBothGates = seat.laneCells.Count >= 2;
         }
 
+        // And clear of every OTHER chord. The one this site answered to is
+        // exempt: a laned site splits it at its own gates, and an unlaned doored
+        // one is meant to have the road reach its door. A second chord crossing
+        // the building was never asked for by anything.
+        if (!FootprintClearsChords(shape, placeAt, bestRot, mirror,
+                                   roadPlan, chordIndex)) return false;
+
         return true;
     }
 
@@ -2302,6 +2360,92 @@ public static class AncientSiteBuilder
     /// <summary>Half a trunk. Dilate paints the carriageway this far either side
     /// of the centreline.</summary>
     private const int ApproachProbeHalfWidth = 2;
+
+    /// <summary>
+    /// True when the seated footprint is clear of every chord except the one it
+    /// answered to.
+    ///
+    /// The exempt chord is the point: a laned site SPLITS the chord it seats on,
+    /// so the road arrives at a gate rather than crossing the building, and an
+    /// unlaned doored site is meant to have the road reach its door. Any other
+    /// chord passing through the footprint was asked for by nothing, and since
+    /// nothing subtracts a carriageway out of a site any more it would mine the
+    /// masonry it crossed and leave the site claiming walls that are not there.
+    ///
+    /// Measured on the bounding circle, which is conservative in the safe
+    /// direction -- it can refuse a placement that would have fitted, never
+    /// accept one that would not. Cost of the rule, sampling in-band positions
+    /// against 20 planned networks per floor: the worst case is the largest
+    /// village on floor 2 at 54 per cent of positions clear, and everything else
+    /// sits between 85 and 100.
+    /// </summary>
+    private static bool FootprintClearsChords(
+        LocalPlan shape, Vector3Int placeAt, int rot, bool mirror,
+        RoadPlan plan, int exceptChordIndex)
+    {
+        if (plan == null || !plan.valid) return true;
+
+        if (!FootprintBounds(shape, out int minX, out int minY,
+                             out int maxX, out int maxY)) return true;
+
+        // The bounding circle of the rotated box, about its own centre. A
+        // quarter turn maps an axis-aligned box to an axis-aligned box, so the
+        // radius is the same whichever way it is turned.
+        double cx = placeAt.x + (minX + maxX) * 0.5;
+        double cy = placeAt.y + (minY + maxY) * 0.5;
+        if (rot == 1 || rot == 3)
+        {
+            cx = placeAt.x - (minY + maxY) * 0.5;
+            cy = placeAt.y + (minX + maxX) * 0.5;
+        }
+        double hx = (maxX - minX) * 0.5, hy = (maxY - minY) * 0.5;
+        double radius = System.Math.Sqrt(hx * hx + hy * hy);
+
+        for (int i = 0; i < plan.chords.Count; i++)
+        {
+            if (i == exceptChordIndex) continue;
+            var c = plan.chords[i];
+            if (c == null || c.kind == RoadKind.Lane) continue;
+            if (PointToSegment(cx, cy, c.a, c.b) < radius + c.width * 0.5 + 1.0) return false;
+        }
+        return true;
+    }
+
+    /// <summary>Shortest distance from a point to a segment.</summary>
+    private static double PointToSegment(double px, double py, Vector3Int a, Vector3Int b)
+    {
+        double vx = b.x - a.x, vy = b.y - a.y;
+        double wx = px - a.x, wy = py - a.y;
+        double len2 = vx * vx + vy * vy;
+        double t = len2 <= 0.0 ? 0.0 : (wx * vx + wy * vy) / len2;
+        if (t < 0.0) t = 0.0;
+        else if (t > 1.0) t = 1.0;
+        double dx = a.x + vx * t - px, dy = a.y + vy * t - py;
+        return System.Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    /// <summary>The plan's local bounding box over floor and masonry.</summary>
+    private static bool FootprintBounds(
+        LocalPlan shape, out int minX, out int minY, out int maxX, out int maxY)
+    {
+        minX = int.MaxValue; minY = int.MaxValue;
+        maxX = int.MinValue; maxY = int.MinValue;
+        foreach (var c in shape.floor)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y > maxY) maxY = c.y;
+        }
+        foreach (var c in shape.wall)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y > maxY) maxY = c.y;
+        }
+        return minX <= maxX;
+    }
 
     /// <summary>
     /// True when the seated footprint leaves a full approach stub at BOTH ends of
