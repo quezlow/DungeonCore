@@ -1890,8 +1890,11 @@ public static class AncientSiteBuilder
         // The caller still ROLLS rot and mirror before reaching here and those
         // draws are untouched, so every procedural path -- which has no
         // doorAnchors and returned above -- keeps its stream position exactly.
+        // DoorRun is a STRUCT (AncientSitePlanLibrary), so there is no null to
+        // mean "nothing chosen yet" and a separate flag has to carry it.
         int bestRot = rot;
-        DoorRun bestRun = null;
+        DoorRun bestRun = default;
+        bool haveRun = false;
         float bestScore = float.NegativeInfinity;
 
         for (int step = 0; step < 4; step++)
@@ -1911,12 +1914,13 @@ public static class AncientSiteBuilder
                     bestScore = score;
                     bestRot = tryRot;
                     bestRun = run;
+                    haveRun = true;
                 }
             }
             if (!rotatable) break;
         }
 
-        if (bestRun == null)
+        if (!haveRun)
         {
             headingFault = true;
             return false;

@@ -3979,6 +3979,32 @@ carriageway subtraction loop, `TruncateRoadsAroundVault` and `pavedRoadCells`.
 Until then a road is still drawn across a site it was seated against and still
 subtracted afterwards, exactly as before.
 
+### Stage 2b hotfix: two compile faults (SHIPPED)
+
+Both mine, both of a class the container cannot catch -- there is no C# compiler
+here, so brace balance, ASCII, anchor uniqueness and call arity are checkable and
+TYPE RESOLUTION is not.
+
+**`DoorRun` is a struct, not a class.** `AncientSitePlanLibrary` declares it
+`public struct DoorRun`, so `DoorRun bestRun = null` and `bestRun == null` do not
+compile. The rotation chooser now carries a separate `haveRun` flag, which is
+what a value type needs to express "nothing chosen yet". Swept the rest of the
+stage 2a and 2b diffs for the same shape: every other null test is on `RoadPlan`,
+`RoadChord` or a `List`, all reference types.
+
+**`private RoadPlan lastRoadPlan;` was deleted by accident.** The delivery script
+removed the four road-anchor cell lists by extracting the block around their
+shared comment, and the extraction walked back one declaration too far and took
+the plan field with it -- the one field the whole stage depends on. Restored in
+place. The lesson is about the method, not the field: a region extracted by
+walking outward from a comment must have its END as well as its start asserted,
+because a deletion that removes one line too many still balances its braces and
+still passes every text check.
+
+The delivery script for this fix carries a struct-vs-null stand-in that reads the
+repo's own `public struct` declarations and fails on any `= null` or `== null`
+against one.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

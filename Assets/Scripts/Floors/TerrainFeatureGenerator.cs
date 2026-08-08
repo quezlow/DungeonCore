@@ -315,6 +315,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // the undecimated centreline for the heading test, and the road ends -- are
     // gone: every one of them existed to recover, from drawn cells, information
     // the plan had exactly.
+    private RoadPlan lastRoadPlan;
 
     // Every carved site interior cell on this floor, so chamber generation can be
     // kept off the ruins the same way it is kept off the carriageway.
