@@ -1236,6 +1236,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         int nextSegmentId = 0;
         foreach (var road in featureData.roads)
         {
+            // A LANE paints nothing. It carries the walkable route through a
+            // site's authored lane so the graph stays connected gate to gate,
+            // but the site already drew that ground -- dilating a carriageway
+            // over it would put road cells inside the building. Skipped before
+            // any id is drawn, on generation and on load alike, so both paths
+            // partition segment ids identically.
+            if (road.kind == RoadKind.Lane) continue;
+
             var line = RoadNetworkBuilder.Centreline(road);
             // SerializableVector3Int is a class, so guard rather than trust a
             // deserialiser to have built one.

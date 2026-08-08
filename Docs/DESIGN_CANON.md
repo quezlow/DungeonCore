@@ -3892,6 +3892,46 @@ the tightest margin in the set.
 **Proof:** `Tools/sim_chord_anchor.py`, which reports GREEN only when masonry and
 doublebacks are both zero and prints the meandered comparison alongside.
 
+### Stage 2a: the road layer learns waypoints (SHIPPED)
+
+The foundation the chord-anchor geometry needs, and nothing else. No site
+behaviour changes here: no chord is given waypoints yet and no road is a Lane
+yet, so every floor draws exactly as it did.
+
+**`RoadChord.waypoints`.** Interior points a chord's polyline must pass through,
+in travel order. A chord that carries them is drawn STRAIGHT through them and
+takes no meander, and consumes no rng. `Rasterise` ran `BuildEdgePolyline` on
+everything, and 86 per cent of floor 4's viable approach stubs are long enough to
+meander at an amplitude of six cells -- so an approach emitted as an ordinary
+chord loses its square entry, arrives at the gate facing the wrong way and
+reverses into the lane. Over the same 10,167 placements: 0 masonry contacts and
+0 doublebacks with waypoints kept, 372 and 415 with them handed to the raster.
+
+**`RoadKind.Lane = 2`, appended.** A rail whose polyline is the authored lane
+walked gate to gate. `RebuildRoadCells` paints nothing for it and skips it before
+any segment id is drawn, on generation and on load alike, so both paths partition
+ids identically. It exists so `DeepRoadGraph` stays connected through a site:
+`Build` clusters raw polyline endpoints at merge radius 6, so without a rail the
+two gates of a village 30 to 70 cells apart become separate nodes and the network
+is severed at every hold. No save field and no migration -- topology is derived
+from `RoadData.polyline` endpoints and nothing persists it.
+
+**`ApproachWaypoints`, with the geometry as measured.** Square out three cells
+along the door's own normal, one halving waypoint at eight on the bisector, then
+a straight tail of at least eight to the chord end; waypoints are dropped rather
+than shortened when the room is short. `GateMinStub` is 20. The constants are
+`GateSquareEntry`, `GateSplitArm`, `GateTail` and `GateMinStub` on
+`RoadNetworkBuilder`, and they are asserted equal to the sim's by the delivery
+script rather than kept in step by hand.
+
+**There is no C# compiler in the container**, so the port was checked by
+re-implementing it branch for branch in Python and diffing against
+`Tools/sim_chord_anchor.py` over 200,000 random gate/normal/endpoint cases: zero
+mismatches. Brace balance cannot catch transcription drift; that can.
+
+**Not yet built:** stage 2b, where `AncientSiteBuilder` seats against chords and
+the four negotiating mechanisms come out.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

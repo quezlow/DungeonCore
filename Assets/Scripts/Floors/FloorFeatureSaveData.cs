@@ -75,7 +75,13 @@ public class RiverData
     public List<SerializableVector3Int> fordCells = new();
 }
 
-public enum RoadKind { Trunk = 0, Spur = 1 }
+/// <summary>Appended only, never reordered -- these values serialise into saves.
+///
+/// Lane is a rail that exists so DeepRoadGraph stays CONNECTED through a site.
+/// Its polyline is the authored lane walked gate to gate; RebuildRoadCells paints
+/// nothing for it. Without it the two gates of a village 30 to 70 cells apart
+/// cluster as separate nodes and the network is severed at every hold.</summary>
+public enum RoadKind { Trunk = 0, Spur = 1, Lane = 2 }
 
 [Serializable]
 public class RoadData

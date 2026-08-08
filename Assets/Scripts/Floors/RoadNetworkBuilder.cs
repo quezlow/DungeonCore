@@ -25,6 +25,20 @@ public class RoadChord
     public RoadKind kind = RoadKind.Trunk;
     public int width = 5;
     public int brokenGapCells;
+
+    /// <summary>Interior points the polyline must pass through, in travel order
+    /// from `a` to `b`. Empty on every chord the planner makes by itself.
+    ///
+    /// A chord that carries waypoints is drawn STRAIGHT through them and takes
+    /// no meander. That is the whole reason the list exists. Rasterise runs
+    /// BuildEdgePolyline on everything, and 86 per cent of floor 4's approach
+    /// stubs are long enough to meander at an amplitude of six cells -- so an
+    /// approach emitted as an ordinary chord loses its square entry, arrives at
+    /// the gate facing the wrong way and reverses into the lane. Measured over
+    /// the same 10,167 placements: 0 masonry contacts and 0 doublebacks with the
+    /// waypoints kept, 372 and 415 with them handed to the raster instead.
+    /// Tools/sim_chord_anchor.py prints both numbers side by side.</summary>
+    public List<Vector3Int> waypoints = new List<Vector3Int>();
 }
 
 /// <summary>
@@ -156,7 +170,7 @@ public static class RoadNetworkBuilder
         {
             if (c == null) continue;
             result.roads.Add(MakeRoad(
-                BuildEdgePolyline(rng, c.a, c.b, plan.entry),
+                BuildChordPolyline(rng, c, plan.entry),
                 c.kind, c.width, plan.entry, plan.centre, plan.usable, c.brokenGapCells));
         }
 
@@ -937,6 +951,104 @@ public static class RoadNetworkBuilder
     /// random walk multiplied by a sine envelope, so it is zero at both ends and the
     /// edge always arrives exactly where it was sent.
     /// </summary>
+    /// <summary>The polyline for one chord: meandered between its two ends, or
+    /// drawn straight through its waypoints when it has any.
+    ///
+    /// Consumes NO rng on a waypointed chord. Floors that place no site against a
+    /// chord therefore draw exactly as before, because nothing gives a chord
+    /// waypoints except a site seating on it.</summary>
+    private static List<Vector3Int> BuildChordPolyline(
+        System.Random rng, RoadChord c, RoadFloorEntry entry)
+    {
+        if (c.waypoints == null || c.waypoints.Count == 0)
+            return BuildEdgePolyline(rng, c.a, c.b, entry);
+
+        var pts = new List<Vector3Int> { c.a };
+        for (int i = 0; i < c.waypoints.Count; i++)
+            if (pts[pts.Count - 1] != c.waypoints[i]) pts.Add(c.waypoints[i]);
+        if (pts[pts.Count - 1] != c.b) pts.Add(c.b);
+        return pts;
+    }
+
+    // ---- Gate approach geometry ------------------------------------
+    //
+    // Measured green over 10,167 placements across floors 2-4: worst gate mouth
+    // 60.5 degrees, zero doublebacks, zero centreline cells on masonry. The
+    // budget is 90 rather than the old cone's 30 because nothing at runtime
+    // consumes corner sharpness -- DwarfWalkerPuppet sets flipX from the sign of
+    // dx with no heading interpolation -- and the authored village lanes have
+    // carried 90-degree street corners since they shipped.
+
+    /// <summary>Cells to run along the door's own normal before turning, so the
+    /// road arrives square rather than clipping the jamb.</summary>
+    public const int GateSquareEntry = 3;
+
+    /// <summary>The halving waypoint's arm, on the bisector. Splitting the turn
+    /// across two waypoints roughly halves each of them.</summary>
+    public const int GateSplitArm = 8;
+
+    /// <summary>Straight run behind the arm. Without a tail the arm lands beside
+    /// the chord end rather than on the line to it, which measured 76 degrees on
+    /// an eleven-cell stub -- the same family as the 141 and 180 degree
+    /// doublebacks.</summary>
+    public const int GateTail = 8;
+
+    /// <summary>Shortest stub worth seating a site against. Swept against mouth
+    /// angle and placement rate: 12 keeps 95/98/100 per cent of floor 2/3/4
+    /// chords, 20 keeps 87/96/100, 32 keeps 68/87/99. Twenty is where the tail
+    /// stops binding without spending a third of floor 2.</summary>
+    public const int GateMinStub = 20;
+
+    /// <summary>
+    /// Interior waypoints for a road running from `endpoint` in to `gate`, in
+    /// travel order, arriving along the gate's outward normal reversed.
+    ///
+    /// Waypoints are DROPPED rather than shortened when the room is short. An
+    /// arm laid down with no tail behind it overshoots toward the endpoint and
+    /// the turn goes past 90 degrees, which is a road reversing on itself.
+    /// </summary>
+    public static List<Vector3Int> ApproachWaypoints(
+        Vector3Int gate, Vector2 outward, Vector3Int endpoint)
+    {
+        var pts = new List<Vector3Int>();
+
+        double ex = endpoint.x - gate.x, ey = endpoint.y - gate.y;
+        double reach = Math.Sqrt(ex * ex + ey * ey);
+        if (reach < GateSquareEntry + GateTail) return pts;
+
+        double nl = Math.Sqrt(outward.x * outward.x + outward.y * outward.y);
+        if (nl < 1e-9) return pts;
+        double nx = outward.x / nl, ny = outward.y / nl;
+
+        var p1 = new Vector3Int(
+            gate.x + (int)Math.Round(nx * GateSquareEntry),
+            gate.y + (int)Math.Round(ny * GateSquareEntry), 0);
+        if (reach < GateSquareEntry + GateSplitArm + GateTail)
+        {
+            pts.Add(p1);
+            return pts;
+        }
+
+        double rx = endpoint.x - p1.x, ry = endpoint.y - p1.y;
+        double r = Math.Sqrt(rx * rx + ry * ry);
+        if (r < 1e-9) { pts.Add(p1); return pts; }
+
+        double bx = nx + rx / r, by = ny + ry / r;
+        double bl = Math.Sqrt(bx * bx + by * by);
+        if (bl < 1e-9) { pts.Add(p1); return pts; }
+
+        var p2 = new Vector3Int(
+            p1.x + (int)Math.Round(bx / bl * GateSplitArm),
+            p1.y + (int)Math.Round(by / bl * GateSplitArm), 0);
+
+        double tx = endpoint.x - p2.x, ty = endpoint.y - p2.y;
+        if (Math.Sqrt(tx * tx + ty * ty) < GateTail) { pts.Add(p1); return pts; }
+
+        pts.Add(p2);
+        pts.Add(p1);
+        return pts;
+    }
+
     private static List<Vector3Int> BuildEdgePolyline(
         System.Random rng, Vector3Int a, Vector3Int b, RoadFloorEntry entry)
     {
