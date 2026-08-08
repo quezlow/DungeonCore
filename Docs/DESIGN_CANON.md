@@ -3821,6 +3821,77 @@ on the shared stone family for now.
 `ScriptableObjects/Floors/AncientSiteProfile.asset`, and eight plans under
 `ScriptableObjects/Sites/Plans/`.
 
+### Chord anchoring, re-derived from the engine (DECIDED)
+
+Stage 2 is not written. What is settled is the geometry it must implement, and
+four corrections to how that geometry was being measured. Every entry below is
+an engine measurement or a demonstrated result, not a preference.
+
+**The drape sources from unmined rock, not from a plan's own floor.**
+`TileInfluenceManager.IsUnderOverhang` blocks a cell when the cell one or two
+north of it is unmined rock inside the disc; `DrapesFrom` returns false for any
+mined cell. A plan judged in isolation therefore treats everything outside its
+footprint as a drape source and reports every north-facing gate buried, because
+the road about to be carved outside that gate is not in the plan. Measured cost
+of the error: seven of sixteen laned plans reported ZERO viable placements and
+roughly half of all refusals across the other nine were the same artefact. This
+supersedes the reading that `SealedCrypt_TheCoffinRow`, `HollowSanctum_TheKneelingHall`
+and `SunkenPlaza_TheGallowsCourt` have gate middles buried at particular
+rotations -- that is mostly this, not the plans.
+
+**A road meets a gate at a chosen CELL, not at the run's middle.** In a vertical
+wall the drape runs along the door, so a three-cell door has only its
+southernmost cell walkable: y+2 is the wall above the run. Measured across every
+plan and rotation: 216 door runs, 34 with a buried middle, and ZERO with no
+walkable cell at all. Choosing the walkable cell nearest the middle costs no
+re-authoring and refuses nothing. Among the 34 is `DeadCoreVault_TheNinefoldCist`,
+which is `@rotate: no` with a single east-facing three-cell door, and
+`AncientSiteBuilder.TryDoorAnchor` seats a site by `chosen.mid` -- so that vault
+is currently aligned to a cell nothing can stand on.
+
+**An approach may not be emitted as an ordinary chord.** `Rasterise` runs
+`BuildEdgePolyline` on every chord, and 86 per cent of floor 4's viable approach
+stubs are long enough to meander at an amplitude of six cells. Handing the same
+placements to the raster instead of keeping their waypoints: 372 masonry contacts
+and 415 doublebacks, because without the square entry the road arrives at the
+gate facing the wrong way and reverses into the lane. `RoadChord` therefore
+carries an explicit waypoint list that the raster honours and does not meander.
+
+**Seating clamps on the FOOTPRINT projected on the chord, not on the gate-to-gate
+span.** A village's gates sit at its face middles, so on a chord at 38 degrees to
+the plan axes the footprint reaches about forty cells further than the gates do
+-- far enough that the chord's own endpoint lands inside the building, and every
+approach drawn to it must cross masonry to arrive. Measured: 289 masonry contacts
+on the gate span, 0 on the footprint.
+
+**The gate mouth budget is 90 degrees, not 30.** Thirty came from `DoorFacingCos`,
+which tested which door BEARINGS a rasterised road could serve -- not how sharp a
+corner a walker may turn. Nothing at runtime consumes corner sharpness:
+`DwarfWalkerPuppet` sets `flipX` from the sign of dx and bobs, with no heading
+interpolation, and the authored village lanes already contain 90-degree street
+corners that have shipped for months. The real failures are priced separately and
+both must be zero: a centreline cell on masonry is a walker in a wall, and a turn
+past 90 degrees is a road reversing on itself.
+
+**Geometry, as measured green.** Square out of the gate three cells along the
+door's own normal, one halving waypoint at eight on the bisector, then a straight
+tail of at least eight to the chord end; waypoints are DROPPED rather than
+shortened when the room is short, because an arm laid down with no tail behind it
+lands beside the endpoint rather than on the line to it and measured 76 degrees on
+an eleven-cell stub. `MIN_STUB` is 20: sweeping it against mouth angle and
+placement rate gives 95/98/100 per cent of floor 2/3/4 chords at 12, 87/96/100 at
+20 and 68/87/99 at 32. Over 10,167 placements the worst gate mouth is 60.5
+degrees, doublebacks are zero and masonry contacts are zero.
+
+**Carried, not fixed here.** `SealedCrypt_TheCoffinRow` refuses about half its
+chords with "lane not connected gate to gate", which is a real authored-lane
+issue and distinct from the drape artefact above. Floor 2 seats a village on only
+32 to 42 per cent of its chords, which is sound -- a floor needs one -- but it is
+the tightest margin in the set.
+
+**Proof:** `Tools/sim_chord_anchor.py`, which reports GREEN only when masonry and
+doublebacks are both zero and prints the meandered comparison alongside.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

@@ -64,25 +64,45 @@ from collections import deque
 CORE_EXCLUSION = 8
 TRUNK_WIDTH = 5
 
-# The elbow budget. Kept at the shipped cone's worst case so this is measured
-# against what already ships rather than against a number chosen to pass.
-ELBOW_BUDGET_DEG = 30.0
-
-# DESIRED straight approach length either side of a site. 48 in the lane
-# routing sim, where it took the worst corner from 39.4 degrees to 36.7.
+# The gate mouth budget. NOT the shipped 30, and the change is deliberate.
 #
-# It is a want rather than a rule here, and the chords are the reason. Measured
-# over 30 planned networks per floor, the MEDIAN chord is 109 cells on floor
-# index 2, 184 on 3 and 253 on 4 -- and a village is 61 to 75 cells across. A
-# flat 48 either side plus a hold does not fit on half the chords that exist,
-# so the approach takes whatever the chord leaves it and the ELBOW is what gets
-# measured. Refusing short chords instead would have hidden the question.
-MIN_APPROACH = 48
+# Thirty came from DoorFacingCos -- a test of which door BEARINGS a rasterised
+# road could serve, not of how sharp a corner a walker may turn. Nothing at
+# runtime consumes corner sharpness: DwarfWalkerPuppet sets flipX from the sign
+# of dx and bobs, with no heading interpolation, and the authored village lanes
+# already contain 90-degree street corners that have shipped for months. So the
+# budget is the corner the game already draws, and the real failures are priced
+# separately below.
+MOUTH_BUDGET_DEG = 90.0
 
-# The shortest stub worth calling an approach. Below this the site is seated so
-# close to a junction that the two are the same place, and the corner belongs to
-# the junction rather than to the site.
-MIN_STUB = 10
+# A turn past this is a road reversing on itself -- the 141 and 180 degree
+# doublebacks. Distinct from a sharp corner and always a fault.
+DOUBLEBACK_DEG = 90.0
+
+# Leaving a gate: run this far along the door's own normal before turning, so
+# the road arrives square rather than clipping the jamb.
+SQUARE_ENTRY = 3
+
+# One halving waypoint on the bisector. Splitting the turn across two waypoints
+# roughly halves each of them.
+SPLIT_ARM = 8
+
+# Straight run behind the arm. Without a tail the arm lands beside the chord
+# endpoint rather than on the line to it, and the turn measured 76 degrees on an
+# eleven-cell stub. MIN_STUB must exceed SQUARE_ENTRY + SPLIT_ARM + TAIL, not
+# just the first two.
+TAIL = 8
+
+# The shortest stub worth calling an approach. Sweeping this against the mouth
+# angle and the placement rate: 12 keeps 95/98/100 per cent of floor 2/3/4
+# chords, 20 keeps 87/96/100, 32 keeps 68/87/99. Twenty is where the tail stops
+# being the binding constraint without spending a third of floor 2.
+MIN_STUB = 20
+
+# How far outside a gate to assume carved road when deciding whether the
+# threshold is walkable. Only ever used for that test; the real approach is
+# drawn separately. Any value past SQUARE_ENTRY + 2 gives the same answer.
+CARVE_PROBE = 16
 
 ROADS = {
     2: dict(trunk_width=5, rim_margin=7, meander_step=32, meander_amp=5,
@@ -376,10 +396,23 @@ def build_door_runs(plan):
     return runs
 
 
-def walkable(floorset):
-    """The drape. A floor cell is walkable only when y+1 AND y+2 are floor."""
-    return {c for c in floorset
-            if (c[0], c[1] + 1) in floorset and (c[0], c[1] + 2) in floorset}
+def walkable(cellset):
+    """The drape, as TileInfluenceManager.IsUnderOverhang applies it.
+
+    A cell is blocked when the cell one or two NORTH of it is unmined rock.
+    Read the argument as "every mined cell in the world", not "the plan's own
+    floor": that distinction is the whole correction. Handing this a plan on
+    its own makes every cell outside the footprint a drape source, which marks
+    every north-facing gate buried and is not what the engine does -- the road
+    about to be carved outside that gate is mined, and mined cells never drape.
+
+    Measured cost of getting this wrong: seven of sixteen laned plans reported
+    zero placements and about half of all refusals across the rest were this
+    artefact, which is where the "gate middles buried at rotations 0 and 2"
+    reading of CoffinRow, KneelingHall and GallowsCourt came from.
+    """
+    return {c for c in cellset
+            if (c[0], c[1] + 1) in cellset and (c[0], c[1] + 2) in cellset}
 
 
 def load_plans(root):
@@ -396,86 +429,224 @@ def load_plans(root):
     return out
 
 
+# ---- the raster, ported so the sim can prove what it costs ----------------
+
+def build_edge_polyline(rng, a, b, meander_step, amplitude):
+    """RoadNetworkBuilder.BuildEdgePolyline, glyph for glyph.
+
+    Ported because Rasterise runs it on EVERY chord. A stage 2 that emits an
+    approach as an ordinary RoadChord gets it meandered, and the square entry
+    the whole design rests on is destroyed after the geometry was checked.
+    Measured: 86 per cent of floor 4's viable approach stubs are long enough
+    to meander, at an amplitude of six cells.
+
+    steps == 1 draws straight, which is why short stubs survive by accident.
+    """
+    pts = [a]
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy)
+    if length < 2.0:
+        pts.append(b)
+        return pts
+    steps = max(1, int(round(length / max(4, meander_step))))
+    ux, uy = dx / length, dy / length
+    px, py = -uy, ux
+    walk = 0.0
+    for i in range(1, steps):
+        t = float(i) / steps
+        walk += (rng.random() - 0.5) * 2.0 * amplitude * 0.6
+        walk = max(-amplitude, min(amplitude, walk))
+        off = walk * math.sin(math.pi * t)
+        pts.append((int(round(a[0] + dx * t + px * off)),
+                    int(round(a[1] + dy * t + py * off))))
+    pts.append(b)
+    return pts
+
+
 # ---- the thing under test -------------------------------------------------
 
-def turn_to_face(plan, runs, chord_dir):
-    """Q1's core claim: a rotatable plan is TURNED to face the chord rather
-    than rolled and rejected.
+def run_cells(run, rot):
+    """The rotated cells of one door run, in run order, with its normal."""
+    mid = rot_local(run["mid"], rot, False)
+    out = rot_local(run["out"], rot, False)
+    if out == (0, 0):
+        return None, None, None
+    step = (0, 1) if out[0] != 0 else (1, 0)
+    n = run["len"]
+    base = (mid[0] - step[0] * (n // 2), mid[1] - step[1] * (n // 2))
+    return ([(base[0] + step[0] * k, base[1] + step[1] * k) for k in range(n)],
+            mid, out)
 
-    Returns (rot, mirror, entry_run, exit_run) or None. The entry run is the
-    one whose outward normal best opposes the chord's direction of travel; the
-    exit run is the one that best agrees with it. Mirroring is not searched --
-    it maps a plan onto itself for these purposes and only doubles the work."""
-    best = None
-    rots = range(4) if plan["rotatable"] else [0]
-    for rot in rots:
-        for mirror in (False,):
-            outs = []
-            for r in runs:
-                o = rot_local(r["out"], rot, mirror)
-                m = math.hypot(o[0], o[1])
-                if m <= 0:
-                    continue
-                outs.append((r, (o[0] / m, o[1] / m)))
-            if len(outs) < 2:
+
+def carve_stub(cell, normal, into, length=CARVE_PROBE, half=2):
+    """The carriageway a stub would open outside a gate. Used only to decide
+    walkability at the threshold -- the road is mined ground, so it lifts the
+    drape off the gate cell exactly as the real approach will."""
+    for k in range(1, length + 1):
+        cx = cell[0] + normal[0] * k
+        cy = cell[1] + normal[1] * k
+        for s in range(-half, half + 1):
+            into.add((cx, cy + s) if normal[0] != 0 else (cx + s, cy))
+
+
+_ENTRY_CACHE = {}
+
+
+def entry_cell(name, plan, run_index, rot):
+    """The cell a road actually meets a gate at: the walkable run cell nearest
+    the run's middle.
+
+    NOT the middle itself. In a vertical wall the drape runs ALONG the door, so
+    a three-cell door has only its southernmost cell walkable -- y+2 is the wall
+    above the run. Measured over every plan and rotation: 216 runs, 34 with a
+    buried middle, and ZERO with no walkable cell at all, so choosing the cell
+    costs no re-authoring and refuses nothing.
+
+    Among the 34 is DeadCoreVault_TheNinefoldCist, which is @rotate: no with one
+    east-facing three-cell door. AncientSiteBuilder.TryDoorAnchor seats a site by
+    chosen.mid, so that vault is aligned to a cell nothing can stand on.
+    """
+    key = (name, run_index, rot)
+    if key in _ENTRY_CACHE:
+        return _ENTRY_CACHE[key]
+    run = plan["runs"][run_index]
+    floorset = {rot_local(c, rot, False) for c in plan["floor"]}
+    cells, mid, out = run_cells(run, rot)
+    found = (None, out)
+    if cells is not None:
+        best = None
+        for c in cells:
+            world = set(floorset)
+            carve_stub(c, out, world)
+            if c in walkable(world):
+                d = abs(c[0] - mid[0]) + abs(c[1] - mid[1])
+                if best is None or d < best[0]:
+                    best = (d, c)
+        if best is not None:
+            found = (best[1], out)
+    _ENTRY_CACHE[key] = found
+    return found
+
+
+def turn_to_face(name, plan, chord_dir):
+    """Choose the orientation that presents two opposed gates to the chord AND
+    can actually be entered at both.
+
+    Orientations are tried in descending facing order and the first one whose
+    entry and exit gates both yield a walkable cell wins. Scoring on facing
+    alone and refusing afterwards is what produced a flat ~50 per cent refusal
+    rate on every rotatable plan: the best-facing quarter turn is buried about
+    half the time, and the next-best was never tried.
+    """
+    runs = plan["runs"]
+    ranked = []
+    for rot in (range(4) if plan["rotatable"] else [0]):
+        outs = []
+        for i, r in enumerate(runs):
+            o = rot_local(r["out"], rot, False)
+            m = math.hypot(o[0], o[1])
+            if m <= 0:
                 continue
-            # entry: normal most opposed to travel. exit: most aligned.
-            ent = min(outs, key=lambda t: t[1][0] * chord_dir[0] + t[1][1] * chord_dir[1])
-            ext = max(outs, key=lambda t: t[1][0] * chord_dir[0] + t[1][1] * chord_dir[1])
-            if ent[0] is ext[0]:
-                continue
-            score = (ext[1][0] * chord_dir[0] + ext[1][1] * chord_dir[1]) \
-                - (ent[1][0] * chord_dir[0] + ent[1][1] * chord_dir[1])
-            if best is None or score > best[0]:
-                best = (score, rot, mirror, ent[0], ext[0])
-    if best is None:
-        return None
-    return best[1], best[2], best[3], best[4]
+            outs.append((i, (o[0] / m, o[1] / m)))
+        if len(outs) < 2:
+            continue
+        ent = min(outs, key=lambda t: t[1][0] * chord_dir[0] + t[1][1] * chord_dir[1])
+        ext = max(outs, key=lambda t: t[1][0] * chord_dir[0] + t[1][1] * chord_dir[1])
+        if ent[0] == ext[0]:
+            continue
+        score = (ext[1][0] * chord_dir[0] + ext[1][1] * chord_dir[1]) \
+            - (ent[1][0] * chord_dir[0] + ent[1][1] * chord_dir[1])
+        ranked.append((score, rot, ent[0], ext[0]))
+    ranked.sort(key=lambda t: -t[0])
+    for score, rot, ei, xi in ranked:
+        ec, ein = entry_cell(name, plan, ei, rot)
+        xc, eout = entry_cell(name, plan, xi, rot)
+        if ec is not None and xc is not None:
+            return rot, ei, xi, ec, ein, xc, eout
+    return None
 
 
-def lane_route(plan, rot, mirror, entry, exit_run):
-    """Q2: a walkable route from the entry gate's middle to the exit gate's
-    middle, through the AUTHORED lane only.
+def footprint_span(plan, rot, chord_dir):
+    """How far the whole building reaches along the chord, not how far apart its
+    gates are.
 
-    Entered SQUARE from the gate's middle, which the lane routing sim
-    established: a start offset sideways along the run makes the first segment
-    diagonal and puts a fixed 26.6-degree corner just inside every gate that no
-    approach budget can touch. Where the middle is buried under the drape the
-    route REFUSES rather than sliding sideways."""
-    laneset = {rot_local(c, rot, mirror) for c in plan["lane"]}
-    doorset = {rot_local(c, rot, mirror) for c in plan["door"]}
-    floorset = {rot_local(c, rot, mirror) for c in plan["floor"]}
-    walk = walkable(floorset)
+    Clamping on the gate-to-gate distance is what put centrelines on masonry.
+    A village's gates sit at its face middles, so on a chord at 38 degrees to
+    the plan axes the footprint projects about forty cells further than the
+    gates do -- far enough that the chord's own endpoint lands INSIDE the
+    building, and every approach drawn to it has to cross masonry to arrive.
+    Measured: 289 masonry contacts on the gate span, 0 on the footprint.
+    """
+    pts = set(plan["wall"]) | set(plan["floor"])
+    ds = [(rot_local(p, rot, False)[0] * chord_dir[0]
+           + rot_local(p, rot, False)[1] * chord_dir[1]) for p in pts]
+    return min(ds), max(ds)
 
-    # The DOOR cells belong to the corridor as well as the lane cells. A gate
-    # is drawn with '+', not '~', so a lane-only corridor has no cell at the
-    # threshold and every route refuses at its own front door -- which is what
-    # this sim did until the counters said every plan failed identically, and
-    # sixteen plans failing the same way is a bug in the test, not in sixteen
-    # plans.
+
+def approach(gate, normal, endpoint):
+    """Gate to chord end: square out, one halving waypoint, then straight.
+
+    Waypoints are DROPPED rather than shortened when the room is short. An arm
+    laid down with no tail behind it lands beside the endpoint instead of on the
+    line to it, and the turn there measured 76 degrees on an eleven-cell stub --
+    the same family as the 141 and 180 degree doublebacks, and the reason
+    MIN_STUB must exceed SQUARE_ENTRY + SPLIT_ARM + TAIL rather than just the
+    first two.
+    """
+    gx, gy = gate
+    ex, ey = endpoint
+    reach = math.hypot(ex - gx, ey - gy)
+    p1 = (int(round(gx + normal[0] * SQUARE_ENTRY)),
+          int(round(gy + normal[1] * SQUARE_ENTRY)))
+    if reach < SQUARE_ENTRY + TAIL:
+        return [endpoint, gate]
+    if reach < SQUARE_ENTRY + SPLIT_ARM + TAIL:
+        return [endpoint, p1, gate]
+    rx, ry = ex - p1[0], ey - p1[1]
+    r = math.hypot(rx, ry)
+    if r < 1e-9:
+        return [endpoint, p1, gate]
+    bx, by = normal[0] + rx / r, normal[1] + ry / r
+    bl = math.hypot(bx, by)
+    if bl < 1e-9:
+        return [endpoint, p1, gate]
+    p2 = (int(round(p1[0] + bx / bl * SPLIT_ARM)),
+          int(round(p1[1] + by / bl * SPLIT_ARM)))
+    if math.hypot(ex - p2[0], ey - p2[1]) < TAIL:
+        return [endpoint, p1, gate]
+    return [endpoint, p2, p1, gate]
+
+
+def lane_route(plan, rot, entry_c, exit_c, world):
+    """A walkable route between the two chosen gate cells, through the authored
+    lane only.
+
+    The corridor is (lane | door) & walkable: a gate is drawn '+', not '~', so
+    a lane-only corridor has no cell at the threshold and every route refuses at
+    its own front door. `world` carries the carved stubs, so the drape is lifted
+    off the gate cells exactly as the road will lift it.
+    """
+    walk = walkable(world)
+    laneset = {rot_local(c, rot, False) for c in plan["lane"]}
+    doorset = {rot_local(c, rot, False) for c in plan["door"]}
     corridor = (laneset | doorset) & walk
+    if entry_c not in corridor or exit_c not in corridor:
+        return None, "gate cell outside lane corridor"
 
-    start = rot_local(entry["mid"], rot, mirror)
-    goal = rot_local(exit_run["mid"], rot, mirror)
-    if start not in corridor or goal not in corridor:
-        return None, "gate middle buried"
-
-    prev = {start: None}
-    q = deque([start])
+    prev = {entry_c: None}
+    q = deque([entry_c])
     while q:
         c = q.popleft()
-        if c == goal:
+        if c == exit_c:
             break
         for d in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             n = (c[0] + d[0], c[1] + d[1])
             if n in corridor and n not in prev:
                 prev[n] = c
                 q.append(n)
-    if goal not in prev:
+    if exit_c not in prev:
         return None, "lane not connected gate to gate"
-
-    path = []
-    c = goal
+    path, c = [], exit_c
     while c is not None:
         path.append(c)
         c = prev[c]
@@ -506,156 +677,200 @@ def turn_angles(poly):
         bx = poly[i + 1][0] - poly[i][0]
         by = poly[i + 1][1] - poly[i][1]
         if (ax or ay) and (bx or by):
-            d = math.degrees(abs(math.atan2(ay, ax) - math.atan2(by, bx)))
-            d = d % 360.0
+            d = math.degrees(abs(math.atan2(ay, ax) - math.atan2(by, bx))) % 360.0
             out.append(min(d, 360.0 - d))
     return out
 
 
-def chord_place(plan, chord, t, trials_out):
-    """One placement: a laned site seated on a chord at parameter t, the chord
-    split at its two gates, and the whole rail re-derived and verified.
-
-    Returns a dict of measurements, or a refusal reason."""
-    runs = plan["runs"]
-    if len(runs) < 2 or not plan["lane"]:
-        return {"refused": "not a laned plan with two gates"}
-
+def chord_place(name, plan, chord, t, meander, out_rows):
+    """One placement: a laned site seated on a chord, the chord split at its two
+    gates, both approaches drawn and the whole rail re-derived and verified."""
     a, b = chord["a"], chord["b"]
     dx, dy = b[0] - a[0], b[1] - a[1]
-    L = math.hypot(dx, dy)
-    if L < 2 * MIN_STUB:
-        return {"refused": "chord shorter than two stubs"}
-    cdir = (dx / L, dy / L)
+    length = math.hypot(dx, dy)
+    if length < 2 * MIN_STUB:
+        return "chord shorter than two stubs"
+    cdir = (dx / length, dy / length)
 
-    turned = turn_to_face(plan, runs, cdir)
+    turned = turn_to_face(name, plan, cdir)
     if turned is None:
-        return {"refused": "no orientation presents two opposed gates"}
-    rot, mirror, entry, exit_run = turned
+        return "no orientation presents two enterable opposed gates"
+    rot, ei, xi, ec, ein, xc, eout = turned
 
-    emid = rot_local(entry["mid"], rot, mirror)
-    xmid = rot_local(exit_run["mid"], rot, mirror)
-
-    # How much of the chord the building itself eats, measured gate to gate
-    # ALONG the chord. The site has to fit between the two stubs or there is
-    # nothing to seat it on.
-    span = abs((xmid[0] - emid[0]) * cdir[0] + (xmid[1] - emid[1]) * cdir[1])
-    if L < span + 2 * MIN_STUB:
-        return {"refused": "chord too short for this plan gate to gate"}
-
-    # Seat the ENTRY gate on the chord, clamped so both stubs survive. t is the
-    # requested position; the clamp is what a placement would do rather than
-    # discarding the chord.
-    lo = MIN_STUB / L
-    hi = (L - span - MIN_STUB) / L
+    dmin, dmax = footprint_span(plan, rot, cdir)
+    lead = (ec[0] * cdir[0] + ec[1] * cdir[1]) - dmin
+    span = dmax - dmin
+    if length < span + 2 * MIN_STUB:
+        return "chord too short for this footprint"
+    lo = (MIN_STUB + lead) / length
+    hi = (length - (span - lead) - MIN_STUB) / length
+    if lo > hi:
+        return "chord too short for this footprint"
     t = min(max(t, lo), hi)
+
     px = int(round(a[0] + dx * t))
     py = int(round(a[1] + dy * t))
-    place = (px - emid[0], py - emid[1])
+    place = (px - ec[0], py - ec[1])
 
-    gate_in = (place[0] + emid[0], place[1] + emid[1])
-    gate_out = (place[0] + xmid[0], place[1] + xmid[1])
-
-    # THE MISS. The exit gate is at a vector the PLAN fixes, not one the chord
-    # does, so it does not land on the chord. Each end is sized from its OWN
-    # miss -- the lane routing sim measured that conflating them bends an
-    # ingress 57 degrees.
-    miss_out = point_to_segment(gate_out, a, b)
-
-    route, why = lane_route(plan, rot, mirror, entry, exit_run)
+    world = {rot_local(c, rot, False) for c in plan["floor"]}
+    carve_stub(ec, ein, world)
+    carve_stub(xc, eout, world)
+    route, why = lane_route(plan, rot, ec, xc, world)
     if route is None:
-        return {"refused": why}
+        return why
 
     lane_world = [(place[0] + c[0], place[1] + c[1]) for c in route]
+    gate_in = (place[0] + ec[0], place[1] + ec[1])
+    gate_out = (place[0] + xc[0], place[1] + xc[1])
 
-    # Approaches: straight, leaving each gate along its own normal, then
-    # meeting the chord. MIN_APPROACH out from the gate, then back to the
-    # chord end.
-    ein = rot_local(entry["out"], rot, mirror)
-    eout = rot_local(exit_run["out"], rot, mirror)
+    poly_in = approach(gate_in, ein, a)
+    poly_out = list(reversed(approach(gate_out, eout, b)))
 
-    # Each end takes the approach the chord leaves it, up to the want. Sizing
-    # both from one end's budget is what bent an ingress 57 degrees in the lane
-    # routing sim.
-    run_in = max(MIN_STUB, min(MIN_APPROACH, math.dist(a, gate_in) - 1))
-    run_out = max(MIN_STUB, min(MIN_APPROACH, math.dist(b, gate_out) - 1))
-    approach_in = (int(round(gate_in[0] + ein[0] * run_in)),
-                   int(round(gate_in[1] + ein[1] * run_in)))
-    approach_out = (int(round(gate_out[0] + eout[0] * run_out)),
-                    int(round(gate_out[1] + eout[1] * run_out)))
-
-    poly_in = [a, approach_in, gate_in]
-    poly_out = [gate_out, approach_out, b]
-    full = poly_in + corners(lane_world)[1:-1] + poly_out
+    if meander is not None:
+        # What stage 2 gets if an approach is emitted as an ordinary RoadChord:
+        # Rasterise sees two endpoints, so the waypoints do not exist at all and
+        # BuildEdgePolyline meanders the whole stub. Modelled by throwing the
+        # waypoints away rather than by re-meandering them -- each waypoint
+        # SEGMENT is shorter than one meander step and would draw straight,
+        # which flatters the answer and proves nothing.
+        rng, step, amp = meander
+        poly_in = build_edge_polyline(rng, a, gate_in, step, amp)
+        poly_out = build_edge_polyline(rng, gate_out, b, step, amp)
 
     masonry = {(place[0] + c[0], place[1] + c[1])
-               for c in (rot_local(w, rot, mirror) for w in plan["wall"])}
+               for c in (rot_local(w, rot, False) for w in plan["wall"])}
     cl = centreline(poly_in) + lane_world + centreline(poly_out)
-    on_masonry = sum(1 for c in cl if c in masonry)
 
-    elbows = turn_angles(full)
-    worst = max(elbows) if elbows else 0.0
+    mouth = turn_angles(poly_in) + turn_angles(poly_out)
+    interior = turn_angles(corners(lane_world))
+    full = poly_in + corners(lane_world)[1:-1] + poly_out
 
-    trials_out.append({
-        "worst_elbow": worst,
-        "on_masonry": on_masonry,
-        "waypoints": len(full),
-        "miss_out": miss_out,
+    out_rows.append({
+        "on_masonry": sum(1 for c in cl if c in masonry),
+        "mouth": max(mouth) if mouth else 0.0,
+        "interior": max(interior) if interior else 0.0,
+        "doubleback": sum(1 for x in turn_angles(full) if x > DOUBLEBACK_DEG),
     })
-    return {"ok": True}
+    return None
 
 
 # ---- report ---------------------------------------------------------------
 
-def main():
+def collect_chords(trials):
     import random
-    root = sys.argv[1] if len(sys.argv) > 1 else "."
-    trials = int(sys.argv[2]) if len(sys.argv) > 2 else 40
-    plans = load_plans(root)
-    laned = {k: v for k, v in plans.items() if v["lane"] and len(v["runs"]) >= 2}
-    print("Loaded %d authored plans, %d of them laned with two or more gates\n"
-          % (len(plans), len(laned)))
-
-    # Collect chords from real planned networks across all three road floors.
     chords = []
     for fi, cfg in ROADS.items():
         for s in range(trials):
             rng = random.Random(7000 + fi * 1000 + s)
             usable = max(CORE_EXCLUSION + 4, cfg["radius"] - cfg["rim_margin"])
             _, cs = plan_network(rng, (0, 0), usable, cfg)
+            for c in cs:
+                c["floor"] = fi
             chords.extend(cs)
+    return chords
+
+
+def main():
+    import random
+    root = sys.argv[1] if len(sys.argv) > 1 else "."
+    trials = int(sys.argv[2]) if len(sys.argv) > 2 else 20
+    plans = load_plans(root)
+    laned = {k: v for k, v in plans.items() if v["lane"] and len(v["runs"]) >= 2}
+    print("Loaded %d authored plans, %d of them laned with two or more gates\n"
+          % (len(plans), len(laned)))
+
+    chords = collect_chords(trials)
     print("chords under test: %d, from %d planned networks across floors 2-4\n"
           % (len(chords), 3 * trials))
 
-    print("%-38s %7s %7s %9s %8s  %s"
-          % ("plan", "placed", "refused", "worstElbow", "masonry", "top refusal"))
+    print("%-38s %7s %7s %7s %9s %8s  %s"
+          % ("plan", "placed", "refused", "mouth", "interior", "masonry",
+             "top refusal"))
+
     total_masonry = 0
-    worst_all = 0.0
+    total_back = 0
+    worst_mouth = 0.0
+    worst_interior = 0.0
+    placed_all = 0
+    by_floor = {}
+
     for name in sorted(laned):
         plan = laned[name]
-        out, refusals = [], {}
-        for i, ch in enumerate(chords):
+        rows, refusals = [], {}
+        for ch in chords:
+            fl = by_floor.setdefault(ch["floor"], {})
+            seat = fl.setdefault(name, [0, 0])
             for t in (0.3, 0.5, 0.7):
-                r = chord_place(plan, ch, t, out)
-                if "refused" in r:
-                    refusals[r["refused"]] = refusals.get(r["refused"], 0) + 1
-        placed = len(out)
-        worst = max((o["worst_elbow"] for o in out), default=0.0)
-        mas = sum(o["on_masonry"] for o in out)
+                before = len(rows)
+                why = chord_place(name, plan, ch, t, None, rows)
+                if why:
+                    refusals[why] = refusals.get(why, 0) + 1
+                seat[1] += 1
+                seat[0] += len(rows) - before
+        mas = sum(r["on_masonry"] for r in rows)
+        back = sum(r["doubleback"] for r in rows)
+        mouth = max((r["mouth"] for r in rows), default=0.0)
+        inter = max((r["interior"] for r in rows), default=0.0)
         total_masonry += mas
-        worst_all = max(worst_all, worst)
+        total_back += back
+        worst_mouth = max(worst_mouth, mouth)
+        worst_interior = max(worst_interior, inter)
+        placed_all += len(rows)
         top = max(refusals.items(), key=lambda kv: kv[1])[0] if refusals else "-"
-        print("%-38s %7d %7d %8.1f%s %8d  %s"
-              % (name[:38], placed, sum(refusals.values()), worst,
-                 " " if worst <= ELBOW_BUDGET_DEG else "!", mas, top[:40]))
+        print("%-38s %7d %7d %6.1f%s %8.1f %8d  %s"
+              % (name[:38], len(rows), sum(refusals.values()), mouth,
+                 " " if mouth <= MOUTH_BUDGET_DEG else "!", inter, mas, top[:34]))
+
+    # Rasterise is run on the SAME placements, to price fork 4 rather than
+    # assert it. An approach emitted as an ordinary RoadChord gets meandered.
+    mrows = []
+    mrng = random.Random(4242)
+    for name in sorted(laned):
+        for ch in chords:
+            cfg = ROADS[ch["floor"]]
+            chord_place(name, laned[name], ch, 0.5,
+                        (mrng, cfg["meander_step"], cfg["meander_amp"]), mrows)
+    mas_meander = sum(r["on_masonry"] for r in mrows)
+    back_meander = sum(r["doubleback"] for r in mrows)
+
+    # Per floor, because "can floor 2 still seat its outpost" is the question
+    # the footprint clamp trades against, and a global rate hides it.
+    print()
+    print("share of chords each plan can seat, by floor:")
+    for fi in sorted(by_floor):
+        worst = sorted(((100.0 * v[0] / max(1, v[1]), k)
+                        for k, v in by_floor[fi].items()))[:3]
+        avg = sum(100.0 * v[0] / max(1, v[1]) for v in by_floor[fi].values()) \
+            / max(1, len(by_floor[fi]))
+        print("  floor %d  mean %3.0f%%   tightest: %s"
+              % (fi, avg, ", ".join("%s %.0f%%" % (n[:26], p) for p, n in worst)))
 
     print()
-    print("worst elbow anywhere: %.1f degrees (budget %.0f)   %s"
-          % (worst_all, ELBOW_BUDGET_DEG,
-             "PASS" if worst_all <= ELBOW_BUDGET_DEG else "OVER BUDGET"))
+    print("placements: %d" % placed_all)
+    print("worst gate mouth:    %5.1f degrees (budget %.0f)   %s"
+          % (worst_mouth, MOUTH_BUDGET_DEG,
+             "PASS" if worst_mouth <= MOUTH_BUDGET_DEG else "OVER BUDGET"))
+    print("worst lane interior: %5.1f degrees -- authored street corners, not a budget"
+          % worst_interior)
+    print("doublebacks over %.0f: %d   %s"
+          % (DOUBLEBACK_DEG, total_back,
+             "PASS" if total_back == 0 else "FAIL -- road reverses"))
     print("centreline cells on masonry: %d   %s"
-          % (total_masonry, "PASS" if total_masonry == 0 else "FAIL -- walker in a wall"))
+          % (total_masonry,
+             "PASS" if total_masonry == 0 else "FAIL -- walker in a wall"))
+    print()
+    print("same placements, stubs handed to Rasterise instead of kept as waypoints:")
+    print("  masonry %d, doublebacks %d   %s"
+          % (mas_meander, back_meander,
+             "meander is harmless here" if mas_meander == 0 else
+             "FAIL -- approach stubs must not meander"))
+
+    ok = (total_masonry == 0 and total_back == 0
+          and worst_mouth <= MOUTH_BUDGET_DEG)
+    print()
+    print("RESULT: %s" % ("GREEN" if ok else "RED"))
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
