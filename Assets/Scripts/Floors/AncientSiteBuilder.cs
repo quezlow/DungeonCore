@@ -20,6 +20,12 @@ public class SiteChordSeat
     public Vector2Int inNormal, outNormal;
     public bool hasBothGates;
 
+    /// <summary>A spur-class seat: the site stands off the chord and a spur is
+    /// emitted from `takeoff` to `gateIn`, arriving along the door's normal.
+    /// Mutually exclusive with hasBothGates.</summary>
+    public bool spur;
+    public Vector3Int takeoff;
+
     /// <summary>The lane walked gate to gate, in world cells.</summary>
     public List<Vector3Int> laneCells = new List<Vector3Int>();
 }
@@ -1495,7 +1501,84 @@ public static class AncientSiteBuilder
             plan.chords.Add(egress);
             plan.chords.Add(rail);
         }
+
+        // SPURS, after the threading splits so their chord indices were not
+        // moved out from under them by an earlier laned split -- one site per
+        // chord is already enforced by `done` across both passes.
+        foreach (var site in result.sites)
+        {
+            var seat = site.chordSeat;
+            if (seat == null || !seat.spur) continue;
+            if (seat.chordIndex < 0 || seat.chordIndex >= plan.chords.Count) continue;
+            if (!done.Add(seat.chordIndex)) continue;
+
+            var chord = plan.chords[seat.chordIndex];
+            if (chord == null) continue;
+
+            // Spur width matched to the DOOR, not the trunk. A five-wide
+            // carriageway centred on a three-cell door paints one jamb cell
+            // each side; a door-wide spur paints exactly the doorway. The door
+            // is found by its outward normal and proximity to the gate --
+            // EmitDoorRuns records mids in world space, and the gate is the
+            // walkable run cell nearest that mid, so they sit within the run's
+            // own length of each other. Held odd because Dilate spreads
+            // (w - 1) / 2 either side.
+            int doorWidth = 3;
+            int bestDist = int.MaxValue;
+            foreach (var d in site.doors)
+            {
+                if (d.outward != seat.inNormal) continue;
+                int dist = Mathf.Abs(d.mid.x - seat.gateIn.x)
+                         + Mathf.Abs(d.mid.y - seat.gateIn.y);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    doorWidth = Mathf.Max(3, d.halfWidth * 2 + 1);
+                }
+            }
+            int spurWidth = Mathf.Min(chord.width, doorWidth);
+            if ((spurWidth & 1) == 0) spurWidth -= 1;
+
+            var spur = new RoadChord
+            {
+                a = seat.takeoff, b = seat.gateIn,
+                nodeA = -1, nodeB = -1,
+                kind = RoadKind.Spur, width = Mathf.Max(1, spurWidth),
+                brokenGapCells = 0,
+            };
+
+            // The take-off becomes a NODE by splitting the host there -- unless
+            // it already IS an end, where a split would mint a near-zero chord.
+            // DeepRoadGraph clusters raw endpoints at radius 6, so a take-off
+            // within two cells of an end shares that end's node for free.
+            bool nearA = Near(seat.takeoff, chord.a, 2);
+            bool nearB = Near(seat.takeoff, chord.b, 2);
+            if (!nearA && !nearB)
+            {
+                var first = new RoadChord
+                {
+                    a = chord.a, b = seat.takeoff,
+                    nodeA = chord.nodeA, nodeB = -1,
+                    kind = chord.kind, width = chord.width, brokenGapCells = 0,
+                };
+                var second = new RoadChord
+                {
+                    a = seat.takeoff, b = chord.b,
+                    nodeA = -1, nodeB = chord.nodeB,
+                    kind = chord.kind, width = chord.width,
+                    brokenGapCells = chord.brokenGapCells,
+                };
+                plan.chords[seat.chordIndex] = first;
+                plan.chords.Add(second);
+            }
+            plan.chords.Add(spur);
+        }
     }
+
+    /// <summary>Chebyshev proximity, for take-off-at-end detection.</summary>
+    private static bool Near(Vector3Int a, Vector3Int b, int r)
+        => Mathf.Abs(a.x - b.x) <= r && Mathf.Abs(a.y - b.y) <= r;
+
 
     /// <summary>How many of a source's cells fall in the placement band. Reported
     /// so a starved floor names the anchor source that dried up, instead of only
@@ -2156,45 +2239,107 @@ public static class AncientSiteBuilder
                                          roadPlan, chordIndex);
         }
 
-        // ROTATION IS CHOSEN, NOT ROLLED, and the cone is gone with it.
+        // ROTATION IS CHOSEN, NOT ROLLED, and the choice is SIGNED.
         //
-        // DoorFacingCos refused any gate facing more than 30 degrees off the
-        // road, which was the right answer while the road was already drawn and
-        // the site had to fit itself to it. Against a chord the site turns to
-        // face the road instead, so every bearing is servable and no anchor is
-        // ever refused for facing. Measured over 10,167 chord placements with
-        // rotation free: worst gate mouth 60.5 degrees, zero doublebacks, zero
-        // centreline cells on masonry.
+        // The first port of this scored runs by Mathf.Abs of the dot -- the old
+        // cone era's "a road has no forward" reasoning -- and that is wrong
+        // here, because the two ends of a seated chord are not interchangeable:
+        // the ingress arrives from chord.a and the egress leaves for chord.b. An
+        // entry gate whose normal agrees WITH travel faces away from a, so the
+        // road drawn from a to it crosses the building to arrive. Measured over
+        // every plan at 24 bearings: the undirected pick chose a wrong-facing
+        // entry on half of them, which is the road through the middle of the
+        // village on floor 3.
+        //
+        // So: the ENTRY is the run most OPPOSED to travel, the exit -- chosen
+        // later by TryLaneThrough with the same signed test -- is the most
+        // aligned, and a rotation is scored on the SPREAD between its best pair,
+        // exactly as the sim's turn_to_face measured green. Orientations are
+        // ranked and tried in order, and the first whose entry gate yields a
+        // walkable cell wins, so a buried gate falls through to the next-best
+        // turn instead of failing the anchor.
+        //
+        // A plan with ONE usable run cannot oppose anything; it is the SPUR
+        // class -- the road does not pass through it, a spur comes out to meet
+        // its door -- and its rotation is scored to put that door PERPENDICULAR
+        // to the chord, so the spur tees off square.
         //
         // The caller still ROLLS rot and mirror before reaching here and those
         // draws are untouched, so every procedural path -- which has no
         // doorAnchors and returned above -- keeps its stream position exactly.
         // DoorRun is a STRUCT (AncientSitePlanLibrary), so there is no null to
         // mean "nothing chosen yet" and a separate flag has to carry it.
+        int usableTotal = 0;
+        foreach (var run in shape.doorAnchors)
+            if (RotateLocal(run.outward, 0, mirror) != Vector2Int.zero) usableTotal++;
+        bool spurClass = usableTotal < 2 || shape.lane.Count == 0;
+
         int bestRot = rot;
         DoorRun bestRun = default;
         bool haveRun = false;
-        float bestScore = float.NegativeInfinity;
+        var gate = Vector2Int.zero;
+        var triedRots = new int[4] { -1, -1, -1, -1 };
 
-        for (int step = 0; step < 4; step++)
+        for (int rank = 0; rank < 4 && !haveRun; rank++)
         {
-            int tryRot = rotatable ? step : rot;
-            foreach (var run in shape.doorAnchors)
-            {
-                var outward = RotateLocal(run.outward, tryRot, mirror);
-                if (outward == Vector2Int.zero) continue;
-                var outv = new Vector2(outward.x, outward.y).normalized;
+            // The rank-th best orientation, found by scanning; four entries at
+            // most, so a sort buys nothing over a scan per rank.
+            float bestScore = float.NegativeInfinity;
+            int pickRot = -1;
+            DoorRun pickRun = default;
+            bool picked = false;
 
-                // Undirected: a road has no forward, so a gate facing east is
-                // served equally by a road heading east or west.
-                float score = Mathf.Abs(Vector2.Dot(heading, outv));
+            for (int step = 0; step < 4; step++)
+            {
+                int tryRot = rotatable ? step : rot;
+
+                float entryDot = float.PositiveInfinity;
+                float exitDot = float.NegativeInfinity;
+                DoorRun entryRun = default;
+                bool haveEntry = false;
+                foreach (var run in shape.doorAnchors)
+                {
+                    var outward = RotateLocal(run.outward, tryRot, mirror);
+                    if (outward == Vector2Int.zero) continue;
+                    var outv = new Vector2(outward.x, outward.y).normalized;
+                    float d = Vector2.Dot(heading, outv);
+                    if (d < entryDot) { entryDot = d; entryRun = run; haveEntry = true; }
+                    if (d > exitDot) exitDot = d;
+                }
+                if (!haveEntry) { if (!rotatable) break; continue; }
+
+                // Spur class: one door, teed off square. Threading class: the
+                // widest opposed spread.
+                float score = spurClass
+                    ? -Mathf.Abs(entryDot)
+                    : exitDot - entryDot;
+
+                // Strictly-greater keeps the tie order stable across ranks.
                 if (score > bestScore)
                 {
-                    bestScore = score;
-                    bestRot = tryRot;
-                    bestRun = run;
-                    haveRun = true;
+                    // Skip orientations already tried at earlier ranks.
+                    bool seen = false;
+                    for (int r2 = 0; r2 < rank && !seen; r2++)
+                        if (triedRots[r2] == tryRot) seen = true;
+                    if (!seen)
+                    {
+                        bestScore = score;
+                        pickRot = tryRot;
+                        pickRun = entryRun;
+                        picked = true;
+                    }
                 }
+                if (!rotatable) break;
+            }
+
+            if (!picked) break;
+            triedRots[rank] = pickRot;
+
+            if (TryGateCell(shape, pickRun, pickRot, mirror, out gate))
+            {
+                bestRot = pickRot;
+                bestRun = pickRun;
+                haveRun = true;
             }
             if (!rotatable) break;
         }
@@ -2212,14 +2357,43 @@ public static class AncientSiteBuilder
         // In a vertical wall the drape runs ALONG the door, so a three-cell door
         // has only its southernmost cell walkable: y+2 is the wall above the
         // run. Measured across every plan and rotation: 216 door runs, 34 with a
-        // buried middle, and ZERO with no walkable cell at all -- so choosing the
-        // cell costs no re-authoring and refuses nothing. Among the 34 is
-        // DeadCoreVault_TheNinefoldCist, @rotate: no with one east-facing
-        // three-cell door, which this seated on a cell nothing can stand on.
-        if (!TryGateCell(shape, bestRun, bestRot, mirror, out var gate))
+        // buried middle, and ZERO with no walkable cell at all. The walkable
+        // cell nearest the middle was chosen by the ranked selection above.
+        var inNormal = RotateLocal(bestRun.outward, bestRot, mirror);
+
+        if (spurClass)
         {
-            headingFault = true;
-            return false;
+            // THE SPUR CLASS: the road does not pass through this site, so its
+            // gate must not sit ON the chord -- that is what ground the vault's
+            // jambs away, a carriageway drawn tangentially along the door face.
+            // The site STANDS OFF along its door's outward normal, far enough
+            // that every cell of it clears the carriageway, and a spur is
+            // emitted later from the take-off to the door, arriving square
+            // along the normal by construction.
+            if (!TrySpurStandoff(shape, bestRot, mirror, anchor, inNormal, gate,
+                                 roadPlan, chordIndex, out placeAt))
+                return false;
+
+            long sdx = placeAt.x - centre.x, sdy = placeAt.y - centre.y;
+            long sDistSq = sdx * sdx + sdy * sdy;
+            if (sDistSq < (long)inner * inner || sDistSq > (long)outer * outer)
+                return false;
+            if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
+
+            // No along-chord clamp: the standoff already guarantees the chord
+            // cannot touch the footprint, whatever their projections overlap.
+            if (!FootprintClearsChords(shape, placeAt, bestRot, mirror,
+                                       roadPlan, chordIndex)) return false;
+
+            seat = new SiteChordSeat
+            {
+                chordIndex = chordIndex,
+                gateIn = new Vector3Int(placeAt.x + gate.x, placeAt.y + gate.y, 0),
+                inNormal = inNormal,
+                spur = true,
+                takeoff = anchor,
+            };
+            return true;
         }
 
         placeAt = new Vector3Int(anchor.x - gate.x, anchor.y - gate.y, 0);
@@ -2232,14 +2406,12 @@ public static class AncientSiteBuilder
         if (distSq < (long)inner * inner || distSq > (long)outer * outer) return false;
         if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
 
-        // THE FOOTPRINT MUST CLEAR BOTH CHORD ENDS, and clamping on the gates
-        // instead is what put centrelines on masonry. A village's gates sit at
-        // its face middles, so on a chord at 38 degrees to the plan axes the
-        // footprint reaches about forty cells further along the chord than the
-        // gates do -- far enough that the chord's own endpoint lands INSIDE the
-        // building, and every approach drawn to it has to cross masonry to
-        // arrive. Measured: 289 masonry contacts clamping on the gate span, 0
-        // clamping on the footprint.
+        // THE FOOTPRINT MUST CLEAR BOTH OCCUPIED CHORD ENDS. Clamping on the
+        // gates instead is what put centrelines on masonry, and a FREE end --
+        // nodeA or nodeB at -1 -- is exempt, or nothing could ever seat at a
+        // road's end: the whole point of a SealedGate is to sit where the road
+        // stops, and the old both-ends clamp refused every such seat and sent
+        // the gates to the free-scatter fallback.
         if (!FootprintClearsChordEnds(shape, placeAt, bestRot, mirror,
                                       roadPlan, chordIndex)) return false;
 
@@ -2251,7 +2423,7 @@ public static class AncientSiteBuilder
         {
             chordIndex = chordIndex,
             gateIn = new Vector3Int(placeAt.x + gate.x, placeAt.y + gate.y, 0),
-            inNormal = RotateLocal(bestRun.outward, bestRot, mirror),
+            inNormal = inNormal,
         };
 
         if (TryLaneThrough(shape, bestRot, mirror, heading, bestRun, gate,
@@ -2266,14 +2438,86 @@ public static class AncientSiteBuilder
         }
 
         // And clear of every OTHER chord. The one this site answered to is
-        // exempt: a laned site splits it at its own gates, and an unlaned doored
-        // one is meant to have the road reach its door. A second chord crossing
-        // the building was never asked for by anything.
+        // exempt: a laned site splits it at its own gates. A second chord
+        // crossing the building was never asked for by anything.
         if (!FootprintClearsChords(shape, placeAt, bestRot, mirror,
                                    roadPlan, chordIndex)) return false;
 
         return true;
     }
+
+    /// <summary>
+    /// Seats a spur-class site off the chord: the gate at the smallest standoff
+    /// along its outward normal at which EVERY cell of the site -- masonry
+    /// included -- clears the host chord's carriageway by a cell.
+    ///
+    /// Exact, per cell, against the segment. The bounding-circle test used for
+    /// OTHER chords is conservative and cheap because it runs against the whole
+    /// plan; this runs against one segment, once per successful seat, and the
+    /// vault's cross shape would pay about ten cells of unnecessary standoff to
+    /// a circle. Search is outward from the smallest plausible distance; a site
+    /// that cannot clear within MaxStandoff refuses the anchor.
+    /// </summary>
+    private static bool TrySpurStandoff(
+        LocalPlan shape, int rot, bool mirror, Vector3Int anchor, Vector2Int normal,
+        Vector2Int gate, RoadPlan plan, int chordIndex, out Vector3Int placeAt)
+    {
+        placeAt = default;
+        if (normal == Vector2Int.zero) return false;
+        if (plan == null || chordIndex < 0 || chordIndex >= plan.chords.Count) return false;
+        var chord = plan.chords[chordIndex];
+        if (chord == null) return false;
+
+        // The gate cell chosen for this run, in rotated local space; the site is
+        // placed so that cell lands at anchor + normal * D.
+        var cells = new List<Vector2Int>();
+        foreach (var c in shape.floor) cells.Add(RotateLocal(c, rot, mirror));
+        foreach (var c in shape.wall) cells.Add(RotateLocal(c, rot, mirror));
+
+        double clear = chord.width * 0.5 + 1.0;
+        for (int d = MinStandoff; d <= MaxStandoff; d++)
+        {
+            // MINUS the outward normal. Outward points from the door TOWARD
+            // the road, so the gate steps back from the take-off along it and
+            // the building -- which extends behind the door, opposite outward
+            // -- moves further from the chord with every cell of standoff.
+            // With the sign the other way the building straddles the chord and
+            // only clears by being pushed entirely through to the far side,
+            // which the stand-in measured as vaults seating 0 of 40 and a
+            // guard post needing a 20-cell spur.
+            var gateWorld = new Vector3Int(
+                anchor.x - normal.x * d, anchor.y - normal.y * d, 0);
+            bool ok = true;
+            foreach (var c in cells)
+            {
+                // World cell = gateWorld + (rotated local cell - rotated gate
+                // cell): the site is placed so the chosen gate cell lands
+                // exactly at gateWorld.
+                double px = gateWorld.x + c.x - gate.x;
+                double py = gateWorld.y + c.y - gate.y;
+                if (PointToSegment(px, py, chord.a, chord.b) < clear)
+                {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok)
+            {
+                placeAt = new Vector3Int(
+                    gateWorld.x - gate.x, gateWorld.y - gate.y, 0);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>The nearest a spur gate may sit to its chord. Below this the
+    /// jambs are inside the carriageway whatever the footprint does.</summary>
+    private const int MinStandoff = 4;
+
+    /// <summary>Past this a spur reads as its own road, not an approach; a site
+    /// that cannot clear within it refuses the anchor and retries elsewhere.</summary>
+    private const int MaxStandoff = 24;
 
     /// <summary>
     /// The cell a road meets a gate at: the walkable run cell nearest the run's
@@ -2499,8 +2743,15 @@ public static class AncientSiteBuilder
             if (s > hi) hi = s;
         }
 
+        // A FREE end is exempt -- nodeA or nodeB at -1. A SealedGate exists to
+        // sit where the road stops, and requiring stub room past a free end
+        // refused every RoadEnd seat and sent the gates to the free-scatter
+        // fallback: the floor 4 log showed two road ends in band and every gate
+        // placed far from them.
         int stub = RoadNetworkBuilder.GateMinStub;
-        return lo >= stub && hi <= len - stub;
+        bool clearA = chord.nodeA < 0 || lo >= stub;
+        bool clearB = chord.nodeB < 0 || hi <= len - stub;
+        return clearA && clearB;
     }
 
 

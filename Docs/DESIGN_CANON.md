@@ -4144,6 +4144,57 @@ answer to no chord; they are now placed unthreaded and kept clear of every road,
 which is what their decorative lanes have always effectively meant. Changing
 their `@anchor:` is still an open authoring call, not a code one.
 
+### Stage 2f: signed selection, the spur, and the free end (SHIPPED)
+
+Closes the two faults from the first live floors, plus the audit's rulings.
+
+**The entry gate is chosen SIGNED, and the mis-port is owned.** The sim's
+`turn_to_face` picks the entry as the run most OPPOSED to travel and the exit as
+the most aligned, scoring a rotation on the spread; the first C# port kept the
+cone era's `Mathf.Abs` -- "a road has no forward" -- which is false the moment a
+chord has a seated site on it, because the ingress arrives from `a` and the
+egress leaves for `b`. Measured at 24 bearings across every plan: the undirected
+pick chose a wrong-facing entry on HALF of them, and a wrong-facing entry is a
+road drawn through the building to reach its far door -- the village on floor 3.
+The stand-in that should have caught it had transcribed the sim's intent rather
+than the shipped code's bytes; the new one transcribes the payload and agrees
+with the sim on rotation and entry cell at 384 of 384 plan-bearings, with zero
+wrong-facing entries. Orientations are ranked and tried in order, so a buried
+gate falls through to the next-best turn instead of failing the anchor.
+
+**The SPUR class -- stage 3, delivered.** A doored plan with no lane, or only one
+usable run, is not passed through: it stands off the chord along its door's
+outward normal at the smallest distance where EVERY cell of it clears the
+carriageway by a cell -- exact, per cell, because the vault's cross shape would
+pay about ten cells of unnecessary standoff to a bounding circle -- and a spur is
+emitted from the take-off to the door, arriving square along the normal by
+construction. The take-off becomes a node by splitting the host there, except
+within two cells of an existing end, where the endpoint cluster does it for
+free. Spur width is matched to the DOOR, held odd: a five-wide carriageway
+centred on a three-cell door paints a jamb each side; a door-wide spur paints
+exactly the doorway. The standoff search sign was caught by the stand-in before
+anything shipped: standing off ALONG the outward normal moves the building back
+ACROSS the chord, since the building extends behind the door -- vaults seated 0
+of 40 bearings and a guard post needed a 20-cell spur; with the sign right the
+guard post seats at every bearing on a spur of 4 to 11, and the rotation-locked
+vaults on the near-perpendicular third of bearings, which 240 attempts of 64
+anchor samples each covers many times over.
+
+**A FREE chord end is exempt from the stub clamp.** A SealedGate exists to sit
+where the road stops, and requiring approach room past a free end refused every
+RoadEnd seat and sent the gates to the free-scatter fallback -- the floor 4 log
+showed two road ends in band and every gate placed far from them.
+
+**Audit rulings, recorded:** THE DOOR RULE is a MINIMUM of three cells in the run
+direction, not an exact -- sixteen shipped plans carry wider runs, up to the
+24-cell gate frontage of `SealedGate_TheWatchedRoad`, and none anywhere is
+narrower than three. `BrokenAqueduct_TheDrySpan` is a doorless lane and so
+keep-clear under 2e, which kills its Crossing anchor; the fix is authoring, two
+glyph runs: the `~~~` in its row 10 and row 16 WALL lines become `+++`, making
+the passage under the span a pair of opposed gates. `SealedCrypt_TheCoffinRow`
+still routes only half its bearings gate to gate -- an authored lane fault,
+unchanged -- and the Free-anchored laned trio remains an open `@anchor:` call.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient
