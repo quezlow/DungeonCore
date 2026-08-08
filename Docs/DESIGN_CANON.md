@@ -4260,6 +4260,31 @@ worst sidle 20 cells against the `MaxSidle` cap of 32.
 threaded, spurred, re-aimed, SPUR LOST -- per floor, next to the rejection
 counters it always carried.
 
+### Stage 2i: both gates, or neither (SHIPPED)
+
+The seat counters earned their keep on their first outing: floor 3 placed five
+laned sites and threaded three, and The Ash Stacks was one of the two that
+placed unthreaded -- with its own chord still exempt from keep-clear, and an
+exemption without a split is a road rasterised straight through the building.
+
+**Both gates are tested before an orientation is accepted.** The sim's
+`turn_to_face` always required a walkable cell at the entry AND the exit; the C#
+ranked fallthrough tested only the entry, so a rotation with a walkable entry
+and a buried exit was locked in, the lane failed AFTER the choice, and the site
+placed unthreaded. The rank loop now carries the would-be exit -- the run most
+aligned with travel, the same rule `TryLaneThrough` applies -- and an
+orientation whose exit gate is buried falls through to the next-best turn.
+Stand-in over every laned plan at 24 bearings: every plan threads at every
+bearing except `SealedCrypt_TheCoffinRow` at its known 12 of 24.
+
+**A laned site that still cannot thread refuses the seat.** The chord exemption
+is earned by the split; a lane that genuinely does not route -- The Coffin Row's
+authored fault -- now returns false and the caller retries at a fresh anchor,
+counted under no-door-heading, the same failure family: a door arrangement the
+road cannot serve. The 2d note that an unthreaded site "keeps its seat and the
+road passes its door" is superseded -- it conflated passing with being exempted
+through.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

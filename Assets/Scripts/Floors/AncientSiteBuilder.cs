@@ -2419,6 +2419,8 @@ public static class AncientSiteBuilder
             float bestScore = float.NegativeInfinity;
             int pickRot = -1;
             DoorRun pickRun = default;
+            DoorRun pickExit = default;
+            bool pickHasExit = false;
             bool picked = false;
 
             for (int step = 0; step < 4; step++)
@@ -2428,7 +2430,9 @@ public static class AncientSiteBuilder
                 float entryDot = float.PositiveInfinity;
                 float exitDot = float.NegativeInfinity;
                 DoorRun entryRun = default;
+                DoorRun exitRun = default;
                 bool haveEntry = false;
+                bool haveExit = false;
                 foreach (var run in shape.doorAnchors)
                 {
                     var outward = RotateLocal(run.outward, tryRot, mirror);
@@ -2436,9 +2440,14 @@ public static class AncientSiteBuilder
                     var outv = new Vector2(outward.x, outward.y).normalized;
                     float d = Vector2.Dot(heading, outv);
                     if (d < entryDot) { entryDot = d; entryRun = run; haveEntry = true; }
-                    if (d > exitDot) exitDot = d;
+                    if (d > exitDot) { exitDot = d; exitRun = run; haveExit = true; }
                 }
                 if (!haveEntry) { if (!rotatable) break; continue; }
+                // Same run at both extremes means only one usable door at this
+                // orientation; that is the spur shape, not the threading one.
+                if (haveExit && exitRun.mid == entryRun.mid
+                             && exitRun.outward == entryRun.outward)
+                    haveExit = false;
 
                 // Spur class: one door, teed off square. Threading class: the
                 // widest opposed spread.
@@ -2458,6 +2467,8 @@ public static class AncientSiteBuilder
                         bestScore = score;
                         pickRot = tryRot;
                         pickRun = entryRun;
+                        pickExit = exitRun;
+                        pickHasExit = haveExit;
                         picked = true;
                     }
                 }
@@ -2467,7 +2478,19 @@ public static class AncientSiteBuilder
             if (!picked) break;
             triedRots[rank] = pickRot;
 
-            if (TryGateCell(shape, pickRun, pickRot, mirror, out gate))
+            // BOTH gates must resolve before an orientation is accepted, exactly
+            // as the sim's turn_to_face tested. Testing only the entry is how
+            // The Ash Stacks shipped with a road through it: its best-facing
+            // rotation had a walkable entry and a buried exit, so the lane
+            // failed AFTER the orientation was locked, the site placed
+            // unthreaded, and the chord it had exempted was rasterised straight
+            // through the stacks. A rotation whose exit is buried now falls
+            // through to the next-best turn, which the audit shows always exists
+            // for every shipped laned plan.
+            bool gatesOk = TryGateCell(shape, pickRun, pickRot, mirror, out gate);
+            if (gatesOk && !spurClass && pickHasExit)
+                gatesOk = TryGateCell(shape, pickExit, pickRot, mirror, out _);
+            if (gatesOk)
             {
                 bestRot = pickRot;
                 bestRun = pickRun;
@@ -2567,6 +2590,24 @@ public static class AncientSiteBuilder
             foreach (var c in lane)
                 seat.laneCells.Add(new Vector3Int(placeAt.x + c.x, placeAt.y + c.y, 0));
             seat.hasBothGates = seat.laneCells.Count >= 2;
+        }
+
+        // A LANED SITE THAT CANNOT THREAD HERE REFUSES THE SEAT. The chord
+        // exemption below is earned by the split; a site whose lane failed to
+        // route keeps no exemption it did not earn, because an exempted chord
+        // with no split is a road rasterised straight through the building --
+        // which is exactly what the counters caught on floor 3: five laned
+        // sites placed, three threaded, and The Ash Stacks cut in half. With
+        // both gates tested at selection this fires only for a lane that
+        // genuinely does not connect -- The Coffin Row's known fault -- and the
+        // caller retries at a fresh anchor, counted under no-door-heading: it
+        // is the same failure family, a door arrangement the road cannot
+        // serve.
+        if (!seat.hasBothGates)
+        {
+            seat = null;
+            headingFault = true;
+            return false;
         }
 
         // And clear of every OTHER chord. The one this site answered to is
