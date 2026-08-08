@@ -806,6 +806,11 @@ public class Commands : MonoBehaviour
                   .Append(", unwalkable ").Append(diag.rejectedUnwalkable)
                   .Append(", noDoorHeading ").Append(diag.rejectedNoDoorHeading)
                   .Append('\n');
+                sb.Append("    seats: ").Append(diag.lanedSplits)
+                  .Append(" threaded, ").Append(diag.spursEmitted)
+                  .Append(" spurred (").Append(diag.spursReaimed)
+                  .Append(" re-aimed), ").Append(diag.spursLost)
+                  .Append(" SPUR LOST").Append('\n');
                 sb.Append("    anchors in band: junctions ").Append(diag.inBandJunctions)
                   .Append(", roadCells ").Append(diag.inBandRoadCells)
                   .Append(", roadEnds ").Append(diag.inBandRoadEnds).Append('\n');

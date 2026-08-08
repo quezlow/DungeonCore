@@ -1228,7 +1228,13 @@ public static class AncientSiteBuilder
         // undecimated-centreline copy come out. The old sampler resolved a
         // heading at roughly one anchor in twenty and read as a facing rule
         // while behaving as a density rule.
-        if (roadPlan != null && roadPlan.valid && roadPlan.chords.Count > 0)
+        // FREE MEANS FREE. The 2b rewrite's `default:` case caught Free along
+        // with AlongRoad and Crossing, so every Free-anchored plan -- the seals,
+        // the crypts, the springs -- was quietly handed a point ON a chord and
+        // seated straddling the carriageway. The original code gave Free a null
+        // source and fell through to the scatter; this restores that.
+        if (kind != SiteAnchor.Free
+            && roadPlan != null && roadPlan.valid && roadPlan.chords.Count > 0)
         {
             for (int i = 0; i < 64; i++)
             {
@@ -2326,8 +2332,24 @@ public static class AncientSiteBuilder
         // there. A site that cannot be threaded must therefore not be crossed at
         // all.
         if (shape.doorAnchors.Count == 0)
+        {
+            // A doorless site answers to NO chord, so nothing is exempt from its
+            // keep-clear. Forwarding chordIndex here excused exactly the chord
+            // the anchor sat on, which is how a crypt shipped with a road drawn
+            // through it and its walls cut where the carriageway crossed.
+            //
+            // A doorless site whose anchor kind is still road-flavoured -- the
+            // procedural archives are AlongRoad by archetype default -- SIDLES
+            // first: AlongRoad means BESIDE the road, not across it, so the seat
+            // steps perpendicular to the chord until every cell clears the
+            // carriageway, then must clear everything else too.
+            if (chordIndex >= 0
+                && !TrySidleClear(shape, rot, mirror, roadPlan, chordIndex,
+                                  ref placeAt))
+                return false;
             return FootprintClearsChords(shape, placeAt, rot, mirror,
-                                         roadPlan, chordIndex);
+                                         roadPlan, -1);
+        }
 
         // THE HEADING IS EXACT NOW. It is the chord's own direction, not a least
         // squares fit over nearby cells, so it resolves at every anchor a chord
@@ -2555,6 +2577,64 @@ public static class AncientSiteBuilder
 
         return true;
     }
+
+
+    /// <summary>
+    /// Steps a doorless seat perpendicular to its chord, either side, until
+    /// every cell of the site clears the carriageway by a cell. Exact, per
+    /// cell, like the spur standoff and for the same reason. False past
+    /// MaxSidle, and the caller refuses the anchor.
+    /// </summary>
+    private static bool TrySidleClear(
+        LocalPlan shape, int rot, bool mirror,
+        RoadPlan plan, int chordIndex, ref Vector3Int placeAt)
+    {
+        if (plan == null || chordIndex < 0 || chordIndex >= plan.chords.Count)
+            return true;
+        var chord = plan.chords[chordIndex];
+        if (chord == null) return true;
+
+        double vx = chord.b.x - chord.a.x, vy = chord.b.y - chord.a.y;
+        double len = System.Math.Sqrt(vx * vx + vy * vy);
+        if (len < 1.0) return true;
+        double px = -vy / len, py = vx / len;
+
+        var cells = new List<Vector2Int>();
+        foreach (var c in shape.floor) cells.Add(RotateLocal(c, rot, mirror));
+        foreach (var c in shape.wall) cells.Add(RotateLocal(c, rot, mirror));
+
+        double clear = chord.width * 0.5 + 1.0;
+        for (int d = 0; d <= MaxSidle; d++)
+        {
+            for (int sign = 1; sign >= -1; sign -= 2)
+            {
+                if (d == 0 && sign < 0) continue;
+                int ox = (int)System.Math.Round(px * d * sign);
+                int oy = (int)System.Math.Round(py * d * sign);
+                bool ok = true;
+                foreach (var c in cells)
+                {
+                    if (PointToSegment(placeAt.x + ox + c.x,
+                                       placeAt.y + oy + c.y,
+                                       chord.a, chord.b) < clear)
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok)
+                {
+                    placeAt = new Vector3Int(placeAt.x + ox, placeAt.y + oy, 0);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>The farthest a doorless seat may sidle from its anchor before
+    /// the road-flavoured anchor kind has stopped meaning anything.</summary>
+    private const int MaxSidle = 32;
 
     /// <summary>
     /// Seats a spur-class site off the chord: the gate at the smallest standoff

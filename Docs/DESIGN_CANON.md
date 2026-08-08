@@ -4227,6 +4227,39 @@ COUNTED.
 a screenshot having to. A spur seat with `spurEmitted` false was lost, currently
 only to the reach limit after a contended re-aim.
 
+### Stage 2h: Free means free, and doorless means exempt from nothing (SHIPPED)
+
+The crypt with a road through it was not unlucky generation; it was two stacked
+faults, both mine, both from the 2b rewrite.
+
+**Free-anchored plans were being handed chord points.** The rewritten
+`TryPickAnchor` handled `Junction` and `RoadEnd` explicitly and everything else
+in `default:` -- which caught `Free` alongside `AlongRoad` and `Crossing`. Every
+Free plan since 2b -- the seals, the crypts, the springs -- was quietly seated ON
+a carriageway. The original code gave Free a null source and fell through to the
+scatter; restored: `Free` never samples the plan.
+
+**The doorless keep-clear exempted the chord it should have feared.** A doorless
+site answers to no chord, but the early path forwarded `chordIndex` to
+`FootprintClearsChords` as the exemption -- so a crypt seated on a road was
+excused from clearing exactly that road, and its walls were cut where the
+carriageway crossed. The exemption is now `-1`: a doorless site clears
+everything.
+
+**Doorless sites with road-flavoured anchors SIDLE.** The procedural collapsed
+archives are `AlongRoad` by archetype default with no doors; with the exemption
+fixed they would have thrashed against their own anchor forever. AlongRoad means
+BESIDE the road, not across it: `TrySidleClear` steps the seat perpendicular to
+the chord, either side, until every cell clears the carriageway -- exact, per
+cell, like the spur standoff and for the same reason. Measured over every
+authored doorless plan at every rotation and 24 bearings: 312 of 312 clear,
+worst sidle 20 cells against the `MaxSidle` cap of 32.
+
+**The seat counters reach the report.** `LastSitePlacement` already IS the
+`AncientSiteResult`, so the Commands site report now prints the `seats:` line --
+threaded, spurred, re-aimed, SPUR LOST -- per floor, next to the rejection
+counters it always carried.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient
