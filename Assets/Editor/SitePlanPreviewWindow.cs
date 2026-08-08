@@ -351,7 +351,10 @@ public class SitePlanPreviewWindow : EditorWindow
     /// </summary>
     private void RefreshSeatLens(AuthoredSitePlan plan)
     {
-        string key = (profile != null ? profile.GetInstanceID() : 0) + ":" + authoredIndex
+        // GetEntityId, not GetInstanceID: the latter is CS0618-deprecated in
+        // this Unity build, and the key only needs a stable per-asset string.
+        string pid = profile != null ? profile.GetEntityId().ToString() : "none";
+        string key = pid + ":" + authoredIndex
             + ":" + rotation + ":" + mirror + ":" + chordWidth + ":" + bearingStep;
         if (key == seatKey) return;
         seatKey = key;
