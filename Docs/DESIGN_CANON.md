@@ -4285,6 +4285,22 @@ road cannot serve. The 2d note that an unthreaded site "keeps its seat and the
 road passes its door" is superseded -- it conflated passing with being exempted
 through.
 
+### Stage 2j: the truncation machinery is gone (SHIPPED)
+
+`RoadTruncation`, `RoadGate`, `MinSurvivingRunFactor`, `TruncateAroundBlocked`,
+`InGate` and `NearBlocked` are deleted from `RoadNetworkBuilder` -- one
+contiguous block, eleven kilobytes, and a repo-wide search shows zero references
+to any of the six outside it. They were the last of the four mechanisms that
+negotiated the road/site boundary after the fact: heading estimation went in 2b,
+the carriageway subtraction and the vault special case in 2d, and the gate
+corridor's only consumer with them. Since 2d nothing has called any of this; it
+was kept only until the chord split existed, so a road could never again be
+DRAWN through a building with nothing to negotiate it back out.
+
+The one deliberate survivor of the whole arc is `SiteData.pavedRoadCells`: now
+always empty, vestigial rather than wrong, and serialised -- removing it is a
+save-shape change that gets its own pass, never a rider.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient
