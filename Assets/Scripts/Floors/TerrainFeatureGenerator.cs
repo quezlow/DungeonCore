@@ -1487,33 +1487,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
         lastSitePlacement = result;
         lastSitePlacementSkip = SitePlacementSkip.Placed;
 
-        // THE ONE SAFE WINDOW. The loop below subtracts road cells from every
-        // site's footprint, so a road that is going to yield to the vault must
-        // yield BEFORE that subtraction reads roadCells -- otherwise the vault
-        // still loses its cells to a carriageway that no longer exists. Gated on
-        // the same entry flag as the vault itself, so it is floor index 4 only.
-        if (entry.reserveDeadCore) TruncateRoadsAroundVault(result);
-
         foreach (var plan in result.sites)
         {
-            // The road and the core keep their cells outright. A site yields to
-            // both: the carriageway was carved first, and nothing is ever allowed
-            // to sit on the core cavern or the entrance.
-            // Record the carriageway overlap BEFORE yielding it: those cells
-            // get site paving on the road tilemap, so the room reads built
-            // around the road rather than cut through by it. Core overlap is
-            // yielded silently as before -- nothing paves the core cavern.
+            // THE CARRIAGEWAY SUBTRACTION IS GONE. A site is seated against a
+            // CHORD before any road is drawn, and a laned site splits that chord
+            // at its own two gates -- so the road runs in to the door, threads
+            // the authored lane and leaves by the far gate. There is no overlap
+            // to yield, nothing to pave over, and no severed run to guess at.
+            //
+            // The core keeps its cells as it always did. Nothing is ever allowed
+            // to sit on the core cavern or the entrance, and nothing paves it.
             var pavedRoad = new List<SerializableVector3Int>();
-            foreach (var c in plan.cells)
-                if (roadCells.Contains(c)) pavedRoad.Add(SerializableVector3Int.From(c));
-            // The wall band yields road cells too (the road punches its own
-            // gate); those pave as well, or the crossing shows road in every
-            // doorway while the room around it is paved.
-            foreach (var c in plan.ruinsCells)
-                if (roadCells.Contains(c)) pavedRoad.Add(SerializableVector3Int.From(c));
 
-            plan.cells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
-            plan.ruinsCells.RemoveAll(c => roadCells.Contains(c) || reservedCoreCells.Contains(c));
+            plan.cells.RemoveAll(c => reservedCoreCells.Contains(c));
+            plan.ruinsCells.RemoveAll(c => reservedCoreCells.Contains(c));
 
             // THE HEART MUST SURVIVE THE SUBTRACTION, and until this guard it
             // did not have to. The heart lives in the wall band, so a
@@ -1532,25 +1519,24 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (plan.hasHeart && !plan.ruinsCells.Contains(plan.heartCell))
             {
                 Debug.LogError("[TerrainFeatureGenerator] '" + plan.planName +
-                    "' lost its HEART to the carriageway at " + plan.heartCell +
-                    ". The seal would have been unbreakable. The heart claim is " +
-                    "dropped. Move the heart off the plan's centre, or stop the " +
-                    "plan anchoring AlongRoad -- a centred heart on an AlongRoad " +
-                    "plan lands under the road every time.");
+                    "' lost its HEART at " + plan.heartCell + ". The seal would " +
+                    "have been unbreakable, so the heart claim is dropped. The " +
+                    "carriageway can no longer be the cause -- roads are drawn " +
+                    "after the site pass and never through a building -- so this " +
+                    "is the core cavern or the disc clamp.");
                 plan.hasHeart = false;
             }
             if (plan.cells.Count < 12)
             {
-                // The builder's own size check ran BEFORE the carriageway was
-                // subtracted, so a site can pass there and die here. On an ordinary
-                // ruin that is fine and silent. On the outpost it means the floor
-                // ships with no dwarves, which must never be a silent outcome --
-                // the plan wants widening, not this guard removing.
+                // Only the core cavern can reduce a site now. This ate floor
+                // index 2's outpost once, back when the carriageway subtraction
+                // ran here -- the builder's own size check passed and this one
+                // did not. It must never be a silent outcome.
                 if (plan.reservedForOutpost || plan.reservedForVillage)
                     Debug.LogError("[TerrainFeatureGenerator] The guaranteed " +
                         (plan.reservedForOutpost ? "outpost" : "village") +
-                        " was reduced below 12 cells by the carriageway subtraction " +
-                        "and has been dropped. Widen the plan.");
+                        " was reduced below 12 cells by the core-cavern " +
+                        "subtraction and has been dropped. Move it or widen it.");
                 continue;
             }
 
@@ -1591,161 +1577,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Floor index 4 only: the deep roads YIELD to the dead core vault.
-    ///
-    /// Everywhere else a site yields to the road -- the carriageway was carved
-    /// first, and the loop in GenerateSites subtracts road cells from every site
-    /// it places. On the vault that cost 2106 carved cells against 2576
-    /// authored, an eighteen per cent hole through the largest hand-drawn thing
-    /// in the game. Floor 4 carries no caravans and no patrols, so severing a leg
-    /// of the dead network there costs nothing; on a living floor it would cost a
-    /// trade route, which is why the inconsistency is deliberate and floor-gated
-    /// rather than made general.
-    ///
-    /// SAFE ON LOAD, and that is what makes truncating at generation the right
-    /// place. RoadData.polyline is persisted, so the cut happens exactly once and
-    /// the load path simply rasterises the already-cut polyline -- there is no
-    /// second truncation to keep in agreement with this one. RebuildRoadCells is
-    /// the shared generate/load entry point and RebuildLookup calls it on both
-    /// paths, so the authoritative segment partition is the final one either way
-    /// and the rebuild in the middle of this method is transient. Nothing between
-    /// here and that final rebuild reads a segment id.
-    ///
-    /// VERIFIED RATHER THAN TRUSTED. After the rebuild this counts the vault
-    /// cells still under carriageway. It should be zero: the clearance radius
-    /// leaves the carriageway two cells clear of the vault at width 5. But
-    /// FilletJunctions is ADDITIVE and reaches junctionFilletRadius beyond the
-    /// carriageway at a node, and a clipped end is a NEW road end that could pair
-    /// with another inside RoadJunctionMergeRadius. So if the check fires, the
-    /// clip is re-run once at a clearance widened by exactly that fillet radius,
-    /// and the result is persisted -- so the load path reproduces the wider cut
-    /// without needing to know why.
-    /// </summary>
-    private void TruncateRoadsAroundVault(AncientSiteResult result)
-    {
-        if (result == null || featureData == null || featureData.roads == null) return;
-        if (featureData.roads.Count == 0) return;
 
-        AncientSitePlan vault = null;
-        foreach (var plan in result.sites)
-            if (plan != null && plan.archetype == SiteArchetype.DeadCoreVault)
-            {
-                vault = plan;
-                break;
-            }
-
-        // No vault is not this method's error to report. PlaceDeadCore already
-        // logs loudly when its 240 attempts run out, and a second complaint here
-        // would send the next reader to the wrong file.
-        if (vault == null) return;
-
-        var blocked = new HashSet<Vector3Int>();
-        foreach (var c in vault.cells) blocked.Add(c);
-        foreach (var c in vault.ruinsCells) blocked.Add(c);
-        if (blocked.Count == 0) return;
-
-        // The vault's declared doors, as gates the road may reach. A site with no
-        // door truncates exactly as before -- the list is simply empty.
-        var gates = new List<RoadNetworkBuilder.RoadGate>();
-        foreach (var d in vault.doors)
-            gates.Add(new RoadNetworkBuilder.RoadGate
-            {
-                mid = d.mid,
-                outward = d.outward,
-                halfWidth = d.halfWidth,
-            });
-
-        int before = CountUnderRoad(blocked);
-
-        var report = RoadNetworkBuilder.TruncateAroundBlocked(
-            featureData.roads, blocked, 0, gates);
-        if (!report.AnythingChanged)
-        {
-            Debug.Log("[Sites] Floor " + floor.FloorIndex + " vault sits clear of " +
-                      "every road; nothing truncated. " + report.Summary());
-            return;
-        }
-
-        RebuildRoadCells();
-
-        // Widest carriageway on the floor, for the gate test. Trunks are the
-        // wide ones and the vault is what they run to.
-        int roadHalf = 1;
-        foreach (var r in featureData.roads)
-            if (r != null) roadHalf = Mathf.Max(roadHalf, Mathf.Max(1, r.width) / 2);
-
-        int atDoor = CountUnderRoad(blocked) - CountUnderRoadOutsideGates(blocked, gates, roadHalf);
-        int after = CountUnderRoadOutsideGates(blocked, gates, roadHalf);
-        int widened = 0;
-
-        if (after > 0)
-        {
-            // The junction fillet is the only thing that can add carriageway
-            // outside the clearance, so widen by exactly it and cut once more.
-            widened = Mathf.Max(1, junctionFilletRadius);
-            var second = RoadNetworkBuilder.TruncateAroundBlocked(
-                featureData.roads, blocked, widened, gates);
-            RebuildRoadCells();
-            after = CountUnderRoadOutsideGates(blocked, gates, roadHalf);
-            foreach (var n in second.notes) report.notes.Add("(widened) " + n);
-        }
-
-        Debug.Log("[Sites] Floor " + floor.FloorIndex + " ROAD TRUNCATION around the " +
-                  "vault: " + report.Summary() + ". Vault cells under carriageway: " +
-                  before + " before, " + after + " after outside the doorway, " +
-                  atDoor + " at the doorway (intended)" +
-                  (widened > 0 ? " (clearance widened by " + widened +
-                                 " and re-cut once)" : "") + ".");
-        foreach (var n in report.notes) Debug.Log("    " + n);
-
-        if (after > 0)
-            Debug.LogError("[Sites] Floor " + floor.FloorIndex + ": " + after +
-                " vault cell(s) are STILL under carriageway after truncating and " +
-                "re-cutting at a widened clearance. Those cells will be subtracted " +
-                "from the vault's footprint below, exactly as before this ran. " +
-                "Read RoadNetworkBuilder.TruncateAroundBlocked's clearance " +
-                "arithmetic against FilletJunctions before changing anything else.");
-    }
-
-    /// <summary>How many of these cells the carriageway currently covers. The
-    /// only figure that answers "did the truncation actually buy the vault its
-    /// cells back", and it is measured on both sides rather than predicted.</summary>
-    private int CountUnderRoad(HashSet<Vector3Int> cells)
-    {
-        int n = 0;
-        foreach (var c in cells)
-            if (roadCells.Contains(c)) n++;
-        return n;
-    }
-
-    /// <summary>The same count, ignoring cells inside a doorway's approach.
-    ///
-    /// The plain count stopped being the right question the moment roads were
-    /// allowed to reach doors: the carriageway now covers the threshold ON
-    /// PURPOSE, some fifteen cells of it, and a verifier that reads intended
-    /// overlap as failure would LogError on every correct floor. This asks the
-    /// question that still matters -- is the road anywhere it was never invited.</summary>
-    private int CountUnderRoadOutsideGates(
-        HashSet<Vector3Int> cells, List<RoadNetworkBuilder.RoadGate> gates, int roadHalf)
-    {
-        int n = 0;
-        foreach (var c in cells)
-        {
-            if (!roadCells.Contains(c)) continue;
-            bool inGate = false;
-            foreach (var g in gates)
-            {
-                if (g.outward.x == 0 && g.outward.y == 0) continue;
-                int dx = c.x - g.mid.x, dy = c.y - g.mid.y;
-                if (dx * g.outward.x + dy * g.outward.y < 0) continue;
-                int lateral = g.outward.x == 0 ? Mathf.Abs(dx) : Mathf.Abs(dy);
-                if (lateral <= Mathf.Max(g.halfWidth, roadHalf)) { inGate = true; break; }
-            }
-            if (!inGate) n++;
-        }
-        return n;
-    }
 
     /// <summary>
     /// Retypes every site's masonry to its family terrain -- MasonryTypeFor

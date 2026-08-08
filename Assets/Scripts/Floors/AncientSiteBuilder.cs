@@ -3,9 +3,34 @@ using UnityEngine;
 
 /// <summary>One placed site: an archetype, the plan variant it was built from,
 /// its anchor, and the two cell sets that make it read as architecture.</summary>
+/// <summary>
+/// How a placed site met the road: which chord it answered to, the two gate
+/// cells a road threads it by, and the authored lane between them in world
+/// space.
+///
+/// Carried on the placed site rather than acted on at seating time because a
+/// seat that succeeds can still be thrown out afterwards -- by the disc clamp,
+/// the twelve-cell floor, or the walkability guard -- and a chord split for a
+/// site that was never placed would leave the network cut around nothing.
+/// </summary>
+public class SiteChordSeat
+{
+    public int chordIndex = -1;
+    public Vector3Int gateIn, gateOut;
+    public Vector2Int inNormal, outNormal;
+    public bool hasBothGates;
+
+    /// <summary>The lane walked gate to gate, in world cells.</summary>
+    public List<Vector3Int> laneCells = new List<Vector3Int>();
+}
+
 public class AncientSitePlan
 {
     public int id;
+
+    /// <summary>Null on every procedural site and on any authored plan with no
+    /// lane or only one usable gate.</summary>
+    public SiteChordSeat chordSeat;
     public SiteArchetype archetype;
     public int variant;
 
@@ -391,6 +416,11 @@ public static class AncientSiteBuilder
         result.rejectedUnwalkable = general.rejectedUnwalkable;
         result.rejectedNoDoorHeading = general.rejectedNoDoorHeading;
 
+        // LAST, once every site that is going to be placed has been. Splitting
+        // as each site seated would have cut chords for placements that were
+        // still to be thrown out.
+        SplitChordsForSites(roadPlan, result);
+
         return result;
     }
 
@@ -522,7 +552,7 @@ public static class AncientSiteBuilder
             // and every procedural placement is unchanged.
             if (!TryDoorAnchor(rng, site, ref rot, mirror, rotatable, anchor, centre, inner, outer,
                                roadPlan, chordIndex, anchorsUsed, minSpacingSq,
-                               out var placeAt, out bool headingFault))
+                               out var placeAt, out bool headingFault, out var seat))
             {
                 if (headingFault) tally.rejectedNoDoorHeading++;
                 else tally.rejectedTooClose++;
@@ -579,6 +609,7 @@ public static class AncientSiteBuilder
                 continue;
             }
 
+            placed.chordSeat = seat;
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(placeAt);
@@ -659,7 +690,7 @@ public static class AncientSiteBuilder
 
             if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
                                roadPlan, chordIndex, anchorsUsed, minSpacingSq,
-                               out var placeAt, out bool headingFault))
+                               out var placeAt, out bool headingFault, out var seat))
             {
                 if (headingFault) headingRejects++;
                 continue;
@@ -680,6 +711,7 @@ public static class AncientSiteBuilder
             if (placed.cells.Count < 12) continue;
             if (CountWalkable(placed.cells) < MinWalkableCells) continue;
 
+            placed.chordSeat = seat;
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(placeAt);
@@ -764,7 +796,7 @@ public static class AncientSiteBuilder
 
             if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
                                roadPlan, chordIndex, anchorsUsed, minSpacingSq,
-                               out var placeAt, out bool headingFault))
+                               out var placeAt, out bool headingFault, out var seat))
             {
                 if (headingFault) headingRejects++;
                 continue;
@@ -787,6 +819,7 @@ public static class AncientSiteBuilder
             if (placed.cells.Count < 12) continue;
             if (CountWalkable(placed.cells) < MinWalkableCells) continue;
 
+            placed.chordSeat = seat;
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(placeAt);
@@ -878,7 +911,7 @@ public static class AncientSiteBuilder
             // helper's conditional rng draw never fires for it.
             if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
                                roadPlan, chordIndex, anchorsUsed, minSpacingSq,
-                               out var placeAt, out bool headingFault))
+                               out var placeAt, out bool headingFault, out var seat))
             {
                 if (headingFault) headingRejects++;
                 continue;
@@ -914,6 +947,7 @@ public static class AncientSiteBuilder
             // one -- there are 240 attempts and only one vault per dungeon.
             if (!placed.hasHeart) continue;
 
+            placed.chordSeat = seat;
             placed.id = result.sites.Count;
             result.sites.Add(placed);
             anchorsUsed.Add(placeAt);
@@ -995,6 +1029,9 @@ public static class AncientSiteBuilder
                 p.doorAnchors.Add(run);
             }
         }
+
+        foreach (var c in authored.lane) p.lane.Add(c);
+        foreach (var c in authored.door) p.door.Add(c);
 
         return p.floor.Count == 0 ? null : p;
     }
@@ -1257,6 +1294,182 @@ public static class AncientSiteBuilder
         return true;
     }
 
+
+    /// <summary>
+    /// The exit gate and the authored lane between the two, or nothing.
+    ///
+    /// The exit is the run whose normal best AGREES with the chord's direction,
+    /// as the entry is the one that best opposes it. The corridor is
+    /// (lane | door) and walkable: a gate is drawn '+', not '~', so a lane-only
+    /// corridor has no cell at the threshold and every route refuses at its own
+    /// front door -- sixteen plans failed identically on that before it was a
+    /// bug in the test rather than in sixteen plans.
+    /// </summary>
+    private static bool TryLaneThrough(
+        LocalPlan shape, int rot, bool mirror, Vector2 chordDir,
+        DoorRun entryRun, Vector2Int gateIn,
+        out Vector2Int gateOut, out Vector2Int outNormal,
+        out List<Vector2Int> lane)
+    {
+        gateOut = default;
+        outNormal = default;
+        lane = null;
+        if (shape.lane.Count == 0) return false;
+
+        // The exit run: most ALIGNED with travel, and never the entry run.
+        bool haveExit = false;
+        float bestScore = float.NegativeInfinity;
+        DoorRun exitRun = default;
+        foreach (var run in shape.doorAnchors)
+        {
+            if (run.mid == entryRun.mid && run.outward == entryRun.outward) continue;
+            var o = RotateLocal(run.outward, rot, mirror);
+            if (o == Vector2Int.zero) continue;
+            float score = Vector2.Dot(chordDir, new Vector2(o.x, o.y).normalized);
+            if (score > bestScore) { bestScore = score; exitRun = run; haveExit = true; }
+        }
+        if (!haveExit) return false;
+        if (!TryGateCell(shape, exitRun, rot, mirror, out gateOut)) return false;
+
+        var inNormal = RotateLocal(entryRun.outward, rot, mirror);
+        outNormal = RotateLocal(exitRun.outward, rot, mirror);
+        if (gateOut == gateIn) return false;
+
+        var floorR = new HashSet<Vector2Int>();
+        foreach (var c in shape.floor) floorR.Add(RotateLocal(c, rot, mirror));
+
+        var corridor = new HashSet<Vector2Int>();
+        foreach (var c in shape.lane) corridor.Add(RotateLocal(c, rot, mirror));
+        foreach (var c in shape.door) corridor.Add(RotateLocal(c, rot, mirror));
+
+        // Drape the corridor, with BOTH approaches carved. A cell reads as wall
+        // when the cell one or two north of it is unmined.
+        var walkable = new HashSet<Vector2Int>();
+        foreach (var c in corridor)
+        {
+            var up1 = new Vector2Int(c.x, c.y + 1);
+            var up2 = new Vector2Int(c.x, c.y + 2);
+            if (Open(floorR, up1, gateIn, inNormal, gateOut, outNormal)
+                && Open(floorR, up2, gateIn, inNormal, gateOut, outNormal))
+                walkable.Add(c);
+        }
+        if (!walkable.Contains(gateIn) || !walkable.Contains(gateOut)) return false;
+
+        // Breadth first, four-connected: a road does not cut corners.
+        var prev = new Dictionary<Vector2Int, Vector2Int>();
+        var seen = new HashSet<Vector2Int> { gateIn };
+        var queue = new Queue<Vector2Int>();
+        queue.Enqueue(gateIn);
+        bool reached = false;
+        while (queue.Count > 0 && !reached)
+        {
+            var c = queue.Dequeue();
+            for (int d = 0; d < 4; d++)
+            {
+                var n = new Vector2Int(
+                    c.x + (d == 0 ? 1 : d == 1 ? -1 : 0),
+                    c.y + (d == 2 ? 1 : d == 3 ? -1 : 0));
+                if (!walkable.Contains(n) || !seen.Add(n)) continue;
+                prev[n] = c;
+                if (n == gateOut) { reached = true; break; }
+                queue.Enqueue(n);
+            }
+        }
+        if (!reached) return false;
+
+        var back = new List<Vector2Int>();
+        var at = gateOut;
+        while (at != gateIn)
+        {
+            back.Add(at);
+            at = prev[at];
+        }
+        back.Add(gateIn);
+        back.Reverse();
+        lane = back;
+        return true;
+    }
+
+    /// <summary>Open ground: the plan's own floor, or either gate's approach.</summary>
+    private static bool Open(
+        HashSet<Vector2Int> floorR, Vector2Int at,
+        Vector2Int gateIn, Vector2Int inNormal,
+        Vector2Int gateOut, Vector2Int outNormal)
+        => floorR.Contains(at)
+        || OnApproach(at, gateIn, inNormal)
+        || OnApproach(at, gateOut, outNormal);
+
+    /// <summary>
+    /// Splits every chord a laned site was seated on: the road runs in to the
+    /// gate, threads the authored lane, and leaves by the far gate. Nothing is
+    /// subtracted and nothing is truncated, because no road is ever drawn
+    /// through a building.
+    ///
+    /// ONE SITE PER CHORD. Splitting replaces the chord in place and appends
+    /// two more, so a second site holding an index into the original would be
+    /// measuring against a segment that no longer reaches it. A second site on
+    /// the same chord keeps its seat and simply is not threaded -- the road
+    /// passes its door instead of entering it.
+    /// </summary>
+    private static void SplitChordsForSites(RoadPlan plan, AncientSiteResult result)
+    {
+        if (plan == null || !plan.valid || result == null) return;
+
+        var done = new HashSet<int>();
+        foreach (var site in result.sites)
+        {
+            var seat = site.chordSeat;
+            if (seat == null || !seat.hasBothGates) continue;
+            if (seat.chordIndex < 0 || seat.chordIndex >= plan.chords.Count) continue;
+            if (!done.Add(seat.chordIndex)) continue;
+
+            var chord = plan.chords[seat.chordIndex];
+            if (chord == null) continue;
+
+            var ingress = new RoadChord
+            {
+                a = chord.a, b = seat.gateIn,
+                nodeA = chord.nodeA, nodeB = -1,
+                kind = chord.kind, width = chord.width, brokenGapCells = 0,
+            };
+            ingress.waypoints.AddRange(RoadNetworkBuilder.ApproachWaypoints(
+                seat.gateIn, new Vector2(seat.inNormal.x, seat.inNormal.y), chord.a));
+
+            // The broken gap belongs to the FAR end, so it rides the egress. An
+            // ingress that inherited it would stop the road short of the gate it
+            // was drawn to reach.
+            var egress = new RoadChord
+            {
+                a = seat.gateOut, b = chord.b,
+                nodeA = -1, nodeB = chord.nodeB,
+                kind = chord.kind, width = chord.width,
+                brokenGapCells = chord.brokenGapCells,
+            };
+            var tail = RoadNetworkBuilder.ApproachWaypoints(
+                seat.gateOut, new Vector2(seat.outNormal.x, seat.outNormal.y), chord.b);
+            tail.Reverse();     // ApproachWaypoints runs end-to-gate; this chord runs gate-to-end
+            egress.waypoints.AddRange(tail);
+
+            // The rail through the site. Every lane cell is a waypoint: they are
+            // adjacent, so the polyline IS the route and Bresenham between two
+            // neighbours cannot wander off it. RebuildRoadCells paints nothing
+            // for a Lane -- it exists so DeepRoadGraph stays connected gate to
+            // gate, and the site already drew this ground.
+            var rail = new RoadChord
+            {
+                a = seat.gateIn, b = seat.gateOut,
+                nodeA = -1, nodeB = -1,
+                kind = RoadKind.Lane, width = 1, brokenGapCells = 0,
+            };
+            for (int i = 1; i < seat.laneCells.Count - 1; i++)
+                rail.waypoints.Add(seat.laneCells[i]);
+
+            plan.chords[seat.chordIndex] = ingress;
+            plan.chords.Add(egress);
+            plan.chords.Add(rail);
+        }
+    }
+
     /// <summary>How many of a source's cells fall in the placement band. Reported
     /// so a starved floor names the anchor source that dried up, instead of only
     /// saying that something did.</summary>
@@ -1355,6 +1568,17 @@ public static class AncientSiteBuilder
         /// side that happened to be scanned first, so a four-gated hold would
         /// take a road at its north gate and nowhere else.</summary>
         public readonly List<DoorRun> doorAnchors = new List<DoorRun>();
+
+        /// <summary>The authored lane: where the plan EXPECTS a road to run
+        /// through it, gate to gate. Empty for every procedural recipe and for
+        /// any authored plan that drew no '~'. A site with no lane has no
+        /// through-route and a road stops at its door.</summary>
+        public readonly HashSet<Vector2Int> lane = new HashSet<Vector2Int>();
+
+        /// <summary>Declared door cells. The lane corridor needs them: a gate is
+        /// drawn '+', not '~', so a lane-only corridor has no cell at the
+        /// threshold and every route refuses at its own front door.</summary>
+        public readonly HashSet<Vector2Int> door = new HashSet<Vector2Int>();
 
         public void Floor(int x0, int y0, int w, int h)
         {
@@ -1861,10 +2085,14 @@ public static class AncientSiteBuilder
         Vector3Int anchor, Vector3Int centre, int inner, int outer,
         RoadPlan roadPlan, int chordIndex,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
-        out Vector3Int placeAt, out bool headingFault)
+        out Vector3Int placeAt, out bool headingFault, out SiteChordSeat seat)
     {
         placeAt = anchor;
         headingFault = false;
+        // Assigned FIRST and on every path. An out parameter has to be
+        // definitely assigned before every return, and there is no compiler in
+        // the delivery container to say so.
+        seat = null;
         if (shape == null || shape.doorAnchors.Count == 0) return true;
 
         // THE HEADING IS EXACT NOW. It is the chord's own direction, not a least
@@ -1928,8 +2156,22 @@ public static class AncientSiteBuilder
 
         rot = bestRot;
 
-        var shift = RotateLocal(bestRun.mid, bestRot, mirror);
-        placeAt = new Vector3Int(anchor.x - shift.x, anchor.y - shift.y, 0);
+        // THE GATE IS A CELL, NOT THE RUN'S MIDDLE.
+        //
+        // In a vertical wall the drape runs ALONG the door, so a three-cell door
+        // has only its southernmost cell walkable: y+2 is the wall above the
+        // run. Measured across every plan and rotation: 216 door runs, 34 with a
+        // buried middle, and ZERO with no walkable cell at all -- so choosing the
+        // cell costs no re-authoring and refuses nothing. Among the 34 is
+        // DeadCoreVault_TheNinefoldCist, @rotate: no with one east-facing
+        // three-cell door, which this seated on a cell nothing can stand on.
+        if (!TryGateCell(shape, bestRun, bestRot, mirror, out var gate))
+        {
+            headingFault = true;
+            return false;
+        }
+
+        placeAt = new Vector3Int(anchor.x - gate.x, anchor.y - gate.y, 0);
 
         // RE-VALIDATE. TryPickAnchor vetted the CHORD point, and the building now
         // sits tens of cells away from it -- thirty-seven on a village -- so
@@ -1939,7 +2181,182 @@ public static class AncientSiteBuilder
         if (distSq < (long)inner * inner || distSq > (long)outer * outer) return false;
         if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
 
+        // THE FOOTPRINT MUST CLEAR BOTH CHORD ENDS, and clamping on the gates
+        // instead is what put centrelines on masonry. A village's gates sit at
+        // its face middles, so on a chord at 38 degrees to the plan axes the
+        // footprint reaches about forty cells further along the chord than the
+        // gates do -- far enough that the chord's own endpoint lands INSIDE the
+        // building, and every approach drawn to it has to cross masonry to
+        // arrive. Measured: 289 masonry contacts clamping on the gate span, 0
+        // clamping on the footprint.
+        if (!FootprintClearsChordEnds(shape, placeAt, bestRot, mirror,
+                                      roadPlan, chordIndex)) return false;
+
+        // THE SEAT IS RECORDED, NOT ACTED ON. This placement can still be thrown
+        // out afterwards -- by the disc clamp, the twelve-cell floor or the
+        // walkability guard -- and a chord split for a site that was never
+        // placed would leave the network cut around nothing.
+        seat = new SiteChordSeat
+        {
+            chordIndex = chordIndex,
+            gateIn = new Vector3Int(placeAt.x + gate.x, placeAt.y + gate.y, 0),
+            inNormal = RotateLocal(bestRun.outward, bestRot, mirror),
+        };
+
+        if (TryLaneThrough(shape, bestRot, mirror, heading, bestRun, gate,
+                           out var gateOutLocal, out var outNormal, out var lane))
+        {
+            seat.gateOut = new Vector3Int(
+                placeAt.x + gateOutLocal.x, placeAt.y + gateOutLocal.y, 0);
+            seat.outNormal = outNormal;
+            foreach (var c in lane)
+                seat.laneCells.Add(new Vector3Int(placeAt.x + c.x, placeAt.y + c.y, 0));
+            seat.hasBothGates = seat.laneCells.Count >= 2;
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// The cell a road meets a gate at: the walkable run cell nearest the run's
+    /// middle, in ROTATED local space.
+    ///
+    /// Walkability is judged with the approach already carved outside the gate,
+    /// which is what the engine will see. Judging the plan on its own instead
+    /// makes every cell outside the footprint a drape source and marks every
+    /// north-facing gate buried -- TileInfluenceManager.DrapesFrom returns false
+    /// for any MINED cell, and the road about to be carved outside that gate is
+    /// mined. That error reported seven of sixteen laned plans as unplaceable.
+    /// </summary>
+    private static bool TryGateCell(
+        LocalPlan shape, DoorRun run, int rot, bool mirror, out Vector2Int gate)
+    {
+        gate = default;
+        int len = Mathf.Max(1, run.length);
+
+        // BUILT IN ROTATED SPACE, from the rotated middle and the rotated
+        // normal. Building it unrotated and turning each cell afterwards is not
+        // the same run when the length is EVEN: `mid - step * (len / 2)` is not
+        // symmetric about the middle, so the two constructions sit one cell
+        // apart. Caught by diffing the chosen cell against the sim over all 216
+        // runs -- one disagreed, and it was a four-cell door.
+        var normal = RotateLocal(run.outward, rot, mirror);
+        var midR = RotateLocal(run.mid, rot, mirror);
+        var step = normal.x != 0
+            ? new Vector2Int(0, 1) : new Vector2Int(1, 0);
+        var startR = midR - step * (len / 2);
+
+        // The floor set, rotated once.
+        var floorR = new HashSet<Vector2Int>();
+        foreach (var c in shape.floor) floorR.Add(RotateLocal(c, rot, mirror));
+
+        bool found = false;
+        int bestDist = int.MaxValue;
+        for (int k = 0; k < len; k++)
+        {
+            var cell = startR + step * k;
+            if (!GateCellWalkable(floorR, cell, normal)) continue;
+
+            int d = Mathf.Abs(cell.x - midR.x) + Mathf.Abs(cell.y - midR.y);
+            if (d < bestDist) { bestDist = d; gate = cell; found = true; }
+        }
+        return found;
+    }
+
+    /// <summary>The drape, as TileInfluenceManager.IsUnderOverhang applies it: a
+    /// cell is blocked when the cell one or two NORTH of it is unmined. Floor
+    /// cells are mined, and so is the carriageway carved outside the gate.</summary>
+    private static bool GateCellWalkable(
+        HashSet<Vector2Int> floorR, Vector2Int cell, Vector2Int normal)
+    {
+        return MinedAt(floorR, cell, normal, new Vector2Int(cell.x, cell.y + 1))
+            && MinedAt(floorR, cell, normal, new Vector2Int(cell.x, cell.y + 2));
+    }
+
+    /// <summary>True when a cell will be open ground: inside the plan's floor, or
+    /// on the approach the road is about to carve outside this gate. The
+    /// approach is treated as one trunk wide either side of its centre, which is
+    /// what Dilate will paint.</summary>
+    private static bool MinedAt(
+        HashSet<Vector2Int> floorR, Vector2Int gate, Vector2Int normal, Vector2Int at)
+        => floorR.Contains(at) || OnApproach(at, gate, normal);
+
+    /// <summary>True where the road about to be carved outside a gate will open
+    /// ground: out along the gate's normal, one trunk wide. One definition,
+    /// shared by the threshold test and the lane corridor, so the two cannot
+    /// drift apart.</summary>
+    private static bool OnApproach(Vector2Int at, Vector2Int gate, Vector2Int normal)
+    {
+        int along = (at.x - gate.x) * normal.x + (at.y - gate.y) * normal.y;
+        if (along <= 0 || along > ApproachProbeCells) return false;
+
+        int across = normal.x != 0 ? at.y - gate.y : at.x - gate.x;
+        return Mathf.Abs(across) <= ApproachProbeHalfWidth;
+    }
+
+    /// <summary>How far out to assume carved approach when testing a threshold.
+    /// Only the two cells north of a gate are ever asked about, so anything past
+    /// two gives the same answer; four is chosen for legibility.</summary>
+    private const int ApproachProbeCells = 4;
+
+    /// <summary>Half a trunk. Dilate paints the carriageway this far either side
+    /// of the centreline.</summary>
+    private const int ApproachProbeHalfWidth = 2;
+
+    /// <summary>
+    /// True when the seated footprint leaves a full approach stub at BOTH ends of
+    /// the chord it answers to.
+    ///
+    /// Measured on the bounding box corners rather than on every cell: a 90
+    /// degree rotation maps an axis-aligned box to an axis-aligned box, so the
+    /// extreme projections onto the chord are always corners, and a village is
+    /// 3721 cells against 240 placement attempts.
+    /// </summary>
+    private static bool FootprintClearsChordEnds(
+        LocalPlan shape, Vector3Int placeAt, int rot, bool mirror,
+        RoadPlan plan, int chordIndex)
+    {
+        if (plan == null || chordIndex < 0 || chordIndex >= plan.chords.Count) return true;
+        var chord = plan.chords[chordIndex];
+        if (chord == null) return true;
+
+        double dx = chord.b.x - chord.a.x, dy = chord.b.y - chord.a.y;
+        double len = System.Math.Sqrt(dx * dx + dy * dy);
+        if (len < 1.0) return true;
+        double ux = dx / len, uy = dy / len;
+
+        int minX = int.MaxValue, minY = int.MaxValue;
+        int maxX = int.MinValue, maxY = int.MinValue;
+        foreach (var c in shape.floor)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y > maxY) maxY = c.y;
+        }
+        foreach (var c in shape.wall)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y > maxY) maxY = c.y;
+        }
+        if (minX > maxX) return true;
+
+        double lo = double.MaxValue, hi = double.MinValue;
+        for (int i = 0; i < 4; i++)
+        {
+            var corner = new Vector2Int((i & 1) == 0 ? minX : maxX,
+                                        (i & 2) == 0 ? minY : maxY);
+            var r = RotateLocal(corner, rot, mirror);
+            double s = (placeAt.x + r.x - chord.a.x) * ux
+                     + (placeAt.y + r.y - chord.a.y) * uy;
+            if (s < lo) lo = s;
+            if (s > hi) hi = s;
+        }
+
+        int stub = RoadNetworkBuilder.GateMinStub;
+        return lo >= stub && hi <= len - stub;
     }
 
 

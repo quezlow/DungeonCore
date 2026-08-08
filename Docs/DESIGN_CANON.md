@@ -4005,6 +4005,101 @@ The delivery script for this fix carries a struct-vs-null stand-in that reads th
 repo's own `public struct` declarations and fails on any `= null` or `== null`
 against one.
 
+### Stage 2c: the gate is a cell, and the clamp is the footprint (SHIPPED)
+
+Two corrections to where a seated site actually sits. Both measured, both
+independent of the chord splitting still to come.
+
+**The gate is a CELL, not the run's middle.** In a vertical wall the drape runs
+along the door, so a three-cell door has only its southernmost cell walkable --
+y+2 is the wall above the run. Measured across every plan and rotation: 216 door
+runs, 34 with a buried middle, and ZERO with no walkable cell at all, so choosing
+the walkable cell nearest the middle costs no re-authoring and refuses nothing.
+Among the 34 is `DeadCoreVault_TheNinefoldCist`, `@rotate: no` with one
+east-facing three-cell door -- door anchoring seated that vault on a cell nothing
+can stand on, every time, because rotation is off and there was no other choice
+to make.
+
+**Walkability is judged with the approach carved.** `TileInfluenceManager.DrapesFrom`
+returns false for any MINED cell, and the road about to be carved outside a gate
+is mined. Judging a plan on its own instead makes every cell beyond the footprint
+a drape source and marks every north-facing gate buried -- which reported seven
+of sixteen laned plans as unplaceable and about half of all refusals across the
+other nine. `MinedAt` treats the approach as one trunk wide, which is what
+`Dilate` paints.
+
+**The clamp is the FOOTPRINT projected on the chord, not the gate span.** A
+village's gates sit at its face middles, so on a chord at 38 degrees to the plan
+axes the footprint reaches about forty cells further along the chord than the
+gates do -- far enough that the chord's own endpoint lands inside the building,
+and every approach drawn to it must cross masonry to arrive. Measured: 289
+masonry contacts clamping on the gate span, 0 clamping on the footprint. Tested
+on the bounding box CORNERS: a quarter turn maps an axis-aligned box to an
+axis-aligned box, so the extreme projections are always corners, and a village is
+3721 cells against 240 placement attempts.
+
+**Not yet built:** stage 2d -- splitting the chord at a laned site's two gates,
+the `RoadKind.Lane` rail through it, and the removal of the carriageway
+subtraction, `TruncateRoadsAroundVault` and `pavedRoadCells`. Those go together:
+the subtraction is already inert, because `roadCells` is empty while the site
+pass runs now, but deleting it before the split exists would let a road be DRAWN
+through a building instead of merely negotiated with afterwards.
+
+### Stage 2d: the chord splits at the gates (SHIPPED)
+
+The arc closes. A laned site's chord is split at its own two gates: the road runs
+in to the door, threads the AUTHORED lane, and leaves by the far gate. Nothing is
+subtracted, nothing is truncated, nothing is rerouted, because no road is ever
+drawn through a building.
+
+**Three chords replace one.** The seated chord becomes the ingress `a -> gateIn`,
+carrying the approach waypoints; an egress `gateOut -> b` is appended with the
+same, reversed, and inheriting the broken gap -- that belongs to the FAR end, and
+an ingress that inherited it would stop the road short of the gate it was drawn
+to reach. Between them goes a `RoadKind.Lane` rail whose waypoints are every
+authored lane cell. They are adjacent, so the polyline IS the route and Bresenham
+between two neighbours cannot wander off it. `RebuildRoadCells` paints nothing for
+a Lane: the site already drew that ground, and the rail exists so `DeepRoadGraph`
+stays connected gate to gate. `Build` clusters raw polyline endpoints at merge
+radius 6 and `gateIn` is byte-identical between the ingress and the rail, so they
+share a node exactly rather than by proximity -- which matters, because `Route`
+bridges clustered ends with a Bresenham stitch and a stitch across a gap would
+cut the corner through masonry.
+
+**The seat is recorded, not acted on.** A placement that seats successfully can
+still be thrown out by the disc clamp, the twelve-cell floor or the walkability
+guard, and a chord split for a site that was never placed would leave the network
+cut around nothing. `SiteChordSeat` rides the placed site and
+`SplitChordsForSites` runs last, once every site that is going to be placed has
+been.
+
+**One site per chord.** Splitting replaces the chord in place and appends two
+more, so a second site holding an index into the original would be measuring
+against a segment that no longer reaches it. A second site on the same chord
+keeps its seat and is not threaded: the road passes its door rather than entering
+it. Correct, and dull, which is what is wanted here.
+
+**The lane corridor is `(lane | door)` and walkable, with BOTH approaches
+carved.** A gate is drawn `'+'`, not `'~'`, so a lane-only corridor has no cell at
+the threshold and every route refuses at its own front door -- sixteen plans once
+failed identically on exactly that, which was a bug in the test rather than in
+sixteen plans. `OnApproach` is now the single definition of where a gate's road
+opens ground, shared by the threshold test and the corridor so they cannot drift.
+
+**What came out.** The carriageway subtraction loop, `TruncateRoadsAroundVault`,
+and the vault's road-yielding special case. All three were already inert after the
+pipeline reorder -- `roadCells` is empty while the site pass runs -- but they
+could not be deleted until the split existed, or a road would have been DRAWN
+through a building instead of merely negotiated with afterwards. The heart guard
+and the twelve-cell guard stay, reworded: only the core cavern can reduce a site
+now, and it was the carriageway version of the second that ate floor index 2's
+outpost.
+
+**Still standing, deliberately:** `SiteData.pavedRoadCells` and the paving it
+feeds. The list is now always empty, so the field is vestigial rather than wrong,
+and removing a serialised field is a save-shape change that belongs in its own
+pass rather than riding this one.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient
