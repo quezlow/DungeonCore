@@ -4195,6 +4195,38 @@ the passage under the span a pair of opposed gates. `SealedCrypt_TheCoffinRow`
 still routes only half its bearings gate to gate -- an authored lane fault,
 unchanged -- and the Free-anchored laned trio remains an open `@anchor:` call.
 
+### Stage 2g: the setback, the re-aim, and the counters (SHIPPED)
+
+Three small pieces from the second live look, one of them the answer to a
+silence.
+
+**Roads stop one cell outside every gate.** `GateSetback = 1`: the ingress, the
+egress and the spur all end at `gate + normal`, so the last road tile sits on the
+threshold line rather than inside the doorway -- Brad's eye against the drawn
+result. The Lane rail keeps its ends AT the gates; the one-cell gap to the
+trimmed carriageway is inside `DeepRoadGraph`'s endpoint cluster radius, so the
+graph still reads one node there and the walk stitch crosses the threshold cell,
+which is the doorway.
+
+**A contended spur RE-AIMS instead of vanishing.** The threading pass claims one
+site per chord, and on the first live floor 4 a laned toll house claimed the
+chord the vault had seated on -- so the vault's spur was skipped, silently, and
+the guarantee site shipped with no road. The collision is legitimate; the
+silence was the bug. A spur whose chord was split now aims at the nearest point
+on the nearer surviving half, which is sound because the halves are colinear
+pieces of the segment the standoff clearance was measured against -- distance to
+a sub-segment can only grow, verified over 20,000 random splits with zero
+violations -- and it arrives square through its approach waypoints, worst mouth
+86.6 degrees over 5,000 re-aims against the 90 budget. Past `SpurReachLimit` 48
+the connection would read as its own road, and the site is left unconnected AND
+COUNTED.
+
+**The counters.** `AncientSiteResult` carries `lanedSplits`, `spursEmitted` and
+`spursLost`, printed by `Summary()`, and the seat records `spurEmitted` /
+`spurReaimed` -- so the next report says what happened to every seat instead of
+a screenshot having to. A spur seat with `spurEmitted` false was lost, currently
+only to the reach limit after a contended re-aim.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

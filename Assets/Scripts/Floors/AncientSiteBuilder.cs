@@ -97,6 +97,14 @@ public class AncientSiteResult
 {
     public List<AncientSitePlan> sites = new List<AncientSitePlan>();
 
+    /// <summary>How the seats resolved against the road plan. spursLost is the
+    /// number that seated, survived every guard, and still got no road -- the
+    /// case the first live floor 4 could only report by screenshot.</summary>
+    public int lanedSplits;
+    public int spursEmitted;
+    public int spursReaimed;
+    public int spursLost;
+
     /// <summary>Why placement attempts were thrown away, so "no sites spawned"
     /// can be answered with a number instead of a guess. Every `continue` in the
     /// placement loop increments exactly one of these.</summary>
@@ -197,7 +205,9 @@ public class AncientSiteResult
                $"unwalkable {rejectedUnwalkable}, " +
                $"no-door-heading {rejectedNoDoorHeading}. " +
                $"In band: {inBandJunctions} junctions, {inBandRoadCells} road samples, " +
-               $"{inBandRoadEnds} road ends";
+               $"{inBandRoadEnds} road ends. " +
+               $"Seats: {lanedSplits} threaded, {spursEmitted} spurred ({spursReaimed} re-aimed), " +
+               $"{spursLost} SPUR LOST";
     }
 
     /// <summary>The holy pass, printed apart from the general one. A floor that
@@ -1432,23 +1442,43 @@ public static class AncientSiteBuilder
         || OnApproach(at, gateIn, inNormal)
         || OnApproach(at, gateOut, outNormal);
 
+    /// <summary>The road stops this many cells OUTSIDE a gate, so the last road
+    /// tile sits on the threshold line rather than inside the doorway. One, by
+    /// Brad's eye against the drawn result.</summary>
+    private const int GateSetback = 1;
+
+    /// <summary>The longest spur a re-aim may draw. Past this the connection
+    /// reads as its own road, and the site is left unconnected AND SAID SO --
+    /// seat.spurEmitted stays false and the counter reports it.</summary>
+    private const int SpurReachLimit = 48;
+
     /// <summary>
-    /// Splits every chord a laned site was seated on: the road runs in to the
-    /// gate, threads the authored lane, and leaves by the far gate. Nothing is
-    /// subtracted and nothing is truncated, because no road is ever drawn
-    /// through a building.
+    /// Splits every chord a laned site was seated on -- the road runs in to the
+    /// gate, threads the authored lane, and leaves by the far gate -- then emits
+    /// a spur to every spur-class seat. Nothing is subtracted and nothing is
+    /// truncated, because no road is ever drawn through a building.
     ///
-    /// ONE SITE PER CHORD. Splitting replaces the chord in place and appends
-    /// two more, so a second site holding an index into the original would be
-    /// measuring against a segment that no longer reaches it. A second site on
-    /// the same chord keeps its seat and simply is not threaded -- the road
-    /// passes its door instead of entering it.
+    /// ONE SITE PER CHORD for the THREADING pass: splitting replaces the chord
+    /// in place and appends two more, so a second laned site holding an index
+    /// into the original would be measuring against a segment that no longer
+    /// reaches it. A spur-class seat on a chord a laned site has split is NOT
+    /// lost: the split's two halves are colinear pieces of the segment the
+    /// standoff was measured against, so every clearance the seat proved still
+    /// holds against either half, and the spur RE-AIMS at the nearest point on
+    /// the nearest half, arriving square through its approach waypoints. The
+    /// first live floor 4 lost its vault's road to exactly this collision, and
+    /// lost it silently -- three laned toll houses and the vault drawing from
+    /// the same small pool of chords.
     /// </summary>
     private static void SplitChordsForSites(RoadPlan plan, AncientSiteResult result)
     {
         if (plan == null || !plan.valid || result == null) return;
 
         var done = new HashSet<int>();
+        // originalIndex -> the index of the split's appended EGRESS half, so a
+        // spur re-aim can find both surviving pieces of its chord.
+        var egressOf = new Dictionary<int, int>();
+
         foreach (var site in result.sites)
         {
             var seat = site.chordSeat;
@@ -1459,9 +1489,14 @@ public static class AncientSiteBuilder
             var chord = plan.chords[seat.chordIndex];
             if (chord == null) continue;
 
+            // The road stops GateSetback outside each gate: the gate cell
+            // itself, and the doorway behind it, are the SITE's floor to draw.
+            var inStop = Step(seat.gateIn, seat.inNormal, GateSetback);
+            var outStop = Step(seat.gateOut, seat.outNormal, GateSetback);
+
             var ingress = new RoadChord
             {
-                a = chord.a, b = seat.gateIn,
+                a = chord.a, b = inStop,
                 nodeA = chord.nodeA, nodeB = -1,
                 kind = chord.kind, width = chord.width, brokenGapCells = 0,
             };
@@ -1473,7 +1508,7 @@ public static class AncientSiteBuilder
             // was drawn to reach.
             var egress = new RoadChord
             {
-                a = seat.gateOut, b = chord.b,
+                a = outStop, b = chord.b,
                 nodeA = -1, nodeB = chord.nodeB,
                 kind = chord.kind, width = chord.width,
                 brokenGapCells = chord.brokenGapCells,
@@ -1487,7 +1522,11 @@ public static class AncientSiteBuilder
             // adjacent, so the polyline IS the route and Bresenham between two
             // neighbours cannot wander off it. RebuildRoadCells paints nothing
             // for a Lane -- it exists so DeepRoadGraph stays connected gate to
-            // gate, and the site already drew this ground.
+            // gate, and the site already drew this ground. Its ends stay AT the
+            // gates: the one-cell gap to the trimmed carriageway is inside the
+            // endpoint cluster radius, so the graph still reads one node there
+            // and the walk stitch crosses the threshold cell, which is the
+            // doorway.
             var rail = new RoadChord
             {
                 a = seat.gateIn, b = seat.gateOut,
@@ -1499,21 +1538,65 @@ public static class AncientSiteBuilder
 
             plan.chords[seat.chordIndex] = ingress;
             plan.chords.Add(egress);
+            egressOf[seat.chordIndex] = plan.chords.Count - 1;
             plan.chords.Add(rail);
+            result.lanedSplits++;
         }
 
-        // SPURS, after the threading splits so their chord indices were not
-        // moved out from under them by an earlier laned split -- one site per
-        // chord is already enforced by `done` across both passes.
+        // SPURS, after the threading splits so a contended chord's halves exist
+        // to re-aim at.
         foreach (var site in result.sites)
         {
             var seat = site.chordSeat;
             if (seat == null || !seat.spur) continue;
             if (seat.chordIndex < 0 || seat.chordIndex >= plan.chords.Count) continue;
-            if (!done.Add(seat.chordIndex)) continue;
 
-            var chord = plan.chords[seat.chordIndex];
-            if (chord == null) continue;
+            // Which segment the spur answers to: the untouched chord, or -- when
+            // a laned site split it first -- whichever surviving half is nearer
+            // the gate. The halves lie on the original segment, so the standoff
+            // clearance the seat proved holds against both: distance to a
+            // sub-segment can only grow.
+            int hostIndex = seat.chordIndex;
+            bool contended = !done.Add(seat.chordIndex);
+            if (contended)
+            {
+                int egressIndex;
+                if (!egressOf.TryGetValue(seat.chordIndex, out egressIndex))
+                {
+                    // Contended by another SPUR, not a laned split: the first
+                    // spur re-noded this chord in place, and its geometry is
+                    // still a piece of the original line. Aim at it as it now
+                    // stands.
+                    egressIndex = -1;
+                }
+                var ci = plan.chords[seat.chordIndex];
+                var ce = egressIndex >= 0 ? plan.chords[egressIndex] : null;
+                double di = ci != null
+                    ? PointToSegment(seat.gateIn.x, seat.gateIn.y, ci.a, ci.b)
+                    : double.MaxValue;
+                double de = ce != null
+                    ? PointToSegment(seat.gateIn.x, seat.gateIn.y, ce.a, ce.b)
+                    : double.MaxValue;
+                hostIndex = de < di && egressIndex >= 0 ? egressIndex : seat.chordIndex;
+                result.spursReaimed++;
+            }
+
+            var host = plan.chords[hostIndex];
+            if (host == null) continue;
+
+            var takeoff = contended
+                ? NearestOnSegment(seat.gateIn, host.a, host.b)
+                : seat.takeoff;
+            int reach = Mathf.Abs(takeoff.x - seat.gateIn.x)
+                      + Mathf.Abs(takeoff.y - seat.gateIn.y);
+            if (reach > SpurReachLimit || reach < 2)
+            {
+                // Too far to read as an approach, or degenerately close. The
+                // site stays unconnected, and the counter says so instead of
+                // the screenshot.
+                result.spursLost++;
+                continue;
+            }
 
             // Spur width matched to the DOOR, not the trunk. A five-wide
             // carriageway centred on a three-cell door paints one jamb cell
@@ -1536,43 +1619,70 @@ public static class AncientSiteBuilder
                     doorWidth = Mathf.Max(3, d.halfWidth * 2 + 1);
                 }
             }
-            int spurWidth = Mathf.Min(chord.width, doorWidth);
+            int spurWidth = Mathf.Min(host.width, doorWidth);
             if ((spurWidth & 1) == 0) spurWidth -= 1;
 
+            var spurStop = Step(seat.gateIn, seat.inNormal, GateSetback);
             var spur = new RoadChord
             {
-                a = seat.takeoff, b = seat.gateIn,
+                a = takeoff, b = spurStop,
                 nodeA = -1, nodeB = -1,
                 kind = RoadKind.Spur, width = Mathf.Max(1, spurWidth),
                 brokenGapCells = 0,
             };
+            // Approach waypoints on EVERY spur, re-aimed or not. On the straight
+            // case they are colinear and draw as the same line; on a re-aim they
+            // are the square entry, which is the whole reason the re-aim is
+            // sound.
+            spur.waypoints.AddRange(RoadNetworkBuilder.ApproachWaypoints(
+                seat.gateIn, new Vector2(seat.inNormal.x, seat.inNormal.y), takeoff));
 
             // The take-off becomes a NODE by splitting the host there -- unless
             // it already IS an end, where a split would mint a near-zero chord.
             // DeepRoadGraph clusters raw endpoints at radius 6, so a take-off
             // within two cells of an end shares that end's node for free.
-            bool nearA = Near(seat.takeoff, chord.a, 2);
-            bool nearB = Near(seat.takeoff, chord.b, 2);
+            bool nearA = Near(takeoff, host.a, 2);
+            bool nearB = Near(takeoff, host.b, 2);
             if (!nearA && !nearB)
             {
                 var first = new RoadChord
                 {
-                    a = chord.a, b = seat.takeoff,
-                    nodeA = chord.nodeA, nodeB = -1,
-                    kind = chord.kind, width = chord.width, brokenGapCells = 0,
+                    a = host.a, b = takeoff,
+                    nodeA = host.nodeA, nodeB = -1,
+                    kind = host.kind, width = host.width, brokenGapCells = 0,
                 };
                 var second = new RoadChord
                 {
-                    a = seat.takeoff, b = chord.b,
-                    nodeA = -1, nodeB = chord.nodeB,
-                    kind = chord.kind, width = chord.width,
-                    brokenGapCells = chord.brokenGapCells,
+                    a = takeoff, b = host.b,
+                    nodeA = -1, nodeB = host.nodeB,
+                    kind = host.kind, width = host.width,
+                    brokenGapCells = host.brokenGapCells,
                 };
-                plan.chords[seat.chordIndex] = first;
+                plan.chords[hostIndex] = first;
                 plan.chords.Add(second);
             }
             plan.chords.Add(spur);
+            result.spursEmitted++;
         }
+    }
+
+    /// <summary>One or more cells along an axis normal.</summary>
+    private static Vector3Int Step(Vector3Int from, Vector2Int normal, int cells)
+        => new Vector3Int(from.x + normal.x * cells, from.y + normal.y * cells, 0);
+
+    /// <summary>The nearest integer cell on a segment to a point.</summary>
+    private static Vector3Int NearestOnSegment(Vector3Int p, Vector3Int a, Vector3Int b)
+    {
+        double vx = b.x - a.x, vy = b.y - a.y;
+        double len2 = vx * vx + vy * vy;
+        double t = len2 <= 0.0
+            ? 0.0
+            : ((p.x - a.x) * vx + (p.y - a.y) * vy) / len2;
+        if (t < 0.0) t = 0.0;
+        else if (t > 1.0) t = 1.0;
+        return new Vector3Int(
+            (int)System.Math.Round(a.x + vx * t),
+            (int)System.Math.Round(a.y + vy * t), 0);
     }
 
     /// <summary>Chebyshev proximity, for take-off-at-end detection.</summary>
