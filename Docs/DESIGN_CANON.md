@@ -3932,6 +3932,53 @@ mismatches. Brace balance cannot catch transcription drift; that can.
 **Not yet built:** stage 2b, where `AncientSiteBuilder` seats against chords and
 the four negotiating mechanisms come out.
 
+### Stage 2b: sites seat against chords (SHIPPED)
+
+The pipeline is now PLAN, then SITES, then DRAW. `GenerateRoads` chooses the
+network and stops; `RasteriseRoads` draws it after the site pass. A building is
+seated against a chord before any road is rasterised, which is the whole point --
+four mechanisms used to negotiate that boundary after the fact, and every one of
+them exists because the negotiation happened too late.
+
+**Anchors come from the plan, not from drawn cells.** `AncientSiteBuilder.Build`
+and the four placement paths take a `RoadPlan` in place of the four cell lists.
+`Junction` samples `plan.nodes`; `AlongRoad` and `Crossing` take an exact point
+along a chord, held `GateMinStub` back from either end so both approaches have
+room; `RoadEnd` is a chord end with `nodeA` or `nodeB` at -1, with no cell scan.
+`TryPickAnchor` returns the chord index, so the seating step knows which road it
+is answering to.
+
+**The heading is exact, so the estimator is gone.** `TryRoadHeading` fitted a
+least-squares principal axis over cells within radius 6 and resolved at roughly
+one anchor in twenty -- it read as a facing rule and behaved as a density rule.
+A chord has a direction. `TryRoadHeading`, `RoadHeadingRadius`,
+`roadHeadingCells`, `roadAnchorCells`, `roadJunctions`, `roadEndCells` and
+`RebuildRoadAnchors` are all deleted.
+
+**Rotation is chosen, and the cone is deleted with it.** `DoorFacingCos` refused
+any gate facing more than 30 degrees off the road, which was right while the road
+was already drawn and the site had to fit itself to it. Against a chord the site
+turns to face the road, so every bearing is servable and no anchor is refused for
+facing. Measured over 10,167 chord placements with rotation free: worst gate
+mouth 60.5 degrees, zero doublebacks, zero centreline cells on masonry.
+
+**Procedural paths keep their rng stream.** The callers still roll `rot` and
+`mirror` before seating and those draws are untouched; a plan with no
+`doorAnchors` returns before any of the new code runs. `Rasterise` moving after
+the site pass does move its meander draw, so worlds change for a given seed --
+the node set, chord count and chord kinds do not.
+
+**Diagnostics** are counted off the plan: nodes in band, chords with an end in
+band, and free chord ends in band, replacing counts of a thinned sample of drawn
+cells that anchoring no longer reads.
+
+**Not yet built:** stage 2c -- splitting a chord at a laned site's two gates,
+the `RoadKind.Lane` rail through it, gates met at the walkable run cell rather
+than the run middle, the footprint-projection clamp, and the removal of the
+carriageway subtraction loop, `TruncateRoadsAroundVault` and `pavedRoadCells`.
+Until then a road is still drawn across a site it was seated against and still
+subtracted afterwards, exactly as before.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

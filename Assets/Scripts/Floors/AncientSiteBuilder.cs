@@ -79,15 +79,17 @@ public class AncientSiteResult
     public int rejectedUnwalkable;
 
     /// <summary>Attempts thrown away because the plan asked to be anchored on a
-    /// door and no road faced one -- either the local heading could not be
-    /// resolved at all, or it resolved and no gate pointed within DoorFacingCos
-    /// of it.
+    /// door and the anchor answered to no chord -- a free in-band pick, or a
+    /// junction node with no chord touching it.
+    ///
+    /// No longer a facing failure. The cone is gone: against a chord the site
+    /// TURNS to face the road, so every bearing is servable and nothing is
+    /// refused for pointing the wrong way. What is left is the case where there
+    /// is no road to face at all.
     ///
     /// Its own counter rather than a share of rejectedTooClose, because the two
     /// have opposite fixes. A floor starving for spacing wants minSpacing or the
-    /// band changed; a floor starving here wants the cone, the plan's gates or
-    /// the road layout changed. Without this number both floors report
-    /// identically, which is the whole reason this delivery exists.</summary>
+    /// band changed; a floor starving here wants more chords in the band.</summary>
     public int rejectedNoDoorHeading;
 
     /// <summary>Sites in `sites` that do NOT count against `wanted`: the holy
@@ -216,10 +218,7 @@ public static class AncientSiteBuilder
     public static AncientSiteResult Build(
         System.Random rng, Vector3Int centre, int radius,
         SiteFloorEntry entry, int coreExclusionRadius,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan,
         IReadOnlyList<AuthoredSitePlan> authoredPlans = null)
     {
         var result = new AncientSiteResult();
@@ -305,7 +304,7 @@ public static class AncientSiteBuilder
         // to find room later, so nothing goes before it.
         if (entry.reserveDeadCore)
             PlaceDeadCore(rng, entry, centre, inner, outer, usable,
-                          junctions, roadCells, roadHeadingCells, roadEnds,
+                          roadPlan,
                           authoredPlans, anchorsUsed, minSpacingSq, result);
 
         // The village, selected BY NAME from the authored set rather than
@@ -313,7 +312,7 @@ public static class AncientSiteBuilder
         // can never serve it and there is no pool bookkeeping to do on success.
         if (entry.reserveVillage)
             PlaceVillage(rng, entry, centre, inner, outer, usable,
-                         junctions, roadCells, roadHeadingCells, roadEnds,
+                         roadPlan,
                          authoredPlans, anchorsUsed, minSpacingSq, result);
 
         // The outpost, which must precede the fill loop for its own reason as
@@ -328,7 +327,7 @@ public static class AncientSiteBuilder
         // nowhere near the road it is supposed to hold.
         if (entry.reserveOutpost)
             PlaceOutpost(rng, entry, centre, inner, outer, usable,
-                         junctions, roadCells, roadHeadingCells, roadEnds,
+                         roadPlan,
                          plans, anchorsUsed, minSpacingSq, result);
 
         // How much of each anchor source actually falls inside the placement band.
@@ -338,16 +337,18 @@ public static class AncientSiteBuilder
         //
         // Hoisted above the holy pass so a floor whose seals starved still
         // reports its anchor sources, which is the first question about one.
-        result.inBandJunctions = CountInBand(junctions, centre, inner, outer);
-        result.inBandRoadCells = CountInBand(roadCells, centre, inner, outer);
-        result.inBandRoadEnds = CountInBand(roadEnds, centre, inner, outer);
+        // Counted off the PLAN. The old counts described a thinned sample of
+        // drawn cells, which is not what anchoring reads any more.
+        result.inBandJunctions = CountNodesInBand(roadPlan, centre, inner, outer);
+        result.inBandRoadCells = CountChordsInBand(roadPlan, centre, inner, outer);
+        result.inBandRoadEnds = CountFreeEndsInBand(roadPlan, centre, inner, outer);
 
         // THE HOLY PASS. Before the general fill, on its own pool, its own
         // attempt budget and its own counters.
         if (anyHoly)
         {
             var holy = Fill(rng, entry, centre, inner, outer, usable,
-                            junctions, roadCells, roadHeadingCells, roadEnds,
+                            roadPlan,
                             holyPlans, holyWant, HolyAttemptsPerSite,
                             anchorsUsed, minSpacingSq, result, true);
             result.holyPlaced = holy.placed;
@@ -380,7 +381,7 @@ public static class AncientSiteBuilder
         // THE GENERAL FILL, whose target counts the guarantees but not the
         // extras.
         var general = Fill(rng, entry, centre, inner, outer, usable,
-                           junctions, roadCells, roadHeadingCells, roadEnds,
+                           roadPlan,
                            plans, want, GeneralAttemptsPerSite,
                            anchorsUsed, minSpacingSq, result, false);
         result.attempts = general.attempts;
@@ -444,10 +445,7 @@ public static class AncientSiteBuilder
     private static FillTally Fill(
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
         int inner, int outer, int usable,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan,
         List<PlanRef> plans, int want, int attemptsPerSite,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result, bool countsAsExtra)
@@ -482,7 +480,7 @@ public static class AncientSiteBuilder
                 ? plan.authored.anchorOverride
                 : AncientSiteProfile.AnchorFor(plan.archetype);
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
-                               junctions, roadCells, roadEnds,
+                               roadPlan, out int chordIndex,
                                anchorsUsed, minSpacingSq, out var anchor,
                                plan.authored != null && plan.authored.anchorRequired))
             {
@@ -522,8 +520,8 @@ public static class AncientSiteBuilder
             // being honoured inside TryPickAnchor and passed by nobody. A plan
             // that declares no anchorable run comes back with placeAt == anchor
             // and every procedural placement is unchanged.
-            if (!TryDoorAnchor(rng, site, rot, mirror, anchor, centre, inner, outer,
-                               roadHeadingCells, anchorsUsed, minSpacingSq,
+            if (!TryDoorAnchor(rng, site, ref rot, mirror, rotatable, anchor, centre, inner, outer,
+                               roadPlan, chordIndex, anchorsUsed, minSpacingSq,
                                out var placeAt, out bool headingFault))
             {
                 if (headingFault) tally.rejectedNoDoorHeading++;
@@ -612,10 +610,7 @@ public static class AncientSiteBuilder
     private static void PlaceOutpost(
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
         int inner, int outer, int usable,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan,
         List<PlanRef> plans, List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result)
     {
@@ -648,7 +643,7 @@ public static class AncientSiteBuilder
             var plan = candidates[attempt % candidates.Count];
 
             if (!TryPickAnchor(rng, entry.outpostAnchor, centre, inner, outer,
-                               junctions, roadCells, roadEnds,
+                               roadPlan, out int chordIndex,
                                anchorsUsed, minSpacingSq, out var anchor))
                 continue;
 
@@ -662,8 +657,8 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
-            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
-                               roadHeadingCells, anchorsUsed, minSpacingSq,
+            if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
+                               roadPlan, chordIndex, anchorsUsed, minSpacingSq,
                                out var placeAt, out bool headingFault))
             {
                 if (headingFault) headingRejects++;
@@ -713,10 +708,7 @@ public static class AncientSiteBuilder
     private static void PlaceVillage(
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
         int inner, int outer, int usable,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan,
         IReadOnlyList<AuthoredSitePlan> authoredPlans,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result)
@@ -759,7 +751,7 @@ public static class AncientSiteBuilder
         for (int attempt = 0; attempt < 240; attempt++)
         {
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
-                               junctions, roadCells, roadEnds,
+                               roadPlan, out int chordIndex,
                                anchorsUsed, minSpacingSq, out var anchor))
                 continue;
 
@@ -770,8 +762,8 @@ public static class AncientSiteBuilder
             int rot = rotatable ? rng.Next(0, 4) : 0;
             bool mirror = rotatable && rng.Next(0, 2) == 0;
 
-            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
-                               roadHeadingCells, anchorsUsed, minSpacingSq,
+            if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
+                               roadPlan, chordIndex, anchorsUsed, minSpacingSq,
                                out var placeAt, out bool headingFault))
             {
                 if (headingFault) headingRejects++;
@@ -827,10 +819,7 @@ public static class AncientSiteBuilder
     private static void PlaceDeadCore(
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
         int inner, int outer, int usable,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan,
         IReadOnlyList<AuthoredSitePlan> authoredPlans,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result)
@@ -871,7 +860,7 @@ public static class AncientSiteBuilder
         for (int attempt = 0; attempt < 240; attempt++)
         {
             if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
-                               junctions, roadCells, roadEnds,
+                               roadPlan, out int chordIndex,
                                anchorsUsed, minSpacingSq, out var anchor))
                 continue;
 
@@ -887,8 +876,8 @@ public static class AncientSiteBuilder
             // ignoring the flag. The vault's behaviour is unchanged: all three
             // authored plans declare exactly one outward-facing run, so the
             // helper's conditional rng draw never fires for it.
-            if (!TryDoorAnchor(rng, shape, rot, mirror, anchor, centre, inner, outer,
-                               roadHeadingCells, anchorsUsed, minSpacingSq,
+            if (!TryDoorAnchor(rng, shape, ref rot, mirror, rotatable, anchor, centre, inner, outer,
+                               roadPlan, chordIndex, anchorsUsed, minSpacingSq,
                                out var placeAt, out bool headingFault))
             {
                 if (headingFault) headingRejects++;
@@ -1146,31 +1135,56 @@ public static class AncientSiteBuilder
     /// </summary>
     private static bool TryPickAnchor(
         System.Random rng, SiteAnchor kind, Vector3Int centre, int inner, int outer,
-        IReadOnlyList<Vector3Int> junctions,
-        IReadOnlyList<Vector3Int> roadCells,
-        IReadOnlyList<Vector3Int> roadEnds,
+        RoadPlan roadPlan, out int chordIndex,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         out Vector3Int anchor, bool requireAnchor = false)
     {
-        IReadOnlyList<Vector3Int> source = null;
-        switch (kind)
-        {
-            case SiteAnchor.Junction: source = junctions; break;
-            case SiteAnchor.AlongRoad: source = roadCells; break;
-            case SiteAnchor.Crossing: source = roadCells; break;
-            case SiteAnchor.RoadEnd: source = roadEnds; break;
-        }
+        chordIndex = -1;
 
-        if (source != null && source.Count > 0)
+        // ANCHORS COME FROM THE PLAN, not from drawn cells. A chord is a
+        // straight segment with an exact direction and two named ends, so a
+        // point on it is exact and its heading needs no estimating -- which is
+        // what let TryRoadHeading, the stride-12 sample and the whole
+        // undecimated-centreline copy come out. The old sampler resolved a
+        // heading at roughly one anchor in twenty and read as a facing rule
+        // while behaving as a density rule.
+        if (roadPlan != null && roadPlan.valid && roadPlan.chords.Count > 0)
         {
-            // Sample rather than scan: a floor's thinned centreline runs to
-            // hundreds of cells and this is called on every placement attempt.
             for (int i = 0; i < 64; i++)
             {
-                var c = source[rng.Next(0, source.Count)];
+                int ci = rng.Next(0, roadPlan.chords.Count);
+                var chord = roadPlan.chords[ci];
+                if (chord == null) continue;
+
+                Vector3Int c;
+                switch (kind)
+                {
+                    case SiteAnchor.Junction:
+                        if (roadPlan.nodes.Count == 0) continue;
+                        int ni = rng.Next(0, roadPlan.nodes.Count);
+                        c = roadPlan.nodes[ni];
+                        ci = ChordTouchingNode(roadPlan, ni);
+                        break;
+
+                    case SiteAnchor.RoadEnd:
+                        // A free end -- a spur's stub or a rim trunk's rim end.
+                        // nodeB == -1 is exactly that, with no cell scan.
+                        if (chord.nodeB >= 0 && chord.nodeA >= 0) continue;
+                        c = chord.nodeB < 0 ? chord.b : chord.a;
+                        break;
+
+                    default:
+                        // AlongRoad and Crossing: a point ON the chord, kept far
+                        // enough from either end to leave an approach stub.
+                        c = PointOnChord(rng, chord);
+                        if (c == chord.a && c == chord.b) continue;
+                        break;
+                }
+
                 if (!InBand(c, centre, inner, outer)) continue;
                 if (TooClose(c, anchorsUsed, minSpacingSq)) continue;
                 anchor = c;
+                chordIndex = ci;
                 return true;
             }
         }
@@ -1182,7 +1196,7 @@ public static class AncientSiteBuilder
         // UNLESS the plan says otherwise. See AuthoredSitePlan.anchorRequired:
         // for a building whose meaning is its position, being placed anywhere is
         // worse than not being placed at all.
-        if (requireAnchor) { anchor = default; return false; }
+        if (requireAnchor) { anchor = default; chordIndex = -1; return false; }
 
         for (int i = 0; i < 96; i++)
         {
@@ -1199,6 +1213,50 @@ public static class AncientSiteBuilder
         return false;
     }
 
+    /// <summary>A point along a chord, at least GateMinStub back from either end
+    /// so both an ingress and an egress approach have room. Returns the chord's
+    /// own end when it is too short to seat anything, which the caller drops.</summary>
+    private static Vector3Int PointOnChord(System.Random rng, RoadChord chord)
+    {
+        double dx = chord.b.x - chord.a.x, dy = chord.b.y - chord.a.y;
+        double len = System.Math.Sqrt(dx * dx + dy * dy);
+        int stub = RoadNetworkBuilder.GateMinStub;
+        if (len < 2 * stub + 1) return chord.a;
+
+        double lo = stub / len, hi = 1.0 - stub / len;
+        double t = lo + rng.NextDouble() * (hi - lo);
+        return new Vector3Int(
+            chord.a.x + (int)System.Math.Round(dx * t),
+            chord.a.y + (int)System.Math.Round(dy * t), 0);
+    }
+
+    /// <summary>Any chord touching a node, so a junction anchor still knows which
+    /// way the road runs. -1 when the node is isolated, which the seating step
+    /// treats as no chord at all rather than as a failure.</summary>
+    private static int ChordTouchingNode(RoadPlan plan, int nodeIndex)
+    {
+        for (int i = 0; i < plan.chords.Count; i++)
+        {
+            var c = plan.chords[i];
+            if (c != null && (c.nodeA == nodeIndex || c.nodeB == nodeIndex)) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>The exact unit direction of a chord. No estimation, which is the
+    /// whole point of seating against the plan.</summary>
+    private static bool ChordDirection(RoadPlan plan, int chordIndex, out Vector2 dir)
+    {
+        dir = Vector2.zero;
+        if (plan == null || chordIndex < 0 || chordIndex >= plan.chords.Count) return false;
+        var c = plan.chords[chordIndex];
+        if (c == null) return false;
+        var v = new Vector2(c.b.x - c.a.x, c.b.y - c.a.y);
+        if (v.sqrMagnitude < 1e-6f) return false;
+        dir = v.normalized;
+        return true;
+    }
+
     /// <summary>How many of a source's cells fall in the placement band. Reported
     /// so a starved floor names the anchor source that dried up, instead of only
     /// saying that something did.</summary>
@@ -1209,6 +1267,45 @@ public static class AncientSiteBuilder
         int n = 0;
         foreach (var c in source)
             if (InBand(c, centre, inner, outer)) n++;
+        return n;
+    }
+
+    /// <summary>Junction nodes inside the placement band.</summary>
+    private static int CountNodesInBand(
+        RoadPlan plan, Vector3Int centre, int inner, int outer)
+    {
+        if (plan == null || !plan.valid) return 0;
+        int n = 0;
+        foreach (var node in plan.nodes)
+            if (InBand(node, centre, inner, outer)) n++;
+        return n;
+    }
+
+    /// <summary>Chords with at least one end in the placement band. Not a cell
+    /// count -- a chord is one seatable thing however long it is drawn.</summary>
+    private static int CountChordsInBand(
+        RoadPlan plan, Vector3Int centre, int inner, int outer)
+    {
+        if (plan == null || !plan.valid) return 0;
+        int n = 0;
+        foreach (var c in plan.chords)
+            if (c != null && (InBand(c.a, centre, inner, outer)
+                              || InBand(c.b, centre, inner, outer))) n++;
+        return n;
+    }
+
+    /// <summary>Free chord ends -- spur stubs and rim ends -- inside the band.</summary>
+    private static int CountFreeEndsInBand(
+        RoadPlan plan, Vector3Int centre, int inner, int outer)
+    {
+        if (plan == null || !plan.valid) return 0;
+        int n = 0;
+        foreach (var c in plan.chords)
+        {
+            if (c == null) continue;
+            if (c.nodeA < 0 && InBand(c.a, centre, inner, outer)) n++;
+            if (c.nodeB < 0 && InBand(c.b, centre, inner, outer)) n++;
+        }
         return n;
     }
 
@@ -1708,10 +1805,6 @@ public static class AncientSiteBuilder
     /// jamb beyond it; 20 buys nothing more and throws away anchors. Acceptance
     /// falls from about half of all bearings to about a third, which is ample
     /// against PlaceDeadCore's 240 attempts.</summary>
-    private const float DoorFacingCos = 0.8660f;
-
-    /// <summary>Radius in cells over which a road's local heading is estimated.</summary>
-    private const int RoadHeadingRadius = 6;
 
     /// <summary>Puts the plan's declared door runs into world space on the
     /// placed site, rotation and mirroring applied. Every OUTWARD-FACING run is
@@ -1764,9 +1857,9 @@ public static class AncientSiteBuilder
     /// wearing a door's clothes and belongs in the spacing counter.
     /// </summary>
     private static bool TryDoorAnchor(
-        System.Random rng, LocalPlan shape, int rot, bool mirror,
+        System.Random rng, LocalPlan shape, ref int rot, bool mirror, bool rotatable,
         Vector3Int anchor, Vector3Int centre, int inner, int outer,
-        IReadOnlyList<Vector3Int> roadHeadingCells,
+        RoadPlan roadPlan, int chordIndex,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         out Vector3Int placeAt, out bool headingFault)
     {
@@ -1774,47 +1867,67 @@ public static class AncientSiteBuilder
         headingFault = false;
         if (shape == null || shape.doorAnchors.Count == 0) return true;
 
-        // An unverifiable heading is not a passing one. Fed the undecimated
-        // centreline this now resolves at every road anchor; fed the stride-12
-        // sample it resolved at about one in twenty, which is what made this
-        // test read as a facing rule while behaving as a density rule.
-        if (!TryRoadHeading(roadHeadingCells, anchor, out var heading))
+        // THE HEADING IS EXACT NOW. It is the chord's own direction, not a least
+        // squares fit over nearby cells, so it resolves at every anchor a chord
+        // produced instead of at about one in twenty. That is what let
+        // TryRoadHeading and the undecimated centreline copy come out.
+        if (!ChordDirection(roadPlan, chordIndex, out var heading))
         {
             headingFault = true;
             return false;
         }
 
-        var facing = new List<DoorRun>();
-        var unit = heading.normalized;
-        foreach (var run in shape.doorAnchors)
-        {
-            var outward = RotateLocal(run.outward, rot, mirror);
-            var outv = new Vector2(outward.x, outward.y).normalized;
+        // ROTATION IS CHOSEN, NOT ROLLED, and the cone is gone with it.
+        //
+        // DoorFacingCos refused any gate facing more than 30 degrees off the
+        // road, which was the right answer while the road was already drawn and
+        // the site had to fit itself to it. Against a chord the site turns to
+        // face the road instead, so every bearing is servable and no anchor is
+        // ever refused for facing. Measured over 10,167 chord placements with
+        // rotation free: worst gate mouth 60.5 degrees, zero doublebacks, zero
+        // centreline cells on masonry.
+        //
+        // The caller still ROLLS rot and mirror before reaching here and those
+        // draws are untouched, so every procedural path -- which has no
+        // doorAnchors and returned above -- keeps its stream position exactly.
+        int bestRot = rot;
+        DoorRun bestRun = null;
+        float bestScore = float.NegativeInfinity;
 
-            // Undirected: a road has no forward, so a gate facing east is served
-            // equally by a road heading east or west.
-            if (Mathf.Abs(Vector2.Dot(unit, outv)) < DoorFacingCos) continue;
-            facing.Add(run);
+        for (int step = 0; step < 4; step++)
+        {
+            int tryRot = rotatable ? step : rot;
+            foreach (var run in shape.doorAnchors)
+            {
+                var outward = RotateLocal(run.outward, tryRot, mirror);
+                if (outward == Vector2Int.zero) continue;
+                var outv = new Vector2(outward.x, outward.y).normalized;
+
+                // Undirected: a road has no forward, so a gate facing east is
+                // served equally by a road heading east or west.
+                float score = Mathf.Abs(Vector2.Dot(heading, outv));
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestRot = tryRot;
+                    bestRun = run;
+                }
+            }
+            if (!rotatable) break;
         }
-        if (facing.Count == 0)
+
+        if (bestRun == null)
         {
             headingFault = true;
             return false;
         }
 
-        // CONDITIONAL on purpose. One qualifying run must cost no draw at all,
-        // or every world with a vault in it moves under its old seed. Where two
-        // do qualify they are an opposing pair -- the undirected test scores a
-        // normal and its negation identically -- so the choice is which side of
-        // the carriageway the building sits on, and a roll is the honest answer.
-        var chosen = facing.Count == 1
-            ? facing[0]
-            : facing[rng.Next(0, facing.Count)];
+        rot = bestRot;
 
-        var shift = RotateLocal(chosen.mid, rot, mirror);
+        var shift = RotateLocal(bestRun.mid, bestRot, mirror);
         placeAt = new Vector3Int(anchor.x - shift.x, anchor.y - shift.y, 0);
 
-        // RE-VALIDATE. TryPickAnchor vetted the ROAD cell, and the building now
+        // RE-VALIDATE. TryPickAnchor vetted the CHORD point, and the building now
         // sits tens of cells away from it -- thirty-seven on a village -- so
         // every test it passed describes somewhere the site is not.
         long dx = placeAt.x - centre.x, dy = placeAt.y - centre.y;
@@ -1825,55 +1938,6 @@ public static class AncientSiteBuilder
         return true;
     }
 
-    /// <summary>
-    /// The local direction of the road at a cell, as an unsigned axis.
-    ///
-    /// Estimated from the road CELLS rather than read off a polyline, because
-    /// Build is handed a flat cell list and threading the polyline through would
-    /// widen four signatures to answer one question. Least squares over the
-    /// cells within RoadHeadingRadius: the principal axis of their spread is the
-    /// carriageway's direction, which is what a road is.
-    ///
-    /// Fed roadHeadingCells, the UNDECIMATED centreline, and not the stride-12
-    /// anchor sample it used to get. Three cells within six is trivial on a
-    /// dense line and rare on a thinned one, so the sample turned this into a
-    /// lottery on how many roads happened to converge: measured at 12.6 per cent
-    /// of anchors on floor index 2, 5.8 on 3 and 5.3 on 4, against 100 per cent
-    /// on all three once the line is whole. Scanning the longer list is a linear
-    /// pass per attempt over roughly 3,400 cells on the largest floor, a few
-    /// hundred times a floor, and does not show up.
-    ///
-    /// Returns false when there is too little road nearby to say -- and the
-    /// caller then rejects the anchor, because an unverifiable heading is not a
-    /// passing one.
-    /// </summary>
-    private static bool TryRoadHeading(
-        IReadOnlyList<Vector3Int> roadCells, Vector3Int at, out Vector2 heading)
-    {
-        heading = Vector2.zero;
-        if (roadCells == null) return false;
-
-        double sxx = 0, syy = 0, sxy = 0;
-        int n = 0;
-        int r2 = RoadHeadingRadius * RoadHeadingRadius;
-        foreach (var c in roadCells)
-        {
-            int dx = c.x - at.x, dy = c.y - at.y;
-            if (dx * dx + dy * dy > r2) continue;
-            sxx += (double)dx * dx;
-            syy += (double)dy * dy;
-            sxy += (double)dx * dy;
-            n++;
-        }
-
-        // Three cells is the fewest that can describe a direction rather than a
-        // dot or a pair; below that the principal axis is noise.
-        if (n < 3) return false;
-
-        double theta = 0.5 * System.Math.Atan2(2.0 * sxy, sxx - syy);
-        heading = new Vector2((float)System.Math.Cos(theta), (float)System.Math.Sin(theta));
-        return heading.sqrMagnitude > 0.0001f;
-    }
 
     /// <summary>
     /// Cells a unit could actually stand on, under the same rule the pathfinder

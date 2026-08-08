@@ -309,35 +309,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private readonly List<RoadSegmentRuntime> roadSegments = new();
     private readonly HashSet<Vector3Int> roadCells = new();
 
-    // Road anchors handed to the site builder. Junctions are the crossroads a
-    // plaza wants; roadAnchorCells is a THINNED sample of centreline, because the
-    // full set runs to tens of thousands of cells and the builder samples it on
-    // every placement attempt; roadEndCells are the broken and rim-bound ends a
-    // Sealed Gate wants to stand at. Runtime only -- all four are rebuilt from
-    // the polylines and never serialised.
-    //
-    // roadHeadingCells is that SAME centreline UNDECIMATED, and it is a separate
-    // list because sampling and direction-finding are separate questions.
-    // TryRoadHeading fits a principal axis to the road cells within six of a
-    // point and refuses on fewer than three; fed the stride-12 sample it finds
-    // three only where several roads converge. Measured over the shipped road
-    // profiles, a sampled anchor resolved a heading 12.6 per cent of the time on
-    // floor index 2, 5.8 on 3 and 5.3 on 4 -- so door anchoring was not a facing
-    // test but a road-density lottery with a facing test riding on it. Fed the
-    // full centreline it resolves on every anchor of all three. Anchor SAMPLING
-    // stays thinned; that is what the stride is for.
-    /// <summary>The chosen-but-not-yet-drawn network from this floor's most
-    /// recent generation. Runtime only and NULL on a floor restored from a save:
-    /// a plan is an input to generation, not a record of it, and everything
-    /// downstream is rebuilt from the polylines instead. Stage 2's site pass
-    /// reads it; nothing else may, or the load path and the generate path stop
-    /// agreeing.</summary>
-    private RoadPlan lastRoadPlan;
-
-    private readonly List<Vector3Int> roadJunctions = new();
-    private readonly List<Vector3Int> roadAnchorCells = new();
-    private readonly List<Vector3Int> roadHeadingCells = new();
-    private readonly List<Vector3Int> roadEndCells = new();
+    // The road PLAN this floor last chose, held between GenerateRoads and
+    // RasteriseRoads so the site pass can seat against chords. The four cell
+    // lists that used to live here -- junctions, a stride-12 centreline sample,
+    // the undecimated centreline for the heading test, and the road ends -- are
+    // gone: every one of them existed to recover, from drawn cells, information
+    // the plan had exactly.
 
     // Every carved site interior cell on this floor, so chamber generation can be
     // kept off the ruins the same way it is kept off the carriageway.
@@ -393,8 +370,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // swallow the carriageway, and before rivers because a river should cut
         // through a road rather than the reverse -- the washed-out crossing is
         // free storytelling from the ordering alone.
+        // PLAN, then SITES, then DRAW. The site pass sits between the two halves
+        // of the road build so a building can be seated against a chord before
+        // any of it is rasterised. Four mechanisms used to negotiate that
+        // boundary after the fact -- door heading estimation, truncation, the
+        // carriageway subtraction and the door corridor -- and all of them exist
+        // because the negotiation happened too late.
         GenerateRoads(rng, centerCell, floorRadius);
         GenerateSites(rng, centerCell, floorRadius);
+        RasteriseRoads(rng);
         GenerateChambers(rng, centerCell, floorRadius);
         GenerateRivers(rng, centerCell, floorRadius);
 
@@ -1202,12 +1186,29 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // without re-deriving it.
         lastRoadPlan = RoadNetworkBuilder.Plan(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter);
+    }
+
+    /// <summary>
+    /// Draws the planned roads. Runs AFTER the site pass, which is the whole
+    /// point: a site seats against a CHORD, and a chord that has had a site
+    /// seated on it is drawn knowing where the building is. Nothing has to
+    /// estimate a heading, subtract a footprint or guess which half of a severed
+    /// run to keep, because the road was never drawn through the building.
+    ///
+    /// Rasterise consumes rng for the meander, so moving it after the site pass
+    /// moves that draw. Worlds change for a given seed; the node set, chord count
+    /// and chord kinds do not.
+    /// </summary>
+    private void RasteriseRoads(System.Random rng)
+    {
+        if (lastRoadPlan == null || !lastRoadPlan.valid) return;
+
         var result = RoadNetworkBuilder.Rasterise(rng, lastRoadPlan);
         featureData.roads = result.roads;
 
-        // Rasterise straight away so chamber generation can be kept off the
-        // carriageway. Rivers have not run yet, so this pass does not know about
-        // them; RebuildLookup recomputes once they have.
+        // Chamber generation is kept off the carriageway, so the cells must
+        // exist before it runs. Rivers have not run yet; RebuildLookup
+        // recomputes once they have.
         RebuildRoadCells();
     }
 
@@ -1315,7 +1316,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // masonry on the load path.
         FilletJunctionsIntoSegments(taken);
 
-        RebuildRoadAnchors();
     }
 
     /// <summary>Cells added by the junction fillet, most recent rebuild. Read by
@@ -1428,58 +1428,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Collects the road anchors the site builder wants: junctions (rebuilt by
-    /// proximity, since RoadNetworkResult.junctions is tooling-only and never
-    /// persisted), a thinned centreline sample, and the ends roads stop at.
-    /// Runs wherever road cells are rebuilt, so it is correct on load too.
-    /// </summary>
-    private void RebuildRoadAnchors()
-    {
-        roadJunctions.Clear();
-        roadAnchorCells.Clear();
-        roadHeadingCells.Clear();
-        roadEndCells.Clear();
-        if (featureData == null || featureData.roads == null) return;
-
-        const int SampleStride = 12;
-
-        var endpoints = new List<Vector3Int>();
-        foreach (var road in featureData.roads)
-        {
-            var line = RoadNetworkBuilder.Centreline(road);
-            if (line.Count == 0) continue;
-
-            for (int i = 0; i < line.Count; i += SampleStride)
-                roadAnchorCells.Add(line[i]);
-
-            // The whole line, kept rather than discarded. It was already
-            // computed on the way to the sample above, so this costs a copy and
-            // nothing else, and only the heading test reads it.
-            roadHeadingCells.AddRange(line);
-
-            endpoints.Add(line[0]);
-            endpoints.Add(line[line.Count - 1]);
-
-            // A road with a broken gap stops dead; that far end is a Sealed Gate's
-            // natural home. A road that ran its whole length ends where it ends.
-            if (road.brokenGapCells > 0) roadEndCells.Add(line[line.Count - 1]);
-        }
-
-        // Two road ends meeting inside this radius were one junction node before
-        // the network was split into edges. Derived by RoadNetworkBuilder now,
-        // because junction shaping runs off the same node list and two
-        // derivations that disagreed by a cell would move carriageway ownership
-        // under an existing save.
-        roadJunctions.AddRange(
-            RoadNetworkBuilder.JunctionNodes(featureData.roads, RoadJunctionMergeRadius));
-
-        // No roads at all is a legitimate state, not a failure: floor index 2
-        // carries a site and no road layer. Every anchor preference in the
-        // builder degrades to a free in-band pick.
-        if (roadEndCells.Count == 0 && endpoints.Count > 0)
-            roadEndCells.AddRange(endpoints);
-    }
 
     // -- Ancient Site Generation -----------------------------------
 
@@ -1533,7 +1481,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // rejections.
         var result = AncientSiteBuilder.Build(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
-            roadJunctions, roadAnchorCells, roadHeadingCells, roadEndCells,
+            lastRoadPlan,
             siteProfile.GetAuthoredPlans());
         lastSitePlacement = result;
         lastSitePlacementSkip = SitePlacementSkip.Placed;
@@ -1631,10 +1579,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 $"[Sites] Floor {floor.FloorIndex} (radius {floorRadius}): {result.Summary()}. " +
                 $"{dropped} lost to road/core overlap. " +
                 $"Kept {featureData.sites.Count}. " +
-                $"Anchors available: {roadJunctions.Count} junctions, " +
-                $"{roadAnchorCells.Count} road samples, " +
-                $"{roadHeadingCells.Count} centreline cells for the heading test, " +
-                $"{roadEndCells.Count} road ends.");
+                $"Chords available: {lastRoadPlan?.nodes.Count ?? 0} nodes, " +
+                $"{lastRoadPlan?.chords.Count ?? 0} chords.");
 
             if (featureData.sites.Count == 0)
                 Debug.LogWarning(

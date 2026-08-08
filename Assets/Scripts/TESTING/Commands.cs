@@ -490,8 +490,13 @@ public class Commands : MonoBehaviour
             : FloorManager.DeriveFloorSeed(worldSeed, floorIdx);
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var result = RoadNetworkBuilder.Build(
-            new System.Random(seed), Vector3Int.zero, radius, entry, roadReportExclusionRadius);
+        // Plan and rasterise separately so the site half of the report can seat
+        // against the same chords the game does. Build() is still the wrapper
+        // over exactly this pair, so the drawn roads are unchanged.
+        var reportRng = new System.Random(seed);
+        var reportPlan = RoadNetworkBuilder.Plan(
+            reportRng, Vector3Int.zero, radius, entry, roadReportExclusionRadius);
+        var result = RoadNetworkBuilder.Rasterise(reportRng, reportPlan);
 
         var all = new HashSet<Vector3Int>();
         int trunks = 0, spurs = 0, broken = 0, segments = 0, longest = 0;
@@ -562,26 +567,14 @@ public class Commands : MonoBehaviour
         var siteEntry = siteReportProfile != null ? siteReportProfile.GetEntry(floorIdx) : null;
         if (siteEntry != null)
         {
-            var junctions = result.junctions;
-            var centrelines = new List<Vector3Int>();
-            // The undecimated line, for the door-heading test only. Kept in step
-            // with TerrainFeatureGenerator.RebuildRoadAnchors: the report is
-            // worth nothing if it feeds the builder different anchors from the
-            // ones the game does.
-            var headingCells = new List<Vector3Int>();
-            var ends = new List<Vector3Int>();
-            foreach (var road in result.roads)
-            {
-                var line = RoadNetworkBuilder.Centreline(road);
-                for (int i = 0; i < line.Count; i += 12) centrelines.Add(line[i]);
-                headingCells.AddRange(line);
-                if (line.Count > 0) ends.Add(line[line.Count - 1]);
-            }
-
+            // The PLAN, not the drawn roads. The builder seats against chords
+            // now, so feeding it cells derived from the raster would report a
+            // layout the game does not produce -- which is exactly the failure
+            // the old comment here was guarding against, one layer down.
             siteResult = AncientSiteBuilder.Build(
                 new System.Random(seed), Vector3Int.zero, radius, siteEntry,
-                roadReportExclusionRadius, junctions, centrelines, headingCells,
-                ends, siteReportProfile.GetAuthoredPlans());
+                roadReportExclusionRadius, reportPlan,
+                siteReportProfile.GetAuthoredPlans());
 
             int floorCells = 0, masonry = 0;
             var tally = new Dictionary<SiteArchetype, int>();
