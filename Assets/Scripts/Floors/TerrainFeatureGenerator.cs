@@ -326,6 +326,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // test but a road-density lottery with a facing test riding on it. Fed the
     // full centreline it resolves on every anchor of all three. Anchor SAMPLING
     // stays thinned; that is what the stride is for.
+    /// <summary>The chosen-but-not-yet-drawn network from this floor's most
+    /// recent generation. Runtime only and NULL on a floor restored from a save:
+    /// a plan is an input to generation, not a record of it, and everything
+    /// downstream is rebuilt from the polylines instead. Stage 2's site pass
+    /// reads it; nothing else may, or the load path and the generate path stop
+    /// agreeing.</summary>
+    private RoadPlan lastRoadPlan;
+
     private readonly List<Vector3Int> roadJunctions = new();
     private readonly List<Vector3Int> roadAnchorCells = new();
     private readonly List<Vector3Int> roadHeadingCells = new();
@@ -1185,8 +1193,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var entry = roadProfile.GetEntry(floor.FloorIndex);
         if (entry == null || entry.mode == RoadMode.None) return;
 
-        var result = RoadNetworkBuilder.Build(
+        // PLAN then RASTERISE, rather than Build, even though nothing sits
+        // between them yet. The seam is here so the site pass can move into it:
+        // a site placed against a CHORD needs no heading estimated, no
+        // footprint subtracted and no severed run guessed at, because a chord
+        // is a straight segment with an exact direction and two named ends.
+        // Holding the plan on the generator is what lets stage 2 do that
+        // without re-deriving it.
+        lastRoadPlan = RoadNetworkBuilder.Plan(
             rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter);
+        var result = RoadNetworkBuilder.Rasterise(rng, lastRoadPlan);
         featureData.roads = result.roads;
 
         // Rasterise straight away so chamber generation can be kept off the

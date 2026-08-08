@@ -10,6 +10,55 @@ public class RoadNetworkResult
     public List<Vector3Int> junctions = new List<Vector3Int>();
 }
 
+/// <summary>One edge that has been CHOSEN but not yet drawn: two endpoints, the
+/// junction indices they belong to, and the metadata the raster needs.
+///
+/// `nodeA` and `nodeB` are indices into RoadPlan.nodes, or -1 for a FREE end --
+/// a rim trunk's rim end, a spur's stub, and either end of a trunk-mode road.
+/// The spacing rules already work in exactly these terms (see ChordAccepted),
+/// which is why this type is a rename of a struct that was private rather than
+/// a new idea.</summary>
+public class RoadChord
+{
+    public Vector3Int a, b;
+    public int nodeA = -1, nodeB = -1;
+    public RoadKind kind = RoadKind.Trunk;
+    public int width = 5;
+    public int brokenGapCells;
+}
+
+/// <summary>
+/// A floor's road network BEFORE any of it is drawn: the junction points and
+/// the chords between them.
+///
+/// This exists so a site can be placed against a chord rather than against a
+/// rasterised carriageway. A chord is a straight segment with an exact
+/// direction, so a plan's gate can be turned to face it and shifted onto it
+/// without estimating anything -- where a rasterised road only offers cells,
+/// from which a heading has to be inferred, a footprint has to be subtracted,
+/// and a severed run has to be guessed at.
+///
+/// Carries the centre, the usable radius and the floor entry because the raster
+/// needs all three and passing them separately is how the two halves would
+/// drift.
+/// </summary>
+public class RoadPlan
+{
+    public List<Vector3Int> nodes = new List<Vector3Int>();
+    public List<RoadChord> chords = new List<RoadChord>();
+
+    public Vector3Int centre;
+    public int usable;
+    public RoadFloorEntry entry;
+
+    /// <summary>False when the floor carries no roads at all -- no profile
+    /// entry, RoadMode.None, or a usable radius inside the core exclusion.
+    /// A site pass reads this rather than testing an empty chord list, because
+    /// "no roads on this floor" and "roads that all failed" want different
+    /// reports.</summary>
+    public bool valid;
+}
+
 /// <summary>
 /// The deep-road substrate, as a PURE function of (seed, centre, radius, entry).
 ///
@@ -47,21 +96,68 @@ public static class RoadNetworkBuilder
     public static RoadNetworkResult Build(
         System.Random rng, Vector3Int centre, int radius,
         RoadFloorEntry entry, int coreExclusionRadius)
+        => Rasterise(rng, Plan(rng, centre, radius, entry, coreExclusionRadius));
+
+    /// <summary>
+    /// Chooses a floor's roads WITHOUT drawing any of them: junction points and
+    /// the chords between them, with the spacing rules already applied.
+    ///
+    /// Split out so sites can be placed against chords. A chord is a straight
+    /// segment with an exact direction and two named ends; a rasterised road is
+    /// a bag of cells from which direction has to be estimated and ownership
+    /// negotiated after the fact. Every mechanism that negotiates a boundary
+    /// between a road and a building -- door heading estimation, truncation,
+    /// the carriageway subtraction, the door corridor -- exists because that
+    /// negotiation happens too late, and this call is where it stops being too
+    /// late.
+    ///
+    /// Consumes rng for junction scatter and for spur SELECTION. It does not
+    /// consume any for the meander, which belongs to the raster.
+    /// </summary>
+    public static RoadPlan Plan(
+        System.Random rng, Vector3Int centre, int radius,
+        RoadFloorEntry entry, int coreExclusionRadius)
     {
-        var result = new RoadNetworkResult();
-        if (rng == null || entry == null || entry.mode == RoadMode.None) return result;
+        var plan = new RoadPlan { centre = centre, entry = entry };
+        if (rng == null || entry == null || entry.mode == RoadMode.None) return plan;
 
         int usable = Mathf.Max(coreExclusionRadius + 4, radius - Mathf.Max(0, entry.rimMargin));
-        if (usable <= coreExclusionRadius) return result;
+        if (usable <= coreExclusionRadius) return plan;
+
+        plan.usable = usable;
+        plan.valid = true;
 
         switch (entry.mode)
         {
             case RoadMode.Trunk:
-                BuildTrunk(rng, centre, usable, entry, coreExclusionRadius, result);
+                PlanTrunk(rng, centre, usable, entry, coreExclusionRadius, plan);
                 break;
             case RoadMode.Network:
-                BuildNetwork(rng, centre, usable, entry, coreExclusionRadius, result);
+                PlanNetwork(rng, centre, usable, entry, coreExclusionRadius, plan);
                 break;
+        }
+        return plan;
+    }
+
+    /// <summary>
+    /// Draws a chosen plan: one meandered polyline per chord, in chord order.
+    ///
+    /// Consumes rng ONLY for the meander. Callers that want the shipped
+    /// behaviour hand the same Random to Plan and then to this, which is what
+    /// Build does.
+    /// </summary>
+    public static RoadNetworkResult Rasterise(System.Random rng, RoadPlan plan)
+    {
+        var result = new RoadNetworkResult();
+        if (rng == null || plan == null || !plan.valid) return result;
+
+        result.junctions = plan.nodes;
+        foreach (var c in plan.chords)
+        {
+            if (c == null) continue;
+            result.roads.Add(MakeRoad(
+                BuildEdgePolyline(rng, c.a, c.b, plan.entry),
+                c.kind, c.width, plan.entry, plan.centre, plan.usable, c.brokenGapCells));
         }
 
         for (int i = 0; i < result.roads.Count; i++) result.roads[i].id = i;
@@ -504,9 +600,9 @@ public static class RoadNetworkBuilder
     /// exclusion disc: a trunk driven straight over the core would have its middle
     /// stretch rejected cell by cell and read as a road with a hole in it.
     /// </summary>
-    private static void BuildTrunk(
+    private static void PlanTrunk(
         System.Random rng, Vector3Int centre, int usable,
-        RoadFloorEntry entry, int coreExclusionRadius, RoadNetworkResult result)
+        RoadFloorEntry entry, int coreExclusionRadius, RoadPlan plan)
     {
         double spread = entry.trunkBearingSpread * Math.PI / 180.0;
         int clearance = coreExclusionRadius + entry.trunkWidth;
@@ -526,9 +622,15 @@ public static class RoadNetworkBuilder
         }
         if (!found) return;
 
-        result.roads.Add(MakeRoad(
-            BuildEdgePolyline(rng, a, b, entry),
-            RoadKind.Trunk, entry.trunkWidth, entry, centre, usable, 0));
+        // Both ends are FREE. A trunk-mode floor has no junctions at all, so
+        // there is no node for either end to belong to -- which is exactly what
+        // -1 means, and what keeps the rim ends of floor index 2's trunk out of
+        // the node list.
+        plan.chords.Add(new RoadChord
+        {
+            a = a, b = b, nodeA = -1, nodeB = -1,
+            kind = RoadKind.Trunk, width = entry.trunkWidth, brokenGapCells = 0,
+        });
     }
 
     // ---- Network mode ----------------------------------------------
@@ -538,12 +640,12 @@ public static class RoadNetworkBuilder
     /// out toward the rim, and spurs that stop dead. Denser than the trunk floor on
     /// purpose: deeper is older, and older is when the thing was whole.
     /// </summary>
-    private static void BuildNetwork(
+    private static void PlanNetwork(
         System.Random rng, Vector3Int centre, int usable,
-        RoadFloorEntry entry, int coreExclusionRadius, RoadNetworkResult result)
+        RoadFloorEntry entry, int coreExclusionRadius, RoadPlan plan)
     {
         var nodes = ScatterJunctions(rng, centre, usable, entry, coreExclusionRadius);
-        result.junctions = nodes;
+        plan.nodes = nodes;
         if (nodes.Count < 2) return;
 
         // Accepted edges as straight endpoint pairs. The spacing rules are applied
@@ -558,9 +660,11 @@ public static class RoadNetworkBuilder
         foreach (var e in SpanningTreeEdges(nodes))
         {
             placed.Add(new EdgeChord { a = nodes[e.Key], b = nodes[e.Value], na = e.Key, nb = e.Value });
-            result.roads.Add(MakeRoad(
-                BuildEdgePolyline(rng, nodes[e.Key], nodes[e.Value], entry),
-                RoadKind.Trunk, entry.trunkWidth, entry, centre, usable, 0));
+            plan.chords.Add(new RoadChord
+            {
+                a = nodes[e.Key], b = nodes[e.Value], nodeA = e.Key, nodeB = e.Value,
+                kind = RoadKind.Trunk, width = entry.trunkWidth, brokenGapCells = 0,
+            });
         }
 
         // Loop edges draw from a wider candidate list than they need, so the rules
@@ -575,9 +679,11 @@ public static class RoadNetworkBuilder
             if (!ChordAccepted(nodes[e.Key], nodes[e.Value], e.Key, e.Value, placed, entry)) continue;
             loopsPlaced++;
             placed.Add(new EdgeChord { a = nodes[e.Key], b = nodes[e.Value], na = e.Key, nb = e.Value });
-            result.roads.Add(MakeRoad(
-                BuildEdgePolyline(rng, nodes[e.Key], nodes[e.Value], entry),
-                RoadKind.Trunk, entry.trunkWidth, entry, centre, usable, 0));
+            plan.chords.Add(new RoadChord
+            {
+                a = nodes[e.Key], b = nodes[e.Value], nodeA = e.Key, nodeB = e.Value,
+                kind = RoadKind.Trunk, width = entry.trunkWidth, brokenGapCells = 0,
+            });
         }
 
         // Rim-bound trunks: the outermost junctions send a road on outward. It stops
@@ -600,9 +706,12 @@ public static class RoadNetworkBuilder
 
             rimPlaced++;
             placed.Add(new EdgeChord { a = from, b = to, na = ni, nb = -1 });
-            result.roads.Add(MakeRoad(
-                BuildEdgePolyline(rng, from, to, entry),
-                RoadKind.Trunk, entry.trunkWidth, entry, centre, usable, entry.brokenGapCells));
+            plan.chords.Add(new RoadChord
+            {
+                a = from, b = to, nodeA = ni, nodeB = -1,
+                kind = RoadKind.Trunk, width = entry.trunkWidth,
+                brokenGapCells = entry.brokenGapCells,
+            });
         }
 
         // Broken spurs: the ones that once climbed toward the floor above.
@@ -629,9 +738,12 @@ public static class RoadNetworkBuilder
 
             spursPlaced++;
             placed.Add(new EdgeChord { a = from, b = to, na = ni, nb = -1 });
-            result.roads.Add(MakeRoad(
-                BuildEdgePolyline(rng, from, to, entry),
-                RoadKind.Spur, entry.spurWidth, entry, centre, usable, entry.brokenGapCells));
+            plan.chords.Add(new RoadChord
+            {
+                a = from, b = to, nodeA = ni, nodeB = -1,
+                kind = RoadKind.Spur, width = entry.spurWidth,
+                brokenGapCells = entry.brokenGapCells,
+            });
         }
     }
 
