@@ -3738,6 +3738,59 @@ validator's per-run report was what annotation needed. It was right about the
 report and wrong about the window: a report tells you a plan is wrong, and the
 window tells you WHERE.
 
+### The seat lens: the preview window learns the pipeline (SHIPPED)
+
+The marker colours above show what a plan IS; since the chord anchoring arc the
+interesting faults live in what the seat pipeline would DO with it -- which
+orientation the signed rule picks, whether both gates resolve, whether the lane
+routes, where a spur's standoff lands, and on refusal WHICH stage refused. All
+of that existed only as counters in a floor report, so every seat fault cost a
+generation to see. The Coffin Row's lane fault was a number on floor 3; it is
+now a sentence in an editor window.
+
+**The window never re-implements the selection.** `TryDoorAnchor` gains an
+optional `SeatDiag` collector, null on every engine path and therefore free,
+and `PreviewSeat` drives the SAME orchestration against a synthetic chord
+through the anchor at a chosen bearing. A parallel copy of the ranked loop in
+the editor layer is exactly the drift family that shipped the Abs mis-port and
+the one-gate port; the collector keeps one orchestration as the only truth.
+`TryGateCell` likewise gains an optional buried-cell list rather than the
+editor growing a second run-finder -- the even-length construction trap its own
+comment records is precisely the sort of thing a copy re-ships.
+
+The synthetic chord's ends are FREE, nodeA and nodeB at -1, so the GateMinStub
+end clamp is exempt by construction. That is correct rather than a shortcut: a
+stub only means anything against a real network, and the preview has none.
+
+What the lens shows, per authored plan:
+
+- The GATE overlay: the cell TryGateCell chooses per run at the displayed
+  orientation, and every run cell it judged buried -- judged WITH the approach
+  carved, which is what the engine sees at a gate. The window's base colours
+  still judge in a vacuum, which is render truth for cells no road serves, and
+  the two truths are drawn as base colour and inset so neither paints over the
+  other. The vacuum read over-reported burial on 7 of 16 laned plans; both
+  reads are wanted, for different questions.
+- The seat VERDICT at a chosen bearing and chord width: threading, spur or
+  doorless class, the rotation the signed rule picks with a snap button, both
+  gates, the routed lane, the standoff or the sidle, and on refusal the stage
+  that refused -- in the pipeline's own words, since they are its words.
+- A BEARING ROSE over all 24 bearings the audit sweeps: threaded, spurred,
+  sidled or refused per bearing at a glance. A refusal is an authoring fault
+  only if it holds across the rose, and the rose is what says so.
+- Platform `'='` and stair `'^'` colouring, reversing the deferral recorded
+  above at exactly the price it quoted: two colours and two branches each.
+
+A plan with door glyphs but no lane and no `@anchor_on: door` reads as the
+DOORLESS class here, because that is what it is to the pipeline -- doorAnchors
+is filled only by a lane or the header, exactly as `FromAuthored` builds it.
+The audit's inert-door plans read that way in the window on purpose; the lens
+showing a sidle where an author expected a docking is the audit item made
+visible.
+
+**Key files:** `SitePlanPreviewWindow.cs`, `AncientSiteBuilder.cs`
+(`SeatDiag`, `PreviewSeat`, `PreviewGateCell`, `PreviewKeepClearRadius`).
+
 ### The door rule, rebuilt on declaration (SHIPPED)
 
 The first door-rule gate was retired for failing twelve shipped, working plans.

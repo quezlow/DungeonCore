@@ -13,6 +13,41 @@ using UnityEngine;
 /// the twelve-cell floor, or the walkability guard -- and a chord split for a
 /// site that was never placed would leave the network cut around nothing.
 /// </summary>
+/// <summary>
+/// Diagnostics collected by TryDoorAnchor when the editor asks for them.
+///
+/// The engine passes null and pays nothing; the Site Plan Preview window
+/// passes a collector and gets the seat pipeline's own account of itself:
+/// which orientation the signed rule chose, where both gates landed, the lane
+/// it routed, the spur standoff or the sidle, and on refusal WHICH stage
+/// refused. This exists so the window never re-implements the selection -- a
+/// parallel copy of the ranked loop in the editor layer is exactly the drift
+/// family that shipped the Abs mis-port and the one-gate port -- and the
+/// collector keeps one orchestration as the only truth.
+///
+/// Every cell field is in ROTATED LOCAL space, the space the preview grid
+/// draws, except placeAt, which is the world offset the seat landed at.
+/// </summary>
+public class SeatDiag
+{
+    public bool spurClass;
+    public int usableRuns;
+    public bool doorless;
+    public bool freeOfChord;
+    public bool haveOrientation;
+    public int chosenRot = -1;
+    public Vector2Int entryGate;
+    public Vector2Int entryNormal;
+    public bool hasExitGate;
+    public Vector2Int exitGate;
+    public Vector2Int exitNormal;
+    public readonly List<Vector2Int> lane = new List<Vector2Int>();
+    public int spurStandoff = -1;
+    public Vector3Int placeAt;
+    public bool placed;
+    public string refusal = "";
+}
+
 public class SiteChordSeat
 {
     public int chordIndex = -1;
@@ -1022,6 +1057,97 @@ public static class AncientSiteBuilder
 
     /// <summary>Converts a parsed ASCII plan into the same local shape the
     /// procedural composer produces, so everything downstream is identical.</summary>
+    // ---- Editor preview API ----------------------------------------
+    //
+    // Windows into the seat pipeline for the Site Plan Preview window.
+    // Everything here CALLS the shipped logic rather than copying it: the
+    // orchestration in TryDoorAnchor is the only orchestration, and the diag
+    // collector is how it reports without the engine paying for a report.
+
+    /// <summary>
+    /// Seats an authored plan against a synthetic chord and returns the
+    /// pipeline's own diagnostics: chosen orientation, gates, lane route,
+    /// standoff or sidle, and on refusal the stage that refused.
+    ///
+    /// The chord runs through the anchor at `bearingDeg` (degrees
+    /// anticlockwise from +X), long enough to read as a line, with BOTH ends
+    /// free -- free ends are exempt from the GateMinStub end clamp, which is
+    /// correct here rather than a shortcut, because a stub only means
+    /// anything against a real network and the preview has none. `rotIn` is
+    /// honoured exactly where the engine itself would honour it: a doorless
+    /// plan keeps it, a doored plan has its rotation CHOSEN by the signed
+    /// rule, and an @rotate: no plan is forced to 0 unmirrored as in game.
+    /// </summary>
+    public static SeatDiag PreviewSeat(
+        AuthoredSitePlan plan, int bearingDeg, int chordWidth,
+        int rotIn, bool mirror)
+    {
+        var diag = new SeatDiag();
+        var shape = FromAuthored(plan);
+        if (shape == null)
+        {
+            diag.refusal = "plan has no floor";
+            return diag;
+        }
+
+        double rad = bearingDeg * System.Math.PI / 180.0;
+        double ux = System.Math.Cos(rad), uy = System.Math.Sin(rad);
+        var chord = new RoadChord
+        {
+            a = new Vector3Int((int)System.Math.Round(-ux * 300.0),
+                               (int)System.Math.Round(-uy * 300.0), 0),
+            b = new Vector3Int((int)System.Math.Round(ux * 300.0),
+                               (int)System.Math.Round(uy * 300.0), 0),
+            width = chordWidth,
+        };
+        var roadPlan = new RoadPlan { valid = true };
+        roadPlan.chords.Add(chord);
+
+        bool rotatable = plan.allowRotation;
+        int rot = rotatable ? (rotIn & 3) : 0;
+        bool mir = rotatable && mirror;
+        var rng = new System.Random(0);
+
+        TryDoorAnchor(rng, shape, ref rot, mir, rotatable,
+                      Vector3Int.zero, Vector3Int.zero, 0, 100000,
+                      roadPlan, 0, new List<Vector3Int>(), 0,
+                      out _, out _, out _, diag);
+        return diag;
+    }
+
+    /// <summary>
+    /// The gate cell TryGateCell would choose for one run at one orientation,
+    /// plus every run cell it judged buried -- judged WITH the approach
+    /// carved, which is what the engine sees at a gate, where the window's
+    /// base colours judge in a vacuum. Both in rotated local space. False
+    /// when the run has no walkable cell at all, which no shipped run has.
+    /// </summary>
+    public static bool PreviewGateCell(
+        AuthoredSitePlan plan, DoorRun run, int rot, bool mirror,
+        out Vector2Int gate, List<Vector2Int> buried)
+    {
+        gate = default;
+        if (run.outward == Vector2Int.zero) return false;
+        var shape = FromAuthored(plan);
+        if (shape == null) return false;
+        return TryGateCell(shape, run, rot, mirror, out gate, buried);
+    }
+
+    /// <summary>
+    /// The keep-clear bounding radius FootprintClearsChords tests, about the
+    /// plan's bounding-box centre. The window adds width/2 + 1 to draw the
+    /// ring a chord's centreline must stay outside.
+    /// </summary>
+    public static double PreviewKeepClearRadius(AuthoredSitePlan plan)
+    {
+        var shape = FromAuthored(plan);
+        if (shape == null) return 0.0;
+        if (!FootprintBounds(shape, out int minX, out int minY,
+                             out int maxX, out int maxY)) return 0.0;
+        double hx = (maxX - minX) * 0.5, hy = (maxY - minY) * 0.5;
+        return System.Math.Sqrt(hx * hx + hy * hy);
+    }
+
     private static LocalPlan FromAuthored(AuthoredSitePlan authored)
     {
         if (authored == null) return null;
@@ -2315,7 +2441,8 @@ public static class AncientSiteBuilder
         Vector3Int anchor, Vector3Int centre, int inner, int outer,
         RoadPlan roadPlan, int chordIndex,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
-        out Vector3Int placeAt, out bool headingFault, out SiteChordSeat seat)
+        out Vector3Int placeAt, out bool headingFault, out SiteChordSeat seat,
+        SeatDiag diag = null)
     {
         placeAt = anchor;
         headingFault = false;
@@ -2343,12 +2470,25 @@ public static class AncientSiteBuilder
             // first: AlongRoad means BESIDE the road, not across it, so the seat
             // steps perpendicular to the chord until every cell clears the
             // carriageway, then must clear everything else too.
+            if (diag != null) diag.doorless = true;
             if (chordIndex >= 0
                 && !TrySidleClear(shape, rot, mirror, roadPlan, chordIndex,
                                   ref placeAt))
+            {
+                if (diag != null)
+                    diag.refusal = "sidle: no clear offset within MaxSidle";
                 return false;
-            return FootprintClearsChords(shape, placeAt, rot, mirror,
-                                         roadPlan, -1);
+            }
+            bool doorlessClear = FootprintClearsChords(shape, placeAt, rot, mirror,
+                                                       roadPlan, -1);
+            if (diag != null)
+            {
+                diag.placeAt = placeAt;
+                diag.placed = doorlessClear;
+                if (!doorlessClear)
+                    diag.refusal = "keep-clear: footprint crosses a chord";
+            }
+            return doorlessClear;
         }
 
         // THE HEADING IS EXACT NOW. It is the chord's own direction, not a least
@@ -2362,13 +2502,24 @@ public static class AncientSiteBuilder
             // plan that merely drew a lane is placed where it is and keeps clear
             // of the roads instead, which is what the five Free-anchored laned
             // plans have always effectively been.
+            if (diag != null) diag.freeOfChord = true;
             if (shape.requireDoorAnchor)
             {
+                if (diag != null)
+                    diag.refusal = "@anchor_on: door, and no chord to answer";
                 headingFault = true;
                 return false;
             }
-            return FootprintClearsChords(shape, placeAt, rot, mirror,
-                                         roadPlan, chordIndex);
+            bool freeClear = FootprintClearsChords(shape, placeAt, rot, mirror,
+                                                   roadPlan, chordIndex);
+            if (diag != null)
+            {
+                diag.placeAt = placeAt;
+                diag.placed = freeClear;
+                if (!freeClear)
+                    diag.refusal = "keep-clear: footprint crosses a chord";
+            }
+            return freeClear;
         }
 
         // ROTATION IS CHOSEN, NOT ROLLED, and the choice is SIGNED.
@@ -2405,6 +2556,11 @@ public static class AncientSiteBuilder
         foreach (var run in shape.doorAnchors)
             if (RotateLocal(run.outward, 0, mirror) != Vector2Int.zero) usableTotal++;
         bool spurClass = usableTotal < 2 || shape.lane.Count == 0;
+        if (diag != null)
+        {
+            diag.spurClass = spurClass;
+            diag.usableRuns = usableTotal;
+        }
 
         int bestRot = rot;
         DoorRun bestRun = default;
@@ -2501,6 +2657,8 @@ public static class AncientSiteBuilder
 
         if (!haveRun)
         {
+            if (diag != null)
+                diag.refusal = "gates: no orientation with both gates walkable";
             headingFault = true;
             return false;
         }
@@ -2515,6 +2673,13 @@ public static class AncientSiteBuilder
         // buried middle, and ZERO with no walkable cell at all. The walkable
         // cell nearest the middle was chosen by the ranked selection above.
         var inNormal = RotateLocal(bestRun.outward, bestRot, mirror);
+        if (diag != null)
+        {
+            diag.haveOrientation = true;
+            diag.chosenRot = bestRot;
+            diag.entryGate = gate;
+            diag.entryNormal = inNormal;
+        }
 
         if (spurClass)
         {
@@ -2527,18 +2692,36 @@ public static class AncientSiteBuilder
             // along the normal by construction.
             if (!TrySpurStandoff(shape, bestRot, mirror, anchor, inNormal, gate,
                                  roadPlan, chordIndex, out placeAt))
+            {
+                if (diag != null)
+                    diag.refusal = "spur: no clear standoff within MaxStandoff";
                 return false;
+            }
 
             long sdx = placeAt.x - centre.x, sdy = placeAt.y - centre.y;
             long sDistSq = sdx * sdx + sdy * sdy;
             if (sDistSq < (long)inner * inner || sDistSq > (long)outer * outer)
+            {
+                if (diag != null)
+                    diag.refusal = "band: stood-off seat left the anchor band";
                 return false;
-            if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
+            }
+            if (TooClose(placeAt, anchorsUsed, minSpacingSq))
+            {
+                if (diag != null)
+                    diag.refusal = "spacing: too close to another site";
+                return false;
+            }
 
             // No along-chord clamp: the standoff already guarantees the chord
             // cannot touch the footprint, whatever their projections overlap.
             if (!FootprintClearsChords(shape, placeAt, bestRot, mirror,
-                                       roadPlan, chordIndex)) return false;
+                                       roadPlan, chordIndex))
+            {
+                if (diag != null)
+                    diag.refusal = "keep-clear: footprint crosses another chord";
+                return false;
+            }
 
             seat = new SiteChordSeat
             {
@@ -2548,6 +2731,17 @@ public static class AncientSiteBuilder
                 spur = true,
                 takeoff = anchor,
             };
+            if (diag != null)
+            {
+                diag.placed = true;
+                diag.placeAt = placeAt;
+                // The standoff, recovered from the seat: the gate sits at
+                // anchor - normal * d, so the dot recovers d exactly and
+                // TrySpurStandoff keeps its signature.
+                diag.spurStandoff =
+                    (anchor.x - (placeAt.x + gate.x)) * inNormal.x
+                  + (anchor.y - (placeAt.y + gate.y)) * inNormal.y;
+            }
             return true;
         }
 
@@ -2558,8 +2752,18 @@ public static class AncientSiteBuilder
         // every test it passed describes somewhere the site is not.
         long dx = placeAt.x - centre.x, dy = placeAt.y - centre.y;
         long distSq = dx * dx + dy * dy;
-        if (distSq < (long)inner * inner || distSq > (long)outer * outer) return false;
-        if (TooClose(placeAt, anchorsUsed, minSpacingSq)) return false;
+        if (distSq < (long)inner * inner || distSq > (long)outer * outer)
+        {
+            if (diag != null)
+                diag.refusal = "band: seated footprint left the anchor band";
+            return false;
+        }
+        if (TooClose(placeAt, anchorsUsed, minSpacingSq))
+        {
+            if (diag != null)
+                diag.refusal = "spacing: too close to another site";
+            return false;
+        }
 
         // THE FOOTPRINT MUST CLEAR BOTH OCCUPIED CHORD ENDS. Clamping on the
         // gates instead is what put centrelines on masonry, and a FREE end --
@@ -2568,7 +2772,12 @@ public static class AncientSiteBuilder
         // stops, and the old both-ends clamp refused every such seat and sent
         // the gates to the free-scatter fallback.
         if (!FootprintClearsChordEnds(shape, placeAt, bestRot, mirror,
-                                      roadPlan, chordIndex)) return false;
+                                      roadPlan, chordIndex))
+        {
+            if (diag != null)
+                diag.refusal = "end stub: footprint covers an occupied chord end";
+            return false;
+        }
 
         // THE SEAT IS RECORDED, NOT ACTED ON. This placement can still be thrown
         // out afterwards -- by the disc clamp, the twelve-cell floor or the
@@ -2605,6 +2814,8 @@ public static class AncientSiteBuilder
         // serve.
         if (!seat.hasBothGates)
         {
+            if (diag != null)
+                diag.refusal = "lane: does not connect gate to gate";
             seat = null;
             headingFault = true;
             return false;
@@ -2614,8 +2825,24 @@ public static class AncientSiteBuilder
         // exempt: a laned site splits it at its own gates. A second chord
         // crossing the building was never asked for by anything.
         if (!FootprintClearsChords(shape, placeAt, bestRot, mirror,
-                                   roadPlan, chordIndex)) return false;
+                                   roadPlan, chordIndex))
+        {
+            if (diag != null)
+                diag.refusal = "keep-clear: footprint crosses another chord";
+            return false;
+        }
 
+        if (diag != null)
+        {
+            diag.placed = true;
+            diag.placeAt = placeAt;
+            diag.hasExitGate = true;
+            diag.exitGate = new Vector2Int(
+                seat.gateOut.x - placeAt.x, seat.gateOut.y - placeAt.y);
+            diag.exitNormal = seat.outNormal;
+            foreach (var c in seat.laneCells)
+                diag.lane.Add(new Vector2Int(c.x - placeAt.x, c.y - placeAt.y));
+        }
         return true;
     }
 
@@ -2762,7 +2989,8 @@ public static class AncientSiteBuilder
     /// mined. That error reported seven of sixteen laned plans as unplaceable.
     /// </summary>
     private static bool TryGateCell(
-        LocalPlan shape, DoorRun run, int rot, bool mirror, out Vector2Int gate)
+        LocalPlan shape, DoorRun run, int rot, bool mirror, out Vector2Int gate,
+        List<Vector2Int> buried = null)
     {
         gate = default;
         int len = Mathf.Max(1, run.length);
@@ -2788,7 +3016,13 @@ public static class AncientSiteBuilder
         for (int k = 0; k < len; k++)
         {
             var cell = startR + step * k;
-            if (!GateCellWalkable(floorR, cell, normal)) continue;
+            if (!GateCellWalkable(floorR, cell, normal))
+            {
+                // Collected for the editor's gate overlay. The engine passes
+                // nothing here and pays nothing.
+                if (buried != null) buried.Add(cell);
+                continue;
+            }
 
             int d = Mathf.Abs(cell.x - midR.x) + Mathf.Abs(cell.y - midR.y);
             if (d < bestDist) { bestDist = d; gate = cell; found = true; }
