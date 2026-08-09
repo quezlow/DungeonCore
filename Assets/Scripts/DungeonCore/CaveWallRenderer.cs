@@ -369,6 +369,23 @@ public class CaveWallRenderer : MonoBehaviour
         return tile;
     }
 
+    /// <summary>The plain stone straight-column sprites (cap, upper face,
+    /// lower face) for the build-wall ghost (canon 36). First plain variant
+    /// only: variety and moss belong to the REAL paint, which lands the
+    /// moment the wall is built -- the ghost only has to read as "a wall will
+    /// stand here". False until the sheet has been sliced; the caller falls
+    /// back to flat tint quads.</summary>
+    public bool TryGetGhostColumnSprites(out Sprite cap, out Sprite upper, out Sprite lower)
+    {
+        cap = GhostSpriteOf(straightCapTiles);
+        upper = GhostSpriteOf(straightUpperTiles);
+        lower = GhostSpriteOf(straightLowerTiles);
+        return cap != null && upper != null && lower != null;
+    }
+
+    private static Sprite GhostSpriteOf(TileBase[] arr)
+        => arr != null && arr.Length > 0 && arr[0] is UnlockedTile t ? t.sprite : null;
+
     private void OnEnable()
     {
         if (influence != null && !subscribed)

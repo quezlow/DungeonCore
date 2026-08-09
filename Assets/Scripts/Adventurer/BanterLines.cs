@@ -116,6 +116,34 @@ public static class BanterLines
 
     public static string[] RandomPair() => Pairs.Length == 0 ? null : Pairs[Random.Range(0, Pairs.Length)];
 
+    // -- The sealed way (canon 36) --
+    // What a party says when a player-built wall stands between them and the
+    // dungeon they were promised. Same diegetic register as everything above.
+
+    public static readonly string[] Blocked =
+    {
+        "The way is shut.",
+        "Solid stone. That was a corridor last week.",
+        "Someone walled it up. From the inside.",
+        "We were paid to go down. Down is closed.",
+        "No seam, no hinge, no door. Just wall.",
+        "The Guild map says there is a dungeon behind this.",
+        "I did not haul this pack up the road to stare at masonry.",
+        "You can hear it through the stone. Humming.",
+    };
+
+    public static readonly string[][] BlockedPairs =
+    {
+        new[] { "It's a wall.", "I can see it's a wall." },
+        new[] { "Try knocking.", "On what, the mountain?" },
+        new[] { "The notice said the dungeon was open daily.", "The notice lied." },
+        new[] { "Dig through?", "With what, your teeth?" },
+        new[] { "It knows we're out here.", "Then it knows we're billing for the day." },
+    };
+
+    public static string[] RandomBlockedPair()
+        => BlockedPairs.Length == 0 ? null : BlockedPairs[Random.Range(0, BlockedPairs.Length)];
+
     // -- Monsters --
     // -- Monsters: one pool per voice --
 

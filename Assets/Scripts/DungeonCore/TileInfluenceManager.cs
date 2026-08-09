@@ -441,6 +441,22 @@ public class TileInfluenceManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Reverse of MineTile, for player-built walls (canon 36): the cell leaves
+    /// the walkable set and reads as solid rock again. The cell STAYS claimed --
+    /// the wall renderer caps claimed solids, so the new wall paints with no
+    /// further plumbing, and mana-per-claimed-tile is untouched because mining
+    /// never billed it. Fires OnTileCountChanged so the wall renderer rebuilds.
+    /// The reachability watchdog is poked by the build controller DIRECTLY (the
+    /// Appendix D direct-call pattern): a lost subscription here would let a
+    /// sealing wall pass unnoticed and the starvation clock never start.
+    /// </summary>
+    public void UnmineTile(Vector3Int pos)
+    {
+        if (!minedTiles.Remove(pos)) return;
+        OnTileCountChanged?.Invoke(minedTiles.Count);
+    }
+
+    /// <summary>
     /// Marks a batch of cells as natural open floor — walkable (mined) — WITHOUT
     /// claiming them. They stay outside the influence ring until the player claims
     /// into them. Used by terrain generation for the pre-revealed core cavern +

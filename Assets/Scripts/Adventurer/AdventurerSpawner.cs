@@ -410,6 +410,22 @@ public class AdventurerSpawner : MonoBehaviour
         if (WaveStageController.Instance != null && WaveStageController.AllowAdventurers
             && GradeSystem.Instance != null && !GradeSystem.Instance.PlayerHasBeenAssessed) { timer = 0f; return; }
 
+        // A dungeon nothing can enter draws no crowd (canon 36). Note this is
+        // the FIRST time the spawn loop actually reads the watchdog: only the
+        // wave-preview HUD ever consumed RouteToCoreOpen before, so a sealed
+        // dungeon kept spawning parties that instantly "arrived" at a core
+        // they could not reach -- the declared-but-never-wired gate. During
+        // the animal and commoner stages a seal means silence; once real
+        // adventurers are abroad, exactly one party a day stands at the
+        // blockage and says so (the loiter behaviour lives in
+        // DungeonAdventurer.TryBeginSealLoiter and needs no flag here).
+        if (!ReachabilityDirector.RouteToCoreOpen)
+        {
+            if (!WaveStageController.AllowAdventurers) { timer = 0f; return; }
+            TrySpawnSealLoiterParty();
+            return;
+        }
+
         timer += Time.deltaTime;
         if (timer >= CurrentInterval())
         {
@@ -424,6 +440,22 @@ public class AdventurerSpawner : MonoBehaviour
             if (WaveStageController.AllowCommoners) SpawnCommonerParty();
             else SpawnParty();
         }
+    }
+
+    // The one-a-day witness party at a sealed mouth (canon 36).
+    private AdventurerParty sealLoiterParty;
+    private int sealLoiterDay = -1;
+
+    private void TrySpawnSealLoiterParty()
+    {
+        timer = 0f;
+        if (sealLoiterParty != null && sealLoiterParty.LiveCount() > 0) return;
+        if (PartyCapReached) return;
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 0;
+        if (day == sealLoiterDay) return;
+        sealLoiterDay = day;
+        SpawnParty();
+        sealLoiterParty = liveParties.Count > 0 ? liveParties[liveParties.Count - 1] : null;
     }
 
     private void HandleNightStarted() { timer = 0f; }

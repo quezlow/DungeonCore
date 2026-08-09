@@ -41,6 +41,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         Organizing,     // Forming up at the entrance before advancing
         Pinned,         // snared in a capture-trap, awaiting rescue or the cell
         MovingToRescue, // converging on a pinned ally to cut them loose
+        Loitering,      // stood at a player-built seal, waiting for a way in
     }
 
     // ── Inspector ─────────────────────────────────────────────────
@@ -751,6 +752,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                     && !MovementHalted)
                     FollowPath();
                 break;
+
+            case AdventurerState.Loitering:
+                ScanForMonsters();
+                if (state != AdventurerState.Combat && state != AdventurerState.Retreating
+                    && !MovementHalted)
+                    HandleSealLoiter();
+                break;
         }
     }
 
@@ -1143,10 +1151,15 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             if (stairTarget != null)
             {
+                // An empty path with the stair still far away is a blocked
+                // route, not an arrival -- the old code stood here forever.
                 if (Vector2.Distance(transform.position, stairTarget.transform.position) < 0.6f)
                     BeginStairTraversal();
+                else
+                    TryBeginSealLoiter();
                 return;
             }
+            if (TryBeginSealLoiter()) return;
             OnReachedDestination();
             return;
         }
@@ -2357,6 +2370,92 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // Hold until the whole party has formed up, then advance together.
         if (party == null || Time.time >= party.OrganizeEndTime)
             BeginAdvance();
+    }
+
+    // -- Seal loitering (canon 36) ---------------------------------------
+
+    private Vector3 loiterAnchor;
+    private float nextLoiterRouteCheck;
+
+    /// <summary>True while stood at a player-built seal -- the banter manager
+    /// swaps this speaker onto the Blocked line pools.</summary>
+    public bool SealLoitering => state == AdventurerState.Loitering;
+
+    /// <summary>
+    /// The path ran out with the destination still far away while the watchdog
+    /// says nothing can reach the heart: this is a party stood at a seal, not
+    /// an arrival. Without this the empty path fell straight through to
+    /// OnReachedDestination, and a blocked pilgrim would worship the rubble at
+    /// the mouth as if it were the core. FindPath returns an empty list BOTH
+    /// on failure and when start equals goal, so genuine arrival is excluded
+    /// by distance before loitering begins.
+    /// </summary>
+    private bool TryBeginSealLoiter()
+    {
+        if (state != AdventurerState.MovingToCore) return false;
+        if (ReachabilityDirector.RouteToCoreOpen) return false;
+        if (currentFloor == null || currentFloor.TileInfluence == null) return false;
+        if (DungeonCore.Instance != null
+            && FloorManager.Instance != null
+            && FloorManager.Instance.CoreFloorIndex == currentFloor.FloorIndex
+            && ((Vector2)(DungeonCore.Instance.transform.position - transform.position)).sqrMagnitude < 4f)
+            return false;   // genuinely arrived -- not a blockage
+        BeginSealLoiter();
+        return true;
+    }
+
+    /// <summary>Walk to the face of the blockage -- the reachable cell nearest
+    /// the heart -- then drift in front of it (the loose-muster pattern) until
+    /// the route reopens, at which point BeginAdvance resumes whatever they
+    /// originally came to do: the ones at the gate come in first.</summary>
+    private void BeginSealLoiter()
+    {
+        var reach = DungeonPathfinder.ReachableCells(currentFloor, transform.position);
+        Vector3Int coreCell = currentFloor.Terrain != null
+            ? currentFloor.Terrain.CoreCell
+            : currentFloor.TileInfluence.WorldToCell(transform.position);
+        Vector3Int best = currentFloor.TileInfluence.WorldToCell(transform.position);
+        float bestSq = float.MaxValue;
+        foreach (var c in reach)
+        {
+            float sq = ((Vector3)(c - coreCell)).sqrMagnitude;
+            if (sq < bestSq) { bestSq = sq; best = c; }
+        }
+        loiterAnchor = currentFloor.TileInfluence.CellToWorld(best);
+        currentPath = DungeonPathfinder.FindPath(currentFloor, transform.position, loiterAnchor);
+        pathIndex = 0;
+        stairTarget = null;
+        musterTarget = loiterAnchor;
+        nextMusterStepTime = 0f;
+        nextLoiterRouteCheck = Time.time + Random.Range(0.5f, 1.5f);
+        state = AdventurerState.Loitering;
+    }
+
+    private void HandleSealLoiter()
+    {
+        // The moment the way opens, go back to whatever they came to do.
+        if (Time.time >= nextLoiterRouteCheck)
+        {
+            nextLoiterRouteCheck = Time.time + 1f;
+            if (ReachabilityDirector.RouteToCoreOpen) { BeginAdvance(); return; }
+        }
+
+        // Walk in to the blockage first; only then drift in front of it. The
+        // pathIndex guard means FollowPath can never fall through to
+        // OnReachedDestination from this state -- it is only ever called with
+        // waypoints remaining.
+        if (currentPath != null && pathIndex < currentPath.Count) { FollowPath(); return; }
+
+        if (Time.time >= nextMusterStepTime)
+        {
+            nextMusterStepTime = Time.time + Random.Range(1.2f, 2.6f);
+            Vector2 drift = Random.insideUnitCircle * 1.6f;
+            Vector3 candidate = loiterAnchor + new Vector3(drift.x, drift.y, 0f);
+            if (!DungeonPathfinder.IsWalkable(currentFloor, candidate)) candidate = loiterAnchor;
+            musterTarget = candidate;
+        }
+        transform.position = Vector2.MoveTowards(
+            transform.position, musterTarget, EffectiveMoveSpeed * 0.5f * Time.deltaTime);
     }
 
     private Vector3 ComputeFormationSlot()

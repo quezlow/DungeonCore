@@ -234,6 +234,17 @@ public class DungeonCore : MonoBehaviour
 
     private void RegenerateMana()
     {
+        // The sealed heart starves (canon 36): once the seal clock's grace
+        // expires, regeneration is replaced by a drain to zero. Read
+        // DIRECTLY off the controller rather than via subscription -- a
+        // lost subscription here would make sealing the dungeon free.
+        if (SealPenaltyController.ManaSealed)
+        {
+            if (currentMana <= 0f) return;
+            currentMana = Mathf.Max(0f, currentMana - SealPenaltyController.DrainPerSecond * Time.deltaTime);
+            OnManaChanged?.Invoke(currentMana, MaxMana);
+            return;
+        }
         if (currentMana >= MaxMana) return;
         // CurrentManaRegen folds in the census mana sum (rooms + trophies); use it
         // so those effects actually regenerate mana, not just show on the readout.
@@ -595,6 +606,7 @@ public class DungeonCore : MonoBehaviour
             instabilityTimer = this.instabilityTimer,
             breachCount = this.breachCount,
             stairCredits = this.stairCredits,
+            sealStartDays = SealPenaltyController.SealStartDaysForSave,
         };
     }
 
@@ -616,6 +628,7 @@ public class DungeonCore : MonoBehaviour
         instabilityTimer = data.instabilityTimer;
         breachCount = data.breachCount;
         stairCredits = data.stairCredits;
+        SealPenaltyController.RestoreSealStartDays(data.sealStartDays);
 
         NotifyAll();
         if (isUnstable) OnFirstBreach?.Invoke();
@@ -642,4 +655,7 @@ public class DungeonCoreSaveData
     public int gold;
     public int researchPoints; 
     public int stairCredits;
+    // Absolute in-game day the seal clock started, 0 = not sealed (canon 36).
+    // Missing in older saves deserialises to 0, which reads as clean.
+    public float sealStartDays;
 }

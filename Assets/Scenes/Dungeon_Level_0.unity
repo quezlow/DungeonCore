@@ -15377,7 +15377,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9997609
+  m_Size: 0.9998314
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -48401,6 +48401,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1635813498}
   - component: {fileID: 1635813499}
+  - component: {fileID: 1635813500}
   m_Layer: 0
   m_Name: BuildFeedbackManager
   m_TagString: Untagged
@@ -48445,6 +48446,20 @@ MonoBehaviour:
   reasonFontSize: 3
   reasonColor: {r: 1, g: 0.4, b: 0.4, a: 1}
   cooldown: 0.22
+--- !u!114 &1635813500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635813497}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81dabb96adfff5641bde7c48d2de042c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SealPenaltyController
+  graceDays: 1
+  sealDrainPerSecond: 3
 --- !u!1 &1637109069
 GameObject:
   m_ObjectHideFlags: 0
@@ -50433,7 +50448,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000041608277}
+  m_AnchoredPosition: {x: 0, y: 0.000011807199}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57787,7 +57802,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9997949
+  m_Size: 0.99985534
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60373,7 +60388,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000041608277}
+  m_AnchoredPosition: {x: 0, y: 0.000011807199}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -67515,6 +67530,9 @@ MonoBehaviour:
   selectedTrap: {fileID: 0}
   stairsDefinition: {fileID: 11400000, guid: 7bd57bf5ebf38324e9efabd5e455341a, type: 2}
   mineHighlightColor: {r: 1, g: 0.85, b: 0.35, a: 0.35}
+  buildWallManaCost: 10
+  wallGhostValidColor: {r: 1, g: 1, b: 1, a: 0.45}
+  wallGhostInvalidColor: {r: 0.9, g: 0.25, b: 0.25, a: 0.45}
   digTicksPerSecond: 10
   digQueueColor: {r: 0.35, g: 0.7, b: 1, a: 0.28}
   roomPreviewColor: {r: 0.83, g: 0.65, b: 0.15, a: 0.35}

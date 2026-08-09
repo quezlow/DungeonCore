@@ -1566,7 +1566,9 @@ Status: PART SHIPPED. The road substrate, the sites, and the dwarves --
 faction, outpost, vendor, spoil economy, the village (part 3), and now The
 Living Holds (step 7: walking villagers, road patrols, the caravan and its
 verbs, the entry-7 matrix revisit) -- are built and described as-built below.
-The granite overlay and road claiming remain DESIGN and do not exist in code.
+The granite overlay, road claiming and the warning ladder have since SHIPPED
+and are recorded as-built in this entry's own later sections -- the sentence
+that stood here predated them.
 Do not assume the classes or APIs of anything still marked DESIGN here. The
 tier-up divine audiences that used to share this entry are now 19A and have
 no dependency on any of this.
@@ -6136,6 +6138,102 @@ total for this entry), the seven echo call sites,
 `Floors/FloorFeatureSaveData.cs` (`restCells`),
 `Floors/TerrainFeatureGenerator.cs` (the uncarved pocket), and
 `Gameplay/BuriedRemainsController.cs` (arming, dawn murmur, reveal).
+
+---
+
+## 36. Built Walls and the Sealed Way
+
+Status: BUILT. Verified: pending smoke test
+
+The player can raise walls on their own claimed ground, and the world answers
+when those walls cut the mouth off from the heart. One build mode, one new
+component, one new adventurer state, and the first time the spawn loop has
+ever actually read the reachability watchdog.
+
+**Building.** `BuildMode.BuildWall` (Build sub-menu, "Wall"; the scene's
+serialised `buildEntries` list predates the entry, so `ActionBarHUD.Start`
+appends it at runtime when absent -- no Inspector step). The CLICK is the
+wall's visual bottom: the solid cell lands two cells north
+(`click + (0,2,0)`), so the rendered south face drapes exactly over the two
+clicked-side cells and the three highlighted cells equal the three cells the
+pathfinder refuses (`passable = owned && !underOverhang`). Single click
+builds one column; drag paints a run, one column per cell entered; there is
+deliberately no box gesture. Cost `buildWallManaCost` (serialised, default
+10 -- 2x the dig) is spent only after validation passes; refusals route
+through the standard `RejectAt` -> `BuildFeedback.Reject` popup with
+per-cause reasons (open floor, influence, core cell, water, doorway,
+furniture / chest / trap / stairs / spawner / room anchor, registered room
+footprints, anything living stood in the footprint).
+
+**The ghost** (this also ships polish item p, walls only). Three translucent
+sprites -- lower face, upper face, cap -- pulled live from the floor's own
+`CaveWallRenderer` via the new `TryGetGhostColumnSprites` (first plain
+straight variant; falls back to flat quads until the sheet is sliced), tinted
+by validity, with the mana price floating over the cap on the TMP default
+font. Hover validity is the full placement check, so the ghost never shows
+green where the click would refuse.
+
+**The mechanism.** `TileInfluenceManager.UnmineTile` is the exact reverse of
+`MineTile`: the cell leaves `minedTiles`, stays claimed (claimed solids cap,
+so the wall paints with no further plumbing; mana-per-claimed-tile is
+untouched), and `OnTileCountChanged` rebuilds the renderer. The build path
+pokes `ReachabilityDirector.MarkDirty()` DIRECTLY (Appendix D): the watchdog
+only subscribes to `OnTileMined`, which un-mining never fires. Terrain: the
+cell is retyped `Stone` via `ApplyFeatureOverride` and recorded in
+`FloorFeatureSaveData.builtWallCells` (additive, the `pavedRoadCells`
+precedent -- `patchOverrides` does not serialise); `ApplyRuinsOverrides`
+re-applies the retype on load, so a built wall renders stone and re-mines at
+Stone resistance after a reload. Re-mining IS the removal path -- Demolish is
+untouched -- and list entries are never pruned on re-mine (a Stone override
+under open floor is inert).
+
+**The seal clock.** `SealPenaltyController` (persistent managers GameObject;
+no references) watches `RouteToCoreOpen`. When the route severs it records
+the absolute in-game day (`CurrentDay + CycleProgress01`; 0 = not sealed, and
+days start at 1, so an old save's missing field deserialises to clean); after
+`graceDays` (serialised, default 1) the core's regeneration is replaced by a
+drain of `sealDrainPerSecond` (serialised, default 3) to zero --
+`DungeonCore.RegenerateMana` reads `ManaSealed` directly, same Appendix D
+reasoning. Absolute-day storage means save/reload cannot reset the grace
+window. The figure rides `DungeonCoreSaveData.sealStartDays`. One Critical
+Threat alert and one wisp line fire when the drain begins; the watchdog's own
+severed / reopened lines are unchanged. Mana is the ONLY penalty: XP drain
+was considered and rejected because the 1..26 ladder's tier boundaries grant
+irreversible things (stair credits, floor unlocks, 19A audiences) and
+de-levelling across one either claws back a built-on floor or hands out
+free re-earned credits.
+
+**The witness party.** The spawner's Update never read the watchdog before --
+only the wave-forecast HUD property did (`SpawningActive`), the
+declared-but-never-wired gate -- so a sealed dungeon kept spawning parties
+whose empty `FindPath` fell straight through `FollowPath` into
+`OnReachedDestination`: blocked pilgrims "arrived" at a core they never
+reached. Now: while severed, the animal and commoner stages spawn nothing;
+once `WaveStage.Adventurers` is current, exactly one party a day spawns
+(`TrySpawnSealLoiterParty`, normal `RollType` composition, no flag). Any
+adventurer in `MovingToCore` whose path comes back empty while the route is
+severed -- and who is genuinely far from the goal, because `FindPath` returns
+empty on BOTH failure and start==goal -- enters the new `Loitering` state
+(enum value appended): walks to the reachable cell nearest the heart, drifts
+there on the loose-muster pattern, and polls the watchdog about once a
+second; on reopen, `BeginAdvance` resumes the originally-rolled goal, so the
+ones at the gate come in first. The same hook fires when a stair target is
+unreachable, replacing the old stand-forever stall. Loiterers keep normal
+combat, retreat and banter rules; `AdventurerBanterManager` swaps a
+`SealLoitering` speaker onto the new `BanterLines.Blocked` /
+`BlockedPairs` pools at unchanged cadence and pair odds.
+
+**Known limits, inherited and chosen.** (1) `CheckSevered` only reports while
+`CoreFloorIndex == 0` -- its own documented limit -- so a core moved deeper
+runs no clock and draws no witness party; extending severance across stairs
+is the follow-up, and everything here keys off `RouteToCoreOpen` so it
+inherits the fix automatically. (2) Only `MovingToCore` (and the stair
+branch) detects blockage; an observer in `MovingToRoom` whose room is sealed
+off keeps the pre-existing empty-path fallthrough. (3) The wildlife spawner
+is not gated -- animals wandering up to a wall is harmless and it is a
+separate system. (4) Loitering is not persisted: a save under a seal restores
+members via the normal pending-restore path and they re-derive the loiter on
+their first failed path.
 
 ---
 

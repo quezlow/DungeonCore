@@ -63,6 +63,30 @@ public class AdventurerBanterManager : MonoBehaviour
 
         var speaker = advEligible[Random.Range(0, advEligible.Count)];
 
+        // A party stood at a sealed way talks about the seal, not the weather
+        // (canon 36). Same cadence and pair odds as ordinary banter -- only
+        // the pools change, so the loiter reads as the same people in a
+        // different mood rather than a scripted announcement.
+        if (speaker.SealLoitering)
+        {
+            if (Random.value < pairChance)
+            {
+                var sealMate = FindMate(speaker);
+                if (sealMate != null)
+                {
+                    var blockedPair = BanterLines.RandomBlockedPair();
+                    if (blockedPair != null && blockedPair.Length >= 2)
+                    {
+                        speaker.Say(blockedPair[0], BanterLines.Banter);
+                        StartCoroutine(Reply(sealMate, blockedPair[1]));
+                        return;
+                    }
+                }
+            }
+            speaker.Say(BanterLines.Pick(BanterLines.Blocked), BanterLines.Banter);
+            return;
+        }
+
         // Two-line exchange with a nearby party-mate.
         if (Random.value < pairChance)
         {

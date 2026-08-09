@@ -1712,6 +1712,39 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // floor across the carriageway at every join. Reveal stays per segment;
         // only the paint is global.
         PaintAllRoads();
+
+        // Player-built walls: re-apply their Stone retype. The type map
+        // regenerates from seed before feature data returns (the same reason
+        // the Ruins pass above exists), so without this a built wall reverted
+        // to the band terrain underneath it on every reload -- still solid
+        // (minedTiles carries that) but rendering the wrong family and
+        // re-mining at the wrong resistance.
+        if (featureData.builtWallCells != null && featureData.builtWallCells.Count > 0)
+        {
+            cells.Clear();
+            foreach (var sv in featureData.builtWallCells) cells.Add(sv.ToVector3Int());
+            map.ApplyFeatureOverride(cells, TerrainType.Stone);
+        }
+    }
+
+    /// <summary>Records a player-built wall cell and retypes it Stone at once
+    /// (canon 36). The list rides FloorFeatureSaveData additively -- the
+    /// pavedRoadCells precedent -- because SiteData-style re-derivation is
+    /// impossible here: nothing else remembers which solid cells the player
+    /// made. Entries are never removed when the wall is later re-mined; a
+    /// Stone override under open floor is inert (open cells render no wall
+    /// and their claim was already paid), and pruning would add a save-shape
+    /// migration for no observable gain.</summary>
+    public void RegisterBuiltWall(Vector3Int cell)
+    {
+        if (featureData == null) return;
+        featureData.builtWallCells ??= new List<SerializableVector3Int>();
+        foreach (var sv in featureData.builtWallCells)
+            if (sv.x == cell.x && sv.y == cell.y && sv.z == cell.z) return;
+        featureData.builtWallCells.Add(SerializableVector3Int.From(cell));
+        var map = floor != null ? floor.TerrainTypeMap : null;
+        if (map != null && map.IsGenerated)
+            map.ApplyFeatureOverride(new[] { cell }, TerrainType.Stone);
     }
 
     /// <summary>The terrain a site's masonry is retyped to -- the ONE place

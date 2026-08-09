@@ -107,6 +107,17 @@ public class ActionBarHUD : MonoBehaviour
             return;
         }
 
+        // The scene's serialised copy of buildEntries predates the Wall entry,
+        // and a code-default list never reaches an already-serialised scene --
+        // so the entry is appended at runtime when absent rather than asking
+        // for a hand edit in the Inspector (the silent-manual-step failure
+        // mode: forget it once and the feature simply is not on the bar).
+        bool hasWallEntry = false;
+        for (int i = 0; i < buildEntries.Count; i++)
+            if (buildEntries[i] != null && buildEntries[i].mode == BuildMode.BuildWall) { hasWallEntry = true; break; }
+        if (!hasWallEntry)
+            buildEntries.Add(new BuildSubmenuEntry { label = "Wall", mode = BuildMode.BuildWall });
+
         BuildSubmenuEntries();
         BuildMineSubmenuEntries();   // without this the mine sub-menu opens empty
         HideBuildPanel();

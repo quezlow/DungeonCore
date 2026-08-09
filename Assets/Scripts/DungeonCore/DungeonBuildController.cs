@@ -21,6 +21,7 @@ public enum BuildMode
     PlaceMonsterAttackTarget,
     PlaceMonsterPost,
     Demolish,
+    BuildWall,
     None, 
 }
 
@@ -70,6 +71,23 @@ public class DungeonBuildController : MonoBehaviour
     [SerializeField] private Color mineHighlightColor = new Color(1f, 0.85f, 0.35f, 0.35f);
     private GameObject mineHighlightGO;
     private SpriteRenderer mineHighlightSR;
+
+    // Built walls (canon 36). The click is the wall's visual BOTTOM: the solid
+    // cell lands two north of it, so the rendered face falls exactly on the
+    // clicked cell and the one above -- the three highlighted cells and the
+    // three cells the pathfinder will refuse are the same three cells.
+    [Header("Build Wall")]
+    [Tooltip("Mana to raise one wall cell. Deliberately above the dig cost: unbuilding the world should not be cheaper than building it.")]
+    [SerializeField] private float buildWallManaCost = 10f;
+    [SerializeField] private Color wallGhostValidColor = new Color(1f, 1f, 1f, 0.45f);
+    [SerializeField] private Color wallGhostInvalidColor = new Color(0.9f, 0.25f, 0.25f, 0.45f);
+    private readonly SpriteRenderer[] wallGhost = new SpriteRenderer[3];   // 0 lower face, 1 upper face, 2 cap
+    private TMPro.TextMeshPro wallGhostCostLabel;
+    private Sprite wallGhostFallbackSprite;
+    private CaveWallRenderer wallGhostRenderer;
+    private FloorRoot wallGhostRendererFloor;
+    private bool wallDragTracking;
+    private Vector3Int wallDragLastCell;
 
     // ── Auto-dig queue (runtime overlay; no scene setup) ──────────
     [Header("Dig Queue")]
@@ -147,6 +165,7 @@ public class DungeonBuildController : MonoBehaviour
     private void Update()
     {
         UpdateMineHighlight();
+        UpdateBuildWallGhost();
         UpdateDigQueueOverlay();
         if (!PauseController.IsGamePaused) ProcessDigQueue();
 
@@ -236,6 +255,7 @@ public class DungeonBuildController : MonoBehaviour
             case BuildMode.PlaceStairs: HandleStairsPlacement(); break;
             case BuildMode.PlaceCore: HandlePlaceCoreMode(); break;
             case BuildMode.Demolish: HandleDemolish(); break;
+            case BuildMode.BuildWall: HandleBuildWallInput(); break;
         }
     }
 
@@ -665,6 +685,287 @@ public class DungeonBuildController : MonoBehaviour
         mineHighlightGO.transform.localScale = new Vector3(cellW, cellH * n, 1f);
         mineHighlightSR.color = mineHighlightColor;
         mineHighlightSR.enabled = true;
+    }
+
+    // -- Build wall (canon 36) ------------------------------------
+
+    /// <summary>Click builds one wall column; holding and dragging paints a run,
+    /// one column per cell entered (the mine drag pattern, without the queue --
+    /// building is instant). No box gesture on purpose: a box would pour solid
+    /// slabs, and a slab is a mistake you pay to dig back out.</summary>
+    private void HandleBuildWallInput()
+    {
+        if (SuppressBuildInput) return;
+        var mouse = Mouse.current;
+        if (mouse == null) return;
+
+        bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+        if (mouse.leftButton.wasPressedThisFrame)
+        {
+            wallDragTracking = false;
+            if (!overUI && HoverCell(out Vector3Int c))
+            {
+                wallDragTracking = true;
+                wallDragLastCell = c;
+                TryBuildWall(c);
+            }
+            return;
+        }
+
+        if (wallDragTracking && mouse.leftButton.isPressed)
+        {
+            if (HoverCell(out Vector3Int c) && c != wallDragLastCell)
+            {
+                wallDragLastCell = c;
+                TryBuildWall(c);
+            }
+            return;
+        }
+
+        if (mouse.leftButton.wasReleasedThisFrame) wallDragTracking = false;
+    }
+
+    /// <summary>Attempt one wall column at the clicked (bottom) cell. Validation,
+    /// then mana, then the actual un-mine -- money is only taken when the wall
+    /// will definitely stand. The reachability poke is a DIRECT call (Appendix
+    /// D): the watchdog is what starts the starvation clock, and a lost
+    /// subscription would let a sealing wall pass silently.</summary>
+    private void TryBuildWall(Vector3Int clickCell)
+    {
+        var inf = ActiveInfluence;
+        if (inf == null) return;
+        if (!CanBuildWallAt(clickCell, out Vector3Int target, out string reason))
+        {
+            RejectAt(clickCell, reason);
+            return;
+        }
+        if (DungeonCore.Instance != null && !DungeonCore.Instance.SpendMana(buildWallManaCost))
+        {
+            RejectAt(clickCell, "Not enough mana");
+            return;
+        }
+        inf.UnmineTile(target);
+        ActiveFloor?.FeatureGenerator?.RegisterBuiltWall(target);
+        ReachabilityDirector.Instance?.MarkDirty();
+    }
+
+    /// <summary>Whether a wall column may rise from this bottom cell, and why
+    /// not when it may not. The three footprint cells (bottom, middle, solid
+    /// target) must all be claimed open floor with nothing standing on or
+    /// placed in them: the two lower cells become unwalkable overhang the
+    /// moment the top one turns solid, so anything left inside would be
+    /// stranded behind a face it cannot path out of.</summary>
+    private bool CanBuildWallAt(Vector3Int clickCell, out Vector3Int target, out string reason)
+    {
+        var up = Vector3Int.up;
+        target = clickCell + up + up;
+        reason = null;
+        var inf = ActiveInfluence;
+        var floor = ActiveFloor;
+        if (inf == null || floor == null) { reason = "No floor"; return false; }
+
+        Vector3Int mid = clickCell + up;
+        Vector3Int coreCell = floor.Terrain != null ? floor.Terrain.CoreCell : new Vector3Int(int.MinValue, 0, 0);
+
+        Vector3Int[] cells = { clickCell, mid, target };
+        foreach (var cell in cells)
+        {
+            if (!inf.IsTileMined(cell)) { reason = cell == target ? "Already solid there" : "Needs open floor"; return false; }
+            if (!inf.IsTileClaimed(cell)) { reason = "Beyond your influence"; return false; }
+            if (cell == coreCell) { reason = "The heart cannot be bricked in"; return false; }
+            if (floor.FeatureGenerator != null && floor.FeatureGenerator.IsRiver(cell)) { reason = "Water takes no wall"; return false; }
+            if (DungeonEntrance.Instance != null && DungeonEntrance.Instance.OccupiedCell == cell) { reason = "The doorway itself stands here"; return false; }
+
+            var reg = floor.Entities;
+            if (reg != null)
+            {
+                if (reg.GetAtCell<FurniturePiece>(cell) != null) { reason = "Blocked by furniture"; return false; }
+                if (reg.GetAtCell<DungeonChest>(cell) != null) { reason = "Blocked by a chest"; return false; }
+                if (reg.GetAtCell<TrapBase>(cell) != null) { reason = "Blocked by a trap"; return false; }
+                if (reg.GetAtCell<DungeonStairs>(cell) != null) { reason = "Blocked by stairs"; return false; }
+                if (reg.GetAtCell<MonsterSpawner>(cell) != null) { reason = "Blocked by a spawner"; return false; }
+                if (reg.GetAtCell<RoomAnchor>(cell) != null) { reason = "Blocked by a room anchor"; return false; }
+            }
+        }
+
+        // Registered room interiors refuse walls outright: a wall inside a
+        // room would silently invalidate it, and the room machinery already
+        // has a demolition path for players who mean it.
+        _wallRoomBuf ??= new List<RoomAnchor>();
+        floor.Entities?.FillAll(_wallRoomBuf);
+        for (int i = 0; i < _wallRoomBuf.Count; i++)
+        {
+            var anchor = _wallRoomBuf[i];
+            if (anchor == null || anchor.Footprint == null) continue;
+            for (int j = 0; j < anchor.Footprint.Count; j++)
+            {
+                var f = anchor.Footprint[j];
+                if (f == clickCell || f == mid || f == target) { reason = "Inside a room"; return false; }
+            }
+        }
+
+        // Nothing living may stand in the footprint -- refusal, not shoving:
+        // a push would need a safe destination search and a wall is not worth
+        // teleporting a mercenary for.
+        if (AnyEntityStandsIn(floor, inf, clickCell, mid, target)) { reason = "Someone stands there"; return false; }
+
+        return true;
+    }
+
+    private List<RoomAnchor> _wallRoomBuf;
+    private List<DungeonAdventurer> _wallAdvBuf;
+    private List<DungeonMonster> _wallMonBuf;
+
+    private bool AnyEntityStandsIn(FloorRoot floor, TileInfluenceManager inf, Vector3Int a, Vector3Int b, Vector3Int c)
+    {
+        if (floor.Entities == null) return false;
+        _wallAdvBuf ??= new List<DungeonAdventurer>();
+        _wallMonBuf ??= new List<DungeonMonster>();
+        floor.Entities.FillAll(_wallAdvBuf);
+        for (int i = 0; i < _wallAdvBuf.Count; i++)
+        {
+            var adv = _wallAdvBuf[i];
+            if (adv == null) continue;
+            var cell = inf.WorldToCell(adv.transform.position);
+            if (cell == a || cell == b || cell == c) return true;
+        }
+        floor.Entities.FillAll(_wallMonBuf);
+        for (int i = 0; i < _wallMonBuf.Count; i++)
+        {
+            var mon = _wallMonBuf[i];
+            if (mon == null) continue;
+            var cell = inf.WorldToCell(mon.transform.position);
+            if (cell == a || cell == b || cell == c) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Per-frame ghost: the three footprint cells carry translucent
+    /// wall sprites (lower face, upper face, cap) pulled from the floor's own
+    /// wall renderer so the ghost matches what will actually paint, tinted
+    /// green-white when the column may rise and red when it may not, with the
+    /// mana price floating over the cap (the hover cost preview, item p of
+    /// the polish trio -- walls only for now). Falls back to flat quads when
+    /// the renderer has no sliced sprites yet.</summary>
+    private void UpdateBuildWallGhost()
+    {
+        if (CurrentMode != BuildMode.BuildWall || PauseController.IsGamePaused)
+        {
+            SetWallGhostVisible(false);
+            return;
+        }
+        var inf = ActiveInfluence;
+        if (inf == null || !HoverCell(out Vector3Int hover))
+        {
+            SetWallGhostVisible(false);
+            return;
+        }
+
+        EnsureWallGhostAssets();
+        RefreshWallGhostSprites();
+
+        bool valid = CanBuildWallAt(hover, out Vector3Int target, out _);
+        Color tint = valid ? wallGhostValidColor : wallGhostInvalidColor;
+
+        Vector3Int up = Vector3Int.up;
+        Vector3Int[] cells = { hover, hover + up, target };
+        float cw = Mathf.Abs(inf.CellToWorld(hover + Vector3Int.right).x - inf.CellToWorld(hover).x);
+        float ch = Mathf.Abs(inf.CellToWorld(hover + up).y - inf.CellToWorld(hover).y);
+
+        for (int i = 0; i < 3; i++)
+        {
+            var sr = wallGhost[i];
+            if (sr == null) continue;
+            Vector3 w = inf.CellToWorld(cells[i]);
+            sr.transform.position = new Vector3(w.x, w.y, 0f);
+            // Sliced sprites carry their own pixel size; the flat fallback is a
+            // one-pixel quad that must be scaled to the cell.
+            sr.transform.localScale = sr.sprite == wallGhostFallbackSprite
+                ? new Vector3(cw, ch, 1f) : Vector3.one;
+            sr.color = tint;
+            sr.enabled = true;
+        }
+
+        if (wallGhostCostLabel != null)
+        {
+            Vector3 capW = inf.CellToWorld(target);
+            wallGhostCostLabel.transform.position = new Vector3(capW.x, capW.y + ch * 0.9f, 0f);
+            wallGhostCostLabel.text = $"{buildWallManaCost:0} mana";
+            wallGhostCostLabel.color = valid ? new Color(0.75f, 0.95f, 1f, 0.95f) : new Color(1f, 0.5f, 0.5f, 0.95f);
+            wallGhostCostLabel.gameObject.SetActive(true);
+        }
+    }
+
+    private void SetWallGhostVisible(bool visible)
+    {
+        for (int i = 0; i < 3; i++)
+            if (wallGhost[i] != null) wallGhost[i].enabled = visible;
+        if (!visible && wallGhostCostLabel != null) wallGhostCostLabel.gameObject.SetActive(false);
+    }
+
+    private void EnsureWallGhostAssets()
+    {
+        if (wallGhost[2] != null) return;
+
+        var tex = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+        tex.SetPixel(0, 0, Color.white);
+        tex.Apply();
+        wallGhostFallbackSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+
+        var parent = new GameObject("BuildWallGhost").transform;
+        parent.SetParent(transform, false);
+        string[] names = { "lowerFace", "upperFace", "cap" };
+        for (int i = 0; i < 3; i++)
+        {
+            var go = new GameObject(names[i]);
+            go.transform.SetParent(parent, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = wallGhostFallbackSprite;
+            // Above the real walls and floor, below the screen-space HUD --
+            // the BuildFeedback sorting contract.
+            sr.sortingLayerName = "WorldUI";
+            sr.sortingOrder = 150;
+            sr.enabled = false;
+            wallGhost[i] = sr;
+        }
+
+        // The price label rides the TMP default font; a project without one
+        // simply shows no price, exactly as BuildFeedback degrades.
+        if (TMPro.TMP_Settings.defaultFontAsset != null)
+        {
+            var go = new GameObject("costLabel");
+            go.transform.SetParent(parent, false);
+            wallGhostCostLabel = go.AddComponent<TMPro.TextMeshPro>();
+            wallGhostCostLabel.fontSize = 3f;
+            wallGhostCostLabel.alignment = TMPro.TextAlignmentOptions.Center;
+            wallGhostCostLabel.sortingLayerID = UnityEngine.SortingLayer.NameToID("WorldUI");
+            wallGhostCostLabel.sortingOrder = 151;
+            var rt = wallGhostCostLabel.rectTransform;
+            rt.sizeDelta = new Vector2(4f, 1f);
+            go.SetActive(false);
+        }
+    }
+
+    /// <summary>Re-pull the ghost's sprites from the ACTIVE floor's wall
+    /// renderer, once per floor change. The renderer slices its sheet lazily,
+    /// so early frames may fall back to flat quads and pick up the real
+    /// slices on a later hover -- cosmetic and self-healing.</summary>
+    private void RefreshWallGhostSprites()
+    {
+        var floor = ActiveFloor;
+        if (floor == null) return;
+        if (wallGhostRendererFloor != floor || wallGhostRenderer == null)
+        {
+            wallGhostRenderer = floor.GetComponentInChildren<CaveWallRenderer>();
+            wallGhostRendererFloor = floor;
+        }
+        Sprite cap = null, upper = null, lower = null;
+        if (wallGhostRenderer != null)
+            wallGhostRenderer.TryGetGhostColumnSprites(out cap, out upper, out lower);
+        wallGhost[0].sprite = lower != null ? lower : wallGhostFallbackSprite;
+        wallGhost[1].sprite = upper != null ? upper : wallGhostFallbackSprite;
+        wallGhost[2].sprite = cap != null ? cap : wallGhostFallbackSprite;
     }
 
     // ── Patrol placement (DAY 31 PART 3D) ─────────────────────────

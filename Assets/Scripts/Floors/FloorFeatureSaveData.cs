@@ -48,6 +48,12 @@ public class FloorFeatureSaveData
     // Seeded surface entrance: tunnel through the bedrock rim + offshoot
     // chamberlets. Null on floors without one and on legacy saves.
     public EntranceCaveData entranceCave;
+
+    // Player-built walls (canon 36). Saved additively -- the pavedRoadCells
+    // precedent -- because nothing else records which solid cells the player
+    // made: minedTiles carries the solidity, this list carries the Stone
+    // retype so a built wall renders and re-mines as stone after a reload.
+    public List<SerializableVector3Int> builtWallCells = new();
 }
 
 [Serializable]
