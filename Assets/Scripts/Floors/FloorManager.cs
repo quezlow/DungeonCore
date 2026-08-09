@@ -202,6 +202,9 @@ public class FloorManager : MonoBehaviour
     {
         CoreFloorIndex = floorIndex;
         Debug.Log($"[FloorManager] Core is now on floor {floorIndex}.");
+        // The flood seeds from the core floor: moving the heart re-roots the
+        // whole reachability web, and no dig fires here to trigger it.
+        ReachabilityDirector.Instance?.MarkDirty();
     }
 
     // ── Floor names (player-renamable; persisted via FloorSaveData.floorName) ──

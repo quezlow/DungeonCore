@@ -6233,17 +6233,40 @@ combat, retreat and banter rules; `AdventurerBanterManager` swaps a
 `SealLoitering` speaker onto the new `BanterLines.Blocked` /
 `BlockedPairs` pools at unchanged cadence and pair odds.
 
-**Known limits, inherited and chosen.** (1) `CheckSevered` only reports while
-`CoreFloorIndex == 0` -- its own documented limit -- so a core moved deeper
-runs no clock and draws no witness party; extending severance across stairs
-is the follow-up, and everything here keys off `RouteToCoreOpen` so it
-inherits the fix automatically. (2) Only `MovingToCore` (and the stair
-branch) detects blockage; an observer in `MovingToRoom` whose room is sealed
-off keeps the pre-existing empty-path fallthrough. (3) The wildlife spawner
-is not gated -- animals wandering up to a wall is harmless and it is a
-separate system. (4) Loitering is not persisted: a save under a seal restores
-members via the normal pending-restore path and they re-derive the loiter on
-their first failed path.
+**Cross-floor severance (follow-up, SHIPPED).** `Recompute` no longer floods
+each floor from its own terrain centre (which made every non-core floor's
+overlay meaningless and left the watchdog blind below floor 0). It seeds the
+CORE floor at the heart itself -- the core object's position, authoritative
+over the terrain centre because the heart can be relocated -- and spreads
+through stair pairs, matched by the SAME CELL on the linked floor exactly as
+`HandleStairTraversal` matches them, worklist-bounded by each floor's own
+reachable set. A half pair (no matching stair on the linked floor) carries
+nothing. `CheckSevered` then reads floor 0's set wherever the core lives,
+with one guard: an empty surface set is a verdict only once the core floor's
+own flood has ground under it, so bootstrap never reads as severance. Two
+direct pokes keep the graph honest without a dig: `DungeonStairs.Initialise`
+(a new stair changes the route with no `OnTileMined`) and
+`FloorManager.SetCoreFloor` (relocation re-roots the whole web). The seal
+clock, the witness party, the loiter state and the mine overlay all keyed
+off `RouteToCoreOpen` already, so they lit up with no further changes --
+and `BeginSealLoiter` now anchors at the stair the party was making for
+when one is set, so a mid-descent party mills at the wall in front of the
+stairs rather than at the terrain centre of an intermediate floor. Verified
+headless (`Tools/sim_crossfloor_sever.py`): open route through stairs,
+seal on the surface leg, seal on a deeper leg, redundant stair pairs,
+three-floor chains, and disconnected same-floor pockets fed by separate
+stairs.
+
+**Known limits, inherited and chosen.** (1) Only `MovingToCore` (and the
+stair branch) detects blockage; an observer in `MovingToRoom` whose room is
+sealed off keeps the pre-existing empty-path fallthrough. (2) The wildlife
+spawner is not gated -- animals wandering up to a wall is harmless and it is
+a separate system. (3) Loitering is not persisted: a save under a seal
+restores members via the normal pending-restore path and they re-derive the
+loiter on their first failed path. (4) The witness party spawns on floor 0
+and loiters at the first blockage it meets; it does not spelunk past open
+legs of a partly-sealed route to find the actual wall on a deeper floor --
+it stalls wherever its own pathing stalls, which is the honest behaviour.
 
 ---
 

@@ -14,10 +14,9 @@ using UnityEngine;
 /// sealed": days start at 1, so every live value is >= 1, and a save written
 /// before this field existed deserialises to 0 and reads correctly as clean.
 ///
-/// The watchdog only sees a floor-0 core (its own documented limit); while
-/// the core lives deeper, RouteToCoreOpen stays true and no clock runs. That
-/// is inherited, not chosen -- extending severance across stairs is the
-/// follow-up recorded in canon 36.
+/// The watchdog floods across the stair web (canon 36 follow-up), so the
+/// clock runs wherever the core lives -- a seal on any floor along the route
+/// starves the heart the same way.
 ///
 /// SCENE SETUP: add to the persistent managers GameObject. No references.
 /// </summary>

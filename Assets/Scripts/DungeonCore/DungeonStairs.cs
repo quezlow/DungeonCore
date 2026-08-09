@@ -49,6 +49,12 @@ public class DungeonStairs : MonoBehaviour, IFloorEntity
         }
 
         GetComponentInParent<FloorRoot>()?.Entities?.Register(this);
+
+        // A new stair changes the route graph without a single dig, so no
+        // OnTileMined ever fires for it -- poke the watchdog DIRECTLY
+        // (Appendix D) or a freshly-laid stair would not carry the route
+        // until the next unrelated dig happened to trigger a recompute.
+        ReachabilityDirector.Instance?.MarkDirty();
     }
 
     private void OnDestroy()

@@ -7,10 +7,12 @@ using UnityEngine.Tilemaps;
 /// there?"
 ///
 /// THE WATCHDOG -- after every dig it floods from the core using the SAME
-/// passability rule the pathfinder uses, then checks whether the entrance is in
-/// that set. If it is not, no adventurer can reach the core and no monster can
-/// reach the mouth: the dungeon has stopped being a dungeon. That raises a Threat
-/// alert and a wisp line, and a second line when the road is restored.
+/// passability rule the pathfinder uses, spreading across stair pairs (matched
+/// by the same cell on the linked floor, the traversal rule), then checks
+/// whether the entrance is in floor 0's set. If it is not, no adventurer can
+/// reach the core and no monster can reach the mouth: the dungeon has stopped
+/// being a dungeon, wherever the core lives. That raises a Threat alert and a
+/// wisp line, and a second line when the road is restored.
 ///
 /// THE MINE-MODE OVERLAY -- while the player is digging, every cell joined to the
 /// core is washed in a slow pulse. Absence is the warning: a tunnel that stays
@@ -141,16 +143,73 @@ public class ReachabilityDirector : MonoBehaviour
 
     // -- The flood ---------------------------------------------------------
 
+    // Reused per recompute: stairs on the floor being expanded, and the
+    // worklist of (floor, seed) hops still to flood.
+    private static readonly List<DungeonStairs> _stairBuf = new();
+    private readonly List<(FloorRoot floor, Vector3 seed)> _floodWork = new();
+
     private void Recompute()
     {
         var fm = FloorManager.Instance;
         if (fm == null) return;
 
+        // Multi-floor flood through the stair web. Seed the CORE floor at the
+        // heart itself (the core can be relocated, so the object's position is
+        // authoritative over the terrain centre), then let reachability spread
+        // across stair pairs -- matched by the SAME CELL on the linked floor,
+        // exactly the traversal rule in HandleStairTraversal -- until no floor
+        // gains new ground. Floors the web never reaches keep an empty set:
+        // nothing there is joined to the heart, the overlay stays dark, and
+        // that is the honest answer. Before this the per-floor floods seeded
+        // from each floor's own terrain centre, which made every non-core
+        // floor's overlay meaningless and left CheckSevered blind the moment
+        // the core moved below floor 0.
         foreach (var floor in fm.AllFloors)
         {
-            if (floor == null || floor.TileInfluence == null || floor.Terrain == null) continue;
-            Vector3 coreWorld = floor.TileInfluence.CellToWorld(floor.Terrain.CoreCell);
-            reachable[floor] = DungeonPathfinder.ReachableCells(floor, coreWorld);
+            if (floor == null) continue;
+            if (reachable.TryGetValue(floor, out var old)) old.Clear();
+            else reachable[floor] = new HashSet<Vector3Int>();
+        }
+
+        var coreFloor = fm.GetFloor(fm.CoreFloorIndex);
+        if (coreFloor == null || coreFloor.TileInfluence == null) return;
+        Vector3 coreWorld = DungeonCore.Instance != null
+            ? DungeonCore.Instance.transform.position
+            : coreFloor.TileInfluence.CellToWorld(
+                coreFloor.Terrain != null ? coreFloor.Terrain.CoreCell : Vector3Int.zero);
+
+        _floodWork.Clear();
+        _floodWork.Add((coreFloor, coreWorld));
+
+        while (_floodWork.Count > 0)
+        {
+            var (floor, seed) = _floodWork[_floodWork.Count - 1];
+            _floodWork.RemoveAt(_floodWork.Count - 1);
+            if (floor == null || floor.TileInfluence == null) continue;
+
+            var set = reachable[floor];
+            Vector3Int seedCell = floor.TileInfluence.WorldToCell(seed);
+            // A seed already inside this floor's set adds nothing -- this is
+            // also the termination guard: every hop is pushed at most once
+            // per side of a stair per recompute.
+            if (set.Contains(seedCell)) continue;
+
+            set.UnionWith(DungeonPathfinder.ReachableCells(floor, seed));
+
+            if (floor.Entities == null) continue;
+            floor.Entities.FillAll(_stairBuf);
+            for (int i = 0; i < _stairBuf.Count; i++)
+            {
+                var stair = _stairBuf[i];
+                if (stair == null || !set.Contains(stair.OccupiedCell)) continue;
+                var dest = fm.GetFloor(stair.LinkedFloorIndex);
+                if (dest == null || dest.TileInfluence == null || dest.Entities == null) continue;
+                // The hop only exists where the matching stair actually
+                // stands on the linked floor -- half a pair carries nobody.
+                if (dest.Entities.GetAtCell<DungeonStairs>(stair.OccupiedCell) == null) continue;
+                if (reachable.TryGetValue(dest, out var destSet) && destSet.Contains(stair.OccupiedCell)) continue;
+                _floodWork.Add((dest, dest.TileInfluence.CellToWorld(stair.OccupiedCell)));
+            }
         }
 
         CheckSevered();
@@ -179,11 +238,18 @@ public class ReachabilityDirector : MonoBehaviour
             return;
         }
 
-        // The entrance always stands on floor 0; the core may live deeper, in
-        // which case the stairs carry the route and this check is not meaningful.
+        // The entrance always stands on floor 0; the flood above carries the
+        // heart's reach up the stair web, so the surface set is meaningful
+        // wherever the core lives. An empty surface set is only a VERDICT
+        // once the core floor's own flood has ground under it -- a heart
+        // with no reachable cells is a bootstrap state, not a severance.
         FloorRoot surface = fm.GetFloor(0);
-        if (surface == null || fm.CoreFloorIndex != 0) return;
-        if (!reachable.TryGetValue(surface, out var set) || set.Count == 0) return;
+        if (surface == null) return;
+        if (!reachable.TryGetValue(surface, out var set)) return;
+        var coreFloorRoot = fm.GetFloor(fm.CoreFloorIndex);
+        if (coreFloorRoot == null
+            || !reachable.TryGetValue(coreFloorRoot, out var coreSet)
+            || coreSet.Count == 0) return;
 
         bool nowSevered = !set.Contains(entrance.OccupiedCell);
         if (severedKnown && nowSevered == severed) return;

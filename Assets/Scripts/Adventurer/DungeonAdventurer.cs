@@ -2411,14 +2411,21 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void BeginSealLoiter()
     {
         var reach = DungeonPathfinder.ReachableCells(currentFloor, transform.position);
-        Vector3Int coreCell = currentFloor.Terrain != null
-            ? currentFloor.Terrain.CoreCell
-            : currentFloor.TileInfluence.WorldToCell(transform.position);
+        // Anchor reference: the stair they were making for when one is set
+        // (a blockage on an intermediate floor), otherwise the heart. With
+        // cross-floor severance a party can now stall mid-descent, and
+        // "nearest the terrain centre" would have them mill in the middle of
+        // a corridor rather than at the wall in front of the stairs.
+        Vector3Int goalCell = stairTarget != null
+            ? stairTarget.OccupiedCell
+            : currentFloor.Terrain != null
+                ? currentFloor.Terrain.CoreCell
+                : currentFloor.TileInfluence.WorldToCell(transform.position);
         Vector3Int best = currentFloor.TileInfluence.WorldToCell(transform.position);
         float bestSq = float.MaxValue;
         foreach (var c in reach)
         {
-            float sq = ((Vector3)(c - coreCell)).sqrMagnitude;
+            float sq = ((Vector3)(c - goalCell)).sqrMagnitude;
             if (sq < bestSq) { bestSq = sq; best = c; }
         }
         loiterAnchor = currentFloor.TileInfluence.CellToWorld(best);
