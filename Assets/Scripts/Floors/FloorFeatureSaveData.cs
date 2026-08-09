@@ -153,6 +153,13 @@ public class SiteData
     /// cut-through look until the floor regenerates.</summary>
     public List<SerializableVector3Int> pavedRoadCells = new();
 
+    /// <summary>Decor cells from the plan's 'o' glyphs, in world space, written
+    /// at placement. Saved rather than re-derived because SiteData keeps no
+    /// rotation or mirror, so the plan asset alone cannot say where a rotated
+    /// plan's cells landed. Appended field: old saves load it empty and simply
+    /// spawn no pieces.</summary>
+    public List<SerializableVector3Int> decorCells = new();
+
     /// <summary>The dwarven outpost. DwarvenOutpostController finds its site by
     /// this flag; placement guarantees at most one per floor.</summary>
     public bool reservedForOutpost;

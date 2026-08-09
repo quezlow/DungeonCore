@@ -363,14 +363,22 @@ public class AncientSiteProfile : ScriptableObject
     [System.Serializable]
     public class SiteDecorEntry
     {
-        [Tooltip("The plan's @name, e.g. 'The Ten Thousand Quiet'. Decorated plans " +
-                 "must be @rotate: no; Validate Site Plans enforces it.")]
+        [Tooltip("The plan's @name, e.g. 'The Ten Thousand Quiet'. Plans using " +
+                 "'prefab' must be @rotate: no (Validate Site Plans enforces it); " +
+                 "plans using 'piecePrefab' may rotate freely.")]
         public string planName;
 
         [Tooltip("Visual dressing only: platforms, stairs, clutter on carved floor. " +
                  "No walls, no floors, no colliders -- the plan keeps driving terrain, " +
                  "fog, mining and pathfinding. Spawned at the site anchor on reveal.")]
         public GameObject prefab;
+
+        [Tooltip("Per-cell dressing: one piece instanced at EVERY 'o' cell of the " +
+                 "plan, at the cell's world position, transform unrotated. Unlike " +
+                 "'prefab' this does NOT require @rotate: no -- the cells were " +
+                 "emitted through the plan's own placement transform, so the " +
+                 "positions already rotated with it.")]
+        public GameObject piecePrefab;
     }
 
     [SerializeField] private List<SiteDecorEntry> siteDecor = new List<SiteDecorEntry>();
@@ -382,6 +390,17 @@ public class AncientSiteProfile : ScriptableObject
         if (string.IsNullOrEmpty(planName) || siteDecor == null) return null;
         foreach (var e in siteDecor)
             if (e != null && e.prefab != null && e.planName == planName) return e.prefab;
+        return null;
+    }
+
+    /// <summary>The per-cell decor piece for a plan, or null. Parallel to
+    /// GetDecorPrefab rather than merged with it: a plan may carry both an
+    /// anchor prefab and a cell piece, and the two spawn independently.</summary>
+    public GameObject GetDecorPiece(string planName)
+    {
+        if (string.IsNullOrEmpty(planName) || siteDecor == null) return null;
+        foreach (var e in siteDecor)
+            if (e != null && e.piecePrefab != null && e.planName == planName) return e.piecePrefab;
         return null;
     }
 

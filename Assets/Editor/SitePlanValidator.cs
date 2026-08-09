@@ -58,15 +58,18 @@ public static class SitePlanValidator
         {
             var plans = profile.GetAuthoredPlans();
 
-            // Decor entries: each must name a real authored plan, and that plan
-            // must be @rotate: no -- a decor prefab does not rotate with the
-            // site, so a rotatable decorated plan WILL misalign on three of four
-            // quarter turns. Checked before the walkability loop so a decor
-            // failure is visible even when every plan passes.
+            // Decor entries: each must name a real authored plan. The rotate
+            // ban applies to the ANCHOR prefab alone -- it spawns unrotated at
+            // the anchor, so a rotatable plan WILL misalign it on three of four
+            // quarter turns. A cell PIECE is exempt: its positions come from
+            // decorCells, which were emitted through the plan's own placement
+            // transform and already rotated with it. Checked before the
+            // walkability loop so a decor failure is visible even when every
+            // plan passes.
             if (profile.SiteDecor != null)
                 foreach (var entry in profile.SiteDecor)
                 {
-                    if (entry == null || entry.prefab == null) continue;
+                    if (entry == null || (entry.prefab == null && entry.piecePrefab == null)) continue;
                     AuthoredSitePlan match = null;
                     foreach (var p in plans)
                         if (p != null && p.name == entry.planName) { match = p; break; }
@@ -77,11 +80,18 @@ public static class SitePlanValidator
                           .Append("' names no authored plan on this profile.\n");
                         continue;
                     }
-                    if (match.allowRotation)
+                    if (entry.prefab != null && match.allowRotation)
                     {
                         failures++;
                         sb.Append("  DECOR FAIL: '").Append(entry.planName)
-                          .Append("' allows rotation; a decorated plan must be @rotate: no.\n");
+                          .Append("' allows rotation; an anchor-prefab decorated plan must be @rotate: no.\n");
+                    }
+                    if (entry.piecePrefab != null && match.decor.Count == 0)
+                    {
+                        failures++;
+                        sb.Append("  DECOR FAIL: '").Append(entry.planName)
+                          .Append("' has a piecePrefab but the plan draws no 'o' cells; ")
+                          .Append("the piece would never spawn.\n");
                     }
                 }
             sb.Append("\n=== ").Append(profile.name).Append(" -- ")

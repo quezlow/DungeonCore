@@ -92,6 +92,13 @@ public class AncientSitePlan
     /// what makes a site read as built rather than found.</summary>
     public List<Vector3Int> ruinsCells = new List<Vector3Int>();
 
+    /// <summary>Decor cells in WORLD space, from the plan's 'o' glyphs, emitted
+    /// through the SAME transform as the masonry. Persisted onto SiteData
+    /// because the save keeps no rotation or mirror -- world cells written at
+    /// placement are the only way a load can put the pieces back where they
+    /// were built.</summary>
+    public List<Vector3Int> decorCells = new List<Vector3Int>();
+
     /// <summary>The heart cell in WORLD space, once placed. Default
     /// (0,0,0) means the plan declared none -- every procedural recipe,
     /// and any authored plan without an 'X'. Callers test
@@ -621,6 +628,7 @@ public static class AncientSiteBuilder
             long clampSq = (long)usable * usable;
             EmitTransformed(site.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(site.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(site.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             // The heart rides the SAME transform as the masonry it is part
@@ -757,6 +765,7 @@ public static class AncientSiteBuilder
             };
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
@@ -865,6 +874,7 @@ public static class AncientSiteBuilder
             };
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
@@ -977,6 +987,7 @@ public static class AncientSiteBuilder
             };
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (shape.heart.Count > 0)
@@ -1180,6 +1191,7 @@ public static class AncientSiteBuilder
         // of the header, and it is honoured here.
         foreach (var c in authored.lane) p.lane.Add(c);
         foreach (var c in authored.door) p.door.Add(c);
+        foreach (var c in authored.decor) p.decor.Add(c);
 
         // EVERY run with a usable outward normal, not merely the first. Which
         // one a placement uses is decided against the chord's direction, and
@@ -1926,6 +1938,10 @@ public static class AncientSiteBuilder
         /// any authored plan that drew no '~'. A site with no lane has no
         /// through-route and a road stops at its door.</summary>
         public readonly HashSet<Vector2Int> lane = new HashSet<Vector2Int>();
+
+        /// <summary>Decor cells, from 'o'. Carried so placement can emit them
+        /// in world space; empty for every procedural recipe.</summary>
+        public readonly HashSet<Vector2Int> decor = new HashSet<Vector2Int>();
 
         /// <summary>Declared door cells. The lane corridor needs them: a gate is
         /// drawn '+', not '~', so a lane-only corridor has no cell at the

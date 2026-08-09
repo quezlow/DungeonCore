@@ -113,6 +113,17 @@ public class SitePlanPreviewWindow : EditorWindow
     private static readonly Color ColStairOk = new Color(0.95f, 0.45f, 0.12f);
     private static readonly Color ColStairBlocked = new Color(0.45f, 0.22f, 0.06f);
 
+    // Keep-clear '-' and decor 'o', the last two glyphs. Same bright/dark
+    // pair rule. Lavender and chartreuse because every other hue family is
+    // spoken for: greens are floor, gold is door, blue is lane, teal is
+    // platform, orange is stairs, magenta is heart, purple is the seat
+    // lens ring. (The ring's legend label "keep-clear ring" is the stage 2h
+    // chord standoff, a different thing from the '-' glyph.)
+    private static readonly Color ColKeepOk = new Color(0.70f, 0.62f, 0.88f);
+    private static readonly Color ColKeepBlocked = new Color(0.32f, 0.28f, 0.44f);
+    private static readonly Color ColDecorOk = new Color(0.72f, 0.80f, 0.30f);
+    private static readonly Color ColDecorBlocked = new Color(0.34f, 0.38f, 0.14f);
+
     // Seat lens colours. Insets sit ON base cells, so they are chosen against
     // every base colour they can land on: the chosen gate is near-white because
     // nothing else in the palette is, and the buried inset is a deep maroon
@@ -185,6 +196,8 @@ public class SitePlanPreviewWindow : EditorWindow
         var heartCells = new List<Vector2Int>();
         var platformCells = new List<Vector2Int>();
         var stairCells = new List<Vector2Int>();
+        var keepClearCells = new List<Vector2Int>();
+        var decorCells = new List<Vector2Int>();
         int doorRuns = 0, doorRunsNoNormal = 0;
         bool rotatable = true;
         AuthoredSitePlan seatPlan = null;
@@ -200,6 +213,8 @@ public class SitePlanPreviewWindow : EditorWindow
             heartCells.AddRange(p.heart);
             platformCells.AddRange(p.platform);
             stairCells.AddRange(p.stairs);
+            keepClearCells.AddRange(p.keepClear);
+            decorCells.AddRange(p.decor);
             rotatable = p.allowRotation;
 
             // Read from the UNTRANSFORMED plan on purpose. A run's outward
@@ -225,6 +240,8 @@ public class SitePlanPreviewWindow : EditorWindow
         Transform(heartCells, rotation, mirror);
         Transform(platformCells, rotation, mirror);
         Transform(stairCells, rotation, mirror);
+        Transform(keepClearCells, rotation, mirror);
+        Transform(decorCells, rotation, mirror);
 
         var floorSet = new HashSet<Vector2Int>(floorCells);
         var wallSet = new HashSet<Vector2Int>(wallCells);
@@ -233,6 +250,8 @@ public class SitePlanPreviewWindow : EditorWindow
         var heartSet = new HashSet<Vector2Int>(heartCells);
         var platformSet = new HashSet<Vector2Int>(platformCells);
         var stairSet = new HashSet<Vector2Int>(stairCells);
+        var keepClearSet = new HashSet<Vector2Int>(keepClearCells);
+        var decorSet = new HashSet<Vector2Int>(decorCells);
 
         int walkable = 0, blocked = 0, drawn = 0, dead = 0;
         int laneBlocked = 0, doorBlocked = 0, heartDead = 0;
@@ -337,7 +356,8 @@ public class SitePlanPreviewWindow : EditorWindow
         EditorGUILayout.Space();
         DrawLegend();
         EditorGUILayout.Space();
-        DrawGrid(floorSet, wallSet, doorSet, laneSet, heartSet, platformSet, stairSet);
+        DrawGrid(floorSet, wallSet, doorSet, laneSet, heartSet, platformSet, stairSet,
+                 keepClearSet, decorSet);
 
         EditorGUILayout.EndScrollView();
     }
@@ -687,6 +707,13 @@ public class SitePlanPreviewWindow : EditorWindow
         Swatch(ColStairOk, "stairs '^'");
         EditorGUILayout.EndHorizontal();
 
+        EditorGUILayout.BeginHorizontal();
+        Swatch(ColKeepOk, "keep-clear '-'");
+        Swatch(ColKeepBlocked, "keep-clear, blocked");
+        Swatch(ColDecorOk, "decor 'o'");
+        Swatch(ColDecorBlocked, "decor, blocked");
+        EditorGUILayout.EndHorizontal();
+
         if (showAuthored)
         {
             EditorGUILayout.BeginHorizontal();
@@ -713,7 +740,8 @@ public class SitePlanPreviewWindow : EditorWindow
     private void DrawGrid(HashSet<Vector2Int> floorSet, HashSet<Vector2Int> wallSet,
                           HashSet<Vector2Int> doorSet, HashSet<Vector2Int> laneSet,
                           HashSet<Vector2Int> heartSet, HashSet<Vector2Int> platformSet,
-                          HashSet<Vector2Int> stairSet)
+                          HashSet<Vector2Int> stairSet,
+                          HashSet<Vector2Int> keepClearSet, HashSet<Vector2Int> decorSet)
     {
         if (floorSet.Count == 0 && wallSet.Count == 0) return;
 
@@ -763,6 +791,8 @@ public class SitePlanPreviewWindow : EditorWindow
                     else if (laneSet.Contains(c)) col = ok ? ColLaneOk : ColLaneBlocked;
                     else if (stairSet.Contains(c)) col = ok ? ColStairOk : ColStairBlocked;
                     else if (platformSet.Contains(c)) col = ok ? ColPlatOk : ColPlatBlocked;
+                    else if (decorSet.Contains(c)) col = ok ? ColDecorOk : ColDecorBlocked;
+                    else if (keepClearSet.Contains(c)) col = ok ? ColKeepOk : ColKeepBlocked;
                     else col = ok ? ColFloorOk : ColFloorBlocked;
                 }
                 else if (chordCells.Contains(c)) col = ColChord;

@@ -813,14 +813,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     private readonly HashSet<int> decorSpawned = new HashSet<int>();
 
-    /// <summary>Instantiates the decor prefab mapped to a site's plan name, once,
-    /// at the site's anchor (the plan's bounding-box centre -- the same origin a
-    /// decor prefab is authored against). Decor is a pure visual skin: the plan
-    /// keeps driving terrain, fog, mining and pathfinding; the prefab holds only
-    /// dressing on carved floor. Spawned on reveal because a site reveals ENTIRE
+    /// <summary>Spawns a site's decor, once, on reveal -- a site reveals ENTIRE
     /// and fog is one-way, which reduces the whole fog question to this call.
-    /// Decorated plans are @rotate: no (validator-enforced), so no rotation is
-    /// applied here on purpose.</summary>
+    /// Two independent hooks per plan name:
+    ///
+    ///   prefab      -- one instance at the site anchor (the plan's bounding-box
+    ///                  centre, the origin a decor prefab is authored against).
+    ///                  Prefab-decorated plans are @rotate: no
+    ///                  (validator-enforced), so no rotation is applied.
+    ///   piecePrefab -- one instance at EVERY decorCells cell. The cells were
+    ///                  emitted through the plan's own placement transform, so
+    ///                  the POSITIONS already rotated with the plan; the piece
+    ///                  transform stays unrotated because props are authored
+    ///                  front-view and a quarter-turned sprite reads wrong.
+    ///
+    /// Decor is a pure visual skin either way: the plan keeps driving terrain,
+    /// fog, mining and pathfinding.</summary>
     private void SpawnSiteDecor(int siteId)
     {
         if (siteProfile == null || floor == null) return;
@@ -828,15 +836,29 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (site == null || string.IsNullOrEmpty(site.planName)) return;
 
         var prefab = siteProfile.GetDecorPrefab(site.planName);
-        if (prefab == null) return;
+        var piece = siteProfile.GetDecorPiece(site.planName);
+        if (prefab == null && piece == null) return;
 
         var terrain = floor.Terrain;
         if (terrain == null || terrain.FloorTilemap == null) return;
         if (!decorSpawned.Add(siteId)) return;
 
-        Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(site.anchorCell.ToVector3Int());
-        var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
-        go.name = "SiteDecor_" + site.planName.Replace(' ', '_');
+        if (prefab != null)
+        {
+            Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(site.anchorCell.ToVector3Int());
+            var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
+            go.name = "SiteDecor_" + site.planName.Replace(' ', '_');
+        }
+
+        if (piece != null && site.decorCells != null)
+        {
+            foreach (var sc in site.decorCells)
+            {
+                Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(sc.ToVector3Int());
+                var go = Instantiate(piece, pos, Quaternion.identity, floor.transform);
+                go.name = "SiteDecorPiece_" + site.planName.Replace(' ', '_');
+            }
+        }
     }
 
     /// <summary>Load-path sweep: a save can hold already-revealed sites, whose
@@ -1509,6 +1531,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
             plan.cells.RemoveAll(c => reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => reservedCoreCells.Contains(c));
+            plan.decorCells.RemoveAll(c => reservedCoreCells.Contains(c));
 
             // THE HEART MUST SURVIVE THE SUBTRACTION, and until this guard it
             // did not have to. The heart lives in the wall band, so a
@@ -1560,6 +1583,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 cells = ToSerializable(plan.cells),
                 ruinsCells = ToSerializable(plan.ruinsCells),
                 pavedRoadCells = pavedRoad,
+                decorCells = ToSerializable(plan.decorCells),
                 reservedForOutpost = plan.reservedForOutpost,
                 reservedForVillage = plan.reservedForVillage,
             };

@@ -4452,6 +4452,65 @@ the WardChapel plans' centred hearts are the correct shape now, not a fault.
 **Key files:** five plans under `ScriptableObjects/Sites/Plans/`,
 `_SYMBOLS.txt`, this document.
 
+### The last two glyphs: keep-clear and decor (SHIPPED)
+
+The symbols expansion closes. Two glyphs join `# . X = ^ + ~`, both floor plus
+a marker like every marker before them, and both one-way compatible by the
+grid's own rule: an older parser ignores an unknown glyph the same way it
+ignores space, so a plan drawing them loads on an older build with those cells
+read as rock. Acceptable, and now said.
+
+**`'-'` is KEEP-CLEAR: floor the plan wants left empty** -- the cell before a
+door, a sightline down a nave, an altar approach. Parsed into
+`AuthoredSitePlan.keepClear`, coloured in the preview, listed in
+`_SYMBOLS.txt`, known to the tag audit -- and consumed by NOTHING yet, which
+is recorded rather than hidden. The intended first consumer is paired
+placement's clearance test in the site relations arc, which is why the
+vocabulary ships ahead of the machinery: the alternative was coming back for
+a one-glyph parser change in the middle of a placement feature.
+
+**`'o'` is DECOR: where the plan's decor piece stands, marked in plan space so
+it rotates with the plan.** This changes the decor model from one prefab at
+the site anchor to INSTANCES at marked cells, and lifts the constraint the
+prefab hook imposed: a prefab spawns unrotated at the anchor, so every
+prefab-decorated plan had to be `@rotate: no`; glyph cells ride
+`EmitTransformed` through the SAME transform as the masonry, so the positions
+rotate with the building and the plan may turn freely. The piece transform
+itself stays unrotated on purpose -- props are authored front-view per the
+art spec, and a quarter-turned sprite reads wrong.
+
+**The cells are SAVED, not re-derived, and the save shape is why.** `SiteData`
+keeps no rotation and no mirror -- its cell lists are world cells written at
+placement -- so the plan asset alone cannot say where a rotated plan's `'o'`
+cells landed. `SiteData.decorCells` is an appended field written by every
+placement path (the fill loop and all three guarantees), disc-clamped by
+`EmitTransformed` and core-subtracted alongside the cells it decorates; old
+saves load it empty and simply spawn no pieces. The handoff document asserted
+the opposite ("no save-shape change should be needed") and reading the spawn
+path corrected it -- which also relocated that path: decor spawns in
+`TerrainFeatureGenerator.SpawnSiteDecor`, not FeatureRevealController.
+
+**`SiteDecorEntry` carries both hooks, independently.** `prefab` spawns once
+at the anchor exactly as before and keeps its rotate ban; `piecePrefab`
+spawns at every `decorCells` cell and takes no ban. The validator scopes the
+rotate rule to anchor-prefab entries and FAILS a `piecePrefab` naming a plan
+with no `'o'` cells, because a piece that can never spawn is wiring drift
+wearing a completed look. The three `@rotate: no` vault headers are
+UNTOUCHED: their cited decor prefabs do not exist yet, there is nothing to
+convert, and `siteDecor` remains empty -- the runtime path is wired and inert
+until art lands.
+
+Both sims that read plan grids (`sim_chord_anchor.py`, `sim_lane_routing.py`)
+learned the glyphs as floor in the same script, so their geometry cannot
+drift from the parser's; the tag audit's glyph set gained both characters.
+
+**Key files:** `AncientSitePlanLibrary.cs`, `AncientSiteBuilder.cs`,
+`TerrainFeatureGenerator.cs`, `FloorFeatureSaveData.cs`,
+`AncientSiteProfile.cs`, `Editor/SitePlanValidator.cs`,
+`Editor/SitePlanPreviewWindow.cs`, `Tools/audit_plan_tags.py`,
+`Tools/sim_chord_anchor.py`, `Tools/sim_lane_routing.py`, `_SYMBOLS.txt`,
+this document.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

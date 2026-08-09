@@ -57,6 +57,21 @@ GLYPHS
       No lane means no through-route: a road reaches the door and stops. That
       is what the sealed vaults want.
 
+  -   KEEP-CLEAR. Floor plus a marker: ground the plan wants left EMPTY --
+      the cell before a door, a sightline down a nave, an altar approach.
+      Consumers OPT IN, and nothing reads it yet; the intended first
+      consumer is paired placement's clearance test. An older parser reads
+      it as rock: one-way compatible, so do not draw it into a plan that
+      must load on an older build.
+
+  o   DECOR. Floor plus a marker: where this plan's decor piece stands.
+      Marked in the plan so it rotates WITH the plan -- the per-plan
+      anchor prefab could not, which is what forced @rotate: no onto
+      every prefab-decorated plan. The piece spawns at the cell's world
+      position with an UNROTATED transform: props are authored front-view
+      and a quarter-turned sprite reads wrong. Wire the piece on
+      AncientSiteProfile.siteDecor's piecePrefab; no art is wired yet.
+
   ' ' SPACE -- not part of the site at all. LOAD-BEARING, not a fallthrough:
       BrokenAqueduct_TheDrySpan is two separate reaches with a void between
       them where the middle span fell. Do not tighten this into an error.

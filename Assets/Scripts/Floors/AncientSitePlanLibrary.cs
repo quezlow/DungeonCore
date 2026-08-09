@@ -139,6 +139,22 @@ public class AuthoredSitePlan
     /// keeps its shape and the road keeps its route. A site with no lane has no
     /// through-route: a road reaches its door and stops.</summary>
     public readonly List<Vector2Int> lane = new List<Vector2Int>();
+
+    /// <summary>Keep-clear cells, from '-': floor the plan wants left EMPTY --
+    /// the cell before a door, a sightline down a nave, an altar approach.
+    /// Floor plus a marker, and consumers OPT IN: nothing reads it yet. The
+    /// intended first consumer is paired placement's clearance test in the
+    /// site relations arc, which is why the vocabulary ships ahead of the
+    /// machinery.</summary>
+    public readonly List<Vector2Int> keepClear = new List<Vector2Int>();
+
+    /// <summary>Decor cells, from 'o': where this plan's decor piece stands.
+    /// Marked in PLAN space so decor rotates with the plan -- the per-plan
+    /// anchor prefab could not, which is what forced @rotate: no onto every
+    /// prefab-decorated plan. Floor plus a marker; the piece spawns at the
+    /// cell's world position with an UNROTATED transform, because props are
+    /// authored front-view and a quarter-turned sprite reads wrong.</summary>
+    public readonly List<Vector2Int> decor = new List<Vector2Int>();
 }
 
 /// <summary>One straight run of '+' cells: where it is, how long, and which way
@@ -189,6 +205,14 @@ public struct DoorRun
 ///          declared door must be THREE cells in its run; two
 ///          seals. Only '+' cells are checked, so stall gaps and
 ///          grave rows are exempt by construction.
+///     '-'  KEEP-CLEAR -- open ground, plus a marker: floor the plan
+///          wants left empty. The cell before a door, a sightline
+///          down a nave, an altar approach. Consumers OPT IN, and
+///          nothing reads it yet; the intended first consumer is
+///          paired placement's clearance test.
+///     'o'  DECOR -- open ground, plus a marker: where this plan's
+///          decor piece stands. Marked in the plan so it rotates
+///          WITH the plan, which the anchor-prefab hook could not.
 ///     anything else (including space) is not part of the site at all.
 ///          This is LOAD-BEARING, not a fallthrough:
 ///          BrokenAqueduct_TheDrySpan is two separate reaches with a
@@ -349,6 +373,8 @@ public static class AncientSitePlanLibrary
         var stairs = new List<Vector2Int>();
         var door = new List<Vector2Int>();
         var lane = new List<Vector2Int>();
+        var keepClear = new List<Vector2Int>();
+        var decor = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -382,6 +408,18 @@ public static class AncientSitePlanLibrary
                     var lc = new Vector2Int(c, -r);
                     floor.Add(lc);
                     lane.Add(lc);
+                }
+                else if (row[c] == '-')
+                {
+                    var kc = new Vector2Int(c, -r);
+                    floor.Add(kc);
+                    keepClear.Add(kc);
+                }
+                else if (row[c] == 'o')
+                {
+                    var oc = new Vector2Int(c, -r);
+                    floor.Add(oc);
+                    decor.Add(oc);
                 }
                 else if (row[c] == 'X')
                 {
@@ -435,6 +473,8 @@ public static class AncientSitePlanLibrary
         foreach (var p in stairs) plan.stairs.Add(p - offset);
         foreach (var p in door) plan.door.Add(p - offset);
         foreach (var p in lane) plan.lane.Add(p - offset);
+        foreach (var p in keepClear) plan.keepClear.Add(p - offset);
+        foreach (var p in decor) plan.decor.Add(p - offset);
 
         foreach (var p in floor)
         {

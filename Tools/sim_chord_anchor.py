@@ -335,7 +335,7 @@ def parse_plan(path):
             p = (c, -r)
             if ch == "#":
                 wall.append(p)
-            elif ch in ".=^":
+            elif ch in ".=^-o":
                 floor.append(p)
             elif ch == "+":
                 floor.append(p)

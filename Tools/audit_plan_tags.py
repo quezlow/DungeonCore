@@ -19,7 +19,7 @@ ANCHOR_FOR = {  # AncientSiteProfile.AnchorFor, default Free
 KNOWN_KEYS = {"archetype","name","anchor","rotate","general",
               "anchor_required","anchor_on","doors"}
 BOOLISH = {"yes","no","true","false","0","1"}
-GLYPHS = set("#.=^+~X ")
+GLYPHS = set("#.=^+~X-o ")
 
 def canon(s):  # the parser's Replace(" ","").Replace("_","").lower()
     return s.replace(" ","").replace("_","").lower()
