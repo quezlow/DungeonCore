@@ -1,14 +1,21 @@
 @archetype: SealedCrypt
 @name: The Coffin Row
-@anchor: Free
+@anchor: AlongRoad
 @doors: marked
 
 // Slab graves cut three deep into the north and south walls, either side of
 // a processional floor, and one grave at the head that is larger than the
 // rest and still capped.
+//
+// The shoulders beside each door are lane, not floor. The rails step
+// diagonally in toward the door, the drape buries the step cells at
+// north-south rotations, and the shoulder is the only route round them --
+// drawn '.', it is ground a walker can stand on that the corridor cannot
+// use, and half of all chords refused. Measured: 801 of 1,830 seatings
+// before, 1,671 after.
 
 ########+++++########
-#######.~~~~~.#######
+#######~~~~~~~#######
 ######~~~~#~~~~######
 #####~~~~###~~~~#####
 #####~~~#####~~~#####
@@ -32,5 +39,5 @@
 #####~~~#####~~~#####
 #####~~~~###~~~~#####
 ######~~~~#~~~~######
-#######.~~~~~.#######
+#######~~~~~~~#######
 ########+++++########

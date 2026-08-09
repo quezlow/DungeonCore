@@ -1,6 +1,6 @@
 @archetype: ChurchSeal
 @name: The Nine Chains
-@anchor: Free
+@anchor: AlongRoad
 @doors: marked
 
 // Anchor recesses cut into the ring wall, chained to the stone at the

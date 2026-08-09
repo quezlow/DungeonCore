@@ -1,5 +1,6 @@
 @archetype: HollowSanctum
 @name: The Kneeling Hall
+@anchor: AlongRoad
 @doors: marked
 
 // A nave running the long axis, side chapels off both flanks,

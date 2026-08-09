@@ -22,9 +22,12 @@ GLYPHS
       one cell carrying the site's meaning -- altar, grave slab, capped font,
       seal-stone. Solid, because unsealing it means mining it.
 
-      DO NOT put the heart on the plan's centre if the plan anchors AlongRoad.
-      The centre lands on the carriageway, the road subtraction takes the cell,
-      and the seal becomes unbreakable. The validator now fails this.
+      A centred heart is fine, including on a road-anchored plan. An older
+      warning here forbade it: the carriageway subtraction used to delete
+      the centre cell and make the seal unbreakable. Stage 2 removed that
+      mechanism -- roads arrive at doors and lanes route around masonry, so
+      no road ever takes a heart cell -- and the validator gate that
+      enforced the old rule is retired with it.
 
   =   PLATFORM. Floor, raised. Real: it carries a Rigidbody2D collider.
 

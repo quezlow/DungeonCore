@@ -1,5 +1,6 @@
 @archetype: HollowSanctum
 @name: The Drowned Choir
+@anchor: AlongRoad
 @doors: marked
 
 // Concentric. The outer ambulatory is open; the inner sanctum is

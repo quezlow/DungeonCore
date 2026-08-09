@@ -3362,10 +3362,11 @@ is the ambiguity this project refuses elsewhere.
 differently from this commit onward. Existing saves keep their floors; new games
 do not reproduce old seeds.
 
-**Two authored plans on disk are deliberately unregistered** and should stay
-that way: `DwarvenVillage_TheHearthOfTheDeep` (the original village, too small)
-and `HollowSanctum_ThePilgrimsWay` (an abandoned hand-drawing). They are not an
-oversight, and re-registering them is not a fix.
+**One authored plan on disk is deliberately unregistered** and should stay
+that way: `DwarvenVillage_TheHearthOfTheDeep` (the original village, too
+small). It is not an oversight, and re-registering it is not a fix. This
+paragraph originally also named `HollowSanctum_ThePilgrimsWay`; the tag
+audit deleted that file, and its own entry records the deletion.
 
 ### Holy Ground desecration (SHIPPED)
 
@@ -4403,6 +4404,53 @@ DRAWN through a building with nothing to negotiate it back out.
 The one deliberate survivor of the whole arc is `SiteData.pavedRoadCells`: now
 always empty, vestigial rather than wrong, and serialised -- removing it is a
 save-shape change that gets its own pass, never a rider.
+
+### The decorative-lane five: every lane now carries a road (SHIPPED)
+
+The tag audit's undecided item is decided. Five laned plans carried an
+effective anchor of Free -- The Weeping Font, The Nine Chains and The Coffin
+Row by explicit tag, The Drowned Choir and The Kneeling Hall by archetype
+default -- so none ever sampled a chord and no lane among them ever carried a
+road. All five now say `@anchor: AlongRoad`, and all five are SOFT: no
+`@anchor_required`, no `@anchor_on: door`. On a roadless floor each degrades
+to a free pick and its lane reads as paving, which is why every holy pool is
+untouched -- The Nine Chains sits in the pools of floors 0 and 1 and The
+Coffin Row and The Weeping Font in floor 1's, all roadless, and a hard anchor
+would have refused there and thinned the pools the sub-quota entry sized.
+HollowSanctum spawns only on floors 2 to 4, which all carry roads, so the two
+sanctum plans never degrade at all.
+
+**The Coffin Row's lane fault, carried from the chord-anchoring arc, is
+fixed, and the mechanism was not what the refusal said.** "Lane not
+connected gate to gate" read as a routing failure; it was a corridor
+MEMBERSHIP failure. The rails step diagonally in toward each five-wide door,
+and at north-south rotations the drape buries the step cells -- the wall two
+north of them is rock. The route round them exists and is walkable: the
+shoulder cells beside the door. But they were drawn '.', and the corridor is
+lane and door glyphs only, so the BFS refused over ground a walker could
+stand on. Four cells retyped '.' to '~', two per door row, and the funnel
+connects in all four rotations.
+
+Measured over the chord sweep (`Tools/sim_chord_anchor.py`, 610 chords,
+26,790 placements): 801 placed / 1,029 refused before, 1,671 / 159 after;
+the plan leaves the tightest-three list on every floor (38, 45 and 49 per
+cent of floor 2, 3 and 4 chords before, above 90 after); worst gate mouth
+unchanged at 60.5 degrees, doublebacks zero, centreline cells on masonry
+zero, GREEN. The audit's five DECORATIVE LANE warnings are gone; the four
+that remain are the deliberate inert-door sidlers (The Stilled Well, The
+Bound Stone, The Ten Thousand Quiet, The Counting Floor), recorded as such
+in the tag audit entry.
+
+Two riders travelled with this script. The holy sub-quota entry's
+unregistered-plans paragraph stopped naming The Pilgrims Way, which the tag
+audit deleted -- the older paragraph was contradicting the newer entry. And
+`_SYMBOLS.txt`'s heart paragraph stopped warning against centred hearts on
+road-anchored plans: the carriageway subtraction that rule guarded against
+was removed by stage 2, and the validator gate enforcing it is retired --
+the WardChapel plans' centred hearts are the correct shape now, not a fault.
+
+**Key files:** five plans under `ScriptableObjects/Sites/Plans/`,
+`_SYMBOLS.txt`, this document.
 
 ## 21. The Buried Age
 
