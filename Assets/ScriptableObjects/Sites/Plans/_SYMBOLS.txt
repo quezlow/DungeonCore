@@ -119,6 +119,36 @@ HEADERS
                  a guarantee pass.
 
 
+RELATION HEADERS -- all optional, all naming an ARCHETYPE, never a plan
+-----------------------------------------------------------------------
+
+  @excludes:       Hard and SYMMETRIC: this plan and that archetype never
+                   share a floor. Whichever places first strips the other
+                   from both pools -- write the header on ONE side only.
+
+  @prefers_near:   Soft: bias the free pick toward a placed target of that
+                   archetype; place normally when the bias fails.
+
+  @requires_near:  Hard: no placed target in radius means the attempt
+                   refuses, on its own counter in the site report. In effect
+                   for FREE-anchored plans -- on a road-anchored plan it
+                   degrades to a post-filter and the tag audit warns.
+
+  @pair:           Actively places a partner of that archetype beside this
+                   plan, drawn from the floor's own pools (never summoned
+                   from outside them), riding extraPlaced. The partner's
+                   seat ignores spacing against THIS plan alone, must keep
+                   its footprint off the primary's, and must not stand on
+                   any '-' cell -- which is the keep-clear glyph's first
+                   consumer.
+
+  @pair_gap:       Cells, default 24. Measured: at 16 the partners' own
+                   footprints collide before spacing is ever tested.
+
+  @near_radius:    Cells, default 1.5x the floor's minSpacing. Measured:
+                   below minSpacing is unsatisfiable by construction.
+
+
 THE RULES THAT CATCH PEOPLE OUT
 -------------------------------
 

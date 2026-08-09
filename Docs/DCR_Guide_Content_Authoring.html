@@ -92,7 +92,8 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <br><b>Rev 5:</b> chapter 24 added -- the town's descendants (house table, given-name pool) and the resting-place remains sprite.
       <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.
       <br><b>Rev 6:</b> chapter 28 added -- the dwarven village (canon 19 part 3): editing the hold's plan, the guarantee headers, the settlement name roster, and the villager sprite. Chapter 26's roster-eligibility step updated for the floor plan correction and <code>@general: no</code>.
-      <br><b>Rev 7:</b> chapter 28 revised for the rotation set -- three double-size holds (Terraced Vein, Deep Market, Shrinehold) rolled by archetype, the Hearth retired to worked-example duty, and the door rule extended in writing to stalls and grave rows.</div>
+      <br><b>Rev 7:</b> chapter 28 revised for the rotation set -- three double-size holds (Terraced Vein, Deep Market, Shrinehold) rolled by archetype, the Hearth retired to worked-example duty, and the door rule extended in writing to stalls and grave rows.
+      <br><b>Rev 8 (2026-08-09):</b> chapter 26a rewritten to the shipped format after a drift check found it four glyph-generations behind -- nine glyphs, nine headers, <code>@doors:</code> required, <code>_SYMBOLS.txt</code> and the tag audit referenced as the on-disk truth. Chapter 33 added: Site Relations (canon's site relations entry). Chapter 29 gains the per-cell <code>'o'</code> / <code>piecePrefab</code> decor path. Chapter 0 map row added. Rider: <code>_SYMBOLS.txt</code> gains the relation headers.</div>
 
   <details open>
     <summary>0. The Pattern, the Rules, the Map</summary>
@@ -144,6 +145,7 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
         <tr><td>Stairs</td><td><code>Dungeon/Stairs Definition</code></td><td>single asset</td><td><code>DungeonBuildController</code> &rarr; Stairs Definition slot</td><td>n/a</td></tr>
               <tr><td>Material pattern</td><td><code>Dungeon/Pattern Definition</code> (or the generator)</td><td><code>ScriptableObjects/Patterns</code></td><td><code>PatternCatalog.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>pattern.&lt;id&gt;</code></td></tr>
       <tr><td>Tech node</td><td><code>Dungeon/Tech Node</code> (or the generator)</td><td><code>ScriptableObjects/Tech</code></td><td><code>TechTree.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>tech.&lt;id&gt;</code></td></tr>
+      <tr><td>Site relations</td><td>headers in the plan <code>.txt</code> (ch 33)</td><td><code>ScriptableObjects/Sites/Plans</code></td><td>nothing -- resolved at placement time; audited by <code>Tools/audit_plan_tags.py</code></td><td>n/a</td></tr>
       </table>
       <p class="why">All asset homes are under <code>Assets/ScriptableObjects/</code> unless prefixed otherwise.
       The five registries live in <code>Assets/ScriptableObjects/Registries/</code>; all five are already
@@ -698,9 +700,10 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
 
       <h3>26a. The format</h3>
       <pre>@archetype: SealedGate      <span class="lbl">// required -- which archetype this is a variant of</span>
-@name: The Last Door        <span class="lbl">// optional, for your own reference</span>
+@name: The Last Door        <span class="lbl">// required in practice -- decor entries and guarantee pins key on it</span>
+@doors: marked              <span class="lbl">// REQUIRED -- unmarked | none | marked; a missing header fails</span>
 @anchor: RoadEnd            <span class="lbl">// optional -- overrides the archetype's default</span>
-@rotate: no                 <span class="lbl">// optional -- default is yes</span>
+@rotate: no                 <span class="lbl">// optional -- default is yes; say WHY in a comment</span>
 
 <span class="lbl">// Comments start with two slashes.</span>
 ########################################
@@ -712,9 +715,10 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
 #####..............................#####
 #####..............................#####</pre>
 
-      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s1"><label for="dcr-authoring-v1-c26s1"><code>#</code> is <b>masonry</b>: it stays SOLID rock, is retyped to <code>Ruins</code>, renders as cave wall, costs 6x to claim and pays out <code>ancient_masonry</code> when mined. <code>.</code> is <b>carved</b> open floor. <b>Any other character, including a space, is not part of the site at all</b> -- that is how you get a non-rectangular footprint.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s1"><label for="dcr-authoring-v1-c26s1"><b>Nine glyphs are live.</b> <code>#</code> <b>masonry</b>: SOLID, retyped to the site's family terrain, 6x to claim, pays <code>ancient_masonry</code>. <code>.</code> <b>carved</b> open floor. <code>X</code> the <b>heart</b> -- exactly one per plan, two is a parse error; masonry carrying the site's meaning. <code>=</code> <b>platform</b> (floor, raised, real collider). <code>^</code> <b>stairs</b> -- the only opening in a platform's edge, three cells wide. <code>+</code> a declared <b>door</b> -- THREE cells in its run, never two. <code>~</code> <b>lane</b> -- a REGION a road may run through, door to door. <code>-</code> <b>keep-clear</b> -- ground the plan wants left empty; its first consumer is the pair seat test (chapter 33). <code>o</code> <b>decor</b> -- where the plan's decor piece stands (chapter 29). <b>Any other character, including a space, is not part of the site at all</b> -- that is how you get a non-rectangular footprint. Full semantics with the war stories: <code>_SYMBOLS.txt</code> beside the plans, which is where you are when you need it.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s2"><label for="dcr-authoring-v1-c26s2">Top of the file is <b>north</b>. Rows may be ragged. The grid self-centres on its own bounding box, so you never think about origins.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s3"><label for="dcr-authoring-v1-c26s3">Save it into <code>Assets/ScriptableObjects/Sites/Plans/</code> and drag it onto the profile's <code>Authored Plans</code> list. <b>Use a monospace editor</b> -- a proportional font will lie to you about alignment.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s14"><label for="dcr-authoring-v1-c26s14"><b>The headers beyond the four shown:</b> <code>@doors:</code> is REQUIRED (<code>unmarked</code> passes with a roll-call, <code>none</code> passes silently, <code>marked</code> turns the three-cell door rule on; a missing header fails, so "not filled in yet" can never read as "nothing to fill in"). <code>@anchor_on: door</code> lands a declared door on the anchor and roads arrive AT the entrance. <code>@anchor_required: yes</code> refuses the free-pick fallback -- better skipped than stranded. <code>@general: no</code> keeps a plan out of every general pool (chapter 28). The six relation headers are chapter 33. Every header's value is validated at load: a bad one is a named error, never a silent default.</label></div>
 
       <h3>26b. The one rule that will catch you out</h3>
       <p class="rule">A wall's face renders TWO cells tall and drapes down over the open floor
@@ -733,6 +737,7 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s5"><label for="dcr-authoring-v1-c26s5">Run <b><code>Dungeon Core &rarr; Validate Site Plans</code></b>. It parses every plan on every profile and reports dimensions, carved and masonry counts, and the <b>worst-case walkable count across all eight orientations</b>. No play mode, no floor generation.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s6"><label for="dcr-authoring-v1-c26s6">A plan under <b>16 walkable cells</b> in its worst orientation logs as an error and names the offending rotation. The generator rejects such a site at placement, so it silently costs you a site rather than shipping an impassable room.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s7"><label for="dcr-authoring-v1-c26s7">A malformed file is warned about and skipped, never fatal: an unknown <code>@archetype</code>, a missing header, or a grid with no <code>.</code> cells at all.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s15"><label for="dcr-authoring-v1-c26s15"><b>The headless audit</b>, <code>python3 Tools/audit_plan_tags.py</code>, needs no Unity at all: it hard-faults unknown keys and bad values (the parser SILENTLY skips an unknown key, which is why the audit exists), and warns on the combinations that load fine but behave surprisingly -- inert doors, decorative lanes, near-relations on road plans, <code>@rotate: no</code> with no comment saying why. Run it after any header edit; the Validate menu checks geometry, the audit checks intent.</label></div>
 
       <h3>26d. Where it lands in game</h3>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c26s8"><label for="dcr-authoring-v1-c26s8">A plan only appears on floors whose roster contains its archetype -- today <code>SealedGate</code> sits in the index-2 and index-4 rosters, and the index-3 pool deliberately omits it. A plan headed <code>@general: no</code> enters no pool at all, and the village's archetype belongs to no roster (chapter 28 covers both). <b>Check the roster before wondering why your ruin never spawns.</b></label></div>
@@ -809,6 +814,7 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s6"><label for="dcr-authoring-v1-c29s6"><b>Decor placement rules:</b> carved floor only, and off the central band of road-anchored plans. The carriageway subtraction punches a 5-wide corridor through a road-anchored site at an arbitrary bearing, and any ruins cell can be mined out later -- decor attached to either ends up floating. Free-anchored plans (Ossuary, Hollow Sanctum) dodge the road rule entirely, which is why they make the best first candidates.</label></div>
 
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s7"><label for="dcr-authoring-v1-c29s7"><b>Wiring it up:</b> add an entry to <code>AncientSiteProfile.siteDecor</code> with the plan's <code>@name</code> (e.g. <code>The Ten Thousand Quiet</code>) and the prefab. The plan MUST be <code>@rotate: no</code> -- the prefab does not rotate with the site, and <b>Dungeon Core / Validate Site Plans</b> fails the profile if a decorated plan still allows rotation. Undecorated plans need nothing and look exactly as before.</label></div>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s9"><label for="dcr-authoring-v1-c29s9"><b>The per-cell alternative:</b> draw <code>'o'</code> cells in the plan and set the SAME <code>siteDecor</code> entry's <code>piecePrefab</code> -- one piece prefab, instanced at every <code>'o'</code> cell. The POSITIONS rotate with the plan, so no <code>@rotate: no</code> is needed; the piece's own transform stays unrotated, because props are authored front-view and a quarter-turned sprite reads wrong. Cell positions are saved additively on <code>SiteData.decorCells</code> (the site stores no rotation, so they cannot be re-derived on load) and spawned by <code>TerrainFeatureGenerator.SpawnSiteDecor</code>. The validator FAILS an entry whose <code>piecePrefab</code> names a plan drawing no <code>'o'</code> cells. Use the anchor prefab for one composed set-piece; use <code>'o'</code> for a repeated piece -- braziers down a nave, coffins in a row.</label></div>
 
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c29s8"><label for="dcr-authoring-v1-c29s8"><b>Sorting sanity check:</b> spawn the site (Commands has the site reveal helpers), walk a monster past the decor, and confirm nothing pops in front of the wall drape or behind the paving. Start decor SpriteRenderers on the Player layer at order 0 and adjust from what you see -- the drape occupies the two rows south of every wall, so keep tall decor off those cells entirely.</label></div>
     </div>
@@ -871,6 +877,45 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       darker; and thinning it by alpha would show what sits under the fog near the rim, where
       floor 0's rivers start. The void behind a wall is a legitimate hard edge -- it is what a
       wall is for.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>33. Site Relations (excludes, near, pairs)</summary>
+    <div class="body">
+      <div class="why">Canon's site relations entry. Six optional headers let a plan say how it
+      stands toward OTHER sites. Every value names an ARCHETYPE, not a plan -- "a ward chapel
+      near a sealed crypt" is archetype talk, and renaming a plan can never silently break a
+      relation. Everything resolves at placement time: no save field exists for any of it, and
+      a world whose plans carry no relation headers rolls seed-identical to one built before
+      the feature shipped.</div>
+
+      <pre>@excludes: HollowSanctum        <span class="lbl">// hard, SYMMETRIC: never share a floor</span>
+@prefers_near: DwarvenOutpost   <span class="lbl">// soft: bias toward a placed target, place normally if it fails</span>
+@requires_near: HollowSanctum   <span class="lbl">// hard: refuse without a placed target in radius</span>
+@pair: SunkenPlaza              <span class="lbl">// actively place a partner of this archetype alongside</span>
+@pair_gap: 24                   <span class="lbl">// optional -- anchor separation in cells, default 24</span>
+@near_radius: 120               <span class="lbl">// optional -- cells; default 1.5x the floor's minSpacing</span></pre>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s1"><label for="dcr-authoring-v1-c33s1"><b>Hardness is in the NAME.</b> <code>@excludes</code> and <code>@requires_near</code> are always hard; <code>@prefers_near</code> is always soft. No flag to forget -- the <code>@anchor_required</code> lesson applied at the vocabulary level. A bad archetype value is a load error by name, and the tag audit hard-faults it without Unity.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s2"><label for="dcr-authoring-v1-c33s2"><b><code>@excludes</code> needs writing on ONE side only.</b> The ban is symmetric in the machinery: the first side to place strips the other's plans from BOTH pools, and a sweep after the guarantees strips anything banned by an archetype they placed -- so "no shrine on the vault floor" is one header on the shrine plan, and the vault needs nothing.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s3"><label for="dcr-authoring-v1-c33s3"><b>The near defaults are measured; trust them first.</b> Nearest-neighbour distances between sites START at the floor's <code>minSpacing</code>, so any <code>@near_radius</code> below it can never be satisfied, and 1.25x already dips under 98 per cent in <code>Tools/sim_site_relations.py</code>. The 1.5x default sits at 98-100. A <code>@requires_near</code> refusal is reported on its own counter in the site report's <code>Summary()</code> -- it is the header working, not a spacing failure.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s4"><label for="dcr-authoring-v1-c33s4"><b>Near relations want FREE-anchored plans.</b> The bias samples around a placed target, which only the free pick can do; a road-anchored plan keeps its road machinery and <code>@requires_near</code> degrades to a post-filter that refuses far more often, while <code>@prefers_near</code> does nothing at all. The audit's <b>NEAR ON A ROAD PLAN</b> warning is exactly this. Guarantees count as targets -- an outpost is precisely the thing a toll house wants to stand near.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s5"><label for="dcr-authoring-v1-c33s5"><b><code>@pair</code> places its partner in the same attempt.</b> The partner must be ON OFFER in the floor's pools -- own pool first, then the other, crossing the holy/general boundary by design -- and a relation never summons a plan from outside them: no pool on the floor holding the archetype means no partner, on the <code>PairPartnerNotInPool</code> counter. A seated partner rides <code>extraPlaced</code> (authored intent, like a guarantee -- it never displaces a rolled ruin) and leaves its pool so the fill cannot serve it again before the wrap. A failed seat leaves the primary standing, on <code>PairPartnerNoSeat</code>.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s6"><label for="dcr-authoring-v1-c33s6"><b>The pair exemption is one anchor wide, and <code>'-'</code> is how you steer it.</b> The partner's seat ignores spacing against its primary ALONE; every other site still holds the floor's <code>minSpacing</code>. In exchange the seat takes two tests spacing no longer covers inside a pair: its footprint must stay disjoint from the primary's, and it may not stand on ANY placed site's keep-clear cells -- so draw <code>'-'</code> on the approach you want kept open and the partner respects it. This is the keep-clear glyph's first consumer, exactly the one its entry promised.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c33s7"><label for="dcr-authoring-v1-c33s7"><b>Verify without playing:</b> the audit for the headers, the headless site report for the outcome -- <code>Summary()</code> ends with the relations tail (pairs seated, no-seat, not-in-pool, requires-near refused, excluded-stripped). If you change a gap, a radius, or a floor's quotas, re-run <code>python3 Tools/sim_site_relations.py</code>; it asserts the packing whole -- quotas, spacing, footprints, excludes -- across two thousand seeds per floor.</label></div>
+
+      <div class="note"><b>Deferred on purpose:</b> same-chord opposite-side pairing (a toll house
+      facing the gatehouse across one road). Chord threading places one site per chord, and
+      pairing across that is real machinery; v1 proximity is radial, which on road plans lands
+      pairs on the same or nearby chords often enough to read. Ask again when a pair actually
+      wants the facing shot.</div>
     </div>
   </details>
 
