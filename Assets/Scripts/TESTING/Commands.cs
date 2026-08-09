@@ -261,6 +261,9 @@ public class Commands : MonoBehaviour
                       $"shown {fs.DisplayedStanding(f):0.#} (tier {fs.DisplayedTier(f)}).");
     }
 
+    [ContextMenu("Print Chest Tier Stats")]
+    void TestPrintChestTierStats() => ChestRegistry.PrintTierStats();
+
     [ContextMenu("Test Anger Adventurers Guild (-25)")]
     void TestAngerGuild()
     {

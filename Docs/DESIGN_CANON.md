@@ -1546,13 +1546,34 @@ the First Spark and The Drawn Breath (see entry 28A).
 
 - *Carry weight / encumbrance:* BINNED. Not to be revisited without a new
   case.
-- *Chest tiers:* OPEN, partially built. `ChestDefinition.ChestTier`
-  (Bronze/Silver/Gold) exists and is a placement-picker LABEL only -- richer
-  tiers are simply authored with higher-rarity `LootTable` entries, and no
-  code outside `ChestDefinition.cs` reads the field. The open half is the
-  behavioural hook: tier influencing adventurer decisions (which chest a
-  Treasure Hunter beelines for, whether a richer chest holds a party longer
-  or deepens a Destroyer's resolve). Do not record this as shipped.
+- *Chest tiers:* SHIPPED (behavioural hook). Tier now drives chest choice
+  for Treasure Hunters (goal LootAndLeave): detection range multiplies by
+  `ChestDefinition.TierRangeMultiplier` (Bronze 1.0 / Silver 1.33 / Gold
+  1.66 -- gold glitters farther), and among detected chests the highest
+  tier wins with nearest as tie-break (`ScanForChestsTiered`, gathered at
+  the widest reach then culled per tier). Delvers keep the plain nearest
+  scan -- their detour stays short by design. Multipliers live in code on
+  `ChestDefinition`, not on assets, so the three tier assets cannot drift
+  apart. No UI, no save shape. Diagnostics ship with it: per-tier
+  targeted/opened counters split by goal on `ChestRegistry`, one summary
+  log line each time the raid cycle ends (`ResetAll`, silent on untouched
+  cycles) plus a run-total print in `Commands` ("Print Chest Tier
+  Stats"). The hook feeds the already-SHIPPED loot satisfaction loop for
+  free: richer chests raise carried-out gold, which lowers Notoriety
+  (`lootSatisfactionFactor`, cap 25 per exit), shifts Alignment good
+  (`AlignmentSystem.OnAdventurerLeftAlive`) and fills the
+  `MercenaryContract` outflow window -- no new code was needed on that
+  side.
+  REJECTED (final, not deferred): a richer chest holding a party longer
+  (new linger machinery, near-invisible payoff); tier deepening Destroyer
+  resolve (Destroyer code has no chest contact point -- it would be
+  unattributable hidden difficulty); chest presence feeding spawn weights
+  (the Treasury attractor owns that bait; not to be revisited).
+  OPEN candidate (flagged only, not built): loot-outcome feedback into
+  Delver / Treasure Hunter spawn weights ("poor loot makes delving
+  unattractive") -- outcome history, distinct from the rejected presence
+  census; today the Delver weight is flat plus attractor bonuses and
+  reputation lifts only Pilgrim / GiftGiver.
 - *Random world events framework:* DEFERRED, to be revisited. What exists is
   three bespoke recurring threats, each its own component --
   `HolyOrderStrike`, `MercenaryContract`, `WildMonsterEvent` (entry 8).
@@ -2207,10 +2228,11 @@ nothing once the angle rule was in.
 
 Part 1 of the dwarves arc is BUILT: the faction (see entry 7), the guaranteed
 outpost, its authored plan, and the controller that puts the Deep Holds on the
-board when the player finds it. The VENDOR, the spoil economy, the dwarven
-traps, the granite overlay, road claiming and caravans are NOT built. Design
-for the vendor and the economy is recorded below and in part 2's guide; the
-overlay, claiming and caravans remain DESIGN in the sub-sections further down.
+board when the player finds it. The VENDOR, the spoil economy and the
+dwarven traps have since SHIPPED in part 2 below; the granite overlay, road
+claiming and the caravans have also SHIPPED (this entry's later sections and
+The Living Holds step 7) -- the NOT-built sentence that stood here predated
+them.
 
 **FLOOR PLAN CORRECTION (applied after part 2).** The dwarven trunk and
 gatehouse were originally authored on floor index 3 and MOVED DOWN to floor
@@ -2307,8 +2329,10 @@ before subtraction, which on an outpost is the middle of the road.
 ### The dwarves -- the vendor and the spoil economy (SHIPPED, part 2)
 
 Part 2 is BUILT: the shop decoupling, the Deep Holds' counter, three
-bought-only traps, and the spoil invoice. The granite boundary, road claiming
-and caravans remain DESIGN, below.
+bought-only traps, and the spoil invoice. The granite boundary, road
+claiming and the caravans have since SHIPPED (this entry's later sections
+and The Living Holds step 7); the DESIGN sentence that stood here predated
+them.
 
 **The shop is decoupled.** `IShopVendor` (`UI/IShopVendor.cs`) carries
 `ShopTitle`, `CurrentStock`, `PriceOf` and `TryPurchase`. `MerchantShopUI` now

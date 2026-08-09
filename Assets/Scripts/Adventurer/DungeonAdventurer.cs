@@ -364,6 +364,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private GameObject tributeVisual;
     public bool CarryingTribute => tributePrefab != null && tributeValue > 0;
     private readonly HashSet<DungeonChest> visitedChests = new();
+    private static readonly List<DungeonChest> _chestScanBuf = new();
 
     // Multi-floor state
     private FloorRoot currentFloor;
@@ -1474,13 +1475,70 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private void ScanForChests()
     {
         if (currentFloor?.Entities == null) return;
+
+        // Treasure Hunters weigh tier as well as distance -- a richer
+        // chest is spotted farther and outranks a nearer, poorer one.
+        // Delvers keep the plain nearest scan: their detour stays short
+        // by design (see HandleHunting), so tier must not stretch it.
+        if (goal == AdventurerGoal.LootAndLeave)
+        {
+            ScanForChestsTiered();
+            return;
+        }
+
         var nearest = currentFloor.Entities.Nearest<DungeonChest>(
             transform.position, chestDetectionRange,
             c => !c.IsOpened && !visitedChests.Contains(c));
 
         if (nearest != null && nearest != chestTarget)
         {
+            ChestRegistry.RecordTargeted(
+                nearest.Definition != null ? nearest.Definition.tier : ChestTier.Bronze, goal);
             chestTarget = nearest;
+            state = AdventurerState.MovingToChest;
+            RefreshPath();
+        }
+    }
+
+    /// <summary>Tier-aware chest pick for loot-focused adventurers.
+    /// Gathers at the widest tier reach, culls each chest to its own
+    /// tier's reach, then takes the highest tier with nearest as
+    /// tie-break. Deterministic on purpose: one log line proves the pick
+    /// in a live raid.</summary>
+    private void ScanForChestsTiered()
+    {
+        _chestScanBuf.Clear();
+        currentFloor.Entities.WithinRadius(
+            transform.position,
+            chestDetectionRange * ChestDefinition.MaxTierRangeMultiplier,
+            _chestScanBuf,
+            c => !c.IsOpened && !visitedChests.Contains(c));
+
+        DungeonChest best = null;
+        ChestTier bestTier = ChestTier.Bronze;
+        float bestDistSq = float.MaxValue;
+        for (int i = 0; i < _chestScanBuf.Count; i++)
+        {
+            var c = _chestScanBuf[i];
+            // A chest restored without a definition scores as Bronze
+            // rather than being skipped -- a missing asset must not hide
+            // loot.
+            ChestTier tier = c.Definition != null ? c.Definition.tier : ChestTier.Bronze;
+            float reach = chestDetectionRange * ChestDefinition.TierRangeMultiplier(tier);
+            float dSq = ((Vector2)(c.transform.position - transform.position)).sqrMagnitude;
+            if (dSq > reach * reach) continue;
+            if (best == null || tier > bestTier || (tier == bestTier && dSq < bestDistSq))
+            {
+                best = c;
+                bestTier = tier;
+                bestDistSq = dSq;
+            }
+        }
+
+        if (best != null && best != chestTarget)
+        {
+            ChestRegistry.RecordTargeted(bestTier, goal);
+            chestTarget = best;
             state = AdventurerState.MovingToChest;
             RefreshPath();
         }
@@ -1511,6 +1569,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (dist <= chestTarget.InteractRadius)
         {
             chestTarget.Interact(this);
+            ChestRegistry.RecordOpened(
+                chestTarget.Definition != null ? chestTarget.Definition.tier : ChestTier.Bronze, goal);
             visitedChests.Add(chestTarget);
             chestTarget = null;
             // Treasure Hunters leave with their prize rather than pressing on to the core.

@@ -12,7 +12,9 @@ using UnityEngine;
 /// Future chest types (locked, magical, etc.) slot in by creating additional
 /// ChestDefinition assets pointing at distinct prefabs.
 /// </summary>
-/// <summary>Chest tier — a placement-picker label; richer tiers are authored with higher-rarity loot.</summary>
+/// <summary>Chest tier. Richer tiers are authored with higher-rarity loot
+/// AND drive target choice for loot-focused adventurers (see
+/// DungeonAdventurer.ScanForChestsTiered).</summary>
 public enum ChestTier { Bronze, Silver, Gold }
 
 [CreateAssetMenu(fileName = "NewChestDefinition",
@@ -22,7 +24,7 @@ public class ChestDefinition : ScriptableObject
     [Header("Identity")]
     public string chestName = "Chest";
 
-    [Tooltip("Display tier for the placement picker. Author richer tiers with higher-rarity LootTable entries.")]
+    [Tooltip("Tier drives loot-focused adventurers' chest choice (richer is spotted farther and preferred). Author richer tiers with higher-rarity LootTable entries.")]
     public ChestTier tier = ChestTier.Bronze;
 
     [Header("Prefab")]
@@ -52,6 +54,23 @@ public class ChestDefinition : ScriptableObject
     [Header("Description")]
     [TextArea(2, 4)]
     public string description;
+
+    /// <summary>Widest tier reach factor -- the gather radius for a
+    /// tier-aware chest scan, so a Gold chest at the far edge is not
+    /// culled before scoring.</summary>
+    public const float MaxTierRangeMultiplier = 1.66f;
+
+    /// <summary>Detection-range factor per tier for loot-focused
+    /// adventurers: richer chests are spotted farther, so a Treasure
+    /// Hunter crosses for a gold chest it would never have seen as
+    /// bronze. Constants live in code rather than on assets so the three
+    /// tier assets cannot drift apart.</summary>
+    public static float TierRangeMultiplier(ChestTier tier) => tier switch
+    {
+        ChestTier.Silver => 1.33f,
+        ChestTier.Gold => MaxTierRangeMultiplier,
+        _ => 1f,
+    };
 
     /// <summary>
     /// Stat lines for ChestSelectionUI. Only shows trap stats for trap variants —
