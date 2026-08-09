@@ -3791,6 +3791,56 @@ visible.
 **Key files:** `SitePlanPreviewWindow.cs`, `AncientSiteBuilder.cs`
 (`SeatDiag`, `PreviewSeat`, `PreviewGateCell`, `PreviewKeepClearRadius`).
 
+### The tag audit, and the heart out of the river (SHIPPED)
+
+`Tools/audit_plan_tags.py` walks every plan header the way the parser does --
+same key set, same value spellings, same silent skips -- because the silent
+skips are the point: the parser ignores an unknown `@key` and a colonless `@`
+line without a word, so a typo'd tag is a plan that quietly means something
+else. The audit found the roster CLEAN on that whole class, and found four
+things the parser could not see:
+
+- **The Dry Span said `@doors: none` while drawing six door cells.** The lane
+  and its gates were added after the stamp; the stamp lied to the validator.
+  Now `marked`. Engine behaviour unchanged either way -- doorAnchors fills
+  from the lane, not the stamp.
+- **Two plans sit outside `authoredPlans`, and both by decision.** Twenty-nine
+  plans on disk, twenty-seven wired. The Pilgrims Way is now DELETED. The
+  Hearth of the Deep stays on disk and stays UNWIRED on purpose -- held back,
+  not forgotten; this entry is the record that says so, because an unwired
+  plan and an accidentally-dropped one are indistinguishable in the asset.
+- **The Last Door now says `@anchor_on: door`.** A road-end gate that sidles
+  away from the end it caps is a guard post with delusions; docking is
+  mandatory, and on a roadless floor the plan refuses rather than stand in a
+  field. The Counting Floor keeps its sidle on purpose -- a plaza BESIDE the
+  crossroads reads fine, and docking one door of sixty-eight would not.
+- **Both uncommented `@rotate: no` vaults now say why** (decor prefabs, the
+  Ninefold Cist's reason), so the next reader can tell load-bearing from
+  leftover.
+
+**The validator's centred-heart gate is retired.** It enforced the carriageway
+subtraction, and stage 2 removed that mechanism entirely -- roads arrive at
+doors, lanes route around masonry. The gate had inverted into a liar: it was
+failing both WardChapel plans, whose centred hearts inside lane-ringed masonry
+islands are exactly the RIGHT shape now, for a deletion that can no longer
+happen.
+
+**The river spares the heart.** The one remaining way to lose a seal was a
+river crossing its cell -- rivers deliberately erode sites, and they run after
+the heart-loss check at site build, so the loss was silent. The erosion now
+exempts the heart cell alone: a capped stone standing in the watercourse reads
+as intent, an unbreakable seal reads as a bug, and the wash keeps every other
+cell it took before.
+
+Undecided, recorded for the Holy Ground arc: the five laned plans whose
+effective anchor is Free (The Weeping Font, The Nine Chains, The Drowned
+Choir, The Kneeling Hall, The Coffin Row) -- re-anchor onto roads or keep the
+lanes as paving. The Coffin Row's lane fault gets reworked in the seat lens
+first either way.
+
+**Key files:** `Tools/audit_plan_tags.py`, `SitePlanValidator.cs`,
+`TerrainFeatureGenerator.cs`, six plan files, one plan deleted.
+
 ### The door rule, rebuilt on declaration (SHIPPED)
 
 The first door-rule gate was retired for failing twelve shipped, working plans.

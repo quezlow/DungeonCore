@@ -1,6 +1,9 @@
 @archetype: DeadCoreVault
 @name: The Unbuilt Cathedral
 @anchor: AlongRoad
+// @rotate: no -- the vault decor (dais and furnishings) is hand-placed in
+// prefabs that do not rotate with the plan, and the validator requires an
+// unrotating plan for any decorated one. Same reason as The Ninefold Cist.
 @rotate: no
 @anchor_on: door
 @doors: marked

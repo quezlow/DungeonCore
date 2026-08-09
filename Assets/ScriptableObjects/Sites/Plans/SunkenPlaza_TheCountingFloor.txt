@@ -1,6 +1,6 @@
 @archetype: SunkenPlaza
 @name: The Counting Floor
-@doors: Marked
+@doors: marked
 
 // A market plaza that was also a court: goods weighed, disputes settled,
 // both on the same floor. The outer ring is open paving with pillar stubs

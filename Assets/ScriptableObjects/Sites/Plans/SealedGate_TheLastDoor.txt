@@ -1,7 +1,12 @@
 @archetype: SealedGate
 @name: The Last Door
 @anchor: RoadEnd
-@doors: Marked
+// The road arrives and STOPS AT THE DOOR, not merely near the site: a
+// road-end gate that sidles away from the end it caps is a guard post
+// with delusions. Docking is mandatory -- on a roadless floor this plan
+// refuses rather than stand in a field.
+@anchor_on: door
+@doors: marked
 
 // The road arrives and stops. You can walk right up to the portal;
 // it is a recess three cells deep that dead-ends against solid rock.

@@ -100,22 +100,14 @@ public static class SitePlanValidator
                 Debug.Log($"PLAN LOADED: '{plan.sourceName}' floor={plan.floor.Count} wall={plan.wall.Count}");
 
 
-                // A CENTRED HEART ON AN ALONGROAD PLAN IS A DEAD SEAL. The
-                // anchor puts the plan's centre on the carriageway, the road
-                // subtraction takes the wall band, and the heart goes with it --
-                // every time, not sometimes. Caught here because it costs
-                // nothing to catch here and a full run to notice otherwise.
-                if (plan.hasAnchorOverride && plan.anchorOverride == SiteAnchor.AlongRoad
-                    && plan.heart.Count > 0 && plan.heart.Contains(Vector2Int.zero))
-                {
-                    failures++;
-                    sb.Append("  HEART FAIL: '").Append(plan.sourceName)
-                      .Append("' anchors AlongRoad with its heart on the plan centre.")
-                      .Append("\n         -> the centre lands ON the carriageway, the road")
-                      .Append("\n            subtraction takes the wall band, and the seal")
-                      .Append("\n            becomes unbreakable. Move the heart off centre,")
-                      .Append("\n            or use a different anchor.\n");
-                }
+                // The centred-heart-on-AlongRoad gate that used to sit here is
+                // retired: it enforced the carriageway subtraction, and stage 2
+                // removed that mechanism entirely. Roads now arrive at doors and
+                // lanes route AROUND masonry, so a centred heart is safe -- both
+                // WardChapel plans are exactly that shape, and this gate was
+                // failing them for a deletion that can no longer happen. The one
+                // remaining way to lose a heart was a river crossing it, and the
+                // river now spares the heart cell (see TerrainFeatureGenerator).
 
                 // THE LANE. Checked by PATHFIND rather than by width, because
                 // width is a proxy and the thing that matters is whether a

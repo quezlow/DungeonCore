@@ -1,7 +1,7 @@
 @archetype: SealedGate
 @name: The Watched Road
 @anchor: RoadEnd
-@doors: Marked
+@doors: marked
 
 // A gate that was forced, then bricked up again from the inner side.
 // Twin towers still stand. The passage runs half its length and stops.

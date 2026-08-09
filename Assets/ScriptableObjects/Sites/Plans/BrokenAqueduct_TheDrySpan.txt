@@ -1,6 +1,6 @@
 @archetype: BrokenAqueduct
 @name: The Dry Span
-@doors: none
+@doors: marked
 
 // A water channel that crossed the road on a raised bed. The middle span
 // went down an age ago and the two reaches no longer even agree on a

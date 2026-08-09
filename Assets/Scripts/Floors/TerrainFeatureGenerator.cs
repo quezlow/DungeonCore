@@ -1122,7 +1122,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 foreach (var site in featureData.sites)
                 {
                     site.cells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
-                    site.ruinsCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
+                    // ...but the HEART survives the ford. Roads no longer take
+                    // site cells, so a river was the one path left that could
+                    // delete a seal-stone -- silently, after the heart-loss
+                    // check at site build has already passed. A capped stone
+                    // standing in the watercourse reads as intent; an
+                    // unbreakable seal reads as a bug.
+                    site.ruinsCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int())
+                        && (site.heartCell == null
+                            || sv.ToVector3Int() != site.heartCell.ToVector3Int()));
                     // The washed-out crossing stays washed out: a river through
                     // the paved band shows water, not paving.
                     site.pavedRoadCells.RemoveAll(sv => cells.Contains(sv.ToVector3Int()));
