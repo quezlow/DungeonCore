@@ -6152,18 +6152,28 @@ ever actually read the reachability watchdog.
 
 **Building.** `BuildMode.BuildWall` (Build sub-menu, "Wall"; the scene's
 serialised `buildEntries` list predates the entry, so `ActionBarHUD.Start`
-appends it at runtime when absent -- no Inspector step). The CLICK is the
-wall's visual bottom: the solid cell lands two cells north
-(`click + (0,2,0)`), so the rendered south face drapes exactly over the two
-clicked-side cells and the three highlighted cells equal the three cells the
-pathfinder refuses (`passable = owned && !underOverhang`). Single click
-builds one column; drag paints a run, one column per cell entered; there is
-deliberately no box gesture. Cost `buildWallManaCost` (serialised, default
-10 -- 2x the dig) is spent only after validation passes; refusals route
-through the standard `RejectAt` -> `BuildFeedback.Reject` popup with
-per-cause reasons (open floor, influence, core cell, water, doorway,
-furniture / chest / trap / stairs / spawner / room anchor, registered room
-footprints, anything living stood in the footprint).
+appends it at runtime when absent -- no Inspector step). Clicks are RESOLVED
+(`ResolveBuildTarget`, the `ResolveMineTarget` mirror): a click on open
+ground with open air above is the wall's visual bottom -- the solid lands
+two north (`click + (0,2,0)`) and the face drapes the clicked pair -- while
+a click on or against existing solid (a cap, a draped face, or the open cell
+just above a cap) grows that column northward, targeting the first open
+cell above it (walk bounded at 8; beyond that refuses "The rock runs too
+deep to crown"). The v1 geometry was click-plus-two ONLY, which made
+bottom-up building impossible rather than merely awkward: the cells above
+an existing cap are open floor in the data, but every candidate click's
+fixed footprint contained the existing wall. Validation covers the target
+plus only the OPEN cells its new face drapes (up to two south, stopping at
+the first solid -- already-solid neighbours impose nothing, which is what
+makes stacking a one-cell check), and the ghost draws exactly that many
+face slices. Single click builds one column; drag paints a run, one column
+per cell entered; there is deliberately no box gesture. Cost
+`buildWallManaCost` (serialised, default 10 -- 2x the dig) is spent only
+after validation passes; refusals route through the standard `RejectAt` ->
+`BuildFeedback.Reject` popup with per-cause reasons (influence, core cell,
+water, doorway, furniture / chest / trap / stairs / spawner / room anchor,
+registered room footprints, anything living stood in the footprint, the
+column-walk bound).
 
 **The ghost** (this also ships polish item p, walls only). Three translucent
 sprites -- lower face, upper face, cap -- pulled live from the floor's own

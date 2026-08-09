@@ -750,28 +750,90 @@ public class DungeonBuildController : MonoBehaviour
         ReachabilityDirector.Instance?.MarkDirty();
     }
 
-    /// <summary>Whether a wall column may rise from this bottom cell, and why
-    /// not when it may not. The three footprint cells (bottom, middle, solid
-    /// target) must all be claimed open floor with nothing standing on or
-    /// placed in them: the two lower cells become unwalkable overhang the
-    /// moment the top one turns solid, so anything left inside would be
-    /// stranded behind a face it cannot path out of.</summary>
+    /// <summary>Turns a click into the solid cell a wall should rise at. A
+    /// click on open ground with open air above is the wall's visual BOTTOM:
+    /// the solid lands two north and the face drapes the clicked pair. A
+    /// click on or against existing solid -- a wall's cap, its draped face,
+    /// or the open cell just above its cap -- means "grow this column
+    /// northward": the target is the first open cell above that column.
+    /// Without this a column could only ever be extended southward; the v1
+    /// fixed click-plus-two geometry had no click that mapped to the cell
+    /// north of an existing solid, so building bottom-up was impossible
+    /// rather than merely awkward (the visible cells above the cap are open
+    /// floor in the data, but every candidate click's footprint contained
+    /// the existing wall).</summary>
+    private bool ResolveBuildTarget(TileInfluenceManager inf, Vector3Int clickCell, out Vector3Int target, out string reason)
+    {
+        const int MaxColumnWalk = 8;
+        var up = Vector3Int.up;
+        reason = null;
+
+        // First solid within the three-cell ghost window, scanning north.
+        Vector3Int solid = default;
+        bool found = false;
+        for (int i = 0; i < 3 && !found; i++)
+        {
+            var c = clickCell + up * i;
+            if (!inf.IsTileMined(c)) { solid = c; found = true; }
+        }
+
+        if (!found)
+        {
+            // Fully open window. If the cell just south of the click is
+            // solid, the player clicked the open cell directly above a cap:
+            // stack one on top of that column rather than raising a fresh
+            // one two further north with a hidden two-cell blocked gap
+            // behind a seamless-looking face.
+            if (!inf.IsTileMined(clickCell + Vector3Int.down)) { target = clickCell; return true; }
+            target = clickCell + up + up;
+            return true;
+        }
+
+        // Grow the clicked column: first open cell above it. The walk is
+        // bounded so a click into a deep unmined field (or the bedrock rim)
+        // refuses loudly instead of crowning rock far off-screen.
+        var t = solid;
+        for (int i = 0; i < MaxColumnWalk; i++)
+        {
+            t += up;
+            if (inf.IsTileMined(t)) { target = t; return true; }
+        }
+        target = solid;
+        reason = "The rock runs too deep to crown";
+        return false;
+    }
+
+    /// <summary>Whether a wall may rise at the resolved target, and why not
+    /// when it may not. The target plus every OPEN cell its new face will
+    /// drape over (up to two south, stopping at the first solid) must be
+    /// claimed, unoccupied and unstood-on: open cells under the new face
+    /// become unwalkable overhang the moment the target turns solid, so
+    /// anything left inside would be stranded behind a face it cannot path
+    /// out of. Cells already solid south of the target impose nothing --
+    /// their own drape existed before this wall, which is exactly what makes
+    /// growing a column northward a one-cell check.</summary>
     private bool CanBuildWallAt(Vector3Int clickCell, out Vector3Int target, out string reason)
     {
-        var up = Vector3Int.up;
-        target = clickCell + up + up;
+        target = clickCell;
         reason = null;
         var inf = ActiveInfluence;
         var floor = ActiveFloor;
         if (inf == null || floor == null) { reason = "No floor"; return false; }
+        if (!ResolveBuildTarget(inf, clickCell, out target, out reason)) return false;
 
-        Vector3Int mid = clickCell + up;
-        Vector3Int coreCell = floor.Terrain != null ? floor.Terrain.CoreCell : new Vector3Int(int.MinValue, 0, 0);
-
-        Vector3Int[] cells = { clickCell, mid, target };
-        foreach (var cell in cells)
+        var down = Vector3Int.down;
+        int n = 1;
+        _wallCheckCells[0] = target;
+        if (inf.IsTileMined(target + down))
         {
-            if (!inf.IsTileMined(cell)) { reason = cell == target ? "Already solid there" : "Needs open floor"; return false; }
+            _wallCheckCells[n++] = target + down;
+            if (inf.IsTileMined(target + down + down)) _wallCheckCells[n++] = target + down + down;
+        }
+
+        Vector3Int coreCell = floor.Terrain != null ? floor.Terrain.CoreCell : new Vector3Int(int.MinValue, 0, 0);
+        for (int i = 0; i < n; i++)
+        {
+            var cell = _wallCheckCells[i];
             if (!inf.IsTileClaimed(cell)) { reason = "Beyond your influence"; return false; }
             if (cell == coreCell) { reason = "The heart cannot be bricked in"; return false; }
             if (floor.FeatureGenerator != null && floor.FeatureGenerator.IsRiver(cell)) { reason = "Water takes no wall"; return false; }
@@ -801,14 +863,15 @@ public class DungeonBuildController : MonoBehaviour
             for (int j = 0; j < anchor.Footprint.Count; j++)
             {
                 var f = anchor.Footprint[j];
-                if (f == clickCell || f == mid || f == target) { reason = "Inside a room"; return false; }
+                for (int k = 0; k < n; k++)
+                    if (f == _wallCheckCells[k]) { reason = "Inside a room"; return false; }
             }
         }
 
         // Nothing living may stand in the footprint -- refusal, not shoving:
         // a push would need a safe destination search and a wall is not worth
         // teleporting a mercenary for.
-        if (AnyEntityStandsIn(floor, inf, clickCell, mid, target)) { reason = "Someone stands there"; return false; }
+        if (AnyEntityStandsIn(floor, inf, _wallCheckCells, n)) { reason = "Someone stands there"; return false; }
 
         return true;
     }
@@ -817,7 +880,11 @@ public class DungeonBuildController : MonoBehaviour
     private List<DungeonAdventurer> _wallAdvBuf;
     private List<DungeonMonster> _wallMonBuf;
 
-    private bool AnyEntityStandsIn(FloorRoot floor, TileInfluenceManager inf, Vector3Int a, Vector3Int b, Vector3Int c)
+    // Scratch footprint for the wall checks: target plus up to two newly
+    // draped open cells. Reused every hover frame, so no per-frame allocs.
+    private readonly Vector3Int[] _wallCheckCells = new Vector3Int[3];
+
+    private bool AnyEntityStandsIn(FloorRoot floor, TileInfluenceManager inf, Vector3Int[] cells, int n)
     {
         if (floor.Entities == null) return false;
         _wallAdvBuf ??= new List<DungeonAdventurer>();
@@ -828,7 +895,7 @@ public class DungeonBuildController : MonoBehaviour
             var adv = _wallAdvBuf[i];
             if (adv == null) continue;
             var cell = inf.WorldToCell(adv.transform.position);
-            if (cell == a || cell == b || cell == c) return true;
+            for (int k = 0; k < n; k++) if (cell == cells[k]) return true;
         }
         floor.Entities.FillAll(_wallMonBuf);
         for (int i = 0; i < _wallMonBuf.Count; i++)
@@ -836,7 +903,7 @@ public class DungeonBuildController : MonoBehaviour
             var mon = _wallMonBuf[i];
             if (mon == null) continue;
             var cell = inf.WorldToCell(mon.transform.position);
-            if (cell == a || cell == b || cell == c) return true;
+            for (int k = 0; k < n; k++) if (cell == cells[k]) return true;
         }
         return false;
     }
@@ -869,14 +936,27 @@ public class DungeonBuildController : MonoBehaviour
         Color tint = valid ? wallGhostValidColor : wallGhostInvalidColor;
 
         Vector3Int up = Vector3Int.up;
-        Vector3Int[] cells = { hover, hover + up, target };
+        Vector3Int down = Vector3Int.down;
         float cw = Mathf.Abs(inf.CellToWorld(hover + Vector3Int.right).x - inf.CellToWorld(hover).x);
         float ch = Mathf.Abs(inf.CellToWorld(hover + up).y - inf.CellToWorld(hover).y);
+
+        // The ghost mirrors what the renderer will actually draw: a cap at
+        // the resolved target plus face slices over however many OPEN cells
+        // sit south of it (none when stacking on an existing column, one at
+        // a half-drape, two on fresh ground). On a failed resolution the
+        // target falls back to the raw window so the red flash still lands
+        // where the player clicked.
+        Vector3Int capCell = target;
+        bool upperFace = inf.IsTileMined(capCell + down);
+        bool lowerFace = upperFace && inf.IsTileMined(capCell + down + down);
+        Vector3Int[] cells = { capCell + down + down, capCell + down, capCell };
+        bool[] show = { lowerFace, upperFace, true };
 
         for (int i = 0; i < 3; i++)
         {
             var sr = wallGhost[i];
             if (sr == null) continue;
+            if (!show[i]) { sr.enabled = false; continue; }
             Vector3 w = inf.CellToWorld(cells[i]);
             sr.transform.position = new Vector3(w.x, w.y, 0f);
             // Sliced sprites carry their own pixel size; the flat fallback is a
