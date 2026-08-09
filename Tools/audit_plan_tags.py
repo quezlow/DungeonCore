@@ -17,7 +17,9 @@ ANCHOR_FOR = {  # AncientSiteProfile.AnchorFor, default Free
     "BrokenAqueduct":"Crossing","SealedGate":"RoadEnd","GuardPost":"AlongRoad",
     "TollHouse":"AlongRoad","DwarvenVillage":"AlongRoad"}
 KNOWN_KEYS = {"archetype","name","anchor","rotate","general",
-              "anchor_required","anchor_on","doors"}
+              "anchor_required","anchor_on","doors",
+              "excludes","prefers_near","requires_near","pair",
+              "pair_gap","near_radius"}
 BOOLISH = {"yes","no","true","false","0","1"}
 GLYPHS = set("#.=^+~X-o ")
 
@@ -67,6 +69,16 @@ def audit(path):
             if key == "doors" and val.lower() not in ("unmarked","none","marked"):
                 hard.append("line %d: unknown @doors '%s' -- plan will "
                             "fail to load" % (ln, val))
+            if key in ("excludes","prefers_near","requires_near","pair") \
+                    and canon(val) not in ARCH_LOOKUP:
+                hard.append("line %d: unknown @%s '%s' -- plan will "
+                            "fail to load" % (ln, key, val))
+            if key == "pair_gap" and not (val.isdigit() and int(val) >= 2):
+                hard.append("line %d: bad @pair_gap '%s' -- plan will fail "
+                            "to load (a cell count of 2 or more)" % (ln, val))
+            if key == "near_radius" and not (val.isdigit() and int(val) >= 1):
+                hard.append("line %d: bad @near_radius '%s' -- plan will fail "
+                            "to load (a cell count of 1 or more)" % (ln, val))
             if key in ("rotate","general","anchor_required"):
                 if val.lower() not in BOOLISH:
                     warn.append("line %d: '@%s: %s' -- anything but "
@@ -134,6 +146,17 @@ def audit(path):
                     "never carries a road" %
                     ("explicit @anchor" if "anchor" in tags else
                      "archetype default"))
+    has_near = "requires_near" in tags or "prefers_near" in tags
+    if has_near and eff_anchor is not None and eff_anchor != "Free":
+        warn.append("NEAR ON A ROAD PLAN: effective anchor is %s, so the "
+                    "near bias never engages -- requires_near degrades to a "
+                    "post-filter on road picks and refuses far more often; "
+                    "prefers_near does nothing" % eff_anchor)
+    if "pair_gap" in tags and "pair" not in tags:
+        warn.append("@pair_gap without @pair -- the gap has nothing to size")
+    if "near_radius" in tags and not has_near:
+        warn.append("@near_radius without @requires_near or @prefers_near -- "
+                    "the radius has nothing to measure")
     if rotate_no_line > 0:
         near = [c for l, c in comments if abs(l - rotate_no_line) <= 3]
         why = " ".join(c for _, c in comments)

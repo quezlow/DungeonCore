@@ -4511,6 +4511,74 @@ drift from the parser's; the tag audit's glyph set gained both characters.
 `Tools/sim_chord_anchor.py`, `Tools/sim_lane_routing.py`, `_SYMBOLS.txt`,
 this document.
 
+### Site relations: excludes, near, and pairs (SHIPPED)
+
+Authored plans can now say how they stand toward other sites. Six headers, all
+naming an ARCHETYPE rather than a plan -- "a ward chapel near a sealed crypt"
+is archetype talk, and a plan rename must not silently break a relation:
+
+- **`@excludes:` is hard and SYMMETRIC.** The first side to place strips the
+  other's plans from BOTH pools (the `generalPool` RemoveAll precedent), and a
+  sweep after the guarantees strips anything banned by an archetype they
+  placed -- so the guarantee side never needs headers of its own. Stripping
+  beats refusing at attempt time: a banned plan left in the pool burns
+  attempts it can never win.
+- **`@prefers_near:` is soft, `@requires_near:` is hard, and the hardness is
+  in the NAME** -- no flag, the `@anchor_required` lesson applied at the
+  vocabulary level. Both bias the FREE pick by sampling AROUND a placed
+  target rather than filtering a uniform pick, because the filter form
+  rejects most of the band and starves the budget. On a road-anchored plan
+  the bias cannot engage, so requires_near degrades to a post-filter and the
+  tag audit warns about the combination. A requires_near refusal has its own
+  per-pass counter -- it is the feature working, not a spacing failure, and
+  it is not dressed as one. Guarantees count as targets.
+- **`@pair:` actively places a partner in the same attempt.** The partner
+  must be ON OFFER in the floor's pools -- own pool first, then the other,
+  crossing the holy/general boundary by design (chapel near crypt crosses
+  it) -- and a relation never summons a plan from outside them. The partner
+  rides `extraPlaced` whichever pool it came from: authored intent, like a
+  guarantee, never displacing a rolled ruin. On success it leaves its pool so
+  the cursor cannot serve it again before the wrap. Failure leaves the
+  primary standing, on a named counter: at the measured seat rate the unwound
+  case is one to three per two thousand seeds, which does not buy unwind
+  machinery.
+
+**The numbers are measured, not chosen** (`Tools/sim_site_relations.py`,
+built ON sim_holy_quota's band/fill model by import, 2000 seeds per floor).
+`@pair_gap:` defaults to 24 cells: at 16 the partners' own footprints collide
+before spacing is ever tested and seating falls to 8-17 per cent; 24 seats
+98-100; 32 buys nothing. `@near_radius:` defaults to 1.5x the floor's
+minSpacing: nearest-neighbour distances under TooClose START at minSpacing,
+so any radius below it is unsatisfiable by construction, and 1.25x already
+dips under 98 per cent.
+
+**The pair exemption is exactly one anchor wide.** A partner's seat is exempt
+from TooClose against its primary ALONE, by value; every other placed anchor
+still holds the floor's spacing, because a partner standing pairGap from its
+primary can stand (minSpacing - pairGap) from a third site. In exchange the
+seat takes two tests anchor spacing no longer covers inside a pair: footprint
+disjointness against the primary, and the KEEP-CLEAR test -- the `'-'`
+glyph's first consumer, exactly the consumer its entry promised. Every
+placement path now emits `keepClearCells` in world space on the placed site;
+the field is TRANSIENT and never reaches SiteData, because relations resolve
+at placement time and no relation adds a save field.
+
+**Existing worlds are seed-identical.** Every new rng draw sits behind a
+header test, and for a plan without relation headers the TryPickAnchor call
+is byte-for-byte the one that shipped. The sim proved the packing whole:
+holy and general minimums at 0.00 per cent shortfall with relations active,
+zero spacing leaks, zero footprint overlaps, zero excludes co-placements.
+`Summary()` reports the relation counters by name.
+
+**Deferred, on purpose:** same-chord opposite-side pairing (toll house facing
+gatehouse across one road). `SplitChordsForSites` threads one site per chord
+by its `done` set, and pairing across that is real machinery; v1 proximity is
+radial, which on AlongRoad plans lands pairs on the same or nearby chords
+often enough to read. Revisit when a pair actually wants the facing shot.
+
+**Key files:** `AncientSitePlanLibrary.cs`, `AncientSiteBuilder.cs`,
+`Tools/audit_plan_tags.py`, `Tools/sim_site_relations.py`, this document.
+
 ## 21. The Buried Age
 
 Approved: the deep-faith's civilisation was entombed in a cataclysm. Ancient

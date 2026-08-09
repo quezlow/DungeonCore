@@ -74,6 +74,32 @@ public class AuthoredSitePlan
     /// would.</summary>
     public bool generalPool = true;
 
+    /// <summary>Relation headers. Each names an ARCHETYPE rather than a plan:
+    /// "a ward chapel near a sealed crypt" is archetype talk, and a plan
+    /// rename must not silently break a relation. All of them resolve at
+    /// PLACEMENT TIME against the sites already placed and the pools on
+    /// offer, so none of them adds a save field.</summary>
+    public SiteArchetype excludes;
+    public bool hasExcludes;
+    public SiteArchetype prefersNear;
+    public bool hasPrefersNear;
+    public SiteArchetype requiresNear;
+    public bool hasRequiresNear;
+    public SiteArchetype pair;
+    public bool hasPair;
+
+    /// <summary>Target anchor separation for '@pair:', in cells. 24 is
+    /// measured, not chosen: at 16 the partners' own footprints collide
+    /// before spacing is ever tested (pair seating fell to 8-17 per cent in
+    /// sim_site_relations), and 32 buys nothing over 24's 98-100.</summary>
+    public int pairGap = 24;
+
+    /// <summary>Absolute 'near' radius in cells; 0 derives 1.5x the floor's
+    /// minSpacing. Also measured: nearest-neighbour distances under TooClose
+    /// START at minSpacing, so any radius below it is unsatisfiable by
+    /// construction, and 1.25x already dips under 98 per cent.</summary>
+    public int nearRadius;
+
     /// <summary>Local cells, centred on the plan's bounding box.</summary>
     public readonly List<Vector2Int> floor = new List<Vector2Int>();
     public readonly List<Vector2Int> wall = new List<Vector2Int>();
@@ -228,6 +254,25 @@ public struct DoorRun
 ///   A missing header FAILS, so "not filled in yet" can never be
 ///   mistaken for "nothing to fill in".
 ///
+///   RELATION HEADERS, all optional, all naming an ARCHETYPE:
+///     '@excludes: X'       hard and SYMMETRIC: this plan and archetype X
+///                          never share a floor; whichever places first
+///                          strips the other from both pools.
+///     '@prefers_near: X'   soft: pick an anchor near a placed X when one
+///                          exists, place normally when the bias fails.
+///     '@requires_near: X'  hard: no placed X in radius means this attempt
+///                          refuses, with its own named counter.
+///     '@pair: X'           actively places a partner of archetype X beside
+///                          this plan, drawn from the floor's own pools
+///                          (never summoned from outside them) and riding
+///                          extraPlaced. '@pair_gap: N' sizes the anchor
+///                          separation (default 24); '@near_radius: N'
+///                          overrides the near radius (default 1.5x the
+///                          floor's minSpacing). Near relations bias FREE
+///                          anchoring only -- on a road-anchored plan
+///                          requires_near degrades to a post-filter, which
+///                          the tag audit warns about.
+///
 ///   TWO RULES THE GRID WILL NOT SHOW YOU, both learned by drawing
 ///   eight plans and failing seven:
 ///     - A wall recess must be THREE deep. Two leaves a two-cell run
@@ -346,6 +391,60 @@ public static class AncientSitePlanLibrary
                                         "' -- expected unmarked, none or marked";
                                 return null;
                         }
+                        break;
+                    case "excludes":
+                        if (!TryParseArchetype(val, out var ex))
+                        {
+                            error = "unknown @excludes '" + val + "'";
+                            return null;
+                        }
+                        plan.excludes = ex;
+                        plan.hasExcludes = true;
+                        break;
+                    case "prefers_near":
+                        if (!TryParseArchetype(val, out var pn))
+                        {
+                            error = "unknown @prefers_near '" + val + "'";
+                            return null;
+                        }
+                        plan.prefersNear = pn;
+                        plan.hasPrefersNear = true;
+                        break;
+                    case "requires_near":
+                        if (!TryParseArchetype(val, out var rq))
+                        {
+                            error = "unknown @requires_near '" + val + "'";
+                            return null;
+                        }
+                        plan.requiresNear = rq;
+                        plan.hasRequiresNear = true;
+                        break;
+                    case "pair":
+                        if (!TryParseArchetype(val, out var pr))
+                        {
+                            error = "unknown @pair '" + val + "'";
+                            return null;
+                        }
+                        plan.pair = pr;
+                        plan.hasPair = true;
+                        break;
+                    case "pair_gap":
+                        if (!int.TryParse(val, out var pg) || pg < 2)
+                        {
+                            error = "bad @pair_gap '" + val +
+                                    "' -- a cell count of 2 or more";
+                            return null;
+                        }
+                        plan.pairGap = pg;
+                        break;
+                    case "near_radius":
+                        if (!int.TryParse(val, out var nr) || nr < 1)
+                        {
+                            error = "bad @near_radius '" + val +
+                                    "' -- a cell count of 1 or more";
+                            return null;
+                        }
+                        plan.nearRadius = nr;
                         break;
                 }
                 continue;

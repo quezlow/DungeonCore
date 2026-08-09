@@ -99,6 +99,12 @@ public class AncientSitePlan
     /// were built.</summary>
     public List<Vector3Int> decorCells = new List<Vector3Int>();
 
+    /// <summary>Keep-clear cells in WORLD space, from the plan's '-' glyphs,
+    /// emitted through the same transform as everything else. TRANSIENT --
+    /// never copied to SiteData -- because their one consumer is the pair
+    /// partner seat test, which runs at placement time and never again.</summary>
+    public List<Vector3Int> keepClearCells = new List<Vector3Int>();
+
     /// <summary>The heart cell in WORLD space, once placed. Default
     /// (0,0,0) means the plan declared none -- every procedural recipe,
     /// and any authored plan without an 'X'. Callers test
@@ -186,6 +192,15 @@ public class AncientSiteResult
     /// one ruin", and that reading depends on it.</summary>
     public int extraPlaced;
 
+    /// <summary>Site relations, resolved at placement time. Result-level
+    /// rather than per-pass: pairs and strips can fire from either fill, and
+    /// splitting them per pool would double the fields for no read anyone
+    /// takes.</summary>
+    public int pairsPlaced;
+    public int pairPartnerNoSeat;
+    public int pairPartnerNotInPool;
+    public int excludedStripped;
+
     // The holy pass keeps its own tallies. Folding them into the general ones
     // would make "this floor placed four seals of six" unanswerable: a floor can
     // fill its ruins and starve its seals, and that is exactly the failure worth
@@ -199,6 +214,12 @@ public class AncientSiteResult
     public int holyRejectedTooSmall;
     public int holyRejectedUnwalkable;
     public int holyRejectedNoDoorHeading;
+
+    /// <summary>Refusals of '@requires_near' plans, per pass like the other
+    /// rejection counters -- a refusal here is the feature working, not a
+    /// spacing failure, and it must not be dressed as one.</summary>
+    public int rejectedRequiresNear;
+    public int holyRejectedRequiresNear;
     /// <summary>Whether this floor's guaranteed outpost actually landed. False on
     /// a floor that never asked for one; false AND loud on a floor that did.</summary>
     public bool outpostPlaced;
@@ -249,7 +270,10 @@ public class AncientSiteResult
                $"In band: {inBandJunctions} junctions, {inBandRoadCells} road samples, " +
                $"{inBandRoadEnds} road ends. " +
                $"Seats: {lanedSplits} threaded, {spursEmitted} spurred ({spursReaimed} re-aimed), " +
-               $"{spursLost} SPUR LOST";
+               $"{spursLost} SPUR LOST. " +
+               $"Relations: {pairsPlaced} pair(s) (no-seat {pairPartnerNoSeat}, " +
+               $"partner-not-in-pool {pairPartnerNotInPool}), requires-near " +
+               $"refused {rejectedRequiresNear}, excluded-stripped {excludedStripped}";
     }
 
     /// <summary>The holy pass, printed apart from the general one. A floor that
@@ -413,6 +437,16 @@ public static class AncientSiteBuilder
                          roadPlan,
                          plans, anchorsUsed, minSpacingSq, result);
 
+        // Excludes against the GUARANTEES. A pool plan that excludes an
+        // archetype the guarantees just placed can never legally place, so it
+        // is stripped from both pools before either fill wastes attempts on
+        // it. The guarantee side authors no relation headers of its own: the
+        // pool side expresses the whole ban -- a shrine that must not share a
+        // floor with the vault writes '@excludes: DeadCoreVault' and this
+        // sweep honours it.
+        foreach (var g in result.sites)
+            result.excludedStripped += StripExcluded(g.archetype, null, plans, holyPlans);
+
         // How much of each anchor source actually falls inside the placement band.
         // A source can be large and still be useless: road ENDS sit at the rim by
         // definition and the band stops at 65 per cent of the radius, so most of
@@ -432,7 +466,7 @@ public static class AncientSiteBuilder
         {
             var holy = Fill(rng, entry, centre, inner, outer, usable,
                             roadPlan,
-                            holyPlans, holyWant, HolyAttemptsPerSite,
+                            holyPlans, plans, holyWant, HolyAttemptsPerSite,
                             anchorsUsed, minSpacingSq, result, true);
             result.holyPlaced = holy.placed;
             result.holyAttempts = holy.attempts;
@@ -441,6 +475,7 @@ public static class AncientSiteBuilder
             result.holyRejectedTooSmall = holy.rejectedTooSmall;
             result.holyRejectedUnwalkable = holy.rejectedUnwalkable;
             result.holyRejectedNoDoorHeading = holy.rejectedNoDoorHeading;
+            result.holyRejectedRequiresNear = holy.rejectedRequiresNear;
 
             // Loud on a shortfall against the MINIMUM rather than against the
             // roll. The seals are this arc's content, and a floor quietly
@@ -465,7 +500,7 @@ public static class AncientSiteBuilder
         // extras.
         var general = Fill(rng, entry, centre, inner, outer, usable,
                            roadPlan,
-                           plans, want, GeneralAttemptsPerSite,
+                           plans, holyPlans, want, GeneralAttemptsPerSite,
                            anchorsUsed, minSpacingSq, result, false);
         result.attempts = general.attempts;
         result.rejectedTooClose = general.rejectedTooClose;
@@ -473,6 +508,7 @@ public static class AncientSiteBuilder
         result.rejectedTooSmall = general.rejectedTooSmall;
         result.rejectedUnwalkable = general.rejectedUnwalkable;
         result.rejectedNoDoorHeading = general.rejectedNoDoorHeading;
+        result.rejectedRequiresNear = general.rejectedRequiresNear;
 
         // LAST, once every site that is going to be placed has been. Splitting
         // as each site seated would have cut chords for placements that were
@@ -507,6 +543,7 @@ public static class AncientSiteBuilder
         public int rejectedTooSmall;
         public int rejectedUnwalkable;
         public int rejectedNoDoorHeading;
+        public int rejectedRequiresNear;
     }
 
     /// <summary>
@@ -534,7 +571,7 @@ public static class AncientSiteBuilder
         System.Random rng, SiteFloorEntry entry, Vector3Int centre,
         int inner, int outer, int usable,
         RoadPlan roadPlan,
-        List<PlanRef> plans, int want, int attemptsPerSite,
+        List<PlanRef> plans, List<PlanRef> partnerPool, int want, int attemptsPerSite,
         List<Vector3Int> anchorsUsed, int minSpacingSq,
         AncientSiteResult result, bool countsAsExtra)
     {
@@ -567,16 +604,82 @@ public static class AncientSiteBuilder
             var anchorKind = plan.authored != null && plan.authored.hasAnchorOverride
                 ? plan.authored.anchorOverride
                 : AncientSiteProfile.AnchorFor(plan.archetype);
-            if (!TryPickAnchor(rng, anchorKind, centre, inner, outer,
-                               roadPlan, out int chordIndex,
-                               anchorsUsed, minSpacingSq, out var anchor,
-                               plan.authored != null && plan.authored.anchorRequired))
+
+            // NEAR RELATIONS, resolved before the pick. Guarantees count as
+            // placed targets -- an outpost is exactly the thing a toll house
+            // wants to stand near.
+            List<Vector3Int> nearTargets = null;
+            int nearR = 0, nearRadiusSq = 0;
+            bool requiresNear = false;
+            if (plan.authored != null
+                && (plan.authored.hasRequiresNear || plan.authored.hasPrefersNear))
             {
-                // The sampler already exhausted its budget looking for somewhere
-                // both in band and clear of the sites already placed, so this is a
-                // genuinely full floor rather than one unlucky draw.
-                tally.rejectedTooClose++;
-                continue;
+                requiresNear = plan.authored.hasRequiresNear;
+                var targetArch = requiresNear ? plan.authored.requiresNear
+                                              : plan.authored.prefersNear;
+                nearR = plan.authored.nearRadius > 0
+                    ? plan.authored.nearRadius
+                    : Mathf.RoundToInt(entry.minSpacing * 1.5f);
+                nearRadiusSq = nearR * nearR;
+                nearTargets = AnchorsOfArchetype(result, targetArch);
+                if (requiresNear && nearTargets.Count == 0)
+                {
+                    // Hard by name: no target on the floor means this plan
+                    // cannot place, said with its own counter rather than
+                    // dressed as a spacing failure.
+                    tally.rejectedRequiresNear++;
+                    continue;
+                }
+            }
+
+            int chordIndex = -1;
+            Vector3Int anchor;
+            bool picked;
+            if (nearTargets != null && nearTargets.Count > 0
+                && anchorKind == SiteAnchor.Free)
+            {
+                // The biased pick: sampled AROUND a target rather than
+                // filtered after a uniform pick, because the filter form
+                // rejects most of the band and starves the budget --
+                // sim_site_relations seats 98-100 per cent this way.
+                picked = TryPickNear(rng, nearTargets, nearR, centre,
+                                     inner, outer, anchorsUsed, minSpacingSq,
+                                     out anchor);
+                if (!picked && !requiresNear)
+                    picked = TryPickAnchor(rng, anchorKind, centre, inner, outer,
+                                           roadPlan, out chordIndex,
+                                           anchorsUsed, minSpacingSq, out anchor,
+                                           plan.authored != null && plan.authored.anchorRequired);
+                if (!picked)
+                {
+                    if (requiresNear) tally.rejectedRequiresNear++;
+                    else tally.rejectedTooClose++;
+                    continue;
+                }
+            }
+            else
+            {
+                picked = TryPickAnchor(rng, anchorKind, centre, inner, outer,
+                                       roadPlan, out chordIndex,
+                                       anchorsUsed, minSpacingSq, out anchor,
+                                       plan.authored != null && plan.authored.anchorRequired);
+                if (!picked)
+                {
+                    // The sampler already exhausted its budget looking for somewhere
+                    // both in band and clear of the sites already placed, so this is a
+                    // genuinely full floor rather than one unlucky draw.
+                    tally.rejectedTooClose++;
+                    continue;
+                }
+                // A road-anchored plan keeps its road machinery, so
+                // requires_near degrades to a POST-FILTER on the picked
+                // anchor. The tag audit warns on the combination: the filter
+                // form refuses far more often than the biased form.
+                if (requiresNear && !WithinAny(anchor, nearTargets, nearRadiusSq))
+                {
+                    tally.rejectedRequiresNear++;
+                    continue;
+                }
             }
 
             // An authored plan is drawn at a fixed size and ignores span entirely
@@ -629,6 +732,7 @@ public static class AncientSiteBuilder
             EmitTransformed(site.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(site.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(site.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(site.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             // The heart rides the SAME transform as the masonry it is part
@@ -679,6 +783,18 @@ public static class AncientSiteBuilder
             // move the general loop's own target and cost the floor a ruin.
             if (countsAsExtra) result.extraPlaced++;
             // Cursor already advanced at the top of the attempt.
+
+            // -- SITE RELATIONS, on the plan just placed ------------------
+            // The strip runs for EVERY placement, headers or not: a pool
+            // plan excluding THIS archetype must go even when this plan
+            // authored nothing.
+            result.excludedStripped += StripExcluded(
+                placed.archetype, plan.authored, plans, partnerPool);
+
+            if (plan.authored != null && plan.authored.hasPair)
+                TryPlacePartner(rng, entry, centre, inner, outer, usable,
+                                plan.authored, placed, plans, partnerPool,
+                                anchorsUsed, minSpacingSq, result);
         }
 
         return tally;
@@ -766,6 +882,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
@@ -875,6 +992,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (placed.cells.Count < 12) continue;
@@ -988,6 +1106,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
             if (shape.heart.Count > 0)
@@ -1192,6 +1311,7 @@ public static class AncientSiteBuilder
         foreach (var c in authored.lane) p.lane.Add(c);
         foreach (var c in authored.door) p.door.Add(c);
         foreach (var c in authored.decor) p.decor.Add(c);
+        foreach (var c in authored.keepClear) p.keepClear.Add(c);
 
         // EVERY run with a usable outward normal, not merely the first. Which
         // one a placement uses is decided against the chord's direction, and
@@ -1903,6 +2023,242 @@ public static class AncientSiteBuilder
         return false;
     }
 
+    // ---- Site relations --------------------------------------------
+
+    /// <summary>Samples for a near-biased pick. Matches sim_site_relations'
+    /// PREFER_TRIES, where 48 satisfied 98-100 per cent of requires_near
+    /// attempts at the default radius.</summary>
+    private const int NearSampleTries = 48;
+
+    /// <summary>Seat samples for a pair partner around its primary. 32 seats
+    /// 98-100 per cent at the default gap in sim_site_relations; failures at
+    /// that budget were one to three per two thousand seeds.</summary>
+    private const int PartnerSeatTries = 32;
+
+    /// <summary>TooClose with ONE anchor exempted, by value: the pair's own
+    /// primary. Every other placed anchor still holds the floor's spacing,
+    /// because a partner standing pairGap from its primary can stand
+    /// (minSpacing - pairGap) from a third site -- the leak the sim was built
+    /// to rule out.</summary>
+    private static bool TooCloseExcept(
+        Vector3Int candidate, List<Vector3Int> used, int minSpacingSq,
+        Vector3Int exempt)
+    {
+        foreach (var u in used)
+        {
+            if (u == exempt) continue;
+            long dx = candidate.x - u.x, dy = candidate.y - u.y;
+            if (dx * dx + dy * dy < minSpacingSq) return true;
+        }
+        return false;
+    }
+
+    private static bool WithinAny(Vector3Int c, List<Vector3Int> targets, int radiusSq)
+    {
+        foreach (var t in targets)
+        {
+            long dx = c.x - t.x, dy = c.y - t.y;
+            if (dx * dx + dy * dy <= radiusSq) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Anchors of every placed site of an archetype. Guarantees
+    /// count: they are in result.sites by the time either fill runs.</summary>
+    private static List<Vector3Int> AnchorsOfArchetype(
+        AncientSiteResult result, SiteArchetype arch)
+    {
+        var list = new List<Vector3Int>();
+        foreach (var s in result.sites)
+            if (s.archetype == arch) list.Add(s.anchor);
+        return list;
+    }
+
+    /// <summary>The near-biased pick: samples AROUND a placed target at 0.6
+    /// to 1.0 of the near radius, in band, spacing honoured. Sampled rather
+    /// than filtered because a uniform pick filtered by distance rejects most
+    /// of the band and starves the attempt budget.</summary>
+    private static bool TryPickNear(
+        System.Random rng, List<Vector3Int> targets, int nearRadius,
+        Vector3Int centre, int inner, int outer,
+        List<Vector3Int> anchorsUsed, int minSpacingSq, out Vector3Int anchor)
+    {
+        anchor = default;
+        if (targets == null || targets.Count == 0 || nearRadius <= 0) return false;
+        long lo = (long)inner * inner, hi = (long)outer * outer;
+        for (int i = 0; i < NearSampleTries; i++)
+        {
+            var t = targets[rng.Next(targets.Count)];
+            float ang = (float)(rng.NextDouble() * 6.283185307179586);
+            float d = nearRadius * (0.6f + 0.4f * (float)rng.NextDouble());
+            var c = new Vector3Int(
+                t.x + Mathf.RoundToInt(Mathf.Cos(ang) * d),
+                t.y + Mathf.RoundToInt(Mathf.Sin(ang) * d), 0);
+            long dx = c.x - centre.x, dy = c.y - centre.y;
+            long r2 = dx * dx + dy * dy;
+            if (r2 < lo || r2 > hi) continue;
+            if (TooClose(c, anchorsUsed, minSpacingSq)) continue;
+            anchor = c;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>The symmetric excludes strip, run on every placement and once
+    /// against the guarantees. Both directions in one pass: pool plans OF the
+    /// archetype the placed plan excludes, and pool plans EXCLUDING the
+    /// archetype just placed. Stripping beats refusing at attempt time -- a
+    /// banned plan left in the pool burns attempts it can never win.</summary>
+    private static int StripExcluded(
+        SiteArchetype placedArch, AuthoredSitePlan placedAuthored,
+        List<PlanRef> poolA, List<PlanRef> poolB)
+    {
+        return StripFrom(poolA, placedArch, placedAuthored)
+             + StripFrom(poolB, placedArch, placedAuthored);
+    }
+
+    private static int StripFrom(
+        List<PlanRef> pool, SiteArchetype placedArch, AuthoredSitePlan placedAuthored)
+    {
+        if (pool == null || pool.Count == 0) return 0;
+        return pool.RemoveAll(p =>
+            (p.authored != null && p.authored.hasExcludes
+                && p.authored.excludes == placedArch)
+            || (placedAuthored != null && placedAuthored.hasExcludes
+                && p.archetype == placedAuthored.excludes));
+    }
+
+    /// <summary>Places a '@pair:' partner beside a just-placed primary.
+    ///
+    /// The partner must be ON OFFER: own pool first, then the other, and a
+    /// relation never summons a plan the floor's pools did not contain. A
+    /// found partner is REMOVED from its pool on success so the cursor cannot
+    /// serve it again before the wrap -- the same no-repeat promise the
+    /// ordered walk makes.
+    ///
+    /// The partner rides extraPlaced whichever pool it came from: authored
+    /// intent, like a guarantee, and it must not displace a rolled ruin from
+    /// the general budget. Its seat is exempt from TooClose against the
+    /// primary ALONE; in exchange it takes two tests anchor spacing no longer
+    /// covers inside a pair: footprint disjointness against the primary, and
+    /// the keep-clear test -- the '-' glyph's first consumer -- against every
+    /// placed site's keep-clear cells.
+    ///
+    /// Failure leaves the primary standing and says why on a named counter.
+    /// Unwinding a committed placement mid-fill is machinery this does not
+    /// buy: at the measured seat rate the unwound case is one to three per
+    /// two thousand seeds.</summary>
+    private static void TryPlacePartner(
+        System.Random rng, SiteFloorEntry entry, Vector3Int centre,
+        int inner, int outer, int usable,
+        AuthoredSitePlan primaryAuthored, AncientSitePlan primary,
+        List<PlanRef> ownPool, List<PlanRef> otherPool,
+        List<Vector3Int> anchorsUsed, int minSpacingSq,
+        AncientSiteResult result)
+    {
+        List<PlanRef> pool = null;
+        int idx = -1;
+        if (ownPool != null)
+            for (int i = 0; i < ownPool.Count && idx < 0; i++)
+                if (ownPool[i].archetype == primaryAuthored.pair) { pool = ownPool; idx = i; }
+        if (idx < 0 && otherPool != null)
+            for (int i = 0; i < otherPool.Count && idx < 0; i++)
+                if (otherPool[i].archetype == primaryAuthored.pair) { pool = otherPool; idx = i; }
+        if (idx < 0)
+        {
+            result.pairPartnerNotInPool++;
+            return;
+        }
+        var partner = pool[idx];
+
+        LocalPlan shape;
+        if (partner.authored != null)
+        {
+            shape = FromAuthored(partner.authored);
+        }
+        else
+        {
+            int span = Mathf.Max(8, RandomRange(rng, entry.minSpan, entry.maxSpan));
+            shape = Compose(rng, partner.archetype, partner.variant, span);
+        }
+        if (shape == null)
+        {
+            result.pairPartnerNoSeat++;
+            return;
+        }
+
+        bool rotatable = partner.authored == null || partner.authored.allowRotation;
+        var primaryGround = new HashSet<Vector3Int>(primary.cells);
+        foreach (var pc in primary.ruinsCells) primaryGround.Add(pc);
+        var keepClearAll = new HashSet<Vector3Int>();
+        foreach (var s in result.sites)
+            foreach (var kc in s.keepClearCells) keepClearAll.Add(kc);
+
+        long clampSq = (long)usable * usable;
+        long lo = (long)inner * inner, hi = (long)outer * outer;
+        int gap = Mathf.Max(2, primaryAuthored.pairGap);
+
+        for (int attempt = 0; attempt < PartnerSeatTries; attempt++)
+        {
+            float ang = (float)(rng.NextDouble() * 6.283185307179586);
+            float d = gap * (0.8f + 0.4f * (float)rng.NextDouble());
+            var seat = new Vector3Int(
+                primary.anchor.x + Mathf.RoundToInt(Mathf.Cos(ang) * d),
+                primary.anchor.y + Mathf.RoundToInt(Mathf.Sin(ang) * d), 0);
+            long bx = seat.x - centre.x, by = seat.y - centre.y;
+            long r2 = bx * bx + by * by;
+            if (r2 < lo || r2 > hi) continue;
+            if (TooCloseExcept(seat, anchorsUsed, minSpacingSq, primary.anchor)) continue;
+
+            int rot = rotatable ? rng.Next(0, 4) : 0;
+            bool mirror = rotatable && rng.Next(0, 2) == 0;
+
+            var placed = new AncientSitePlan
+            {
+                archetype = partner.archetype,
+                variant = partner.variant,
+                planName = partner.authored != null ? partner.authored.name : "",
+                anchor = seat,
+            };
+            EmitTransformed(shape.floor, seat, rot, mirror, centre, clampSq, placed.cells);
+            EmitTransformed(shape.wall, seat, rot, mirror, centre, clampSq, placed.ruinsCells);
+            EmitTransformed(shape.decor, seat, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.keepClear, seat, rot, mirror, centre, clampSq, placed.keepClearCells);
+            EmitDoorRuns(partner.authored, seat, rot, mirror, placed);
+            if (shape.heart.Count > 0)
+            {
+                var heartOut = new List<Vector3Int>();
+                EmitTransformed(shape.heart, seat, rot, mirror, centre, clampSq, heartOut);
+                if (heartOut.Count > 0)
+                {
+                    placed.heartCell = heartOut[0];
+                    placed.hasHeart = true;
+                }
+            }
+            if (placed.cells.Count < 12) continue;
+            if (CountWalkable(placed.cells) < MinWalkableCells) continue;
+
+            bool collides = false;
+            foreach (var c in placed.cells)
+                if (primaryGround.Contains(c) || keepClearAll.Contains(c)) { collides = true; break; }
+            if (!collides)
+                foreach (var c in placed.ruinsCells)
+                    if (primaryGround.Contains(c) || keepClearAll.Contains(c)) { collides = true; break; }
+            if (collides) continue;
+
+            placed.id = result.sites.Count;
+            result.sites.Add(placed);
+            anchorsUsed.Add(seat);
+            result.extraPlaced++;
+            result.pairsPlaced++;
+            pool.RemoveAt(idx);
+            result.excludedStripped += StripExcluded(
+                placed.archetype, partner.authored, ownPool, otherPool);
+            return;
+        }
+        result.pairPartnerNoSeat++;
+    }
+
     // ---- Composition -----------------------------------------------
 
     /// <summary>A plan under construction, in local cells centred on the origin.
@@ -1942,6 +2298,11 @@ public static class AncientSiteBuilder
         /// <summary>Decor cells, from 'o'. Carried so placement can emit them
         /// in world space; empty for every procedural recipe.</summary>
         public readonly HashSet<Vector2Int> decor = new HashSet<Vector2Int>();
+
+        /// <summary>Keep-clear cells, from '-'. First consumer: a pair
+        /// partner's footprint may not cover another site's keep-clear
+        /// ground; empty for every procedural recipe.</summary>
+        public readonly HashSet<Vector2Int> keepClear = new HashSet<Vector2Int>();
 
         /// <summary>Declared door cells. The lane corridor needs them: a gate is
         /// drawn '+', not '~', so a lane-only corridor has no cell at the
