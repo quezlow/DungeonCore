@@ -51,6 +51,9 @@ public class ActionBarHUD : MonoBehaviour
     [SerializeField] private Button buildTabButton;
     [SerializeField] private Button summonTabButton;
 
+    // Not serialized: cloned from a sibling at runtime by EnsureCastTab.
+    private Button castTabButton;
+
     // ── Build sub-menu ────────────────────────────────────────────
 
     [Header("Build Sub-menu")]
@@ -87,7 +90,7 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Internal state ────────────────────────────────────────────
 
-    private enum ActiveTab { None, Mine, Build, Summon, Push }
+    private enum ActiveTab { None, Mine, Build, Summon, Push, Cast }
     private ActiveTab currentTab = ActiveTab.None;
 
     /// <summary>Frame on which Esc was consumed as a cancel. The pause menu checks this
@@ -135,6 +138,10 @@ public class ActionBarHUD : MonoBehaviour
         // Sync visual state to whatever mode is already active.
         HandleModeChanged(DungeonBuildController.Instance.CurrentMode);
 
+        EnsureCastTab();
+        SpellBook.OnRosterChanged += RefreshCastTabVisibility;
+        RefreshCastTabVisibility();
+
         // Keep the tab shortcut hints (e.g. "MINE (M)") in sync with Keybinds.
         Keybinds.OnRebind += RefreshShortcutLabels;
         RefreshShortcutLabels();
@@ -145,12 +152,21 @@ public class ActionBarHUD : MonoBehaviour
         if (DungeonBuildController.Instance != null)
             DungeonBuildController.Instance.OnModeChanged -= HandleModeChanged;
         Keybinds.OnRebind -= RefreshShortcutLabels;
+        SpellBook.OnRosterChanged -= RefreshCastTabVisibility;
     }
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
         if (NameDialog.IsOpen || WarningTrapNameDialog.IsOpen) return;
+
+        // Cast mode may be ENTERED while the world is held: the picker and the
+        // radius ghost are read-only, and Call to Arms is an order, which pause
+        // has always permitted. The cast itself is gated per spell inside
+        // DungeonBuildController.HandleSpellCast (canon 38). This is why the
+        // dialog guard now runs FIRST -- typing must still swallow the key.
+        if (Keybinds.WasPressed(GameAction.Cast)) OnCastTabClicked();
+
+        if (PauseController.IsGamePaused) return;
 
         if (Keybinds.WasPressed(GameAction.Mine)) OnMineTabClicked();
         if (Keybinds.WasPressed(GameAction.Build)) OnBuildTabClicked();
@@ -353,6 +369,12 @@ public class ActionBarHUD : MonoBehaviour
                 HideMinePanel();
                 break;
 
+            case BuildMode.CastSpell:
+                currentTab = ActiveTab.Cast;
+                HideBuildPanel();
+                HideMinePanel();
+                break;
+
             case BuildMode.PlaceEntrance:
             case BuildMode.PlaceChest:
                 // Launched from the Build sub-menu — keep Build tab lit.
@@ -479,8 +501,59 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Highlight helpers ─────────────────────────────────────────
 
+    /// <summary>Toggles cast mode, mirroring the Summon tab.</summary>
+    private void OnCastTabClicked()
+    {
+        SpawnerSelectionController.Instance?.Deselect();
+        bool wasOpen = currentTab == ActiveTab.Cast;
+
+        HideBuildPanel();
+        HideMinePanel();
+
+        if (!wasOpen)
+            DungeonBuildController.Instance.SetMode(BuildMode.CastSpell);
+        else
+            DungeonBuildController.Instance.SetMode(BuildMode.None);
+    }
+
+    /// <summary>
+    /// The CAST tab is CLONED from an existing tab at runtime rather than added
+    /// to the scene. The tab row is a HorizontalLayoutGroup, and the four tab
+    /// Buttons carry no persistent onClick calls (verified against
+    /// Dungeon_Level_0 -- every listener is wired here in Start), so a clone
+    /// arrives inert and takes only the listener given to it. A scene edit
+    /// would be a manual step, and a forgotten manual step means the feature
+    /// simply is not on the bar -- the same failure the Wall entry above dodges.
+    /// </summary>
+    private void EnsureCastTab()
+    {
+        if (castTabButton != null) return;
+        var donor = summonTabButton != null ? summonTabButton : mineTabButton;
+        if (donor == null || donor.transform.parent == null) return;
+
+        castTabButton = Instantiate(donor, donor.transform.parent);
+        castTabButton.name = "CastTab";
+        castTabButton.onClick.RemoveAllListeners();   // defensive: a future Inspector wiring
+        castTabButton.onClick.AddListener(OnCastTabClicked);
+        castTabButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>The tab appears once the core holds ANY working -- not once the
+    /// Sorcery trunk is researched. A god's grant at a tier-up must be castable
+    /// by a core that never took the trunk, or the audience hands over a power
+    /// with no way to reach it.</summary>
+    private void RefreshCastTabVisibility()
+    {
+        if (castTabButton == null) return;
+        bool show = SpellBook.AnySpellKnown;
+        if (castTabButton.gameObject.activeSelf != show)
+            castTabButton.gameObject.SetActive(show);
+        if (show) SetTabLabel(castTabButton, "CAST", GameAction.Cast);
+    }
+
     private void RefreshShortcutLabels()
     {
+        SetTabLabel(castTabButton, "CAST", GameAction.Cast);
         SetTabLabel(pushTabButton, "PUSH", GameAction.Push);
         SetTabLabel(mineTabButton, "MINE", GameAction.Mine);
         SetTabLabel(buildTabButton, "BUILD", GameAction.Build);
@@ -500,6 +573,7 @@ public class ActionBarHUD : MonoBehaviour
         SetButtonColor(mineTabButton, currentTab == ActiveTab.Mine);
         SetButtonColor(buildTabButton, currentTab == ActiveTab.Build);
         SetButtonColor(summonTabButton, currentTab == ActiveTab.Summon);
+        SetButtonColor(castTabButton, currentTab == ActiveTab.Cast);
     }
 
     private void UpdateSubmenuHighlights(BuildMode activeMode)

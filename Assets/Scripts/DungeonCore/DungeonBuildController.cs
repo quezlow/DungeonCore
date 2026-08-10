@@ -23,6 +23,11 @@ public enum BuildMode
     Demolish,
     BuildWall,
     None, 
+
+    // APPENDED AFTER None deliberately. ActionBarHUD.buildEntries[].mode
+    // serialises into the scene as this enum's ORDINAL, so inserting a value
+    // anywhere earlier re-points every sub-menu entry already saved there.
+    CastSpell,
 }
 
 // Registry tier (-90). Other components subscribe to this singleton's
@@ -43,6 +48,11 @@ public class DungeonBuildController : MonoBehaviour
     public void SetSelectedFurniture(FurnitureDefinition def) => selectedFurniture = def;
     public void SetSelectedTrap(TrapDefinition def) => selectedTrap = def;
     public void SetSelectedChest(ChestDefinition def) => selectedChest = def;
+    public void SetSelectedSpell(SpellDefinition def) => selectedSpell = def;
+
+    /// <summary>The working the picker currently has chosen. Not serialized:
+    /// SpellSelectionUI pushes it on every mode entry and every roster change.</summary>
+    private SpellDefinition selectedSpell;
 
     [Header("Mana Costs")]
     [FormerlySerializedAs("claimManaCost")]
@@ -155,6 +165,10 @@ public class DungeonBuildController : MonoBehaviour
         Instance = this;
         BuildMineHighlight();
         BuildDigOverlayAssets();
+        BuildSpellGhost();
+        // Cooldowns are transient and static; a fresh scene or a load must
+        // never inherit the previous run's timers.
+        SpellBook.ClearCooldowns();
     }
 
     private void Start()
@@ -167,6 +181,7 @@ public class DungeonBuildController : MonoBehaviour
         UpdateMineHighlight();
         UpdateBuildWallGhost();
         UpdateDigQueueOverlay();
+        UpdateSpellGhost();
         if (!PauseController.IsGamePaused) ProcessDigQueue();
 
         // DAY 31 — Master pause-gate removed. Specific actions choose whether to honor
@@ -239,6 +254,12 @@ public class DungeonBuildController : MonoBehaviour
             return;
         }
 
+        // Cast mode sits ABOVE the pause gate on purpose: Call to Arms is an
+        // ORDER and orders are pause-legal, so HandleSpellCast does its own
+        // per-spell pause check (canon 38). Dropping it into the switch below
+        // would make that spell silently pause-illegal.
+        if (CurrentMode == BuildMode.CastSpell) { HandleSpellCast(); return; }
+
         // Everything below is gameplay-changing and respects pause.
         if (PauseController.IsGamePaused) return;
 
@@ -265,6 +286,14 @@ public class DungeonBuildController : MonoBehaviour
         {
             AlertsLog.Instance?.AddAlert(
                 "The shape of iron teeth is not yet remembered.",
+                DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : Vector3.zero,
+                0, AlertCategory.Discovery);
+            return;
+        }
+        if (mode == BuildMode.CastSpell && !SpellBook.AnySpellKnown)
+        {
+            AlertsLog.Instance?.AddAlert(
+                "The core remembers no workings yet.",
                 DungeonCore.Instance != null ? DungeonCore.Instance.transform.position : Vector3.zero,
                 0, AlertCategory.Discovery);
             return;
@@ -685,6 +714,151 @@ public class DungeonBuildController : MonoBehaviour
         mineHighlightGO.transform.localScale = new Vector3(cellW, cellH * n, 1f);
         mineHighlightSR.color = mineHighlightColor;
         mineHighlightSR.enabled = true;
+    }
+
+    // -- Core spells (canon 38) -----------------------------------
+
+    /// <summary>Cells a spell may be cast on: the same rule as a patrol
+    /// waypoint -- mined ground, or a revealed chamber. Deliberately NOT
+    /// "claimed": the entrance tunnel an intruder is walking down is usually
+    /// unclaimed, and that is exactly where a Lash wants to land.</summary>
+    private bool IsCellValidForSpell(Vector3Int cell) => IsCellValidForWaypoint(cell);
+
+    /// <summary>
+    /// Per-frame driver for cast mode.
+    ///
+    /// THE PAUSE RULE (canon 38): pause permits selection, navigation and
+    /// ORDERS; it forbids anything that spends mana or changes world state.
+    /// Call to Arms is an order -- the right-click Attack-Here path it rides
+    /// has always run above the pause gate -- so it carries
+    /// castableWhilePaused and casts through a held clock. Every other spell
+    /// refuses, exactly as mining, walling and placing already refuse. This
+    /// method is therefore called ABOVE the pause gate and does its own
+    /// checking; moving it into the switch below would silently make Call to
+    /// Arms pause-illegal.
+    /// </summary>
+    private void HandleSpellCast()
+    {
+        var mouse = Mouse.current;
+        if (mouse != null && mouse.rightButton.wasPressedThisFrame)
+        {
+            SetMode(BuildMode.None);
+            return;
+        }
+
+        var def = selectedSpell;
+        if (!LeftClickThisFrame(out Vector3Int cell)) return;
+
+        if (def == null) { RejectAt(cell, "No working chosen"); return; }
+
+        if (PauseController.IsGamePaused && !def.castableWhilePaused)
+        {
+            RejectAt(cell, "Not while the world is held");
+            return;
+        }
+        // Backstop for the affinity type-lock, mirroring the trap placement
+        // refusal. The picker already hides another core's signature; this
+        // catches a stale selection surviving a core change.
+        if (!SpellBook.IsAvailable(def))
+        {
+            RejectAt(cell, "The core cannot hold that working");
+            return;
+        }
+        if (!SpellBook.IsReady(def))
+        {
+            RejectAt(cell, "The working has not gathered");
+            return;
+        }
+        if (!IsCellValidForSpell(cell))
+        {
+            RejectAt(cell, "Nothing the core can reach");
+            return;
+        }
+
+        var core = DungeonCore.Instance;
+        if (core == null || core.CurrentMana < def.manaCost)
+        {
+            RejectAt(cell, "Not enough mana");
+            return;
+        }
+
+        // Resolve BEFORE billing. A cast into an empty room finds nothing, and
+        // charging mana and a cooldown for air is the kind of quiet theft that
+        // teaches a player not to use a spell at all.
+        if (!SpellCaster.Resolve(def, ActiveFloor, cell))
+        {
+            RejectAt(cell, "Nothing answers");
+            return;
+        }
+
+        core.SpendMana(def.manaCost);
+        SpellBook.StampCooldown(def);
+    }
+
+    private void BuildSpellGhost()
+    {
+        spellGhostGO = new GameObject("SpellRadiusGhost");
+        spellGhostSR = spellGhostGO.AddComponent<SpriteRenderer>();
+        spellGhostSR.sprite = GenerateDiscSprite();
+        spellGhostSR.sortingLayerName = "AdjacentHighlight";
+        spellGhostSR.sortingOrder = 99;   // just under the mine highlight
+        spellGhostSR.enabled = false;
+    }
+
+    /// <summary>A soft disc, one world unit across, generated once. The ring
+    /// pattern DungeonMonster uses for its selection highlight, filled rather
+    /// than hollow so the area a spell covers reads at a glance.</summary>
+    private static Sprite GenerateDiscSprite()
+    {
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+        float c = (size - 1) * 0.5f;
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
+                float a = d >= 1f ? 0f : Mathf.Lerp(0.16f, 0.55f, Mathf.SmoothStep(0f, 1f, d));
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+    }
+
+    /// <summary>
+    /// The radius ghost under the cursor. Unlike the mine highlight this is
+    /// deliberately NOT hidden by pause: lining a shot up against a frozen
+    /// board and then unpausing into it is the whole point of an active-pause
+    /// game, and the cast itself is still refused by HandleSpellCast.
+    /// </summary>
+    private void UpdateSpellGhost()
+    {
+        if (spellGhostSR == null) return;
+
+        var def = selectedSpell;
+        var inf = ActiveInfluence;
+        if (CurrentMode != BuildMode.CastSpell || def == null || inf == null
+            || !HoverCell(out Vector3Int hover))
+        {
+            spellGhostSR.enabled = false;
+            return;
+        }
+
+        var core = DungeonCore.Instance;
+        bool ok = IsCellValidForSpell(hover)
+                  && SpellBook.IsReady(def)
+                  && core != null && core.CurrentMana >= def.manaCost
+                  && (!PauseController.IsGamePaused || def.castableWhilePaused);
+
+        Color tint = ok
+            ? (core != null ? core.CoreColor : new Color(0.78f, 0.57f, 0.17f))
+            : new Color(0.90f, 0.25f, 0.25f);
+        tint.a = 0.42f;
+
+        spellGhostGO.transform.position = inf.CellToWorld(hover);
+        spellGhostGO.transform.localScale = new Vector3(def.radius * 2f, def.radius * 2f, 1f);
+        spellGhostSR.color = tint;
+        spellGhostSR.enabled = true;
     }
 
     // -- Build wall (canon 36) ------------------------------------

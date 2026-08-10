@@ -11,6 +11,49 @@ public class Commands : MonoBehaviour
     [Tooltip("Where along the entrance->core approach to place the wall (0 = at core, 1 = at entrance).")]
     [SerializeField, Range(0.1f, 0.9f)] private float wallApproachFraction = 0.45f;
 
+    [ContextMenu("Print Spell State")]
+    private void PrintSpellState()
+    {
+        var sb = new System.Text.StringBuilder();
+        var core = DungeonCore.Instance;
+        sb.AppendLine("[Spells] core type " + (core != null ? core.DungeonType.ToString() : "none")
+            + "; mana " + (core != null ? core.CurrentMana.ToString("0") : "-")
+            + "; any known " + SpellBook.AnySpellKnown);
+        var all = SpellBook.All;
+        if (all.Count == 0)
+            sb.AppendLine("  NO SPELL ASSETS. Run Dungeon Core -> Generate Spell Content "
+                + "-- SpellBook loads from Resources/Spells and an empty folder is silent.");
+        for (int i = 0; i < all.Count; i++)
+        {
+            var s = all[i];
+            if (s == null) continue;
+            sb.AppendLine("  " + (SpellBook.IsAvailable(s) ? "HELD    " : "withheld")
+                + "  " + s.displayName
+                + "  [" + s.effect + "]"
+                + "  affinity " + s.affinity
+                + "  key '" + s.requiredUnlockKey + "'"
+                + (string.IsNullOrEmpty(s.requiredUnlockKey)
+                    ? "" : (UnlockState.IsUnlocked(s.requiredUnlockKey) ? " (set)" : " (unset)"))
+                + "  mana " + s.manaCost.ToString("0")
+                + "  cd " + s.cooldownSeconds.ToString("0.#") + "s"
+                + (SpellBook.IsReady(s) ? " ready"
+                    : " in " + SpellBook.CooldownRemaining(s).ToString("0.#") + "s")
+                + (s.castableWhilePaused ? "  pause-legal" : ""));
+        }
+        Debug.Log(sb.ToString());
+    }
+
+    [ContextMenu("Test Toggle Sorcery Trunk (First Spark)")]
+    private void ToggleFirstSpark() => UnlockState.Toggle("tech.first_spark");
+
+    [ContextMenu("Test Toggle All Neutral Spells")]
+    private void ToggleAllNeutralSpells()
+    {
+        UnlockState.Toggle("tech.first_spark");
+        UnlockState.Toggle("tech.drawn_breath");
+        UnlockState.Toggle("tech.call_to_arms");
+    }
+
     [ContextMenu("Validate Execution Order Contract")]
     private void ValidateExecutionOrderContract()
     {

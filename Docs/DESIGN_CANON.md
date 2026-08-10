@@ -99,6 +99,7 @@ the supersession in one line.
 35. Monster Mutations (Bestiary upgrade line)
 36. Built Walls and the Sealed Way
 37. Random World Events (The World's Weather)
+38. Core Spells (Active Abilities)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -1005,9 +1006,11 @@ Status Bars unlocked (the core "remembering" its powers). UI is DK2-style:
 tree shape visible from the start as greyed icons, node names hidden until
 one prerequisite away; buried-skeleton and book-drop discoveries stay genuine
 surprises. Visible nodes show pattern requirements plus an atmospheric
-location hint. Cross-path prerequisites at higher tiers force breadth. God 1
-ascension requires a top-tier node from every path (or a super-node requiring
-all paths). Core type affinity gives a 50% discount on matching-affinity
+location hint. Cross-path prerequisites at higher tiers force breadth.
+SUPERSEDED: the Diamond 3 -> God 1 ascension was to require a top-tier node
+from every path. As built it is gated on surviving the endgame climax
+(entry 9) and reads no nodes at all, and the God audience is its ceremony
+(entry 19A). Core type affinity gives a 50% discount on matching-affinity
 nodes -- points only; pattern requirements are never discounted. Room
 upgrades gate through the existing `RoomAnchor.UpgradeGate` hook.
 
@@ -1056,7 +1059,9 @@ Sorcery stays absent), tiers are columns, prerequisite edges are elbow
 connectors drawn only when both endpoints are visible; every node reserves
 its layout slot so reveals never reflow. Node visibility is data-driven on
 `TechNodeDefinition` (Always / PatternKnown / KeyUnlocked / KillsOfClass via
-`RunStats.KillsByClass` / KillsAny via `RunStats.TotalKills`); among visible
+`RunStats.KillsByClass` / KillsAny via `RunStats.TotalKills`
+/ CoreAffinity, which shipped with the trapworks and also drops the node
+from tree layout via CanAppearThisRun); among visible
 nodes the DK2 name rule holds (revealed at one purchase away). Study
 Adventurer Anatomy is kill-revealed: KillsAny >= 1, so the first fallen
 intruder surfaces it (its Read the Coming Tide prereq still gates the
@@ -1070,7 +1075,11 @@ plus ceil days), the queued project, and full-refund cancel buttons.
 `ResearchController.OnStateChanged` is static, so the panel updates the
 moment a project starts, queues, cancels or completes; requirement-block
 reasons no longer name undiscovered patterns.
-The node roster shipped: 15 nodes (Sorcery still empty). Two faction-intel nodes join the Observation path (Study the Holy Order,
+The node roster shipped: 49 nodes across all four paths. Sorcery is no
+longer empty -- it holds the three neutral core-spell nodes (entry 38),
+and holds only those by design, because a core's own affinity working is
+given by its god rather than researched.
+Two faction-intel nodes join the Observation path (Study the Holy Order,
 Study the Mercenary Company), each KeyUnlocked-visible on an `encounter.<slug>`
 flag set from the adventurer spawn path -- the generic event-driven task hook:
 an event sets an UnlockState key, a KeyUnlocked node reveals off it, and the
@@ -6615,6 +6624,131 @@ tremor's instant gold grant is its honest reshape. An abandoned free-loot
 chest -- chests are player-placed bait feeding the Treasure-Hunter tier
 scan and the appeal loop, and a world-spawned one needs a placement solver
 while muddying a tuned economy.
+
+---
+
+## 38. Core Spells (Active Abilities)
+
+Status: PART SHIPPED. The neutral craft, the cast mode and the Sorcery
+research path are built; the six affinity workings and the divine-audience
+grant channel land in part 2 of the arc. Verified: 2026-08-10.
+
+**What a spell is.** A working cast at a cell on the active floor, acting
+over a radius, priced in mana and held back by a per-spell cooldown. The
+shape is identical across the whole roster on purpose: the power budget is
+then four dials -- radius, duration, magnitude, mana -- rather than an
+argument about which verb is stronger, exactly as the trapworks balances on
+mana / capacity / damage / cooldown. A spell whose shape has to be
+special-cased in `SpellCaster` needs its reason written into
+`SpellDefinition` alongside it.
+
+**The two channels, and the fiction that splits them.** *A core cannot
+research its god's own power; it is given.* The Sorcery research path holds
+only the NEUTRAL craft -- what any core could work out for itself. The six
+affinity workings come from the god of the core's own type, handed down at a
+tier-up audience and deepened at the two after it (entry 19A, part 2 of this
+arc). This is why the Sorcery lane is deliberately short: it is not a thin
+path, it is half a path, and the other half is not researchable by design.
+
+**The neutral trio (SHIPPED).** Lash (8 mana, 1.5s, radius 1.4): damage 12
+plus a hurl of 1.2 outward from the cell. Knit (15 mana, 6s, radius 2.2):
+heals 25 to the dungeon's own only -- a wild in the ring is very often the
+thing your monsters are fighting. Call to Arms (10 mana, no cooldown, radius
+9): every one of your monsters in the radius has its spawner given the cast
+cell as an Attack-Here target, through the shipped `SetAttackTarget` path, so
+a rallied monster reverts to its underlying order mode on arrival with no new
+order state. Rally gathers by MONSTER rather than by spawner: the spawner is
+a fixed point its occupant may be two rooms from, and that wandering garrison
+is exactly what the spell exists to call back.
+
+**Lash is not a projectile.** A travelling bolt was designed and dropped. A
+projectile needs an origin; the only sensible origin is the core; the core is
+routinely hundreds of cells from the fight, so
+`DungeonProjectile.HasLineOfSight` would refuse nearly every cast and the
+spell would read as broken. The core's will arrives where it is pointed.
+
+**Nothing is billed for air.** `SpellCaster.Resolve` returns whether it
+actually did anything, and mana and cooldown are stamped only on a true. A
+cast into an empty room is refused with feedback rather than charged.
+
+**The pause rule (this closes the pause-availability audit).** *Pause permits
+selection, navigation and ORDERS; it forbids anything that spends mana or
+changes world state.* Call to Arms is an order -- the right-click Attack-Here
+path it rides has always run above the pause gate -- so it carries an
+EXPLICIT `castableWhilePaused` toggle and casts through a held clock. Every
+other spell refuses, as mining, walling and placing already refuse. Cast mode
+may still be ENTERED while paused and the radius ghost still draws, so a shot
+can be lined up against a frozen board and unpaused into. The toggle is a
+serialized bool rather than a property derived from the effect enum, so a
+future order-spell cannot become silently pause-illegal.
+
+**Access.** `BuildMode.CastSpell`, appended AFTER `None` in the enum -- the
+scene serialises `ActionBarHUD.buildEntries[].mode` as the ORDINAL, so
+inserting anywhere earlier would re-point every existing sub-menu entry. A
+fifth CAST tab is CLONED from an existing tab button at runtime rather than
+added to the scene (the four tab Buttons carry no persistent onClick calls),
+so the whole feature costs one component drop and no Inspector wiring. The
+tab lights on `SpellBook.AnySpellKnown` rather than on the trunk node, so a
+god's grant is reachable by a core that never researched the trunk.
+
+**Content lives in Resources.** Spell assets sit in `Resources/Spells` and
+`SpellBook` loads them itself (the `WorldEventDirector` precedent) -- no
+registry asset, no Inspector drag, no empty-slot failure mode. Authored by
+Dungeon Core -> Generate Spell Content; the generator is authoritative the
+way `TechContentGenerator` is for nodes. `SpellDefinition.SpellEffect` is
+APPEND-ONLY: it serialises into the assets as an int.
+
+**Cooldowns are transient.** Kept in a static ledger stamped from `Time.time`,
+so they pause with the clock as trap cooldowns do, and are never serialised --
+the section-30 ruling that drops a mid-flight bolt and a mid-windup telegraph
+covers a half-elapsed cooldown for the same reason. Cleared from
+`DungeonBuildController.Awake` so a load never inherits stale timers.
+
+**Sorcery research spine (SHIPPED).** Three nodes. The First Spark (t1, 20
+pts / 3d, prereq Whispers of Intent -- the cross-path demand that makes
+Sorcery cost breadth), then The Drawn Breath (t2, 30 / 3, prereqs First Spark
++ Shambling Dead) and Call to Arms (t2, 25 / 2, prereqs First Spark +
+Standing Orders). The two reserved trader books are wired to the first two:
+Primer of the First Spark at 220g and The Drawn Breath at 400g, through the
+shipped `GrantNodeFully` book channel.
+
+**Costs are anchored, not chosen.** Sized against the shipped economy so the
+curve matches the trapworks: a Bronze 1 core holds 100 mana at about 1/s,
+mining granite costs 20 a cell, a wall 10, a crossbow trap 16, a fireball
+rune 22. Real at Bronze, small change by Gold -- the shape the traps already
+have.
+
+**Picker.** `SpellSelectionUI` builds itself and its own canvas at Awake (the
+`DivineAudienceUI` precedent). It does NOT search for a Canvas to parent
+under: `EntityStatusBars`, `PartyBanner` and `FloatingDamageNumber` each
+carry a world-space one, and the picker would hang off a monster and vanish
+when it died. The roster rebuilds on `SpellBook.OnRosterChanged`, so a
+completed node or a god's grant appears without a reopen.
+
+**Rejected:** a Reveal Area spell (fog is not a stored set -- `RevealTile`
+nulls a tile and a load re-derives the revealed area from claimed + mined, so
+the spell would silently re-fog on reload and would need a save field of its
+own); one `BuildMode` per spell (enum bloat -- the `PlaceTrap` +
+`SetSelectedTrap` pattern carries the whole roster on one value); a spell row
+parallel to the tabs (new layout and new highlight ownership for no gain over
+a fifth tab); cooldown-free mana-only pricing (a Diamond core holds 3840 mana
+and would machine-gun the cheap spells).
+
+**Bug fixed riding this arc.** The trader's "Whispers Set to Parchment" sold
+for 400g against `nodeKey = "tech.oracle_intent"`, but that node carries
+`overrideKey = "oracle_chamber"`, so its real key is `oracle_chamber`.
+`GetByKey` returned null, `GrantNodeFully(null)` returned silently, and
+`WanderingMerchantController.TryPurchase` had already taken the gold -- and
+because `IsOwned` tested the same dead key, the book restocked forever and
+could be bought again. Corrected to the real key. The lesson generalises:
+a book's `nodeKey` must be the node's KEY, not its id, and `overrideKey`
+makes those differ.
+
+**Key files:** `Gameplay/SpellDefinition.cs`, `Gameplay/SpellBook.cs`,
+`Gameplay/SpellCaster.cs`, `UI/SpellSelectionUI.cs`,
+`Editor/SpellContentGenerator.cs`, `DungeonCore/DungeonBuildController.cs`,
+`Data/Keybinds.cs`, `UI/ActionBarHUD.cs`, `Editor/TechContentGenerator.cs`,
+`Editor/TraderStockGenerator.cs`, `TESTING/Commands.cs`.
 
 ---
 

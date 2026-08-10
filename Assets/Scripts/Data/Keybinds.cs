@@ -16,7 +16,8 @@ public enum GameAction
     ToggleLoot, ToggleQuestLog, ToggleKnownParties, ToggleFactions, ToggleResearch,
     // Appended. Bindings persist under PREF_PREFIX + the enum NAME, not its
     // ordinal, so appending can never disturb a binding the player has set.
-    RecenterCamera
+    RecenterCamera,
+    Cast
 }
 
 /// <summary>
@@ -53,6 +54,7 @@ public static class Keybinds
         { GameAction.ToggleFactions,      Key.G },
         { GameAction.ToggleResearch,      Key.R },
         { GameAction.RecenterCamera,      Key.Home },
+        { GameAction.Cast,                Key.X },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -82,7 +84,7 @@ public static class Keybinds
         GameAction.SpeedPause, GameAction.SpeedNormal, GameAction.SpeedDouble, GameAction.SpeedQuintuple,
         GameAction.ToggleLoot, GameAction.ToggleQuestLog, GameAction.ToggleKnownParties,
         GameAction.ToggleFactions, GameAction.ToggleResearch,
-        GameAction.RecenterCamera
+        GameAction.RecenterCamera, GameAction.Cast
     };
 
     /// <summary>Display labels for the Controls list.</summary>
@@ -110,6 +112,7 @@ public static class Keybinds
         GameAction.ToggleFactions => "Toggle Factions",
         GameAction.ToggleResearch => "Toggle Research Tree",
         GameAction.RecenterCamera => "Recenter on Core",
+        GameAction.Cast => "Cast",
         _ => a.ToString()
     };
 

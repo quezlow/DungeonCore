@@ -246,6 +246,23 @@ public static class TechContentGenerator
             "The shaping, finished.",
             "The dungeon's monsters strike near a third harder, a fifth of every wound falls away, and their stride quickens a tenth. Requires the pattern of Runed Crystal.");
 
+        // -- Sorcery: the neutral craft only (canon 38) ---------------------
+        // The path is deliberately SHORT. A core's own affinity working is not
+        // researched at all -- its god hands it down at a tier-up audience --
+        // so the library holds only what any core could work out for itself.
+        // This is half a path by design, not a thin one.
+        var n_first_spark = Define("first_spark", "The First Spark", ResearchPath.Sorcery, 1, 20, 3,
+            "Something in the stone remembers being told what to do.",
+            "The core's will can be brought down at a distance. Lash may be cast.");
+
+        var n_drawn_breath = Define("drawn_breath", "The Drawn Breath", ResearchPath.Sorcery, 2, 30, 3,
+            "What was made can be made again.",
+            "Wounds close on the dungeon's own where you call. Knit may be cast.");
+
+        var n_call_to_arms = Define("call_to_arms", "Call to Arms", ResearchPath.Sorcery, 2, 25, 2,
+            "A shout the whole dark can hear.",
+            "Every creature of yours within earshot turns and comes. Call to Arms may be cast.");
+
         // Prerequisites, patterns, visibility, gates -- wired after all nodes exist.
         AddPrereq(n_wave_preview, n_status_bars);
         AddPrereq(n_known_parties, n_wave_preview);
@@ -346,12 +363,22 @@ public static class TechContentGenerator
         AddPrereq(n_mutation2, n_mutation1);
         AddPattern(n_mutation2, "RunedCrystal");
 
+        // Sorcery opens only after Observation's tier 3: the last path costs
+        // breadth to reach, which is canon 13's stated intent for cross-path
+        // prerequisites at higher tiers.
+        AddPrereq(n_first_spark, n_oracle_intent);
+        AddPrereq(n_drawn_breath, n_first_spark);
+        AddPrereq(n_drawn_breath, n_shambling_dead);
+        AddPrereq(n_call_to_arms, n_first_spark);
+        AddPrereq(n_call_to_arms, n_patrol);
+
         WireTree(new TechNodeDefinition[] { n_skeleton, n_spike_trap, n_status_bars, n_wave_preview, n_minimap, n_alerts, n_known_parties,
             n_adventurer_stats, n_oracle_intent, n_study_holy, n_study_merc, n_deeper_lairs, n_consecrant_masonry, n_halls_of_war, n_deep_foundations,
             n_shambling_dead, n_bones_in_iron, n_whisperer_in_marrow, n_barrow_oaths, n_litany_of_graves, n_vaulted_reserves, n_summoning_circle, n_drawn_circle,
             n_hall_of_trophies, n_proving_grounds, n_whispered_dread, n_coals_below, n_waiting_dark, n_scout1,n_scout2, n_scout3,
             n_patrol, n_prison, n_crossbow, n_trap_fire, n_trap_ice, n_trap_earth, n_trap_gale, n_trap_flash, n_trap_umbral,
-            n_sleep_dart, n_siphon, n_trapwright1, n_trapwright2, n_mutation1, n_mutation2 });
+            n_sleep_dart, n_siphon, n_trapwright1, n_trapwright2, n_mutation1, n_mutation2,
+            n_first_spark, n_drawn_breath, n_call_to_arms });
 
         // Gate keys on the definitions that consume them.
         PatchKey(MonsterFolder + "/MonsterDef_Skeleton.asset", "tech.skeleton");

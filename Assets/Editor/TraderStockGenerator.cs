@@ -60,7 +60,11 @@ public static class TraderStockGenerator
         // -- The six books --------------------------------------------------
         AddBook(catalog, "bk_assessor", "The Assessor's Own Ledger", "tech.known_parties", 220,
             "A guild ledger, bought or stolen. Half the names are crossed out; the ink tells you why.");
-        AddBook(catalog, "bk_whispers", "Whispers Set to Parchment", "tech.oracle_intent", 400,
+        // KEY, not id: this node carries overrideKey "oracle_chamber", so
+        // "tech.oracle_intent" resolved to nothing -- GrantNodeFully(null)
+        // returned silently AFTER TryPurchase had taken the 400g, and IsOwned
+        // tested the same dead key so the book restocked forever.
+        AddBook(catalog, "bk_whispers", "Whispers Set to Parchment", "oracle_chamber", 400,
             "Someone wrote down what the walls hear. The margins argue with the text.");
         AddBook(catalog, "bk_consecrant", "Codex of Consecrant Masonry", "tech.consecrant_masonry", 220,
             "Church stonework, annotated by someone who meant to unbuild it. The binding is iron - the requirement travels with the book.");
@@ -71,9 +75,13 @@ public static class TraderStockGenerator
         AddBook(catalog, "bk_marrow", "Whisperer in Marrow", "tech.whisperer_in_marrow", 480,
             "The book the node is named for. It arrives already open.");
 
-        // Sorcery pair reserved by name only: Primer of the First Spark,
-        // The Drawn Breath. They gain entries here if core spells are ever
-        // greenlit and their nodes exist.
+        // -- The Sorcery pair, no longer reserved (canon 38) -----------------
+        AddBook(catalog, "bk_primer", "Primer of the First Spark", "tech.first_spark", 220,
+            "A first lesson, written for something that has no hands. The diagrams "
+            + "are of a room, not a body.");
+        AddBook(catalog, "bk_breath", "The Drawn Breath", "tech.drawn_breath", 400,
+            "On the closing of wounds in things that were never quite alive. The "
+            + "author signs off mid-sentence.");
 
         EditorUtility.SetDirty(catalog);
         AssetDatabase.SaveAssets();
