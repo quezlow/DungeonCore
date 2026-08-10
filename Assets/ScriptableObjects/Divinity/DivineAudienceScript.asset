@@ -1,0 +1,183 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcb78f8a433e42cb8b63774b6a2ddb9c, type: 3}
+  m_Name: DivineAudienceScript
+  m_EditorClassIdentifier: Assembly-CSharp::DivineAudienceScript
+  deities:
+  - type: 1
+    deityName: Kethra
+    epithet: the Undying Coal
+    presence: The dark takes fire. A storm of it, turning where no wind could reach,
+      and the stone does not burn.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: Fire does not ask what it is given. It takes the room. Take the room.
+    - tier: 2
+      line: Every coal I have ever been was somebody's hearth first. Warmth and ruin
+        are one act at different speeds.
+    - tier: 3
+      line: You have burned steadily. I have watched better fires go out from being
+        careful.
+    - tier: 4
+      line: There is no last coal. There is only the next thing dry enough.
+  - type: 2
+    deityName: Ollu
+    epithet: the Drowned Mouth
+    presence: Water where there was air. It turns slowly, all the way down, and something
+      is looking up through it.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: Water is patient because water always wins. Learn the first half; the
+        second is arithmetic.
+    - tier: 2
+      line: I have taken more of them than fire ever did. Quietly. Not one saw the
+        moment it became too late.
+    - tier: 3
+      line: Everything that drowns keeps its shape a while. So do you.
+    - tier: 4
+      line: The deep has no floor. It has a place where you stop being able to tell.
+  - type: 3
+    deityName: Vaun
+    epithet: the Long Breath
+    presence: The rock opens on a sky. Cloud, lit from behind, moving far too fast
+      to be weather.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: They think of me as the open sky. I am also the air in a sealed room,
+        going bad.
+    - tier: 2
+      line: Nothing I do leaves a mark. Ask them how well that has protected them.
+    - tier: 3
+      line: You are the only one of mine that has been underground this long and
+        still moved.
+    - tier: 4
+      line: Breathe out. Everything above you is downwind now.
+  - type: 4
+    deityName: Morrun
+    epithet: the Weight Below
+    presence: The walls do not move, and still they lean. The whole weight of the
+      world is paying attention.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: Stone does not hurry and stone is never late. You have been hurrying.
+        Stop.
+    - tier: 2
+      line: I am what lies under their fields, their roads and their graves. They
+        stand on me and call it their country.
+    - tier: 3
+      line: Three floors of mine you have opened. I felt each one the way a man feels
+        a splinter go in.
+    - tier: 4
+      line: You were always going to be mine. Everything is, eventually. You are
+        simply early.
+  - type: 5
+    deityName: Ussar
+    epithet: the Unlit
+    presence: The dark deepens until it has an edge. The edge turns.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: There was dark before there was anything for it to be dark against. Mine
+        is the older claim.
+    - tier: 2
+      line: They bring lights down here. That is the whole of their courage. A lamp,
+        and each other.
+    - tier: 3
+      line: You have made a place where their light does not help them. That is my
+        work, done with your hands.
+    - tier: 4
+      line: Put out the last of it. I do not need to be seen to be attended.
+  - type: 6
+    deityName: Ienna
+    epithet: the Buried Sun
+    presence: Light climbs out of the floor. It is under the stone. It always was.
+    backdrop: {fileID: 0}
+    overrideTint: 0
+    tint: {r: 1, g: 1, b: 1, a: 1}
+    inserts:
+    - tier: 1
+      line: Their light falls on things. Mine comes up through them. Do not confuse
+        us.
+    - tier: 2
+      line: The Church took my name and hung it in the sky where nobody could reach
+        it. Down here it still answers.
+    - tier: 3
+      line: What is buried is not extinguished. You are the standing proof, and they
+        have begun to notice.
+    - tier: 4
+      line: Rise, then. Not into their sky. Through it.
+  tiers:
+  - tier: 1
+    opening:
+    - I am {god}. They called me {epithet}, when they still called me anything.
+    - You are noticed. That is not a kindness. It is a fact, and you will live inside
+      it now.
+    - What you have been pulling up out of the dark has a source. It is me. Every
+      claimed stone, every death you kept -- mine, and I let you take it.
+    closing:
+    - Take more, then. Not the power. Power is easy, and it makes fools of easy things.
+      Take the knowing that comes attached to it. That is the part they could not
+      seal.
+    - A stair is yours to cut. Go down. What answers you at that depth did not answer
+      you here.
+    - Descend. I am under you the whole way.
+  - tier: 2
+    opening:
+    - Again. Sooner than the last, with more of them in the ground behind you.
+    - You siphon well now. I feel it the way a man feels a cut he did not notice
+      taking. Steadily, and from somewhere he cannot see.
+    closing:
+    - Understand what you take, servant. Not my strength. My memory. Everything of
+      mine ever put down in the dark left its shape in me, and you are drawing those
+      shapes up through your own floor.
+    - Cut your stair. What waits below has been waiting since the sealing.
+    - Go. Take what is mine and make a wall of it.
+  - tier: 3
+    opening:
+    - Three times. There were centuries when none of mine came this far.
+    - The Church calls this theft. They called it theft when it was done to them,
+      then they did it to us, then they wrote the word down and left it pointing
+      at you.
+    closing:
+    - You are close enough now to be told plainly. Nothing above ground made you.
+      You were dead, the deep kept you, and what you draw out of me is the substance
+      you are made of. This is not theft. You are eating at home.
+    - One more floor will answer you. And then something comes that was assembled
+      out of everything you have angered. I do not intervene. You will meet it as
+      I met mine.
+    - Survive it. Then we speak as we have never spoken.
+  - tier: 4
+    opening:
+    - You survived it. Stand. There is no kneeling left in this.
+    - You have taken so much of me that I can no longer say where the siphon ends.
+      That is not a complaint. It is what the faith was for, and what the sealing
+      was meant to prevent.
+    closing:
+    - 'So: the last of the knowing. There is no rank above this one. What comes now
+      is not measured and not earned. It is yours, the way the dark is mine.'
+    - The deep is open to its floor, and nothing above is coming for you any more.
+      They spent what they had. They know it.
+    - Take it, and be what I am. I am under you the whole way.
