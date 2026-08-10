@@ -10,21 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e66b42bfa76c7249a525ff0f98d3509, type: 3}
-  m_Name: Spell_Lash
+  m_Name: Spell_CoalsWake
   m_EditorClassIdentifier: Assembly-CSharp::SpellDefinition
-  id: lash
-  displayName: Lash
-  description: The core's will, brought down where you point it. A short, graceless
-    blow that throws whatever it lands on.
+  id: coals_wake
+  displayName: The Coals Wake
+  description: Yours burn at the god's rate for a while, not their own.
   icon: {fileID: 0}
-  requiredUnlockKey: tech.first_spark
-  affinity: 0
-  manaCost: 8
-  cooldownSeconds: 1.5
-  radius: 1.4
-  durationSeconds: 0
-  magnitude: 12
-  secondary: 1.2
-  deepeningKeyBase: 
-  effect: 0
+  requiredUnlockKey: spell.coals_wake.t1
+  affinity: 1
+  manaCost: 30
+  cooldownSeconds: 14
+  radius: 3
+  durationSeconds: 8
+  magnitude: 1.35
+  secondary: 0
+  deepeningKeyBase: spell.coals_wake
+  effect: 3
   castableWhilePaused: 0

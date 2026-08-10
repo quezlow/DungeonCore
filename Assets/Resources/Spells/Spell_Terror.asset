@@ -10,21 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e66b42bfa76c7249a525ff0f98d3509, type: 3}
-  m_Name: Spell_Lash
+  m_Name: Spell_Terror
   m_EditorClassIdentifier: Assembly-CSharp::SpellDefinition
-  id: lash
-  displayName: Lash
-  description: The core's will, brought down where you point it. A short, graceless
-    blow that throws whatever it lands on.
+  id: terror
+  displayName: Terror
+  description: They brought lights because they were afraid. Confirm it for them.
   icon: {fileID: 0}
-  requiredUnlockKey: tech.first_spark
-  affinity: 0
-  manaCost: 8
-  cooldownSeconds: 1.5
-  radius: 1.4
+  requiredUnlockKey: spell.terror.t1
+  affinity: 5
+  manaCost: 34
+  cooldownSeconds: 20
+  radius: 3
   durationSeconds: 0
-  magnitude: 12
-  secondary: 1.2
-  deepeningKeyBase: 
-  effect: 0
+  magnitude: 0
+  secondary: 0
+  deepeningKeyBase: spell.terror
+  effect: 7
   castableWhilePaused: 0

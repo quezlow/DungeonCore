@@ -25,5 +25,6 @@ MonoBehaviour:
   durationSeconds: 0
   magnitude: 25
   secondary: 0
+  deepeningKeyBase: 
   effect: 1
   castableWhilePaused: 0
