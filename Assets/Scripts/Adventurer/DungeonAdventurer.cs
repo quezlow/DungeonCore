@@ -1809,20 +1809,28 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         ApplyLevelBoost(level);
     }
 
-    /// <summary>Party morale broke — this member turns and flees, unless already
-    /// retreating. Heroes and the Suicidal are filtered out by the caller.</summary>
-    public void ForceRetreat()
-    {
-        if (state == AdventurerState.Retreating) return;
-        StartRetreat();
-    }
-
-    /// <summary>Terror: turn this one round now, whatever its nerve. Returns false
-    /// when it will not break -- the Suicidal came here to die and their retreat
-    /// threshold is already -1 by ruling, and the Pinned are held rather than
-    /// free to run. Everything that DOES break leaves alive, which is the price:
-    /// no kill notoriety, their loot walks out with them, and the alignment
-    /// shift for one that left alive is applied by the usual exit path.</summary>
+    /// <summary>
+    /// Turn this one round now, whatever its nerve. Returns false when it will
+    /// not break.
+    ///
+    /// TWO CALLERS, and the guards serve them differently.
+    ///   AdventurerParty.Fracture -- party morale broke. It filters Heroes and
+    ///     the Suicidal at the call site and ignores the return.
+    ///   SpellCaster.Rout -- Terror (canon 38). It has no caller-side filter and
+    ///     needs the bool, because a working that finds nothing it can break
+    ///     must not be billed mana and a twenty-second cooldown.
+    ///
+    /// The Pinned are held rather than free to run; StartRetreat refuses them
+    /// too, so this only returns earlier. The Suicidal came here to die and
+    /// their retreat threshold is already -1 by ruling, so the guard is
+    /// redundant for the morale path (Type.Suicidal is the only source of
+    /// Goal.SeekDeath) and load-bearing for Terror.
+    ///
+    /// Everything that DOES break leaves ALIVE, which is Terror's price rather
+    /// than a flaw in it: no kill notoriety, their loot walks out with them,
+    /// and the alignment shift for one that left alive is applied by the usual
+    /// exit path.
+    /// </summary>
     public bool ForceRetreat()
     {
         if (state == AdventurerState.Retreating) return false;
