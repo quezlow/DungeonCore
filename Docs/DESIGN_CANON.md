@@ -1569,11 +1569,41 @@ the First Spark and The Drawn Breath (see entry 28A).
   resolve (Destroyer code has no chest contact point -- it would be
   unattributable hidden difficulty); chest presence feeding spawn weights
   (the Treasury attractor owns that bait; not to be revisited).
-  OPEN candidate (flagged only, not built): loot-outcome feedback into
-  Delver / Treasure Hunter spawn weights ("poor loot makes delving
-  unattractive") -- outcome history, distinct from the rejected presence
-  census; today the Delver weight is flat plus attractor bonuses and
-  reputation lifts only Pilgrim / GiftGiver.
+  The open candidate that closed this bullet is now BUILT -- see the
+  Dungeon appeal ledger bullet below.
+- *Dungeon appeal ledger:* SHIPPED. `Gameplay/DungeonAppealLedger.cs`
+  (a component beside the threat managers on AlignmentSystemController)
+  keeps a MercenaryContract-shaped rolling day window of raid outcomes
+  with ZERO new gameplay hooks: it ingests `RunStats.OnDaySummaryReady`
+  (nightly; the event skips quiet days) and rotates on
+  `DayNightCycle.OnDayStarted` -- rotation rides EVERY dawn
+  deliberately, because ingest alone would let a bloodbath window never
+  decay. Two cached shapers feed the spawner through static reads:
+  `CivilianMultiplier` = 1 - deterrence, where deterrence =
+  clamp01((deathRate - graceRate)/(1 - graceRate)) x maxDeterrence
+  (defaults: grace 0.25 -- a dungeon is supposed to be dangerous -- and
+  cap 0.6, so civilian lanes thin to 40% at total slaughter, never to
+  zero; deathRate = slain / (slain + fled + breached) over the window);
+  and `DelverAppealBonus` = min(appealCap, goldOut x appealPerGold)
+  (defaults cap 3.0, 0.02 per gold). Application in `AdventurerSpawner`:
+  the multiplier scales the Delver / Pilgrim / GiftGiver intent weights
+  AFTER base + reputation + attractor additions (multiplicative so
+  authored bases keep their proportions); the bonus adds to the Delver
+  intent stage AND the Treasure Hunter type lane, mirroring the
+  attractors' two-stage additive design (entry 15). Destroyer weights
+  and the spawn interval are untouched: notoriety owns escalation and
+  cadence, so a slaughterhouse dungeon trends hostile-but-sparser --
+  the intended self-balancing -- and two systems fighting over the
+  interval is the ambiguous-pressure trap. All four weight sites
+  (RollIntent, LikeliestIntent, RollDelverType, LikeliestType) read the
+  same statics, so WavePreviewHUD foresight stays honest. Persistence:
+  `AppealLedgerSaveData` (three int lists) via DungeonSaveController
+  beside the other threat blocks; shapers recompute on load and
+  `EnsureWindow` heals pre-ledger saves. Validated by
+  `Tools/sim_appeal_weights.py` (23 checks: direction, caps, grace
+  edge, decay-in-windowDays, zero-resolved guard); rerun it when the
+  maths changes. Diagnostics: a dawn log line whenever a shaper is
+  non-neutral, and "Print Appeal Ledger" in `Commands`.
 - *Random world events framework:* DEFERRED, to be revisited. What exists is
   three bespoke recurring threats, each its own component --
   `HolyOrderStrike`, `MercenaryContract`, `WildMonsterEvent` (entry 8).

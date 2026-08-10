@@ -16166,6 +16166,7 @@ GameObject:
   - component: {fileID: 497126104}
   - component: {fileID: 497126106}
   - component: {fileID: 497126105}
+  - component: {fileID: 847162001}
   m_Layer: 0
   m_Name: AlignmentSystemController
   m_TagString: Untagged
@@ -70136,6 +70137,23 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &847162001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497126098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37d4486a1ac64195b70c93788242b54a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonAppealLedger
+  windowDays: 3
+  graceRate: 0.25
+  maxDeterrence: 0.6
+  appealPerGold: 0.02
+  appealCap: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

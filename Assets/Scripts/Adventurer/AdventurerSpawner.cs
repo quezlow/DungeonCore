@@ -287,6 +287,12 @@ public class AdventurerSpawner : MonoBehaviour
             }
         }
 
+        // Keep in sync with RollIntent: appeal ledger shaping.
+        float civMult = DungeonAppealLedger.CivilianMultiplier;
+        wDelver = (wDelver + DungeonAppealLedger.DelverAppealBonus) * civMult;
+        wPilgrim *= civMult;
+        wGiftGiver *= civMult;
+
         PartyIntent best = PartyIntent.Delver; float bestW = wDelver;
         if (wDestroyer > bestW) { best = PartyIntent.Destroyer; bestW = wDestroyer; }
         if (wPilgrim > bestW) { best = PartyIntent.Pilgrim; bestW = wPilgrim; }
@@ -309,7 +315,8 @@ public class AdventurerSpawner : MonoBehaviour
                 {
                     float wDel = Mathf.Max(0f, weightDelver);
                     float wTH = Mathf.Max(0f, weightTreasureHunter)
-                        + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter);
+                        + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter)
+                        + DungeonAppealLedger.DelverAppealBonus;
                     return wTH > wDel ? AdventurerType.TreasureHunter : AdventurerType.Delver;
                 }
             case PartyIntent.GiftGiver:
@@ -862,6 +869,18 @@ public class AdventurerSpawner : MonoBehaviour
             }
         }
 
+        // The appeal ledger thins the civilian lanes after a bloody
+        // stretch and fattens the delve lane after a generous one.
+        // Multiplicative on the suppress side so authored bases keep
+        // their proportions; additive on the lift side per the
+        // attractor precedent. Destroyers are untouched -- notoriety
+        // owns escalation, so a slaughterhouse trends hostile-but-
+        // sparser rather than empty.
+        float civMult = DungeonAppealLedger.CivilianMultiplier;
+        wDelver = (wDelver + DungeonAppealLedger.DelverAppealBonus) * civMult;
+        wPilgrim *= civMult;
+        wGiftGiver *= civMult;
+
         float total = wDelver + wDestroyer + wPilgrim + wGiftGiver;
         if (total <= 0f) return PartyIntent.Delver;
 
@@ -915,7 +934,8 @@ public class AdventurerSpawner : MonoBehaviour
     {
         float wDel = Mathf.Max(0f, weightDelver);
         float wTH = Mathf.Max(0f, weightTreasureHunter)
-                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter);
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.TreasureHunter)
+                   + DungeonAppealLedger.DelverAppealBonus;
         float total = wDel + wTH;
         if (total <= 0f) return AdventurerType.Delver;
         float roll = Random.Range(0f, total);

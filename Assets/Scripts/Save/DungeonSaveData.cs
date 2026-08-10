@@ -102,6 +102,8 @@ public class DungeonSaveData
 
     public MercenaryContractSaveData mercenaryContract;
 
+    public AppealLedgerSaveData appealLedger;
+
     public WildMonsterEventSaveData wildMonsterEvent;
 
     public NobleRetaliationSaveData nobleRetaliation;

@@ -393,6 +393,9 @@ public class DungeonSaveController : MonoBehaviour
         if (MercenaryContract.Instance != null)
             currentSave.mercenaryContract = MercenaryContract.Instance.GetSaveData();
 
+        if (DungeonAppealLedger.Instance != null)
+            currentSave.appealLedger = DungeonAppealLedger.Instance.GetSaveData();
+
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
 
@@ -874,6 +877,7 @@ public class DungeonSaveController : MonoBehaviour
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
+            DungeonAppealLedger.Instance?.RestoreFromSave(currentSave.appealLedger);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);
             GradeSystem.Instance?.RestoreFromSave(currentSave.grade);

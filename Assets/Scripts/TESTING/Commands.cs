@@ -264,6 +264,9 @@ public class Commands : MonoBehaviour
     [ContextMenu("Print Chest Tier Stats")]
     void TestPrintChestTierStats() => ChestRegistry.PrintTierStats();
 
+    [ContextMenu("Print Appeal Ledger")]
+    void TestPrintAppealLedger() => DungeonAppealLedger.PrintAppeal();
+
     [ContextMenu("Test Anger Adventurers Guild (-25)")]
     void TestAngerGuild()
     {
