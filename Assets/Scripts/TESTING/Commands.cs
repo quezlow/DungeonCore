@@ -267,6 +267,12 @@ public class Commands : MonoBehaviour
     [ContextMenu("Print Appeal Ledger")]
     void TestPrintAppealLedger() => DungeonAppealLedger.PrintAppeal();
 
+    [ContextMenu("Print Sightseer Draw")]
+    void TestPrintSightseerDraw()
+        => Debug.Log($"[Sightseer] novel species alive: {DungeonMonster.NovelSpeciesCount}, "
+                   + $"trophy fame: {RoomEffectCensus.TrophyFame:0.0}, "
+                   + $"alignment: {(AlignmentSystem.Instance != null ? AlignmentSystem.Instance.Alignment : 0f):0.#}.");
+
     [ContextMenu("Test Anger Adventurers Guild (-25)")]
     void TestAngerGuild()
     {

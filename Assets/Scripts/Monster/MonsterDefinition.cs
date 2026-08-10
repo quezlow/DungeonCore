@@ -42,6 +42,12 @@ public class MonsterDefinition : ScriptableObject
            + "to the Boss Room by type and ignore this; sub-bosses follow it.")]
     public MonsterCategory category = MonsterCategory.Beast;
 
+    [Tooltip("A living wonder: rarity worth travelling for. Each distinct "
+           + "novel species alive adds sightseer weight (Scholar/Noble) and "
+           + "quickens arrivals, floored. Keep the flag scarce -- novelty "
+           + "saturates around three concurrent species.")]
+    public bool novel = false;
+
     [Header("Prefab")]
     public DungeonMonster prefab;
 

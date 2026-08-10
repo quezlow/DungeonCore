@@ -1604,6 +1604,44 @@ the First Spark and The Drawn Breath (see entry 28A).
   edge, decay-in-windowDays, zero-resolved guard); rerun it when the
   maths changes. Diagnostics: a dawn log line whenever a shaper is
   non-neutral, and "Print Appeal Ledger" in `Commands`.
+- *Appeal expansion:* SHIPPED (rides the appeal ledger). Four small
+  draws, all composition-side except the novelty interval shave:
+  (1) WORSHIP LEAN -- `AffinityProfiles.Roll` multiplies the affinity
+  matching `DungeonCore.DungeonType` by `worshipCoreLean` (serialized
+  3x) for WorshipCore-goal types only (Pilgrim, Cultist). Bias-only:
+  the faction gate still zeroes unlisted affinities, so a Holy Order
+  pilgrim never rolls dark even at a Dark core (0 x lean stays 0)
+  while Cultists lean freely -- the asymmetry is intended.
+  (2) NOVELTY -- `MonsterDefinition.novel` (asset flag, deliberately
+  scarce: eight authored wonders -- Leviathan, Behemoth, StormRoc,
+  Cinderwyrm, Terravore, RadiantGryphon, ChimeraSpawn, VoidMaw; the
+  Archons and the horror-types were deliberately excluded so novelty
+  stays a menagerie draw, not a tier tax). `DungeonMonster` keeps a
+  static per-species refcount of live novel monsters (a spawner's ten
+  of a kind count once); the spawner adds `scholarNoblePerNovelSpecies`
+  (0.5) per species to the Scholar and Noble lanes and shaves
+  `CurrentInterval` by `novelIntervalPerSpecies` (0.05) per species,
+  floored at `novelIntervalFloor` (x0.85) -- the camps reduction set
+  the precedent for a second bounded interval input, and the floor
+  keeps notoriety as the gate's owner.
+  (3) ALIGNMENT DRAW -- good alignment adds `alignmentToPilgrim`
+  (0.02/point above 0) to the Pilgrim lane, dark alignment adds
+  `alignmentToGiftGiver` (0.02/point below 0) to the GiftGiver lane,
+  at both intent sites BEFORE the appeal multiplier (a bloody stretch
+  suppresses even the invited). Evil-draws-Heroes was skipped:
+  crusades and the Hero notoriety gate already punish dark play.
+  (4) TROPHY FAME -- `TrophyEffectType.Fame` (ordinal 4, append-only
+  rule holds): a displayed Fame trophy's magnitude sums into
+  `RoomEffectCensus.TrophyFame` (ceiling `trophyFameMax` 2), which the
+  spawner adds to Scholar and Noble alongside novelty via one
+  `SightseerBonus()` helper at both type-roll sites. No Fame trophy
+  asset ships -- the plumbing and the authoring recipe do (Content
+  Authoring chapter 34); the asset and its sprite are an authoring
+  step. Diagnostics: "Print Sightseer Draw" in `Commands` (novel
+  species, fame, alignment). REJECTED (final): word-of-mouth per-type
+  return weighting -- redundant with the appeal ledger above, which is
+  outcome-based word-of-mouth at intent granularity; per-type would
+  need a type field on `RaidRecord` for marginal gain.
 - *Random world events framework:* DEFERRED, to be revisited. What exists is
   three bespoke recurring threats, each its own component --
   `HolyOrderStrike`, `MercenaryContract`, `WildMonsterEvent` (entry 8).

@@ -190,6 +190,40 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private MonsterDefinition wildDefinition;
     public MonsterDefinition WildDefinition => wildDefinition;
 
+    // -- Novelty registry --------------------------------------------
+    // Living wonders: distinct novel species currently alive anywhere in
+    // the dungeon. Species-distinct (a spawner's ten of a kind count
+    // once) so a menagerie, not a herd, is what draws the crowd.
+    // Consumed by AdventurerSpawner for sightseer weights and the
+    // arrival interval.
+    private static readonly Dictionary<string, int> novelAlive = new();
+    public static int NovelSpeciesCount => novelAlive.Count;
+
+    private string novelKey;
+
+    private void RegisterNovelty()
+    {
+        // Mustered monsters resolve through their spawner; wild and
+        // invader monsters carry the definition directly.
+        var def = wildDefinition != null ? wildDefinition
+            : spawner != null ? spawner.Definition : null;
+        if (def == null || !def.novel) return;
+        novelKey = def.monsterName;
+        novelAlive.TryGetValue(novelKey, out int n);
+        novelAlive[novelKey] = n + 1;
+    }
+
+    private void UnregisterNovelty()
+    {
+        if (novelKey == null) return;
+        if (novelAlive.TryGetValue(novelKey, out int n))
+        {
+            if (n <= 1) novelAlive.Remove(novelKey);
+            else novelAlive[novelKey] = n - 1;
+        }
+        novelKey = null;
+    }
+
     [Header("Aggression")]
     [Tooltip("Override the GLOBAL monster aggression for this monster only. " +
              "Leave off to follow the global toggle (wild monsters always default Aggressive). " +
@@ -296,6 +330,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         globalDamageMultiplier = sharedGlobalDamageMultiplier;
         ResolveEffectiveRegen();
+        RegisterNovelty();
         PickWanderTarget();
 
         var ndef = IsWild ? wildDefinition : spawner?.Definition;
@@ -1821,6 +1856,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         // Safety net for any teardown path that skips Die() (e.g. scene unload).
         currentFloor?.Entities?.Unregister(this);
+        UnregisterNovelty();
     }
 
     // ── IMonsterTarget ────────────────────────────────────────────

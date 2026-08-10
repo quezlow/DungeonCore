@@ -37,6 +37,9 @@ public class AffinityProfiles : ScriptableObject
     [Header("Per-faction affinity spreads (unlisted = never rolled)")]
     [SerializeField] private List<FactionAffinityProfile> factionProfiles = new();
 
+    [Tooltip("Weight multiplier on the affinity matching the core's own type, for worship-goal types (Pilgrim, Cultist). Bias only: the faction gate still zeroes unlisted affinities.")]
+    [SerializeField, Min(1f)] private float worshipCoreLean = 3f;
+
     [System.Serializable]
     public class AffinityColorEntry { public DungeonType type = DungeonType.Fire; public Color color = Color.white; }
 
@@ -72,7 +75,17 @@ public class AffinityProfiles : ScriptableObject
             if (type == AdventurerType.Hero && aff == DungeonType.Dark) { weights[i] = 0f; continue; }
             float factionW = FactionWeight(profile, aff);          // 0 if unlisted (gate)
             float classW = ClassWeight(classDef, aff);             // 1 if unlisted (bias only)
-            weights[i] = factionW * classW;
+            // Worshippers lean toward the core they came to venerate: a
+            // matching affinity multiplies, bias-only, so the faction
+            // gate still holds -- a Holy Order pilgrim never rolls dark
+            // even at a Dark core (0 x lean stays 0), while Cultists
+            // lean freely. The asymmetry is intended.
+            float coreLean = 1f;
+            if (AdventurerTypeInfo.GoalOf(type) == AdventurerGoal.WorshipCore
+                && DungeonCore.Instance != null
+                && aff == DungeonCore.Instance.DungeonType)
+                coreLean = Mathf.Max(1f, worshipCoreLean);
+            weights[i] = factionW * classW * coreLean;
             total += weights[i];
         }
 

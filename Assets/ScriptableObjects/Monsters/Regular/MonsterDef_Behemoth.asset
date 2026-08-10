@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 1
   category: 0
+  novel: 1
   prefab: {fileID: 6910478383271677086, guid: 8879cfa4e4c561f43b261d108592242a, type: 3}
   capacityCost: 160
   manaCost: 300

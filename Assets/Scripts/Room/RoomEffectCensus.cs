@@ -34,6 +34,9 @@ public class RoomEffectCensus : MonoBehaviour
     [Tooltip("Hard ceiling on summed trophy notoriety trickle (notoriety/sec).")]
     [SerializeField, Min(0f)] private float trophyNotorietyMax = 0.5f;
 
+    [Tooltip("Hard ceiling on summed trophy fame (flat Scholar + Noble spawn weight).")]
+    [SerializeField, Min(0f)] private float trophyFameMax = 2f;
+
     // -- Static read surface (safe defaults when no census exists) -----------
 
     public static int GoldCap { get; private set; } = int.MaxValue;
@@ -49,6 +52,10 @@ public class RoomEffectCensus : MonoBehaviour
 
     /// <summary>Notoriety per second from displayed trophies (a slow trickle).</summary>
     public static float NotorietyPerSecond { get; private set; }
+
+    /// <summary>Flat Scholar + Noble spawn weight from displayed Fame
+    /// trophies -- renown draws the curious. Capped by trophyFameMax.</summary>
+    public static float TrophyFame { get; private set; }
 
     /// <summary>Fires when cap, trap or mana aggregates change (HUD refresh hook).</summary>
     public static event System.Action OnCensusChanged;
@@ -184,7 +191,7 @@ public class RoomEffectCensus : MonoBehaviour
         // Trophy pass: a trophy contributes only while its cell lies in a valid
         // Trophy Hall (placed anywhere, counted only when displayed). Same
         // containment idiom as the respawn chambers above.
-        float trophyDmg = 0f, trophyMana = 0f, trophyNoto = 0f;
+        float trophyDmg = 0f, trophyMana = 0f, trophyNoto = 0f, trophyFame = 0f;
         if (hallTiles.Count > 0 && fm != null)
         {
             foreach (var floor in fm.AllFloors)
@@ -206,12 +213,14 @@ public class RoomEffectCensus : MonoBehaviour
                         case TrophyEffectType.ManaRegen: trophyMana += trophy.magnitude; break;
                         case TrophyEffectType.TrapDamage: trapBonus += trophy.magnitude; break;
                         case TrophyEffectType.Notoriety: trophyNoto += trophy.magnitude; break;
+                        case TrophyEffectType.Fame: trophyFame += trophy.magnitude; break;
                     }
                 }
             }
         }
         mana += Mathf.Min(trophyMana, trophyManaMax);
         trophyNoto = Mathf.Min(trophyNoto, trophyNotorietyMax);
+        trophyFame = Mathf.Min(trophyFame, trophyFameMax);
         float newDamageMult = 1f + Mathf.Min(trophyDmg, trophyDamageMaxBonus);
 
         float newTrapMult = 1f + Mathf.Min(trapBonus, trapDamageMaxBonus);
@@ -223,12 +232,14 @@ public class RoomEffectCensus : MonoBehaviour
                 || !Mathf.Approximately(mana, ManaRegenPerSecond)
                 || !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier)
                 || foresight != ForesightTier
-                || !Mathf.Approximately(trophyNoto, NotorietyPerSecond);
+                || !Mathf.Approximately(trophyNoto, NotorietyPerSecond)
+                || !Mathf.Approximately(trophyFame, TrophyFame);
 
         GoldCap = cap;
         TrapDamageMultiplier = newTrapMult;
         ManaRegenPerSecond = mana;
         NotorietyPerSecond = trophyNoto;
+        TrophyFame = trophyFame;
         ForesightTier = foresight;
 
         bool damageChanged = !Mathf.Approximately(newDamageMult, MonsterDamageMultiplier);

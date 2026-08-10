@@ -82,6 +82,20 @@ public class AdventurerSpawner : MonoBehaviour
     [SerializeField] private float reputationToPilgrim = 0.04f;
     [SerializeField] private float reputationToGiftGiver = 0.02f;
 
+    [Header("Alignment Draw")]
+    [Tooltip("Pilgrim weight per point of good alignment (above 0). The faithful travel to a light-leaning core.")]
+    [SerializeField] private float alignmentToPilgrim = 0.02f;
+    [Tooltip("GiftGiver weight per point of dark alignment (below 0). Cultists hear a dark core calling.")]
+    [SerializeField] private float alignmentToGiftGiver = 0.02f;
+
+    [Header("Sightseer Draw (novelty + fame)")]
+    [Tooltip("Scholar and Noble weight added per distinct novel monster species alive.")]
+    [SerializeField] private float scholarNoblePerNovelSpecies = 0.5f;
+    [Tooltip("Fractional arrival-interval reduction per distinct novel species alive.")]
+    [SerializeField] private float novelIntervalPerSpecies = 0.05f;
+    [Tooltip("Floor on the novelty interval multiplier -- spectacle quickens arrivals but never runs the gate.")]
+    [SerializeField, Range(0.5f, 1f)] private float novelIntervalFloor = 0.85f;
+
     [Header("Type Weights")]
     [Tooltip("Flat weights WITHIN each intent category. The category is rolled first " +
              "(Notoriety/Reputation scaled, above), then a type is picked here.")]
@@ -287,7 +301,10 @@ public class AdventurerSpawner : MonoBehaviour
             }
         }
 
-        // Keep in sync with RollIntent: appeal ledger shaping.
+        // Keep in sync with RollIntent: alignment + appeal shaping.
+        float align = AlignmentSystem.Instance != null ? AlignmentSystem.Instance.Alignment : 0f;
+        wPilgrim += Mathf.Max(0f, align) * alignmentToPilgrim;
+        wGiftGiver += Mathf.Max(0f, -align) * alignmentToGiftGiver;
         float civMult = DungeonAppealLedger.CivilianMultiplier;
         wDelver = (wDelver + DungeonAppealLedger.DelverAppealBonus) * civMult;
         wPilgrim *= civMult;
@@ -324,9 +341,9 @@ public class AdventurerSpawner : MonoBehaviour
             default: // Pilgrim
                 {
                     float wPil = Mathf.Max(0f, weightPilgrim) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Pilgrim);
-                    float wSch = Mathf.Max(0f, weightScholar) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar);
+                    float wSch = Mathf.Max(0f, weightScholar) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar) + SightseerBonus();
                     float wSui = Mathf.Max(0f, weightSuicidal);
-                    float wNob = Mathf.Max(0f, weightNoble) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble);
+                    float wNob = Mathf.Max(0f, weightNoble) + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble) + SightseerBonus();
                     float wIns = inspectorEnabled ? Mathf.Max(0f, weightInspector) : 0f;
 
                     AdventurerType best = AdventurerType.Pilgrim; float bestW = wPil;
@@ -574,6 +591,15 @@ public class AdventurerSpawner : MonoBehaviour
             baseInterval = Mathf.Max(
                 baseInterval * camps.GuildIntervalFloorFraction,
                 baseInterval - camps.GuildIntervalReductionSeconds);
+
+        // Living wonders draw crowds: each distinct novel species alive
+        // shaves the interval (the camps above set the precedent for a
+        // second bounded input), floored so spectacle never runs the
+        // gate -- notoriety stays the owner of cadence.
+        int novelSpecies = DungeonMonster.NovelSpeciesCount;
+        if (novelSpecies > 0)
+            baseInterval *= Mathf.Max(Mathf.Clamp01(novelIntervalFloor),
+                1f - Mathf.Max(0f, novelIntervalPerSpecies) * novelSpecies);
         return baseInterval;
     }
 
@@ -869,6 +895,14 @@ public class AdventurerSpawner : MonoBehaviour
             }
         }
 
+        // The alignment axis colours who feels invited: a good core draws
+        // the faithful, a dark one calls its cultists home. Additive
+        // beside the reputation terms; the appeal multiplier below
+        // applies after, so a bloody stretch suppresses even the invited.
+        float align = AlignmentSystem.Instance != null ? AlignmentSystem.Instance.Alignment : 0f;
+        wPilgrim += Mathf.Max(0f, align) * alignmentToPilgrim;
+        wGiftGiver += Mathf.Max(0f, -align) * alignmentToGiftGiver;
+
         // The appeal ledger thins the civilian lanes after a bloody
         // stretch and fattens the delve lane after a generous one.
         // Multiplicative on the suppress side so authored bases keep
@@ -950,15 +984,25 @@ public class AdventurerSpawner : MonoBehaviour
         return AdventurerType.Cultist;
     }
 
+    // Sightseers: living wonders and displayed fame trophies both draw
+    // the curious -- Scholars to study, Nobles to be seen having seen
+    // it. Fame is census-capped; the novelty term is bounded by the
+    // flag's deliberate scarcity (eight authored species).
+    private float SightseerBonus()
+        => DungeonMonster.NovelSpeciesCount * Mathf.Max(0f, scholarNoblePerNovelSpecies)
+         + RoomEffectCensus.TrophyFame;
+
     private AdventurerType RollPilgrimType()
     {
         float wPil = Mathf.Max(0f, weightPilgrim)
                    + RoomEffectCensus.GetAttractorBonus(AdventurerType.Pilgrim);
         float wSch = Mathf.Max(0f, weightScholar)
-                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar);
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Scholar)
+                   + SightseerBonus();
         float wSui = Mathf.Max(0f, weightSuicidal);
         float wNob = Mathf.Max(0f, weightNoble)
-                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble);
+                   + RoomEffectCensus.GetAttractorBonus(AdventurerType.Noble)
+                   + SightseerBonus();
         float wIns = inspectorEnabled ? Mathf.Max(0f, weightInspector) : 0f;
         float total = wPil + wSch + wSui + wNob + wIns;
         if (total <= 0f) return AdventurerType.Pilgrim;
