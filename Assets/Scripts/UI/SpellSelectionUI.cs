@@ -4,44 +4,61 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// The spell picker: a row of entries above the action bar, shown while
+/// The spell picker: every castable working listed at once, one entry each, so
+/// cooldowns across the whole set read at a glance mid-fight. Shown while
 /// BuildMode.CastSpell is active.
 ///
-/// SELF-BUILT, ON ITS OWN CANVAS. Every other picker in the project
-/// (TrapSelectionUI, FurnitureSelectionUI) is a hand-wired scene panel with a
-/// dozen Inspector slots, and each of those slots is a silent failure waiting
-/// to happen -- a blank reference renders an empty panel and logs nothing.
-/// This one assembles itself at Awake, the DivineAudienceUI / ScreenFlash
-/// precedent, so the whole spell feature costs one component drop and has
-/// nothing to forget.
+/// SCENE-WIRED, by design decision. The panel, the entry prefab and the
+/// container are yours to lay out; this component only fills and drives them.
+/// It follows the ActionBarHUD sub-menu idiom exactly -- instantiate the
+/// prefab per entry, set the first TMP_Text child as the label, set the second
+/// Image child as the icon if one exists -- so an entry prefab that works for
+/// the build sub-menu works here unchanged.
 ///
-/// It builds its OWN canvas rather than parenting under a found one. Searching
-/// for a Canvas would happily return a world-space per-entity canvas
-/// (EntityStatusBars, PartyBanner and FloatingDamageNumber each carry one), and
-/// the picker would then hang off a monster and vanish when it died.
+/// THE COST OF SCENE WIRING is that an unassigned slot renders an empty panel
+/// and logs nothing. That failure has cost this project test cycles before, so
+/// it is refused here: ValidateWiring names every missing slot at Awake, and
+/// Commands -> Validate Spell Picker Wiring runs the same check on demand.
 ///
-/// The roster rebuilds through SpellBook.OnRosterChanged, so a completed
-/// research node or a god's grant puts its spell on the bar without a reopen.
+/// The roster rebuilds on SpellBook.OnRosterChanged, so a completed research
+/// node or a god's grant appears without closing and reopening the panel.
 ///
-/// SCENE SETUP: drop this on any always-active object in the dungeon scene --
-/// the object carrying ActionBarHUD is the natural home. Nothing to assign.
+/// SCENE SETUP:
+///   panel           the root object to show and hide
+///   entryPrefab     one Button, INACTIVE in the scene, with a TMP_Text child
+///   entryContainer  the transform entries are instantiated under
+///   detailLabel     optional; shows the selected working's text and stats
+/// Number keys 1-9 select while the panel is open.
 /// </summary>
 public class SpellSelectionUI : MonoBehaviour
 {
     public static SpellSelectionUI Instance { get; private set; }
 
-    [Header("Colours")]
+    [Header("Wiring")]
+    [Tooltip("Root object shown while cast mode is active.")]
+    [SerializeField] private GameObject panel;
+    [Tooltip("One Button, left INACTIVE in the scene. Cloned per castable working.")]
+    [SerializeField] private Button entryPrefab;
+    [Tooltip("Transform the cloned entries are parented under.")]
+    [SerializeField] private Transform entryContainer;
+    [Tooltip("Optional. Description and stats for the selected working.")]
+    [SerializeField] private TMP_Text detailLabel;
+
+    [Header("Entry Colours")]
     [SerializeField] private Color selectedColor = new Color(0.82f, 0.68f, 0.27f, 1.00f);
     [SerializeField] private Color unselectedColor = new Color(1.00f, 1.00f, 1.00f, 0.55f);
     [SerializeField] private Color unaffordableColor = new Color(0.90f, 0.30f, 0.30f, 1.00f);
+    [Tooltip("Alpha multiplier applied while a working is still on cooldown.")]
+    [Range(0.1f, 1f)][SerializeField] private float cooldownFade = 0.4f;
+
+    [Header("Labels")]
+    [Tooltip("Shown on an entry that is ready. {name} and {mana} are substituted.")]
+    [SerializeField] private string readyFormat = "{name}  {mana}";
+    [Tooltip("Shown on an entry still gathering. {name} and {seconds} are substituted.")]
+    [SerializeField] private string cooldownFormat = "{name}  {seconds}s";
 
     private readonly List<SpellDefinition> entries = new List<SpellDefinition>();
     private readonly List<Button> buttons = new List<Button>();
-    private readonly List<TMP_Text> labels = new List<TMP_Text>();
-
-    private GameObject canvasGo;
-    private RectTransform row;
-    private TMP_Text detailLabel;
     private int selectedIndex;
     private float refreshTimer;
 
@@ -52,8 +69,8 @@ public class SpellSelectionUI : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(this); return; }
         Instance = this;
-        BuildPanel();
-        Hide();
+        ValidateWiring(true);
+        if (panel != null) panel.SetActive(false);
     }
 
     private void Start()
@@ -62,7 +79,7 @@ public class SpellSelectionUI : MonoBehaviour
             DungeonBuildController.Instance.OnModeChanged += HandleModeChanged;
         SpellBook.OnRosterChanged += HandleRosterChanged;
         Rebuild();
-        Hide();
+        if (panel != null) panel.SetActive(false);
     }
 
     private void OnDestroy()
@@ -75,117 +92,59 @@ public class SpellSelectionUI : MonoBehaviour
 
     private void Update()
     {
-        if (canvasGo == null || !canvasGo.activeSelf) return;
+        if (panel == null || !panel.activeSelf) return;
+
+        HandleNumberKeys();
+
         // Cooldown and affordability both move on their own. A quarter-second
         // repaint on UNSCALED time is cheaper than an event per mana tick, and
-        // keeps counting while the clock is stopped -- which matters because
-        // the picker stays open during pause.
+        // keeps counting while the clock is stopped -- the panel stays open
+        // during pause so a shot can be lined up against a frozen board.
         refreshTimer -= Time.unscaledDeltaTime;
         if (refreshTimer > 0f) return;
         refreshTimer = 0.25f;
         RefreshVisuals();
     }
 
-    // -- Construction --------------------------------------------------------
-
-    private void BuildPanel()
+    private void HandleNumberKeys()
     {
-        canvasGo = new GameObject("SpellPickerOverlay");
-        canvasGo.transform.SetParent(transform, false);
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        // Above the ordinary HUD, well below ScreenFlash (32760) and the divine
-        // audience (32761): a god must still be able to black this out.
-        canvas.sortingOrder = 200;
+        var kb = UnityEngine.InputSystem.Keyboard.current;
+        if (kb == null) return;
+        if (NameDialog.IsOpen || WarningTrapNameDialog.IsOpen) return;
 
-        var scaler = canvasGo.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-
-        // Without a raycaster the entry buttons take no clicks AND the build
-        // controller's IsPointerOverGameObject guard cannot see the panel, so a
-        // click meant for a button would also cast a spell on the floor beneath it.
-        canvasGo.AddComponent<GraphicRaycaster>();
-
-        var panel = new GameObject("Panel", typeof(RectTransform));
-        panel.transform.SetParent(canvasGo.transform, false);
-        var prt = (RectTransform)panel.transform;
-        prt.anchorMin = new Vector2(0.5f, 0f);
-        prt.anchorMax = new Vector2(0.5f, 0f);
-        prt.pivot = new Vector2(0.5f, 0f);
-        prt.anchoredPosition = new Vector2(0f, 150f);
-        prt.sizeDelta = new Vector2(900f, 130f);
-
-        var bg = panel.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.05f, 0.10f, 0.85f);
-        bg.raycastTarget = true;
-
-        var rowGo = new GameObject("Row", typeof(RectTransform));
-        rowGo.transform.SetParent(panel.transform, false);
-        row = (RectTransform)rowGo.transform;
-        row.anchorMin = new Vector2(0f, 1f);
-        row.anchorMax = new Vector2(1f, 1f);
-        row.pivot = new Vector2(0.5f, 1f);
-        row.anchoredPosition = new Vector2(0f, -8f);
-        row.sizeDelta = new Vector2(-20f, 46f);
-
-        var layout = rowGo.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = 8f;
-        layout.childAlignment = TextAnchor.MiddleCenter;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = true;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-
-        detailLabel = MakeLabel(panel.transform, "Detail", 20f);
-        var drt = detailLabel.rectTransform;
-        drt.anchorMin = new Vector2(0f, 0f);
-        drt.anchorMax = new Vector2(1f, 0f);
-        drt.pivot = new Vector2(0.5f, 0f);
-        drt.anchoredPosition = new Vector2(0f, 8f);
-        drt.sizeDelta = new Vector2(-28f, 64f);
-        detailLabel.alignment = TextAlignmentOptions.TopLeft;
-        detailLabel.color = new Color(0.86f, 0.84f, 0.80f, 1f);
-
-        canvasGo.SetActive(false);
+        var keys = new[]
+        {
+            UnityEngine.InputSystem.Key.Digit1, UnityEngine.InputSystem.Key.Digit2,
+            UnityEngine.InputSystem.Key.Digit3, UnityEngine.InputSystem.Key.Digit4,
+            UnityEngine.InputSystem.Key.Digit5, UnityEngine.InputSystem.Key.Digit6,
+            UnityEngine.InputSystem.Key.Digit7, UnityEngine.InputSystem.Key.Digit8,
+            UnityEngine.InputSystem.Key.Digit9,
+        };
+        for (int i = 0; i < keys.Length && i < entries.Count; i++)
+            if (kb[keys[i]].wasPressedThisFrame) { Select(i); return; }
     }
 
-    private static TMP_Text MakeLabel(Transform parent, string name, float size)
+    // -- Wiring validation ---------------------------------------------------
+
+    /// <summary>Names every unassigned slot. A scene-wired panel with a blank
+    /// reference renders empty and reports nothing, which is the exact failure
+    /// this project has paid test cycles for; this refuses to be silent.
+    /// Returns null when the wiring is whole.</summary>
+    public string ValidateWiring(bool logIfBroken)
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.fontSize = size;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.raycastTarget = false;
-        tmp.text = string.Empty;
-        return tmp;
-    }
+        var faults = new List<string>();
+        if (panel == null) faults.Add("panel is not assigned -- the picker can never show.");
+        if (entryPrefab == null) faults.Add("entryPrefab is not assigned -- no entries can be made.");
+        else if (entryPrefab.GetComponentInChildren<TMP_Text>(true) == null)
+            faults.Add("entryPrefab has no TMP_Text child -- entries will be unlabelled.");
+        if (entryContainer == null) faults.Add("entryContainer is not assigned -- entries have nowhere to go.");
+        if (detailLabel == null) faults.Add("detailLabel is not assigned (optional -- no description will show).");
 
-    private Button MakeEntryButton()
-    {
-        var go = new GameObject("SpellEntry", typeof(RectTransform));
-        go.transform.SetParent(row, false);
-        var img = go.AddComponent<Image>();
-        img.color = unselectedColor;
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
-
-        var le = go.AddComponent<LayoutElement>();
-        le.minWidth = 130f;
-        le.preferredHeight = 40f;
-
-        var label = MakeLabel(go.transform, "Label", 20f);
-        var lrt = label.rectTransform;
-        lrt.anchorMin = Vector2.zero;
-        lrt.anchorMax = Vector2.one;
-        lrt.offsetMin = new Vector2(6f, 3f);
-        lrt.offsetMax = new Vector2(-6f, -3f);
-        label.color = new Color(0.06f, 0.05f, 0.02f, 1f);
-        labels.Add(label);
-
-        return btn;
+        if (faults.Count == 0) return null;
+        string report = "[SpellSelectionUI] wiring incomplete on '" + name + "':\n  "
+                      + string.Join("\n  ", faults);
+        if (logIfBroken) Debug.LogWarning(report);
+        return report;
     }
 
     // -- Roster --------------------------------------------------------------
@@ -203,20 +162,38 @@ public class SpellSelectionUI : MonoBehaviour
 
     private void Rebuild()
     {
-        if (row == null) return;
-
         for (int i = 0; i < buttons.Count; i++)
             if (buttons[i] != null) Destroy(buttons[i].gameObject);
         buttons.Clear();
-        labels.Clear();
 
         SpellBook.FillAvailable(entries);
         selectedIndex = Mathf.Clamp(selectedIndex, 0, Mathf.Max(0, entries.Count - 1));
 
+        if (entryPrefab == null || entryContainer == null)
+        {
+            RefreshVisuals();
+            PushSelection();
+            return;
+        }
+
         for (int i = 0; i < entries.Count; i++)
         {
-            var btn = MakeEntryButton();
-            int captured = i;                       // avoid the closure-capture bug
+            var def = entries[i];
+            Button btn = Instantiate(entryPrefab, entryContainer);
+            btn.gameObject.SetActive(true);
+            btn.name = "SpellEntry_" + (def != null ? def.id : i.ToString());
+
+            // A clone carries the prefab's Inspector-wired onClick with it, and
+            // the build sub-menu prefab is shared -- so clear before adding.
+            btn.onClick.RemoveAllListeners();
+
+            if (def != null && def.icon != null)
+            {
+                var images = btn.GetComponentsInChildren<Image>(true);
+                if (images.Length > 1) images[1].sprite = def.icon;
+            }
+
+            int captured = i;                        // avoid the closure-capture bug
             btn.onClick.AddListener(() => Select(captured));
             buttons.Add(btn);
         }
@@ -246,23 +223,25 @@ public class SpellSelectionUI : MonoBehaviour
 
             bool ready = SpellBook.IsReady(def);
             bool afford = mana >= def.manaCost;
+            float left = SpellBook.CooldownRemaining(def);
 
-            var img = btn.GetComponent<Image>();
+            var img = btn.targetGraphic as Image;
+            if (img == null) img = btn.GetComponent<Image>();
             if (img != null)
             {
                 Color c = !afford ? unaffordableColor
                         : (i == selectedIndex ? selectedColor : unselectedColor);
-                if (!ready) c.a *= 0.4f;
+                if (!ready) c.a *= cooldownFade;
                 img.color = c;
             }
 
-            if (i < labels.Count && labels[i] != null)
-            {
-                float left = SpellBook.CooldownRemaining(def);
-                labels[i].text = left > 0.05f
-                    ? def.displayName + "  " + left.ToString("0.#") + "s"
-                    : def.displayName + "  " + def.manaCost.ToString("0");
-            }
+            var label = btn.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+                label.text = left > 0.05f
+                    ? cooldownFormat.Replace("{name}", def.displayName)
+                                    .Replace("{seconds}", left.ToString("0.#"))
+                    : readyFormat.Replace("{name}", def.displayName)
+                                 .Replace("{mana}", def.manaCost.ToString("0"));
         }
 
         if (detailLabel != null)
@@ -270,7 +249,7 @@ public class SpellSelectionUI : MonoBehaviour
             var d = Current;
             detailLabel.text = d == null
                 ? "The core remembers no workings yet."
-                : d.description + "\n" + d.StatLine().Replace("\n", "    ");
+                : d.description + "\n" + d.StatLine();
         }
     }
 
@@ -278,19 +257,12 @@ public class SpellSelectionUI : MonoBehaviour
 
     private void HandleModeChanged(BuildMode mode)
     {
-        if (mode == BuildMode.CastSpell) { Show(); PushSelection(); }
-        else Hide();
-    }
-
-    private void Show()
-    {
-        if (canvasGo == null) return;
-        canvasGo.SetActive(true);
-        RefreshVisuals();
-    }
-
-    private void Hide()
-    {
-        if (canvasGo != null) canvasGo.SetActive(false);
+        if (mode == BuildMode.CastSpell)
+        {
+            if (panel != null) panel.SetActive(true);
+            RefreshVisuals();
+            PushSelection();
+        }
+        else if (panel != null) panel.SetActive(false);
     }
 }

@@ -30,6 +30,14 @@ public class SpellDefinition : ScriptableObject
         Lash = 0,       // burst at the cell: damage plus a hurl outward
         Knit = 1,       // heal the dungeon's own monsters in the radius
         Rally = 2,      // every spawner in the radius retargets on the cell
+
+        // -- The six affinity workings. APPENDED, never reordered. --
+        BoonDamage = 3,   // Fire  -- yours strike harder
+        Pull = 4,         // Water -- theirs are dragged to the cell
+        BoonArmour = 5,   // Earth -- yours take less
+        BoonHaste = 6,    // Air   -- yours move and swing faster
+        Rout = 7,         // Dark  -- theirs turn and run
+        Vulnerable = 8,   // Light -- theirs take more from everything
     }
 
     [Header("Identity")]
@@ -79,6 +87,14 @@ public class SpellDefinition : ScriptableObject
     [Tooltip("Secondary dial. Lash: the hurl distance. Unused elsewhere.")]
     public float secondary = 1.2f;
 
+    [Tooltip("Base key for the god's deepening grants, e.g. 'spell.coals_wake'. "
+             + "EMPTY means the working never deepens -- an explicit blank rather "
+             + "than a magic tier number, so 'not filled in' cannot masquerade as "
+             + "'tier one forever'. With it set, the tier is 3 when <base>.t3 is "
+             + "unlocked, 2 at <base>.t2, else 1. Deepening widens radius and "
+             + "lengthens duration ONLY -- never magnitude.")]
+    public string deepeningKeyBase = "";
+
     [Header("Behaviour")]
     public SpellEffect effect = SpellEffect.Lash;
 
@@ -89,23 +105,58 @@ public class SpellDefinition : ScriptableObject
              "from the effect enum would make a future order-spell silently pause-illegal.")]
     public bool castableWhilePaused = false;
 
-    /// <summary>One-line stats for the picker. Mirrors TrapDefinition.GetStatLines.</summary>
+    /// <summary>One-line stats for the picker. Mirrors TrapDefinition.GetStatLines.
+    /// Reads the EFFECTIVE radius and duration, not the authored ones -- after a
+    /// god deepens a working the picker must show what it now does, not what it
+    /// shipped as.</summary>
     public string StatLine()
     {
+        float r = SpellBook.EffectiveRadius(this);
+        float dur = SpellBook.EffectiveDuration(this);
+        int tier = SpellBook.TierOf(this);
+        string deep = tier > 1 ? "\nDeepened " + tier + "/3" : "";
         switch (effect)
         {
             case SpellEffect.Lash:
-                return "Damage " + magnitude.ToString("0") + " (radius " + radius.ToString("0.#")
+                return "Damage " + magnitude.ToString("0") + " (radius " + r.ToString("0.#")
                      + ")\nHurl " + secondary.ToString("0.#")
-                     + "\nCooldown " + cooldownSeconds.ToString("0.#") + "s";
+                     + "\nCooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
             case SpellEffect.Knit:
-                return "Heals " + magnitude.ToString("0") + " (radius " + radius.ToString("0.#")
-                     + ")\nCooldown " + cooldownSeconds.ToString("0.#") + "s";
+                return "Heals " + magnitude.ToString("0") + " (radius " + r.ToString("0.#")
+                     + ")\nCooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
             case SpellEffect.Rally:
-                return "Radius " + radius.ToString("0.#")
-                     + "\nCooldown " + cooldownSeconds.ToString("0.#") + "s";
+                return "Radius " + r.ToString("0.#")
+                     + "\nCooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.BoonDamage:
+                return "Yours strike +" + Pct(magnitude) + " for " + dur.ToString("0.#") + "s"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.BoonHaste:
+                return "Yours move and swing +" + Pct(magnitude) + " for " + dur.ToString("0.#") + "s"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.BoonArmour:
+                return "Yours take -" + Pct(2f - magnitude) + " for " + dur.ToString("0.#") + "s"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.Vulnerable:
+                return "Theirs take +" + Pct(magnitude) + " for " + dur.ToString("0.#") + "s"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.Pull:
+                return "Drags them " + secondary.ToString("0.#") + " toward the mark"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.Rout:
+                return "Theirs turn and run"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
             default:
-                return "Radius " + radius.ToString("0.#");
+                return "Radius " + r.ToString("0.#") + deep;
         }
     }
+
+    /// <summary>A multiplier as the percentage change it represents: 1.35 -> "35%".</summary>
+    private static string Pct(float multiplier)
+        => Mathf.RoundToInt(Mathf.Abs(multiplier - 1f) * 100f).ToString() + "%";
 }

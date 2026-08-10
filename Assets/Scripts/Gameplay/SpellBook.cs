@@ -111,6 +111,30 @@ public static class SpellBook
         }
     }
 
+    // -- Deepening (the god's later grants) ----------------------------------
+
+    // Radius and duration ONLY. A god's hand reaching further reads as a god;
+    // a bigger damage number reads as a stat bump, and it would also mean
+    // retuning the whole affinity roster three times over instead of once.
+    private static readonly float[] TierRadius = { 1f, 1f, 1.25f, 1.5f };
+    private static readonly float[] TierDuration = { 1f, 1f, 1.3f, 1.6f };
+
+    /// <summary>1, 2 or 3. Always 1 for a working with no deepeningKeyBase --
+    /// the neutral craft never deepens, because nobody grants it.</summary>
+    public static int TierOf(SpellDefinition def)
+    {
+        if (def == null || string.IsNullOrEmpty(def.deepeningKeyBase)) return 1;
+        if (UnlockState.IsUnlocked(def.deepeningKeyBase + ".t3")) return 3;
+        if (UnlockState.IsUnlocked(def.deepeningKeyBase + ".t2")) return 2;
+        return 1;
+    }
+
+    public static float EffectiveRadius(SpellDefinition def)
+        => def == null ? 0f : def.radius * TierRadius[TierOf(def)];
+
+    public static float EffectiveDuration(SpellDefinition def)
+        => def == null ? 0f : def.durationSeconds * TierDuration[TierOf(def)];
+
     // -- Cooldowns -----------------------------------------------------------
 
     public static bool IsReady(SpellDefinition def)

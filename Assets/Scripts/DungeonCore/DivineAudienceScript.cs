@@ -37,6 +37,17 @@ public class DivineAudienceScript : ScriptableObject
     {
         public LevelTier tier;
         [TextArea] public string line;
+
+        [Tooltip("Optional. UnlockState key this god sets when it speaks this tier. "
+                 + "The grant is authored BESIDE the words that announce it so the two "
+                 + "cannot drift apart -- entry 19A's rule, and the reason there is no "
+                 + "second list of grants anywhere. Empty = this tier grants nothing.")]
+        public string grantsUnlockKey = "";
+
+        [Tooltip("Spoken directly after the god's own line, naming what was just "
+                 + "handed over in the god's own voice. Empty = nothing is said, which "
+                 + "is correct only when grantsUnlockKey is empty too.")]
+        [TextArea] public string grantLine;
     }
 
     [Serializable]
@@ -66,6 +77,23 @@ public class DivineAudienceScript : ScriptableObject
             if (inserts == null) return null;
             for (int i = 0; i < inserts.Length; i++)
                 if (inserts[i] != null && inserts[i].tier == tier) return inserts[i].line;
+            return null;
+        }
+
+        public string GrantLineFor(LevelTier tier)
+        {
+            if (inserts == null) return null;
+            for (int i = 0; i < inserts.Length; i++)
+                if (inserts[i] != null && inserts[i].tier == tier) return inserts[i].grantLine;
+            return null;
+        }
+
+        /// <summary>The unlock key this god hands over at a tier, or null.</summary>
+        public string GrantKeyFor(LevelTier tier)
+        {
+            if (inserts == null) return null;
+            for (int i = 0; i < inserts.Length; i++)
+                if (inserts[i] != null && inserts[i].tier == tier) return inserts[i].grantsUnlockKey;
             return null;
         }
     }
@@ -133,6 +161,9 @@ public class DivineAudienceScript : ScriptableObject
         string own = god.LineFor(tier);
         if (!string.IsNullOrEmpty(own)) beats.Add(new Beat { text = Fill(own, god) });
 
+        string grant = god.GrantLineFor(tier);
+        if (!string.IsNullOrEmpty(grant)) beats.Add(new Beat { text = Fill(grant, god) });
+
         if (script.closing != null)
             for (int i = 0; i < script.closing.Length; i++)
                 if (!string.IsNullOrEmpty(script.closing[i]))
@@ -179,6 +210,24 @@ public class DivineAudienceScript : ScriptableObject
             for (int t = 0; t < AudienceTiers.Length; t++)
                 if (string.IsNullOrEmpty(god.LineFor(AudienceTiers[t])))
                     faults.Add(wanted[i] + ": no line for " + AudienceTiers[t] + ".");
+
+            // Silver grants the affinity working; Gold and Diamond deepen it; the
+            // God audience grants nothing, being the ascension ceremony. A missing
+            // grant is a working the player silently never receives, which is the
+            // same class of fault as a missing line and is treated the same way.
+            var granting = new LevelTier[] { LevelTier.Silver, LevelTier.Gold, LevelTier.Diamond };
+            for (int t = 0; t < granting.Length; t++)
+            {
+                string key = god.GrantKeyFor(granting[t]);
+                if (string.IsNullOrEmpty(key))
+                    faults.Add(wanted[i] + ": no grant key at " + granting[t] + ".");
+                else if (!key.StartsWith("spell."))
+                    faults.Add(wanted[i] + ": grant key '" + key + "' at " + granting[t]
+                             + " does not begin 'spell.' -- SpellDefinition.deepeningKeyBase "
+                             + "will never match it.");
+                if (string.IsNullOrEmpty(god.GrantLineFor(granting[t])))
+                    faults.Add(wanted[i] + ": grant at " + granting[t] + " is silent.");
+            }
         }
 
         for (int t = 0; t < AudienceTiers.Length; t++)
@@ -211,11 +260,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "Fire does not ask what it is given. It takes the room. Take the room." },
+                        line = "Fire does not ask what it is given. It takes the room. Take the room." ,
+                        grantsUnlockKey = "spell.coals_wake.t1",
+                        grantLine = "Take a handful of me. Put it in your creatures and they will hit like something falling." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "Every coal I have ever been was somebody's hearth first. Warmth and ruin are one act at different speeds." },
+                        line = "Every coal I have ever been was somebody's hearth first. Warmth and ruin are one act at different speeds." ,
+                        grantsUnlockKey = "spell.coals_wake.t2",
+                        grantLine = "Wider, now. What I gave you was a handful. This is an armful." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "You have burned steadily. I have watched better fires go out from being careful." },
+                        line = "You have burned steadily. I have watched better fires go out from being careful." ,
+                        grantsUnlockKey = "spell.coals_wake.t3",
+                        grantLine = "Everything inside that ring burns at my rate now. Not yours. Mine." },
                     new Insert { tier = LevelTier.God,
                         line = "There is no last coal. There is only the next thing dry enough." },
                 },
@@ -229,11 +284,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "Water is patient because water always wins. Learn the first half; the second is arithmetic." },
+                        line = "Water is patient because water always wins. Learn the first half; the second is arithmetic." ,
+                        grantsUnlockKey = "spell.undertow.t1",
+                        grantLine = "There is a pull under every still water. It is yours. Gather them where you want them." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "I have taken more of them than fire ever did. Quietly. Not one saw the moment it became too late." },
+                        line = "I have taken more of them than fire ever did. Quietly. Not one saw the moment it became too late." ,
+                        grantsUnlockKey = "spell.undertow.t2",
+                        grantLine = "Reach further out. Nothing standing in water has ever chosen where it stood." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "Everything that drowns keeps its shape a while. So do you." },
+                        line = "Everything that drowns keeps its shape a while. So do you." ,
+                        grantsUnlockKey = "spell.undertow.t3",
+                        grantLine = "The whole room is my current. Point, and they arrive." },
                     new Insert { tier = LevelTier.God,
                         line = "The deep has no floor. It has a place where you stop being able to tell." },
                 },
@@ -247,11 +308,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "They think of me as the open sky. I am also the air in a sealed room, going bad." },
+                        line = "They think of me as the open sky. I am also the air in a sealed room, going bad." ,
+                        grantsUnlockKey = "spell.second_wind.t1",
+                        grantLine = "Give them my breath. They will move like weather and be gone before the blow lands." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "Nothing I do leaves a mark. Ask them how well that has protected them." },
+                        line = "Nothing I do leaves a mark. Ask them how well that has protected them." ,
+                        grantsUnlockKey = "spell.second_wind.t2",
+                        grantLine = "Longer. Air does not tire. Only the things carrying it do." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "You are the only one of mine that has been underground this long and still moved." },
+                        line = "You are the only one of mine that has been underground this long and still moved." ,
+                        grantsUnlockKey = "spell.second_wind.t3",
+                        grantLine = "They will run on me until I say otherwise. I will not say otherwise." },
                     new Insert { tier = LevelTier.God,
                         line = "Breathe out. Everything above you is downwind now." },
                 },
@@ -265,11 +332,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "Stone does not hurry and stone is never late. You have been hurrying. Stop." },
+                        line = "Stone does not hurry and stone is never late. You have been hurrying. Stop." ,
+                        grantsUnlockKey = "spell.root_the_stone.t1",
+                        grantLine = "Set them in me. What is rooted in stone does not much care what is swung at it." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "I am what lies under their fields, their roads and their graves. They stand on me and call it their country." },
+                        line = "I am what lies under their fields, their roads and their graves. They stand on me and call it their country." ,
+                        grantsUnlockKey = "spell.root_the_stone.t2",
+                        grantLine = "Deeper. I have held mountains up. Your creatures are a small ask." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "Three floors of mine you have opened. I felt each one the way a man feels a splinter go in." },
+                        line = "Three floors of mine you have opened. I felt each one the way a man feels a splinter go in." ,
+                        grantsUnlockKey = "spell.root_the_stone.t3",
+                        grantLine = "Anything standing in that ground is standing on me. Let them try to move it." },
                     new Insert { tier = LevelTier.God,
                         line = "You were always going to be mine. Everything is, eventually. You are simply early." },
                 },
@@ -283,11 +356,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "There was dark before there was anything for it to be dark against. Mine is the older claim." },
+                        line = "There was dark before there was anything for it to be dark against. Mine is the older claim." ,
+                        grantsUnlockKey = "spell.terror.t1",
+                        grantLine = "They brought lights down here because they are afraid. Confirm it for them, and they will run." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "They bring lights down here. That is the whole of their courage. A lamp, and each other." },
+                        line = "They bring lights down here. That is the whole of their courage. A lamp, and each other." ,
+                        grantsUnlockKey = "spell.terror.t2",
+                        grantLine = "Further out. A man who runs tells the men beside him why." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "You have made a place where their light does not help them. That is my work, done with your hands." },
+                        line = "You have made a place where their light does not help them. That is my work, done with your hands." ,
+                        grantsUnlockKey = "spell.terror.t3",
+                        grantLine = "Whole companies, now. They will not remember what turned them. Only that it did." },
                     new Insert { tier = LevelTier.God,
                         line = "Put out the last of it. I do not need to be seen to be attended." },
                 },
@@ -301,11 +380,17 @@ public class DivineAudienceScript : ScriptableObject
                 inserts = new[]
                 {
                     new Insert { tier = LevelTier.Silver,
-                        line = "Their light falls on things. Mine comes up through them. Do not confuse us." },
+                        line = "Their light falls on things. Mine comes up through them. Do not confuse us." ,
+                        grantsUnlockKey = "spell.buried_sun.t1",
+                        grantLine = "Light shows a thing as it truly is. Show them, and every blow after finds the seam." },
                     new Insert { tier = LevelTier.Gold,
-                        line = "The Church took my name and hung it in the sky where nobody could reach it. Down here it still answers." },
+                        line = "The Church took my name and hung it in the sky where nobody could reach it. Down here it still answers." ,
+                        grantsUnlockKey = "spell.buried_sun.t2",
+                        grantLine = "Wider. There is no standing at the edge of what I illuminate." },
                     new Insert { tier = LevelTier.Diamond,
-                        line = "What is buried is not extinguished. You are the standing proof, and they have begun to notice." },
+                        line = "What is buried is not extinguished. You are the standing proof, and they have begun to notice." ,
+                        grantsUnlockKey = "spell.buried_sun.t3",
+                        grantLine = "Nothing in that light is hidden from anything of yours. Nothing." },
                     new Insert { tier = LevelTier.God,
                         line = "Rise, then. Not into their sky. Through it." },
                 },

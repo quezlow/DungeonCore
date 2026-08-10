@@ -861,7 +861,10 @@ public class DungeonBuildController : MonoBehaviour
         tint.a = 0.42f;
 
         spellGhostGO.transform.position = inf.CellToWorld(hover);
-        spellGhostGO.transform.localScale = new Vector3(def.radius * 2f, def.radius * 2f, 1f);
+        // Effective, not authored: after a god deepens a working the ghost must
+        // show the area it now covers or every cast is aimed at a lie.
+        float ghostR = SpellBook.EffectiveRadius(def);
+        spellGhostGO.transform.localScale = new Vector3(ghostR * 2f, ghostR * 2f, 1f);
         spellGhostSR.color = tint;
         spellGhostSR.enabled = true;
     }

@@ -42,6 +42,15 @@ public static class SpellCaster
             case SpellDefinition.SpellEffect.Lash: return Lash(def, floor, at);
             case SpellDefinition.SpellEffect.Knit: return Knit(def, floor, at);
             case SpellDefinition.SpellEffect.Rally: return Rally(def, floor, cell, at);
+            case SpellDefinition.SpellEffect.BoonDamage:
+                return Boon(def, floor, at, MonsterBoons.BoonKind.Damage);
+            case SpellDefinition.SpellEffect.BoonHaste:
+                return Boon(def, floor, at, MonsterBoons.BoonKind.Speed);
+            case SpellDefinition.SpellEffect.BoonArmour:
+                return Boon(def, floor, at, MonsterBoons.BoonKind.DamageTaken);
+            case SpellDefinition.SpellEffect.Pull: return Pull(def, floor, at);
+            case SpellDefinition.SpellEffect.Rout: return Rout(def, floor, at);
+            case SpellDefinition.SpellEffect.Vulnerable: return Vulnerable(def, floor, at);
             default: return false;
         }
     }
@@ -53,7 +62,7 @@ public static class SpellCaster
         int struck = 0;
         float dmg = def.magnitude;
 
-        floor.Entities.WithinRadius(at, def.radius, advBuf);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), advBuf);
         for (int i = 0; i < advBuf.Count; i++)
         {
             var a = advBuf[i];
@@ -68,7 +77,7 @@ public static class SpellCaster
             struck++;
         }
 
-        floor.Entities.WithinRadius(at, def.radius, monBuf, x => x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => x.IsWild);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];
@@ -91,7 +100,7 @@ public static class SpellCaster
         int healed = 0;
         // The dungeon's own only. A wild in the ring is very often the thing
         // your monsters are fighting.
-        floor.Entities.WithinRadius(at, def.radius, monBuf, x => !x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];
@@ -101,6 +110,97 @@ public static class SpellCaster
             healed++;
         }
         return healed > 0;
+    }
+
+    // -- Boons: Fire, Earth, Air ---------------------------------------------
+
+    /// <summary>Lays a timed multiplier on the dungeon's own inside the ring.
+    /// Wilds are excluded: they are not yours to strengthen, and half of them
+    /// are what your monsters are currently fighting.</summary>
+    private static bool Boon(SpellDefinition def, FloorRoot floor, Vector3 at,
+                             MonsterBoons.BoonKind kind)
+    {
+        int touched = 0;
+        float seconds = SpellBook.EffectiveDuration(def);
+        if (seconds <= 0f) return false;
+
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
+        for (int i = 0; i < monBuf.Count; i++)
+        {
+            var m = monBuf[i];
+            if (m == null) continue;
+            m.EnsureBoons().Grant(kind, def.magnitude, seconds);
+            touched++;
+        }
+        return touched > 0;
+    }
+
+    // -- Pull (Water) ---------------------------------------------------------
+
+    /// <summary>Undertow. A pull needs no new primitive: ApplyKnockback shoves a
+    /// body AWAY from a point, so shoving it away from a point mirrored across
+    /// the cast cell drags it toward the cell instead. The force is clamped to
+    /// the distance so nothing is flung out the far side of the mark.</summary>
+    private static bool Pull(SpellDefinition def, FloorRoot floor, Vector3 at)
+    {
+        int pulled = 0;
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), advBuf);
+        for (int i = 0; i < advBuf.Count; i++)
+        {
+            var a = advBuf[i];
+            if (a == null || !((IMonsterTarget)a).IsAlive) continue;
+            Vector2 pos = a.transform.position;
+            Vector2 mark = at;
+            float dist = Vector2.Distance(pos, mark);
+            if (dist < 0.05f) continue;              // already on the mark
+            Vector2 mirrored = pos + (pos - mark);
+            ((IMonsterTarget)a).ApplyKnockback(mirrored, Mathf.Min(def.secondary, dist));
+            pulled++;
+        }
+        return pulled > 0;
+    }
+
+    // -- Rout (Dark) ----------------------------------------------------------
+
+    /// <summary>Terror. Everything that breaks leaves ALIVE, and that is the
+    /// price of the working, not a flaw in it: no kill notoriety, their loot
+    /// walks out with them, and the alignment shift for one that left alive is
+    /// applied by the exit path as usual. ForceRetreat refuses the Suicidal and
+    /// the Pinned and says so by returning false, so a cast that finds only
+    /// those is billed for nothing.</summary>
+    private static bool Rout(SpellDefinition def, FloorRoot floor, Vector3 at)
+    {
+        int broken = 0;
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), advBuf);
+        for (int i = 0; i < advBuf.Count; i++)
+        {
+            var a = advBuf[i];
+            if (a == null || !((IMonsterTarget)a).IsAlive) continue;
+            if (a.ForceRetreat()) broken++;
+        }
+        return broken > 0;
+    }
+
+    // -- Vulnerable (Light) ---------------------------------------------------
+
+    /// <summary>The Buried Sun. Marks bodies rather than amplifying a source, so
+    /// traps, chests, monsters and the core all land harder on a marked body for
+    /// the duration.</summary>
+    private static bool Vulnerable(SpellDefinition def, FloorRoot floor, Vector3 at)
+    {
+        int marked = 0;
+        float seconds = SpellBook.EffectiveDuration(def);
+        if (seconds <= 0f) return false;
+
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), advBuf);
+        for (int i = 0; i < advBuf.Count; i++)
+        {
+            var a = advBuf[i];
+            if (a == null || !((IMonsterTarget)a).IsAlive) continue;
+            a.ApplyVulnerable(def.magnitude, seconds);
+            marked++;
+        }
+        return marked > 0;
     }
 
     // -- Rally ---------------------------------------------------------------
@@ -115,7 +215,7 @@ public static class SpellCaster
         // rooms over is exactly the garrison this spell exists to call back, and
         // gathering by spawner would miss it while catching an empty muster room
         // whose occupant is elsewhere. Wilds are not yours to command.
-        floor.Entities.WithinRadius(at, def.radius, monBuf, x => !x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];

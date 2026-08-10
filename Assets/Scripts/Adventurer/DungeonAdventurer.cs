@@ -1817,6 +1817,21 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         StartRetreat();
     }
 
+    /// <summary>Terror: turn this one round now, whatever its nerve. Returns false
+    /// when it will not break -- the Suicidal came here to die and their retreat
+    /// threshold is already -1 by ruling, and the Pinned are held rather than
+    /// free to run. Everything that DOES break leaves alive, which is the price:
+    /// no kill notoriety, their loot walks out with them, and the alignment
+    /// shift for one that left alive is applied by the usual exit path.</summary>
+    public bool ForceRetreat()
+    {
+        if (state == AdventurerState.Retreating) return false;
+        if (state == AdventurerState.Pinned) return false;
+        if (goal == AdventurerGoal.SeekDeath) return false;
+        StartRetreat();
+        return state == AdventurerState.Retreating;
+    }
+
     private void StartRetreat()
     {
         // A snared adventurer cannot flee -- they are held until freed or taken.
@@ -2084,6 +2099,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // and environmental sources (traps, chests, room effects, sparring, core
         // burn) ride the Melee default and pass through untouched.
         if (kind == DamageKind.Ranged && WallProtected()) amount *= (1f - shieldWallMitigation);
+        // The Buried Sun marks a body, not a source: the amplification lands
+        // AFTER the shield wall, so a marked shieldbearer is still shielded and
+        // still takes more of what gets through.
+        if (Time.time < vulnerableUntil) amount *= vulnerableMult;
         currentHP -= amount;
         statusBars?.SetHP(currentHP, maxHP);
         GetComponent<DamageFlash>()?.Flash();
@@ -2644,6 +2663,25 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (multiplier < slowMultiplier) slowMultiplier = multiplier;
         if (duration > slowTimer) slowTimer = duration;
     }
+
+    /// <summary>The Buried Sun: everything this one takes for a spell lands
+    /// harder, from every source -- monsters, traps, chests and the core alike.
+    /// Transient by the section-30 precedent. Refreshing takes the stronger
+    /// multiplier and the later end, never the product, so a second cast cannot
+    /// compound into a delete button.</summary>
+    public void ApplyVulnerable(float multiplier, float seconds)
+    {
+        if (multiplier <= 1f || seconds <= 0f) return;
+        vulnerableMult = Time.time < vulnerableUntil
+            ? Mathf.Max(vulnerableMult, multiplier) : multiplier;
+        vulnerableUntil = Mathf.Max(vulnerableUntil, Time.time + seconds);
+    }
+
+    /// <summary>True while marked by The Buried Sun. For diagnostics and tooltips.</summary>
+    public bool IsVulnerable => Time.time < vulnerableUntil;
+
+    private float vulnerableUntil = -999f;
+    private float vulnerableMult = 1f;
 
     /// <summary>
     /// Dread Chamber slow: multiplies move speed and divides attack rate.

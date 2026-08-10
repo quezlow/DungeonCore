@@ -1128,7 +1128,26 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     }
 
     private float EffectiveMoveSpeed =>
-        moveSpeed * terrainSpeedMultiplier * slowMultiplier * (IsWild ? 1f : MonsterMastery.SpeedMultiplier);
+        moveSpeed * terrainSpeedMultiplier * slowMultiplier * (IsWild ? 1f : MonsterMastery.SpeedMultiplier)
+        * (boons != null ? boons.SpeedMultiplier : 1f);
+
+    // -- Core-spell boons (canon 38) ------------------------------
+    // Null until a working is cast on this one, and read as 1 while null, so a
+    // dungeon that never casts pays nothing for this.
+    private MonsterBoons boons;
+
+    /// <summary>The boon holder, created on first use. Called by SpellCaster only.</summary>
+    public MonsterBoons EnsureBoons()
+    {
+        // Written out rather than with ?? -- Unity's fake-null makes the
+        // null-coalescing operator unreliable on destroyed components.
+        if (boons == null) boons = GetComponent<MonsterBoons>();
+        if (boons == null) boons = gameObject.AddComponent<MonsterBoons>();
+        return boons;
+    }
+
+    /// <summary>True while any core-spell boon is running. For diagnostics.</summary>
+    public bool HasActiveBoon => boons != null && boons.AnyActive;
 
     // ── Wander ────────────────────────────────────────────────────
 
@@ -1598,7 +1617,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         // Mutation research sharpens dungeon monsters only; the wild ruling holds.
         float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
-                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier);
+                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier)
+                  * (boons != null ? boons.DamageMultiplier : 1f);
         animDriver?.OnAttack();
 
         var payload = new DungeonProjectile.Payload
@@ -1630,7 +1650,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         // Mutation research sharpens dungeon monsters only; the wild ruling holds.
         float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
-                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier);
+                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier)
+                  * (boons != null ? boons.DamageMultiplier : 1f);
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
         animDriver?.OnAttack();
@@ -1707,6 +1728,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // full wounds. Applied to incoming damage rather than maxHP so the
         // node is retroactive for monsters already alive when it completes.
         if (!IsWild) amount *= MonsterMastery.DamageTakenMultiplier;
+        // Root the Stone. Applied to incoming damage rather than to maxHP for the
+        // same reason the mutation line is: it must be retroactive for a monster
+        // already wounded when the working lands.
+        if (boons != null) amount *= boons.DamageTakenMultiplier;
         lastDamageTime = Time.time;
         pendingHealDisplay = 0f;
         currentHP -= amount;

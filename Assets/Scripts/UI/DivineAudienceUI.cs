@@ -232,6 +232,14 @@ public class DivineAudienceUI : MonoBehaviour
         // Marked on arrival, not on completion. See DivineAudienceLedger.
         if (!force) DivineAudienceLedger.MarkHeld(tier);
 
+        // The grant lands here for the same reason the mark does: an audience
+        // withdrawn from early still happened, and a player who presses Esc must
+        // not lose the working. UnlockState.Unlock is idempotent, so a forced
+        // replay re-grants harmlessly (canon 38).
+        var granting = script.DeityFor(core.DungeonType);
+        string grantKey = granting != null ? granting.GrantKeyFor(tier) : null;
+        if (!string.IsNullOrEmpty(grantKey)) UnlockState.Unlock(grantKey);
+
         StartCoroutine(Run(script.DeityFor(core.DungeonType), beats));
         return true;
     }

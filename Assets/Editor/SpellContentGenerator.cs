@@ -40,6 +40,7 @@ public static class SpellContentGenerator
         public float magnitude;
         public float secondary;
         public bool castableWhilePaused;
+        public string deepeningKeyBase = "";
         public string description;
     }
 
@@ -81,6 +82,79 @@ public static class SpellContentGenerator
             description = "Every one of yours that hears it turns and comes. They break off "
                         + "what they were doing, which is the price of being heard.",
         },
+
+        // -- The six affinity workings: given by the god, never researched -----
+        // requiredUnlockKey is a bare spell.* string that NO node owns (the
+        // canon 28A precedent for a thing that can only be given), and
+        // deepeningKeyBase is the same string without the tier suffix.
+        new SpellSpec
+        {
+            assetName = "Spell_CoalsWake", id = "coals_wake", displayName = "The Coals Wake",
+            effect = SpellDefinition.SpellEffect.BoonDamage,
+            requiredUnlockKey = "spell.coals_wake.t1", deepeningKeyBase = "spell.coals_wake",
+            affinity = DungeonType.Fire,
+            // The shortest boon at the highest cost. Fire already owns the
+            // heaviest burst in the trapworks; the pair is what is balanced.
+            manaCost = 30f, cooldownSeconds = 14f,
+            radius = 3.0f, durationSeconds = 8f, magnitude = 1.35f,
+            description = "Yours burn at the god's rate for a while, not their own.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_Undertow", id = "undertow", displayName = "Undertow",
+            effect = SpellDefinition.SpellEffect.Pull,
+            requiredUnlockKey = "spell.undertow.t1", deepeningKeyBase = "spell.undertow",
+            affinity = DungeonType.Water,
+            manaCost = 22f, cooldownSeconds = 9f,
+            radius = 3.2f, secondary = 2.2f,
+            description = "The floor takes a current. They arrive where you wanted them, and not by choice.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_RootTheStone", id = "root_the_stone", displayName = "Root the Stone",
+            effect = SpellDefinition.SpellEffect.BoonArmour,
+            requiredUnlockKey = "spell.root_the_stone.t1", deepeningKeyBase = "spell.root_the_stone",
+            affinity = DungeonType.Earth,
+            // Counterweights its own trap rather than compounding it, so it can
+            // afford the longest duration in the set.
+            manaCost = 26f, cooldownSeconds = 12f,
+            radius = 3.0f, durationSeconds = 10f, magnitude = 0.70f,
+            description = "What stands in this ground is standing on the god. Let them try to move it.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_SecondWind", id = "second_wind", displayName = "Second Wind",
+            effect = SpellDefinition.SpellEffect.BoonHaste,
+            requiredUnlockKey = "spell.second_wind.t1", deepeningKeyBase = "spell.second_wind",
+            affinity = DungeonType.Air,
+            manaCost = 24f, cooldownSeconds = 11f,
+            radius = 3.0f, durationSeconds = 9f, magnitude = 1.30f,
+            description = "Borrowed breath. They move like weather and are gone before the blow lands.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_Terror", id = "terror", displayName = "Terror",
+            effect = SpellDefinition.SpellEffect.Rout,
+            requiredUnlockKey = "spell.terror.t1", deepeningKeyBase = "spell.terror",
+            affinity = DungeonType.Dark,
+            // The most expensive thing in the roster on the longest cooldown,
+            // because it ENDS an encounter. Note the hidden price: everything it
+            // breaks leaves alive, so the kills, the loot and the notoriety all
+            // walk out with them and the alignment shifts good.
+            manaCost = 34f, cooldownSeconds = 20f,
+            radius = 3.0f,
+            description = "They brought lights because they were afraid. Confirm it for them.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_BuriedSun", id = "buried_sun", displayName = "The Buried Sun",
+            effect = SpellDefinition.SpellEffect.Vulnerable,
+            requiredUnlockKey = "spell.buried_sun.t1", deepeningKeyBase = "spell.buried_sun",
+            affinity = DungeonType.Light,
+            manaCost = 28f, cooldownSeconds = 13f,
+            radius = 2.8f, durationSeconds = 7f, magnitude = 1.30f,
+            description = "Light shows a thing as it truly is. Every blow after finds the seam.",
+        },
     };
 
     [MenuItem("Dungeon Core/Generate Spell Content")]
@@ -115,6 +189,7 @@ public static class SpellContentGenerator
             def.magnitude = spec.magnitude;
             def.secondary = spec.secondary;
             def.castableWhilePaused = spec.castableWhilePaused;
+            def.deepeningKeyBase = spec.deepeningKeyBase;
             // def.icon is deliberately NOT reset -- hand-assigned art survives.
 
             EditorUtility.SetDirty(def);

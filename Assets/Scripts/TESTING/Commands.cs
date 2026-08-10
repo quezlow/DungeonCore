@@ -11,6 +11,21 @@ public class Commands : MonoBehaviour
     [Tooltip("Where along the entrance->core approach to place the wall (0 = at core, 1 = at entrance).")]
     [SerializeField, Range(0.1f, 0.9f)] private float wallApproachFraction = 0.45f;
 
+    [ContextMenu("Validate Spell Picker Wiring")]
+    private void ValidateSpellPickerWiring()
+    {
+        var ui = FindAnyObjectByType<SpellSelectionUI>();
+        if (ui == null)
+        {
+            Debug.LogWarning("[SpellPicker] No SpellSelectionUI in the scene. "
+                + "Cast mode will open and show nothing.");
+            return;
+        }
+        string faults = ui.ValidateWiring(false);
+        if (faults == null) Debug.Log("[SpellPicker] Wiring is whole.");
+        else Debug.LogWarning(faults);
+    }
+
     [ContextMenu("Print Spell State")]
     private void PrintSpellState()
     {
@@ -41,6 +56,40 @@ public class Commands : MonoBehaviour
                 + (s.castableWhilePaused ? "  pause-legal" : ""));
         }
         Debug.Log(sb.ToString());
+    }
+
+    [ContextMenu("Test Grant Affinity Working (Silver tier)")]
+    private void GrantAffinityT1() => ToggleAffinityTier(".t1");
+
+    [ContextMenu("Test Deepen Affinity Working (Gold tier)")]
+    private void GrantAffinityT2() => ToggleAffinityTier(".t2");
+
+    [ContextMenu("Test Deepen Affinity Working (Diamond tier)")]
+    private void GrantAffinityT3() => ToggleAffinityTier(".t3");
+
+    /// <summary>Toggles the current core's own working at one tier, resolved from
+    /// the spell assets rather than a hardcoded table -- so this cannot drift out
+    /// of step with the roster the way a second list would.</summary>
+    private void ToggleAffinityTier(string suffix)
+    {
+        var core = DungeonCore.Instance;
+        if (core == null) { Debug.LogWarning("[Spells] No core."); return; }
+        var all = SpellBook.All;
+        for (int i = 0; i < all.Count; i++)
+        {
+            var s = all[i];
+            if (s == null || s.affinity != core.DungeonType) continue;
+            if (string.IsNullOrEmpty(s.deepeningKeyBase)) continue;
+            UnlockState.Toggle(s.deepeningKeyBase + suffix);
+            Debug.Log("[Spells] " + s.displayName + " " + s.deepeningKeyBase + suffix
+                + " -> " + UnlockState.IsUnlocked(s.deepeningKeyBase + suffix)
+                + "; now tier " + SpellBook.TierOf(s)
+                + ", radius " + SpellBook.EffectiveRadius(s).ToString("0.##")
+                + ", duration " + SpellBook.EffectiveDuration(s).ToString("0.##") + "s");
+            return;
+        }
+        Debug.LogWarning("[Spells] No affinity working for " + core.DungeonType
+            + ". Run Dungeon Core -> Generate Spell Content.");
     }
 
     [ContextMenu("Test Toggle Sorcery Trunk (First Spark)")]

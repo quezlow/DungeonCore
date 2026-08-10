@@ -3129,9 +3129,15 @@ the core's current affinity.
 **Rejected:** a dedicated audience scene (state rebuild for no gain over an
 opaque overlay); a full per-tier-per-affinity script matrix (~145 lines for
 identical structural payoff); an auto-advancing timed read (the clock is
-already stopped -- let the player set the pace); god-granted mechanical
-rewards (the tier already grants the stair credit and the unlocks; a second
-payout would make the beat a loot box).
+already stopped -- let the player set the pace); ARBITRARY god-granted
+mechanical rewards (the tier already grants the stair credit and the
+unlocks; a bonus payout bolted on would make the beat a loot box).
+NARROWED by entry 38: the affinity working IS granted at the audience, and
+is not an exception to this. The god is the canonical source of the power
+the core has been siphoning all along; this entry already reserved a hole
+in the writing for core spells; and the audience exists precisely to name
+what a tier opens. What stays rejected is a SECOND payment on top of the
+tier's own unlock, which this is not.
 
 ---
 
@@ -6629,9 +6635,7 @@ while muddying a tuned economy.
 
 ## 38. Core Spells (Active Abilities)
 
-Status: PART SHIPPED. The neutral craft, the cast mode and the Sorcery
-research path are built; the six affinity workings and the divine-audience
-grant channel land in part 2 of the arc. Verified: 2026-08-10.
+Status: SHIPPED. Verified: 2026-08-10.
 
 **What a spell is.** A working cast at a cell on the active floor, acting
 over a radius, priced in mana and held back by a per-spell cooldown. The
@@ -6660,6 +6664,79 @@ a rallied monster reverts to its underlying order mode on arrival with no new
 order state. Rally gathers by MONSTER rather than by spawner: the spawner is
 a fixed point its occupant may be two rooms from, and that wandering garrison
 is exactly what the spell exists to call back.
+
+**The six affinity workings (SHIPPED).** One per core type, `CoreAffinity`
+exclusive by the trapworks type-lock rule, so a run only ever holds one of
+them. Every one shares the cast-at-a-cell-over-a-radius shape, so the balance
+argument is a set of dials rather than a debate:
+
+| Core | Working | Verb | Mana / cd |
+|---|---|---|---|
+| Fire | The Coals Wake | monsters in radius strike 35% harder | 30 / 14s |
+| Water | Undertow | intruders in radius are PULLED to the cell | 22 / 9s |
+| Earth | Root the Stone | monsters in radius take 30% less | 26 / 12s |
+| Air | Second Wind | monsters in radius move and swing 30% faster | 24 / 11s |
+| Dark | Terror | intruders in radius rout on the spot | 34 / 20s |
+| Light | The Buried Sun | intruders in radius take 30% more from everything | 28 / 13s |
+
+**No working repeats its own trap's verb.** The six elemental traps already
+own the six elemental bursts (entry 31), so a spell that delivered the same
+burst on demand would be a worse copy of a shipped system. Traps hurt
+intruders where they walk; spells act on the fight that is happening now.
+
+**The pairs are balanced as pairs, not one at a time.** Fire, Water and Dark
+each COMPOUND with their own trap -- Fire is already the heaviest burst, Water
+already the control lock, Dark already the deny-without-killing core -- so
+their workings are deliberately the quiet half: Fire carries the shortest
+duration of the three boons at the highest cost, and Terror is the most
+expensive thing in the roster on the longest cooldown. Earth, Air and Light
+counterweight their traps instead and can afford to carry more. Do not
+"balance" one of these in isolation; the unit is trap plus working.
+
+**Undertow needs no new primitive.** A pull is `ApplyKnockback` with the
+origin mirrored across the target cell, and the force is clamped to the
+distance so nothing is flung past the centre. It is the only pull in the game
+and it exists to set up everything else you own.
+
+**Terror pays for itself.** A routed party leaves ALIVE: no notoriety from
+the kills you did not make, their loot walks out with them, and
+`AlignmentSystem.OnAdventurerLeftAlive` shifts the core good. Driving off a
+party you cannot beat is a real option with a real price rather than a free
+win. The Suicidal are exempt -- a death in the dark is what they came for,
+and their retreat threshold is already -1 by ruling.
+
+**Boons are transient and never stack.** `MonsterBoons` is added on demand,
+holds three (multiplier, expiry) pairs, and has NO Update: the getters compare
+against `Time.time` when read, so an expired boon costs nothing and a dungeon
+full of them costs nothing per frame. Recasting takes the stronger multiplier
+and the later expiry rather than multiplying them, because stacking would make
+spamming one working the correct play at high mana -- exactly what the
+cooldowns exist to prevent. Read as one more factor in the chains that already
+exist: `attackDamage * roomDamage * globalDamage * crowdDamage * mastery *
+boon`. Both the melee and the ranged damage sites take it; they were
+byte-identical and are edited as a pair.
+
+**The god gives, and then deepens.** The affinity working is not researchable.
+It arrives at the SILVER audience and deepens at Gold and Diamond; the God
+audience grants nothing new, being the ascension ceremony and already
+carrying its own weight. Deepening widens RADIUS and lengthens DURATION only,
+never magnitude: the god's hand reaching further reads as a god, and a bigger
+number reads as a stat bump. Tier 2 is radius x1.25 and duration x1.3; tier 3
+is x1.5 and x1.6.
+
+**The grant is authored beside the words that announce it.**
+`DivineAudienceScript.Insert` carries `grantsUnlockKey` and `grantLine`
+alongside the god's own line for that tier, so the mechanical effect and the
+sentence that declares it cannot drift apart -- entry 19A's stated principle,
+applied. `Validate()` now faults a deity missing a grant on Silver, Gold or
+Diamond, because a missing grant is a working the player silently never
+receives. The keys are bare `spell.*` strings that no node owns, the canon 28A
+precedent for a thing that can only be given.
+
+**Grants land on ARRIVAL, not on completion** -- beside `MarkHeld`, and for
+the same reason the ledger gives: an audience withdrawn from early still
+happened, and a player who skips must not lose the power. `UnlockState.Unlock`
+is idempotent, so a forced replay re-grants harmlessly.
 
 **Lash is not a projectile.** A travelling bolt was designed and dropped. A
 projectile needs an origin; the only sensible origin is the core; the core is
@@ -6718,12 +6795,22 @@ mining granite costs 20 a cell, a wall 10, a crossbow trap 16, a fireball
 rune 22. Real at Bronze, small change by Gold -- the shape the traps already
 have.
 
-**Picker.** `SpellSelectionUI` builds itself and its own canvas at Awake (the
-`DivineAudienceUI` precedent). It does NOT search for a Canvas to parent
-under: `EntityStatusBars`, `PartyBanner` and `FloatingDamageNumber` each
-carry a world-space one, and the picker would hang off a monster and vanish
-when it died. The roster rebuilds on `SpellBook.OnRosterChanged`, so a
-completed node or a god's grant appears without a reopen.
+**Picker.** `SpellSelectionUI` is SCENE-WIRED and lists every castable
+working at once, so cooldowns across the whole set read at a glance
+mid-fight. It follows the `ActionBarHUD` sub-menu idiom exactly --
+instantiate the prefab per entry, first `TMP_Text` child is the label,
+second `Image` child is the icon -- so a prefab that works for the build
+sub-menu works here unchanged. Number keys 1-9 select while it is open.
+The roster rebuilds on `SpellBook.OnRosterChanged`, so a completed node or
+a god's grant appears without a reopen.
+
+The known cost of scene wiring is that a blank reference renders an empty
+panel and logs nothing, which has cost this project test cycles before. It
+is refused here: `ValidateWiring` NAMES every unassigned slot at Awake, and
+Commands -> Validate Spell Picker Wiring runs the same check on demand. A
+self-built version was written first and replaced deliberately -- the layout
+is a design decision and belongs in the scene, but silence about a broken
+one does not.
 
 **Rejected:** a Reveal Area spell (fog is not a stored set -- `RevealTile`
 nulls a tile and a load re-derives the revealed area from claimed + mined, so
@@ -6745,7 +6832,9 @@ a book's `nodeKey` must be the node's KEY, not its id, and `overrideKey`
 makes those differ.
 
 **Key files:** `Gameplay/SpellDefinition.cs`, `Gameplay/SpellBook.cs`,
-`Gameplay/SpellCaster.cs`, `UI/SpellSelectionUI.cs`,
+`Gameplay/SpellCaster.cs`, `Monster/MonsterBoons.cs`,
+`UI/SpellSelectionUI.cs`, `DungeonCore/DivineAudienceScript.cs`,
+`UI/DivineAudienceUI.cs`,
 `Editor/SpellContentGenerator.cs`, `DungeonCore/DungeonBuildController.cs`,
 `Data/Keybinds.cs`, `UI/ActionBarHUD.cs`, `Editor/TechContentGenerator.cs`,
 `Editor/TraderStockGenerator.cs`, `TESTING/Commands.cs`.
