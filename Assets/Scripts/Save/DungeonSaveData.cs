@@ -108,6 +108,8 @@ public class DungeonSaveData
 
     public NobleRetaliationSaveData nobleRetaliation;
 
+    public WorldEventsSaveData worldEvents;   // random world events (additive; null on old saves)
+
     public EndgameClimaxSaveData endgameClimax;
 
     public GradeSystemSaveData grade;

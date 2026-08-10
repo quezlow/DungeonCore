@@ -213,6 +213,7 @@ public class DungeonSaveController : MonoBehaviour
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
+        WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
 
         SaveGame();
 
@@ -401,6 +402,9 @@ public class DungeonSaveController : MonoBehaviour
 
         if (NobleRetaliation.Instance != null)
             currentSave.nobleRetaliation = NobleRetaliation.Instance.GetSaveData();
+
+        if (WorldEventDirector.Instance != null)
+            currentSave.worldEvents = WorldEventDirector.Instance.GetSaveData();
 
         if (EndgameClimax.Instance != null)
             currentSave.endgameClimax = EndgameClimax.Instance.GetSaveData();
@@ -879,6 +883,7 @@ public class DungeonSaveController : MonoBehaviour
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
             DungeonAppealLedger.Instance?.RestoreFromSave(currentSave.appealLedger);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
+            WorldEventDirector.Instance?.RestoreFromSave(currentSave.worldEvents);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);
             GradeSystem.Instance?.RestoreFromSave(currentSave.grade);
             InspectorAssessor.Instance?.RestoreFromSave(currentSave.inspectorAssessor);
