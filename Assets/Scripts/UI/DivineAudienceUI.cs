@@ -375,6 +375,19 @@ public class DivineAudienceUI : MonoBehaviour
 
     // -- Fades (all unscaled: the clock is stopped) --------------------------------
 
+    // The clock is stopped for the whole audience, so every wait in this file must
+    // be unscaled - a WaitForSeconds here would never return. Breaks early on a skip
+    // so withdrawing does not sit through the pause it was asked to cut short.
+    private IEnumerator WaitUnscaled(float seconds)
+    {
+        float t = 0f;
+        while (t < seconds && !skipRequested)
+        {
+            t += Time.unscaledDeltaTime;
+            yield return null;
+        }
+    }
+
     private IEnumerator FadeGroup(float from, float to, float seconds)
     {
         if (seconds <= 0f) { group.alpha = to; yield break; }
