@@ -6961,27 +6961,27 @@ MonoBehaviour:
   mineEntryContainer: {fileID: 1608417737}
   submenuEntryPrefab: {fileID: 3938589388791077788, guid: 1142012de544fca43bba562f9d6405f8, type: 3}
   buildEntries:
-  - label: Chest
-    icon: {fileID: 0}
-    mode: 4
-  - label: Furniture
-    icon: {fileID: 0}
-    mode: 5
   - label: Room
     icon: {fileID: 0}
     mode: 6
+  - label: Furniture
+    icon: {fileID: 0}
+    mode: 5
+  - label: Chest
+    icon: {fileID: 0}
+    mode: 4
   - label: Traps
     icon: {fileID: 0}
     mode: 7
+  - label: Demolish
+    icon: {fileID: 0}
+    mode: 13
   - label: Stairs
     icon: {fileID: 0}
     mode: 8
   - label: Relocate Core
     icon: {fileID: 0}
     mode: 9
-  - label: Demolish
-    icon: {fileID: 0}
-    mode: 13
   selectedColor: {r: 0.8134237, g: 0.81960785, b: 0.27058825, a: 0.5882353}
   unselectedColor: {r: 1, g: 1, b: 1, a: 0}
 --- !u!1 &217789958
@@ -15398,7 +15398,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99170375
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -51548,7 +51548,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000023887787}
+  m_AnchoredPosition: {x: 0, y: 0.00013809014}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -58966,7 +58966,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.99288315
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -61589,7 +61589,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000023887787}
+  m_AnchoredPosition: {x: 0, y: 0.00013809014}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

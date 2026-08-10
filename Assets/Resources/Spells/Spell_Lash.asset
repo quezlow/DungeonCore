@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e66b42bfa76c7249a525ff0f98d3509, type: 3}
+  m_Name: Spell_Lash
+  m_EditorClassIdentifier: Assembly-CSharp::SpellDefinition
+  id: lash
+  displayName: Lash
+  description: The core's will, brought down where you point it. A short, graceless
+    blow that throws whatever it lands on.
+  icon: {fileID: 0}
+  requiredUnlockKey: tech.first_spark
+  affinity: 0
+  manaCost: 8
+  cooldownSeconds: 1.5
+  radius: 1.4
+  durationSeconds: 0
+  magnitude: 12
+  secondary: 1.2
+  effect: 0
+  castableWhilePaused: 0

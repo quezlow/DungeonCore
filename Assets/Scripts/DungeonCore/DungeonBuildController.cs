@@ -82,6 +82,11 @@ public class DungeonBuildController : MonoBehaviour
     private GameObject mineHighlightGO;
     private SpriteRenderer mineHighlightSR;
 
+    // Core spells (canon 38) -- the cast radius ghost. Runtime overlay,
+    // no scene setup, built in Awake beside the mine highlight above.
+    private GameObject spellGhostGO;
+    private SpriteRenderer spellGhostSR;
+
     // Built walls (canon 36). The click is the wall's visual BOTTOM: the solid
     // cell lands two north of it, so the rendered face falls exactly on the
     // clicked cell and the one above -- the three highlighted cells and the

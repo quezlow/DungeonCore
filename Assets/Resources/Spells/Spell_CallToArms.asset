@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e66b42bfa76c7249a525ff0f98d3509, type: 3}
+  m_Name: Spell_CallToArms
+  m_EditorClassIdentifier: Assembly-CSharp::SpellDefinition
+  id: call_to_arms
+  displayName: Call to Arms
+  description: Every one of yours that hears it turns and comes. They break off what
+    they were doing, which is the price of being heard.
+  icon: {fileID: 0}
+  requiredUnlockKey: tech.call_to_arms
+  affinity: 0
+  manaCost: 10
+  cooldownSeconds: 0
+  radius: 9
+  durationSeconds: 0
+  magnitude: 0
+  secondary: 0
+  effect: 2
+  castableWhilePaused: 1

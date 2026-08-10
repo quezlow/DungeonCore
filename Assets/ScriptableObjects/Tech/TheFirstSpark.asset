@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbff0204cc5ec6541843c742ff0e0347, type: 3}
+  m_Name: TheFirstSpark
+  m_EditorClassIdentifier: Assembly-CSharp::TechNodeDefinition
+  id: first_spark
+  overrideKey: 
+  displayName: The First Spark
+  icon: {fileID: 0}
+  path: 3
+  tier: 1
+  pointCost: 20
+  durationDays: 3
+  affinity: 0
+  patternRequirements: []
+  prerequisites:
+  - {fileID: 11400000, guid: b22d0d64b5974d248bc8b86f7cf571a6, type: 2}
+  bootstrapUnlocked: 0
+  upgradeGates: []
+  visibility: 0
+  visibilityPattern: {fileID: 0}
+  visibilityKey: 
+  visibilityClassName: 
+  visibilityKillCount: 1
+  hiddenHint: Something in the stone remembers being told what to do.
+  description: The core's will can be brought down at a distance. Lash may be cast.
