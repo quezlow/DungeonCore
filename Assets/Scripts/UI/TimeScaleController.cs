@@ -72,6 +72,9 @@ public class TimeScaleController : MonoBehaviour
     private void Update()
     {
         if (PauseMenuController.IsMenuOpen) return;
+        // A speed key during a divine audience would un-pause the beat under the
+        // overlay and let the world run behind a black screen (canon 19A).
+        if (DivineAudienceUI.IsPlaying) return;
         if (Keybinds.IsTextInputActive()) return;
         if (Keybinds.WasPressed(GameAction.SpeedPause)) SetPaused();
         else if (Keybinds.WasPressed(GameAction.SpeedNormal)) SetNormal();

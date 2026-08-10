@@ -15,9 +15,10 @@ using UnityEngine;
 ///   Diamond  1-3   → flat indices 23-25
 ///   God      1     → flat index 26
 ///
-/// Diamond 3 → God 1 is gated by a special requirement (TBD). Until that
-/// requirement is defined, ConfirmLevelUp() refuses the Diamond 3 → God 1
-/// transition. DungeonCore.LevelUpAvailable reports false at Diamond 3.
+/// Diamond 3 -> God 1 is gated on surviving the endgame climax (canon 9):
+/// ConfirmLevelUp() refuses the transition until EndgameClimax.Ascended, and
+/// DungeonCore.LevelUpAvailable reports false at Diamond 3 until then. The
+/// transition's ceremony is the God-tier divine audience (canon 19A).
 /// </summary>
 public enum LevelTier
 {

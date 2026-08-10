@@ -81,6 +81,7 @@ public class DungeonSaveData
     public List<QuestProgress> wispQuestsActive = new();  // wisp urgings in progress (additive; empty on old saves)
     public List<string> wispQuestsHandedIn = new();       // wisp urgings completed (additive)
     public bool wispQuestsInitialised = false;            // director has reconciled this dungeon once (additive)
+    public List<string> audiencesHeld = new();            // divine audiences already granted, by TIER NAME (additive; empty on old saves)
 
     public RunStatsSaveData runStats;
 

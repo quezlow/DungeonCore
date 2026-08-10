@@ -2989,20 +2989,123 @@ lands on proven ground:
 
 ## 19A. Tier-Up Divine Audiences
 
-Status: DESIGN -- decided, unscheduled. Split out of entry 19, which it never
-depended on: this is a progression-milestone reward and needs no terrain work,
-no roads and no dwarves. It may ship at any time.
+Status: SHIPPED. Verified: 2026-08-10. (Sits in Part II for numbering only --
+it was split out of entry 19, which it never depended on. The status line is
+the arbiter, as with entry 19 itself.)
 
-Decided: a divine audience at each tier-up milestone -- Bronze -> Silver ->
-Gold -> Diamond -> God. The god of the CORE'S OWN TYPE attends, and grants
-knowledge rather than power.
+At each tier transition -- Bronze -> Silver -> Gold -> Diamond -> God -- the
+screen goes black and the god of the CORE'S OWN TYPE arrives. Four audiences
+in a run, one god per affinity, and no other god ever attends.
 
-This is the deep-faith speaking directly to one of its own. Entry 20 records
-that the old faith held divinity to reside below and that some dead are reborn
-as cores; entry 21 records that its civilisation was entombed. The audiences
-are the surviving other end of that -- the thing the Church suppressed,
-answering. Each is an opportunity to feed deep-faith lore at the exact moment
-the player has earned a reason to care.
+**The framing, revised.** The earlier decision read "grants knowledge rather
+than power"; that is superseded. As built, the core has been SIPHONING the
+god's power all along -- every claimed stone, every death kept -- and the god
+is the source. It permits this, and what comes attached to the power is the
+knowing. Each audience also names, in the god's own idiom, what the next tier
+actually opens. Nothing unbuilt is ever promised: the hints cover the stair
+credit, the floor the tier unlocks, the monsters that answer at that depth,
+and (at Diamond) the climax that is coming. Core spells and the avatar are
+deliberately absent from the writing and get their lines when they exist.
+
+This is the deep-faith speaking to one of its own. Entry 20 records that the
+old faith held divinity to reside below and that some dead are reborn as
+cores; entry 21 records that its civilisation was entombed. The audiences are
+the surviving other end of that -- the thing the Church suppressed, answering
+at the exact moment the player has earned a reason to care. The Diamond
+audience is where it is said outright: nothing above ground made the player,
+and drawing on the god is not theft but eating at home.
+
+**The voice rule, and it is load-bearing.** The gods are NOT the wisp. They
+speak as sovereign to servant: short declaratives, no hedges, no questions
+unless rhetorical. The wisp coaxes and hedges and trails off; these do not.
+Any new god line is written to that rule or it is not a god line.
+
+**Presentation.** A full-screen overlay in the dungeon scene, self-built at
+Awake (the `ScreenFlash` precedent -- no scene wiring beyond the component and
+its script asset). Not a scene load: rebuilding every live system for a
+two-minute beat buys nothing over an opaque black rectangle. Not a puppet
+vignette either -- the First Blood idiom needs a body, and these have none.
+Because nothing is visible behind the blackout there is NO camera work at all.
+The clock is stopped for the duration and every wait runs on unscaled time;
+the prior speed is restored exactly via `PauseController.UnpauseGame` (not
+`SetNormal`, which would quietly demote a player running at 5x), and a game
+already paused when the audience begins is still paused when it ends. The
+overlay canvas carries a `GraphicRaycaster` -- that is what makes the blackout
+actually block world clicks, since the build and selection paths test
+`EventSystem.IsPointerOverGameObject`. `DivineAudienceUI.IsPlaying` gates the
+three input owners that would otherwise act straight through it: the speed
+keys, the journal toggle, and Esc (which the audience owns while it plays).
+
+**Manifestation.** Each god carries an optional full-screen backdrop sprite --
+a firestorm, a whirlpool turning where the ceiling was, cloud lit from behind,
+the weight of a mountain leaning, a dark with an edge, light climbing out of
+the floor. Until that art exists the overlay falls back to a slow radial pulse
+in the affinity colour, and the PRESENCE beat carries the scene: one line per
+god describing what the player is looking at, spoken by nobody and rendered
+without the name card. The presence line is written as description precisely
+so the fallback is not a blank god.
+
+**Content shape.** `DivineAudienceScript` (ScriptableObject, `Fill Canon
+Script` context menu -- the `AffinityMapping` / `WispScript` precedent): six
+deity rows (name, epithet, presence, four own-lines) plus four shared tier
+scripts (opening lines, closing lines). An audience composes as presence ->
+tier opening -> the god's own line -> tier closing, with `{god}` / `{epithet}`
+substituted so shared lines still name their speaker. That is about sixty
+written lines rather than the two hundred a full per-tier-per-affinity matrix
+would have cost, and each god stays recognisably itself across all four.
+The six: Kethra the Undying Coal (Fire), Ollu the Drowned Mouth (Water), Vaun
+the Long Breath (Air), Morrun the Weight Below (Earth), Ussar the Unlit
+(Dark), Ienna the Buried Sun (Light) -- whose epithet is the deep-faith's
+answer to the Church having hung her name in the sky.
+
+Two deliberate details, so they are not "fixed" later: the God audience closes
+on the same words as the Silver audience ("I am under you the whole way"),
+said to something that is no longer beneath the speaker; and the Silver
+audience is the only one that introduces the god in speech, because the name
+card carries identity at every later one.
+
+**The God audience IS the ascension beat.** The Diamond 3 -> God 1 transition
+was already gated on surviving the endgame climax (entry 9); the audience is
+its ceremony, and the old "special requirement TBD" comments near
+`ConfirmLevelUp` and in `LevelTier.cs` are retired accordingly.
+
+**Skippable and re-readable.** Any beat advances on click, space or enter;
+Esc withdraws. Held audiences are re-read in the journal's sixth tab, LORE,
+which has two sub-pages: GODS (rendered from the same script asset the
+audience spoke from -- never a second copy to drift) and WISP (present and
+empty; the wisp's own sayings gather there in a later pass). Unheld tiers read
+"???".
+
+**Persistence.** `DungeonSaveData.audiencesHeld`, additive, keyed on the TIER
+NAME rather than the enum ordinal (`LevelTier` may gain values). Held is
+recorded when the god ARRIVES, not when the last line lands: a player who
+quits mid-speech has had the audience, and replaying it on load is worse than
+losing its tail. On load the ledger reconciles in SILENCE -- every tier the
+core has already passed is marked held, so a save predating the feature does
+not fire four gods in a row on its next level-up. History is not an event to
+announce (the Deeds precedent). The cost is that a legacy save reads those
+audiences in the journal without having sat through them, which is the kinder
+half of the trade.
+
+**Tooling.** `Print Divine Audience Script` in `Commands` validates the asset
+and dumps every composed audience -- all six gods, all four tiers -- to the
+console without playing one, so the writing can be read and edited without
+four tier-ups. `Play Divine Audience (preview tier)` forces one on screen for
+the core's current affinity.
+
+**Key files:** `DungeonCore/DivineAudienceScript.cs`,
+`DungeonCore/DivineAudienceLedger.cs`, `UI/DivineAudienceUI.cs`,
+`DungeonCore/DungeonCore.cs` (the trigger, last in `ConfirmLevelUp`),
+`UI/QuestLogUI.cs` (the LORE tab), `UI/PauseMenuController.cs`,
+`UI/TimeScaleController.cs`, `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs`, `TESTING/Commands.cs`.
+
+**Rejected:** a dedicated audience scene (state rebuild for no gain over an
+opaque overlay); a full per-tier-per-affinity script matrix (~145 lines for
+identical structural payoff); an auto-advancing timed read (the clock is
+already stopped -- let the player set the pace); god-granted mechanical
+rewards (the tier already grants the stair credit and the unlocks; a second
+payout would make the beat a loot box).
 
 ---
 

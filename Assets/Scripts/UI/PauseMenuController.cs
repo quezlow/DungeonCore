@@ -124,6 +124,10 @@ public class PauseMenuController : MonoBehaviour
         // A rebind capture in the Controls tab owns Esc (to cancel the rebind).
         if (KeybindControlsUI.IsRebinding) return;
 
+        // A divine audience owns Esc while it plays - Esc withdraws from the audience
+        // rather than opening the pause menu behind it (canon 19A).
+        if (DivineAudienceUI.IsPlaying) { DivineAudienceUI.Instance?.Skip(); return; }
+
         if (IsMenuOpen) Resume();
         else if (CaravanActionPanel.Instance != null && CaravanActionPanel.Instance.IsOpen) CaravanActionPanel.Instance.Close();
         else if (MerchantShopUI.Instance != null && MerchantShopUI.Instance.IsOpen) MerchantShopUI.Instance.Close();

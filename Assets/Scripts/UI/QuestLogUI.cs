@@ -29,6 +29,8 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private GameObject deedsPage;
     [Tooltip("Hosts PatternCodexUI; this script only shows/hides it.")]
     [SerializeField] private GameObject patternsPage;
+    [Tooltip("Hosts the LORE page: the divine audiences already held, and later the wisp's own sayings.")]
+    [SerializeField] private GameObject lorePage;
 
     [Header("Tab buttons")]
     [SerializeField] private Button activeTabButton;
@@ -36,6 +38,11 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private Button notesTabButton;
     [SerializeField] private Button deedsTabButton;
     [SerializeField] private Button patternsTabButton;
+    [SerializeField] private Button loreTabButton;
+    [Header("Lore sub-pages (one content root, two buttons)")]
+    [SerializeField] private Button loreGodsButton;
+    [SerializeField] private Button loreWispButton;
+    [SerializeField] private Transform loreContent;
 
     [Header("Quest lists (reuse QuestUI's prefabs)")]
     [SerializeField] private Transform activeContent;
@@ -49,7 +56,10 @@ public class QuestLogUI : MonoBehaviour
     [SerializeField] private Color unselectedTab = new Color(0.6f, 0.6f, 0.6f, 1f);
 
     private const int TabActive = 0, TabCompleted = 1, TabNotes = 2, TabDeeds = 3, TabPatterns = 4;
+    private const int TabLore = 5;
+    private const int LoreGods = 0, LoreWisp = 1;
     private int currentTab = TabActive;
+    private int loreSub = LoreGods;
 
     public static QuestLogUI Instance { get; private set; }
 
@@ -71,6 +81,9 @@ public class QuestLogUI : MonoBehaviour
         if (notesTabButton != null) notesTabButton.onClick.AddListener(() => SelectTab(TabNotes));
         if (deedsTabButton != null) deedsTabButton.onClick.AddListener(() => SelectTab(TabDeeds));
         if (patternsTabButton != null) patternsTabButton.onClick.AddListener(() => SelectTab(TabPatterns));
+        if (loreTabButton != null) loreTabButton.onClick.AddListener(() => SelectTab(TabLore));
+        if (loreGodsButton != null) loreGodsButton.onClick.AddListener(() => SelectLoreSub(LoreGods));
+        if (loreWispButton != null) loreWispButton.onClick.AddListener(() => SelectLoreSub(LoreWisp));
         if (panel != null) panel.SetActive(false);
         HideAllPages();
     }
@@ -79,6 +92,9 @@ public class QuestLogUI : MonoBehaviour
     {
         // Rebindable through Keybinds/GameAction; the text-input guard lives in WasPressed.
         // Esc-to-close is handled centrally by PauseMenuController (menu > journal > pause).
+        // A divine audience owns the screen while it plays: the journal must not open
+        // behind an opaque overlay the player cannot see it through.
+        if (DivineAudienceUI.IsPlaying) return;
         if (Keybinds.WasPressed(GameAction.ToggleQuestLog)) Toggle();
     }
 
@@ -108,6 +124,7 @@ public class QuestLogUI : MonoBehaviour
         if (notesPage != null) notesPage.SetActive(false);
         if (deedsPage != null) deedsPage.SetActive(false);
         if (patternsPage != null) patternsPage.SetActive(false);
+        if (lorePage != null) lorePage.SetActive(false);
         TodoListUI.Instance?.SetVisible(false);
     }
 
@@ -119,6 +136,7 @@ public class QuestLogUI : MonoBehaviour
         if (notesPage != null) notesPage.SetActive(tab == TabNotes);
         if (deedsPage != null) deedsPage.SetActive(tab == TabDeeds);
         if (patternsPage != null) patternsPage.SetActive(tab == TabPatterns);
+        if (lorePage != null) lorePage.SetActive(tab == TabLore);
         TodoListUI.Instance?.SetVisible(tab == TabNotes);
 
         Tint(activeTabButton, tab == TabActive);
@@ -126,10 +144,12 @@ public class QuestLogUI : MonoBehaviour
         Tint(notesTabButton, tab == TabNotes);
         Tint(deedsTabButton, tab == TabDeeds);
         Tint(patternsTabButton, tab == TabPatterns);
+        Tint(loreTabButton, tab == TabLore);
 
         if (tab == TabActive) RebuildActive();
         else if (tab == TabCompleted) RebuildCompleted();
         else if (tab == TabDeeds) RebuildDeeds();
+        else if (tab == TabLore) RebuildLore();
         // Notes: TodoListUI renders itself.
 
         // Any open advances the ledger urging; the Deeds page its second objective.
@@ -190,6 +210,56 @@ public class QuestLogUI : MonoBehaviour
             if (earned) AddLine(list, "Done -- day " + dc.EarnedDay(d));
             else if (!d.hidden) AddLine(list, d.description);
             else AddLine(list, "A deed yet to be done.");
+        }
+    }
+
+    // -- lore page ---------------------------------------------------------------
+
+    private void SelectLoreSub(int sub)
+    {
+        loreSub = sub;
+        Tint(loreGodsButton, sub == LoreGods);
+        Tint(loreWispButton, sub == LoreWisp);
+        RebuildLore();
+    }
+
+    // What the gods said, re-read (canon 19A). Rendered from the SAME script asset the
+    // audience spoke from - a second copy here would drift the moment a line is edited.
+    // Unheld tiers read "???", the hidden-deed idiom.
+    private void RebuildLore()
+    {
+        if (!Clear(loreContent)) return;
+        Tint(loreGodsButton, loreSub == LoreGods);
+        Tint(loreWispButton, loreSub == LoreWisp);
+
+        if (loreSub == LoreWisp)
+        {
+            MakeEntry(loreContent, "The wisp");
+            AddLine(MakeEntry(loreContent, "(not yet gathered)"),
+                    "Its sayings are still scattered through the dark.");
+            return;
+        }
+
+        var ui = DivineAudienceUI.Instance;
+        var script = ui != null ? ui.Script : null;
+        var core = DungeonCore.Instance;
+        if (script == null || core == null)
+        {
+            MakeEntry(loreContent, "(nothing has spoken here)");
+            return;
+        }
+
+        var god = script.DeityFor(core.DungeonType);
+        string who = god != null ? god.deityName + ", " + god.epithet : "An unnamed god";
+        MakeEntry(loreContent, who);
+
+        foreach (LevelTier tier in DivineAudienceScript.AudienceTiers)
+        {
+            bool held = DivineAudienceLedger.IsHeld(tier);
+            var list = MakeEntry(loreContent, held ? tier + " -- the audience" : "???");
+            if (!held) { AddLine(list, "An audience not yet granted."); continue; }
+            foreach (var beat in script.Compose(core.DungeonType, tier))
+                AddLine(list, beat.text);
         }
     }
 

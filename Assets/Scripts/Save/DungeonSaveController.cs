@@ -214,6 +214,7 @@ public class DungeonSaveController : MonoBehaviour
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
         WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
+        DivineAudienceLedger.ResetForNewGame();          // fresh dungeon, the gods attend again
 
         SaveGame();
 
@@ -353,6 +354,7 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.wispQuestsHandedIn = QuestController.Instance.handInQuestIDs;
         }
         currentSave.wispQuestsInitialised = WispQuestDirector.InitialisedForSave;
+        currentSave.audiencesHeld = DivineAudienceLedger.GatherSave();
 
         if (TodoListUI.Instance != null)
             currentSave.playerTodos = TodoListUI.Instance.GetSaveData();
@@ -866,6 +868,11 @@ public class DungeonSaveController : MonoBehaviour
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);
             WispQuestDirector.RestoreInitialised(currentSave.wispQuestsInitialised);
+            // Needs the restored level: tiers already passed are reconciled as held,
+            // so an older save cannot fire four gods in a row (canon 19A).
+            DivineAudienceLedger.RestoreFromSave(
+                currentSave.audiencesHeld,
+                currentSave.coreData != null ? currentSave.coreData.dungeonLevel : 1);
 
             RunStats.Instance?.RestoreFromSave(currentSave.runStats);
             DeedsController.Instance?.RestoreSave(currentSave.earnedDeeds);

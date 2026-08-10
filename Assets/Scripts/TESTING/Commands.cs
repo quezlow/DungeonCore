@@ -270,6 +270,52 @@ public class Commands : MonoBehaviour
     [ContextMenu("Print World Events")]
     void TestPrintWorldEvents() => WorldEventDirector.PrintState();
 
+    [Header("Divine Audiences")]
+    [Tooltip("Which audience Play Divine Audience forces. Bronze holds none.")]
+    [SerializeField] private LevelTier previewAudienceTier = LevelTier.Silver;
+
+    // The writing IS the feature, so it must be readable without four tier-ups:
+    // this composes every god at every tier, tokens substituted, exactly as spoken.
+    [ContextMenu("Print Divine Audience Script")]
+    void TestPrintDivineAudiences()
+    {
+        var ui = DivineAudienceUI.Instance;
+        if (ui == null) { Debug.Log("[Audience] No DivineAudienceUI in scene - no audience will ever play."); return; }
+        var script = ui.Script;
+        if (script == null) { Debug.Log("[Audience] DivineAudienceUI has no script asset assigned."); return; }
+
+        string faults = script.Validate();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Audience] " + (faults == null ? "script whole." : "FAULTS:\n  " + faults));
+        sb.AppendLine("held so far: " + DivineAudienceLedger.HeldCount + " of "
+                      + DivineAudienceScript.AudienceTiers.Length + ".");
+
+        var types = new DungeonType[] { DungeonType.Fire, DungeonType.Water, DungeonType.Air,
+                                       DungeonType.Earth, DungeonType.Dark, DungeonType.Light };
+        foreach (var type in types)
+        {
+            var god = script.DeityFor(type);
+            sb.AppendLine("");
+            sb.AppendLine("== " + type + ": " + (god != null ? god.deityName + ", " + god.epithet : "(no deity row)"));
+            foreach (LevelTier tier in DivineAudienceScript.AudienceTiers)
+            {
+                sb.AppendLine("  -- " + tier + " --");
+                foreach (var beat in script.Compose(type, tier))
+                    sb.AppendLine("    " + (beat.presence ? "[seen] " : "") + beat.text);
+            }
+        }
+        Debug.Log(sb.ToString());
+    }
+
+    [ContextMenu("Play Divine Audience")]
+    void TestPlayDivineAudience()
+    {
+        var ui = DivineAudienceUI.Instance;
+        if (ui == null) { Debug.Log("[Audience] No DivineAudienceUI in scene."); return; }
+        if (!ui.Play(previewAudienceTier, force: true))
+            Debug.Log("[Audience] Refused - no script, no core, or one already playing.");
+    }
+
     [ContextMenu("Print Sightseer Draw")]
     void TestPrintSightseerDraw()
         => Debug.Log($"[Sightseer] novel species alive: {DungeonMonster.NovelSpeciesCount}, "

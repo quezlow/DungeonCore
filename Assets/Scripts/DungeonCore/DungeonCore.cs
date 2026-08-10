@@ -352,7 +352,8 @@ public class DungeonCore : MonoBehaviour
     {
         if (LevelUpAvailable) return;
 
-        // Diamond 3 → God 1 transition is gated by a TBD special requirement.
+        // Diamond 3 -> God 1 is gated on surviving the endgame climax (canon 9).
+        // Its ceremony is the God audience (canon 19A); nothing here is TBD any more.
         if (LevelTierUtil.IsDiamondCap(dungeonLevel) && !(EndgameClimax.Instance != null && EndgameClimax.Instance.Ascended)) return;
 
         if (currentXP >= CalculateXPThreshold(dungeonLevel))
@@ -366,7 +367,7 @@ public class DungeonCore : MonoBehaviour
     {
         if (!LevelUpAvailable) return;
 
-        // Block the Diamond 3 → God 1 transition until special requirement is defined.
+        // Block the Diamond 3 -> God 1 transition until the climax has been survived.
         if (LevelTierUtil.IsDiamondCap(dungeonLevel) && !(EndgameClimax.Instance != null && EndgameClimax.Instance.Ascended))
         {
             Debug.Log("[DungeonCore] God 1 (ascension) requires surviving the endgame climax.");
@@ -395,6 +396,13 @@ public class DungeonCore : MonoBehaviour
         OnCapacityChanged?.Invoke(usedCapacity, MaxCapacity);
 
         CheckLevelUp();
+
+        // The god of the core's own type attends every tier transition (canon 19A).
+        // Fired LAST, after the level, the stair credit and every listener have
+        // settled: the audience stops the clock behind an opaque overlay, and any
+        // listener running after it would run against a frozen, hidden game.
+        if (isTierBoundary)
+            DivineAudienceUI.Instance?.Play(LevelTierUtil.FromFlatLevel(dungeonLevel).tier);
     }
 
     private float CalculateXPThreshold(int level)
