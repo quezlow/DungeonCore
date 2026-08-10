@@ -15377,7 +15377,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9998314
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -18000,6 +18000,52 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 70, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &540142070
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 540142071}
+  - component: {fileID: 540142072}
+  m_Layer: 0
+  m_Name: WorldEventDirector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &540142071
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 540142070}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4987690651016387498}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &540142072
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 540142070}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad98ac86a25de0640a437fa095826662, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldEventDirector
+  dailyFireChance: 0.25
+  globalCooldownDays: 3
 --- !u!1 &541120901
 GameObject:
   m_ObjectHideFlags: 0
@@ -26653,6 +26699,23 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 845728463}
   m_CullTransparentMesh: 1
+--- !u!114 &847162001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 497126098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37d4486a1ac64195b70c93788242b54a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonAppealLedger
+  windowDays: 3
+  graceRate: 0.25
+  maxDeterrence: 0.6
+  appealPerGold: 0.02
+  appealCap: 3
 --- !u!1 &853214846
 GameObject:
   m_ObjectHideFlags: 0
@@ -50449,7 +50512,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000011807199}
+  m_AnchoredPosition: {x: 0, y: 0.00014003857}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -57803,7 +57866,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99985534
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -59069,6 +59132,7 @@ MonoBehaviour:
   trophyDamageMaxBonus: 0.25
   trophyManaMax: 2
   trophyNotorietyMax: 0.5
+  trophyFameMax: 2
 --- !u!114 &2002678107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60389,7 +60453,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000011807199}
+  m_AnchoredPosition: {x: 0, y: 0.00014003857}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -63351,6 +63415,11 @@ MonoBehaviour:
   notorietyToDestroyer: 0.03
   reputationToPilgrim: 0.04
   reputationToGiftGiver: 0.02
+  alignmentToPilgrim: 0.02
+  alignmentToGiftGiver: 0.02
+  scholarNoblePerNovelSpecies: 0.5
+  novelIntervalPerSpecies: 0.05
+  novelIntervalFloor: 0.85
   weightDelver: 5
   weightMercenary: 3
   weightHero: 1
@@ -66963,6 +67032,7 @@ Transform:
   - {fileID: 1558610805}
   - {fileID: 1771577075}
   - {fileID: 711524052}
+  - {fileID: 540142071}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!225 &5000115159085552515
@@ -70137,23 +70207,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &847162001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 497126098}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 37d4486a1ac64195b70c93788242b54a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DungeonAppealLedger
-  windowDays: 3
-  graceRate: 0.25
-  maxDeterrence: 0.6
-  appealPerGold: 0.02
-  appealCap: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

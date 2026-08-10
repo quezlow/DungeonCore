@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06861d0aec1cc2c4ca3d2ec36fafa98e, type: 3}
+  m_Name: we_tremor
+  m_EditorClassIdentifier: Assembly-CSharp::WorldEventDefinition
+  alertMessage: The deep rock groans and shifts, little core, and a seam of old glitter
+    falls within your reach.
+  alertCategory: 2
+  alertSeverity: 0
+  hostile: 0
+  minDay: 6
+  minNotoriety: 0
+  minRating: 0
+  cooldownDays: 6
+  weight: 1.5
+  effectKind: 3
+  magnitude: 1
+  durationDays: 0
+  goldMin: 40
+  goldMax: 80
