@@ -301,11 +301,12 @@ public class AdventurerSpawner : MonoBehaviour
             }
         }
 
-        // Keep in sync with RollIntent: alignment + appeal shaping.
+        // Keep in sync with RollIntent: alignment + appeal + world event shaping.
         float align = AlignmentSystem.Instance != null ? AlignmentSystem.Instance.Alignment : 0f;
         wPilgrim += Mathf.Max(0f, align) * alignmentToPilgrim;
         wGiftGiver += Mathf.Max(0f, -align) * alignmentToGiftGiver;
-        float civMult = DungeonAppealLedger.CivilianMultiplier;
+        float civMult = DungeonAppealLedger.CivilianMultiplier
+                        * WorldEventDirector.CivilianWeightMultiplier;
         wDelver = (wDelver + DungeonAppealLedger.DelverAppealBonus) * civMult;
         wPilgrim *= civMult;
         wGiftGiver *= civMult;
@@ -909,8 +910,11 @@ public class AdventurerSpawner : MonoBehaviour
         // their proportions; additive on the lift side per the
         // attractor precedent. Destroyers are untouched -- notoriety
         // owns escalation, so a slaughterhouse trends hostile-but-
-        // sparser rather than empty.
-        float civMult = DungeonAppealLedger.CivilianMultiplier;
+        // sparser rather than empty. World events (the pilgrim surge)
+        // multiply in beside the ledger at BOTH weight sites, so the
+        // WavePreviewHUD foresight stays honest.
+        float civMult = DungeonAppealLedger.CivilianMultiplier
+                        * WorldEventDirector.CivilianWeightMultiplier;
         wDelver = (wDelver + DungeonAppealLedger.DelverAppealBonus) * civMult;
         wPilgrim *= civMult;
         wGiftGiver *= civMult;

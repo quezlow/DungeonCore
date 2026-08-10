@@ -93,7 +93,8 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <br><b>Rev 4:</b> chapter 23 Memory Echoes added (canon 34). Note for flag authors: <code>Persistence.SetFlag</code> now trims, after four shipped <code>flagID</code> fields carried a trailing space and made Water unwinnable -- but type them clean anyway.
       <br><b>Rev 6:</b> chapter 28 added -- the dwarven village (canon 19 part 3): editing the hold's plan, the guarantee headers, the settlement name roster, and the villager sprite. Chapter 26's roster-eligibility step updated for the floor plan correction and <code>@general: no</code>.
       <br><b>Rev 7:</b> chapter 28 revised for the rotation set -- three double-size holds (Terraced Vein, Deep Market, Shrinehold) rolled by archetype, the Hearth retired to worked-example duty, and the door rule extended in writing to stalls and grave rows.
-      <br><b>Rev 8 (2026-08-09):</b> chapter 26a rewritten to the shipped format after a drift check found it four glyph-generations behind -- nine glyphs, nine headers, <code>@doors:</code> required, <code>_SYMBOLS.txt</code> and the tag audit referenced as the on-disk truth. Chapter 33 added: Site Relations (canon's site relations entry). Chapter 29 gains the per-cell <code>'o'</code> / <code>piecePrefab</code> decor path. Chapter 0 map row added. Rider: <code>_SYMBOLS.txt</code> gains the relation headers. <br><b>Rev 9 (2026-08-09):</b> chapter 34 added -- sightseer draws: the <code>novel</code> monster flag (eight shipped wonders) and authoring a Fame trophy (<code>TrophyEffectType.Fame</code>).</div>
+      <br><b>Rev 8 (2026-08-09):</b> chapter 26a rewritten to the shipped format after a drift check found it four glyph-generations behind -- nine glyphs, nine headers, <code>@doors:</code> required, <code>_SYMBOLS.txt</code> and the tag audit referenced as the on-disk truth. Chapter 33 added: Site Relations (canon's site relations entry). Chapter 29 gains the per-cell <code>'o'</code> / <code>piecePrefab</code> decor path. Chapter 0 map row added. Rider: <code>_SYMBOLS.txt</code> gains the relation headers. <br><b>Rev 9 (2026-08-09):</b> chapter 34 added -- sightseer draws: the <code>novel</code> monster flag (eight shipped wonders) and authoring a Fame trophy (<code>TrophyEffectType.Fame</code>).
+      <br><b>Rev 10 (2026-08-09):</b> chapter 35 added -- World Events (canon 37): the generator recipe, the effect-kind boundary, and the two silent-failure scene steps. Chapter 0 map row added.</div>
 
   <details open>
     <summary>0. The Pattern, the Rules, the Map</summary>
@@ -146,6 +147,7 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
               <tr><td>Material pattern</td><td><code>Dungeon/Pattern Definition</code> (or the generator)</td><td><code>ScriptableObjects/Patterns</code></td><td><code>PatternCatalog.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>pattern.&lt;id&gt;</code></td></tr>
       <tr><td>Tech node</td><td><code>Dungeon/Tech Node</code> (or the generator)</td><td><code>ScriptableObjects/Tech</code></td><td><code>TechTree.asset</code> (same folder)</td><td><code>id</code> &rarr; <code>tech.&lt;id&gt;</code></td></tr>
       <tr><td>Site relations</td><td>headers in the plan <code>.txt</code> (ch 33)</td><td><code>ScriptableObjects/Sites/Plans</code></td><td>nothing -- resolved at placement time; audited by <code>Tools/audit_plan_tags.py</code></td><td>n/a</td></tr>
+      <tr><td>World event</td><td><code>Dungeon/World Event Definition</code> (or the generator, ch 35)</td><td><code>Resources/Events/World</code></td><td>nothing -- <code>WorldEventDirector</code> self-populates</td><td>asset name (save-facing id)</td></tr>
       </table>
       <p class="why">All asset homes are under <code>Assets/ScriptableObjects/</code> unless prefixed otherwise.
       The five registries live in <code>Assets/ScriptableObjects/Registries/</code>; all five are already
@@ -936,6 +938,27 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c34s5"><label for="dcr-authoring-v1-c34s5"><b>Register:</b> add it to <code>Registries/FurnitureDefinitionRegistry</code> like any furniture. It contributes only while its cell lies in a VALID Trophy Hall -- placed elsewhere it persists but counts nothing, same as every trophy.</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c34s6"><label for="dcr-authoring-v1-c34s6"><b>Sprite (ComfyUI):</b> props pipeline, Style Contract head/tail with the subject in the object slot using orthographic front-view language (this is an object, so no tall-proportions clause), <code>dcr-props-1x.png</code> palette. Subject suggestion: a gilded plinth bearing a laurelled skull or a mounted wonder's horn -- something that reads as "they came from three kingdoms to see this".</label></div>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c34s7"><label for="dcr-authoring-v1-c34s7"><b>Verify:</b> place it in a valid Trophy Hall, then <code>Print Sightseer Draw</code> shows <code>trophy fame</code> above 0. Break the Hall and the contribution blinks off; re-validate and it returns -- the standard trophy containment behaviour.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>35. World Events (The World's Weather)</summary>
+    <div class="body">
+      <div class="why">Canon 37. Small random events -- a murrain, a pilgrim surge, a tremor --
+      rolled at dawn from data. A new event on an existing effect kind is ONE spec row in the
+      generator; the four bespoke threats and the merchant stay bespoke by design and are not
+      authored here. Cadence maths lives in <code>Tools/sim_world_events.py</code>; the director
+      mirrors that file's dawn ordering exactly.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c35s1"><label for="dcr-authoring-v1-c35s1"><b>Adding an event.</b> One <code>Spec</code> row in <code>Editor/WorldEventContentGenerator.cs</code>: id (the asset name IS the save-facing id -- rename an asset and its cooldown history is orphaned, so pick the id once), the wisp-voiced alert line, category + severity, the gates (<code>minDay</code> / <code>minNotoriety</code> / <code>minRating</code>, 0 = ungated), <code>cooldownDays</code>, <code>weight</code>, and the effect. Then Dungeon Core &rarr; Generate World Events. The generator is idempotent: existing assets update in place.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c35s2"><label for="dcr-authoring-v1-c35s2"><b>The effect-kind boundary.</b> <code>RespawnRate</code> and <code>CivilianWeight</code> hold <code>magnitude</code> for <code>durationDays</code> (the fire day counts as the first); <code>GrantGold</code> rolls <code>goldMin..goldMax</code> once; <code>None</code> fires the alert alone -- pure flavour is a legal event. A NEW kind is code: one value appended to <code>WorldEventEffectKind</code> (append-only -- it serialises into .asset files) plus one case in <code>WorldEventDirector.Fire</code>, the single place kinds become behaviour.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c35s3"><label for="dcr-authoring-v1-c35s3"><b>Cooldown covers duration by construction.</b> <code>OnValidate</code> clamps <code>cooldownDays</code> up to <code>durationDays</code>, so a timed effect can never re-fire over itself. Same-kind effects from DIFFERENT events stack multiplicatively -- if you author a second respawn-touching event, decide whether a murrain plus your event at once reads fair before shipping it.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c35s4"><label for="dcr-authoring-v1-c35s4"><b>Two scene steps, both silent when skipped.</b> The <code>WorldEventDirector</code> component must sit on the persistent manager GameObject beside the threat managers, and the generator must have run once. No component or an empty <code>Resources/Events/World</code> means no events and NO error -- the wisp-asset lesson. "Print World Events" in <code>Commands</code> is the check: it names every loaded event or says the folder came up empty.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c35s5"><label for="dcr-authoring-v1-c35s5"><b>Retune with the sim, not in the inspector.</b> Any change to gates, weights, the daily chance (0.25) or the global cooldown (3): mirror it in <code>Tools/sim_world_events.py</code> and rerun -- the cadence-band check (4-5 events per 30 eligible days) is the feel of the whole system in one number. <code>hostile</code> marks an event the endgame climax should silence; the v1 trio carries none, and an assault-shaped event later must.</label></div>
     </div>
   </details>
 

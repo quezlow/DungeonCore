@@ -54,7 +54,10 @@ public class RespawnTicker : MonoBehaviour
             {
                 var s = tickBuf[i];
                 if (s == null) continue;
-                s.TickRespawn(dt * RoomEffectCensus.GetRespawnMultiplier(s));
+                // World events (the murrain) slow every brood at once; room
+                // effects stay per-spawner. Both default to 1.
+                s.TickRespawn(dt * RoomEffectCensus.GetRespawnMultiplier(s)
+                              * WorldEventDirector.RespawnRateMultiplier);
             }
         }
     }

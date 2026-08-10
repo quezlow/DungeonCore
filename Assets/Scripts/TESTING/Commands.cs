@@ -267,6 +267,9 @@ public class Commands : MonoBehaviour
     [ContextMenu("Print Appeal Ledger")]
     void TestPrintAppealLedger() => DungeonAppealLedger.PrintAppeal();
 
+    [ContextMenu("Print World Events")]
+    void TestPrintWorldEvents() => WorldEventDirector.PrintState();
+
     [ContextMenu("Print Sightseer Draw")]
     void TestPrintSightseerDraw()
         => Debug.Log($"[Sightseer] novel species alive: {DungeonMonster.NovelSpeciesCount}, "

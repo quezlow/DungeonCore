@@ -96,6 +96,9 @@ the supersession in one line.
 32. The Living Prologue (Town, Forest, Ceremony)
 33. Monster Target Priority (Class-Aware Targeting)
 34. The Core's Own Past (Persisted Life, Memory Echoes)
+35. Monster Mutations (Bestiary upgrade line)
+36. Built Walls and the Sealed Way
+37. Random World Events (The World's Weather)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -1642,12 +1645,11 @@ the First Spark and The Drawn Breath (see entry 28A).
   return weighting -- redundant with the appeal ledger above, which is
   outcome-based word-of-mouth at intent granularity; per-type would
   need a type field on `RaidRecord` for marginal gain.
-- *Random world events framework:* DEFERRED, to be revisited. What exists is
-  three bespoke recurring threats, each its own component --
-  `HolyOrderStrike`, `MercenaryContract`, `WildMonsterEvent` (entry 8).
-  There is no scheduler, event registry or data-driven authoring surface,
-  and the Wandering Merchant runs its own arrival controller rather than
-  riding a shared one.
+- *Random world events framework:* SHIPPED -- see entry 37. The
+  dispatcher, registry and data-driven authoring surface exist
+  (`WorldEventDirector` + assets under `Resources/Events/World`); the
+  bespoke threats stayed bespoke by design, and the Wandering Merchant
+  keeps its own arrival controller.
 
 ## 19. Buried Age Sites and the Deep Roads
 
@@ -6233,6 +6235,44 @@ total for this entry), the seven echo call sites,
 
 ---
 
+## 35. Monster Mutations (Bestiary upgrade line)
+
+Status: BUILT. Verified: pending smoke test
+
+The Bestiary path gains its upgrade line -- the trapwright pattern applied
+to monsters. Two stacked nodes: mutation_1 "The Shaping of Flesh" (t3, 25
+pts / 3d, prereq bones_in_iron, pattern CuredLeather) and mutation_2 "The
+Perfected Strain" (t4, 45 pts / 4d, prereq mutation_1, pattern RunedCrystal
+-- the Epic band's first research consumer). Both Always-visible under the
+DK2 name rule; no affinity, no cross-path edge, matching trapwright.
+
+MonsterMastery (static, Monster/) is the read point. Tier I: damage x1.15,
+damage taken x0.9. Tier II: damage x1.3, damage taken x0.8, move speed
+x1.1. Reach was considered and DROPPED: attack range feeds the combat state
+machine's spacing decisions and cannot be verified off-screen. Values are
+cached and recomputed on UnlockState.OnChanged because the speed multiplier
+sits on the per-frame movement path (the EntityAnimationDriver hash-guard
+lesson); TrapMastery stays uncached because fire time is rare.
+
+Consumption sites, all gated !IsWild so wild monsters AND invaders are
+excluded (the trapworks wild ruling): both strike computations
+(FireProjectile and DealAttackDamage -- the projectile payload carries the
+mutated figure, so a dead shooter's bolt still lands it), TakeDamage (the
+damage-taken multiplier, applied to incoming damage rather than maxHP so it
+is retroactive for monsters already alive), and EffectiveMoveSpeed.
+Mutations stack multiplicatively with roomDamageMultiplier, the Trophy Hall
+global buff and the crowd penalty. The damage-taken multiplier also softens
+friendly trap wounds (a Fireball Rune burst hits everyone in it); accepted
+as flavour-consistent. Nothing is excluded from scaling, unlike
+trapwright's capture-hold carve-out -- subdue-on-defeat is adventurer-side,
+so capture is untouched.
+
+Key files: Monster/MonsterMastery.cs, Monster/DungeonMonster.cs,
+Editor/TechContentGenerator.cs (regenerate via Dungeon Core menu after
+pulling).
+
+---
+
 ## 36. Built Walls and the Sealed Way
 
 Status: BUILT. Verified: pending smoke test
@@ -6362,43 +6402,95 @@ it stalls wherever its own pathing stalls, which is the honest behaviour.
 
 ---
 
+## 37. Random World Events (The World's Weather)
+
+Status: BUILT. Verified: pending smoke test.
+
+The deferred framework from entry 18, revisited and shipped: a data-driven
+dispatcher so a new world event is an asset entry, not a component.
+`Gameplay/WorldEventDirector.cs` (one component beside the threat managers)
+self-populates from `Resources/Events/World` (authored by Dungeon Core ->
+Generate World Events, `Editor/WorldEventContentGenerator.cs`) and rolls at
+dawn: tick active timed effects, burn the global cooldown, gather eligible
+events (minDay / minNotoriety / minRating gates, per-event cooldown, not
+already active; climax suppression strips HOSTILE-flagged events only), roll
+the daily fire chance (0.25), then one weighted draw. Global cooldown 3 days
+between any two events; the tuning lands 4-5 events per 30 eligible days,
+validated by `Tools/sim_world_events.py` (14 checks: gates, both cooldowns,
+no self-overlap, weighted proportions, cadence band, determinism, save/load
+mid-effect without refire, expiry, hostile-only suppression). The C# mirrors
+that file's dawn ordering exactly; rerun it when the tuning or the ordering
+changes.
+
+**Deliberately greenfield.** The four bespoke threats (`HolyOrderStrike`,
+`MercenaryContract`, `NobleRetaliation`, `WildMonsterEvent`) are untouched:
+each is a tuned state machine of its own, and folding them into a generic
+registry would rewrite tuned behaviour for no player-visible gain. The
+Wandering Merchant keeps its own arrival controller. The `hostile` flag on a
+definition exists so a future assault-shaped event honours
+`SuppressMidGameThreats`; none of the v1 trio carries it.
+
+**Effects are the honest data boundary.** `WorldEventEffectKind`
+(append-only -- it serialises into .asset files) names what an event does;
+the director's `Fire` switch is the single place kinds become behaviour. A
+new event on an existing kind is one generator spec row plus a regenerate; a
+new kind is one enum value plus one switch case. Timed kinds hold a
+multiplier for durationDays (the fire day counts as the first); the
+per-event cooldown is clamped to at least the duration so an effect can
+never overlap itself, and same-kind effects from DIFFERENT events stack
+multiplicatively by design.
+
+**Consumers read two cached statics** that default to 1 with no instance, so
+the hooks are inert until events exist: `RespawnRateMultiplier` multiplies
+into `RespawnTicker`'s per-spawner tick beside the room-effect multiplier,
+and `CivilianWeightMultiplier` multiplies beside
+`DungeonAppealLedger.CivilianMultiplier` at BOTH intent-weight sites in
+`AdventurerSpawner` (roll + foresight) so WavePreviewHUD stays honest -- the
+appeal ledger's same-sites rule applied again.
+
+**The v1 trio:** `we_murrain` (day 15+, cooldown 10, respawn x0.5 for 3
+days; Threat/Warning), `we_pilgrim_surge` (day 10+, cooldown 8, civilian
+x1.5 for 2 days; Discovery/Info), `we_tremor` (day 6+, cooldown 6, weight
+1.5, instant 40-80 gold; Discovery/Info). No autosave on fire: these are
+weather, not assaults -- the threat components autosave because a raid is a
+run-defining moment.
+
+**Persistence:** `WorldEventsSaveData` (additive on `DungeonSaveData`;
+parallel lists, JsonUtility takes no dictionaries) carries the global
+cooldown, per-event lastFiredDay / timesFired keyed by STRING id (the asset
+name, never an enum index -- a retired event's entry is harmless on load,
+and an active effect whose asset is gone is dropped), and the active effects
+with days remaining. Restore recomputes the multipliers immediately, because
+`DayNightCycle.LoadSaveData` deliberately never re-fires OnDayStarted --
+without that a saved murrain would load cured. New-game reset rides
+`DungeonSaveController.InitializeNewGame` beside the merchant's, since the
+director carries scheduling state exactly as the merchant does. Diagnostics:
+a log line per fire and per expiry, and "Print World Events" in `Commands`.
+
+**Scene setup is two manual steps** and both fail silently if skipped: the
+`WorldEventDirector` component goes on the persistent manager GameObject
+beside the threat managers, and Dungeon Core -> Generate World Events must
+run once to author the three assets. No component or no assets means no
+events and no error -- the wisp-asset lesson.
+
+**Key files:** `Gameplay/WorldEventDefinition.cs`,
+`Gameplay/WorldEventDirector.cs`, `Editor/WorldEventContentGenerator.cs`,
+`Monster/RespawnTicker.cs` (one-line hook),
+`Adventurer/AdventurerSpawner.cs` (the two civMult sites),
+`TESTING/Commands.cs`, `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs`, `Tools/sim_world_events.py`.
+
+**Rejected:** migrating the shipped threats (above). An "earthquake vein
+reveal" as first designed -- no mineral veins exist anywhere in the
+codebase, so it was a resource system wearing an event's clothes; the
+tremor's instant gold grant is its honest reshape. An abandoned free-loot
+chest -- chests are player-placed bait feeding the Treasure-Hunter tier
+scan and the appeal loop, and a world-spawned one needs a placement solver
+while muddying a tuned economy.
+
+---
+
 # APPENDIX
-
-## 35. Monster Mutations (Bestiary upgrade line)
-
-Status: BUILT. Verified: pending smoke test
-
-The Bestiary path gains its upgrade line -- the trapwright pattern applied
-to monsters. Two stacked nodes: mutation_1 "The Shaping of Flesh" (t3, 25
-pts / 3d, prereq bones_in_iron, pattern CuredLeather) and mutation_2 "The
-Perfected Strain" (t4, 45 pts / 4d, prereq mutation_1, pattern RunedCrystal
--- the Epic band's first research consumer). Both Always-visible under the
-DK2 name rule; no affinity, no cross-path edge, matching trapwright.
-
-MonsterMastery (static, Monster/) is the read point. Tier I: damage x1.15,
-damage taken x0.9. Tier II: damage x1.3, damage taken x0.8, move speed
-x1.1. Reach was considered and DROPPED: attack range feeds the combat state
-machine's spacing decisions and cannot be verified off-screen. Values are
-cached and recomputed on UnlockState.OnChanged because the speed multiplier
-sits on the per-frame movement path (the EntityAnimationDriver hash-guard
-lesson); TrapMastery stays uncached because fire time is rare.
-
-Consumption sites, all gated !IsWild so wild monsters AND invaders are
-excluded (the trapworks wild ruling): both strike computations
-(FireProjectile and DealAttackDamage -- the projectile payload carries the
-mutated figure, so a dead shooter's bolt still lands it), TakeDamage (the
-damage-taken multiplier, applied to incoming damage rather than maxHP so it
-is retroactive for monsters already alive), and EffectiveMoveSpeed.
-Mutations stack multiplicatively with roomDamageMultiplier, the Trophy Hall
-global buff and the crowd penalty. The damage-taken multiplier also softens
-friendly trap wounds (a Fireball Rune burst hits everyone in it); accepted
-as flavour-consistent. Nothing is excluded from scaling, unlike
-trapwright's capture-hold carve-out -- subdue-on-defeat is adventurer-side,
-so capture is untouched.
-
-Key files: Monster/MonsterMastery.cs, Monster/DungeonMonster.cs,
-Editor/TechContentGenerator.cs (regenerate via Dungeon Core menu after
-pulling).
 
 ## A. Content Registries and Authoring Keys
 
