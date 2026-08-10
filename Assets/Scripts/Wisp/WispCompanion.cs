@@ -361,6 +361,14 @@ public class WispCompanion : MonoBehaviour
 
     public bool HasSpoken(string id) => spoken.Contains(id);
 
+    /// <summary>The line pool, so the journal's lore page reads from the SAME asset
+    /// the wisp spoke from rather than keeping a second reference to drift.</summary>
+    public WispScript Script => script;
+
+    /// <summary>This dungeon's temperament. Rolled once and fixed; the lore page
+    /// names it, and nothing may set it from outside.</summary>
+    public WispPersonality Personality => personality;
+
     /// <summary>Save hook: the ids already heard.</summary>
     public List<string> GetSpokenForSave() => new List<string>(spoken);
 

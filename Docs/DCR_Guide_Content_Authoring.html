@@ -613,6 +613,9 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
 
       <h3>The empty-handed voice</h3>
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s5"><label for="dcr-authoring-v1-c23s5">A life lived that earned no affinity flag gets <code>HollowLines</code> instead: three lines, spoken in order at the first three echo moments, then the wisp stops reaching. Extending that array is the only edit -- but think hard before you do, because the whole point is that it <b>ends</b>. It is gated on <code>flag_lived</code>, so a skipped prologue stays silent rather than mourning a day it never had.</label></div>
+
+      <h3>Where a line lands in the journal</h3>
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c23s6"><label for="dcr-authoring-v1-c23s6">The <b>id prefix</b> decides which group a saying files under on the journal's LORE tab, WISP sub-page (<code>WispLoreIndex</code>): <code>echo_*</code> under Echoes, <code>kin_*</code> under Kin, <code>site_* holy_* rest_*</code> under The Dead Below, and so on. An unmapped prefix is not lost -- it falls to <b>Other sayings</b>, and <code>Print Wisp Lore Page</code> names it, which is the cue to add a map entry for a new content family. Two rules that bite: only <code>once = true</code> lines can ever be gathered there (repeatable ones are never recorded as spoken), and the page shows only what has actually been <b>heard</b>, so a missing line means never-spoken far more often than it means mis-filed.</label></div>
     </div>
   </details>
 

@@ -232,13 +232,7 @@ public class QuestLogUI : MonoBehaviour
         Tint(loreGodsButton, loreSub == LoreGods);
         Tint(loreWispButton, loreSub == LoreWisp);
 
-        if (loreSub == LoreWisp)
-        {
-            MakeEntry(loreContent, "The wisp");
-            AddLine(MakeEntry(loreContent, "(not yet gathered)"),
-                    "Its sayings are still scattered through the dark.");
-            return;
-        }
+        if (loreSub == LoreWisp) { RebuildWispLore(); return; }
 
         var ui = DivineAudienceUI.Instance;
         var script = ui != null ? ui.Script : null;
@@ -260,6 +254,38 @@ public class QuestLogUI : MonoBehaviour
             if (!held) { AddLine(list, "An audience not yet granted."); continue; }
             foreach (var beat in script.Compose(core.DungeonType, tier))
                 AddLine(list, beat.text);
+        }
+    }
+
+    // What the wisp has actually said, grouped by id prefix (canon 19A). HEARD ONLY:
+    // a placeholder per unheard line would advertise how many kin there are to meet
+    // and how many echoes a life could hold, before the player has met one. The
+    // ambient barks are not here - they carry no ids and nothing tracks them.
+    private void RebuildWispLore()
+    {
+        var wisp = WispCompanion.Instance;
+        var script = wisp != null ? wisp.Script : null;
+        if (script == null)
+        {
+            MakeEntry(loreContent, "(nothing has spoken here)");
+            return;
+        }
+
+        WispLoreIndex.Tally(script, wisp, out int heard, out int total);
+        var header = MakeEntry(loreContent, "The wisp is " + wisp.Personality + ".");
+        AddLine(header, heard + " of " + total + " sayings gathered.");
+
+        var groups = WispLoreIndex.Gather(script, wisp);
+        if (groups.Count == 0)
+        {
+            AddLine(header, "It has told you nothing yet worth keeping.");
+            return;
+        }
+
+        foreach (var group in groups)
+        {
+            var list = MakeEntry(loreContent, group.title);
+            foreach (string text in group.lines) AddLine(list, text);
         }
     }
 

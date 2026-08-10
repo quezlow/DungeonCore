@@ -276,6 +276,43 @@ public class Commands : MonoBehaviour
 
     // The writing IS the feature, so it must be readable without four tier-ups:
     // this composes every god at every tier, tokens substituted, exactly as spoken.
+    // The lore page shows only what has been HEARD, so "my line is missing" is
+    // ambiguous by design: never spoken, or filed somewhere unexpected. This says
+    // which, and names any id whose prefix no map entry claims.
+    [ContextMenu("Print Wisp Lore Page")]
+    void TestPrintWispLore()
+    {
+        var wisp = WispCompanion.Instance;
+        if (wisp == null) { Debug.Log("[WispLore] No WispCompanion in scene."); return; }
+        var script = wisp.Script;
+        if (script == null) { Debug.Log("[WispLore] WispCompanion has no script asset assigned."); return; }
+
+        WispLoreIndex.Tally(script, wisp, out int heard, out int total);
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[WispLore] temperament " + wisp.Personality + "; "
+                      + heard + " of " + total + " one-shot sayings gathered.");
+
+        foreach (var group in WispLoreIndex.Gather(script, wisp))
+        {
+            sb.AppendLine("  == " + group.title + " (" + group.lines.Count + ")");
+            foreach (string text in group.lines) sb.AppendLine("    " + text);
+        }
+
+        var unmapped = new System.Collections.Generic.List<string>();
+        var repeatable = 0;
+        foreach (var line in script.lines)
+        {
+            if (line == null || string.IsNullOrEmpty(line.id)) continue;
+            if (!line.once) { repeatable++; continue; }
+            string prefix = WispLoreIndex.PrefixOf(line.id);
+            if (!WispLoreIndex.IsMapped(line.id) && !unmapped.Contains(prefix)) unmapped.Add(prefix);
+        }
+        sb.AppendLine("  unmapped prefixes -> Other sayings: "
+                      + (unmapped.Count == 0 ? "none" : string.Join(", ", unmapped)));
+        sb.AppendLine("  repeatable lines (never gatherable): " + repeatable + ".");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Divine Audience Script")]
     void TestPrintDivineAudiences()
     {

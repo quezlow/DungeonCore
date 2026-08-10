@@ -3072,9 +3072,26 @@ its ceremony, and the old "special requirement TBD" comments near
 **Skippable and re-readable.** Any beat advances on click, space or enter;
 Esc withdraws. Held audiences are re-read in the journal's sixth tab, LORE,
 which has two sub-pages: GODS (rendered from the same script asset the
-audience spoke from -- never a second copy to drift) and WISP (present and
-empty; the wisp's own sayings gather there in a later pass). Unheld tiers read
-"???".
+audience spoke from -- never a second copy to drift) and WISP. Unheld tiers
+read "???".
+
+The WISP sub-page lists what the wisp has ACTUALLY said, grouped by id prefix
+(`WispLoreIndex`): The First Days, Firsts, The Dead Below, The Surface, Kin,
+Echoes, and a catch-all Other sayings for any prefix no map entry claims --
+which the `Print Wisp Lore Page` command names, so a new content family cannot
+vanish quietly into the bucket. It adds NO save state and NO scene wiring: the
+shipped `wispSpokenLines` field already records one-shot ids, and the page
+renders into the same `loreContent` root as GODS. Heard lines only, with a
+gathered tally -- a placeholder per unheard line would advertise that there are
+exactly eight kin to meet and eleven echoes a life might hold before the player
+has met one. Prefix rather than a category field on `WispScript.Line`
+deliberately: a field makes every new line depend on regenerating the asset via
+Fill Canon Lines, and that step fails silently. The temperament is named at the
+head of the page; the ambient bark pools are NOT listed and are not meant to be
+-- they carry no ids, nothing tracks them, and they are flavour rather than
+record. The four repeatable (`once = false`) lines can never appear, since only
+one-shot ids are recorded as spoken; they are excluded from the tally's total
+too, so it is not permanently unreachable.
 
 **Persistence.** `DungeonSaveData.audiencesHeld`, additive, keyed on the TIER
 NAME rather than the enum ordinal (`LevelTier` may gain values). Held is
@@ -6094,7 +6111,7 @@ between taunts is intended, not a gap.
 
 ## 34. The Core's Own Past (Persisted Life, Memory Echoes)
 
-Status: SHIPPED (persisted life, seven echoes, the empty-handed voice, the
+Status: SHIPPED (persisted life, eight echoes, the empty-handed voice, the
 town's descendants, the resting place). The elapsed-time rule below is a
 recorded lore decision, not code.
 
@@ -6143,7 +6160,8 @@ state beyond the flag list**.
 | Lived, empty-handed | a hollow line, at most three ever |
 | Lived, holds other flags | silence -- this memory is not theirs |
 
-The seven shipped echoes, one per affinity plus the old faith:
+The eight shipped echoes, one per affinity plus the old faith, plus the
+desecration echo added when `AlignmentSystem.Desecrate` gained a caller:
 
 | Deed in life | Dungeon moment | Site |
 |---|---|---|
@@ -6154,6 +6172,7 @@ The seven shipped echoes, one per affinity plus the old faith:
 | `mill_climb` | first descent below floor 0 | `FloorManager.SetActiveFloor` |
 | `quench` | first trap fires on the living | `TrapBase.OnAdventurerEntered` |
 | `pray_shrine` | first buried remains dug | `BuriedRemainsController.Grant` |
+| `light_candle` | first Church seal broken | `HolyGroundLedger` |
 
 `Recall` is `IsLoading`-guarded (a restore replays history in a few frames and
 none of it is happening to the player) and **speaks at most one echo per
@@ -6165,9 +6184,15 @@ the two systems read as one vocabulary. The Light echo anchors on the **kill**
 rather than `DroppedLoot.Absorb`, because the tribute coin flourish runs the
 same absorb and would fire the wrong memory.
 
-**Rejected:** a Holy Ground desecration echo (`AlignmentSystem.Desecrate` is a
-stub with no caller) and a trap-*kill* echo (no kill attribution exists;
-trap-fired is the honest hook).
+The desecration echo binds `light_candle` rather than `pray_shrine`: praying is
+already spent on the buried echo, and the pairing is sharper anyway -- in life
+you lit a candle at a shrine, and here you break one.
+
+**Rejected:** a trap-*kill* echo (no kill attribution exists; trap-fired is the
+honest hook). The Holy Ground desecration echo was rejected here for want of a
+caller and later un-rejected once `AlignmentSystem.Desecrate` had one; it is the
+eighth row above. This paragraph claimed otherwise for longer than it should
+have -- the code was right and the entry was stale.
 
 ### The empty-handed life has a voice
 
