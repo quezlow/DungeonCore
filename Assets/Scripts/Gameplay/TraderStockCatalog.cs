@@ -21,6 +21,7 @@ public class TraderStockCatalog : ScriptableObject
         // Appended, never reordered: StockType serialises into the catalog asset
         // as an int, so a shuffle would re-type every existing entry.
         Unlock,      // sets a bare UnlockState key -- no research node behind it
+        Charge,      // banks castings of a working the core need not hold (canon 41)
     }
 
     [Serializable]
@@ -41,6 +42,15 @@ public class TraderStockCatalog : ScriptableObject
                  "requiredTechKey is only ever tested through UnlockState, so a key " +
                  "no node owns gates a trap that can only be bought.")]
         public string unlockKey;
+
+        [Tooltip("Charge entries: the working banked on purchase. An entry with no " +
+                 "working set is DEAD STOCK BY DESIGN -- IsOwned reports it owned so it " +
+                 "never reaches a shelf, because the alternative is a row that takes " +
+                 "gold and gives nothing (the 'Whispers Set to Parchment' defect).")]
+        public SpellDefinition chargeSpell;
+
+        [Tooltip("Charge entries: castings banked per purchase.")]
+        [Min(1)] public int chargeCount = 1;
 
         [Tooltip("Regard step the Deep Holds must hold before this is on the shelf " +
                  "at all. 0 for everything the merchant sells, since he has no regard.")]
@@ -64,6 +74,19 @@ public class TraderStockCatalog : ScriptableObject
             return e.pattern == null || UnlockState.IsUnlocked(e.pattern.Key);
         if (e.type == StockType.Unlock)
             return string.IsNullOrEmpty(e.unlockKey) || UnlockState.IsUnlocked(e.unlockKey);
+        // A charge is the one REPEATABLE purchase in the game, so it is never owned.
+        // That is the whole point of it and it is also the trap: an entry that can
+        // never be filtered out sits in a rolled pool forever and crowds the finite
+        // manifest out exactly as the manifest empties. The wagon answers that with a
+        // slot of its own; see WanderingMerchantController.RollStock.
+        //
+        // A MALFORMED entry (no working, or a working with no id) reports OWNED
+        // instead, which keeps it off every shelf. Failing closed is deliberate: the
+        // alternative is a row that takes the gold in TryPurchase and then grants
+        // nothing in ApplyPurchase, which is exactly how the trader's dead-node book
+        // defect behaved and it went unnoticed for a whole arc.
+        if (e.type == StockType.Charge)
+            return e.chargeSpell == null || string.IsNullOrEmpty(e.chargeSpell.id);
         return string.IsNullOrEmpty(e.nodeKey) || UnlockState.IsUnlocked(e.nodeKey);
     }
 
@@ -96,6 +119,35 @@ public class TraderStockCatalog : ScriptableObject
             case StockType.Unlock:
                 if (!string.IsNullOrEmpty(e.unlockKey)) UnlockState.Unlock(e.unlockKey);
                 break;
+
+            case StockType.Charge:
+                if (e.chargeSpell != null)
+                    SpellCharges.Grant(e.chargeSpell.id, Mathf.Max(1, e.chargeCount));
+                break;
         }
+    }
+
+    /// <summary>
+    /// Called by a vendor the moment an entry reaches a shelf the player can read.
+    ///
+    /// For a charge entry this is how a working the core can never learn becomes
+    /// HEARD OF: a bare spell.heard.* key that no node owns (the dwarven-trap
+    /// precedent), after which SpellBook lists the working greyed at the tail of
+    /// the CAST row with its source line (canon 41).
+    ///
+    /// ON THE SHELF, NOT ON THE PURCHASE. What the greyed row tells a player is
+    /// that the thing exists and where it comes from -- which is knowledge they
+    /// already have the moment they read the row, so withholding it until they
+    /// buy would only make the tab lie to a player who had already been told.
+    ///
+    /// UnlockState.Unlock is idempotent and raises OnChanged only on the first
+    /// add, so calling this on every roll and every shop open costs nothing after
+    /// the first and cannot storm the picker rebuild.
+    /// </summary>
+    public static void NotifyStocked(StockEntry e)
+    {
+        if (e == null || e.type != StockType.Charge) return;
+        if (e.chargeSpell == null) return;
+        SpellBook.MarkHeardOf(e.chargeSpell);
     }
 }

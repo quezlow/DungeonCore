@@ -15,6 +15,7 @@ MonoBehaviour:
   id: coals_wake
   displayName: The Coals Wake
   description: Yours burn at the god's rate for a while, not their own.
+  sourceLine: Kethra's, and the wagon carries it stoppered.
   icon: {fileID: 0}
   requiredUnlockKey: spell.coals_wake.t1
   affinity: 1
@@ -26,4 +27,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: spell.coals_wake
   effect: 3
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

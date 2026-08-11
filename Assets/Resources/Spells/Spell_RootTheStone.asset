@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Root the Stone
   description: What stands in this ground is standing on the god. Let them try to
     move it.
+  sourceLine: Morrun's, and the Deep Holds cut the course for it themselves.
   icon: {fileID: 0}
   requiredUnlockKey: spell.root_the_stone.t1
   affinity: 4
@@ -27,4 +28,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: spell.root_the_stone
   effect: 5
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

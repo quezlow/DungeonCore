@@ -200,11 +200,13 @@ public class WanderingMerchantController : MonoBehaviour, IShopVendor
                 highestLearnedLootBand = Mathf.Max(highestLearnedLootBand, (int)e.pattern.band);
 
         var catchUps = new List<TraderStockCatalog.StockEntry>();
+        var charges = new List<TraderStockCatalog.StockEntry>();
         var others = new List<TraderStockCatalog.StockEntry>();
         foreach (var e in catalog.entries)
         {
             if (TraderStockCatalog.IsOwned(e)) continue;
-            if (e.isCatchUp)
+            if (e.type == TraderStockCatalog.StockType.Charge) charges.Add(e);
+            else if (e.isCatchUp)
             {
                 if (e.pattern != null && (int)e.pattern.band < highestLearnedLootBand)
                     catchUps.Add(e);
@@ -222,6 +224,18 @@ public class WanderingMerchantController : MonoBehaviour, IShopVendor
             catchUps.Remove(pick);
         }
 
+        // The charge slot, mirroring the catch-up slot above and for a harder reason
+        // (canon 41). A charge is never OWNED -- that is the whole point of it -- so
+        // without a slot of its own every charge entry stays in the general pool
+        // forever and crowds the finite manifest out exactly as the manifest empties,
+        // which is the moment the wagon most needs to still have books on it.
+        // EXACTLY ONE A VISIT: a wagon that rolled three scrolls and one book would
+        // be a scroll cart, and the manifest is what he is for.
+        if (charges.Count > 0)
+            currentStock.Add(charges[Random.Range(0, charges.Count)]);
+
+        // Charges are deliberately NOT poured into the pool below. The slot above is
+        // their whole allowance.
         var pool = new List<TraderStockCatalog.StockEntry>();
         pool.AddRange(others);
         pool.AddRange(catchUps);
@@ -231,6 +245,10 @@ public class WanderingMerchantController : MonoBehaviour, IShopVendor
             currentStock.Add(pick);
             pool.Remove(pick);
         }
+
+        // Anything that reached the wagon has been HEARD OF, bought or not (canon 41).
+        for (int i = 0; i < currentStock.Count; i++)
+            TraderStockCatalog.NotifyStocked(currentStock[i]);
     }
 
     /// <summary>Spend gold and apply the purchase. Sold entries leave the

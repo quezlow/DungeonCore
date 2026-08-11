@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Undertow
   description: The floor takes a current. They arrive where you wanted them, and
     not by choice.
+  sourceLine: Ollu's, and the wagon carries it in a jar.
   icon: {fileID: 0}
   requiredUnlockKey: spell.undertow.t1
   affinity: 2
@@ -27,4 +28,5 @@ MonoBehaviour:
   secondary: 2.2
   deepeningKeyBase: spell.undertow
   effect: 4
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

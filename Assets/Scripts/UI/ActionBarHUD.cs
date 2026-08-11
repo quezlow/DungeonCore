@@ -119,6 +119,12 @@ public class ActionBarHUD : MonoBehaviour
 
     // The spell row, rebuilt whenever the castable roster changes.
     private readonly List<(SpellDefinition def, Button button)> spellEntries = new();
+
+    // Rumour rows: workings heard of but not castable (canon 41). Deliberately a
+    // SECOND list. The number keys, selectedSpellIndex and PushSelectedSpell all key
+    // on spellEntries, and folding uncastable rows into it would make every one of
+    // those need a castability test it does not have today.
+    private readonly List<Button> spellRumourEntries = new();
     private int selectedSpellIndex;
     private float spellRefreshTimer;
 
@@ -553,6 +559,10 @@ public class ActionBarHUD : MonoBehaviour
             if (spellEntries[i].button != null) Destroy(spellEntries[i].button.gameObject);
         spellEntries.Clear();
 
+        for (int i = 0; i < spellRumourEntries.Count; i++)
+            if (spellRumourEntries[i] != null) Destroy(spellRumourEntries[i].gameObject);
+        spellRumourEntries.Clear();
+
         var defs = new List<SpellDefinition>();
         SpellBook.FillAvailable(defs);
 
@@ -578,9 +588,96 @@ public class ActionBarHUD : MonoBehaviour
             spellEntries.Add((def, btn));
         }
 
+        BuildSpellRumourEntries();
+
         if (selectedSpellIndex >= spellEntries.Count) selectedSpellIndex = 0;
         RefreshSpellEntries();
         PushSelectedSpell();
+    }
+
+    /// <summary>
+    /// The greyed tail of the row: workings the core has heard of and cannot cast
+    /// (canon 41). Built AFTER the castable entries so they sit at the end of the
+    /// strip, and left NON-INTERACTABLE so a click cannot select something there is
+    /// no way to cast. They carry no number key for the same reason.
+    ///
+    /// The tint composes rather than fights: the entry prefab's own disabled colour
+    /// (0.78 grey at half alpha) multiplies onto whatever colour is set here through
+    /// the CanvasRenderer, so setting unselectedColor gives the same dim white the
+    /// castable rows use, halved again. The LABEL is dimmed explicitly on top,
+    /// because the text is not the targetGraphic and the ColorBlock never reaches it.
+    ///
+    /// Never touched by RefreshSpellEntries: nothing about a rumour row changes until
+    /// a charge is bought, and that rebuilds the whole row through OnRosterChanged.
+    /// </summary>
+    private void BuildSpellRumourEntries()
+    {
+        if (spellEntryContainer == null || submenuEntryPrefab == null) return;
+
+        var heard = new List<SpellDefinition>();
+        SpellBook.FillHeardButUnheld(heard);
+
+        for (int i = 0; i < heard.Count; i++)
+        {
+            var def = heard[i];
+            if (def == null) continue;
+
+            Button btn = Instantiate(submenuEntryPrefab, spellEntryContainer);
+            btn.gameObject.SetActive(true);
+            btn.name = "SpellRumour_" + def.id;
+            btn.interactable = false;
+
+            if (def.icon != null)
+            {
+                var images = btn.GetComponentsInChildren<Image>(true);
+                if (images.Length > 1) images[1].sprite = def.icon;
+            }
+
+            var img = btn.targetGraphic as Image;
+            if (img == null) img = btn.GetComponent<Image>();
+            if (img != null) img.color = unselectedColor;
+
+            var text = btn.GetComponentInChildren<TMP_Text>();
+            if (text != null)
+            {
+                text.text = def.displayName;
+                Color tc = text.color;
+                tc.a *= 0.5f;
+                text.color = tc;
+            }
+
+            var captured = def;
+            AddRumourHover(btn, captured);
+
+            spellRumourEntries.Add(btn);
+        }
+    }
+
+    /// <summary>Hover on a rumour row. It shows the SOURCE line rather than the stat
+    /// line: what a player needs from an entry they cannot cast is where to get it,
+    /// not how far it would have reached.</summary>
+    private void AddRumourHover(Button btn, SpellDefinition def)
+    {
+        var trigger = btn.GetComponent<EventTrigger>();
+        if (trigger == null) trigger = btn.gameObject.AddComponent<EventTrigger>();
+
+        var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enter.callback.AddListener(_ => ShowRumourDetail(def));
+        trigger.triggers.Add(enter);
+
+        var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exit.callback.AddListener(_ => HideSpellDetail());
+        trigger.triggers.Add(exit);
+    }
+
+    private void ShowRumourDetail(SpellDefinition def)
+    {
+        if (spellDetailLabel == null || def == null) return;
+        string source = string.IsNullOrEmpty(def.sourceLine)
+            ? "The core has heard of it, and cannot hold it."
+            : def.sourceLine;
+        spellDetailLabel.text = def.description + "\n" + source;
+        spellDetailLabel.gameObject.SetActive(true);
     }
 
     /// <summary>

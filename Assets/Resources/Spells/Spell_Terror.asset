@@ -15,6 +15,7 @@ MonoBehaviour:
   id: terror
   displayName: Terror
   description: They brought lights because they were afraid. Confirm it for them.
+  sourceLine: Ussar's, and the wagon carries an hour of it.
   icon: {fileID: 0}
   requiredUnlockKey: spell.terror.t1
   affinity: 5
@@ -26,4 +27,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: spell.terror
   effect: 7
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

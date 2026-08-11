@@ -38,6 +38,10 @@ public class SpellDefinition : ScriptableObject
         BoonHaste = 6,    // Air   -- yours move and swing faster
         Rout = 7,         // Dark  -- theirs turn and run
         Vulnerable = 8,   // Light -- theirs take more from everything
+
+        // -- Charge-only workings (canon 41). APPENDED, never reordered. --
+        Summon = 9,       // transient thralls scatter across the ring
+        Excavate = 10,    // claimed, unmined stone inside the ring is blasted open
     }
 
     [Header("Identity")]
@@ -49,6 +53,12 @@ public class SpellDefinition : ScriptableObject
 
     [TextArea(2, 4)]
     public string description;
+
+    [Tooltip("Where a working the core cannot reach comes FROM, shown on its greyed " +
+             "CAST row once it has been heard of (canon 41). A working nobody sells " +
+             "and no god grants leaves this empty, and then it simply never lists.")]
+    [TextArea(1, 3)]
+    public string sourceLine = "";
 
     [Tooltip("Node icon. Null-safe -- the picker renders a plain block.")]
     public Sprite icon;
@@ -97,6 +107,13 @@ public class SpellDefinition : ScriptableObject
 
     [Header("Behaviour")]
     public SpellEffect effect = SpellEffect.Lash;
+
+    [Tooltip("Summon only: the body the working puts on the board. A DEDICATED " +
+             "definition rather than a necromancer's risen list -- a summoning is not " +
+             "a raising, and sharing the list would tie a god's gift to the tuning of " +
+             "a monster that has its own reasons to change. magnitude is HOW MANY and " +
+             "durationSeconds is HOW LONG, so the shared four dials still carry it.")]
+    public MonsterDefinition summonDefinition;
 
     [Tooltip("EXPLICIT toggle, not derived from the effect. Orders are pause-legal; " +
              "effects are not -- the pause rule is that pause permits selection, " +
@@ -149,6 +166,15 @@ public class SpellDefinition : ScriptableObject
                      + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
             case SpellEffect.Rout:
                 return "Theirs turn and run"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.Summon:
+                return "Raises " + Mathf.Max(1, Mathf.RoundToInt(magnitude))
+                     + " for " + dur.ToString("0.#") + "s"
+                     + "\nRadius " + r.ToString("0.#")
+                     + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
+            case SpellEffect.Excavate:
+                return "Opens claimed stone inside the ring"
                      + "\nRadius " + r.ToString("0.#")
                      + "   Cooldown " + cooldownSeconds.ToString("0.#") + "s" + deep;
             default:

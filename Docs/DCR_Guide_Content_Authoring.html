@@ -1024,6 +1024,37 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
     </div>
   </details>
 
+  <details>
+    <summary>38. Charge Stock (scrolls, and the summoned body)</summary>
+    <div class="body">
+      <div class="why">Canon 41. A charge is one banked casting of a working the core need not
+      hold, and it is the only REPEATABLE purchase in the game. Eleven entries ship across two
+      vendors. This chapter is what you touch to add a twelfth, and the one art debt it carries.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s1"><label for="dcr-authoring-v1-c38s1"><b>Adding a charge entry.</b> One <code>AddCharge</code> line, then rerun that vendor's generator. Wagon entries go in <code>Editor/TraderStockGenerator.cs</code>; Deep Holds entries go in <code>Editor/DwarfStockGenerator.cs</code> and may pass <code>minRegard</code>. Both call the SAME builder &mdash; <code>TraderStockGenerator.AddCharge</code> &mdash; deliberately, for the reason <code>ApplyPurchase</code> is shared: a charge entry has one correct shape, and the second copy of a builder is where a later vendor quietly gets it wrong.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s2"><label for="dcr-authoring-v1-c38s2"><b>Signature.</b> <code>AddCharge(catalog, id, displayName, spellAssetName, count, price, flavour, minRegard)</code>. <code>spellAssetName</code> is the FILE name in <code>Resources/Spells</code> without the extension &mdash; <code>"Spell_Excavate"</code>, not <code>"excavate"</code>. Get it wrong and the entry is authored with a null working, which <code>IsOwned</code> then keeps off the shelf forever.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s3"><label for="dcr-authoring-v1-c38s3"><b>Generator ORDER matters.</b> Spell Content first, then the two stock generators &mdash; they resolve the working by asset path at authoring time, so a stock generator run before the spell exists writes a null and says so. <b>Read the console.</b> <code>ValidateChargeEntries</code> errors on a null working, a blank id and a zero count, and warns when two entries bank the same working (they halve each other's odds in the wagon's one-a-visit slot).</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s4"><label for="dcr-authoring-v1-c38s4"><b>Pricing anchors, so a new entry lands on the curve.</b> A DEMO of a researchable working sits well under the 220g book that grants the node outright &mdash; a scroll is the fast way to try a spell, never the cheap way to own it. A RELIC of another god's working is a flat 260g for two castings, just above the 240g Reserved-pattern exclusive. Dwarven powder runs 300&ndash;320g against their own trap shelf (Deadfall 260, Ballista 320).</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s5"><label for="dcr-authoring-v1-c38s5"><b>Do not sell the same working at both vendors.</b> One charge under two names reads as a bug. Root the Stone lives on the Deep Holds' shelf as The Keying Course and is absent from the wagon for exactly that reason.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s6"><label for="dcr-authoring-v1-c38s6"><b>A working nobody can learn.</b> Give it a <code>requiredUnlockKey</code> that NOTHING grants &mdash; no node, no audience &mdash; and leave <code>deepeningKeyBase</code> empty. <code>HeldPermanently</code> is then false forever and charges are the only access. No new flag exists for this and none is needed.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s7"><label for="dcr-authoring-v1-c38s7"><b>Write a <code>sourceLine</code>.</b> Once a charge entry has been SEEN on a shelf, its working lists greyed at the tail of the CAST row and the source line is what shows on hover. One sentence, saying where the thing comes from &mdash; not what it does, which the description already covers. A working with no source line falls back to a generic sentence, which is legible but wasted.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s8"><label for="dcr-authoring-v1-c38s8"><b>Two spell icons outstanding</b> on top of the nine in ch 37. <b>Ashrise</b> a hand-shaped drift of ash lifting off a floor slab. <b>Shear the Face</b> a rock face splitting along one clean diagonal seam, dust below. Same Style Contract, same head and tail, orthographic front view, palette <code>dcr-props-1x.png</code>, CFG 1 so the negative prompt is inert. Assign to <code>icon</code> on the asset in <code>Resources/Spells</code>.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s9"><label for="dcr-authoring-v1-c38s9"><b>The Coalborn ships on a borrowed body.</b> <code>MonsterDef_Coalborn.asset</code> is data-only and its <code>prefab</code> slot points at <b>Ash Walker's</b> prefab, because monster stats &mdash; <code>maxHP</code>, <code>moveSpeed</code>, <code>attackDamage</code> &mdash; live on the <code>DungeonMonster</code> component of the PREFAB and not on the definition. To give it its own: duplicate the Ash Walker prefab, retune those three, repoint the <code>prefab</code> slot, and drop a sprite on <code>icon</code>. A thin, ash-pale humanoid with coals showing at the joints; creature clause and facing word per the Style Contract.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s10"><label for="dcr-authoring-v1-c38s10"><b>Leave the Coalborn out of <code>MonsterDefinitionRegistry</code>.</b> That registry is what <code>MonsterSelectionUI</code> lists and what the save controller resolves by name; a summoned body belongs in neither, and adding it would put a thrall in the build picker. Its <code>requiredTechKey</code> is a key nothing grants, as belt and braces. Both are deliberate &mdash; do not "fix" either.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s11"><label for="dcr-authoring-v1-c38s11"><b>Testing without a vendor.</b> <code>Commands</code> &rarr; <b>Grant Spell Charges</b> banks castings of the first working this core does not hold; <b>Print Spell Charges</b> reports counts, permanent holds, heard-of state and the alignment penalty on each. You never need to wait for the wagon to test a new working.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

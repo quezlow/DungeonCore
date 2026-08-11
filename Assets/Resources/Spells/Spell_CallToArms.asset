@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Call to Arms
   description: Every one of yours that hears it turns and comes. They break off what
     they were doing, which is the price of being heard.
+  sourceLine: The wagon sells a taste of it, three soundings to a horn.
   icon: {fileID: 0}
   requiredUnlockKey: tech.call_to_arms
   affinity: 0
@@ -27,4 +28,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: 
   effect: 2
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 1

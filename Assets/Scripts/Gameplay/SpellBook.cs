@@ -126,6 +126,51 @@ public static class SpellBook
         return outBuf.Count;
     }
 
+    // -- Heard of (canon 41) --------------------------------------------------
+
+    /// <summary>The bare UnlockState key marking a working as HEARD OF. No node owns
+    /// it -- the dwarven-trap precedent for a thing that can only be given -- and it
+    /// persists with the rest of the unlock set, which is right: a rumour is
+    /// knowledge, and knowledge survives a reload.</summary>
+    public static string HeardKey(SpellDefinition def)
+        => def == null || string.IsNullOrEmpty(def.id) ? string.Empty : "spell.heard." + def.id;
+
+    public static bool IsHeardOf(SpellDefinition def) => UnlockState.IsUnlocked(HeardKey(def));
+
+    /// <summary>Records that the core has learned a working EXISTS. Called by a vendor
+    /// when the working reaches a shelf; idempotent, and raises OnRosterChanged through
+    /// UnlockState only on the first sighting.</summary>
+    public static void MarkHeardOf(SpellDefinition def)
+    {
+        string key = HeardKey(def);
+        if (!string.IsNullOrEmpty(key)) UnlockState.Unlock(key);
+    }
+
+    /// <summary>
+    /// Fills the buffer with workings the core has heard of and CANNOT cast. They
+    /// list greyed at the tail of the CAST row (canon 41): a power out of reach is
+    /// worth knowing about, and the alternative -- silence until the scroll is
+    /// already in hand -- makes the tab lie by omission to a player who has stood in
+    /// front of the shelf and read the row.
+    ///
+    /// A SEPARATE list from FillAvailable on purpose. Folding the two together would
+    /// put uncastable entries inside the index that the number keys, the selection
+    /// and PushSelectedSpell all key on, and every one of those would then need a
+    /// castability test it does not have today.
+    /// </summary>
+    public static int FillHeardButUnheld(List<SpellDefinition> outBuf)
+    {
+        EnsureLoaded();
+        outBuf.Clear();
+        for (int i = 0; i < all.Count; i++)
+        {
+            var d = all[i];
+            if (d == null || IsAvailable(d)) continue;
+            if (IsHeardOf(d)) outBuf.Add(d);
+        }
+        return outBuf.Count;
+    }
+
     /// <summary>True when the core holds any spell at all. This -- not a single
     /// node key -- lights the CAST tab, so a god's grant at a tier-up is castable
     /// even by a core that never researched the neutral trunk. Gating the tab on

@@ -42,6 +42,8 @@ public static class SpellContentGenerator
         public bool castableWhilePaused;
         public string deepeningKeyBase = "";
         public string description;
+        public string sourceLine = "";
+        public string summonAssetPath = "";
     }
 
     private static SpellSpec[] Specs() => new[]
@@ -50,6 +52,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_Lash", id = "lash", displayName = "Lash",
+            sourceLine = "The wagon sells a taste of it, three blows to a page.",
             effect = SpellDefinition.SpellEffect.Lash,
             requiredUnlockKey = "tech.first_spark",
             manaCost = 8f, cooldownSeconds = 1.5f,
@@ -60,6 +63,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_Knit", id = "knit", displayName = "Knit",
+            sourceLine = "The wagon sells a taste of it, three closings to a stick of chalk.",
             effect = SpellDefinition.SpellEffect.Knit,
             requiredUnlockKey = "tech.drawn_breath",
             manaCost = 15f, cooldownSeconds = 6f,
@@ -70,6 +74,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_CallToArms", id = "call_to_arms", displayName = "Call to Arms",
+            sourceLine = "The wagon sells a taste of it, three soundings to a horn.",
             effect = SpellDefinition.SpellEffect.Rally,
             requiredUnlockKey = "tech.call_to_arms",
             // No cooldown and pause-legal: this issues an ORDER rather than
@@ -90,6 +95,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_CoalsWake", id = "coals_wake", displayName = "The Coals Wake",
+            sourceLine = "Kethra's, and the wagon carries it stoppered.",
             effect = SpellDefinition.SpellEffect.BoonDamage,
             requiredUnlockKey = "spell.coals_wake.t1", deepeningKeyBase = "spell.coals_wake",
             affinity = DungeonType.Fire,
@@ -102,6 +108,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_Undertow", id = "undertow", displayName = "Undertow",
+            sourceLine = "Ollu's, and the wagon carries it in a jar.",
             effect = SpellDefinition.SpellEffect.Pull,
             requiredUnlockKey = "spell.undertow.t1", deepeningKeyBase = "spell.undertow",
             affinity = DungeonType.Water,
@@ -112,6 +119,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_RootTheStone", id = "root_the_stone", displayName = "Root the Stone",
+            sourceLine = "Morrun's, and the Deep Holds cut the course for it themselves.",
             effect = SpellDefinition.SpellEffect.BoonArmour,
             requiredUnlockKey = "spell.root_the_stone.t1", deepeningKeyBase = "spell.root_the_stone",
             affinity = DungeonType.Earth,
@@ -124,6 +132,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_SecondWind", id = "second_wind", displayName = "Second Wind",
+            sourceLine = "Vaun's, and the wagon carries a breath of it.",
             effect = SpellDefinition.SpellEffect.BoonHaste,
             requiredUnlockKey = "spell.second_wind.t1", deepeningKeyBase = "spell.second_wind",
             affinity = DungeonType.Air,
@@ -134,6 +143,7 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_Terror", id = "terror", displayName = "Terror",
+            sourceLine = "Ussar's, and the wagon carries an hour of it.",
             effect = SpellDefinition.SpellEffect.Rout,
             requiredUnlockKey = "spell.terror.t1", deepeningKeyBase = "spell.terror",
             affinity = DungeonType.Dark,
@@ -148,12 +158,57 @@ public static class SpellContentGenerator
         new SpellSpec
         {
             assetName = "Spell_BuriedSun", id = "buried_sun", displayName = "The Buried Sun",
+            sourceLine = "Ienna's, and the wagon carries a splinter.",
             effect = SpellDefinition.SpellEffect.Vulnerable,
             requiredUnlockKey = "spell.buried_sun.t1", deepeningKeyBase = "spell.buried_sun",
             affinity = DungeonType.Light,
             manaCost = 28f, cooldownSeconds = 13f,
             radius = 2.8f, durationSeconds = 7f, magnitude = 1.30f,
             description = "Light shows a thing as it truly is. Every blow after finds the seam.",
+        },
+
+        // -- The two charge-only workings (canon 41) --------------------------
+        // requiredUnlockKey is a bare spell.* key that NOTHING ever grants, so
+        // HeldPermanently is false forever and a banked charge is the only way to
+        // hold either of these. No new flag was needed for the given-never-learned
+        // class: the unlock key alone carries it, which is the canon 28A precedent
+        // for a thing that can only be given, used a third time.
+        new SpellSpec
+        {
+            assetName = "Spell_Ashrise", id = "ashrise", displayName = "Ashrise",
+            sourceLine = "Kethra's. The wagon sells the ash sealed.",
+            effect = SpellDefinition.SpellEffect.Summon,
+            requiredUnlockKey = "spell.ashrise.t1",
+            affinity = DungeonType.Fire,
+            summonAssetPath = "Assets/ScriptableObjects/Monsters/Regular/MonsterDef_Coalborn.asset",
+            // Priced at the top of the affinity roster (Terror is 34) because it is
+            // the only working that adds BODIES. The COOLDOWN is the real brake:
+            // three thralls every 25 seconds is a reinforcement, and three every
+            // five would be a garrison nobody had to build or feed capacity to.
+            manaCost = 32f, cooldownSeconds = 25f,
+            radius = 2.6f, durationSeconds = 30f, magnitude = 3f,
+            description = "Ash that has not finished being a body. Three of them stand up "
+                        + "out of the floor and burn until they are done.",
+        },
+        new SpellSpec
+        {
+            assetName = "Spell_Excavate", id = "excavate", displayName = "Shear the Face",
+            sourceLine = "The Deep Holds set the charges. They will sell you a few.",
+            effect = SpellDefinition.SpellEffect.Excavate,
+            requiredUnlockKey = "spell.excavate.t1",
+            // Affinity NONE on the canon 28A rule: the six elemental locks are a
+            // core's signature and dwarven engineering has no business inside them.
+            // It also means this never takes the off-affinity penalty, which is
+            // right twice over -- powder does not care whose floor it is under.
+            //
+            // 40 mana opens a ring that would cost 20 a cell to dig by hand, so the
+            // working pays for itself at three cells and the charge is what is
+            // really being spent. The RADIUS is the tuning dial if it bites:
+            // nothing else reads it.
+            manaCost = 40f, cooldownSeconds = 20f,
+            radius = 2.5f,
+            description = "Their powder, set the way they set it. The face comes down and "
+                        + "the stone forgets it was ever standing.",
         },
     };
 
@@ -190,6 +245,21 @@ public static class SpellContentGenerator
             def.secondary = spec.secondary;
             def.castableWhilePaused = spec.castableWhilePaused;
             def.deepeningKeyBase = spec.deepeningKeyBase;
+            def.sourceLine = spec.sourceLine;
+
+            // The summoned body is resolved HERE rather than left as an Inspector
+            // slot, and a missing one is an ERROR rather than a warning: a Summon
+            // working with no definition refuses at cast, so the charge is not
+            // spent -- but the player has still paid gold for a scroll that does
+            // nothing, and that defect is invisible until somebody casts it.
+            def.summonDefinition = string.IsNullOrEmpty(spec.summonAssetPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<MonsterDefinition>(spec.summonAssetPath);
+            if (!string.IsNullOrEmpty(spec.summonAssetPath) && def.summonDefinition == null)
+                Debug.LogError("SpellContentGenerator: '" + spec.id + "' wants the body at "
+                    + spec.summonAssetPath + " and it is not there. The working would "
+                    + "refuse every cast.");
+
             // def.icon is deliberately NOT reset -- hand-assigned art survives.
 
             EditorUtility.SetDirty(def);

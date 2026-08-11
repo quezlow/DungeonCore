@@ -23,6 +23,8 @@ public static class SpellCaster
     private static readonly List<DungeonAdventurer> advBuf = new List<DungeonAdventurer>();
     private static readonly List<DungeonMonster> monBuf = new List<DungeonMonster>();
     private static readonly HashSet<MonsterSpawner> calledBuf = new HashSet<MonsterSpawner>();
+    private static readonly List<Vector3Int> summonCells = new List<Vector3Int>();
+    private static readonly List<Vector3Int> excavateCells = new List<Vector3Int>();
 
     /// <summary>
     /// Applies the spell at a cell. The caller has already checked
@@ -51,6 +53,8 @@ public static class SpellCaster
             case SpellDefinition.SpellEffect.Pull: return Pull(def, floor, at);
             case SpellDefinition.SpellEffect.Rout: return Rout(def, floor, at);
             case SpellDefinition.SpellEffect.Vulnerable: return Vulnerable(def, floor, at);
+            case SpellDefinition.SpellEffect.Summon: return Summon(def, floor, cell, at);
+            case SpellDefinition.SpellEffect.Excavate: return Excavate(def, floor, cell);
             default: return false;
         }
     }
@@ -231,4 +235,160 @@ public static class SpellCaster
         }
         return called > 0;
     }
+
+    // -- Summon (Fire, charge only) -------------------------------------------
+
+    /// <summary>
+    /// Kethra's thralls. TRANSIENT spawners, and that is not a shortcut -- it is
+    /// the only shape that works. MonsterSpawner.TickRespawn refuses outright
+    /// while a threshold-crossed adventurer walks the floor
+    /// (FloorIntrusion.AnyOnFloor), so a working that hastened respawns would do
+    /// precisely nothing in the one situation anybody would ever cast it in.
+    ///
+    /// A transient holds no capacity, never respawns, self-destructs with its
+    /// monster and is skipped by DungeonSaveController -- which is exactly the
+    /// contract a summon wants, and it is why a summon cannot be saved mid-life.
+    /// A save taken with thralls on the board reloads without them, the same
+    /// ruling section 30 makes for a bolt in flight.
+    ///
+    /// The shared four dials carry it: magnitude is HOW MANY, durationSeconds is
+    /// HOW LONG. Both are read through SpellBook, so a Fire core gets the god's
+    /// full measure and a borrowed cast gets 0.6 of the reach and the hold.
+    /// </summary>
+    private static bool Summon(SpellDefinition def, FloorRoot floor, Vector3Int cell, Vector3 at)
+    {
+        var body = def.summonDefinition;
+        if (body == null)
+        {
+            Debug.LogWarning("[Spells] '" + def.id + "' resolves as Summon with no "
+                + "summonDefinition assigned. Nothing can be raised, so the cast is "
+                + "refused rather than billed.");
+            return false;
+        }
+
+        var build = DungeonBuildController.Instance;
+        var influence = floor.TileInfluence;
+        if (build == null || influence == null) return false;
+
+        int want = Mathf.Max(1, Mathf.RoundToInt(def.magnitude));
+        float life = SpellBook.EffectiveDuration(def);
+        if (life <= 0f) return false;   // a thrall with no lifetime is a leak, not a summon
+
+        // Scattered across STANDABLE ground inside the ring, one to a cell, falling
+        // back to the cast cell when the ring offers nothing (canon 41). The
+        // pathfinder's own rule is the only honest test of where a body may go --
+        // mirroring it here would drift the day somebody edits the overhang case --
+        // and a stack of bodies on a single cell reads as a bug even when it is not.
+        float reach = SpellBook.EffectiveRadius(def);
+        int span = Mathf.Max(0, Mathf.CeilToInt(reach));
+        summonCells.Clear();
+        for (int dx = -span; dx <= span; dx++)
+            for (int dy = -span; dy <= span; dy++)
+            {
+                var c = new Vector3Int(cell.x + dx, cell.y + dy, cell.z);
+                Vector3 w = influence.CellToWorld(c);
+                if (Vector2.Distance(w, at) > reach) continue;
+                if (!DungeonPathfinder.IsWalkable(floor, w)) continue;
+                summonCells.Add(c);
+            }
+
+        int raised = 0;
+        for (int i = 0; i < want; i++)
+        {
+            Vector3Int spot = cell;
+            if (summonCells.Count > 0)
+            {
+                int pick = Random.Range(0, summonCells.Count);
+                spot = summonCells[pick];
+                summonCells.RemoveAt(pick);
+            }
+            if (build.SpawnTransientMinion(floor, body, spot, life) != null) raised++;
+        }
+        summonCells.Clear();
+        return raised > 0;
+    }
+
+    // -- Excavate (neutral, charge only) --------------------------------------
+
+    /// <summary>
+    /// The dwarven setting charge. Opens CLAIMED, unmined stone inside the ring and
+    /// nothing else: it is a faster shovel, never a land grab, so influence still
+    /// has to be pushed there first and the ring still costs what it costs.
+    ///
+    /// IT ITERATES UNTIL NOTHING MOVES. TileInfluenceManager.MineTile enforces a
+    /// FRONTIER rule -- a cell yields only when it is orthogonally next to already
+    /// carved ground, or to a river, which counts as open. A single pass over the
+    /// ring would open the rim nearest the existing dig and leave everything behind
+    /// it standing, so each pass re-runs while the pass before it moved anything.
+    ///
+    /// THE FRONTIER TEST IS MIRRORED HERE rather than left to MineTile, for the same
+    /// reason DungeonBuildController.CanMineCell mirrors it: MineTile BARKS "the
+    /// stone will not yield there" on a refusal, and a working that just blew a hole
+    /// in the wall must not also scold the player about the cells outside the
+    /// frontier that it correctly declined to touch.
+    ///
+    /// Every opened cell runs the normal mined path, so holy ground still unseals
+    /// and dwarven spoil still accrues. Buying setting charges from the Deep Holds
+    /// and then owing them more spoil for using them is not an accident.
+    /// </summary>
+    private static bool Excavate(SpellDefinition def, FloorRoot floor, Vector3Int cell)
+    {
+        var influence = floor.TileInfluence;
+        if (influence == null) return false;
+        var features = floor.FeatureGenerator;
+
+        float reach = SpellBook.EffectiveRadius(def);
+        int span = Mathf.Max(0, Mathf.CeilToInt(reach));
+        Vector3 centre = influence.CellToWorld(cell);
+
+        excavateCells.Clear();
+        for (int dx = -span; dx <= span; dx++)
+            for (int dy = -span; dy <= span; dy++)
+            {
+                var c = new Vector3Int(cell.x + dx, cell.y + dy, cell.z);
+                if (Vector2.Distance(influence.CellToWorld(c), centre) > reach) continue;
+                if (!influence.IsTileClaimed(c)) continue;      // never a land grab
+                if (influence.IsTileMined(c)) continue;
+                if (features != null && features.IsRiver(c)) continue;   // water is not dug
+                excavateCells.Add(c);
+            }
+
+        int opened = 0;
+        bool moved = true;
+        while (moved && excavateCells.Count > 0)
+        {
+            moved = false;
+            for (int i = excavateCells.Count - 1; i >= 0; i--)
+            {
+                var c = excavateCells[i];
+                if (!HasOpenNeighbour(influence, features, c)) continue;
+                influence.MineTile(c);
+                // Trust the ledger, not the call: MineTile returns void and has
+                // refusals of its own (bounds, uncleared chamber). If the cell did
+                // not open, leave it in the list and let a later pass try again.
+                if (!influence.IsTileMined(c)) continue;
+                excavateCells.RemoveAt(i);
+                opened++;
+                moved = true;
+            }
+        }
+        excavateCells.Clear();
+        return opened > 0;
+    }
+
+    /// <summary>MineTile's frontier rule, mirrored so a correct refusal never barks.</summary>
+    private static bool HasOpenNeighbour(TileInfluenceManager influence,
+                                         TerrainFeatureGenerator features, Vector3Int c)
+    {
+        for (int i = 0; i < Orthogonal.Length; i++)
+        {
+            Vector3Int n = c + Orthogonal[i];
+            if (influence.IsTileMined(n)) return true;
+            if (features != null && features.IsRiver(n)) return true;
+        }
+        return false;
+    }
+
+    private static readonly Vector3Int[] Orthogonal =
+        { Vector3Int.up, Vector3Int.down, Vector3Int.left, Vector3Int.right };
 }

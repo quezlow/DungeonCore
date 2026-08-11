@@ -19,6 +19,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 87f8777dfaa7bb74d89390ffebe05ef3, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -29,6 +31,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: b1c1b146b663d2342908a990a5e93caf, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 60
     flavour: The deep withheld it; the road provides.
@@ -39,6 +43,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: d27b4df9c1c6fb14f8091ba6046758e2, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -49,6 +55,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: a91ba886a25c618468a9e647ac02b9af, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -59,6 +67,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: f42743a5bf1021b489374d8dbfeff95d, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 100
     flavour: The deep withheld it; the road provides.
@@ -69,6 +79,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: dee004b5c57fbb141bd5dfc560967941, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -79,6 +91,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 5d1433beb2e9d2641b851e63665bc90c, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -89,6 +103,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 93c94b226f2afe546a433af98fa0467b, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -99,6 +115,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: f4d92040e4e8d8a46b70eb37cb92b9d0, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 60
     flavour: The deep withheld it; the road provides.
@@ -109,6 +127,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 2930a3bce4ba3a74eb23482c3673ef2e, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 320
     flavour: The deep withheld it; the road provides.
@@ -119,6 +139,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: aa3286d208777054a815b22218b20601, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 180
     flavour: The deep withheld it; the road provides.
@@ -129,6 +151,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 85782a57d5fad0b40a65bc8ed779d345, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 240
     flavour: Only the wagon carries this. He will not say where it was got.
@@ -139,6 +163,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 242b909625ff89b4b81f20d92d9523cc, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 550
     flavour: The deep withheld it; the road provides.
@@ -149,6 +175,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 75be6e24d057e9d40a18ec0c386f36e6, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 180
     flavour: The deep withheld it; the road provides.
@@ -159,6 +187,8 @@ MonoBehaviour:
     pattern: {fileID: 11400000, guid: 9e73fdad6444b264ab8c29fb74271ecf, type: 2}
     nodeKey: 
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 100
     flavour: The deep withheld it; the road provides.
@@ -169,6 +199,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.known_parties
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 220
     flavour: A guild ledger, bought or stolen. Half the names are crossed out; the
@@ -180,6 +212,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: oracle_chamber
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 400
     flavour: Someone wrote down what the walls hear. The margins argue with the text.
@@ -190,6 +224,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.consecrant_masonry
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 220
     flavour: Church stonework, annotated by someone who meant to unbuild it. The
@@ -201,6 +237,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.halls_of_war
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 400
     flavour: A drill-master's treatise on rooms that make soldiers. Bloodstains where
@@ -212,6 +250,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.shambling_dead
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 220
     flavour: Hymns for the risen, transcribed backwards. They hum along, after a
@@ -223,6 +263,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.whisperer_in_marrow
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 480
     flavour: The book the node is named for. It arrives already open.
@@ -233,6 +275,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.first_spark
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 220
     flavour: A first lesson, written for something that has no hands. The diagrams
@@ -244,8 +288,123 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.drawn_breath
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 400
     flavour: On the closing of wounds in things that were never quite alive. The
       author signs off mid-sentence.
+    isCatchUp: 0
+  - id: chg_lash
+    displayName: A Borrowed Blow
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: f48c683a1e9cfde49a086c7d1126c31e, type: 2}
+    chargeCount: 3
+    minRegard: 0
+    price: 80
+    flavour: Three strikes folded into a page. The fourth fold is blank and he shrugs
+      about that.
+    isCatchUp: 0
+  - id: chg_knit
+    displayName: Suture Chalk
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 23b68ca53fbc6a247b7d155f32612c0b, type: 2}
+    chargeCount: 3
+    minRegard: 0
+    price: 120
+    flavour: Draw the line and the bone follows it. Three lines to the stick, and
+      then it is a stick.
+    isCatchUp: 0
+  - id: chg_rally
+    displayName: The Muster Horn
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 04c4aeaa6effdfc4b94484956f6e60f0, type: 2}
+    chargeCount: 3
+    minRegard: 0
+    price: 100
+    flavour: Sounds three times and never again. Nobody has worked out why three.
+    isCatchUp: 0
+  - id: chg_coals_wake
+    displayName: Kethra's Ember, Stoppered
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 624f0dbb06df0414c92fa6ef324a4bf6, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 260
+    flavour: A coal that has not gone out since somebody stoppered it. He keeps it
+      at arm's length.
+    isCatchUp: 0
+  - id: chg_undertow
+    displayName: A Jar of the Drowned Mouth
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: d8b1415860fa9b245bf329c2e2c43c0d, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 260
+    flavour: Still water that leans. Set it down and it goes on leaning the same
+      way.
+    isCatchUp: 0
+  - id: chg_second_wind
+    displayName: Vaun's Held Breath
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 53fadc6ce4e3c0f46bf94b7619c1f380, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 260
+    flavour: A bladder of nothing at all, and it is heavier than it should be.
+    isCatchUp: 0
+  - id: chg_terror
+    displayName: The Unlit Hour
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 0ff6e253ac6543c4993cb73a053eb218, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 260
+    flavour: He will sell it and he will not open it. He has been asked.
+    isCatchUp: 0
+  - id: chg_buried_sun
+    displayName: Ienna's Splinter
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 7c0650729177c3340b1e9943cb264d10, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 260
+    flavour: A shard of something that was lit once. It shows you the seams in his
+      cart.
+    isCatchUp: 0
+  - id: chg_ashrise
+    displayName: Coalbed Ash, Sealed
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 831cedf44f5caca47888862ba01081fb, type: 2}
+    chargeCount: 2
+    minRegard: 0
+    price: 300
+    flavour: Ash from a bed that never went cold. Sealed, and the seal is warm.
     isCatchUp: 0

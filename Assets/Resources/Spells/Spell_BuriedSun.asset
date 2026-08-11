@@ -15,6 +15,7 @@ MonoBehaviour:
   id: buried_sun
   displayName: The Buried Sun
   description: Light shows a thing as it truly is. Every blow after finds the seam.
+  sourceLine: Ienna's, and the wagon carries a splinter.
   icon: {fileID: 0}
   requiredUnlockKey: spell.buried_sun.t1
   affinity: 6
@@ -26,4 +27,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: spell.buried_sun
   effect: 8
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

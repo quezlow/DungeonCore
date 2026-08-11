@@ -84,7 +84,31 @@ public static class DwarfStockGenerator
         AddBook(catalog, "dw_bk_master", "The Long Patience", "trapwright_2", 600,
             "The master's book. It does not explain itself twice.");
 
+        // -- Setting charges (canon 41) --------------------------------------
+        // The dwarves sell MACHINERY, and powder is machinery. Both entries sit on
+        // the shelf permanently rather than in a rolled slot: this shelf has no slot
+        // count to crowd, and a rolled slot would make it ROTATE on every open,
+        // which is the one thing separating a shop from a visit.
+        //
+        // A charge is never owned, so these are the only two rows in the game that
+        // come back after they are bought. That is the point: gold had five sinks
+        // and twelve sources, and every other row on every shelf runs dry.
+        //
+        // The Keying Course is Root the Stone, moved OFF the wagon so the same
+        // charge is never sold twice under two names. Stone that holds under load is
+        // the one affinity working dwarves can plausibly have got by craft, so it is
+        // theirs; the price sits above the wagon's flat 260g relic because they know
+        // exactly what they have, and it is gated at Trusted for the same reason
+        // Chainline is.
+        AddCharge(catalog, "dw_chg_excavate", "The Setting Charge", "Spell_Excavate", 5, 300,
+            "Powder, a fuse and the angle to set it at. The angle is the part they charge for.",
+            minRegard: 1);
+        AddCharge(catalog, "dw_chg_root", "The Keying Course", "Spell_RootTheStone", 2, 320,
+            "One course of stone, cut to take the whole weight above it. They will lay two for you.",
+            minRegard: 2);
+
         ValidateBookTiers(catalog);
+        TraderStockGenerator.ValidateChargeEntries(catalog, "DwarfStockGenerator");
         EditorUtility.SetDirty(catalog);
         AssetDatabase.SaveAssets();
         Debug.Log($"Dwarven stock generated: {catalog.entries.Count} entries at {CatalogPath}");
@@ -127,6 +151,16 @@ public static class DwarfStockGenerator
                                 "the entry will never appear. Sell a tier 3+ node instead.");
         }
     }
+
+    /// <summary>Charge entries are built by the SHARED helper on the trader's
+    /// generator, not a copy of it. The grant channel taught this lesson once
+    /// already: a charge entry has one correct shape, and the second builder is
+    /// where a later vendor quietly gets it wrong.</summary>
+    private static void AddCharge(TraderStockCatalog catalog, string id, string name,
+                                  string spellAsset, int count, int price, string flavour,
+                                  int minRegard = 0)
+        => TraderStockGenerator.AddCharge(catalog, id, name, spellAsset, count, price,
+                                          flavour, minRegard);
 
     private static void AddUnlock(TraderStockCatalog catalog, string id, string name,
                                   string unlockKey, int price, string flavour, int minRegard = 0)

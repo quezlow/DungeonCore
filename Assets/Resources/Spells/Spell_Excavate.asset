@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e66b42bfa76c7249a525ff0f98d3509, type: 3}
-  m_Name: Spell_Lash
+  m_Name: Spell_Excavate
   m_EditorClassIdentifier: Assembly-CSharp::SpellDefinition
-  id: lash
-  displayName: Lash
-  description: The core's will, brought down where you point it. A short, graceless
-    blow that throws whatever it lands on.
-  sourceLine: The wagon sells a taste of it, three blows to a page.
+  id: excavate
+  displayName: Shear the Face
+  description: Their powder, set the way they set it. The face comes down and the
+    stone forgets it was ever standing.
+  sourceLine: The Deep Holds set the charges. They will sell you a few.
   icon: {fileID: 0}
-  requiredUnlockKey: tech.first_spark
+  requiredUnlockKey: spell.excavate.t1
   affinity: 0
-  manaCost: 8
-  cooldownSeconds: 1.5
-  radius: 1.4
+  manaCost: 40
+  cooldownSeconds: 20
+  radius: 2.5
   durationSeconds: 0
-  magnitude: 12
-  secondary: 1.2
+  magnitude: 0
+  secondary: 0
   deepeningKeyBase: 
-  effect: 0
+  effect: 10
   summonDefinition: {fileID: 0}
   castableWhilePaused: 0

@@ -7034,12 +7034,9 @@ from availability and answering it with the availability rule would break both.
 
 ---
 
-## 41. Spell Charges (Part 1 -- the Substrate)
+## 41. Spell Charges
 
-Status: PART SHIPPED. The ledger, its persistence, the availability and scaling
-rules, the consumption point and the CAST tab readout are built and described
-as-built below. The trader `StockType`, both vendors and the twelve authored
-items are DESIGN until part 2 lands. Verified: 2026-08-11.
+Status: SHIPPED. Verified: 2026-08-11.
 
 **What a charge is.** One banked casting of a working the core does not hold.
 It reuses the entire shipped cast surface -- the CAST tab, targeting, the radius
@@ -7110,9 +7107,160 @@ permanently, and the alignment penalty applied to each. Building it this way was
 deliberate: a substrate proved only by its own content pass gives every
 regression two possible parents.
 
+**A charge is a STOCK KIND, not a shop.** `StockType.Charge` is appended (never
+reordered; it serialises into both catalog assets as an int) and carries two
+fields: the `SpellDefinition` banked and how many castings. `ApplyPurchase`
+grants through the same shared switch every other kind uses, so neither vendor
+learned anything new about spells. `IsOwned` returns FALSE for a charge and that
+is the entire mechanism -- a charge is the only repeatable purchase in the game.
+
+**A malformed charge entry FAILS CLOSED.** An entry with no working, or with a
+working whose id is blank, reports OWNED, which keeps it off every shelf.
+Failing open would give a row that takes gold in `TryPurchase` and grants nothing
+in `ApplyPurchase` -- byte for byte the dead-node book defect from entry 38, which
+survived a whole arc unnoticed. `ValidateChargeEntries` errors at authoring time
+on top, because dead stock does not error in play: it simply never appears.
+
+**The wagon gets a slot; the shelf does not, and the asymmetry is the point.**
+`RollStock` gains a third bucket and one guaranteed charge slot beside the
+catch-up slot, and charges are kept OUT of the general pool entirely. Without
+that, an entry that is never owned sits in a 4-6 slot roll forever and crowds the
+finite manifest out exactly as the manifest empties -- the moment the wagon most
+needs to still have books on it. Exactly one a visit: a wagon rolling three
+scrolls and one book would be a scroll cart.
+
+The Deep Holds' shelf has NO slot count, so there is nothing to crowd and nothing
+to ration, and a rolled slot there would have made the shelf ROTATE on every open
+-- worse than a wagon that rotates every few days, and "the shelf does not
+rotate" (entry 19, part 2) is the one line separating a shop from a visit. Their
+charges simply sit there, and buying one takes it off the shelf until the next
+open. This was raised as a locked decision to apply at both vendors and was
+OVERRULED on reading `BuildShelf`: the ruling had been written against the
+wagon's problem, and the shelf does not have it.
+
+**Which vendor sells what follows the line already drawn.** Entry 19 part 2 says
+the merchant sells KNOWLEDGE and the dwarves sell MACHINERY, and powder is
+machinery. So: the wagon carries the demos and the relics, and the Deep Holds
+carry the two setting charges. `The Keying Course` is Root the Stone moved OFF
+the wagon rather than duplicated onto the shelf -- stone that holds under load is
+the one affinity working dwarves can plausibly have got by CRAFT rather than by a
+god's hand, and the same charge under two names at two vendors reads as a bug.
+The cost is accepted and written down: a non-Earth core cannot buy that one relic
+until it can descend to floor index 2, where the other five are on the road from
+Camp tier. It is also the relic whose effect an Earth core holds natively.
+
+**The manifest.** Demos are priced well under the 220g book that grants the node
+outright, so a scroll is never the cheap way to OWN a working -- only the fast way
+to try one. Relics are a flat 260g, just above the 240g Reserved-pattern
+exclusive, because a borrowed god should be the dearest thing on the wagon and
+one number is easier to hold than six; two castings rather than three, because
+the affinity type-lock is the rule they break.
+
+| Item | Vendor | Working | x | Price |
+|---|---|---|---|---|
+| A Borrowed Blow | wagon | Lash | 3 | 80g |
+| The Muster Horn | wagon | Call to Arms | 3 | 100g |
+| Suture Chalk | wagon | Knit | 3 | 120g |
+| Kethra's Ember, Stoppered | wagon | The Coals Wake | 2 | 260g |
+| A Jar of the Drowned Mouth | wagon | Undertow | 2 | 260g |
+| Vaun's Held Breath | wagon | Second Wind | 2 | 260g |
+| The Unlit Hour | wagon | Terror | 2 | 260g |
+| Ienna's Splinter | wagon | The Buried Sun | 2 | 260g |
+| Coalbed Ash, Sealed | wagon | Ashrise | 2 | 300g |
+| The Setting Charge | Deep Holds | Shear the Face | 5 | 300g, Tolerated |
+| The Keying Course | Deep Holds | Root the Stone | 2 | 320g, Trusted |
+
+**Only two workings were authored, and eight were not.** The first content pass
+proposed a new asset per god: the same six affinity effects at a larger radius,
+which is EXACTLY what deepening already does at t2 and t3, and one of them
+collided with a shipped `displayName`. The affinity bypass already delivers the
+whole borrow-another-god's-power fantasy with zero new assets -- a Water core
+buying a scroll of The Coals Wake IS the idea -- so a charge entry points at the
+shipped asset and nothing is duplicated. New assets exist only where the EFFECT
+is new.
+
+**Ashrise summons TRANSIENTS, and had to.** `MonsterSpawner.TickRespawn` refuses
+outright while a threshold-crossed adventurer walks the floor (`isBlocked` via
+`FloorIntrusion.AnyOnFloor`), so a working that hastened respawns would do
+precisely nothing in the only situation anyone would ever cast it in.
+`SpawnTransientMinion` gives a spawner that holds no capacity, never respawns,
+self-destructs with its monster and is skipped by `DungeonSaveController` -- so
+thralls on the board at a save are gone on the reload, the same ruling section 30
+makes for a bolt in flight. `magnitude` is HOW MANY and `durationSeconds` is HOW
+LONG, both read through `SpellBook`, so a Fire core gets the god's full measure
+and a borrowed cast gets 0.6 of the reach and the hold. They scatter one to a
+cell across `DungeonPathfinder.IsWalkable` ground in the ring and fall back to
+the cast cell: the pathfinder's own rule is the only honest test of where a body
+may stand, and a stack on one cell reads as a bug even when it is not.
+
+The body is `MonsterDef_Coalborn`, a DEDICATED definition rather than the
+necromancer's risen list -- a summoning is not a raising, and sharing the list
+would tie a god's gift to the tuning of a monster with its own reasons to change.
+It is deliberately absent from `MonsterDefinitionRegistry`, which is what the
+build picker lists and what the save controller resolves by name, and carries a
+`requiredTechKey` nothing grants on top of that. It SHIPS ON THE ASH WALKER'S
+BODY: monster stats live on the prefab's `DungeonMonster`, not on the definition,
+so its own numbers mean a prefab variant made in the editor. Recorded as debt,
+not pretended away.
+
+**Shear the Face iterates, because the frontier rule made it.**
+`TileInfluenceManager.MineTile` yields a cell only when it is orthogonally next
+to already carved ground (or to a river, which counts as open), so a single pass
+over the ring would open the rim nearest the existing dig and leave everything
+behind it standing. Each pass re-runs while the pass before it moved anything.
+The frontier test is MIRRORED in `SpellCaster` rather than left to `MineTile`,
+for the same reason `CanMineCell` mirrors it: `MineTile` BARKS on a refusal, and
+a working that just blew a hole in the wall must not also scold the player about
+the cells outside the frontier it correctly declined to touch. It only ever opens
+CLAIMED, unmined ground -- a faster shovel, never a land grab -- and every opened
+cell runs the normal mined path, so holy ground still unseals and dwarven spoil
+still accrues. Buying setting charges from the Deep Holds and then owing them
+more spoil for using them is not an accident.
+
+It is also cast at a MINED cell, because `IsCellValidForSpell` has always
+required one. That was discovered rather than designed and it is the better
+shape: the working starts on the frontier by construction.
+
+**Both new workings are pause-illegal,** per entry 39. Bodies on the board and a
+write to the tilemap are the two clearest cases the rule has.
+
+**Heard of, and then greyed.** A working nothing grants and nobody can research
+would otherwise be invisible until the scroll was already in hand, which makes
+the CAST tab lie by omission to a player who has stood at the shelf and read the
+row. So a vendor calls `TraderStockCatalog.NotifyStocked` for every charge entry
+that reaches a shelf, which sets a bare `spell.heard.<id>` key that no node owns
+-- the entry 19 precedent for a thing that can only be given, used a third time --
+and the working then lists GREYED at the tail of the CAST row with its
+`sourceLine` on hover. On the SHELF, not on the purchase: what the row tells a
+player is that the thing exists and where it comes from, which they already know
+the moment they have read it. `UnlockState.Unlock` is idempotent, so calling this
+on every roll and every open costs nothing after the first.
+
+The greyed rows are a SECOND list in `ActionBarHUD`, never folded into
+`spellEntries`. The number keys, `selectedSpellIndex` and `PushSelectedSpell` all
+key on that index, and putting uncastable entries inside it would make every one
+of them need a castability test it does not have. They are non-interactable and
+carry no number key, and `AnySpellKnown` still ignores them, so a rumour can
+never light the CAST tab for a core that holds nothing.
+
+**Rejected, with reasons.** A corridor-sealing working (turn floor back into
+rock) was designed and dropped: `CanBuildWallAt` ends in `AnyEntityStandsIn`, so
+burial is PREVENTED and never handled, and an area effect that walls a corridor
+would refuse on every cell that had anybody in it -- which is every cell worth
+casting it on. A floor-scale pull was dropped for the same class of reason:
+`Pull` clamps force to `Mathf.Min(def.secondary, dist)` and `KnockbackStep` stops
+dead at the first wall, so a floor-wide Undertow would read as a metre of
+shuffling against masonry. Both stay dropped. A charge listing in the journal was
+dropped too: the CAST row already shows the count after the price, and a second
+surface for one integer is a tab nobody would open twice.
+
 **Key files:** `Gameplay/SpellCharges.cs`, `Gameplay/SpellBook.cs`,
-`Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`,
-`DungeonCore/DungeonBuildController.cs`, `UI/ActionBarHUD.cs`,
+`Gameplay/SpellDefinition.cs`, `Gameplay/SpellCaster.cs`,
+`Gameplay/TraderStockCatalog.cs`, `Overworld/WanderingMerchantController.cs`,
+`Floors/DwarvenOutpostController.cs`, `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs`, `DungeonCore/DungeonBuildController.cs`,
+`UI/ActionBarHUD.cs`, `Editor/SpellContentGenerator.cs`,
+`Editor/TraderStockGenerator.cs`, `Editor/DwarfStockGenerator.cs`,
 `TESTING/Commands.cs`.
 
 ---

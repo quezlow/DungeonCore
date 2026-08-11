@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Second Wind
   description: Borrowed breath. They move like weather and are gone before the blow
     lands.
+  sourceLine: Vaun's, and the wagon carries a breath of it.
   icon: {fileID: 0}
   requiredUnlockKey: spell.second_wind.t1
   affinity: 3
@@ -27,4 +28,5 @@ MonoBehaviour:
   secondary: 0
   deepeningKeyBase: spell.second_wind
   effect: 6
+  summonDefinition: {fileID: 0}
   castableWhilePaused: 0

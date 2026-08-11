@@ -125,10 +125,12 @@ public class Commands : MonoBehaviour
             if (s == null) continue;
             int n = SpellCharges.CountFor(s);
             bool perm = SpellBook.HeldPermanently(s);
-            if (n == 0 && !perm) continue;
+            bool heard = SpellBook.IsHeardOf(s);
+            if (n == 0 && !perm && !heard) continue;
             sb.AppendLine("  " + s.displayName
                 + "  [" + s.id + "]"
                 + (perm ? "  HELD" : "  charges " + n)
+                + (heard ? "  heard-of" : string.Empty)
                 + (SpellBook.IsAligned(s) ? "  aligned" : "  off-affinity (reach and hold reduced)")
                 + "  radius " + SpellBook.EffectiveRadius(s).ToString("0.##"));
         }

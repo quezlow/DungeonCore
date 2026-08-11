@@ -269,6 +269,16 @@ public class DwarvenOutpostController : MonoBehaviour, IShopVendor
     ///
     /// Rebuilt on every open so that regard-gated stock appears the moment it is
     /// earned, and so an entry bought elsewhere never shows twice.
+    ///
+    /// CHARGE ENTRIES NEED NO SLOT HERE, and get none (canon 41). The wagon rolls
+    /// 4-6 slots, so an entry that is never owned would crowd its finite manifest
+    /// out; this shelf has no slot count at all, so there is nothing to crowd and
+    /// nothing to ration. Giving it a rolled slot anyway would have made the shelf
+    /// ROTATE -- on every open, which is worse than a wagon that rotates every few
+    /// days -- and "the shelf does not rotate" is the one line separating a shop
+    /// from a visit. So a dwarven charge simply sits there, and buying it takes it
+    /// off this shelf only until the next open: repeatable is what a charge is FOR,
+    /// and it is the only gold sink in the game that does not run dry.
     /// </summary>
     private void BuildShelf()
     {
@@ -284,6 +294,8 @@ public class DwarvenOutpostController : MonoBehaviour, IShopVendor
             if (TraderStockCatalog.IsOwned(e)) continue;
             if (e.minRegard > regard) continue;
             shelf.Add(e);
+            // Anything on the shelf has been HEARD OF, bought or not (canon 41).
+            TraderStockCatalog.NotifyStocked(e);
         }
     }
 

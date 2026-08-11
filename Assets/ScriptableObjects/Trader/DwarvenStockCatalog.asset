@@ -19,6 +19,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: 
     unlockKey: dwarf.trap_ballista
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 320
     flavour: Bolt-thrower on a stone carriage. Their gate has three; they will part
@@ -30,6 +32,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: 
     unlockKey: dwarf.trap_deadfall
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 260
     flavour: A ceiling that is only pretending. Older than the road, and it still
@@ -41,6 +45,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: 
     unlockKey: dwarf.trap_chainline
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 2
     price: 380
     flavour: Chain at the ankle, run the width of a hall. Formations come apart on
@@ -52,6 +58,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.trapwright_1
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 400
     flavour: Gate-engines and their tempers. Half the diagrams are corrections of
@@ -63,6 +71,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.proving_grounds
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 440
     flavour: How to make a hall that makes soldiers. They have been doing it since
@@ -74,6 +84,8 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.scout_3
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 520
     flavour: Every road they ever cut and three they abandoned. The abandoned ones
@@ -85,7 +97,35 @@ MonoBehaviour:
     pattern: {fileID: 0}
     nodeKey: tech.trapwright_2
     unlockKey: 
+    chargeSpell: {fileID: 0}
+    chargeCount: 1
     minRegard: 0
     price: 600
     flavour: The master's book. It does not explain itself twice.
+    isCatchUp: 0
+  - id: dw_chg_excavate
+    displayName: The Setting Charge
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 68d57f0afb73bc5489c6d8557d335b90, type: 2}
+    chargeCount: 5
+    minRegard: 1
+    price: 300
+    flavour: Powder, a fuse and the angle to set it at. The angle is the part they
+      charge for.
+    isCatchUp: 0
+  - id: dw_chg_root
+    displayName: The Keying Course
+    type: 3
+    pattern: {fileID: 0}
+    nodeKey: 
+    unlockKey: 
+    chargeSpell: {fileID: 11400000, guid: 0ab91d5d66d363d4e9f7a31fad902d4d, type: 2}
+    chargeCount: 2
+    minRegard: 2
+    price: 320
+    flavour: One course of stone, cut to take the whole weight above it. They will
+      lay two for you.
     isCatchUp: 0
