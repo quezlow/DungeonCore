@@ -89,6 +89,13 @@ public class CaravanActionPanel : MonoBehaviour
     private void Choose(CaravanVerb verb)
     {
         var target = caravan;
+        // Settling the wagon is acting on a thing standing on the board, so it
+        // refuses while the world is held (canon 39). Refusing here rather than
+        // in Close() matters: the panel must stay OPEN so the choice survives
+        // the refusal, and the wagon stays halted meanwhile -- a refusal must
+        // never burn the one verb any more than a misclick does.
+        if (target != null && PauseGate.RefuseAt(target.transform.position)) return;
+        if (target == null && PauseGate.RefuseAtCore()) return;
         Close();
         target?.ApplyVerb(verb);
     }

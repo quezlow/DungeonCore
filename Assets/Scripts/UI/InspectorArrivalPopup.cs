@@ -49,6 +49,7 @@ public class InspectorArrivalPopup : MonoBehaviour
     [SerializeField] private float inspectionZoom = 6f;
 
     private Coroutine grace;
+    private bool pausedByNotice;
     private Transform watched;
     private float priorZoom;
 
@@ -91,6 +92,9 @@ public class InspectorArrivalPopup : MonoBehaviour
         }
 
         panel.SetActive(true);
+        // Remember whether the player was ALREADY holding the world, so
+        // dismissing restores exactly what it interrupted (the canon 19A rule).
+        pausedByNotice = !PauseController.IsGamePaused;
         TimeScaleController.Instance?.SetPaused();
     }
 
@@ -107,7 +111,13 @@ public class InspectorArrivalPopup : MonoBehaviour
         }
         watched = null;
 
-        TimeScaleController.Instance?.SetNormal();
+        // SetNormal would quietly demote a player running at 5x, and would
+        // UNPAUSE a player who was already holding the world when the Inspector
+        // arrived -- the same defect canon 19A named for the divine audience.
+        // Restore the selected speed instead, and only when this notice was the
+        // thing that took it.
+        if (pausedByNotice) PauseController.Instance?.UnpauseGame();
+        pausedByNotice = false;
         grace = StartCoroutine(GracePeriod());
     }
 

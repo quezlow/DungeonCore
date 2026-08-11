@@ -1053,8 +1053,8 @@ Gameplay/TechTree.cs`, `Gameplay/ResearchController.cs`,
 
 Tree UI (shipped): RimWorld-style single scrollable canvas
 (`Gameplay/ResearchTreeUI.cs` + `Gameplay/ResearchNodeView.cs`, default key R, Esc-close
-in the PauseMenuController chain, opens while paused -- pause-availability
-audit backlogged). Paths are horizontal lanes (empty paths hidden, so
+in the PauseMenuController chain, opens while paused, and research may be
+COMMITTED while paused -- see canon 39). Paths are horizontal lanes (empty paths hidden, so
 Sorcery stays absent), tiers are columns, prerequisite edges are elbow
 connectors drawn only when both endpoints are visible; every node reserves
 its layout slot so reveals never reflow. Node visibility is data-driven on
@@ -6748,7 +6748,8 @@ spell would read as broken. The core's will arrives where it is pointed.
 actually did anything, and mana and cooldown are stamped only on a true. A
 cast into an empty room is refused with feedback rather than charged.
 
-**The pause rule (this closes the pause-availability audit).** *Pause permits
+**The pause rule (stated here; APPLIED across the whole surface by canon
+39, which is where the audit actually closed).** *Pause permits
 selection, navigation and ORDERS; it forbids anything that spends mana or
 changes world state.* Call to Arms is an order -- the right-click Attack-Here
 path it rides has always run above the pause gate -- so it carries an
@@ -6854,6 +6855,92 @@ makes those differ.
 `Editor/SpellContentGenerator.cs`, `DungeonCore/DungeonBuildController.cs`,
 `Data/Keybinds.cs`, `UI/ActionBarHUD.cs`, `Editor/TechContentGenerator.cs`,
 `Editor/TraderStockGenerator.cs`, `TESTING/Commands.cs`.
+
+---
+
+## 39. The Pause Rule (Availability Audit)
+
+Status: SHIPPED. Verified: 2026-08-10.
+
+**The rule.** *Pause permits DECIDING. It forbids ACTING.* Deciding is
+selection, navigation, browsing, orders, and commitments that touch nothing
+but a ledger. Acting is anything that reaches an entity standing on the board
+or a cell of the tilemap: placing, removing, spawning, damaging, healing,
+retyping, channelling.
+
+This supersedes the first wording, in canon 38, which forbade "anything that
+spends mana or changes world state". That sentence was stated and never
+applied, and it does not survive contact: research spends and does not act,
+trade spends and does not act, while a prisoner's release spends nothing and
+plainly does. The test is what the action REACHES, not what it costs.
+
+**What the audit found.** The rule existed in eleven places and disagreed with
+itself in three of them. Five commits ran freely while held -- research, trade,
+the crypt raise, the three prisoner verbs, the three caravan verbs. Three
+openers refused while held even though opening is navigation -- the room anchor
+click, the trap panel hotkey, the crypt corpse click. Two of those were
+INVERTED: pausing before you clicked locked you out, while pausing after left
+every button behind them live. The crypt was the sharpest -- pause mid-raid,
+raise defenders, unpause.
+
+**Gate the action, never the opener.** Every panel opens, browses and inspects
+while the world is held; only the button that commits refuses. This is the
+whole shape of the fix and the reason the inversions cannot recur. `PauseGate`
+(`Data/PauseGate.cs`) carries it: `Held`, `CanAct(out reason)`, `RefuseAt(pos)`
+for anything with a position and `RefuseAtCore()` for a bare HUD button. A
+refusal toasts in the wisp's voice rather than failing silently, and where a
+button can be greyed ahead of the click it is (the crypt raise, the bribe).
+
+**Research commits while held.** It is pre-paid, refunded in full on cancel,
+and its progress runs on the day clock, which stops with everything else -- so
+committing while frozen confers no advantage whatever. It is a planning screen
+and it behaves like one. Trade likewise: a purchase is a ledger swap, and the
+goods arriving are its consequence, not its act. Both are named here rather
+than left to be re-derived, because both look like spends and neither is one.
+
+**A refusal never burns a decision.** The caravan verb refuses BEFORE the panel
+closes, so the choice survives it and the wagon stays halted -- the same ruling
+that already protected a misclick from spending the one verb.
+
+**The inspector's notice restores what it interrupted.** `Announce` records
+whether the player was already holding the world; `Dismiss` unpauses only when
+the notice was the thing that took it, and through `PauseController.UnpauseGame`
+rather than `SetNormal`. The old call demoted a player running at 5x and
+force-unpaused a player who had paused deliberately -- the identical defect
+canon 19A named for the divine audience, in a second place. The bribe itself is
+forbidden while held: both fuses it pays off run on scaled time, so the notice
+pauses in order to be READ, and the coin is offered once the world runs again.
+
+**Ghosts draw while held.** The mine highlight and the wall ghost both hid
+themselves while paused, so a frozen board could not be planned against. They
+now draw, following the spell ghost's precedent from canon 38. A dig target you
+cannot see is a dig you cannot plan, and planning on a held board is the entire
+point of an active pause.
+
+**The hover cost preview (polish item p) is finished.** It shipped for walls
+only, as a price floating over the ghost cap. It now covers mine (at the
+effective claim multiplier, not the authored base), build wall, trap, chest,
+furniture, stairs, spawner, spell, and demolish -- the last showing the half-mana
+refund each type's `RemoveByPlayer` hands back, and showing nothing at all on a
+room anchor, which refunds nothing. Entrance and the order modes cost nothing
+and so display nothing. One label, owned by `UpdateCostPreview`, parented to the
+build controller rather than to the wall ghost it outlived; unaffordable reads
+red, a refund reads green. In Mine mode it also carries the standing dig queue's
+cell count and total mana, priced per cell on its own floor's multiplier -- the
+queue is precisely what gets built on a frozen board and its price is invisible
+anywhere else.
+
+**The register lives in code.** `Commands` -> Print Pause Audit prints the live
+hold state, the rule, and every reachable action with its ruling. A new action
+belongs in that table the day it is written; the audit existed because eleven
+files had to be swept to discover what the rule even was.
+
+**Key files:** `Data/PauseGate.cs`, `Data/PauseController.cs`,
+`UI/TimeScaleController.cs`, `DungeonCore/DungeonBuildController.cs`,
+`UI/InspectorArrivalPopup.cs`, `UI/BribePromptUI.cs`, `UI/CryptRaiseUI.cs`,
+`UI/PrisonerPanelUI.cs`, `UI/CaravanActionPanel.cs`, `UI/TrapPanel.cs`,
+`Room/RoomAnchor.cs`, `Room/RoomTypePickerUI.cs`, `Room/CryptController.cs`,
+`Floors/DwarvenCaravanController.cs`, `TESTING/Commands.cs`.
 
 ---
 

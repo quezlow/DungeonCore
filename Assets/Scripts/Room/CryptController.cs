@@ -238,7 +238,8 @@ public class CryptController : MonoBehaviour
 
     private void TickClick()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate. This click only OPENS the raise panel -- reading who
+        // lies in the crypt is inspection (canon 39). The raise itself refuses.
         var mouse = Mouse.current;
         if (mouse == null || !mouse.leftButton.wasPressedThisFrame) return;
         if (DungeonBuildController.Instance == null

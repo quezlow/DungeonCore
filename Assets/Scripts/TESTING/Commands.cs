@@ -26,6 +26,47 @@ public class Commands : MonoBehaviour
         else Debug.LogWarning(faults);
     }
 
+    /// <summary>The pause register (canon 39). Prints the live hold state and
+    /// every player-reachable action with its ruling, so drift is visible in one
+    /// place instead of being rediscovered by sweeping eleven files. A new
+    /// action belongs in this table the day it is written.</summary>
+    [ContextMenu("Print Pause Audit")]
+    private void PrintPauseAudit()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[PauseAudit] world " + (PauseGate.Held ? "HELD" : "running")
+            + "; timeScale " + Time.timeScale.ToString("0.##"));
+        sb.AppendLine("  rule: pause permits DECIDING (selection, navigation, orders,");
+        sb.AppendLine("        ledger-only commitments). It forbids ACTING (anything that");
+        sb.AppendLine("        reaches an entity on the board or a cell of the tilemap).");
+        sb.AppendLine("  -- permitted while held ------------------------------------");
+        sb.AppendLine("    selection, deselection, camera, floor change, stair click");
+        sb.AppendLine("    orders: patrol, attack-here, post, right-click move");
+        sb.AppendLine("    research: browse AND commit (pre-paid, refunded, day-clocked)");
+        sb.AppendLine("    trade: browse AND buy (a ledger swap)");
+        sb.AppendLine("    openers: trap panel, crypt corpse, caravan wagon, room anchor");
+        sb.AppendLine("    ghosts and the hover cost preview, every mode");
+        sb.AppendLine("  -- forbidden while held ------------------------------------");
+        sb.AppendLine("    mine, dig queue drain, build wall, demolish");
+        sb.AppendLine("    place: entrance, spawner, chest, furniture, room anchor,");
+        sb.AppendLine("           trap, stairs, core");
+        sb.AppendLine("    crypt raise, prisoner release/execute/interrogate");
+        sb.AppendLine("    caravan rob/tax/let-pass, bribe, room retype/delete/upgrade");
+        sb.AppendLine("    spells, EXCEPT those flagged castableWhilePaused");
+
+        int orders = 0, held = 0;
+        var spells = SpellBook.All;
+        for (int i = 0; i < spells.Count; i++)
+        {
+            var s = spells[i];
+            if (s == null) continue;
+            if (s.castableWhilePaused) { orders++; sb.AppendLine("      pause-legal spell: " + s.displayName); }
+            else held++;
+        }
+        sb.AppendLine("  spells: " + orders + " pause-legal, " + held + " held");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Spell State")]
     private void PrintSpellState()
     {

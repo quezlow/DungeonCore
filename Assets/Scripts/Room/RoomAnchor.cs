@@ -68,7 +68,10 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate here. Clicking an anchor opens the type picker, which is
+        // inspection -- pause permits it (canon 39). The picker's committing
+        // buttons carry their own gates; the opener must not carry one, or the
+        // player cannot even read a room's state on a frozen board.
         if (myCollider == null || Mouse.current == null) return;
 
         // Don't intercept clicks while a room is being designated / resized.
@@ -228,6 +231,9 @@ public class RoomAnchor : MonoBehaviour, IFloorEntity
     public bool TryUpgrade()
     {
         if (!CanUpgrade) return false;
+        // Retiering a placed room is acting on the board (canon 39). Gated at
+        // the model rather than in the picker so any future caller inherits it.
+        if (PauseGate.RefuseAt(transform.position)) return false;
 
         int nextTier = Tier + 1;
         if (UpgradeGate != null && !UpgradeGate(AssignedRoom, nextTier)) return false;

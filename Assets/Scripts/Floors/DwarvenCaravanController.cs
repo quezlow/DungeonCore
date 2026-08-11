@@ -617,7 +617,9 @@ public class DwarvenCaravanController : MonoBehaviour
     private void HandleClick()
     {
         if (walkers.Count == 0 || !sighted || vignetteRunning || verbUsed) return;
-        if (PauseController.IsGamePaused) return;
+        // No pause gate. The click opens the verb panel and halts the wagon;
+        // reading the cargo is inspection (canon 39). The verbs themselves
+        // refuse while held, and the halt releases on close without settling.
         if (CaravanActionPanel.Instance != null && CaravanActionPanel.Instance.IsOpen) return;
         if (DungeonBuildController.Instance != null
             && DungeonBuildController.Instance.CurrentMode != BuildMode.None) return;

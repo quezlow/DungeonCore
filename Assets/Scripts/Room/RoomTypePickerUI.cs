@@ -105,6 +105,8 @@ public class RoomTypePickerUI : MonoBehaviour
 
     private void OnDeleteClicked()
     {
+        // Dissolving a room removes a thing from the board (canon 39).
+        if (targetAnchor != null && PauseGate.RefuseAt(targetAnchor.transform.position)) return;
         var doomed = targetAnchor;
         targetAnchor = null;   // cleared first so Close() does not double-remove
         if (doomed != null) doomed.RemoveByPlayer();
@@ -223,6 +225,11 @@ public class RoomTypePickerUI : MonoBehaviour
         var anchor = targetAnchor;
         if (anchor == null) { Close(); return; }
 
+        // Retyping revalidates the room and can dissolve the footprint outright
+        // a few lines below, so it is acting, not deciding (canon 39). Browsing
+        // the list and reading each type's requirements stays free while held.
+        if (PauseGate.RefuseAt(anchor.transform.position)) return;
+
         anchor.SetRoomType(def, announce: true);
 
         // A type that cannot validate where it was drawn (a Core Room by the
@@ -288,6 +295,7 @@ public class RoomTypePickerUI : MonoBehaviour
 
     private void OnUpgradeClicked()
     {
+        // The refusal toast comes from RoomAnchor.TryUpgrade itself.
         if (targetAnchor == null) return;
         if (targetAnchor.TryUpgrade())
         {

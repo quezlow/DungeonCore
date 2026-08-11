@@ -75,6 +75,7 @@ public class CryptRaiseUI : MonoBehaviour
         var core = DungeonCore.Instance;
         var crypt = CryptController.Instance;
         raiseButton.interactable = core != null && crypt != null
+            && !PauseGate.Held
             && core.FreeCapacity >= crypt.RisenCapacityCost
             && core.CurrentMana >= crypt.RaiseManaCost;
     }
@@ -82,6 +83,10 @@ public class CryptRaiseUI : MonoBehaviour
     private void OnRaiseClicked()
     {
         if (piece == null) return;
+        // Raising spawns a body onto the board, so it is acting, not deciding
+        // (canon 39). The panel still opens and reads while held -- pausing
+        // mid-raid to conjure defenders was the sharpest case the audit found.
+        if (PauseGate.RefuseAt(piece.transform.position)) return;
         if (CryptController.Instance != null && CryptController.Instance.RaiseFromSarcophagus(piece))
             Close();
     }

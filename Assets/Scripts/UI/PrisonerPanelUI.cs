@@ -79,20 +79,37 @@ public class PrisonerPanelUI : MonoBehaviour
             interrogateButton.interactable = !FactionIntel.IntelKnown(prisoner.Faction);
     }
 
+    // All three verbs reach a body held on the board, so all three are acting
+    // and refuse while the world is held (canon 39). The panel itself opens and
+    // reads freely -- a held prisoner's fate is exactly the thing worth reading
+    // on a frozen board before deciding it.
+
     private void OnReleaseClicked()
     {
+        if (RefusedWhileHeld()) return;
         if (PrisonController.Instance != null && PrisonController.Instance.Release(piece)) Close();
     }
 
     private void OnExecuteClicked()
     {
+        if (RefusedWhileHeld()) return;
         if (PrisonController.Instance != null && PrisonController.Instance.Execute(piece)) Close();
     }
 
     private void OnInterrogateClicked()
     {
+        if (RefusedWhileHeld()) return;
         if (PrisonController.Instance == null) return;
         PrisonController.Instance.Interrogate(piece);
         Refresh();
+    }
+
+    /// <summary>Toasts at the cell the prisoner is held in, or at the core when
+    /// the panel has somehow outlived its piece.</summary>
+    private bool RefusedWhileHeld()
+    {
+        if (!PauseGate.Held) return false;
+        if (piece != null) return PauseGate.RefuseAt(piece.transform.position);
+        return PauseGate.RefuseAtCore();
     }
 }

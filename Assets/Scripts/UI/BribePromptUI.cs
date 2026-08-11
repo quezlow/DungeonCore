@@ -55,7 +55,7 @@ public class BribePromptUI : MonoBehaviour
             bribeButton.gameObject.SetActive(true);
 
         bool affordable = DungeonCore.Instance != null && DungeonCore.Instance.Gold >= cost;
-        if (bribeButton != null) bribeButton.interactable = affordable;
+        if (bribeButton != null) bribeButton.interactable = affordable && !PauseGate.Held;
         if (label != null) label.text = text;
     }
 
@@ -69,6 +69,12 @@ public class BribePromptUI : MonoBehaviour
     // gold paid matches the label shown.
     private void OnBribeClicked()
     {
+        // Both fuses this button pays off run on SCALED time, so holding the
+        // world holds the countdown too. Paying it off while it cannot advance
+        // is acting, not deciding (canon 39): the arrival notice pauses so the
+        // notice can be READ, and the coin is offered once the world runs again.
+        if (PauseGate.RefuseAtCore()) return;
+
         var esc = InspectorEscalation.Instance;
         if (esc != null && esc.DispatchPending) { esc.TryBribe(); return; }
 

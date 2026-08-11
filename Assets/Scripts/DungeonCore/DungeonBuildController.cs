@@ -97,7 +97,8 @@ public class DungeonBuildController : MonoBehaviour
     [SerializeField] private Color wallGhostValidColor = new Color(1f, 1f, 1f, 0.45f);
     [SerializeField] private Color wallGhostInvalidColor = new Color(0.9f, 0.25f, 0.25f, 0.45f);
     private readonly SpriteRenderer[] wallGhost = new SpriteRenderer[3];   // 0 lower face, 1 upper face, 2 cap
-    private TMPro.TextMeshPro wallGhostCostLabel;
+    private TMPro.TextMeshPro costLabel;          // shared by every costed mode
+    private Transform costLabelParent;
     private Sprite wallGhostFallbackSprite;
     private CaveWallRenderer wallGhostRenderer;
     private FloorRoot wallGhostRendererFloor;
@@ -187,6 +188,7 @@ public class DungeonBuildController : MonoBehaviour
         UpdateBuildWallGhost();
         UpdateDigQueueOverlay();
         UpdateSpellGhost();
+        UpdateCostPreview();
         if (!PauseController.IsGamePaused) ProcessDigQueue();
 
         // DAY 31 — Master pause-gate removed. Specific actions choose whether to honor
@@ -688,7 +690,10 @@ public class DungeonBuildController : MonoBehaviour
     private void UpdateMineHighlight()
     {
         if (mineHighlightSR == null) return;
-        if (CurrentMode != BuildMode.Mine || PauseController.IsGamePaused)
+        // No pause gate. A dig target you cannot SEE while the world is held is
+        // a dig you cannot plan, and planning on a frozen board is the whole
+        // point of an active pause (canon 39, the canon 38 ghost precedent).
+        if (CurrentMode != BuildMode.Mine)
         {
             mineHighlightSR.enabled = false;
             return;
@@ -1099,7 +1104,9 @@ public class DungeonBuildController : MonoBehaviour
     /// the renderer has no sliced sprites yet.</summary>
     private void UpdateBuildWallGhost()
     {
-        if (CurrentMode != BuildMode.BuildWall || PauseController.IsGamePaused)
+        // No pause gate -- see UpdateMineHighlight. The price rides the shared
+        // cost preview now, so a held board can be costed before it is built.
+        if (CurrentMode != BuildMode.BuildWall)
         {
             SetWallGhostVisible(false);
             return;
@@ -1149,21 +1156,192 @@ public class DungeonBuildController : MonoBehaviour
             sr.enabled = true;
         }
 
-        if (wallGhostCostLabel != null)
+        // The price is drawn by UpdateCostPreview, which owns the single cost
+        // label for every mode. Two owners meant two idioms; walls had one and
+        // nothing else did, which is what item (p) was left half-finished on.
+    }
+
+    // -- Hover cost preview (polish item p) -------------------------------
+    // Shipped first for walls only; generalised here to every costed mode by
+    // the pause audit, because a price you can read on a HELD board is what
+    // makes an active pause worth having. One label, owned here, so a mode
+    // added later inherits the idiom instead of inventing a second one.
+
+    private System.Collections.Generic.List<FurniturePiece> _previewFurnBuf;
+    private System.Collections.Generic.List<DungeonChest> _previewChestBuf;
+    private System.Collections.Generic.List<TrapBase> _previewTrapBuf;
+
+    private void UpdateCostPreview()
+    {
+        EnsureCostLabel();
+        if (costLabel == null) return;
+
+        var inf = ActiveInfluence;
+        if (inf == null || !HoverCell(out Vector3Int hover))
         {
-            Vector3 capW = inf.CellToWorld(target);
-            wallGhostCostLabel.transform.position = new Vector3(capW.x, capW.y + ch * 0.9f, 0f);
-            wallGhostCostLabel.text = $"{buildWallManaCost:0} mana";
-            wallGhostCostLabel.color = valid ? new Color(0.75f, 0.95f, 1f, 0.95f) : new Color(1f, 0.5f, 0.5f, 0.95f);
-            wallGhostCostLabel.gameObject.SetActive(true);
+            costLabel.gameObject.SetActive(false);
+            return;
         }
+
+        float mana = 0f;
+        int cap = 0;
+        bool refund = false;
+        bool known = false;
+        Vector3Int at = hover;
+
+        switch (CurrentMode)
+        {
+            case BuildMode.Mine:
+            {
+                if (!ResolveMineTarget(hover, out Vector3Int mt)) break;
+                at = mt;
+                // Effective, not authored: granite bills more than soil, and a
+                // preview that shows the base price is a preview that lies.
+                mana = mineManaCost * (ActiveFloor != null ? ActiveFloor.GetClaimCostMultiplier(mt) : 1f);
+                known = true;
+                break;
+            }
+            case BuildMode.BuildWall:
+            {
+                // Price sits over the resolved cap, where the column will rise,
+                // not over the raw cursor cell.
+                if (CanBuildWallAt(hover, out Vector3Int wt, out _)) at = wt;
+                mana = buildWallManaCost;
+                known = true;
+                break;
+            }
+            case BuildMode.PlaceTrap:
+                if (selectedTrap == null) break;
+                mana = selectedTrap.manaCost; cap = selectedTrap.capacityCost; known = true;
+                break;
+            case BuildMode.PlaceChest:
+                if (selectedChest == null) break;
+                mana = selectedChest.manaCost; known = true;
+                break;
+            case BuildMode.PlaceFurniture:
+                if (selectedFurniture == null) break;
+                mana = selectedFurniture.manaCost; known = true;
+                break;
+            case BuildMode.PlaceStairs:
+                if (stairsDefinition == null) break;
+                mana = stairsDefinition.manaCost; known = true;
+                break;
+            case BuildMode.PlaceSpawner:
+            {
+                var mdef = MonsterSelectionUI.Instance?.Selected;
+                if (mdef == null) break;
+                mana = mdef.ManaCost; cap = mdef.CapacityCost; known = true;
+                break;
+            }
+            case BuildMode.CastSpell:
+                if (selectedSpell == null) break;
+                mana = selectedSpell.manaCost; known = true;
+                break;
+            case BuildMode.Demolish:
+                // Removal hands back half the mana (each type's RemoveByPlayer).
+                // A room anchor refunds nothing, so it shows no figure at all
+                // rather than a misleading zero.
+                if (!TryGetDemolishRefund(hover, out mana)) break;
+                refund = true; known = true;
+                break;
+        }
+
+        // PlaceEntrance and the order modes cost nothing, so they show nothing.
+        if (!known)
+        {
+            costLabel.gameObject.SetActive(false);
+            return;
+        }
+
+        var core = DungeonCore.Instance;
+        bool affordable = refund
+            || (core != null && core.CurrentMana >= mana && core.FreeCapacity >= cap);
+
+        var sb = new System.Text.StringBuilder();
+        if (refund) sb.Append("+");
+        sb.Append(mana.ToString("0")).Append(" mana");
+        if (cap > 0) sb.Append("   ").Append(cap).Append(" cap");
+
+        // The queued dig total is the one running figure worth carrying: the
+        // queue is precisely what gets built on a frozen board, and its price
+        // is invisible anywhere else.
+        if (CurrentMode == BuildMode.Mine && digQueue.Count > 0)
+        {
+            sb.Append("\n").Append("queue ").Append(digQueue.Count)
+              .Append(digQueue.Count == 1 ? " cell   " : " cells   ")
+              .Append(QueuedDigMana().ToString("0")).Append(" mana");
+        }
+
+        float ch = Mathf.Abs(inf.CellToWorld(at + Vector3Int.up).y - inf.CellToWorld(at).y);
+        Vector3 w = inf.CellToWorld(at);
+        costLabel.transform.position = new Vector3(w.x, w.y + ch * 0.9f, 0f);
+        costLabel.text = sb.ToString();
+        costLabel.color = refund
+            ? new Color(0.70f, 1f, 0.75f, 0.95f)
+            : (affordable ? new Color(0.75f, 0.95f, 1f, 0.95f) : new Color(1f, 0.5f, 0.5f, 0.95f));
+        costLabel.gameObject.SetActive(true);
+    }
+
+    /// <summary>Total mana the standing dig queue will bill, priced per cell on
+    /// its own floor's claim multiplier so a queue spanning floors reads true.</summary>
+    private float QueuedDigMana()
+    {
+        float total = 0f;
+        for (int i = 0; i < digQueue.Count; i++)
+        {
+            var ord = digQueue[i];
+            var floor = FloorManager.Instance != null ? FloorManager.Instance.GetFloor(ord.floor) : null;
+            total += mineManaCost * (floor != null ? floor.GetClaimCostMultiplier(ord.cell) : 1f);
+        }
+        return total;
+    }
+
+    /// <summary>Half-mana refund for whatever stands in this cell, mirroring the
+    /// order HandleDemolish resolves in. False when nothing there refunds --
+    /// bare ground, or a room anchor, which hands back nothing.</summary>
+    private bool TryGetDemolishRefund(Vector3Int cell, out float refund)
+    {
+        refund = 0f;
+        var floor = ActiveFloor;
+        if (floor == null || floor.Entities == null) return false;
+
+        _previewFurnBuf ??= new System.Collections.Generic.List<FurniturePiece>();
+        floor.Entities.FillAll(_previewFurnBuf);
+        for (int i = 0; i < _previewFurnBuf.Count; i++)
+        {
+            var p = _previewFurnBuf[i];
+            if (p == null || p.OccupiedCell != cell || p.Definition == null) continue;
+            refund = p.Definition.manaCost * 0.5f;
+            return true;
+        }
+
+        _previewChestBuf ??= new System.Collections.Generic.List<DungeonChest>();
+        floor.Entities.FillAll(_previewChestBuf);
+        for (int i = 0; i < _previewChestBuf.Count; i++)
+        {
+            var c = _previewChestBuf[i];
+            if (c == null || c.OccupiedCell != cell || c.Definition == null) continue;
+            refund = c.Definition.manaCost * 0.5f;
+            return true;
+        }
+
+        _previewTrapBuf ??= new System.Collections.Generic.List<TrapBase>();
+        floor.Entities.FillAll(_previewTrapBuf);
+        for (int i = 0; i < _previewTrapBuf.Count; i++)
+        {
+            var t = _previewTrapBuf[i];
+            if (t == null || t.OccupiedCell != cell || t.Definition == null) continue;
+            refund = t.Definition.manaCost * 0.5f;
+            return true;
+        }
+
+        return false;
     }
 
     private void SetWallGhostVisible(bool visible)
     {
         for (int i = 0; i < 3; i++)
             if (wallGhost[i] != null) wallGhost[i].enabled = visible;
-        if (!visible && wallGhostCostLabel != null) wallGhostCostLabel.gameObject.SetActive(false);
     }
 
     private void EnsureWallGhostAssets()
@@ -1192,21 +1370,31 @@ public class DungeonBuildController : MonoBehaviour
             wallGhost[i] = sr;
         }
 
-        // The price label rides the TMP default font; a project without one
-        // simply shows no price, exactly as BuildFeedback degrades.
-        if (TMPro.TMP_Settings.defaultFontAsset != null)
-        {
-            var go = new GameObject("costLabel");
-            go.transform.SetParent(parent, false);
-            wallGhostCostLabel = go.AddComponent<TMPro.TextMeshPro>();
-            wallGhostCostLabel.fontSize = 3f;
-            wallGhostCostLabel.alignment = TMPro.TextAlignmentOptions.Center;
-            wallGhostCostLabel.sortingLayerID = UnityEngine.SortingLayer.NameToID("WorldUI");
-            wallGhostCostLabel.sortingOrder = 151;
-            var rt = wallGhostCostLabel.rectTransform;
-            rt.sizeDelta = new Vector2(4f, 1f);
-            go.SetActive(false);
-        }
+    }
+
+    /// <summary>Builds the one price label shared by every costed mode. It rides
+    /// the TMP default font; a project without one simply shows no price, exactly
+    /// as BuildFeedback degrades. Parented to this controller rather than to the
+    /// wall ghost, because it outlived that mode when item (p) was generalised.</summary>
+    private void EnsureCostLabel()
+    {
+        if (costLabel != null || costLabelParent != null) return;
+        if (TMPro.TMP_Settings.defaultFontAsset == null) { costLabelParent = transform; return; }
+
+        var parent = new GameObject("BuildCostLabel").transform;
+        parent.SetParent(transform, false);
+        costLabelParent = parent;
+
+        var go = new GameObject("costLabel");
+        go.transform.SetParent(parent, false);
+        costLabel = go.AddComponent<TMPro.TextMeshPro>();
+        costLabel.fontSize = 3f;
+        costLabel.alignment = TMPro.TextAlignmentOptions.Center;
+        costLabel.sortingLayerID = UnityEngine.SortingLayer.NameToID("WorldUI");
+        costLabel.sortingOrder = 151;
+        var rt = costLabel.rectTransform;
+        rt.sizeDelta = new Vector2(6f, 2f);
+        go.SetActive(false);
     }
 
     /// <summary>Re-pull the ghost's sprites from the ACTIVE floor's wall

@@ -63,8 +63,9 @@ public class TrapPanel : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
-
+        // No pause gate. Opening the trap readout is navigation and pause
+        // permits it (canon 39). The old gate was inverted: the hotkey refused
+        // while held, yet a panel already open kept every button live.
         if (Keybinds.WasPressed(GameAction.ToggleTraps))
             Toggle();
     }
