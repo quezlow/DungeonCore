@@ -100,6 +100,10 @@ the supersession in one line.
 36. Built Walls and the Sealed Way
 37. Random World Events (The World's Weather)
 38. Core Spells (Active Abilities)
+39. The Pause Rule (Availability Audit)
+40. The Panel Button Row (and the Completed Availability Sweep)
+41. Spell Charges
+42. Dens and the Deep Occupants (Decision Record)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -7265,6 +7269,346 @@ surface for one integer is a tab nobody would open twice.
 
 ---
 
+## 42. Dens and the Deep Occupants (Decision Record)
+
+Status: DECIDED, NOT BUILT. This entry is a decision record written BEFORE any
+code, so that a fresh chat re-syncing and reading canon builds the agreed
+version instead of re-deriving it from a stale backlog. Nothing below is
+as-built. Statements about EXISTING systems were each verified against source
+at `0a4a1b9c`; everything else is a ruling. When the dens ship, the built
+sections replace the decided ones in place and the status line changes -- the
+rulings and the reasons stay.
+
+Supersedes `DCR_Backlog.html` section C entirely. That section was written
+against canon at `dbe77598` (entries 1-33) and its floor ladder, its item
+split and three of its premises no longer survive contact with shipped canon.
+
+### What a den is, and what it is not
+
+A den is a SOURCE. Every threat in the game today is either an arrival
+(adventurers, the threat events) or a one-time clear (a wild chamber goes
+permanently `cleared`). Nothing yet is a place that keeps producing until the
+player goes and destroys it. That gap is the whole reason for the feature.
+
+A den is NOT a faction: no standing, no Faction panel row, no edge in
+`FactionRelations`. Five factions is the roster.
+
+### Floor allocation
+
+Floor index 0 gets nothing. It is radius 100, carries the entrance cave, the
+core cavern and its tunnels, the guided opening (entry 13A), the resting place
+(entry 34) and every wave in the game. It is full.
+
+Floor index 1 carries the GOBLIN HOLE. Floor index 2 carries the KOBOLD DEN,
+alongside the gatehouse and the living trunk road. Floor indices 3 and 4 carry
+the deep occupants and are a SEPARATE PHASE, not to be started until 1 and 2
+are complete and verified. Their lore is locked below so that a later session
+cannot invent something incompatible; nothing else about them is.
+
+One den per floor, GUARANTEED rather than chance-rolled. A den behind a Silver
+or Gold gate that then fails a roll is a feature most players never meet, and
+the guarantee pattern is already shipped three times over (`PlaceOutpost`,
+`PlaceVillage`, `PlaceDeadCore`).
+
+The den sits inside entry 19's placement band -- 15 to 65 per cent of floor
+radius. That number is not decoration: reveal is influence-touch only, and
+entry 19 measured a plausible late run as reaching roughly the inner 65 per
+cent. Content outside the band is content nobody meets, and entry 19 requires
+any future deep-floor content to be measured against it before it is
+scattered.
+
+### The tunnel substrate
+
+Each den floor is generated with a PRE-CARVED TUNNEL NETWORK the den connects
+to. The tunnels are the reason the den reads as somewhere rather than as a
+spawn point, and they are also the reason the floor has a shape before the
+player touches it.
+
+- **Carved at generation, dormant from birth.** A floor does not EXIST until
+  the player places a down stair: `DungeonBuildController` ->
+  `FloorManager.EnsureFloorExists` -> `CreateFloor` -> `FloorRoot.Bootstrap`.
+  No `FloorRoot` means no entity registry, no `RespawnTicker` iteration and
+  no den. The dormancy is therefore free rather than merely cheap, and needs
+  no flag.
+- **Walkable, unclaimed, unrevealed.** `MarkNaturalFloor` registers cells as
+  mined-but-unclaimed exactly as a chamber's interior is, and
+  `DungeonPathfinder.IsWalkable` tests `IsTileMined` -- so tunnels are pathable
+  with NO new pathfinding work. Reveal follows the ROAD model: progressive,
+  with the prepared band past the revealed stretch, not the whole-network
+  reveal a site gets.
+- **The generators exist.** `TerrainFeatureGenerator.BuildTunnel` already
+  walks a wobbling centreline, dilates it to a tapering width with a square
+  brush and clamps to the disc. `RoadNetworkBuilder` supplies junctions,
+  fillets, chords and `ApproachWaypoints`. Extend these; do not write a third
+  centreline carver.
+- **Tunnels never touch the landing.** On floors above 0 there is no core
+  cavern -- `GenerateCoreCavernAndTunnels` runs for floor index 0 ONLY -- so
+  the keep-clear zone is the starter blob `ClaimStarterArea` opens around the
+  stair-landing cell, plus a margin. First contact must happen when the
+  player's digging or ambient creep reaches the network. The player causes it.
+- **Tunnels outlive the den.** Clear it and the network stays.
+
+**Carve precedence gains a sixth stage, and entry 19's ordering section is
+amended accordingly.** `GenerateNew` runs: core cavern and its tunnels, the
+entrance cave, roads (plan), sites, roads (rasterise), chambers, DEN TUNNELS,
+rivers. Tunnels come after chambers because they connect chambers and cannot
+be routed before their endpoints exist, and before rivers because a river cuts
+through a tunnel exactly as it cuts through a road -- the flooded run is free
+storytelling from the ordering alone, on the same argument entry 19 already
+made for the washed-out crossing. Chronology agrees: the roads are Buried Age
+and the tunnels are recent, so the newest dug thing is carved last.
+
+**The shortcut is intended, not incidental.** Pre-mined tunnels are open ground
+the pathfinder will happily route adventurers down, so a floor arrives with a
+tactical geometry the player did not choose and must answer. This is the
+design, and it is what finally gives entry 36's built walls a recurring
+diegetic job. `SealPenaltyController` clocks only a SEVERED CORE ROUTE, so
+walling a side tunnel costs nothing -- correct, and confirmed rather than
+assumed.
+
+**The free mana is accepted and not priced.** Pre-mined cells cost nothing to
+dig and ambient creep will claim them. The tunnels are the compensation for
+the den living on the floor.
+
+### The two dens, and why their verbs differ
+
+The whole read is that the two dens do DIFFERENT THINGS to the floor. Goblins
+take what you drop; kobolds take what you have not found yet.
+
+**Goblin Hole (floor index 1) -- occupy.**
+
+- They never dig. The hole is what was already there.
+- They steal `CarriableLoot` from the ground -- the coins monsters and dead
+  adventurers drop, which currently auto-absorb to the core after 30 seconds.
+  That window is load-bearing: it forces goblins to arrive during or just
+  after a fight, which IS the scavenger identity.
+- Explicitly NOT chests. `DungeonChest` stores no value (it rolls loot on
+  open, and `RemoveByPlayer` says so), and chests are tuned bait feeding the
+  Treasure Hunter tier scan, the appeal ledger and the `MercenaryContract`
+  outflow window. Robbing them poisons three tuned systems at once.
+- Explicitly NOT mana: an invisible bleed on the build resource.
+- The hoard FEEDS DEN TIER; tier feeds raid size and frequency. Without that
+  the den is a pinata -- gold carries no interest or upkeep in DCR, so a hoard
+  that only accumulates costs the player nothing to ignore.
+- Clearing returns the full hoard.
+- Size 250-400 cells, FIXED. Because they do not dig, the hole cannot grow, so
+  TIER READS OFF HOW FULL IT IS -- population and visible hoard.
+- No new art. `MonsterDef_GoblinCutthroat`, both Hobgoblins and
+  `WildDef_GoblinScout` already ship.
+- **The identity question is answered by saying it out loud.** Goblins already
+  serve player cores, so a goblin den raiding one is a good beat if somebody
+  says so and a muddle if nobody does. One wisp line, the first time a
+  goblin-fielding core finds the hole.
+
+**Kobold Den (floor index 2) -- extend.**
+
+- They carve offshoots over days, with progress VISIBLE between visits. This
+  is the counterpart to the goblins' fixed hole.
+- They dig UNCLAIMED rock only and never claim. Claiming is the player's verb
+  and a digging faction that claims would collide with the influence model and
+  with `DwarvenClaimLedger`'s per-cell billing.
+- Size ~150 cells at tier 1, WIDENING per tier, hard-capped at 600. Tier reads
+  off how big it is. The cap is measured against entry 19's scale rule: a cave
+  chamber is 100-200 cells and the largest dwarven village is 2588, and a
+  span-62 plaza at roughly 3000 cells "read as a hole in the fog rather than a
+  building". 600 leaves the top-tier den clearly the biggest natural cavity on
+  its floor without becoming a set-piece.
+- **Contested discovery lives here.** Kobolds excavate buried remains before
+  the player finds them. An excavated cell leaves a VISIBLE EMPTY HOLE --
+  without that the loss is invisible, because the claim-halo murmur only fires
+  within `senseRadius` 2 of a claimed cell and a player who never sensed the
+  remains would never know they were robbed. Clearing the den recovers the
+  grant through `BuriedRemainsController.GrantExternalDiscovery`, whose doc
+  comment has named the desecration arc as its only caller since it shipped.
+  This is the first thing in DCR that punishes slowness rather than
+  aggression. Note the ceiling: `sitesPerFloor` is 2, so this is a set-piece
+  beat at most twice per floor, not ongoing pressure.
+- **Their tunnels intersect the living trunk road, and skirmishes follow.**
+  Floor index 2 already carries the road, the gatehouse and
+  `DwarvenPatrolController`. Clearing the kobolds EARNS DWARVEN STANDING --
+  the first positive lever that is not shopping. The entire positive side
+  today is `standingPerHundredSold` and `standingPerHundredSpent`; everything
+  else is loss (`DwarvenClaimLedger` at -0.05 per cell, robbery at -25).
+- A wisp line names who dug it. `DwarvenClaimLedger` bills on `ClaimTile` only
+  so the player can never actually be charged for a kobold tunnel, but a
+  player who suspects they were will not read the code to find out.
+- New creature art required. `DCR_Guide_Content_Authoring.html` gains a
+  chapter.
+
+### Engineering rulings
+
+- **Den raids roll their own dawn check; they do NOT ride
+  `WorldEventDirector`.** This reverses an earlier suggestion in the same
+  design session, and the reversal is the useful record. The director gates on
+  minDay / minNotoriety / minRating and its effects are multipliers held in
+  `WorldEventEffectKind`; a den raid is conditional on DEN STATE and its
+  effect is to SPAWN BODIES. Riding it needs a new gate concept and a new
+  effect kind, at which point nothing is being reused but the dawn loop.
+  COPY the director's dawn ordering and its sim-before-C# discipline; do not
+  inherit its plumbing.
+- **Growth is a dawn-ticked ledger**, on the `CampGrowthController` model
+  (`OnDayStarted`, grace days, decay, buildout rebuilt from ledger and tiers
+  rather than saved). Bodies instantiate only when the player is on that floor
+  or a raid fires.
+- **Its own controller.** `WildMonsterController` cannot be extended into
+  this: it is chamber-scoped end to end (`spawnedPerChamber`,
+  `HandleChamberRevealed`, `MarkChamberCleared`) and its clearing is
+  permanent, which is the opposite of a source.
+- **Save shape copies `ChamberData`** -- sentinel count plus a per-monster
+  snapshot list with a coarse re-roll fallback. It is proven and it already
+  handles the unresolvable-definition case.
+- **Grace of 5 days after `OnFloorCreated`** before the den ticks, stored as
+  an awakened-day int. A wisp line on waking: they stirred because the player
+  arrived.
+- **Cleared dens regrow unless the tunnels feeding them are sealed.** This is
+  what makes clearing a choice rather than a chore, and it is the second job
+  it hands entry 36.
+- **Dens are hostile to adventurers too**, which falls out of `ScanForHostiles`
+  for free.
+- **The great predator ignores dens.** Folding them into `NearestPrey` would
+  retune `WildMonsterEvent`'s hunger pacing, which is tuned.
+- **Agent caps: 10 goblins, 15 kobolds, both serialized.** Provisional and
+  expected to move after testing; serialized so moving them is not a
+  recompile.
+- **Existing saves get nothing and need no migration.** Floors already created
+  carry no tunnels; only newly-created floors do.
+- **`FeatureType` gains appended values only.** The enum serialises into saves
+  as ints.
+
+### Two rules lifted out of the den work
+
+**"You field what you defeat" is a canon RULE, and ships first and
+separately.** `AdventurerDefinition.unlocksOnDeath` is read at exactly one
+site (`DungeonAdventurer`) and calls `BestiaryState.Discover`. Mirroring the
+field onto `MonsterDefinition` and firing it from the wild death path is a
+handful of lines. Stating it as a rule rather than shipping two special cases
+is the point: it makes the bestiary a conquest record and tells every future
+author where unlocks come from. It is not bundled into the dens and does not
+wait on them.
+
+**Allegiance is a field now, hostility is a pass later.** `IsWild` is derived
+(`wildChamberId >= 0 || isInvader`) and is the hostility test in exactly two
+places -- `_hostileMonsterPred` and `NearestPrey`. Add the allegiance field
+with the dens so the door is built; leave cross-den hostility DISABLED. When
+it is enabled it needs a readout, because the payoff otherwise happens in fog
+on a floor nobody is looking at.
+
+### The deep occupants -- lore locked, nothing built
+
+Two canon questions have been waiting for this: entry 19's "whatever the
+dwarves will not go below", and entry 34's blank, which entry 34 already says
+"may be shared" with it. This is the answer, recorded now so a later session
+cannot contradict it.
+
+**They are what a dead core still makes.** Not demons and not a separate
+mythology. A core that failed and was SEALED RATHER THAN DESTROYED, still
+doing the only thing a core does -- spawning -- for centuries, with nobody
+left to shape what comes out. Unshaped, unnamed, and further from anything
+nameable the longer it runs.
+
+This uses the shipped `DeadCoreVault` (entry 20: guaranteed one per dungeon on
+floor index 4, three authored plans at 75x75) instead of standing beside it,
+and it retroactively explains why the Church built a seventy-five-cell vault
+rather than simply breaking the stone. YOU CANNOT KILL A CORE. YOU CAN ONLY
+WALL ONE IN. The wisp already says, on revealing the vault, that some of the
+others are still down here.
+
+**The dwarves are not the cause.** The "dug too greedily" reading was
+considered and declined: entry 19's dwarves are careful -- they hold a gate,
+maintain one road and stopped. Dwarves who KNOW and refuse to go are a better
+faction than dwarves who blundered.
+
+**The prologue is the endgame in miniature.** Entry 34 records the death as
+explicit and named: Pell, Brother Mott and Serra Vane, at an OPENED SEAL, and
+Serra finishing it. The blank was never the murder -- it is what seal they had
+opened and where Serra's maps came from. What got out under that town is the
+same category of thing that is under floor index 4, and the player, a core
+reborn at a warded rebirth site, is the same object as the thing in the vault
+at a different stage.
+
+**Never seen clearly, and that is a constraint rather than a preference** --
+entry 34's own words about the wisp, applied here. The prologue never shows
+what came out either: the screen goes dark and Serra narrates over it. "You do
+not see what is behind a seal" is already the game's idiom. Three consequences,
+all held:
+
+- **No bestiary unlock.** This is the STATED EXCEPTION to the rule above, and
+  stating the exception is what makes the rule read as a rule.
+- **No name in UI.** Alerts and wisp lines refer obliquely.
+- **No loot table.** They carry nothing. Everything else in the game wants
+  something -- gold, the core, the road, the coins on the floor. These do not,
+  and that absence is the characterisation.
+
+**Floor index 4 is a CONDITION, not a den.** No hoard, no tier, no clear.
+Saturation makes the dead network expensive to HOLD rather than dangerous to
+ENTER. This matters because entry 9's climax fires at Diamond 3 and surviving
+it "silences the recurring threats for good", so index 4 is entered by a god
+core in a sandbox. Do not build a boss down there; the game already had its
+boss.
+
+**Floor index 3's stake is the VILLAGE, not the road** -- a different verb
+from the kobold skirmish, because the same beat on consecutive floors is
+repetition wearing escalation's clothes. The village can FALL: villagers gone,
+lanes still. It is also RECOVERABLE, and the recovery is what makes the loss
+acceptable -- dwarven patrols check the fallen hold, and once one reports it
+clear, settlers arrive after a delay and the hold re-establishes. Clearing the
+den after failing therefore still means something, and the patrols gain a
+reason to exist beyond flavour. Defaults for the resettle, recorded so the
+later phase does not re-litigate them: the SAME authored hold plan (it is the
+same place rebuilt, and the plan is world-seeded), walkers returning at
+reduced count and recovering, standing recovering on resettle, and the
+clearing itself paying as the kobold clearing does.
+
+**Breaking the vault heart escalates floor index 4 saturation.** Entry 20
+grants 60 research and a full level of XP for that break against a price of
+-25 alignment and nothing else. This gives the largest reward in the game its
+first teeth.
+
+**The cataclysm's cause stays unstated.** Entry 21 has the Buried Age
+"entombed in a cataclysm", unattributed. If the occupants caused it, three
+open questions collapse into one answer -- elegant, and it spends all three at
+once. Floor index 4 implies and never states; the dwarves refusing to discuss
+it does the work.
+
+### Open, and deliberately so
+
+- **Fork 7 was AMENDED by the read pass, and the reason is recorded rather
+  than the amendment alone.** The agreed wording had generated tunnels linking
+  chambers to each other AND to the two buried-remains cells. That is not
+  reachable: `FloorRoot.Bootstrap` runs `featureGenerator.GenerateNew` BEFORE
+  `terrainTypeMap.GenerateNew`, and `TerrainTypeMap.GetBuriedSites` returns
+  empty while `generated` is false -- so remains cells do not exist yet when
+  tunnels are carved. The amendment: GENERATED tunnels link chambers (and, on
+  floor index 2, reach the road and the sites); the RUNTIME kobolds dig toward
+  remains, which is what they do anyway and by which time the type map exists.
+  This is better than the original: a dig visibly heading somewhere over days
+  is a stronger race than a tunnel that always pointed there.
+- **Buried remains are NOT band-confined.** `GetBuriedSites` samples uniformly
+  across the usable disc, so a remains cell can land in the outer third that
+  entry 19 says nobody reaches. Kobolds target only remains INSIDE the 15-65
+  per cent band; remains outside it are left alone, so the band measurement
+  stays intact.
+- No Ancient Sites are added to floor index 1. Entry 19 calls index 2's lone
+  guard post "deliberate reach -- without it most players would never meet the
+  Buried Age at all", and sites at index 1 spend that reveal a floor early.
+- Goblin tier is legible from population and hoard; exactly what renders the
+  hoard is not yet decided.
+- Cross-den hostility, and the readout it needs.
+- `DCR_Backlog.html` is stale against canon and was NOT refreshed with this
+  entry, by decision. Section E is shipped as entry 34, section D item 1 is
+  largely shipped as the `DeadCoreVault`, and world events, chest tiers, core
+  spells, the pause audit and the button row have all shipped since it was
+  written. Anyone reading it should read canon first.
+
+### Update the Canon
+
+This entry IS the canon update for the decision pass. When the dens ship, the
+feature guide's own Update-the-Canon chapter revises the sections above in
+place and moves the status line off DECIDED -- it does not append a second
+entry.
+
+---
+
 # APPENDIX
 
 ## A. Content Registries and Authoring Keys
@@ -7285,6 +7629,77 @@ It sits in the floor template's `TerrainFeatureGenerator.wildMonsterPool`
 Adventurer-granted unlocks reuse the Bestiary channel via `unlocksOnDeath`
 (Commoner -> Thrall, Dark cores only). Discovery, save restore and the picker
 all key on `monsterName`.
+
+**YOU FIELD WHAT YOU DEFEAT -- the unlock rule (SHIPPED).** Stated as a RULE
+rather than left implicit, because it decides where every future unlock comes
+from and an author with no rule invents a channel.
+
+*The bestiary is a conquest record. A definition enters it when something of
+that kind is brought down BY THIS DUNGEON, and by nothing else.*
+
+A wild kill discovers its OWN definition -- there is deliberately no
+cross-unlock on `MonsterDefinition`, and one was designed and rejected in the
+same pass that wrote this rule: a wild kill teaching some other creature makes
+the bestiary a table of authored gifts rather than a record of what the
+dungeon has put down, which is the whole of the rule. The adventurer channel
+(`AdventurerDefinition.unlocksOnDeath`) is not that: the Thrall is the human
+frame the Dark core learns to raise FROM the commoner it killed, which is the
+same creature by another route.
+
+**Attribution, and why it is inverted.** The unlock previously fired whoever
+landed the blow, and adventurers do kill wild monsters -- their monster scan
+(`DungeonAdventurer`) carries no `IsWild` filter and simply takes the nearest
+`DungeonMonster` -- so a chamber cleared by a raiding party unlocked creatures
+the player never fought. `TakeDamage(float)` carries no attacker, is called
+from twenty-six sites and sits on `IMonsterTarget`, so threading a source
+through all of it would have rewritten adventurer combat.
+
+Instead `dungeonDealtDamage` is set by DEFAULT and only OUTSIDER sources mark
+themselves, through a `bool fromOutsider` overload on `IMonsterTarget` and a
+`fromOutsider` field on `DungeonProjectile.Payload` (the bolt outlives the
+shot, so the shooter cannot be asked at impact). FIVE sites mark: monster
+melee and monster fire when the shooter `IsWild`, adventurer melee and
+adventurer fire always. Roughly twenty dungeon sources -- nine traps, the
+crossbow sentry, core spells, the trap chest, room-effect burn, sparring,
+core-room burn -- are UNTOUCHED and correct by default. That is a quarter of
+the edits, and it fails in the safe direction: a source nobody marked keeps
+the shipped behaviour rather than silently refusing an unlock the player
+earned.
+
+**ANY dungeon damage counts, not the killing blow.** Wild monsters do not
+regenerate (`wildRegenMultiplier` defaults to 0) so a wound is permanent and
+the flag never needs to expire, and a beast the dungeon's monsters wore down
+still counts when an adventurer steals the last hit. Majority-damage
+accounting was considered and refused: per-source bookkeeping for a
+distinction no player can perceive.
+
+**Instance state, never saved.** A wild monster's HP snapshot restores but its
+history does not, so a reload mid-fight asks for one more blow. Accepted: the
+alternative is a save field per live wild monster to remove a nuisance nobody
+will meet twice.
+
+**The gate covers the unlock only.** `wildCoreXpOnDeath` and
+`RunStats.RecordWildMonsterSlain` still fire whoever killed it, deliberately:
+those record that something died in this dungeon, while the bestiary records
+what this dungeon put down. `AdventurerDefinition.unlocksOnDeath` takes the
+SAME gate, so the rule has no exception -- today only `Commoner.asset` authors
+a grant and Commoners are not caught in Hero-versus-Cultist fights, so that
+half is a guard against the case rather than a fix for a seen bug.
+
+**The stated exception:** the deep occupants of entry 42 are never discovered
+at all. That exception is what makes this a rule rather than a habit -- they
+are the one thing the player defeats and cannot field, and the absence is
+characterisation.
+
+**Diagnostics:** "Print Bestiary Sources" in `Commands` lists every floor's
+wild pool with each definition's discovered state, flagging entries whose
+`minWildFloor` means that floor can never roll them. Without it "the unlock
+did not fire" and "the beast never spawned" look identical from the picker.
+
+**Key files:** `Monster/IMonsterTarget.cs`, `Monster/DungeonMonster.cs`
+(`TakeDamage`, `Die`), `Adventurer/DungeonAdventurer.cs` (`TakeDamage`, the
+death path), `Monster/DungeonProjectile.cs` (`Payload`, `Impact`),
+`DungeonCore/BestiaryState.cs`, `TESTING/Commands.cs`.
 
 **Immutable keys** (save-breaking if renamed after ship): `monsterName`,
 `roomName`, `trapName`, `furnitureName`, `chestName`, `questID`, item `ID`

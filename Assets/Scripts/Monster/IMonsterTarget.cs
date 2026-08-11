@@ -26,6 +26,14 @@ public interface IMonsterTarget
     /// <summary>Apply damage. Return value is discarded — read IsAlive afterwards to test for death.</summary>
     void TakeDamage(float amount);
 
+    /// <summary>Apply damage, recording whether it came from OUTSIDE the dungeon
+    /// -- an adventurer, or a wild creature the player does not command. The
+    /// default (the overload above) means the DUNGEON dealt it, because the
+    /// dungeon's sources outnumber the outsiders' by roughly four to one and a
+    /// source nobody marked should keep the shipped behaviour rather than
+    /// silently refuse an unlock the player earned.</summary>
+    void TakeDamage(float amount, bool fromOutsider);
+
     /// <summary>Shove the target away from a world position (knockback). force = shove distance.</summary>
     void ApplyKnockback(Vector2 fromPos, float force);
 }

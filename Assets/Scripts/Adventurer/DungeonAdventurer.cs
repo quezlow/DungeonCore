@@ -348,6 +348,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private float lastAttackTime;
     private IMonsterTarget combatTarget;
+
+    /// <summary>True once the dungeon has wounded this adventurer. Gates
+    /// unlocksOnDeath for the same reason the wild path is gated: a Cultist cut
+    /// down by a Hero inside the dungeon was not defeated by the player. One
+    /// rule, no exception -- today only Commoner authors a grant and Commoners
+    /// are not caught in faction fights, so this is a guard against the case
+    /// rather than a fix for a seen bug.</summary>
+    private bool dungeonDealtDamage;
     private DungeonChest chestTarget;
     private EntityStatusBars statusBars;
     private LootTable lootTable;
@@ -1745,6 +1753,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         {
             damage = attackDamage,
             numberType = FloatingDamageNumber.DamageType.MonsterHit,
+            fromOutsider = true,
             knockbackForce = knockbackForce,
             knockbackMinDamage = knockbackMinDamage,
             onHit = hit =>
@@ -1772,7 +1781,9 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         DamageNumberSpawner.Spawn(attackDamage, combatTarget.Transform.position,
             FloatingDamageNumber.DamageType.MonsterHit);
         animDriver?.OnAttack();
-        combatTarget.TakeDamage(attackDamage);
+        // An adventurer is always an outsider, whether it strikes a monster
+        // or another adventurer (Hero against Cultist).
+        combatTarget.TakeDamage(attackDamage, true);
         // A heavy hit from anyone but the taunting tank peels that monster off the taunt.
         if (!IsTaunting && combatTarget is DungeonMonster hitMonster
             && attackDamage >= hitMonster.MaxHP * peelDamageFraction)
@@ -2100,8 +2111,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // ── Health ────────────────────────────────────────────────────
 
-    public bool TakeDamage(float amount, DamageKind kind = DamageKind.Melee)
+    public bool TakeDamage(float amount, DamageKind kind = DamageKind.Melee,
+                           bool fromOutsider = false)
     {
+        // Recorded before the wound lands: a killing blow runs Die() from
+        // inside this method, so a flag set afterwards would arrive too late
+        // for the unlock to read it.
+        if (!fromOutsider) dungeonDealtDamage = true;
+
         // The shield wall is a wall of shields against incoming fire: only Ranged
         // hits are mitigated. Melee that reaches the rear rank earns full damage,
         // and environmental sources (traps, chests, room effects, sparring, core
@@ -2193,7 +2210,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             FactionSystem.Instance?.RegisterKill(type, party != null ? party.Formation : FormationType.None);
             AlignmentSystem.Instance?.OnAdventurerKilled(type, combatClass, state == AdventurerState.Retreating);
             if (type == AdventurerType.Inspector) InspectorAssessor.Instance?.OnInspectorSlain();
-            if (unlocksOnDeath != null
+            if (unlocksOnDeath != null && dungeonDealtDamage
                 && (!unlockRequiresDarkCore || (DungeonCore.Instance != null && DungeonCore.Instance.DungeonType == DungeonType.Dark)))
                 BestiaryState.Instance?.Discover(unlocksOnDeath.monsterName);
         }
@@ -2715,6 +2732,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     }
 
     void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
+    void IMonsterTarget.TakeDamage(float amount, bool fromOutsider)
+        => TakeDamage(amount, DamageKind.Melee, fromOutsider);
 
     void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
     {

@@ -612,6 +612,45 @@ public class Commands : MonoBehaviour
         Debug.Log(all.Count == 0 ? "[Commands] Bestiary empty." : $"[Commands] Discovered: {string.Join(", ", all)}");
     }
 
+    /// <summary>Every wild definition the floors can roll, and whether it has
+    /// been discovered. Built for the attribution gate: "the unlock did not
+    /// fire" and "the beast never spawned" look identical from the picker, and
+    /// a per-floor list separates them in one glance.</summary>
+    [ContextMenu("Print Bestiary Sources")]
+    void PrintBestiarySources()
+    {
+        if (FloorManager.Instance == null) { Debug.Log("[Commands] No FloorManager."); return; }
+
+        var rows = new System.Collections.Generic.List<string>();
+        int known = 0, total = 0;
+
+        foreach (var floor in FloorManager.Instance.AllFloors)
+        {
+            var pool = floor?.FeatureGenerator?.WildMonsterPool;
+            if (pool == null || pool.Count == 0) continue;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                var def = pool[i];
+                if (def == null) continue;
+                // The same definition sits in several floors' pools; report it
+                // per floor anyway, because minWildFloor makes "which floor can
+                // actually roll this" the question being asked.
+                bool rolls = floor.FloorIndex >= def.minWildFloor;
+                bool got = BestiaryState.Discovered(def.monsterName);
+                total++;
+                if (got) known++;
+                rows.Add($"  F{floor.FloorIndex + 1}  {def.monsterName,-24} "
+                       + $"{(got ? "DISCOVERED" : "unknown")}"
+                       + (rolls ? "" : $"  (never rolls here: minWildFloor {def.minWildFloor})"));
+            }
+        }
+
+        Debug.Log(rows.Count == 0
+            ? "[Commands] No wild monster pools on any floor."
+            : $"[Commands] Bestiary sources ({known}/{total} discovered):\n"
+              + string.Join("\n", rows));
+    }
+
     [ContextMenu("Test Print Wave Stage")]
     void TestPrintWaveStage()
     {

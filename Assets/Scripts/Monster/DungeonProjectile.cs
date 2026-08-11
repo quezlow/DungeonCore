@@ -22,6 +22,10 @@ public class DungeonProjectile : MonoBehaviour
     public struct Payload
     {
         public float damage;
+        /// <summary>True when the shooter is an adventurer or a wild creature.
+        /// Rides the payload because the bolt outlives the shot: by impact the
+        /// shooter may be dead, and asking it then would credit nobody.</summary>
+        public bool fromOutsider;
         public FloatingDamageNumber.DamageType numberType;
         /// <summary>Attacker type name for the grudge record; empty = no record
         /// (adventurer-fired bolts -- grudges are an adventurer-side ledger).</summary>
@@ -132,13 +136,13 @@ public class DungeonProjectile : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(payload.sourceName))
                 adv.RecordDamagedBy(payload.sourceName, payload.damage);
-            adv.TakeDamage(payload.damage, DamageKind.Ranged);
+            adv.TakeDamage(payload.damage, DamageKind.Ranged, payload.fromOutsider);
             if (payload.breaksFormation && hitObj != null)
                 adv.BreakFormation(payload.breakSeconds);
         }
         else
         {
-            hit.TakeDamage(payload.damage);
+            hit.TakeDamage(payload.damage, payload.fromOutsider);
         }
 
         if (payload.knockbackForce > 0f && payload.damage >= payload.knockbackMinDamage

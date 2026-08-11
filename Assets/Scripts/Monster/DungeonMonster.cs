@@ -235,6 +235,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // Regen
     private float lastDamageTime = -9999f;
+
+    /// <summary>True once this creature has taken a wound from the dungeon --
+    /// a commanded monster, a trap, or a working. Gates the bestiary unlock in
+    /// Die: you field what you DEFEAT, and a chamber an adventuring party
+    /// cleared for you was not defeated by you. ANY dungeon damage counts
+    /// rather than the killing blow, because wild monsters do not regenerate
+    /// (wildRegenMultiplier defaults to 0) so a wound is permanent, and
+    /// because a beast your monsters wore down should still count when an
+    /// adventurer steals the last hit. Instance state, never saved: a wild
+    /// monster's HP snapshot restores but its history does not, so a reload
+    /// mid-fight asks the player to land one more blow.</summary>
+    private bool dungeonDealtDamage;
     private float pendingHealDisplay = 0f;
     private float effectiveRegenPerSecond = 0f;
     private float effectiveRegenCooldown = 5f;
@@ -1626,6 +1638,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             damage = dmg,
             numberType = FloatingDamageNumber.DamageType.AdventurerHit,
             sourceName = TypeName,
+            fromOutsider = IsWild,
             knockbackForce = def.knockbackForce,
             knockbackMinDamage = def.knockbackMinDamage,
             breaksFormation = def.breaksFormation,
@@ -1657,7 +1670,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         animDriver?.OnAttack();
         var advTarget = target as DungeonAdventurer;
         advTarget?.RecordDamagedBy(TypeName, dmg);
-        target.TakeDamage(dmg);
+        // A WILD attacker is an outsider; a commanded one is the dungeon's arm.
+        target.TakeDamage(dmg, IsWild);
         var kdef = IsWild ? wildDefinition : spawner?.Definition;
         if (kdef != null && kdef.knockbackForce > 0f && dmg >= kdef.knockbackMinDamage)
             target.ApplyKnockback(transform.position, kdef.knockbackForce);
@@ -1722,8 +1736,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
     }
 
-    public void TakeDamage(float amount)
+    public void TakeDamage(float amount) => TakeDamage(amount, false);
+
+    public void TakeDamage(float amount, bool fromOutsider)
     {
+        // Credit is recorded BEFORE the wound lands, because a killing blow
+        // runs Die() from inside this method and a flag set afterwards would
+        // arrive after the bestiary had already been asked.
+        if (!fromOutsider) dungeonDealtDamage = true;
         // Mutation tier II toughens the dungeon's own; wilds and invaders take
         // full wounds. Applied to incoming damage rather than maxHP so the
         // node is retroactive for monsters already alive when it completes.
@@ -1749,7 +1769,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         OnAnyMonsterSlain?.Invoke();
-        if (IsWild && wildDefinition != null)
+        // You field what you defeat. The unlock is gated on the dungeon having
+        // wounded it; the XP and the run statistic below deliberately are NOT,
+        // because those record that something died here while the bestiary
+        // records what this dungeon put down.
+        if (IsWild && wildDefinition != null && dungeonDealtDamage)
             BestiaryState.Instance?.Discover(wildDefinition.monsterName);
 
         if (IsWild)
@@ -1896,6 +1920,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         }
     }
     void IMonsterTarget.TakeDamage(float amount) => TakeDamage(amount);
+    void IMonsterTarget.TakeDamage(float amount, bool fromOutsider)
+        => TakeDamage(amount, fromOutsider);
 
     void IMonsterTarget.ApplyKnockback(Vector2 fromPos, float force)
     {
