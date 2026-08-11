@@ -6875,7 +6875,6 @@ GameObject:
   - component: {fileID: 215419051}
   - component: {fileID: 215419050}
   - component: {fileID: 215419052}
-  - component: {fileID: 215419053}
   m_Layer: 0
   m_Name: ActionBar
   m_TagString: Untagged
@@ -6985,28 +6984,6 @@ MonoBehaviour:
     mode: 9
   selectedColor: {r: 0.8134237, g: 0.81960785, b: 0.27058825, a: 0.5882353}
   unselectedColor: {r: 1, g: 1, b: 1, a: 0}
---- !u!114 &215419053
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 215419047}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ebb03883407d01a4cafebc471b6efb9a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpellSelectionUI
-  panel: {fileID: 0}
-  entryPrefab: {fileID: 0}
-  entryContainer: {fileID: 0}
-  detailLabel: {fileID: 0}
-  selectedColor: {r: 0.82, g: 0.68, b: 0.27, a: 1}
-  unselectedColor: {r: 1, g: 1, b: 1, a: 0.55}
-  unaffordableColor: {r: 0.9, g: 0.3, b: 0.3, a: 1}
-  cooldownFade: 0.4
-  readyFormat: '{name}  {mana}'
-  cooldownFormat: '{name}  {seconds}s'
 --- !u!1 &217789958
 GameObject:
   m_ObjectHideFlags: 0

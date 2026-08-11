@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.Serialization;
@@ -20,6 +21,9 @@ using UnityEngine.Serialization;
 ///   Summon [V] — toggles BuildMode.PlaceSpawner. MonsterSelectionUI already shows/hides
 ///                itself via its own OnModeChanged subscription, so no direct panel
 ///                management is needed here.
+///   Cast   [Q] — toggles the spell row (canon 38). A FIFTH tab, cloned from a sibling
+///                at runtime, hidden until the core holds any working. Its row is a
+///                third sub-menu built exactly like Mine's, off the same entry prefab.
 ///
 /// STATE OWNERSHIP
 ///   HandleModeChanged (driven by DungeonBuildController.OnModeChanged) is the single
@@ -67,6 +71,15 @@ public class ActionBarHUD : MonoBehaviour
              "instantiated at runtime from submenuEntryPrefab, exactly like the Build sub-menu.")]
     [SerializeField] private Transform mineEntryContainer;
 
+    [Tooltip("Container for the spell row (canon 38). Same shape as mineEntryContainer: " +
+             "a HorizontalLayoutGroup, inactive by default. Entries come from the shared " +
+             "submenuEntryPrefab, so the row matches Build and Mine without extra art.")]
+    [SerializeField] private Transform spellEntryContainer;
+
+    [Tooltip("Optional. Description and stats for the working under the POINTER; hidden " +
+             "when nothing is hovered, so the row stays a clean strip of names.")]
+    [SerializeField] private TMP_Text spellDetailLabel;
+
     [Tooltip("Button prefab: Button component + TMP_Text child for the label.")]
     [SerializeField] private Button submenuEntryPrefab;
 
@@ -87,6 +100,8 @@ public class ActionBarHUD : MonoBehaviour
     [Header("Colours")]
     [SerializeField] private Color selectedColor = new(0.82f, 0.68f, 0.27f, 1.00f); // gold
     [SerializeField] private Color unselectedColor = new(1.00f, 1.00f, 1.00f, 0.55f); // dim white
+    [Tooltip("Spell entry tint when the core cannot pay for it.")]
+    [SerializeField] private Color spellUnaffordableColor = new(0.90f, 0.30f, 0.30f, 1.00f);
 
     // ── Internal state ────────────────────────────────────────────
 
@@ -99,6 +114,11 @@ public class ActionBarHUD : MonoBehaviour
 
     // Spawned entry buttons cached for re-highlighting.
     private readonly List<(BuildMode mode, Button button)> spawnedEntries = new();
+
+    // The spell row, rebuilt whenever the castable roster changes.
+    private readonly List<(SpellDefinition def, Button button)> spellEntries = new();
+    private int selectedSpellIndex;
+    private float spellRefreshTimer;
 
     // ── Lifecycle ─────────────────────────────────────────────────
 
@@ -123,8 +143,10 @@ public class ActionBarHUD : MonoBehaviour
 
         BuildSubmenuEntries();
         BuildMineSubmenuEntries();   // without this the mine sub-menu opens empty
+        BuildSpellSubmenuEntries();
         HideBuildPanel();
         HideMinePanel();
+        HideSpellPanel();
 
         pushTabButton?.onClick.AddListener(OnPushTabClicked);
         mineTabButton?.onClick.AddListener(OnMineTabClicked);
@@ -139,7 +161,7 @@ public class ActionBarHUD : MonoBehaviour
         HandleModeChanged(DungeonBuildController.Instance.CurrentMode);
 
         EnsureCastTab();
-        SpellBook.OnRosterChanged += RefreshCastTabVisibility;
+        SpellBook.OnRosterChanged += HandleSpellRosterChanged;
         RefreshCastTabVisibility();
 
         // Keep the tab shortcut hints (e.g. "MINE (M)") in sync with Keybinds.
@@ -152,7 +174,7 @@ public class ActionBarHUD : MonoBehaviour
         if (DungeonBuildController.Instance != null)
             DungeonBuildController.Instance.OnModeChanged -= HandleModeChanged;
         Keybinds.OnRebind -= RefreshShortcutLabels;
-        SpellBook.OnRosterChanged -= RefreshCastTabVisibility;
+        SpellBook.OnRosterChanged -= HandleSpellRosterChanged;
     }
 
     private void Update()
@@ -165,6 +187,17 @@ public class ActionBarHUD : MonoBehaviour
         // DungeonBuildController.HandleSpellCast (canon 38). This is why the
         // dialog guard now runs FIRST -- typing must still swallow the key.
         if (Keybinds.WasPressed(GameAction.Cast)) OnCastTabClicked();
+        HandleSpellNumberKeys();
+
+        // Cooldowns and mana both move on their own, and the row stays open while
+        // the world is held -- so this repaint sits ABOVE the pause gate and runs
+        // on unscaled time. A scaled timer would freeze the readout at exactly the
+        // moment the player is reading it to plan the next cast.
+        if (SpellPanelOpen)
+        {
+            spellRefreshTimer -= Time.unscaledDeltaTime;
+            if (spellRefreshTimer <= 0f) { spellRefreshTimer = 0.25f; RefreshSpellEntries(); }
+        }
 
         if (PauseController.IsGamePaused) return;
 
@@ -342,6 +375,12 @@ public class ActionBarHUD : MonoBehaviour
     /// </summary>
     private void HandleModeChanged(BuildMode mode)
     {
+        // The spell row closes on ANY mode that is not CastSpell. Done here rather
+        // than in each arm because HandleModeChanged is the single source of truth
+        // for panel state, and a new BuildMode added later would otherwise leave
+        // the row hanging open over an unrelated tool.
+        if (mode != BuildMode.CastSpell) HideSpellPanel();
+
         switch (mode)
         {
             case BuildMode.None:
@@ -373,6 +412,7 @@ public class ActionBarHUD : MonoBehaviour
                 currentTab = ActiveTab.Cast;
                 HideBuildPanel();
                 HideMinePanel();
+                ShowSpellPanel();
                 break;
 
             case BuildMode.PlaceEntrance:
@@ -486,6 +526,198 @@ public class ActionBarHUD : MonoBehaviour
         if (buildSubmenuPanel != null) buildSubmenuPanel.SetActive(false);
     }
 
+    // -- Spell row (canon 38) --------------------------------------
+
+    /// <summary>
+    /// Rebuilds the spell row from SpellBook. Mirrors BuildMineSubmenuEntries,
+    /// with one difference that matters: the mine gestures are a fixed three and
+    /// are built once, whereas the castable roster GROWS at runtime as research
+    /// completes and gods hand workings down -- so this is also wired to
+    /// SpellBook.OnRosterChanged and destroys before it rebuilds.
+    /// </summary>
+    private void BuildSpellSubmenuEntries()
+    {
+        if (spellEntryContainer == null || submenuEntryPrefab == null) return;
+
+        for (int i = 0; i < spellEntries.Count; i++)
+            if (spellEntries[i].button != null) Destroy(spellEntries[i].button.gameObject);
+        spellEntries.Clear();
+
+        var defs = new List<SpellDefinition>();
+        SpellBook.FillAvailable(defs);
+
+        for (int i = 0; i < defs.Count; i++)
+        {
+            var def = defs[i];
+            if (def == null) continue;
+
+            Button btn = Instantiate(submenuEntryPrefab, spellEntryContainer);
+            btn.gameObject.SetActive(true);
+            btn.name = "SpellEntry_" + def.id;
+
+            if (def.icon != null)
+            {
+                var images = btn.GetComponentsInChildren<Image>(true);
+                if (images.Length > 1) images[1].sprite = def.icon;
+            }
+
+            int captured = i;                      // avoid the closure capture bug
+            btn.onClick.AddListener(() => SelectSpell(captured));
+            AddSpellHover(btn, captured);
+
+            spellEntries.Add((def, btn));
+        }
+
+        if (selectedSpellIndex >= spellEntries.Count) selectedSpellIndex = 0;
+        RefreshSpellEntries();
+        PushSelectedSpell();
+    }
+
+    /// <summary>
+    /// Pointer enter/exit on one entry, driving the detail label. An EventTrigger
+    /// is added at runtime rather than required on the shared prefab, because
+    /// that prefab is also the Build and Mine entry and must stay as it is.
+    /// </summary>
+    private void AddSpellHover(Button btn, int index)
+    {
+        var trigger = btn.GetComponent<EventTrigger>();
+        if (trigger == null) trigger = btn.gameObject.AddComponent<EventTrigger>();
+
+        var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enter.callback.AddListener(_ => ShowSpellDetail(index));
+        trigger.triggers.Add(enter);
+
+        var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exit.callback.AddListener(_ => HideSpellDetail());
+        trigger.triggers.Add(exit);
+    }
+
+    /// <summary>The detail label follows the POINTER, not the selection: it appears
+    /// on hover and goes away on exit, so the row stays a clean strip of names when
+    /// nothing is being inspected.</summary>
+    private void ShowSpellDetail(int index)
+    {
+        if (spellDetailLabel == null) return;
+        if (index < 0 || index >= spellEntries.Count) return;
+        var def = spellEntries[index].def;
+        if (def == null) return;
+        spellDetailLabel.text = def.description + "\n" + def.StatLine();
+        spellDetailLabel.gameObject.SetActive(true);
+    }
+
+    private void HideSpellDetail()
+    {
+        if (spellDetailLabel != null) spellDetailLabel.gameObject.SetActive(false);
+    }
+
+    private void SelectSpell(int index)
+    {
+        if (spellEntries.Count == 0) return;
+        selectedSpellIndex = Mathf.Clamp(index, 0, spellEntries.Count - 1);
+        RefreshSpellEntries();
+        PushSelectedSpell();
+    }
+
+    private void PushSelectedSpell()
+    {
+        SpellDefinition def = selectedSpellIndex >= 0 && selectedSpellIndex < spellEntries.Count
+            ? spellEntries[selectedSpellIndex].def : null;
+        DungeonBuildController.Instance?.SetSelectedSpell(def);
+    }
+
+    /// <summary>
+    /// Labels, tints and cooldown readouts. Called on a timer rather than per
+    /// frame, and on UNSCALED time -- the row stays open while the world is held,
+    /// so a scaled timer would freeze the readout at exactly the moment the
+    /// player is reading it to plan.
+    /// </summary>
+    private void RefreshSpellEntries()
+    {
+        float mana = DungeonCore.Instance != null ? DungeonCore.Instance.CurrentMana : 0f;
+
+        for (int i = 0; i < spellEntries.Count; i++)
+        {
+            var def = spellEntries[i].def;
+            var btn = spellEntries[i].button;
+            if (def == null || btn == null) continue;
+
+            bool ready = SpellBook.IsReady(def);
+            bool afford = mana >= def.manaCost;
+            float left = SpellBook.CooldownRemaining(def);
+
+            var img = btn.targetGraphic as Image;
+            if (img == null) img = btn.GetComponent<Image>();
+            if (img != null)
+            {
+                Color c = !afford ? spellUnaffordableColor
+                        : (i == selectedSpellIndex ? selectedColor : unselectedColor);
+                if (!ready) c.a *= 0.4f;
+                img.color = c;
+            }
+
+            var text = btn.GetComponentInChildren<TMP_Text>();
+            if (text == null) continue;
+
+            // "(1)" matches the tab convention ("MINE (M)") so the number key is
+            // read the same way everywhere on the bar. Only the first nine get
+            // one -- there is no tenth key to press.
+            string slot = i < 9 ? " (" + (i + 1) + ")" : string.Empty;
+            text.text = left > 0.05f
+                ? def.displayName + slot + "  " + left.ToString("0.#") + "s"
+                : def.displayName + slot + "  " + def.manaCost.ToString("0");
+        }
+    }
+
+    /// <summary>Number keys select while the row is open. Guarded on the row being
+    /// open so the digits stay free everywhere else -- HotbarController also reads
+    /// Digit1-9, and although it is not in the dungeon scene today, a future one
+    /// must not fight this.</summary>
+    private void HandleSpellNumberKeys()
+    {
+        if (!SpellPanelOpen || spellEntries.Count == 0) return;
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        int n = Mathf.Min(9, spellEntries.Count);
+        for (int i = 0; i < n; i++)
+            if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame) { SelectSpell(i); return; }
+    }
+
+    private void HideSpellPanel()
+    {
+        if (spellEntryContainer != null) spellEntryContainer.gameObject.SetActive(false);
+        HideSpellDetail();
+    }
+
+    private void ShowSpellPanel()
+    {
+        if (spellEntryContainer != null) spellEntryContainer.gameObject.SetActive(true);
+        RefreshSpellEntries();
+    }
+
+    private bool SpellPanelOpen =>
+        spellEntryContainer != null && spellEntryContainer.gameObject.activeSelf;
+
+    /// <summary>Names every unassigned slot the spell row needs. A container left
+    /// blank opens an empty row and reports nothing on its own, which is the
+    /// failure this project has paid test cycles for. Null when whole.</summary>
+    public string ValidateSpellRowWiring()
+    {
+        var faults = new List<string>();
+        if (spellEntryContainer == null)
+            faults.Add("spellEntryContainer is not assigned -- the spell row can never show.");
+        if (submenuEntryPrefab == null)
+            faults.Add("submenuEntryPrefab is not assigned -- no entries can be made.");
+        else if (submenuEntryPrefab.GetComponentInChildren<TMP_Text>(true) == null)
+            faults.Add("submenuEntryPrefab has no TMP_Text child -- entries will be unlabelled.");
+        if (spellDetailLabel == null)
+            faults.Add("spellDetailLabel is not assigned (optional -- hover shows nothing).");
+
+        if (faults.Count == 0) return null;
+        return "[ActionBarHUD] spell row wiring incomplete on '" + name + "':\n  "
+             + string.Join("\n  ", faults);
+    }
+
     private void HideMinePanel()
     {
         if (mineEntryContainer != null) mineEntryContainer.gameObject.SetActive(false);
@@ -501,19 +733,40 @@ public class ActionBarHUD : MonoBehaviour
 
     // ── Highlight helpers ─────────────────────────────────────────
 
-    /// <summary>Toggles cast mode, mirroring the Summon tab.</summary>
+    /// <summary>Toggles the spell row, mirroring the Mine tab exactly: whether the
+    /// ROW is open is the toggle state, not which tab is lit, because cast mode can
+    /// be entered by hotkey without the row ever having opened.</summary>
     private void OnCastTabClicked()
     {
         SpawnerSelectionController.Instance?.Deselect();
-        bool wasOpen = currentTab == ActiveTab.Cast;
+        bool wasOpen = SpellPanelOpen;
 
         HideBuildPanel();
         HideMinePanel();
 
-        if (!wasOpen)
-            DungeonBuildController.Instance.SetMode(BuildMode.CastSpell);
-        else
+        if (wasOpen)
+        {
             DungeonBuildController.Instance.SetMode(BuildMode.None);
+            currentTab = ActiveTab.None;
+            UpdateTabHighlights();
+            return;
+        }
+
+        DungeonBuildController.Instance.SetMode(BuildMode.CastSpell);
+
+        // SetMode is a no-op if already CastSpell (HandleModeChanged will not fire),
+        // so force the visual state explicitly, as the Mine tab does.
+        currentTab = ActiveTab.Cast;
+        UpdateTabHighlights();
+        ShowSpellPanel();
+    }
+
+    /// <summary>A completed node or a god's grant changes the roster mid-run, so the
+    /// row is rebuilt and the tab re-checked together.</summary>
+    private void HandleSpellRosterChanged()
+    {
+        BuildSpellSubmenuEntries();
+        RefreshCastTabVisibility();
     }
 
     /// <summary>

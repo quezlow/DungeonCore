@@ -54,7 +54,7 @@ public static class Keybinds
         { GameAction.ToggleFactions,      Key.G },
         { GameAction.ToggleResearch,      Key.R },
         { GameAction.RecenterCamera,      Key.Home },
-        { GameAction.Cast,                Key.X },
+        { GameAction.Cast,                Key.Q },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();

@@ -14,15 +14,15 @@ public class Commands : MonoBehaviour
     [ContextMenu("Validate Spell Picker Wiring")]
     private void ValidateSpellPickerWiring()
     {
-        var ui = FindAnyObjectByType<SpellSelectionUI>();
-        if (ui == null)
+        var bar = FindAnyObjectByType<ActionBarHUD>();
+        if (bar == null)
         {
-            Debug.LogWarning("[SpellPicker] No SpellSelectionUI in the scene. "
-                + "Cast mode will open and show nothing.");
+            Debug.LogWarning("[SpellRow] No ActionBarHUD in the scene. "
+                + "Cast mode has nowhere to draw.");
             return;
         }
-        string faults = ui.ValidateWiring(false);
-        if (faults == null) Debug.Log("[SpellPicker] Wiring is whole.");
+        string faults = bar.ValidateSpellRowWiring();
+        if (faults == null) Debug.Log("[SpellRow] Wiring is whole.");
         else Debug.LogWarning(faults);
     }
 

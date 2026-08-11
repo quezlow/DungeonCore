@@ -51,7 +51,7 @@ public class DungeonBuildController : MonoBehaviour
     public void SetSelectedSpell(SpellDefinition def) => selectedSpell = def;
 
     /// <summary>The working the picker currently has chosen. Not serialized:
-    /// SpellSelectionUI pushes it on every mode entry and every roster change.</summary>
+    /// ActionBarHUD pushes it on every mode entry and every roster change.</summary>
     private SpellDefinition selectedSpell;
 
     [Header("Mana Costs")]

@@ -6795,22 +6795,32 @@ mining granite costs 20 a cell, a wall 10, a crossbow trap 16, a fireball
 rune 22. Real at Bronze, small change by Gold -- the shape the traps already
 have.
 
-**Picker.** `SpellSelectionUI` is SCENE-WIRED and lists every castable
-working at once, so cooldowns across the whole set read at a glance
-mid-fight. It follows the `ActionBarHUD` sub-menu idiom exactly --
-instantiate the prefab per entry, first `TMP_Text` child is the label,
-second `Image` child is the icon -- so a prefab that works for the build
-sub-menu works here unchanged. Number keys 1-9 select while it is open.
-The roster rebuilds on `SpellBook.OnRosterChanged`, so a completed node or
-a god's grant appears without a reopen.
+**The spell row lives in `ActionBarHUD`,** as a THIRD sub-menu beside Build
+and Mine rather than a component of its own. It is the mine-gesture pattern
+exactly: one serialized `spellEntryContainer`, entries instantiated from the
+SHARED `submenuEntryPrefab`, and the container IS the panel -- showing it is
+toggling its GameObject. Two standalone versions were written first and both
+replaced: a self-built canvas (layout is a design decision and belongs in the
+scene) and then a separate scene-wired `SpellSelectionUI` (a second panel and
+a second entry prefab to produce a row that should look identical to the
+other two). The merged form costs ONE container in the scene and inherits
+the bar's look for nothing.
 
-The known cost of scene wiring is that a blank reference renders an empty
-panel and logs nothing, which has cost this project test cycles before. It
-is refused here: `ValidateWiring` NAMES every unassigned slot at Awake, and
-Commands -> Validate Spell Picker Wiring runs the same check on demand. A
-self-built version was written first and replaced deliberately -- the layout
-is a design decision and belongs in the scene, but silence about a broken
-one does not.
+The row lists every castable working at once so cooldowns read across the
+whole set mid-fight, and rebuilds on `SpellBook.OnRosterChanged` so a
+completed node or a god's grant appears without a reopen. Entry labels carry
+`(1)`-`(9)` matching the tab convention (`MINE (M)`), and those number keys
+select while the row is open -- guarded on the row being open so the digits
+stay free elsewhere. The detail label follows the POINTER rather than the
+selection, appearing on hover and hiding on exit, so the row stays a clean
+strip of names. The CAST tab toggles on ROW-OPEN state, not on which tab is
+lit, because cast mode can be entered by hotkey without the row ever opening
+-- the same reason the Mine tab does it that way. Default key **Q**.
+
+A blank container opens an empty row and reports nothing on its own, which
+has cost this project test cycles before, so it is refused:
+`ValidateSpellRowWiring` names every unassigned slot and
+Commands -> Validate Spell Picker Wiring runs it.
 
 **Rejected:** a Reveal Area spell (fog is not a stored set -- `RevealTile`
 nulls a tile and a load re-derives the revealed area from claimed + mined, so
