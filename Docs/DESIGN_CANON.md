@@ -6849,7 +6849,7 @@ makes those differ.
 
 **Key files:** `Gameplay/SpellDefinition.cs`, `Gameplay/SpellBook.cs`,
 `Gameplay/SpellCaster.cs`, `Monster/MonsterBoons.cs`,
-`UI/SpellSelectionUI.cs`, `DungeonCore/DivineAudienceScript.cs`,
+`DungeonCore/DivineAudienceScript.cs`,
 `UI/DivineAudienceUI.cs`,
 `Editor/SpellContentGenerator.cs`, `DungeonCore/DungeonBuildController.cs`,
 `Data/Keybinds.cs`, `UI/ActionBarHUD.cs`, `Editor/TechContentGenerator.cs`,
