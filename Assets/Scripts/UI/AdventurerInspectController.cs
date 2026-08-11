@@ -17,7 +17,9 @@ public class AdventurerInspectController : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate. INSPECTION is the paradigm case for an active pause --
+        // freezing the world to read who is walking through it is the whole
+        // reason the feature exists (canon 39/40).
         if (!UnlockState.IsUnlocked(UnlockState.AdventurerStats)) return;
         if (DungeonBuildController.Instance != null
             && DungeonBuildController.Instance.CurrentMode != BuildMode.None) return;

@@ -46,7 +46,9 @@ public class LootPanel : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate. Opening the loot table is navigation, which pause
+        // permits (canon 39/40). Reading what a party is carrying is exactly
+        // the thing a held board is for.
         // Rebindable through Keybinds/GameAction; IsTextInputActive is handled inside WasPressed.
         if (Keybinds.WasPressed(GameAction.ToggleLoot))
             Toggle();

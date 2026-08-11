@@ -6547,7 +6547,7 @@ it stalls wherever its own pathing stalls, which is the honest behaviour.
 
 ## 37. Random World Events (The World's Weather)
 
-Status: BUILT. Verified: pending smoke test.
+Status: SHIPPED. Verified: Complete.
 
 The deferred framework from entry 18, revisited and shipped: a data-driven
 dispatcher so a new world event is an asset entry, not a component.
@@ -6930,6 +6930,14 @@ cell count and total mana, priced per cell on its own floor's multiplier -- the
 queue is precisely what gets built on a frozen board and its price is invisible
 anywhere else.
 
+**This entry's first pass was partial, and canon 40 completed it.** The sweep
+that produced this rule was drawn from the resource-spending call sites plus the
+panels that happened to be read alongside them -- not from an exhaustive sweep of
+`PauseController.IsGamePaused`. It fixed four over-gated openers and missed seven
+more of the identical class, listed in canon 40. The lesson is recorded here
+rather than quietly corrected: an audit bounded by the evidence already gathered
+is not an audit, and the exhaustive grep costs minutes.
+
 **The register lives in code.** `Commands` -> Print Pause Audit prints the live
 hold state, the rule, and every reachable action with its ruling. A new action
 belongs in that table the day it is written; the audit existed because eleven
@@ -6941,6 +6949,88 @@ files had to be swept to discover what the rule even was.
 `UI/PrisonerPanelUI.cs`, `UI/CaravanActionPanel.cs`, `UI/TrapPanel.cs`,
 `Room/RoomAnchor.cs`, `Room/RoomTypePickerUI.cs`, `Room/CryptController.cs`,
 `Floors/DwarvenCaravanController.cs`, `TESTING/Commands.cs`.
+
+---
+
+## 40. The Panel Button Row (and the Completed Availability Sweep)
+
+Status: SHIPPED. Verified: 2026-08-11.
+
+**The problem.** Eight window actions had no on-screen affordance whatever:
+traps, alerts, loot, the journal, known parties, factions, research, and
+recentring on the core. A player who never opened the keybind screen could not
+discover the research tree or the bestiary. That is most of the game's UI
+surface hidden behind unlabelled keys.
+
+**The row.** `UI/PanelButtonRow.cs`, one button per action, code-built at Awake
+from a single scene anchor. Deliberately separate from `ActionBarHUD`: that bar
+selects a TOOL and this row opens a WINDOW, and mixing them would make the
+action bar's selected-tab highlight meaningless. Each button shows its bound key
+underneath, pulled from `Keybinds.DisplayName` and refreshed on
+`Keybinds.OnRebind` -- the row teaches the hotkey rather than replacing it. A
+button with no icon assigned falls back to its text label, the same degradation
+`ActionBarHUD` submenu entries already use, so a temp-art row reads as eight
+names rather than eight blank squares.
+
+**Built in code, not wired in the scene.** `AlertHudButton` is the precedent for
+the behaviour and is scene-wired, but replicating that eight times is eight sets
+of Inspector references and eight silent failure modes. Silent failure is
+actively designed against in this project, so the row builds its own children
+and takes only sprites from the Inspector.
+
+**Locked buttons are hidden, not greyed.** A greyed button for a system the
+player has never heard of is both a spoiler and a dead click. Alerts gates on
+`tech.alerts`; known parties and factions both gate on `tech.known_parties`;
+the rest are always shown. Gating re-applies on `UnlockState.OnChanged`.
+
+**Alerts alone carries a badge.** It is the only one of the eight with an
+existing unread count. Badges for the others would mean inventing the counters
+first, and an invented counter is a number nobody can trust.
+
+**Recentring is not a window.** It is momentary -- no open state, no badge, no
+gate -- and calls `DungeonCameraController.RecenterOnCore`, which was already
+public and documented as callable by menus.
+
+**The completed sweep.** Canon 39 fixed four over-gated openers and left seven
+more of the same class, because its scope was drawn around the evidence already
+gathered rather than an exhaustive grep. The row forced the issue: a button that
+visibly does nothing while the world is held is a bug report, where a dead
+hotkey is merely invisible. The seven, all now ungated:
+
+- `UI/LootPanel.cs`, `UI/KnownPartiesPanel.cs`, `UI/FactionPanel.cs`,
+  `UI/AlertHistoryPanel.cs` -- window hotkeys refused while held, although the
+  journal and the research tree never carried a gate. That inconsistency was
+  the tell that these were written case by case rather than to a rule.
+- `DungeonCore/InfluenceRingRenderer.cs` -- the overlay is a read-only lens and
+  changes nothing on the board. Held is exactly when a player wants to check
+  their reach before committing to a dig.
+- `UI/AdventurerInspectController.cs` -- clicking an adventurer to read its
+  stats. Inspection is the paradigm case for an active pause and it was refused.
+- `UI/ActionBarHUD.cs` -- the Mine, Build, Summon and Push tab hotkeys.
+
+**Mode entry is pause-legal.** Selecting a tool places nothing, and
+`DungeonBuildController`'s dispatch gate still refuses every acting handler.
+Cast has been enterable while held since canon 38, so four of the five tabs
+disagreed with the fifth. The consequence was worse than an inconsistency: the
+hover cost preview keys off `CurrentMode`, so it was only reachable if the mode
+had been entered BEFORE pausing -- half of a shipped feature, invisible. Only
+the four hotkeys moved above the gate. The Esc-cancel block below it stays where
+it is: it coordinates with `PauseMenuController`'s chain, and freeing it is a
+separate question from window availability.
+
+**What the sweep confirmed as already correct**, and deliberately did not touch:
+the journal, research, recenter, the minimap's click-to-pan and the speed keys
+carry no gate and should not; `HotbarController` gates correctly because it
+calls `item.UseItem()`, which acts; every simulation tick gates correctly; and
+the guards in `Data/MenuController.cs` and `Overworld/PrologueSettingsHotkey.cs`
+stay, because "do not open over another pause holder" is a different concern
+from availability and answering it with the availability rule would break both.
+
+**Key files:** `UI/PanelButtonRow.cs`, `UI/AlertHudButton.cs`, `Data/Keybinds.cs`,
+`Gameplay/UnlockState.cs`, `UI/AlertsLog.cs`, `UI/ActionBarHUD.cs`,
+`UI/LootPanel.cs`, `UI/KnownPartiesPanel.cs`, `UI/FactionPanel.cs`,
+`UI/AlertHistoryPanel.cs`, `UI/AdventurerInspectController.cs`,
+`DungeonCore/InfluenceRingRenderer.cs`, `DungeonCore/DungeonCameraController.cs`.
 
 ---
 

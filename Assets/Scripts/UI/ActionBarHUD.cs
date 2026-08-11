@@ -201,12 +201,20 @@ public class ActionBarHUD : MonoBehaviour
             if (spellRefreshTimer <= 0f) { spellRefreshTimer = 0.25f; RefreshSpellEntries(); }
         }
 
-        if (PauseController.IsGamePaused) return;
-
+        // Mode ENTRY is pause-legal, exactly as Cast has been since canon 38:
+        // selecting a tool places nothing, and DungeonBuildController's dispatch
+        // gate still refuses every acting handler. Keeping these below the gate
+        // made the hover cost preview unreachable unless the mode was entered
+        // before pausing -- half a shipped feature, invisible (canon 40).
         if (Keybinds.WasPressed(GameAction.Mine)) OnMineTabClicked();
         if (Keybinds.WasPressed(GameAction.Build)) OnBuildTabClicked();
         if (Keybinds.WasPressed(GameAction.Summon)) OnSummonTabClicked();
         if (Keybinds.WasPressed(GameAction.Push)) OnPushTabClicked();
+
+        // The Esc-cancel block below stays gated as it was. It coordinates with
+        // PauseMenuController's chain, and freeing it is a separate question
+        // from window availability.
+        if (PauseController.IsGamePaused) return;
 
         // Esc (cancel) stays hard-bound. Only treat it as a cancel when a tool is
         // active or something is selected; otherwise leave Esc for the pause menu.

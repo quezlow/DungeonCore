@@ -687,7 +687,9 @@ public class InfluenceRingRenderer : MonoBehaviour
 
     private void PollOverlayInput()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate. The overlay is a read-only lens; toggling it changes
+        // nothing on the board (canon 39/40). Held is precisely when a player
+        // wants to check their reach before committing to a dig.
         if (Keybinds.IsTextInputActive()) return;
         if (Keybinds.WasPressed(GameAction.ToggleInfluenceOverlay) && lastToggleFrame != Time.frameCount)
         {

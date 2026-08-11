@@ -108,7 +108,10 @@ public class AlertHistoryPanel : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate -- opening the history is navigation (canon 39/40).
+        // The journal and the research tree never carried one; these four
+        // window hotkeys did, and the inconsistency was the tell that the
+        // gates were written case by case rather than to a rule.
         if (Keybinds.WasPressed(GameAction.ToggleAlerts)) Toggle();
     }
 

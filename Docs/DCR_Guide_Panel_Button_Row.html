@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR Guide: The Panel Button Row</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0d0d1a; --panel:#16162a; --panel2:#1c1c33; --accent:#e94560; --gold:#c8902a; --text:#d8d4c8; --dim:#8a8798; --code-bg:#111122; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.6; }
+  .progress-wrap { position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:1px solid #2a2a44; padding:10px 24px; }
+  .progress-bar { height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .25s; }
+  .progress-text { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); margin-top:6px; display:flex; justify-content:space-between; }
+  .reset-btn { background:none; border:1px solid var(--dim); color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 10px; border-radius:4px; cursor:pointer; }
+  .reset-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .container { max-width:920px; margin:0 auto; padding:24px; }
+  h1 { font-family:'Cinzel',serif; color:var(--gold); font-size:34px; margin:18px 0 4px; }
+  .subtitle { color:var(--dim); font-style:italic; margin-bottom:22px; }
+  details { background:var(--panel); border:1px solid #2a2a44; border-radius:8px; margin:14px 0; overflow:hidden; }
+  summary { font-family:'Cinzel',serif; font-size:20px; color:var(--accent); padding:14px 18px; cursor:pointer; user-select:none; }
+  summary:hover { background:var(--panel2); }
+  .body { padding:4px 22px 18px; border-top:1px solid #2a2a44; }
+  code { font-family:'JetBrains Mono',monospace; font-size:14.5px; background:var(--code-bg); color:var(--gold); padding:1px 6px; border-radius:4px; }
+  pre { background:var(--code-bg); border:1px solid #2a2a44; border-radius:6px; padding:14px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.5; color:#c8d4e8; }
+  pre code { background:none; padding:0; color:inherit; }
+  .step { display:flex; gap:12px; align-items:flex-start; background:var(--panel2); border-radius:6px; padding:10px 14px; margin:10px 0; }
+  .step input[type="checkbox"] { margin-top:6px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+  .step label { cursor:pointer; }
+  .callout { border-left:3px solid var(--gold); background:var(--panel2); padding:10px 16px; margin:12px 0; border-radius:0 6px 6px 0; }
+  .callout.warn { border-left-color:var(--accent); }
+  .wisp { color:#9ec9e8; font-style:italic; }
+  b { color:#f0ead8; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:16px; }
+  th, td { border:1px solid #2a2a44; padding:6px 10px; text-align:left; }
+  th { font-family:'Cinzel',serif; color:var(--gold); font-weight:500; background:var(--panel2); }
+body{overflow-wrap:break-word;}
+code,kbd{overflow-wrap:anywhere;}
+pre{max-width:100%;overflow-x:auto;}
+table{max-width:100%;}
+th,td{overflow-wrap:anywhere;}
+td code{white-space:normal;}
+.step{min-width:0;}
+.step label{min-width:0;}
+.step pre{max-width:100%;}
+summary{min-width:0;}
+summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+  <div class="progress-text"><span id="ptext">0 / 0 steps complete</span><button class="reset-btn" id="reset">reset checkmarks</button></div>
+</div>
+<div class="container">
+<h1>The Panel Button Row</h1>
+<p class="subtitle">Canon 40 &mdash; eight windows that had no on-screen affordance at all, plus the seven over-gated sites the pause audit's first pass missed. The two ship together, because a button that visibly does nothing is a bug report where a dead hotkey is merely invisible.</p>
+
+<details open>
+<summary>1. Why this, and why now</summary>
+<div class="body">
+  <p>Eight actions were keyboard-only: <b>traps, alerts, loot, journal, known parties,
+  factions, research, recenter on core</b>. A player who never opens the keybind screen
+  cannot find the research tree or the bestiary. That's most of the UI surface hidden
+  behind unlabelled keys &mdash; a bigger player-facing hole than anything else on the board,
+  for a fraction of the cost.</p>
+
+  <div class="callout warn">
+    <p><b>The audit that preceded this was incomplete, and I own that.</b> Canon 39 scoped
+    itself to "the eight sites above, nothing else" &mdash; but that list came from a
+    resource-spending grep plus the panels I happened to read alongside it, not from an
+    exhaustive sweep of <code>PauseController.IsGamePaused</code>. It fixed four over-gated
+    openers and missed <b>seven</b> more of the identical class. Building the row is what
+    surfaced them: five of the eight buttons would have visibly done nothing while paused.</p>
+    <p>Canon 39 now records that its first pass was partial, rather than being quietly
+    corrected. An audit bounded by the evidence already in hand is not an audit.</p>
+  </div>
+</div>
+</details>
+
+<details>
+<summary>2. The completed sweep</summary>
+<div class="body">
+  <p>Seven sites, all now ungated:</p>
+
+  <table>
+    <tr><th>Site</th><th>Was</th></tr>
+    <tr><td><code>LootPanel</code>, <code>KnownPartiesPanel</code>, <code>FactionPanel</code>, <code>AlertHistoryPanel</code></td><td>Window hotkeys refused while held &mdash; though the journal and research tree never carried a gate. That inconsistency was the tell.</td></tr>
+    <tr><td><code>InfluenceRingRenderer</code></td><td>Overlay toggle refused. It's a read-only lens; held is exactly when you want to check your reach before committing to a dig.</td></tr>
+    <tr><td><code>AdventurerInspectController</code></td><td>Click-to-inspect refused. Inspection is <em>the</em> paradigm case for an active pause.</td></tr>
+    <tr><td><code>ActionBarHUD</code></td><td>Mine / Build / Summon / Push tab entry refused, while Cast has been enterable since canon 38.</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <p><b>That last one was hiding a real defect.</b> The hover cost preview keys off
+    <code>CurrentMode</code>. With mode entry gated, the preview was only reachable if you'd
+    entered the mode <em>before</em> pausing &mdash; half of last arc's feature, invisible in
+    the exact situation it was built for.</p>
+  </div>
+
+  <p><b>Only the four hotkeys moved above the gate.</b> The Esc-cancel block below it stays
+  put: it coordinates with <code>PauseMenuController</code>'s chain, and freeing it is a
+  separate question from window availability. Deleting the gate outright would have changed
+  Esc behaviour as a side effect.</p>
+
+  <p><b>Confirmed correct and deliberately untouched:</b> the journal, research, recenter,
+  minimap click-to-pan and the speed keys carry no gate and shouldn't;
+  <code>HotbarController</code> gates correctly because it calls <code>item.UseItem()</code>,
+  which acts; every simulation tick gates correctly; and the guards in
+  <code>MenuController</code> and <code>PrologueSettingsHotkey</code> stay, because "don't
+  open over another pause holder" is a different concern that the availability rule would
+  break if applied to it.</p>
+</div>
+</details>
+
+<details>
+<summary>3. The row itself</summary>
+<div class="body">
+  <p>One new file, <code>Assets/Scripts/UI/PanelButtonRow.cs</code>. Separate from
+  <code>ActionBarHUD</code> on purpose &mdash; that bar selects a <b>tool</b>, this row opens a
+  <b>window</b>. Mixing them would make the action bar's selected-tab highlight meaningless.</p>
+
+  <table>
+    <tr><th>Button</th><th>Opens</th><th>Gate</th></tr>
+    <tr><td>Traps</td><td><code>TrapPanel</code></td><td>&mdash;</td></tr>
+    <tr><td>Alerts</td><td><code>AlertHistoryPanel</code></td><td><code>tech.alerts</code> &middot; <b>badge</b></td></tr>
+    <tr><td>Loot</td><td><code>LootPanel</code></td><td>&mdash;</td></tr>
+    <tr><td>Journal</td><td><code>QuestLogUI</code></td><td>&mdash;</td></tr>
+    <tr><td>Parties</td><td><code>KnownPartiesPanel</code></td><td><code>tech.known_parties</code></td></tr>
+    <tr><td>Factions</td><td><code>FactionPanel</code></td><td><code>tech.known_parties</code></td></tr>
+    <tr><td>Research</td><td><code>ResearchTreeUI</code></td><td>&mdash;</td></tr>
+    <tr><td>Core</td><td><code>RecenterOnCore()</code></td><td>&mdash; momentary</td></tr>
+  </table>
+
+  <p><b>Built in code, not wired in the scene.</b> <code>AlertHudButton</code> is the
+  behavioural precedent and it's scene-wired, but replicating that eight times is eight sets
+  of Inspector references and eight silent failure modes. Silent failure is designed against
+  here, so the row builds its own children and takes only sprites from the Inspector.</p>
+
+  <p><b>Locked buttons are hidden, not greyed.</b> A greyed button for a system the player has
+  never heard of is a spoiler and a dead click. Re-applies on
+  <code>UnlockState.OnChanged</code>.</p>
+
+  <p><b>Each button shows its bound key</b> underneath, from <code>Keybinds.DisplayName</code>,
+  refreshed on <code>Keybinds.OnRebind</code>. The row teaches the hotkey rather than replacing
+  it.</p>
+
+  <p><b>Alerts alone carries a badge.</b> It's the only one of the eight with an existing
+  unread count. Badges for the rest would mean inventing the counters first, and an invented
+  counter is a number nobody can trust.</p>
+
+  <div class="callout">
+    <p><b>Temp icons are fine.</b> Any button whose sprite slot is empty falls back to its text
+    label &mdash; the same degradation <code>ActionBarHUD</code>'s submenu entries already use.
+    An unstyled row reads as eight names, not eight blank squares.</p>
+  </div>
+</div>
+</details>
+
+<details>
+<summary>4. Scene setup &mdash; one object</summary>
+<div class="body">
+  <p>This is the entire wiring step.</p>
+
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-anchor"><label for="dcr-btnrow-v1-anchor">Under the dungeon HUD canvas, create an empty <b>UI &rarr; Empty</b> object (a RectTransform). Name it <code>PanelButtonRow</code>.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-place"><label for="dcr-btnrow-v1-place">Anchor and position it wherever you want the row &mdash; it sizes itself from <code>buttonSize</code> and <code>spacing</code>. Somewhere clear of the action bar at bottom-centre.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-component"><label for="dcr-btnrow-v1-component">Add the <code>PanelButtonRow</code> component.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-icons"><label for="dcr-btnrow-v1-icons">Drop your temp icons into the eight sprite slots. <b>Leave any of them empty</b> and that button shows its name instead &mdash; safe to do all eight later.</label></div>
+
+  <div class="callout">
+    <p>No prefab, no layout group to add, no per-button wiring. The
+    <code>HorizontalLayoutGroup</code> is added in code if it isn't already there.</p>
+  </div>
+</div>
+</details>
+
+<details>
+<summary>5. Testing</summary>
+<div class="body">
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-compile"><label for="dcr-btnrow-v1-compile"><b>Compiles clean.</b> One new file; Unity generates its <code>.meta</code>.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-appears"><label for="dcr-btnrow-v1-appears">The row appears with the expected buttons and each shows its bound key underneath.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-clicks"><label for="dcr-btnrow-v1-clicks">Each button opens its window; clicking again closes it. <b>Core</b> pans to the core on the floor you're standing on.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-gates"><label for="dcr-btnrow-v1-gates">Before researching them, <b>Alerts</b>, <b>Parties</b> and <b>Factions</b> are absent &mdash; not greyed. They appear the moment the node completes, without a reload.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-badge"><label for="dcr-btnrow-v1-badge">The alerts badge shows an unread count and clears when the history is read.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-rebind"><label for="dcr-btnrow-v1-rebind">Rebind one of the eight in the controls screen &mdash; the key label under its button updates immediately.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-paused-buttons"><label for="dcr-btnrow-v1-paused-buttons"><b>While paused</b>, all eight buttons work.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-paused-keys"><label for="dcr-btnrow-v1-paused-keys"><b>While paused</b>, the matching hotkeys also work &mdash; loot, parties, factions and alerts included. These were the four that refused.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-paused-overlay"><label for="dcr-btnrow-v1-paused-overlay"><b>While paused</b>, the influence overlay toggles, and clicking an adventurer opens its stats.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-paused-modes"><label for="dcr-btnrow-v1-paused-modes"><b>Pause first</b>, then press M / B / V / C &mdash; the tab activates, the ghost draws, and the cost preview reads. This is the path that didn't exist before.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-esc"><label for="dcr-btnrow-v1-esc"><b>Esc still behaves.</b> With a tool active it cancels to idle; with nothing active it reaches the pause menu. Unchanged &mdash; but it sits next to the edit, so worth one press.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-audit"><label for="dcr-btnrow-v1-audit"><b>Commands &rarr; Print Pause Audit</b> still runs.</label></div>
+</div>
+</details>
+
+<details>
+<summary>6. Notes for next time</summary>
+<div class="body">
+  <p><b>The pause menu is not in the row.</b> <code>GameAction.AvatarMenu</code> is a misnomer
+  &mdash; <code>MenuController</code> toggles <code>menuCanvas</code> and pauses the game. It's
+  the pause/settings menu, it duplicates Esc, and it isn't a dungeon window. Worth renaming the
+  enum <em>label</em> some day; the enum <em>value</em> must not move, since bindings persist
+  under the name.</p>
+
+  <p><b>The influence overlay stayed out of the row</b> by your call, but its gate was fixed
+  anyway &mdash; the hotkey now works while held.</p>
+
+  <p><b>Icon debt.</b> Eight temp icons here join the nine core-spell icons already outstanding.
+  Icons sit second in the asset order behind props and decor.</p>
+
+  <p><b>Minimap</b> has a <code>Toggle()</code> and a collapse button but no hotkey, so it sat
+  outside this arc entirely. If you ever want it keyboard-accessible, that's a new
+  <code>GameAction</code> appended to the enum and one more row entry &mdash; both cheap.</p>
+</div>
+</details>
+
+<details>
+<summary>7. Update the Canon</summary>
+<div class="body">
+  <p>Already done &mdash; the canon edits rode the delivery script, not this checklist.</p>
+
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-canon-40"><label for="dcr-btnrow-v1-canon-40"><b>New section 40, The Panel Button Row (and the Completed Availability Sweep)</b> &mdash; the row, the code-built decision, hidden-not-greyed gating, the badge ruling, the seven fixed sites, the mode-entry ruling, and what the sweep confirmed as already correct.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-canon-39"><label for="dcr-btnrow-v1-canon-39"><b>Canon 39 amended</b> to record that its first pass was partial and why, pointing at 40 for the remainder.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-btnrow-v1-canon-37"><label for="dcr-btnrow-v1-canon-37"><b>Canon 37 updated</b> from "BUILT. Verified: pending smoke test" to "SHIPPED. Verified: Complete", per your confirmation that world events is done.</label></div>
+</div>
+</details>
+
+</div>
+
+<script>
+(function () {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
+  var fill = document.getElementById('fill');
+  var text = document.getElementById('ptext');
+  var reset = document.getElementById('reset');
+
+  function refresh() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var pct = boxes.length ? Math.round(100 * done / boxes.length) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = done + ' / ' + boxes.length + ' steps complete';
+  }
+
+  boxes.forEach(function (b) {
+    try {
+      if (localStorage.getItem(b.id) === '1') b.checked = true;
+    } catch (e) {}
+    b.addEventListener('change', function () {
+      try { localStorage.setItem(b.id, b.checked ? '1' : '0'); } catch (e) {}
+      refresh();
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

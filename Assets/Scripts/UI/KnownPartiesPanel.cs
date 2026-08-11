@@ -40,7 +40,7 @@ public class KnownPartiesPanel : MonoBehaviour
 
     private void Update()
     {
-        if (PauseController.IsGamePaused) return;
+        // No pause gate -- opening a readout is navigation (canon 39/40).
         // Rebindable through Keybinds/GameAction; text-input guard is inside WasPressed.
         if (Keybinds.WasPressed(GameAction.ToggleKnownParties))
         {
