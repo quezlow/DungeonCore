@@ -6762,11 +6762,17 @@ future order-spell cannot become silently pause-illegal.
 **Access.** `BuildMode.CastSpell`, appended AFTER `None` in the enum -- the
 scene serialises `ActionBarHUD.buildEntries[].mode` as the ORDINAL, so
 inserting anywhere earlier would re-point every existing sub-menu entry. A
-fifth CAST tab is CLONED from an existing tab button at runtime rather than
-added to the scene (the four tab Buttons carry no persistent onClick calls),
-so the whole feature costs one component drop and no Inspector wiring. The
-tab lights on `SpellBook.AnySpellKnown` rather than on the trunk node, so a
-god's grant is reachable by a core that never researched the trunk.
+fifth CAST tab is a scene Button assigned in the Inspector beside the other
+four. It was a runtime clone of a sibling tab at first, to spare a scene
+edit; that trade came off once the spell row became a designed panel, since
+a tab that can be placed and styled beats one inheriting whatever Summon
+happens to look like. There is deliberately NO clone-if-unassigned fallback
+-- "empty means make one for me" reads in the Inspector exactly like "not
+filled in yet", which is the ambiguous-default trap; an unassigned tab is a
+named fault from `ValidateSpellRowWiring` instead. The tab lights on
+`SpellBook.AnySpellKnown` rather than on the trunk node, so a god's grant is
+reachable by a core that never researched the trunk, and its visibility is
+driven from code -- leave the button ACTIVE in the scene.
 
 **Content lives in Resources.** Spell assets sit in `Resources/Spells` and
 `SpellBook` loads them itself (the `WorldEventDirector` precedent) -- no

@@ -21,9 +21,10 @@ using UnityEngine.Serialization;
 ///   Summon [V] — toggles BuildMode.PlaceSpawner. MonsterSelectionUI already shows/hides
 ///                itself via its own OnModeChanged subscription, so no direct panel
 ///                management is needed here.
-///   Cast   [Q] — toggles the spell row (canon 38). A FIFTH tab, cloned from a sibling
-///                at runtime, hidden until the core holds any working. Its row is a
-///                third sub-menu built exactly like Mine's, off the same entry prefab.
+///   Cast   [Q] — toggles the spell row (canon 38). A FIFTH tab, assigned in the
+///                Inspector like the other four and hidden until the core holds any
+///                working. Its row is a third sub-menu built exactly like Mine's,
+///                off the same entry prefab.
 ///
 /// STATE OWNERSHIP
 ///   HandleModeChanged (driven by DungeonBuildController.OnModeChanged) is the single
@@ -55,8 +56,9 @@ public class ActionBarHUD : MonoBehaviour
     [SerializeField] private Button buildTabButton;
     [SerializeField] private Button summonTabButton;
 
-    // Not serialized: cloned from a sibling at runtime by EnsureCastTab.
-    private Button castTabButton;
+    [Tooltip("The CAST tab (canon 38). Hidden by RefreshCastTabVisibility until " +
+             "the core holds any working, so it may be left active in the scene.")]
+    [SerializeField] private Button castTabButton;
 
     // ── Build sub-menu ────────────────────────────────────────────
 
@@ -152,6 +154,7 @@ public class ActionBarHUD : MonoBehaviour
         mineTabButton?.onClick.AddListener(OnMineTabClicked);
         buildTabButton?.onClick.AddListener(OnBuildTabClicked);
         summonTabButton?.onClick.AddListener(OnSummonTabClicked);
+        castTabButton?.onClick.AddListener(OnCastTabClicked);
 
         // Keep highlights in sync with any mode change from any source
         // (shortcut, button, or post-placement revert inside BuildController).
@@ -160,7 +163,6 @@ public class ActionBarHUD : MonoBehaviour
         // Sync visual state to whatever mode is already active.
         HandleModeChanged(DungeonBuildController.Instance.CurrentMode);
 
-        EnsureCastTab();
         SpellBook.OnRosterChanged += HandleSpellRosterChanged;
         RefreshCastTabVisibility();
 
@@ -704,6 +706,9 @@ public class ActionBarHUD : MonoBehaviour
     public string ValidateSpellRowWiring()
     {
         var faults = new List<string>();
+        if (castTabButton == null)
+            faults.Add("castTabButton is not assigned -- there is no CAST tab on the bar. "
+                     + "The hotkey still works; the button does not exist.");
         if (spellEntryContainer == null)
             faults.Add("spellEntryContainer is not assigned -- the spell row can never show.");
         if (submenuEntryPrefab == null)
@@ -769,32 +774,15 @@ public class ActionBarHUD : MonoBehaviour
         RefreshCastTabVisibility();
     }
 
-    /// <summary>
-    /// The CAST tab is CLONED from an existing tab at runtime rather than added
-    /// to the scene. The tab row is a HorizontalLayoutGroup, and the four tab
-    /// Buttons carry no persistent onClick calls (verified against
-    /// Dungeon_Level_0 -- every listener is wired here in Start), so a clone
-    /// arrives inert and takes only the listener given to it. A scene edit
-    /// would be a manual step, and a forgotten manual step means the feature
-    /// simply is not on the bar -- the same failure the Wall entry above dodges.
-    /// </summary>
-    private void EnsureCastTab()
-    {
-        if (castTabButton != null) return;
-        var donor = summonTabButton != null ? summonTabButton : mineTabButton;
-        if (donor == null || donor.transform.parent == null) return;
-
-        castTabButton = Instantiate(donor, donor.transform.parent);
-        castTabButton.name = "CastTab";
-        castTabButton.onClick.RemoveAllListeners();   // defensive: a future Inspector wiring
-        castTabButton.onClick.AddListener(OnCastTabClicked);
-        castTabButton.gameObject.SetActive(true);
-    }
-
     /// <summary>The tab appears once the core holds ANY working -- not once the
     /// Sorcery trunk is researched. A god's grant at a tier-up must be castable
     /// by a core that never took the trunk, or the audience hands over a power
-    /// with no way to reach it.</summary>
+    /// with no way to reach it.
+    ///
+    /// This drives the button's active state, so leave it ACTIVE in the scene --
+    /// it is switched off here on the first call and back on when a working
+    /// arrives. A tab left inactive in the scene still works; it simply will not
+    /// be seen until the first roster change.</summary>
     private void RefreshCastTabVisibility()
     {
         if (castTabButton == null) return;
