@@ -172,9 +172,11 @@ public class DungeonBuildController : MonoBehaviour
         BuildMineHighlight();
         BuildDigOverlayAssets();
         BuildSpellGhost();
-        // Cooldowns are transient and static; a fresh scene or a load must
-        // never inherit the previous run's timers.
+        // Cooldowns and banked charges are both static; a fresh scene or a load
+        // must never inherit the previous run's. The load path repopulates the
+        // ledger from the save immediately afterwards.
         SpellBook.ClearCooldowns();
+        SpellCharges.Clear();
     }
 
     private void Start()
@@ -803,6 +805,18 @@ public class DungeonBuildController : MonoBehaviour
 
         core.SpendMana(def.manaCost);
         SpellBook.StampCooldown(def);
+
+        // A charge is spent only when it is the ONLY way this core holds the
+        // working (canon 41). Owning the spell outright always wins, so
+        // researching something never quietly eats the scrolls banked for it.
+        if (!SpellBook.HeldPermanently(def) && !SpellCharges.TrySpend(def.id))
+        {
+            // Availability passed but the ledger was empty: that can only mean
+            // the two disagreed, which is a bug worth seeing rather than a
+            // free cast worth swallowing.
+            Debug.LogWarning("[SpellCharges] Cast '" + def.id
+                + "' passed availability with no charge banked and no permanent hold.");
+        }
     }
 
     private void BuildSpellGhost()

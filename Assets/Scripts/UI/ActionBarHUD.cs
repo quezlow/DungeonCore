@@ -672,9 +672,18 @@ public class ActionBarHUD : MonoBehaviour
             // read the same way everywhere on the bar. Only the first nine get
             // one -- there is no tenth key to press.
             string slot = i < 9 ? " (" + (i + 1) + ")" : string.Empty;
+
+            // A working held only through banked charges shows its remaining
+            // count where a permanent one shows nothing (canon 41). The count
+            // sits AFTER the price rather than replacing it, because a charge
+            // still bills mana and a player reading the row needs both.
+            string charge = SpellBook.HeldPermanently(def)
+                ? string.Empty
+                : "  x" + SpellCharges.CountFor(def);
+
             text.text = left > 0.05f
-                ? def.displayName + slot + "  " + left.ToString("0.#") + "s"
-                : def.displayName + slot + "  " + def.manaCost.ToString("0");
+                ? def.displayName + slot + "  " + left.ToString("0.#") + "s" + charge
+                : def.displayName + slot + "  " + def.manaCost.ToString("0") + charge;
         }
     }
 

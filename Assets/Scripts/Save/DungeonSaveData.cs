@@ -125,6 +125,12 @@ public class DungeonSaveData
     public List<string> unlockedKeys = new();             // UnlockState flags, incl. "pattern." keys
     public List<PatternNoteSaveData> patternNotes = new();
 
+    // Banked spell castings (canon 41). Two parallel lists because JsonUtility
+    // cannot serialise a dictionary; keyed on spell ID, never on an effect
+    // ordinal. Additive -- both empty on legacy saves, so nothing migrates.
+    public List<string> spellChargeIds = new();
+    public List<int> spellChargeCounts = new();
+
     // Research spine (additive; empty/zero on legacy saves)
     public string activeResearchKey = "";
     public float activeResearchDaysRemaining;

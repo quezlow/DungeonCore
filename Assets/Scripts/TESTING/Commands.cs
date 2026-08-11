@@ -67,6 +67,74 @@ public class Commands : MonoBehaviour
         Debug.Log(sb.ToString());
     }
 
+    [Header("Spell Charges")]
+    [Tooltip("Spell id to bank charges of. Blank picks the first working this "
+           + "core does NOT hold permanently, which is the interesting case.")]
+    [SerializeField] private string chargeSpellId = "";
+    [Tooltip("How many castings each Grant adds.")]
+    [SerializeField, Min(1)] private int chargeGrantCount = 3;
+
+    /// <summary>Banks castings so the charge substrate is testable before any
+    /// scroll content exists (canon 41).</summary>
+    [ContextMenu("Grant Spell Charges")]
+    private void GrantSpellCharges()
+    {
+        string id = chargeSpellId;
+        if (string.IsNullOrEmpty(id))
+        {
+            var all = SpellBook.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var s = all[i];
+                if (s == null || SpellBook.HeldPermanently(s)) continue;
+                id = s.id;
+                break;
+            }
+        }
+        if (string.IsNullOrEmpty(id))
+        {
+            Debug.LogWarning("[SpellCharges] Nothing to grant: this core holds every "
+                + "authored working permanently. Name a spell id explicitly to "
+                + "bank charges of one it already owns.");
+            return;
+        }
+        SpellCharges.Grant(id, chargeGrantCount);
+        Debug.Log("[SpellCharges] Banked " + chargeGrantCount + " x '" + id
+            + "'. Now holding " + SpellCharges.CountFor(id) + ".");
+    }
+
+    [ContextMenu("Clear Spell Charges")]
+    private void ClearSpellCharges()
+    {
+        SpellCharges.Clear();
+        Debug.Log("[SpellCharges] Ledger cleared.");
+    }
+
+    [ContextMenu("Print Spell Charges")]
+    private void PrintSpellCharges()
+    {
+        var sb = new System.Text.StringBuilder();
+        var core = DungeonCore.Instance;
+        sb.AppendLine("[SpellCharges] core type "
+            + (core != null ? core.DungeonType.ToString() : "none")
+            + "; any banked " + SpellCharges.AnyHeld);
+        var all = SpellBook.All;
+        for (int i = 0; i < all.Count; i++)
+        {
+            var s = all[i];
+            if (s == null) continue;
+            int n = SpellCharges.CountFor(s);
+            bool perm = SpellBook.HeldPermanently(s);
+            if (n == 0 && !perm) continue;
+            sb.AppendLine("  " + s.displayName
+                + "  [" + s.id + "]"
+                + (perm ? "  HELD" : "  charges " + n)
+                + (SpellBook.IsAligned(s) ? "  aligned" : "  off-affinity (reach and hold reduced)")
+                + "  radius " + SpellBook.EffectiveRadius(s).ToString("0.##"));
+        }
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Spell State")]
     private void PrintSpellState()
     {

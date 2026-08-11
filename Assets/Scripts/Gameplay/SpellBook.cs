@@ -77,6 +77,21 @@ public static class SpellBook
     public static bool IsAvailable(SpellDefinition def)
     {
         if (def == null) return false;
+        if (HeldPermanently(def)) return true;
+        // A banked charge bypasses the affinity type-lock ON PURPOSE (canon 41):
+        // a scroll is a borrowed relic, and borrowing another god's power once
+        // is most of the appeal. The permanent roster keeps its lock, so the
+        // core's own signature still means something.
+        return SpellCharges.CountFor(def) > 0;
+    }
+
+    /// <summary>The working is the core's OWN -- right affinity, and either
+    /// neutral craft or an unlock it holds. Distinct from IsAvailable, which
+    /// also counts banked charges. Callers that must not spend a charge for a
+    /// working the core already owns key on this one.</summary>
+    public static bool HeldPermanently(SpellDefinition def)
+    {
+        if (def == null) return false;
         var core = DungeonCore.Instance;
         if (def.affinity != DungeonType.None)
         {
@@ -85,6 +100,21 @@ public static class SpellBook
         if (string.IsNullOrEmpty(def.requiredUnlockKey)) return true;
         return UnlockState.IsUnlocked(def.requiredUnlockKey);
     }
+
+    /// <summary>True when the caster's own affinity matches the working (or the
+    /// working is neutral craft, which belongs to everyone). Only ever false on
+    /// a charge cast, because the permanent roster refuses a mismatch outright.</summary>
+    public static bool IsAligned(SpellDefinition def)
+    {
+        if (def == null || def.affinity == DungeonType.None) return true;
+        var core = DungeonCore.Instance;
+        return core != null && core.DungeonType == def.affinity;
+    }
+
+    /// <summary>Raised by SpellCharges when a count changes. Called explicitly
+    /// rather than subscribed, because a static constructor that has not run yet
+    /// would silently miss the first grant.</summary>
+    public static void NotifyChargesChanged() => OnRosterChanged?.Invoke();
 
     /// <summary>Fills the buffer with every spell this core may cast right now.</summary>
     public static int FillAvailable(List<SpellDefinition> outBuf)
@@ -119,6 +149,13 @@ public static class SpellBook
     private static readonly float[] TierRadius = { 1f, 1f, 1.25f, 1.5f };
     private static readonly float[] TierDuration = { 1f, 1f, 1.3f, 1.6f };
 
+    // A working cast off-affinity through a charge reaches less far and holds
+    // less long. RADIUS AND DURATION ONLY, exactly as deepening does -- canon 38
+    // chose that lever because a changed damage number reads as a stat bump and
+    // would mean retuning the whole affinity roster twice over. One lever, one
+    // rule, and a borrowed god's power stays visibly borrowed.
+    private const float OffAffinityScale = 0.6f;
+
     /// <summary>1, 2 or 3. Always 1 for a working with no deepeningKeyBase --
     /// the neutral craft never deepens, because nobody grants it.</summary>
     public static int TierOf(SpellDefinition def)
@@ -130,10 +167,12 @@ public static class SpellBook
     }
 
     public static float EffectiveRadius(SpellDefinition def)
-        => def == null ? 0f : def.radius * TierRadius[TierOf(def)];
+        => def == null ? 0f
+         : def.radius * TierRadius[TierOf(def)] * (IsAligned(def) ? 1f : OffAffinityScale);
 
     public static float EffectiveDuration(SpellDefinition def)
-        => def == null ? 0f : def.durationSeconds * TierDuration[TierOf(def)];
+        => def == null ? 0f
+         : def.durationSeconds * TierDuration[TierOf(def)] * (IsAligned(def) ? 1f : OffAffinityScale);
 
     // -- Cooldowns -----------------------------------------------------------
 

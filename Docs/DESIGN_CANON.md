@@ -7034,6 +7034,89 @@ from availability and answering it with the availability rule would break both.
 
 ---
 
+## 41. Spell Charges (Part 1 -- the Substrate)
+
+Status: PART SHIPPED. The ledger, its persistence, the availability and scaling
+rules, the consumption point and the CAST tab readout are built and described
+as-built below. The trader `StockType`, both vendors and the twelve authored
+items are DESIGN until part 2 lands. Verified: 2026-08-11.
+
+**What a charge is.** One banked casting of a working the core does not hold.
+It reuses the entire shipped cast surface -- the CAST tab, targeting, the radius
+ghost, the hover cost preview, cooldowns and the pause rule -- and adds exactly
+one thing: an integer per spell id that decrements on use.
+
+**Why this shape and not an item system.** The original backlog framing was
+"specials / one-shot consumables", which needs an inventory the dungeon side has
+no concept of, a UI surface to hold it, and a targeting path -- three arcs, and a
+drift toward direct intervention that the Hand-of-Evil rejection already ruled
+against. Charges need none of them. The rule that keeps it honest: IF IT CANNOT
+BE CAST AT A CELL, IT IS NOT IN THIS FEATURE. A forged writ that cancels an
+Inspector dispatch is a good idea and it belongs to a different arc.
+
+**The problem it actually solves.** Gold had five sinks and twelve-plus sources,
+and every `StockType` on the manifest was a permanent grant that `IsOwned` pulled
+from stock forever. Nothing in the game could be bought twice. Once the manifest
+emptied, gold stopped meaning anything. A charge is the only repeatable purchase
+shape available, and it is the only place an effect too strong to sit on a
+cooldown can live at all.
+
+**Keyed on spell id, never an ordinal.** Ids are declared stable and never
+renamed (canon 38), while `SpellEffect` is explicitly append-only -- so keying
+the ledger on an effect ordinal would silently re-key every banked charge in
+every existing save the first time a working was added.
+
+**Charges bypass the affinity type-lock, and pay for it.** `IsAvailable` now
+returns true for a working the core cannot hold when charges are banked; the
+permanent roster keeps its lock, so the core's own signature still means
+something. What a borrowed god's power loses is reach: an off-affinity cast
+scales radius and duration by `OffAffinityScale` (0.6). RADIUS AND DURATION ONLY,
+the same lever deepening uses, and for the same reason canon 38 gave -- a changed
+damage number reads as a stat bump and would mean retuning the whole affinity
+roster twice over. `IsAligned` is only ever false on a charge cast.
+
+**The permanent grant always wins.** `HeldPermanently` is split out from
+`IsAvailable` precisely so the consumption point can ask the narrower question. A
+charge is spent only when it is the sole way the core holds the working, which
+stops the trap where researching a spell quietly eats the scrolls banked for it.
+Surviving charges stay banked against a future core that cannot hold it.
+
+**Nothing is billed for air.** Charges are spent after `SpellCaster.Resolve`
+succeeds, alongside the mana and the cooldown -- the same refusal the arc already
+makes when a cast finds nothing. A cast that passes availability with an empty
+ledger warns rather than silently granting a free casting: the two disagreeing is
+a bug worth seeing.
+
+**Persistence is two parallel lists.** `spellChargeIds` and `spellChargeCounts`,
+additive and empty on legacy saves, because JsonUtility cannot serialise a
+dictionary and the paired-list shape already has precedent in the save data. A
+length mismatch takes the shorter of the two rather than throwing: a hand-edited
+ledger must not cost the player the rest of the file. The static ledger is
+cleared on scene wake alongside the cooldowns, and the load path repopulates it
+immediately afterwards.
+
+**The picker is told, not polled.** `SpellCharges` calls
+`SpellBook.NotifyChargesChanged` explicitly rather than subscribing an event in a
+static constructor that may not have run when the first grant lands.
+
+**Readout.** A working held only through charges shows its remaining count after
+the price on its CAST row, never instead of it -- a charge still bills mana and
+the row has to say both.
+
+**Testable with no content.** `Commands` -> Grant Spell Charges banks castings of
+the first working this core does not hold, so the whole substrate is provable
+before a single scroll exists. Print Spell Charges shows the ledger, what is held
+permanently, and the alignment penalty applied to each. Building it this way was
+deliberate: a substrate proved only by its own content pass gives every
+regression two possible parents.
+
+**Key files:** `Gameplay/SpellCharges.cs`, `Gameplay/SpellBook.cs`,
+`Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`,
+`DungeonCore/DungeonBuildController.cs`, `UI/ActionBarHUD.cs`,
+`TESTING/Commands.cs`.
+
+---
+
 # APPENDIX
 
 ## A. Content Registries and Authoring Keys

@@ -362,6 +362,7 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.unlockedKeys =
             new System.Collections.Generic.List<string>(UnlockState.AllUnlocked);
         currentSave.patternNotes = PatternDiscovery.GetNotesForSave();
+        SpellCharges.CaptureSaveState(currentSave);
 
         ResearchController.Instance?.CaptureSaveState(currentSave);
 
@@ -884,6 +885,7 @@ public class DungeonSaveController : MonoBehaviour
             UnlockState.RestoreFrom(currentSave.unlockedKeys);
             PatternDiscovery.RestoreNotes(currentSave.patternNotes);
             PatternDiscovery.CatchUpTerrain();   // heals saves from before the pattern system
+            SpellCharges.RestoreSaveState(currentSave);
             ResearchController.Instance?.RestoreSaveState(currentSave);
             AlignmentSystem.Instance?.RestoreFromSave(currentSave.alignment);
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);

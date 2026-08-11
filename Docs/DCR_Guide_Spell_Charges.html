@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR Guide: Spell Charges (Part 1)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0d0d1a; --panel:#16162a; --panel2:#1c1c33; --accent:#e94560; --gold:#c8902a; --text:#d8d4c8; --dim:#8a8798; --code-bg:#111122; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.6; }
+  .progress-wrap { position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:1px solid #2a2a44; padding:10px 24px; }
+  .progress-bar { height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .25s; }
+  .progress-text { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); margin-top:6px; display:flex; justify-content:space-between; }
+  .reset-btn { background:none; border:1px solid var(--dim); color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 10px; border-radius:4px; cursor:pointer; }
+  .reset-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .container { max-width:920px; margin:0 auto; padding:24px; }
+  h1 { font-family:'Cinzel',serif; color:var(--gold); font-size:34px; margin:18px 0 4px; }
+  .subtitle { color:var(--dim); font-style:italic; margin-bottom:22px; }
+  details { background:var(--panel); border:1px solid #2a2a44; border-radius:8px; margin:14px 0; overflow:hidden; }
+  summary { font-family:'Cinzel',serif; font-size:20px; color:var(--accent); padding:14px 18px; cursor:pointer; user-select:none; }
+  summary:hover { background:var(--panel2); }
+  .body { padding:4px 22px 18px; border-top:1px solid #2a2a44; }
+  code { font-family:'JetBrains Mono',monospace; font-size:14.5px; background:var(--code-bg); color:var(--gold); padding:1px 6px; border-radius:4px; }
+  pre { background:var(--code-bg); border:1px solid #2a2a44; border-radius:6px; padding:14px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.5; color:#c8d4e8; }
+  pre code { background:none; padding:0; color:inherit; }
+  .step { display:flex; gap:12px; align-items:flex-start; background:var(--panel2); border-radius:6px; padding:10px 14px; margin:10px 0; }
+  .step input[type="checkbox"] { margin-top:6px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+  .step label { cursor:pointer; }
+  .callout { border-left:3px solid var(--gold); background:var(--panel2); padding:10px 16px; margin:12px 0; border-radius:0 6px 6px 0; }
+  .callout.warn { border-left-color:var(--accent); }
+  .wisp { color:#9ec9e8; font-style:italic; }
+  b { color:#f0ead8; }
+  table { border-collapse:collapse; width:100%; margin:10px 0; font-size:16px; }
+  th, td { border:1px solid #2a2a44; padding:6px 10px; text-align:left; }
+  th { font-family:'Cinzel',serif; color:var(--gold); font-weight:500; background:var(--panel2); }
+body{overflow-wrap:break-word;}
+code,kbd{overflow-wrap:anywhere;}
+pre{max-width:100%;overflow-x:auto;}
+table{max-width:100%;}
+th,td{overflow-wrap:anywhere;}
+td code{white-space:normal;}
+.step{min-width:0;}
+.step label{min-width:0;}
+.step pre{max-width:100%;}
+summary{min-width:0;}
+summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="fill"></div></div>
+  <div class="progress-text"><span id="ptext">0 / 0 steps complete</span><button class="reset-btn" id="reset">reset checkmarks</button></div>
+</div>
+<div class="container">
+<h1>Spell Charges &mdash; Part 1</h1>
+<p class="subtitle">Canon 41 &mdash; the substrate. A charge is one banked casting of a working the core doesn't hold. No inventory, no item, no slot, no new UI: it reuses the entire shipped cast surface and adds a single integer per spell id.</p>
+
+<details open>
+<summary>1. Why this shape</summary>
+<div class="body">
+  <p>The backlog framing was <em>"specials / one-shot consumables"</em>. That needs an inventory
+  the dungeon side has no concept of, a UI surface to hold it, and a targeting path &mdash; three
+  arcs, plus a drift toward direct intervention that the Hand-of-Evil rejection already ruled out.</p>
+
+  <p>Charges need none of it. The rule that keeps it honest:</p>
+
+  <div class="callout">
+    <p><b>If it cannot be cast at a cell, it is not in this feature.</b> A forged writ that cancels
+    an Inspector dispatch is a good idea, and it belongs to a different arc.</p>
+  </div>
+
+  <p><b>The problem it actually solves</b> is an economy one. Gold has twelve-plus sources and five
+  sinks, and every <code>StockType</code> on the manifest is a permanent grant that
+  <code>IsOwned</code> pulls from stock forever. <b>Nothing in the game could be bought twice.</b>
+  Once the manifest empties, gold stops meaning anything. A charge is the only repeatable purchase
+  shape available &mdash; and the only place an effect too strong to sit on a cooldown can live.</p>
+</div>
+</details>
+
+<details>
+<summary>2. What part 1 ships (and what it doesn't)</summary>
+<div class="body">
+  <p>This arc is split in two on purpose. Part 1 is the substrate, testable end-to-end with
+  <b>zero content authored</b>. Part 2 adds the vendors and the twelve items.</p>
+
+  <table>
+    <tr><th>Part 1 &mdash; shipped</th><th>Part 2 &mdash; not yet</th></tr>
+    <tr><td>The ledger (<code>SpellCharges</code>)</td><td><code>StockType.Charge</code></td></tr>
+    <tr><td>Save and load</td><td>Merchant charge slot</td></tr>
+    <tr><td>Availability + affinity bypass</td><td>Dwarven outpost path</td></tr>
+    <tr><td>Off-affinity scaling</td><td>The twelve items</td></tr>
+    <tr><td>Consumption point</td><td><code>Summon</code> and <code>Excavate</code> effects</td></tr>
+    <tr><td>CAST tab readout</td><td>Greyed given-workings listing</td></tr>
+    <tr><td>Debug grant/clear/print</td><td>&mdash;</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <p>The split is the whole point: a substrate proved only by its own content pass gives every
+    regression <b>two possible parents</b>. Five minutes with a debug grant beats an hour bisecting
+    a content bug that turns out to be a save bug.</p>
+  </div>
+</div>
+</details>
+
+<details>
+<summary>3. The rules</summary>
+<div class="body">
+  <p><b>Keyed on spell id, never an ordinal.</b> Ids are declared stable and never renamed
+  (canon 38); <code>SpellEffect</code> is append-only. Keying the ledger on an effect ordinal would
+  silently re-key every banked charge in every existing save the first time a working was added.</p>
+
+  <p><b>Charges bypass the affinity type-lock, and pay for it.</b> A Water core can cast a Fire
+  working from a scroll &mdash; the permanent roster keeps its lock, so your own signature still
+  means something. What a borrowed god's power loses is <em>reach</em>: an off-affinity cast scales
+  radius and duration by <code>0.6</code>.</p>
+
+  <div class="callout">
+    <p><b>Radius and duration only, never magnitude.</b> Same lever deepening uses, for the reason
+    canon 38 gave: a changed damage number reads as a stat bump and would mean retuning the whole
+    affinity roster twice over. One lever, one rule.</p>
+  </div>
+
+  <p><b>The permanent grant always wins.</b> <code>HeldPermanently</code> is split out from
+  <code>IsAvailable</code> exactly so the consumption point can ask the narrower question. A charge
+  spends only when it's the sole way you hold the working &mdash; so researching a spell never
+  quietly eats the scrolls you banked for it.</p>
+
+  <p><b>Nothing is billed for air.</b> Charges spend after <code>SpellCaster.Resolve</code>
+  succeeds, alongside mana and cooldown &mdash; the same refusal the arc already makes when a cast
+  finds nothing.</p>
+
+  <p><b>Disagreement is loud.</b> A cast that passes availability with an empty ledger logs a
+  warning rather than granting a free casting. If the two ever disagree, that's a bug worth seeing.</p>
+</div>
+</details>
+
+<details>
+<summary>4. Persistence</summary>
+<div class="body">
+  <p>Two parallel lists on <code>DungeonSaveData</code>:</p>
+<pre><code>public List&lt;string&gt; spellChargeIds = new();
+public List&lt;int&gt; spellChargeCounts = new();</code></pre>
+
+  <p>JsonUtility can't serialise a dictionary, and the paired-list shape already has precedent in
+  the save data. Both additive and empty on legacy saves, so <b>nothing migrates</b> &mdash; an old
+  save loads with an empty ledger and no special-casing.</p>
+
+  <p>A length mismatch (only reachable by hand-editing a save) takes the shorter of the two rather
+  than throwing. A corrupt ledger must not cost the player the rest of the file.</p>
+
+  <p>The static ledger clears on scene wake alongside the cooldowns; the load path repopulates it
+  immediately afterwards.</p>
+</div>
+</details>
+
+<details>
+<summary>5. Testing &mdash; no content required</summary>
+<div class="body">
+  <p>Everything below works with the workings you already have. Set <code>chargeSpellId</code> blank
+  and the command picks the first working this core <em>doesn't</em> hold, which is the interesting
+  case.</p>
+
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-compile"><label for="dcr-charges-v1-compile"><b>Compiles clean.</b> One new file, <code>Gameplay/SpellCharges.cs</code>.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-grant"><label for="dcr-charges-v1-grant"><b>Commands &rarr; Grant Spell Charges.</b> The log names the working and the new count.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-appears"><label for="dcr-charges-v1-appears">The working <b>appears in the CAST tab</b> that didn't before, showing <code>x3</code> after its mana price.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-offaffinity"><label for="dcr-charges-v1-offaffinity">If it's another affinity's working, it's castable anyway &mdash; the type-lock is bypassed by the charge.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-radius"><label for="dcr-charges-v1-radius"><b>Commands &rarr; Print Spell Charges.</b> An off-affinity working reads "off-affinity (reach and hold reduced)" and its radius is 0.6&times; the authored value.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-ghost"><label for="dcr-charges-v1-ghost">The <b>radius ghost matches</b> the reduced reach &mdash; it reads <code>EffectiveRadius</code>, so the smaller circle is what you aim with.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-decrement"><label for="dcr-charges-v1-decrement">Cast it. The count drops to <code>x2</code>, mana is billed, and the cooldown stamps as normal.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-nothing"><label for="dcr-charges-v1-nothing">Cast it <b>into empty ground</b> where nothing answers &mdash; the count does <b>not</b> drop and no mana is billed.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-exhaust"><label for="dcr-charges-v1-exhaust">Spend the last charge &mdash; the working <b>leaves the CAST tab</b> and the picker rebuilds without it.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-permanent"><label for="dcr-charges-v1-permanent">Grant charges of a working you <b>already hold</b> (name its id explicitly). Cast it repeatedly &mdash; the count <b>never drops</b> and no <code>x</code> shows on its row.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-save"><label for="dcr-charges-v1-save"><b>Save with charges banked, quit to menu, reload.</b> The count is intact and the working is still in the tab.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-legacy"><label for="dcr-charges-v1-legacy"><b>Load a save from before this arc.</b> It loads clean with an empty ledger &mdash; no errors, no migration.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-newgame"><label for="dcr-charges-v1-newgame">Start a <b>new game</b> after a run with charges &mdash; the ledger is empty, not inherited.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-pause"><label for="dcr-charges-v1-pause">Pause. A charged working obeys its own <code>castableWhilePaused</code> flag exactly as a held one does.</label></div>
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-nowarn"><label for="dcr-charges-v1-nowarn">No <code>[SpellCharges]</code> warnings in the console during any of the above. One would mean availability and the ledger disagreed.</label></div>
+</div>
+</details>
+
+<details>
+<summary>6. What part 2 will need from you</summary>
+<div class="body">
+  <p>Nothing yet &mdash; but two authoring decisions are already locked and worth knowing:</p>
+
+  <p><b>A thrall <code>MonsterDefinition</code></b> for Kethra's Undying Coal, authored fresh rather
+  than reusing the necromancer's raised minion, so it doesn't inherit balance meant for something
+  else. That's a sprite slot that will want art eventually.</p>
+
+  <p><b>Given workings need unlock keys nothing grants.</b> That's what makes them unlearnable:
+  <code>HeldPermanently</code> returns false forever, so charges are the only access. No new flag
+  needed &mdash; it falls out of the existing schema.</p>
+
+  <p>Three items changed shape during design and the reasons are worth keeping:</p>
+  <ul>
+    <li><b>The Weight Below</b> (seal a corridor) was <b>dropped</b>. <code>CanBuildWallAt</code> ends with <code>AnyEntityStandsIn</code> and refuses &mdash; canon 36's answer to burial is that it never lets one happen. An area seal would always target occupied cells. Morrun gets floor-wide <code>BoonArmour</code> instead.</li>
+    <li><b>The Undying Coal</b> was going to drive spawner respawns, but <code>TickRespawn</code> refuses while any adventurer walks the floor &mdash; exactly when you'd cast it. Your thrall framing dissolved it: <code>SpawnTransientMinion</code> is public, holds no capacity, self-destructs, and is explicitly skipped by the save.</li>
+    <li><b>The Drowned Mouth</b> went <b>room-scale, not floor-scale</b>. Pull's force is clamped to <code>secondary</code> and <code>KnockbackStep</code> stops dead at walls, so floor-scale would have been a metre of shuffling. Inside one chamber there's nothing between the bodies and the mark.</li>
+  </ul>
+</div>
+</details>
+
+<details>
+<summary>7. Update the Canon</summary>
+<div class="body">
+  <p>Already done &mdash; the canon edit rode the delivery script.</p>
+
+  <div class="step"><input type="checkbox" id="dcr-charges-v1-canon"><label for="dcr-charges-v1-canon"><b>New section 41, Spell Charges (Part 1 &mdash; the Substrate)</b>, marked <b>PART SHIPPED</b>: the ledger, persistence, availability and scaling rules, consumption point and readout are recorded as-built; the <code>StockType</code>, both vendors and the twelve items are explicitly marked DESIGN until part 2 lands.</label></div>
+</div>
+</details>
+
+</div>
+
+<script>
+(function () {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type="checkbox"]'));
+  var fill = document.getElementById('fill');
+  var text = document.getElementById('ptext');
+  var reset = document.getElementById('reset');
+
+  function refresh() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var pct = boxes.length ? Math.round(100 * done / boxes.length) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = done + ' / ' + boxes.length + ' steps complete';
+  }
+
+  boxes.forEach(function (b) {
+    try {
+      if (localStorage.getItem(b.id) === '1') b.checked = true;
+    } catch (e) {}
+    b.addEventListener('change', function () {
+      try { localStorage.setItem(b.id, b.checked ? '1' : '0'); } catch (e) {}
+      refresh();
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
