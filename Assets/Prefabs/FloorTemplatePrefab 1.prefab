@@ -2332,12 +2332,12 @@ MonoBehaviour:
   minRiverWidth: 3
   maxRiverWidth: 7
   minRiverBank: 1
-  maxRiverBank: 3
+  maxRiverBank: 2
   exclusionRadiusFromCenter: 4
   cavernInnerRadius: 2
-  cavernOuterRadius: 3
-  cavernMinCells: 10
-  cavernMaxCells: 16
+  cavernOuterRadius: 4
+  cavernMinCells: 16
+  cavernMaxCells: 30
   tunnelWeight1: 20
   tunnelWeight2: 50
   tunnelWeight3: 30
@@ -2388,6 +2388,7 @@ MonoBehaviour:
   debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
   debugRoadTile: {fileID: 0}
   debugSiteTile: {fileID: 0}
+  debugDenTunnelTile: {fileID: 0}
   logSiteGeneration: 1
   junctionFilletRadius: 3
 --- !u!1 &8415351630352997601
