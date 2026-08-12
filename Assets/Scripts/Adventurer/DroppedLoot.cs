@@ -21,7 +21,12 @@ public class DroppedLoot : MonoBehaviour
     [SerializeField] private int goldValue = 1;
 
     [Header("Absorption")]
-    [SerializeField] private float absorbDelay = 0.8f; // seconds before auto-absorbing
+    [Tooltip("Minimum seconds before the core absorbs this coin. A MINIMUM, not "
+           + "a deadline: absorption is held while an adventurer stands within "
+           + "LootAbsorbGate.HoldRadius, so spoils lie on the floor for as long "
+           + "as the fight lasts. Was 0.8s, which left nothing on the ground for "
+           + "a den's scavengers to come for.")]
+    [SerializeField, Min(0f)] private float absorbDelay = 30f;
 
     private Rarity rarity = Rarity.Common;
     private TechNodeDefinition grantsNode;
@@ -37,6 +42,15 @@ public class DroppedLoot : MonoBehaviour
     private IEnumerator AbsorbAfterDelay()
     {
         yield return new WaitForSeconds(absorbDelay);
+
+        // Then wait out the fight. Polled rather than event-driven: coins are
+        // numerous and short-lived, and the poll pattern is this project's
+        // standard for that shape. No cap -- an endless assault means an
+        // endless pile, which is the intended reading of "the core cannot take
+        // what adventurers are standing on".
+        while (LootAbsorbGate.Held(transform.position))
+            yield return new WaitForSeconds(LootAbsorbGate.RecheckSeconds);
+
         Absorb();
     }
 

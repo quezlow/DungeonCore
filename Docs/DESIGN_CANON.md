@@ -7631,6 +7631,46 @@ owned by the core cavern, entrance, carriageway, sites and chambers; rivers
 take theirs afterwards, which is the flooded run. So a tunnel keeps only the
 stretch outside whatever it meets, and the chamber owns the overlap.
 
+**Loose loot lingers while adventurers are near (SHIPPED).** The goblin verb
+needs something on the floor to take, and reading the economy showed there was
+nothing: `DroppedLoot.absorbDelay` was 0.8 SECONDS, so adventurer spoils were
+gone before anything could reach them.
+
+*The core cannot absorb loose loot while adventurers are standing over it.*
+
+The polarity matters and is the opposite of the obvious reading. Presence HOLDS
+absorption; a clear field does NOT trigger it. A clear-field trigger would close
+the scavenging window at the exact moment it needs to open, because coins are
+meant to lie on the floor AFTER a fight. So the delay is a MINIMUM, not a
+deadline, and a dungeon under sustained assault keeps its spoils on the ground
+for as long as the assault lasts. There is no cap: an endless assault means an
+endless pile, which is the intended reading.
+
+`LootAbsorbGate` is the single answer to "is an adventurer near this coin",
+shared by `DroppedLoot` and `CarriableLoot` because both end in the same act and
+a proximity test written twice is one that will disagree with itself. Hold
+radius 5 world units -- roughly the trap detection radius doubled: near enough
+that the coin is plainly in the fight, far enough that a body one tile away
+still counts. Polled at 0.5s, the project standard for numerous short-lived
+things.
+
+`DungeonAdventurer.IsAlive` is an EXPLICIT `IMonsterTarget` implementation, so
+the gate casts to reach it -- `a.IsAlive` does not compile. Recorded because it
+looks like an oversight and is not.
+
+**Monster loot tables were empty**, which is why `CarriableLoot` -- the class
+this arc named as the goblins' target -- barely existed. `Monster.prefab` ships
+`entries: []` and only Skeleton, Armored Skeleton and Zombie override it. Being
+authored per prefab by hand, outside this script.
+
+**NOT the broader rule.** "The core cannot build or spawn while adventurers are
+nearby" does not exist anywhere in the codebase -- the only in-combat gate in
+the project blocks removing a spawner while its monster fights -- and is not
+implemented here. It would gate the player's primary verbs during the most
+active part of the loop, sits on a different axis from entry 39's pause rule,
+and needs its own pass. Open, and known to differ from the designer's
+expectation.
+
 **Walkability follows reveal, per feature.** Tunnel and chamber each become
 walkable when their OWN unfog runs. A revealed run abutting an unrevealed
 chamber therefore ends at rock until the chamber reveals -- which it does,

@@ -18,8 +18,11 @@ public class CarriableLoot : MonoBehaviour
     private Rarity rarity = Rarity.Common;
 
     [Header("Failsafe absorption")]
-    [Tooltip("If uncollected after this many seconds, absorb directly into core.")]
-    [SerializeField] private float despawnTime = 30f;
+    [Tooltip("Minimum seconds before the core absorbs this uncollected drop. A "
+           + "MINIMUM, not a deadline: held while an adventurer stands within "
+           + "LootAbsorbGate.HoldRadius, for the same reason DroppedLoot is -- the "
+           + "core cannot take what adventurers are standing on.")]
+    [SerializeField, Min(0f)] private float despawnTime = 30f;
 
     // ── Public ────────────────────────────────────────────────────
     public int GoldValue => goldValue;
@@ -79,7 +82,12 @@ public class CarriableLoot : MonoBehaviour
     private IEnumerator DespawnAfterDelay()
     {
         yield return new WaitForSeconds(despawnTime);
-        Debug.Log("[CarriableLoot] Uncollected — absorbing directly into core.");
+
+        // Same hold as DroppedLoot, through the same gate so the two can never
+        // disagree about what "an adventurer is near" means.
+        while (LootAbsorbGate.Held(transform.position))
+            yield return new WaitForSeconds(LootAbsorbGate.RecheckSeconds);
+
         DungeonCore.Instance?.AddGold(goldValue);
         Destroy(gameObject);
     }
