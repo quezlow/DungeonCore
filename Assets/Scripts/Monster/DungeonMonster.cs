@@ -1785,7 +1785,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);
-        GetComponent<LootTable>()?.Roll(transform.position);
+        var lootTable = GetComponent<LootTable>();
+        if (lootTable != null)
+        {
+            var promoTemplate = DungeonBuildController.Instance != null
+                ? DungeonBuildController.Instance.Promotion : null;
+            float lootMult = promoTemplate != null ? promoTemplate.LootMult(promotedRank) : 1f;
+            lootTable.Roll(transform.position, lootMult);
+        }
 
         if (IsBoss)
         {

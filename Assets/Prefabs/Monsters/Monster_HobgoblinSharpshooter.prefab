@@ -48,6 +48,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6718362883058328754, guid: 43d6219853faf474e844eccb88c863bf, type: 3}
+      propertyPath: entries.Array.data[1].rarity
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6718362883058328754, guid: 43d6219853faf474e844eccb88c863bf, type: 3}
+      propertyPath: entries.Array.data[0].goldValue
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6718362883058328754, guid: 43d6219853faf474e844eccb88c863bf, type: 3}
+      propertyPath: entries.Array.data[1].goldValue
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 7166791037362089015, guid: 43d6219853faf474e844eccb88c863bf, type: 3}
       propertyPath: maxHP
       value: 60

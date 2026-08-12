@@ -32,6 +32,30 @@ PrefabInstance:
       propertyPath: attackCooldown
       value: 2.6
       objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.data[0].weight
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.data[1].rarity
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.data[1].weight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.data[0].goldValue
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 2776914581527721834, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
+      propertyPath: entries.Array.data[1].goldValue
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 7604535288601135491, guid: 823d81de330406644bf8c974b58b5b62, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

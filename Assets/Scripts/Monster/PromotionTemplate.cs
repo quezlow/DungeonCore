@@ -54,7 +54,18 @@ public class PromotionTemplate : ScriptableObject
     public float ScaleMult(PromotionRank r) => r == PromotionRank.Boss ? bossScaleMultiplier
         : r == PromotionRank.SubBoss ? subBossScaleMultiplier : 1f;
     public Color Tint(PromotionRank r) => r == PromotionRank.Boss ? bossTint
-        : r == PromotionRank.SubBoss ? subBossTint : Color.white;
+           : r == PromotionRank.SubBoss ? subBossTint : Color.white;
+
+    [Header("Loot")]
+    [Tooltip("Gold multiplier on a promoted monster's drop. Deliberately steeper "
+           + "than the stat multipliers: a defended boss room is meant to read as "
+           + "a honeypot worth robbing, so Treasure Hunters walk past cheaper prey "
+           + "to reach it.")]
+    [Min(1f)] public float subBossLootMultiplier = 4f;
+    [Min(1f)] public float bossLootMultiplier = 12f;
+
+    public float LootMult(PromotionRank r) => r == PromotionRank.Boss ? bossLootMultiplier
+        : r == PromotionRank.SubBoss ? subBossLootMultiplier : 1f;
 
     /// <summary>Total capacity a spawner of the given base cost holds at a rank
     /// (rounding matches the retired variant definitions).</summary>

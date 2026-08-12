@@ -71,6 +71,7 @@ the supersession in one line.
 14. Material Pattern System
 15. Room Effects v2 and Attractor Rooms
 15A. Monster Muster (Spawn Rooms, Posts, Floor Gates)
+15B. Monster Drops (Sparse Base, Honeypot Bosses)
 16. Crypt and Deliberate Nemesis Raise
 17. Discovery Content (Buried Skeletons, Loot Books, Wisp Guide)
 18. Phase 5 Designs
@@ -1374,6 +1375,51 @@ save-fragile); the Crypt as the only undead ground (deadlocks the
 opening); strict four-room mapping without a universal ground (nothing
 placeable before Architecture research); unlatching adventurers who flee
 back into the tunnel (flappy respawn state).
+
+## 15B. Monster Drops (Sparse Base, Honeypot Bosses)
+
+Status: SHIPPED. Verified: <date of landing>.
+
+Monster loot is authored on the PREFAB's `LootTable` component (not
+MonsterDefinition -- which is why the bestiary expansion guides never covered it
+and 46 of 49 prefabs shipped with empty tables). Monster drops spawn
+`CarriableLoot`: adventurers carry them OUT, feeding MercenaryContract reprisal
+and +0.02 alignment per gold. Drops are therefore a LIABILITY the player accepts,
+and the curve is deliberately mean. Gold only -- `LootType.Book` is the
+adventurer-drop case.
+
+**Normal monsters (model a):** mean payout ~1 gold per 9 HP, two entries weighted
+3:1, second entry ~2.5x the first, extending the shipped Skeleton (2/5, w3:1) /
+Zombie (0/2, w1:2) / Armored Skeleton (5/10, w2:1) pattern. Rarity rises with
+tier (Common Bronze, Uncommon Silver, Rare Gold+) and the authored goldValue is
+pre-divided by the rarity multiplier so the mean lands on the curve.
+
+**Bosses and sub-bosses (model c):** `PromotionTemplate.bossLootMultiplier` 12
+and `subBossLootMultiplier` 4, applied at spawn after rarity. Rich by intent: a
+defended boss room reads as a honeypot Treasure Hunters cross the floor to reach.
+Required code because boss-ness is a runtime rank (canon 28), so a promoted
+monster shares its base prefab's table -- `LootTable.Roll` gained a
+valueMultiplier overload (old signature delegates at 1x) and DungeonMonster's
+death-roll passes the rank's multiplier.
+
+**Prefab sharing:** 112 definitions resolve to 49 prefabs (twelve native
+slot-roles serve six types each; Adept and Archon families share one prefab
+apiece), so loot is authored 49 times and slot-mates inherit identical drops --
+consistent with the canon 27A parity ruling. Per-type drop flavour would require
+splitting prefabs and is rejected.
+
+**Wild beasts drop nothing** (Cave Rat, Cave Bear, Dire Wolf, Wild Spider): they
+own no coin, and wild loot would hand alignment to adventurers who never entered
+the dungeon. The Goblin Scout, the one wild humanoid, carries a little.
+
+**Key files:** `Monster/LootTable.cs`, `Monster/PromotionTemplate.cs`,
+`Monster/DungeonMonster.cs`, plus entries on ~45 monster prefabs.
+
+**Rejected:** books or materials on monsters (adventurer-drop only); generous
+base drops (drops are a liability, not a reward); per-type native drop flavour
+(prefab sharing forbids it and parity argues against it); a global
+Stingy-to-Generous player dial -- see the adventurer satisfaction layer, which is
+designed but unbuilt and is where that tension belongs.
 
 ## 16. Crypt and Deliberate Nemesis Raise
 

@@ -71,9 +71,18 @@ public class LootTable : MonoBehaviour
     /// Roll the table and spawn the result at worldPos.
     /// Returns the selected entry, or null if the table is empty.
     /// </summary>
-    public DropEntry Roll(Vector3 worldPos)
+    public DropEntry Roll(Vector3 worldPos) => Roll(worldPos, 1f);
+
+    /// <summary>
+    /// Roll and spawn, scaling the drop's gold by valueMultiplier. Promotion rank
+    /// supplies the multiplier: boss-ness is a runtime rank on the spawner, not a
+    /// definition, so a promoted monster shares its base prefab's table and cannot
+    /// carry richer entries of its own.
+    /// </summary>
+    public DropEntry Roll(Vector3 worldPos, float valueMultiplier)
     {
         if (entries == null || entries.Count == 0) return null;
+        pendingValueMultiplier = Mathf.Max(0f, valueMultiplier);
 
         float totalWeight = 0f;
         foreach (var e in entries)
@@ -120,9 +129,12 @@ public class LootTable : MonoBehaviour
         return entries[entries.Count - 1];
     }
 
+    private float pendingValueMultiplier = 1f;
+
     private void SpawnDrop(DropEntry entry, Vector3 pos)
     {
-        int value = Mathf.Max(1, Mathf.RoundToInt(entry.goldValue * LootRarity.MultiplierFor(entry.rarity)));
+        int value = Mathf.Max(1, Mathf.RoundToInt(
+            entry.goldValue * LootRarity.MultiplierFor(entry.rarity) * pendingValueMultiplier));
 
         switch (lootOwner)
         {

@@ -72,6 +72,30 @@ PrefabInstance:
       propertyPath: attackCooldown
       value: 2.2
       objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[0].weight
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[1].rarity
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[1].weight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[0].goldValue
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 7006659558031369426, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
+      propertyPath: entries.Array.data[1].goldValue
+      value: 48
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
