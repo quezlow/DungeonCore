@@ -1792,7 +1792,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (IsWild)
         {
             RunStats.Instance?.RecordWildMonsterSlain();
-            if (wildDefinition != null && wildDefinition.wildCoreXpOnDeath > 0f)
+            // Core XP is for beasts that die ONCE. The grant above is deliberately
+            // ungated on who landed the blow, which was right while every wild
+            // monster was a one-time clear -- but a den is a SOURCE, and a source
+            // that pays XP per body is an endless faucet the player can stand in
+            // front of. It also accrued passively, because adventurers fighting
+            // goblins trip the same line. A den's reward is its hoard, paid once,
+            // when it is cleared.
+            if (denFloorIndex < 0
+                && wildDefinition != null && wildDefinition.wildCoreXpOnDeath > 0f)
                 DungeonCore.Instance?.AddXP(wildDefinition.wildCoreXpOnDeath);
         }
 

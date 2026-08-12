@@ -110,6 +110,8 @@ public class WispScript : ScriptableObject
             // den that was holding more than coin.
             new Line { id = "den_wakes", once = true,
                 text = "Something below has noticed you. It has been down there longer than your stone has, and it has decided you are worth robbing." },
+            new Line { id = "den_one_way", once = true,
+                text = "Kill the last of them and the hole stays empty - nothing down here refills what has been emptied. Their hoard comes to you the moment it happens, so the only question worth asking is how much longer you let them gather it." },
             new Line { id = "den_hoard_content", once = true,
                 text = "Not only coin in that hole. They took things they could not read and kept them anyway - and now those are yours, which is the closest thing to justice this place offers." },
 

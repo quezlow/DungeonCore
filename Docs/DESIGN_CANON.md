@@ -7508,9 +7508,20 @@ take what you drop; kobolds take what you have not found yet.
 - **Grace of 5 days after `OnFloorCreated`** before the den ticks, stored as
   an awakened-day int. A wisp line on waking: they stirred because the player
   arrived.
-- **Cleared dens regrow unless the tunnels feeding them are sealed.** This is
-  what makes clearing a choice rather than a chore, and it is the second job
-  it hands entry 36.
+- ~~**Cleared dens regrow unless the tunnels feeding them are sealed.**~~
+  **REVERSED.** A cleared den is cleared for good: kill the last of its people
+  and nothing comes back. Clearing stays a choice, but the choice moved -- it is
+  no longer whether to keep clearing a thing that returns, it is WHEN to spend a
+  one-off harvest. The hoard only grows while they are alive to steal, so ending
+  them early buys safety cheaply and ending them late buys a bigger purse at the
+  cost of everything they took in the meantime. A wisp line says so before the
+  last one falls, because a one-way door the player cannot see is a trap rather
+  than a decision.
+
+  **Consequence, recorded rather than quietly dropped:** this removes the second
+  job this entry gave entry 36's built walls. Their remaining one stands -- the
+  pre-mined tunnels are a tactical geometry the player did not choose and must
+  answer -- but sealing a den's supply is no longer a reason to build.
 - **Dens are hostile to adventurers too**, which falls out of `ScanForHostiles`
   for free.
 - **The great predator ignores dens.** Folding them into `NearestPrey` would
@@ -8074,6 +8085,24 @@ a `LootTable` the body must not have.
 **In-flight hauls are banked on save.** Live bodies are rebuilt from the ledger
 on load rather than snapshotted, so a scavenger caught mid-errand would otherwise
 take its haul out of existence, tomes included.
+
+**Losses are replaced at DAWN and at no other time, and the pace is load-bearing.**
+The first version polled every three seconds and refilled the whole deficit at
+once, so killing ten of sixteen put all ten back three seconds later. Clearing
+requires the population at zero, which made a tier-five den unfinishable: the
+player had to kill sixteen inside one three-second window while they fought back,
+so the reward that justifies the feature was unreachable exactly when the hoard
+was biggest. Dawn is the rhythm this entry already set for dens, it makes an
+assault winnable by whittling across a day, and it bounds what a den can hand out.
+A den populates immediately on registration and immediately after a load, so a
+new floor is never an empty hole waiting for a dawn.
+
+**Den bodies grant NO core XP.** `Die()` awards `wildCoreXpOnDeath` on any wild
+death, ungated on who struck the blow -- correct while every wild monster was a
+one-time clear, and a faucet once a SOURCE started producing them. It accrued
+passively too, since adventurers fighting goblins trip the same line. A den's
+reward is its hoard, paid once, on clearing. The run statistic still counts them,
+because something did die there.
 
 ### The den cavity and its residents (DECIDED, NOT BUILT)
 

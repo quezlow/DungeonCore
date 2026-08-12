@@ -191,12 +191,22 @@ public class DenController : MonoBehaviour
             cleared = false,
             raidCountdown = RaidIntervalDays[0],
         };
+
+        // Inhabited from the moment it exists. Waiting for the next dawn would
+        // leave the player free to walk into an empty hole on the day they cut
+        // the stair, which reads as the den not being there at all.
+        TopUp(dens[floorIndex]);
     }
 
     // -- the dawn tick ---------------------------------------------------
 
     private void HandleDayStarted()
     {
+        // Losses are made good overnight and never during the day. See TopUpAll
+        // for why the pace matters; the short version is that instant replacement
+        // made a high-tier den impossible to finish.
+        TopUpAll();
+
         foreach (var kv in dens)
         {
             var den = kv.Value;
@@ -406,6 +416,13 @@ public class DenController : MonoBehaviour
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
         den.cleared = true;
+
+        // Sweep any survivors here rather than in a loop. Clearing normally fires
+        // with the population already at zero, so this is defence against a future
+        // caller that clears a den some other way -- and it is the only place left
+        // that could strand bodies, now that nothing polls.
+        DespawnAll(floorIndex);
+
         int payout = Mathf.FloorToInt(den.hoard);
         den.hoard = 0f;
         DungeonCore.Instance?.AddGold(payout);
@@ -477,10 +494,6 @@ public class DenController : MonoBehaviour
     // ---- Population (canon 42, as amended) -------------------------------
 
     [Header("Population")]
-    [Tooltip("How often the controller tops each den's population back up to "
-           + "budget. Cheap: it counts a list and, at most, instantiates one body.")]
-    [SerializeField, Min(0.5f)] private float populationCheckInterval = 3f;
-
     [Tooltip("Where bodies appear relative to the den mouth, in cells.")]
     [SerializeField, Min(0f)] private float spawnScatter = 1.5f;
 
@@ -499,38 +512,46 @@ public class DenController : MonoBehaviour
 
     private readonly Dictionary<int, List<DungeonMonster>> livePopulation
         = new Dictionary<int, List<DungeonMonster>>();
-    private float populationTimer;
 
     /// <summary>
-    /// Keeps each den stocked to its population budget, on EVERY floor.
+    /// Replaces a den's losses. AT DAWN, AND AT NO OTHER TIME.
     ///
     /// Bodies are NOT tied to the floor the camera is on. Canon 42 originally ruled
     /// that they instantiate only while the player is on that floor; that ruling was
     /// reversed, because floors are always active and simulate together -- so
     /// despawning den bodies on a floor change would have made them the only entity
-    /// class in the game that stops existing when you look away, and you would never
-    /// walk in on goblins mid-errand. They would populate as you arrived.
+    /// class in the game that stops existing when you look away.
     ///
-    /// The cost is small and bounded: one occupier den, and a population budget that
-    /// tops out well inside the agent cap. Only the foragers among them scan.
+    /// THE PACE IS THE WHOLE POINT, and the first version got it wrong in a way
+    /// that only shows at high tier. It ran on a three-second timer and refilled
+    /// the ENTIRE deficit each time, so killing ten of sixteen put all ten back
+    /// three seconds later. Clearing needs the population at zero, so the player
+    /// had to kill sixteen inside one three-second window while they fought back:
+    /// the reward that justifies the whole feature was unreachable exactly when
+    /// the hoard was biggest. It also made every den an endless source of core XP.
+    ///
+    /// Dawn is the rhythm canon already set for dens -- growth is a dawn-ticked
+    /// ledger -- so losses replaced overnight costs no new concept, makes an
+    /// assault winnable by whittling across a day, and bounds what a den can ever
+    /// hand out to one population per day.
+    ///
+    /// Runs during grace too: its people live there from the day the floor is
+    /// made, they simply take nothing yet.
     /// </summary>
-    private void Update()
+    private void TopUpAll()
     {
-        populationTimer -= Time.deltaTime;
-        if (populationTimer > 0f) return;
-        populationTimer = populationCheckInterval;
+        foreach (var kv in dens) TopUp(kv.Value);
+    }
 
-        foreach (var kv in dens)
-        {
-            var den = kv.Value;
-            PruneDead(den.floorIndex);
+    private void TopUp(DenSaveEntry den)
+    {
+        if (den == null) return;
+        PruneDead(den.floorIndex);
+        if (den.cleared) return;
 
-            if (den.cleared) { DespawnAll(den.floorIndex); continue; }
-
-            int budget = PopulationBudget(den.floorIndex);
-            var live = LiveOn(den.floorIndex);
-            for (int i = live.Count; i < budget; i++) SpawnScavenger(den);
-        }
+        int budget = PopulationBudget(den.floorIndex);
+        var live = LiveOn(den.floorIndex);
+        for (int i = live.Count; i < budget; i++) SpawnScavenger(den);
     }
 
     private List<DungeonMonster> LiveOn(int floorIndex)
@@ -659,7 +680,20 @@ public class DenController : MonoBehaviour
     public void NotifyScavengerDied(DungeonMonster body, int floorIndex, bool dungeonDealtDamage)
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return;
-        if (dungeonDealtDamage) den.contested = true;
+        if (dungeonDealtDamage)
+        {
+            // The first one the dungeon kills buys the warning, and it is deliberately
+            // not the last: a den is a ONE-WAY door now, so the line has to arrive
+            // while the player still has the choice. Firing it at "one left" would be
+            // an announcement, not a warning.
+            //
+            // Once EVER rather than once per den -- WispScript's own spoken-line
+            // store, not a ledger flag like spokenWaking. A den waking is an event
+            // that can happen again on another floor; this is a rule of the world,
+            // and a player who has been told it once knows it.
+            if (!den.contested) WispCompanion.Instance?.Speak("den_one_way");
+            den.contested = true;
+        }
 
         // Drop the dying body from the roll HERE rather than counting live ones.
         // Counting was the obvious version and is wrong twice over: IsAlive is an
@@ -712,5 +746,13 @@ public class DenController : MonoBehaviour
         if (data == null || data.dens == null) return;
         foreach (var e in data.dens)
             if (e != null) dens[e.floorIndex] = e;
+
+        // Bodies are rebuilt from the ledger, never snapshotted -- and this is the
+        // ONLY path that populates them on a load. RecreateFloorFromSave fires
+        // OnFloorCreated before feature data is restored, so DenTunnelCount reads
+        // zero there and HandleFloorCreated registers nothing. Safe here: the save
+        // controller restores feature data in pass 1 and tile influence in pass 3,
+        // both before this runs, so the anchor and the grid are ready.
+        TopUpAll();
     }
 }
