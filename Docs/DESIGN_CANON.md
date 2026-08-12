@@ -7736,6 +7736,36 @@ floor's profile entry exists AND the generator actually cut tunnels -- a den
 without its network is a den nobody can reach. A floor does not exist until the
 player places a down stair, so a den on an unopened floor costs nothing at all.
 
+**Goblins take BOTH loot streams, and the streams differ.** A scavenger does not
+care who was carrying it: monster drops (`CarriableLoot`) and adventurer drops
+(`DroppedLoot`) are both fair game. They are not equivalent, though, and the
+difference is mechanical rather than cosmetic -- adventurer drops are
+UNCONTESTED, since only the core takes them and only after the `LootAbsorbGate`
+hold, while monster drops are CONTESTED, because picking `CarriableLoot` up and
+carrying it out is what adventurers are for. A goblin is the third party at a
+monster's corpse and the only party at an adventurer's.
+
+A consequence for the next pass: `DroppedLoot` has no pickup path at all -- only
+an absorb timer -- so adventurer spoils are not yet stealable by anything. That
+is required work, not optional.
+
+**The curve did NOT need retuning for it.** The model originally treated monster
+loot as an optional extra with a guessed value, because monster LootTables were
+empty when the curve was tuned. Re-modelled from the authored weights (Skeleton
+2.75, Zombie 1.33, Armoured Skeleton 6.67 expected), a typical dungeon moves
+from tier 2 on day 12 / tier 5 on day 38 to day 12 / day 34 -- about a tenth
+faster at the top, unchanged at the bottom, because monster loot adds roughly
+0.8 gold per adventurer killed against 4.67 from adventurer drops. Thresholds
+stand, and every `DenController` constant was re-verified against the corrected
+sim.
+
+**A filter that hides rows still prints a pass.** The same change broke the
+sim's own reporting: the profile loop skipped excavator rows when monster loot
+was on, so once monster loot became the default, every excavator profile but one
+vanished from the table and the run still reported VERDICT pass. A check that
+silently drops its subjects is worse than no check, because it reads as
+confirmation.
+
 **Two entry points, one per income function.** `DepositCarriedLoot` is the door
 a scavenger comes home through; `NotifyRemainsExcavated` is the door a digger
 reaches a buried remains through. Both exist before the agents that will call

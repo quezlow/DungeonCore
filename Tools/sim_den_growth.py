@@ -34,10 +34,17 @@ EVERY INPUT BELOW WAS READ FROM SOURCE, not remembered:
                          Adventurer -> DroppedLoot. Expected 4.667 per kill.
   DungeonCore            killNotoriety 5, notorietySoftCap 100,
                          notorietyMinGainFraction 0.15 (soft-capped accrual).
-  Monster.prefab         LootTable entries EMPTY. Only three undead variants
-                         override it (Skeleton 2, Zombie, Armored Skeleton), so
-                         monster-side CarriableLoot is modelled as OPTIONAL and
-                         defaults to absent -- the authoring pass is separate.
+  Monster prefabs        Authored expected drops, from the shipped weights:
+                         Skeleton (2 w3 / 5 w1) = 2.75, Zombie (0 w1 / 2 w2) =
+                         1.33, Armored Skeleton (5 w2 / 10 w1) = 6.67. Owner is
+                         Monster -> CarriableLoot. The roster is being authored
+                         out across 44 prefabs, so monster loot is now modelled
+                         as PRESENT by default rather than optional.
+  DungeonAdventurer      ScanForLoot picks up CarriableLoot within pickupRadius
+                         0.6 and carries it OUT -- so monster drops are
+                         CONTESTED and adventurer drops are not. This is the
+                         difference between the two streams and the reason they
+                         cannot be added together and left at that.
   LootAbsorbGate         loose loot lingers >= 30s, held while adventurers are
                          within 5 units, so a scavenging window exists at all.
 
@@ -55,7 +62,26 @@ INTERVAL_HIGH = 10.0
 NOTORIETY_MED = 25.0
 NOTORIETY_HIGH = 75.0
 PARTY_MIN, PARTY_MAX = 1, 3
-ADV_GOLD_EXPECTED = (3 * 2 + 8 * 1) / 3.0     # 4.667
+ADV_GOLD_EXPECTED = (3 * 2 + 8 * 1) / 3.0     # 4.667, DroppedLoot
+
+# Authored monster drops, expected value per weighted table. The roster spans
+# cheap early undead to richer later monsters; the mean is what a mixed defence
+# loses on average.
+MONSTER_GOLD_BY_EXAMPLE = {
+    "skeleton": (2 * 3 + 5 * 1) / 4.0,          # 2.75
+    "zombie": (0 * 1 + 2 * 2) / 3.0,            # 1.33
+    "armoured skeleton": (5 * 2 + 10 * 1) / 3.0,  # 6.67
+}
+MONSTER_GOLD_EXPECTED = sum(MONSTER_GOLD_BY_EXAMPLE.values()) / 3.0   # 3.58
+
+# Player monsters lost per adventurer killed. A defence that trades one monster
+# for three adventurers is doing well; one for two is ordinary.
+MONSTER_LOSS_RATIO = 0.4
+
+# Share of monster drops an adventurer reaches first. CarriableLoot is what
+# adventurers are FOR -- they pick it up and carry it out -- so goblins are the
+# third party at that corpse, not the first.
+ADVENTURER_TAKE_OF_MONSTER_LOOT = 0.45
 KILL_NOTORIETY = 5.0
 NOTORIETY_SOFT_CAP = 100.0
 NOTORIETY_MIN_FRACTION = 0.15
@@ -144,13 +170,20 @@ def run(kind, days, kill_rate, player_gold_per_day, monster_loot,
                 NOTORIETY_MIN_FRACTION
                 + (1.0 - NOTORIETY_MIN_FRACTION) * headroom)
 
+        # Two streams, and they are NOT interchangeable.
+        #
+        #   Adventurer drops (DroppedLoot) are uncontested: only the core takes
+        #   them, and only after the LootAbsorbGate hold, so a goblin that gets
+        #   there competes with nobody.
+        #
+        #   Monster drops (CarriableLoot) are contested: adventurers pick them up
+        #   and carry them out, which is what that class exists for. A goblin is
+        #   the third party at that corpse.
         floor_gold = kills * ADV_GOLD_EXPECTED
         if monster_loot:
-            # Modelled, not measured: monster tables are empty today. Assume the
-            # authoring pass lands near the shipped undead (about 3 expected)
-            # and that the player loses monsters at roughly a third of the rate
-            # it kills adventurers.
-            floor_gold += kills * 0.33 * 3.0
+            monster_deaths = kills * MONSTER_LOSS_RATIO
+            raw = monster_deaths * MONSTER_GOLD_EXPECTED
+            floor_gold += raw * (1.0 - ADVENTURER_TAKE_OF_MONSTER_LOOT)
 
         player_gold += player_gold_per_day
 
@@ -213,11 +246,11 @@ def main():
     print()
 
     profiles = [
-        # label,             kill_rate, player gold/day, monster loot authored
-        ("passive dungeon",     0.45,    40.0,  False),
-        ("typical dungeon",     0.75,    90.0,  False),
-        ("killer dungeon",      0.95,   160.0,  False),
-        ("typical + mon loot",  0.75,    90.0,  True),
+        # label,               kill_rate, player gold/day, monster loot authored
+        ("passive dungeon",       0.45,    40.0,  True),
+        ("typical dungeon",       0.75,    90.0,  True),
+        ("killer dungeon",        0.95,   160.0,  True),
+        ("typical, adv drops only", 0.75,  90.0,  False),
     ]
 
     for kind in ("occupier", "excavator"):
@@ -226,8 +259,12 @@ def main():
               % ("profile", "T2 day", "T3 day", "T4 day", "T5 day",
                  "hoard", "raids"))
         for label, kr, pg, ml in profiles:
-            if kind == "excavator" and ml:
-                continue      # excavators do not touch loose loot
+            # Excavators do not touch loose loot, so the monster-loot variant
+            # is the SAME run for them -- show it once rather than four times.
+            # (The first version skipped on `ml` being true, which silently hid
+            # every excavator profile once monster loot became the default.)
+            if kind == "excavator" and not ml:
+                continue
             first, hoard, raids, stolen = run(kind, days, kr, pg, ml, verbose)
             def d(t):
                 return str(first[t]) if t in first else "-"
@@ -238,7 +275,7 @@ def main():
     # ---- the checks that decide whether the curve is usable ------------
     print("Verdict checks:")
     bad = False
-    first, hoard, raids, _ = run("occupier", days, 0.75, 90.0, False)
+    first, hoard, raids, _ = run("occupier", days, 0.75, 90.0, True)
     if 2 not in first or first[2] > 20:
         print("!! occupier never reaches tier 2 inside 20 days on a typical "
               "dungeon -- the den would read as inert.")
