@@ -15408,7 +15408,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999819
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -15491,6 +15491,12 @@ MonoBehaviour:
   chamberReferenceRadius: 150
   chamberCountCeiling: 30
   chamberRimMargin: 10
+  denTunnelProfile: {fileID: 0}
+  denTunnelRimMargin: 10
+  denTunnelWobbleStep: 16
+  denTunnelWobbleAmplitude: 3
+  starterBlobRadiusForDens: 6
+  logDenTunnelGeneration: 1
   riverBankRimMargin: 7
   minRivers: 1
   maxRivers: 3
@@ -15501,7 +15507,7 @@ MonoBehaviour:
   minRiverWidth: 4
   maxRiverWidth: 7
   minRiverBank: 1
-  maxRiverBank: 3
+  maxRiverBank: 2
   exclusionRadiusFromCenter: 12
   cavernInnerRadius: 2
   cavernOuterRadius: 3
@@ -15556,6 +15562,7 @@ MonoBehaviour:
   debugChamberTile: {fileID: 11400000, guid: 3c78f69640bb6734e816ba8f7e81f5b2, type: 2}
   debugRoadTile: {fileID: 0}
   debugSiteTile: {fileID: 0}
+  debugDenTunnelTile: {fileID: 0}
   logSiteGeneration: 1
   junctionFilletRadius: 3
 --- !u!4 &468668986
@@ -52230,7 +52237,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000041391468}
+  m_AnchoredPosition: {x: 0, y: 0.000072982424}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -59648,7 +59655,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99998444
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -62271,7 +62278,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000041391468}
+  m_AnchoredPosition: {x: 0, y: 0.000072982424}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
