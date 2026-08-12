@@ -106,7 +106,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DroppedLoot
   goldValue: 1
-  absorbDelay: 0.8
+  absorbDelay: 30
 --- !u!114 &-4227475586468710613
 MonoBehaviour:
   m_ObjectHideFlags: 0
