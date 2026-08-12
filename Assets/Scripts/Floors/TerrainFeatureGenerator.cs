@@ -58,6 +58,24 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "plus a chamber's half-extent.")]
     [SerializeField, Min(0)] private int chamberRimMargin = 10;
 
+    // -- Den tunnel authoring (canon 42) --
+    [Header("Den Tunnels")]
+    [Tooltip("The one authored asset. A floor with no entry in it carries no den.")]
+    [SerializeField] private DenTunnelProfile denTunnelProfile;
+    [Tooltip("Keep tunnel cells this far inside the disc edge, so a run never "
+           + "reaches the unminable bedrock rim.")]
+    [SerializeField, Min(0)] private int denTunnelRimMargin = 10;
+    [Tooltip("Cells between wobble knots along a run. Larger is straighter.")]
+    [SerializeField, Min(2)] private int denTunnelWobbleStep = 16;
+    [Tooltip("Peak perpendicular drift, in cells. Tapers to zero at both ends so "
+           + "a run leaves the den straight and arrives on its chamber straight.")]
+    [SerializeField, Min(0f)] private float denTunnelWobbleAmplitude = 3f;
+    [Tooltip("Starter blob radius tunnels keep clear of at the stair landing. "
+           + "Match TileInfluenceManager.starterRoomRadius.")]
+    [SerializeField, Min(0)] private int starterBlobRadiusForDens = 6;
+    [Tooltip("Log the chosen den and its run breakdown at generation.")]
+    [SerializeField] private bool logDenTunnelGeneration = true;
+
     [Tooltip("How far in from the disc edge a river runs bank-free, in cells. Where a " +
              "river crosses the bedrock rim its channel is water wall-to-wall: dry banks " +
              "there would render as cave wall (banks are RiverBank, not River, so IsSolid " +
@@ -381,6 +399,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         GenerateSites(rng, centerCell, floorRadius);
         RasteriseRoads(rng);
         GenerateChambers(rng, centerCell, floorRadius);
+        // Den tunnels sit between chambers and rivers, and canon 42 amends
+        // entry 19's precedence to say so: a run needs its chamber to exist
+        // before it can reach one, and a river cuts a tunnel exactly as it cuts
+        // a road -- the flooded run is free storytelling from the ordering.
+        GenerateDenTunnels(rng, centerCell, floorRadius);
         GenerateRivers(rng, centerCell, floorRadius);
 
         RebuildLookup();
@@ -2789,6 +2812,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var sv in ch.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
 
+        // Den tunnels after chambers. RebuildDenTunnelCells hands back every
+        // cell a chamber, road or site owns, so a run that BREACHES a chamber
+        // keeps only the stretch outside it -- and the two stay 4-connected,
+        // which is the whole point and is regression-tested in Commands.
+        RebuildDenTunnelCells();
+        foreach (var seg in denTunnelSegments)
+            foreach (var c in seg.cells)
+                cellLookup[c] = new FeatureRef { type = FeatureType.DenTunnel, featureId = seg.segmentId };
+
         foreach (var r in featureData.rivers)
         {
             foreach (var sv in r.cells)
@@ -2797,6 +2829,213 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 foreach (var sv in r.bankCells)
                     cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.RiverBank, featureId = r.id };
         }
+    }
+
+
+    // -- Den tunnels (canon 42) ------------------------------------
+
+    private class DenTunnelSegmentRuntime
+    {
+        public int segmentId;
+        public int tunnelId;
+        public readonly List<Vector3Int> cells = new List<Vector3Int>();
+    }
+
+    private readonly List<DenTunnelSegmentRuntime> denTunnelSegments = new List<DenTunnelSegmentRuntime>();
+    private readonly HashSet<Vector3Int> denTunnelCells = new HashSet<Vector3Int>();
+
+    /// <summary>Where the den itself sits, or null on a floor without one. Read
+    /// by the den controller when it is built; nothing else reads it yet.</summary>
+    public Vector3Int? DenAnchor =>
+        featureData != null && featureData.denTunnels != null
+        && featureData.denTunnels.Count > 0
+        && featureData.denTunnels[0].polyline.Count > 0
+            ? featureData.denTunnels[0].polyline[0].ToVector3Int()
+            : (Vector3Int?)null;
+
+    public int DenTunnelCount => featureData?.denTunnels?.Count ?? 0;
+    public int RevealedDenTunnelSegmentCount
+        => featureData?.revealedDenTunnelSegmentIds?.Count ?? 0;
+
+    public bool IsDenTunnel(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.DenTunnel;
+
+    public bool IsDenTunnelSegmentRevealed(int segmentId)
+        => featureData != null
+        && featureData.revealedDenTunnelSegmentIds.Contains(segmentId);
+
+    /// <summary>Reveals ONE stretch of den tunnel. Per stretch rather than per
+    /// run, on the road argument: a run crossing half the floor would otherwise
+    /// hand the player the network's whole shape off one touched cell, and the
+    /// network's shape is the clue that a den is at the end of it.</summary>
+    public void RevealDenTunnelSegment(int segmentId)
+    {
+        if (featureData == null) return;
+        if (featureData.revealedDenTunnelSegmentIds.Contains(segmentId)) return;
+        featureData.revealedDenTunnelSegmentIds.Add(segmentId);
+        RevealVersion++;
+        UnfogDenTunnelSegment(segmentId);
+    }
+
+    private DenTunnelSegmentRuntime GetDenTunnelSegment(int segmentId)
+    {
+        foreach (var s in denTunnelSegments)
+            if (s.segmentId == segmentId) return s;
+        return null;
+    }
+
+    /// <summary>Reveal is the carved run plus its one-cell halo, and nothing
+    /// else -- entry 19's invariant, which any feature revealing solid cells has
+    /// to satisfy: reveal exactly the cells the wall renderer will paint, no
+    /// more and no fewer. The renderer caps a solid that is 8-adjacent to a
+    /// MINED cell, MarkNaturalFloor below makes these cells mined, and the halo
+    /// is precisely their 8-neighbourhood. Fog is one-way, so neither error can
+    /// be corrected after the fact.</summary>
+    private void UnfogDenTunnelSegment(int segmentId)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null) return;
+
+        var seg = GetDenTunnelSegment(segmentId);
+        if (seg == null || seg.cells.Count == 0) return;
+
+        foreach (var c in seg.cells)
+        {
+            terrain.RevealTile(c);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+        }
+
+        floor.TileInfluence?.MarkNaturalFloor(seg.cells);
+    }
+
+    /// <summary>
+    /// Chooses and draws this floor's den tunnels. Runs AFTER chambers, because
+    /// a run needs its chamber to exist before it can reach one, and BEFORE
+    /// rivers, because a river cuts a tunnel exactly as it cuts a road -- the
+    /// flooded run is free storytelling from the ordering alone (canon 42).
+    /// </summary>
+    private void GenerateDenTunnels(System.Random rng, Vector3Int centerCell, int floorRadius)
+    {
+        if (denTunnelProfile == null) return;
+        var entry = denTunnelProfile.For(floor != null ? floor.FloorIndex : 0);
+        if (entry == null) return;
+
+        var centres = new List<Vector3Int>(featureData.chambers.Count);
+        var ids = new List<int>(featureData.chambers.Count);
+        foreach (var ch in featureData.chambers)
+        {
+            centres.Add(ch.centerCell.ToVector3Int());
+            ids.Add(ch.id);
+        }
+
+        // The stair landing is the floor's centre cell: EnsureFloorExists is
+        // handed the stair's own cell as centerCell, and ClaimStarterArea opens
+        // its blob there. Canon 42 fork 8: tunnels never touch it, so first
+        // contact is the player's digging or creep reaching the network.
+        var plan = DenTunnelBuilder.Plan(
+            rng, centerCell, floorRadius, entry, exclusionRadiusFromCenter,
+            centres, ids, centerCell, starterBlobRadiusForDens);
+
+        if (!plan.valid)
+        {
+            Debug.Log($"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} den tunnels: "
+                    + "no valid den anchor in band (96 samples). No den on this floor.");
+            return;
+        }
+
+        int clampRadius = Mathf.Max(1, floorRadius - denTunnelRimMargin);
+        featureData.denTunnels = DenTunnelBuilder.Rasterise(
+            rng, plan, clampRadius, denTunnelWobbleStep, denTunnelWobbleAmplitude);
+
+        if (logDenTunnelGeneration)
+            Debug.Log($"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} den tunnels: "
+                    + $"{plan.ChamberLinks} chamber links, {plan.DeadEnds} dead ends, "
+                    + $"den at {plan.den}, band {plan.bandInner}-{plan.bandOuter}.");
+    }
+
+    /// <summary>
+    /// Rebuilds the den tunnel cell set and its reveal segments from the saved
+    /// polylines. Shared by generation and load, so both partition segment ids
+    /// identically -- the road contract, and the reason road cells are not
+    /// persisted either.
+    /// </summary>
+    private void RebuildDenTunnelCells()
+    {
+        denTunnelSegments.Clear();
+        denTunnelCells.Clear();
+        if (featureData == null || featureData.denTunnels == null) return;
+
+        // Everything carved before a tunnel keeps its cells: the core cavern and
+        // its own tunnels, the entrance, the carriageway, the sites, and the
+        // chambers a run reaches. Rivers take theirs back afterwards, which is
+        // the flooded crossing.
+        var taken = new HashSet<Vector3Int>(reservedCoreCells);
+        foreach (var c in roadCells) taken.Add(c);
+        foreach (var c in siteCells) taken.Add(c);
+        if (featureData.chambers != null)
+            foreach (var ch in featureData.chambers)
+                foreach (var sv in ch.cells) taken.Add(sv.ToVector3Int());
+        if (featureData.rivers != null)
+            foreach (var r in featureData.rivers)
+            {
+                foreach (var sv in r.cells) taken.Add(sv.ToVector3Int());
+                if (r.bankCells != null)
+                    foreach (var sv in r.bankCells) taken.Add(sv.ToVector3Int());
+            }
+
+        int nextSegmentId = 0;
+        foreach (var tunnel in featureData.denTunnels)
+        {
+            var line = DenTunnelBuilder.Centreline(tunnel);
+            int step = Mathf.Max(4, tunnel.segmentLength);
+
+            for (int i = 0; i < line.Count; i += step)
+            {
+                int count = Mathf.Min(step, line.Count - i);
+
+                // The id advances whether or not the stretch survives, so saved
+                // reveal ids stay aligned even where a river ate a whole one.
+                var seg = new DenTunnelSegmentRuntime
+                { segmentId = nextSegmentId++, tunnelId = tunnel.id };
+
+                // Taper is a property of the WHOLE run, not of a stretch, so
+                // DenTunnelCellsForRange indexes into the run's own centreline
+                // rather than restarting the lerp at every segment boundary --
+                // which would have stepped the section back to full width four
+                // times down a long tunnel.
+                foreach (var cell in DenTunnelCellsForRange(tunnel, line, i, count))
+                {
+                    if (taken.Contains(cell)) continue;
+                    if (!denTunnelCells.Add(cell)) continue;
+                    seg.cells.Add(cell);
+                }
+                if (seg.cells.Count > 0) denTunnelSegments.Add(seg);
+            }
+        }
+    }
+
+    /// <summary>The cells of one stretch, dilated at the width the run has
+    /// tapered to by that point along its OWN length.</summary>
+    private static IEnumerable<Vector3Int> DenTunnelCellsForRange(
+        DenTunnelData tunnel, List<Vector3Int> line, int from, int count)
+    {
+        var centre = tunnel.floorCentre != null
+            ? tunnel.floorCentre.ToVector3Int() : Vector3Int.zero;
+        int mouth = Mathf.Max(1, tunnel.width);
+        int tip = Mathf.Max(1, tunnel.tipWidth);
+
+        var outCells = new List<Vector3Int>();
+        for (int i = from; i < from + count && i < line.Count; i++)
+        {
+            float t = line.Count > 1 ? i / (float)(line.Count - 1) : 0f;
+            int w = Mathf.Max(tip, Mathf.RoundToInt(Mathf.Lerp(mouth, tip, t)));
+            foreach (var p in RoadNetworkBuilder.Dilate(
+                         new[] { line[i] }, w, centre, tunnel.clampRadius))
+                outCells.Add(p);
+        }
+        return outCells;
     }
 
     // ── Debug Overlay ─────────────────────────────────────────────
@@ -3523,6 +3762,9 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var sid in featureData.revealedRoadSegmentIds) UnfogRoadSegment(sid);
         if (featureData.revealedSiteIds != null)
             foreach (var sid in featureData.revealedSiteIds) UnfogSite(sid);
+        if (featureData.revealedDenTunnelSegmentIds != null)
+            foreach (var sid in featureData.revealedDenTunnelSegmentIds)
+                UnfogDenTunnelSegment(sid);
 
         // Once, at the end. Each UnfogRoadSegment above bumps RevealVersion, so
         // rebuilding per segment would be quadratic on a floor with eighty of them.

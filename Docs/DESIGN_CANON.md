@@ -7572,11 +7572,53 @@ it does the work.
 
 ### The tunnel substrate -- shape E (BUILT: plan layer)
 
-Status of this section: the PLAN layer is built (`DenTunnelBuilder`,
-`DenTunnelProfile`, the headless report). Rasterise, save and reveal are not,
-and are deliberately a separate pass -- fog is one-way and both of its failure
-modes are uncorrectable after the fact, so that half is written with the reveal
-internals read rather than remembered.
+Status of this section: BUILT. The plan layer (`DenTunnelBuilder`,
+`DenTunnelProfile`, the headless report) and now the rasterise, save and reveal
+half, which mirrors the ROAD machinery line for line because that machinery had
+already solved every problem this one has.
+
+**Cells are derived, never persisted.** `DenTunnelData` stores the polyline and
+the two widths; `Centreline` and `Cells` rebuild the rest, and the SAME pair
+serves generation and load so the two can never disagree. The RoadData
+contract, for the RoadData reason.
+
+**A tunnel tapers where a road does not**, so it dilates per centreline cell at
+that cell's own width rather than once at a single width. The taper is a
+property of the WHOLE run: `DenTunnelCellsForRange` indexes into the run's own
+centreline rather than restarting the lerp at each reveal segment, which would
+have stepped the section back to full width four times down a long tunnel.
+
+**Reveal satisfies entry 19's invariant BY CONSTRUCTION.** A cell reads as wall
+only when it is both PAINTED (the renderer caps a solid 8-adjacent to a MINED
+cell) and REVEALED. `UnfogDenTunnelSegment` reveals each carved cell plus its
+full 8-neighbourhood and calls `MarkNaturalFloor` on the carved cells -- so the
+cells the renderer will paint are exactly the cells revealed, no more and no
+fewer. This is `UnfogRoadSegment`'s shape and it is not to be tidied. Fog is
+one-way; neither error can be corrected afterwards.
+
+**A run BREACHES the chamber it links -- measured, not assumed.** The
+pathfinder walks 4-neighbours only and Bresenham takes diagonal steps, so
+"reaches the chamber" and "something can walk between them" are different
+claims. Flood-filled over ~1800 links: 831/831 on floor index 1 and 959/959 on
+floor index 2 are 4-connected from the den end into the chamber interior, zero
+merely touching, zero apart. Three things carry it, and any one could be
+undone by a tidy-up: the centreline is driven to the chamber CENTRE rather than
+its edge; consecutive dilations OVERLAP, so a 2-wide tip stays 4-connected
+across a diagonal step; and handing the overlap back to the chamber severs
+nothing, because the run's cells outside the blob stay 4-adjacent to cells
+inside it. `Den Tunnel Breach Check` in `Commands` is the standing regression
+test.
+
+**Ownership order.** `RebuildDenTunnelCells` hands back every cell already
+owned by the core cavern, entrance, carriageway, sites and chambers; rivers
+take theirs afterwards, which is the flooded run. So a tunnel keeps only the
+stretch outside whatever it meets, and the chamber owns the overlap.
+
+**Walkability follows reveal, per feature.** Tunnel and chamber each become
+walkable when their OWN unfog runs. A revealed run abutting an unrevealed
+chamber therefore ends at rock until the chamber reveals -- which it does,
+because claiming down the run puts the chamber's edge into the claimable ring
+and the reveal controller chains from there. Roads already behave this way.
 
 **The agreed fork 7 was WRONG, and the measurement is the record.** Tunnels
 were to link chambers AND stay inside the 15-65 per cent band. They cannot do
@@ -7671,7 +7713,8 @@ pure static), `TESTING/Commands.cs` (the headless report),
 - No Ancient Sites are added to floor index 1. Entry 19 calls index 2's lone
   guard post "deliberate reach -- without it most players would never meet the
   Buried Age at all", and sites at index 1 spend that reveal a floor early.
-- Rasterise, save and reveal for den tunnels: the second substrate pass.
+- Den behaviour: the populations themselves, their growth ledger and
+  their raids. The substrate carries no den yet, only its tunnels.
 - Floor index 1 links no chamber at all on 5.8 per cent of seeds. Accepted:
   the only levers are the clamp, the run bounds, or the landing clearance that
   fork 8 made a hard rule, and a den of pure dead ends is legitimate content.

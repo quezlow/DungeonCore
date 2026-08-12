@@ -280,6 +280,19 @@ public class FeatureRevealController : MonoBehaviour
                 if (!silent) SpeakForSite(site, firstSiteOnFloor);
                 break;
 
+            // Den tunnels reveal per STRETCH and speak ONCE per floor, on the
+            // road argument: a banner every forty cells turns a discovery into
+            // noise. The line is deliberately vague about what cut it -- the
+            // player meets whatever did soon enough.
+            case FeatureType.DenTunnel:
+                if (features.IsDenTunnelSegmentRevealed(fref.featureId)) return;
+                bool firstDenOnFloor = features.RevealedDenTunnelSegmentCount == 0;
+                features.RevealDenTunnelSegment(fref.featureId);
+                FireAlert(FeatureType.DenTunnel, fref.featureId,
+                          "A cut tunnel runs off into the dark",
+                          silent || !firstDenOnFloor);
+                break;
+
             case FeatureType.EntranceCave:
                 if (features.IsEntranceDiscovered) return;
                 features.MarkEntranceDiscovered();

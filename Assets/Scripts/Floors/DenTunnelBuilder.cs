@@ -245,4 +245,136 @@ public static class DenTunnelBuilder
         float ex = p.x - cx, ey = p.y - cy;
         return Mathf.Sqrt(ex * ex + ey * ey) < keep;
     }
+
+    // ---- Rasterise --------------------------------------------------
+
+    /// <summary>
+    /// Draws a chosen plan: one wobbling, tapering polyline per run.
+    ///
+    /// Consumes rng ONLY for the wobble, exactly as RoadNetworkBuilder.Rasterise
+    /// consumes it only for the meander -- so a caller that hands the same
+    /// Random to Plan and then to this gets the shipped behaviour, and a caller
+    /// that wants to re-draw a saved plan can do so without touching Plan.
+    /// </summary>
+    public static List<DenTunnelData> Rasterise(
+        System.Random rng, DenTunnelPlan plan, int clampRadius, int wobbleStep,
+        float wobbleAmplitude)
+    {
+        var result = new List<DenTunnelData>();
+        if (rng == null || plan == null || !plan.valid) return result;
+
+        for (int i = 0; i < plan.runs.Count; i++)
+        {
+            var run = plan.runs[i];
+            var data = new DenTunnelData
+            {
+                id = i,
+                chamberId = run.chamberId,
+                width = run.width,
+                tipWidth = run.tipWidth,
+                segmentLength = plan.entry != null ? plan.entry.segmentLength : 40,
+                floorCentre = SerializableVector3Int.From(plan.centre),
+                clampRadius = clampRadius,
+            };
+            foreach (var p in Wobble(rng, run.a, run.b, wobbleStep, wobbleAmplitude))
+                data.polyline.Add(SerializableVector3Int.From(p));
+            result.Add(data);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The ordered, de-duplicated centreline of one run, with its taper already
+    /// decided per cell. Deterministic from the STORED polyline alone -- which
+    /// is why den tunnel cells are never persisted, exactly as road cells are
+    /// not: the polyline plus the two widths rebuilds them, and one shared
+    /// rasteriser serves generation and load so the two can never disagree.
+    /// </summary>
+    public static List<Vector3Int> Centreline(DenTunnelData tunnel)
+    {
+        var line = new List<Vector3Int>();
+        if (tunnel == null || tunnel.polyline == null || tunnel.polyline.Count == 0)
+            return line;
+
+        var seen = new HashSet<Vector3Int>();
+        for (int i = 0; i < tunnel.polyline.Count - 1; i++)
+        {
+            var a = tunnel.polyline[i].ToVector3Int();
+            var b = tunnel.polyline[i + 1].ToVector3Int();
+            foreach (var p in RoadNetworkBuilder.Line(a, b))
+                if (seen.Add(p)) line.Add(p);
+        }
+        if (tunnel.polyline.Count == 1)
+        {
+            var only = tunnel.polyline[0].ToVector3Int();
+            if (seen.Add(only)) line.Add(only);
+        }
+        return line;
+    }
+
+    /// <summary>
+    /// Every cell of one run: the centreline dilated to a width that tapers from
+    /// the mouth to the tip.
+    ///
+    /// A road dilates at ONE width and can call RoadNetworkBuilder.Dilate once.
+    /// A tunnel narrows as it goes -- the core cavern's own tunnels have done
+    /// since they shipped -- so it dilates per centreline cell at that cell's
+    /// own width. Same square brush, same clamp; only the width varies.
+    /// </summary>
+    public static HashSet<Vector3Int> Cells(DenTunnelData tunnel)
+    {
+        var cells = new HashSet<Vector3Int>();
+        if (tunnel == null) return cells;
+
+        var line = Centreline(tunnel);
+        if (line.Count == 0) return cells;
+
+        var centre = tunnel.floorCentre != null
+            ? tunnel.floorCentre.ToVector3Int() : Vector3Int.zero;
+
+        int mouth = Mathf.Max(1, tunnel.width);
+        int tip = Mathf.Max(1, tunnel.tipWidth);
+
+        for (int i = 0; i < line.Count; i++)
+        {
+            float t = line.Count > 1 ? i / (float)(line.Count - 1) : 0f;
+            int w = Mathf.Max(tip, Mathf.RoundToInt(Mathf.Lerp(mouth, tip, t)));
+            foreach (var p in RoadNetworkBuilder.Dilate(
+                         new[] { line[i] }, w, centre, tunnel.clampRadius))
+                cells.Add(p);
+        }
+        return cells;
+    }
+
+    /// <summary>A wobbling polyline from a to b. The drift is perpendicular and
+    /// bounded, so an endpoint never moves: a run that wandered off its chamber
+    /// would be a run that links nothing, and the whole shape rests on knowing
+    /// which chamber a run reaches.</summary>
+    private static List<Vector3Int> Wobble(
+        System.Random rng, Vector3Int a, Vector3Int b, int step, float amplitude)
+    {
+        var line = new List<Vector3Int> { a };
+        if (step <= 0 || amplitude <= 0f) { line.Add(b); return line; }
+
+        float dx = b.x - a.x, dy = b.y - a.y;
+        float len = Mathf.Sqrt(dx * dx + dy * dy);
+        if (len < step * 2) { line.Add(b); return line; }
+
+        float px = -dy / len, py = dx / len;
+        int knots = Mathf.Max(1, Mathf.RoundToInt(len / step));
+
+        for (int k = 1; k < knots; k++)
+        {
+            float t = k / (float)knots;
+            // Taper the drift to zero at both ends so the mouth leaves the den
+            // straight and the tip arrives on its chamber straight.
+            float taper = Mathf.Sin(t * Mathf.PI);
+            float off = ((float)rng.NextDouble() * 2f - 1f) * amplitude * taper;
+            line.Add(new Vector3Int(
+                Mathf.RoundToInt(a.x + dx * t + px * off),
+                Mathf.RoundToInt(a.y + dy * t + py * off), 0));
+        }
+        line.Add(b);
+        return line;
+    }
 }

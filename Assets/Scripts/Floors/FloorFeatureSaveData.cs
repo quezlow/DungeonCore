@@ -54,6 +54,17 @@ public class FloorFeatureSaveData
     // made: minedTiles carries the solidity, this list carries the Stone
     // retype so a built wall renders and re-mines as stone after a reload.
     public List<SerializableVector3Int> builtWallCells = new();
+
+    // Den tunnels (canon 42). Cells are NOT stored, on the RoadData contract:
+    // a tunnel is pure geometry, so the polyline plus the two widths rebuilds
+    // it exactly and one shared rasteriser serves generation and load. Empty on
+    // floors without a den and on saves written before them.
+    public List<DenTunnelData> denTunnels = new();
+
+    // Reveal is per SEGMENT, not per run: a run crossing half the floor would
+    // otherwise hand over the network's whole shape from one touched cell, and
+    // that shape is the clue there is a den at the end of it.
+    public List<int> revealedDenTunnelSegmentIds = new();
 }
 
 [Serializable]
@@ -113,6 +124,39 @@ public class RoadData
     public int clampRadius;
 
     public List<SerializableVector3Int> polyline = new();
+}
+
+
+/// <summary>
+/// One den tunnel (canon 42). Cells are NOT stored, on the RoadData contract
+/// and for the same reason: a tunnel is pure geometry, so the polyline plus the
+/// two widths rebuilds it exactly, and one shared rasteriser serves generation
+/// and load so they can never disagree.
+/// </summary>
+[Serializable]
+public class DenTunnelData
+{
+    public int id;
+
+    /// <summary>The chamber this run reaches, or -1 when it ends in the rock.
+    /// A dead end is content, not failure (canon 42).</summary>
+    public int chamberId = -1;
+
+    /// <summary>Section at the den mouth, tapering to tipWidth at the far end.</summary>
+    public int width = 3;
+    public int tipWidth = 2;
+
+    /// <summary>Cells of centreline per reveal segment. A run comes into view a
+    /// stretch at a time, never entire -- the road contract.</summary>
+    public int segmentLength = 40;
+
+    /// <summary>Floor centre and clamp radius captured AT GENERATION, so a later
+    /// edit to the den profile can never change how an existing save
+    /// rasterises. The RoadData precedent, and the reason it exists.</summary>
+    public SerializableVector3Int floorCentre;
+    public int clampRadius;
+
+    public List<SerializableVector3Int> polyline = new List<SerializableVector3Int>();
 }
 
 /// <summary>One placed Buried Age site (canon 19).</summary>
@@ -207,7 +251,7 @@ public struct FeatureRef
 }
 
 // Appended only, never reordered: the values are serialised into saves as ints.
-public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road, AncientSite }
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road, AncientSite, DenTunnel }
 
 [Serializable]
 public class CoreCavernData

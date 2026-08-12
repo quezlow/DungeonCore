@@ -994,6 +994,7 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: 74c9413d65178c945a1614ccc2244878, type: 2}
   fogTile: {fileID: 0}
   fallbackRadius: 100
+  rimFacadeDepth: 3
 --- !u!1 &3216912429020762657
 GameObject:
   m_ObjectHideFlags: 0
@@ -1039,6 +1040,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FeatureRevealController
   discoveryBanner: {fileID: 5074255061095212669, guid: 3e8783ef614f8044fa092248f4f148f2, type: 3}
+  dwarvenWarnRangeCells: 4
+  holyWarnRangeCells: 4
   revealSfxKey: FeatureReveal
 --- !u!1 &3490327773314396623
 GameObject:
@@ -2090,6 +2093,7 @@ MonoBehaviour:
   floorTile: {fileID: 11400000, guid: a86561584dc3c6047aff53f54ce4fec3, type: 2}
   fogTile: {fileID: 0}
   fallbackRadius: 100
+  rimFacadeDepth: 3
 --- !u!114 &8562864742481699618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2212,6 +2216,9 @@ MonoBehaviour:
   mossTintStrength: 0.15
   voidLightFloor: 0.22
   voidFalloffCells: 1
+  rimFacadeLight: 1
+  rimFacadeInnerLight: 0.1
+  rimFacadeFalloff: 2
   coreHueStrength: 0
   voidOpaqueFill: 1
   voidBaseColor: {r: 0.26666668, g: 0.26666668, b: 0.26666668, a: 1}
@@ -2376,6 +2383,7 @@ MonoBehaviour:
   debugRoadTile: {fileID: 0}
   debugSiteTile: {fileID: 0}
   logSiteGeneration: 1
+  junctionFilletRadius: 3
 --- !u!1 &8415351630352997601
 GameObject:
   m_ObjectHideFlags: 0
