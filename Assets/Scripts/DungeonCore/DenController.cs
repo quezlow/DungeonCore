@@ -268,6 +268,52 @@ public class DenController : MonoBehaviour
         den.stolenTotal += gold;
     }
 
+    /// <summary>
+    /// An excavator has broken into a buried remains and taken what was in it.
+    /// The excavator's counterpart to DepositCarriedLoot: the digging pass calls
+    /// this when a run reaches a remains cell, and the ledger does the rest.
+    ///
+    /// Capped at the two remains a floor actually has (TerrainTypeMap places
+    /// sitesPerFloor of them), so a runaway dig cannot mint discoveries. This is
+    /// the contested-discovery beat in canon 42: what the kobolds take, the
+    /// player did not find, and clearing the den is what recovers it through
+    /// BuriedRemainsController.GrantExternalDiscovery.
+    ///
+    /// Returns true if the take counted -- false when the floor has no den, the
+    /// den is cleared or in grace, it is not an excavator, or the floor's remains
+    /// are already spent.
+    /// </summary>
+    public bool NotifyRemainsExcavated(int floorIndex, int remainsOnFloor = 2)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return false;
+        if ((DenKind)den.kind != DenKind.Excavator) return false;
+        if (InGrace(den)) return false;
+        if (den.remainsTaken >= remainsOnFloor) return false;
+
+        den.remainsTaken++;
+        den.hoard += remainsLump;
+        return true;
+    }
+
+    /// <summary>How many of this floor's buried remains the diggers have taken.
+    /// Read by the report, and by whatever tells the player they arrived at an
+    /// empty hole.</summary>
+    public int RemainsTakenOn(int floorIndex)
+        => dens.TryGetValue(floorIndex, out var den) ? den.remainsTaken : 0;
+
+    /// <summary>The share of floor loot this den is TUNED to take, for the report
+    /// to print beside what it actually earned. Kept live rather than deleted
+    /// because it is the reference the scavenger count is derived from: theft is
+    /// emergent from bodies now, so this is the target and ScavengersByTier is
+    /// the knob. A den far off this number in play means move the count and
+    /// re-check Tools/sim_den_growth.py.</summary>
+    public float TargetStealShare(int floorIndex)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den)) return 0f;
+        if ((DenKind)den.kind != DenKind.Occupier) return 0f;
+        return StealShare[TierOf(den) - 1];
+    }
+
     /// <summary>How many scavengers this den may have abroad at once. Derived
     /// from the share of floor loot the sim tuned the curve around (6/12/20/30/42
     /// per cent by tier): with theft now emergent from bodies rather than a

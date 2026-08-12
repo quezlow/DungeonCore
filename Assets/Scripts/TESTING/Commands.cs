@@ -1065,7 +1065,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tier  hoard    next tier  stolen   raids  state");
+        sb.AppendLine("floor  kind        tier  hoard    next tier  earned   rem  raids  tgt%  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1078,7 +1078,7 @@ public class Commands : MonoBehaviour
                 : (day - den.awakenedDay < 5 ? $"grace ({5 - (day - den.awakenedDay)}d)" : "active");
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenTotal,-8:F0} {den.raidsLaunched,-6} {state}");
+                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {state}");
         }
 
         if (!any)

@@ -7736,6 +7736,29 @@ floor's profile entry exists AND the generator actually cut tunnels -- a den
 without its network is a den nobody can reach. A floor does not exist until the
 player places a down stair, so a den on an unopened floor costs nothing at all.
 
+**Two entry points, one per income function.** `DepositCarriedLoot` is the door
+a scavenger comes home through; `NotifyRemainsExcavated` is the door a digger
+reaches a buried remains through. Both exist before the agents that will call
+them, deliberately, so the accounting can be tested and tuned first -- and
+`NotifyRemainsExcavated` caps at the two remains a floor actually holds
+(`sitesPerFloor`), so a runaway dig cannot mint discoveries.
+
+**Compile with warnings ENABLED.** The scripts that shipped this ledger passed
+`-nowarn:0414` to the offline compiler, which suppressed precisely the
+assigned-but-never-used class -- so the checker was muffled against the fault it
+was there to find. Three dead members reached the repo that way: `remainsLump`
+and `remainsTaken` (Unity reported the first), and `StealShare`, which went dead
+the moment `TakeCut` was replaced and which a hand-written sweep missed because
+it only looked at serialized fields, not `private static readonly` arrays.
+
+**A constant can agree with the sim and still be dead.** `remainsLump` shipped
+assigned and never read, and the ledger's cross-check passed it as matching
+`REMAINS_LUMP` because that check compared VALUES and not LIVENESS. Unity caught
+it as CS0414; a sweep then found `remainsTaken` dead alongside it. The validation
+battery now includes a declared-but-unused sweep over new files, which is the
+check that was missing. The older principle stands and was simply not applied
+here: assert that a helper is CALLED, not merely defined.
+
 **Save is additive.** A null blob is a legacy save with no dens and needs no
 migration. Floors already created carry no den, which matches the substrate --
 they carry no tunnels either.
