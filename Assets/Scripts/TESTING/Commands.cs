@@ -1042,6 +1042,131 @@ public class Commands : MonoBehaviour
     /// chamber links, 0.9 dead ends, no link at all on 5.8 per cent of seeds,
     /// 508 cells; floor index 2 about 3.3 links, 0.7 dead ends, 0.9 per cent,
     /// 1107 cells.</summary>
+    /// <summary>Does a run actually BREACH the chamber it links, or merely touch
+    /// it? The pathfinder walks 4-NEIGHBOURS only and Bresenham takes diagonal
+    /// steps, so "the tunnel reaches the chamber" and "something can walk from
+    /// one into the other" are different claims, and only the second one matters.
+    /// Flood-fills the union and checks the second. Measured at 831/831 and
+    /// 959/959 when this shipped; anything less is a regression, and the three
+    /// things that carry it are all quietly undoable by a tidy-up: the centreline
+    /// runs to the chamber CENTRE rather than its edge, consecutive dilations
+    /// OVERLAP so a 2-wide tip stays 4-connected across a diagonal step, and
+    /// handing the overlap back to the chamber severs nothing.</summary>
+    [ContextMenu("Den Tunnel Breach Check")]
+    void DenTunnelBreachCheck()
+    {
+        if (denTunnelProfile == null) { Debug.Log("[Commands] Assign Den Tunnel Profile first."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Den tunnel breach check");
+        sb.AppendLine("floor  links  breached  touchOnly  apart  verdict");
+        bool allGood = true;
+
+        foreach (var entry in denTunnelProfile.Floors)
+        {
+            if (entry == null) continue;
+            int radius = FloorRadiusFor(entry.floorIndex);
+            var centre = new Vector3Int(0, 0, 0);
+            int links = 0, breached = 0, touchOnly = 0, apart = 0;
+
+            for (int s = 0; s < 500; s++)
+            {
+                var rng = new System.Random(s * 7919 + entry.floorIndex);
+
+                // Chambers as discs at the authored CA scale (box 8-14 -> r 4-7).
+                var centres = new System.Collections.Generic.List<Vector3Int>();
+                var ids = new System.Collections.Generic.List<int>();
+                var blobs = new System.Collections.Generic.List<System.Collections.Generic.HashSet<Vector3Int>>();
+                int n = rng.Next(3, 7);
+                for (int i = 0; i < n; i++)
+                {
+                    int dx = rng.Next(-radius + 10, radius - 10);
+                    int dy = rng.Next(-radius + 10, radius - 10);
+                    if (dx * dx + dy * dy > (radius - 10) * (radius - 10)) continue;
+                    var cc = new Vector3Int(dx, dy, 0);
+                    centres.Add(cc); ids.Add(centres.Count - 1);
+                    blobs.Add(DiscCells(cc, rng.Next(4, 8)));
+                }
+                if (centres.Count == 0) continue;
+
+                var plan = DenTunnelBuilder.Plan(rng, centre, radius, entry, 4,
+                                                 centres, ids, centre, 6);
+                if (!plan.valid) continue;
+
+                var tunnels = DenTunnelBuilder.Rasterise(rng, plan, radius - 10, 16, 3f);
+                foreach (var t in tunnels)
+                {
+                    if (t.chamberId < 0) continue;
+                    links++;
+                    var blob = blobs[t.chamberId];
+
+                    // Exactly what RebuildDenTunnelCells does: the chamber owns
+                    // its cells, so the run hands them back.
+                    var tunnelCells = new System.Collections.Generic.HashSet<Vector3Int>();
+                    foreach (var cc in DenTunnelBuilder.Cells(t))
+                        if (!blob.Contains(cc)) tunnelCells.Add(cc);
+
+                    bool touches = false;
+                    foreach (var cc in tunnelCells)
+                    {
+                        for (int d = 0; d < Orth4Dirs.Length && !touches; d++)
+                            if (blob.Contains(cc + Orth4Dirs[d])) touches = true;
+                        if (touches) break;
+                    }
+
+                    var union = new System.Collections.Generic.HashSet<Vector3Int>(tunnelCells);
+                    foreach (var cc in blob) union.Add(cc);
+                    var seen = new System.Collections.Generic.HashSet<Vector3Int>();
+                    var q = new System.Collections.Generic.Queue<Vector3Int>();
+                    var start = t.polyline[0].ToVector3Int();
+                    if (!union.Contains(start))
+                        foreach (var cc in tunnelCells) { start = cc; break; }
+                    q.Enqueue(start); seen.Add(start);
+                    bool reached = false;
+                    while (q.Count > 0)
+                    {
+                        var cc = q.Dequeue();
+                        if (blob.Contains(cc)) { reached = true; break; }
+                        for (int d = 0; d < Orth4Dirs.Length; d++)
+                        {
+                            var p = cc + Orth4Dirs[d];
+                            if (union.Contains(p) && seen.Add(p)) q.Enqueue(p);
+                        }
+                    }
+
+                    if (reached) breached++;
+                    else if (touches) touchOnly++;
+                    else apart++;
+                }
+            }
+
+            bool ok = links > 0 && touchOnly == 0 && apart == 0;
+            allGood = allGood && ok;
+            sb.AppendLine($"{entry.floorIndex,-6} {links,-6} {breached,-9} {touchOnly,-10} {apart,-6} "
+                        + (ok ? "BREACHES" : "REGRESSION"));
+        }
+
+        sb.AppendLine(allGood
+            ? "All links are 4-connected into their chamber."
+            : "A run now only TOUCHES its chamber. Nothing can walk in. See canon 42.");
+        Debug.Log(sb.ToString());
+    }
+
+    private static readonly Vector3Int[] Orth4Dirs =
+    {
+        new Vector3Int(1, 0, 0), new Vector3Int(-1, 0, 0),
+        new Vector3Int(0, 1, 0), new Vector3Int(0, -1, 0),
+    };
+
+    private static System.Collections.Generic.HashSet<Vector3Int> DiscCells(Vector3Int c, int r)
+    {
+        var s = new System.Collections.Generic.HashSet<Vector3Int>();
+        for (int x = -r; x <= r; x++)
+            for (int y = -r; y <= r; y++)
+                if (x * x + y * y <= r * r) s.Add(new Vector3Int(c.x + x, c.y + y, 0));
+        return s;
+    }
+
     [ContextMenu("Den Tunnel Report (headless)")]
     void DenTunnelReport()
     {

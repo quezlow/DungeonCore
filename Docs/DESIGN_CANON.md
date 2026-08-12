@@ -7609,6 +7609,23 @@ nothing, because the run's cells outside the blob stay 4-adjacent to cells
 inside it. `Den Tunnel Breach Check` in `Commands` is the standing regression
 test.
 
+**Diagnostic parity, and the lesson relearned the hard way.** Den tunnels
+first shipped ABSENT from `DebugRevealAll`, `LogFeatureStats` and the debug
+overlay -- so a correctly generated network was invisible to every tool built
+to find one, and read as a generator that had done nothing. Entry 19 records
+this exact failure for sites, in a comment inside `DebugRevealAll` itself,
+and it was made again anyway. **Any feature added to a floor is added to all
+three surfaces in the same pass.** Den tunnels draw in the overlay whether
+revealed or not, on the site rule rather than the road rule: an unrevealed run
+is precisely what one wants to look at when asking where the den went.
+
+**Two faults fixed with it.** `GetFeatureCenterWorld` had no `DenTunnel` case,
+so the discovery alert click-jumped to the floor origin -- a discovery that
+takes you nowhere reads as a broken alert rather than a missing case. And a
+floor that generates with no profile assigned now WARNS: the editor step is
+silent, an unassigned profile is indistinguishable from a floor meant to carry
+no den, and a floor once generated can never gain one.
+
 **Ownership order.** `RebuildDenTunnelCells` hands back every cell already
 owned by the core cavern, entrance, carriageway, sites and chambers; rivers
 take theirs afterwards, which is the flooded run. So a tunnel keeps only the

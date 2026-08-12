@@ -291,6 +291,10 @@ public class TerrainFeatureGenerator : MonoBehaviour
              "skip. Note debugRoadTile is also unassigned by default, so roads do " +
              "not show in the overlay either.")]
     [SerializeField] private TileBase debugSiteTile;
+    [Tooltip("Debug overlay colour for den tunnels (canon 42). Leave empty "
+           + "to skip. Drawn whether revealed or not, on the site rule: an "
+           + "unrevealed run is exactly what you want to look at.")]
+    [SerializeField] private TileBase debugDenTunnelTile;
     [Tooltip("Logs why site generation produced the count it did. Cheap, and the " +
              "only way to tell an empty roster from an unreachable band.")]
     [SerializeField] private bool logSiteGeneration = true;
@@ -951,6 +955,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var site = GetSiteById(featureId);
             if (site != null)
                 return floor.TileInfluence.CellToWorld(site.anchorCell.ToVector3Int());
+        }
+        else if (type == FeatureType.DenTunnel)
+        {
+            // The middle cell of the stretch, exactly as a road segment does.
+            // Without this the alert fell through to transform.position and
+            // click-jumped to the floor origin -- a discovery that takes you
+            // nowhere reads as a broken alert, not a missing case.
+            var dseg = GetDenTunnelSegment(featureId);
+            if (dseg != null && dseg.cells.Count > 0)
+                return floor.TileInfluence.CellToWorld(dseg.cells[dseg.cells.Count / 2]);
         }
         else if (type == FeatureType.EntranceCave && featureData.entranceCave != null)
         {
@@ -2918,7 +2932,19 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// </summary>
     private void GenerateDenTunnels(System.Random rng, Vector3Int centerCell, int floorRadius)
     {
-        if (denTunnelProfile == null) return;
+        // Assigning the profile is an editor step, and an unassigned one is
+        // indistinguishable from a floor that is meant to carry no den. Say
+        // so once, at the only moment anyone can act on it: this arc has
+        // already lost a session to a silently absent den.
+        if (denTunnelProfile == null)
+        {
+            Debug.LogWarning(
+                $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} generated with NO "
+              + "DenTunnelProfile assigned, so it carries no den tunnels. If that floor "
+              + "was meant to have a den, assign the profile on the floor template "
+              + "prefab -- a floor already generated can never gain one.");
+            return;
+        }
         var entry = denTunnelProfile.For(floor != null ? floor.FloorIndex : 0);
         if (entry == null) return;
 
@@ -3063,6 +3089,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 foreach (var sv in r.cells)
                     debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugRiverTile);
             }
+
+        // Den tunnels follow the SITE rule rather than the road rule: drawn
+        // whether revealed or not, because the overlay is a development tool
+        // and an unrevealed run is precisely what one wants to look at when
+        // asking where the den went.
+        if (debugDenTunnelTile != null)
+            foreach (var seg in denTunnelSegments)
+                foreach (var c in seg.cells)
+                    debugOverlayTilemap.SetTile(c, debugDenTunnelTile);
 
         if (debugRoadTile != null)
             foreach (var seg in roadSegments)
@@ -3791,9 +3826,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData.sites != null)
             foreach (var s in featureData.sites) RevealSite(s.id);
 
+        // Den tunnels, for the reason the sites note above gives: a
+        // feature missing from here generates correctly and is invisible
+        // to the one tool built to look at it.
+        foreach (var seg in denTunnelSegments) RevealDenTunnelSegment(seg.segmentId);
+
         Debug.Log($"[TerrainFeatureGenerator] All features revealed (debug): " +
                   $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
                   $"{roadSegments.Count} road segments, " +
+                  $"{denTunnelSegments.Count} den tunnel segments, " +
                   $"{(featureData.sites != null ? featureData.sites.Count : 0)} sites.");
     }
 
@@ -3822,6 +3863,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
             $"({(featureData.revealedSiteIds != null ? featureData.revealedSiteIds.Count : 0)} revealed). " +
             $"{featureData.roads.Count} roads ({roadSegments.Count} segments, " +
             $"{roadCells.Count} cells, {featureData.revealedRoadSegmentIds.Count} revealed). " +
+            $"{DenTunnelCount} den tunnels ({denTunnelSegments.Count} segments, " +
+            $"{denTunnelCells.Count} cells, {RevealedDenTunnelSegmentCount} revealed). " +
             $"Lookup size {cellLookup.Count}.");
     }
 }
