@@ -2389,6 +2389,7 @@ MonoBehaviour:
   debugRoadTile: {fileID: 0}
   debugSiteTile: {fileID: 0}
   debugDenTunnelTile: {fileID: 0}
+  debugDenCavityTile: {fileID: 11400000, guid: 85e5e52bcf412aa49bcce8f52c24f1a7, type: 2}
   logSiteGeneration: 1
   junctionFilletRadius: 3
 --- !u!1 &8415351630352997601

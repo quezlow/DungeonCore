@@ -295,6 +295,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
            + "to skip. Drawn whether revealed or not, on the site rule: an "
            + "unrevealed run is exactly what you want to look at.")]
     [SerializeField] private TileBase debugDenTunnelTile;
+    [Tooltip("Debug overlay colour for the den cavity (canon 42). Leave empty "
+           + "to skip. Drawn whether revealed or not, and the RESERVE is drawn "
+           + "too where it differs from the carve -- an excavator's unopened "
+           + "ground is exactly what you want to look at when asking whether "
+           + "the hole has room to grow.")]
+    [SerializeField] private TileBase debugDenCavityTile;
     [Tooltip("Logs why site generation produced the count it did. Cheap, and the " +
              "only way to tell an empty roster from an unreachable band.")]
     [SerializeField] private bool logSiteGeneration = true;
@@ -965,6 +971,16 @@ public class TerrainFeatureGenerator : MonoBehaviour
             var dseg = GetDenTunnelSegment(featureId);
             if (dseg != null && dseg.cells.Count > 0)
                 return floor.TileInfluence.CellToWorld(dseg.cells[dseg.cells.Count / 2]);
+        }
+        else if (type == FeatureType.DenCavity && featureData.denCavity != null)
+        {
+            // The cavity centre, which is also the den anchor. Without this the
+            // discovery alert falls through to transform.position and click-jumps
+            // to the floor origin -- the exact fault den tunnels shipped with,
+            // recorded in canon 42 as "a discovery that takes you nowhere reads
+            // as a broken alert, not a missing case". Not making it a third time.
+            return floor.TileInfluence.CellToWorld(
+                featureData.denCavity.centreCell.ToVector3Int());
         }
         else if (type == FeatureType.EntranceCave && featureData.entranceCave != null)
         {
@@ -2826,6 +2842,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var sv in ch.cells)
                 cellLookup[sv.ToVector3Int()] = new FeatureRef { type = FeatureType.Chamber, featureId = ch.id };
 
+        // The den cavity between chambers and tunnels, which is canon 42's
+        // amended precedence: it must come after chambers so a seat that
+        // overlapped one loses the argument, and before the runs so they hand
+        // its cells back. The RESERVE goes into reservedCoreCells rather than
+        // the lookup -- it is unopened rock, so it must own no cell and render
+        // as nothing, but later carvers still have to keep off it.
+        if (featureData.denCavity != null)
+        {
+            foreach (var sv in featureData.denCavity.reserveCells)
+                reservedCoreCells.Add(sv.ToVector3Int());
+            foreach (var sv in featureData.denCavity.cells)
+                cellLookup[sv.ToVector3Int()] =
+                    new FeatureRef { type = FeatureType.DenCavity, featureId = 0 };
+        }
+
         // Den tunnels after chambers. RebuildDenTunnelCells hands back every
         // cell a chamber, road or site owns, so a run that BREACHES a chamber
         // keeps only the stretch outside it -- and the two stay 4-connected,
@@ -2858,14 +2889,115 @@ public class TerrainFeatureGenerator : MonoBehaviour
     private readonly List<DenTunnelSegmentRuntime> denTunnelSegments = new List<DenTunnelSegmentRuntime>();
     private readonly HashSet<Vector3Int> denTunnelCells = new HashSet<Vector3Int>();
 
-    /// <summary>Where the den itself sits, or null on a floor without one. Read
-    /// by the den controller when it is built; nothing else reads it yet.</summary>
-    public Vector3Int? DenAnchor =>
-        featureData != null && featureData.denTunnels != null
-        && featureData.denTunnels.Count > 0
-        && featureData.denTunnels[0].polyline.Count > 0
-            ? featureData.denTunnels[0].polyline[0].ToVector3Int()
-            : (Vector3Int?)null;
+    /// <summary>Where the den itself sits, or null on a floor without one.
+    ///
+    /// THE CAVITY CENTRE, not a polyline origin -- and the fallback is not
+    /// tidiness. Den tunnels shipped a release before the cavity did, so a save
+    /// can hold a perfectly good network with no hole at the end of it. Those
+    /// floors keep the old answer for ever, because floor features persist
+    /// rather than regenerate and no migration can carve them a cavity after
+    /// the fact. The two answers agree anyway on any floor that has both:
+    /// DenTunnelBuilder.Plan sets run.a = den for EVERY run, so the origin of
+    /// run 0 and the cavity centre are the same cell by construction.
+    ///
+    /// Consumed as a WORLD POSITION via TileInfluence.CellToWorld by
+    /// DenController.SpawnScavenger and DungeonMonster's banking test, so the
+    /// meaning of this property is load-bearing in two other files.</summary>
+    public Vector3Int? DenAnchor
+    {
+        get
+        {
+            if (featureData == null) return null;
+            if (featureData.denCavity != null && featureData.denCavity.centreCell != null)
+                return featureData.denCavity.centreCell.ToVector3Int();
+            if (featureData.denTunnels != null && featureData.denTunnels.Count > 0
+                && featureData.denTunnels[0].polyline.Count > 0)
+                return featureData.denTunnels[0].polyline[0].ToVector3Int();
+            return null;
+        }
+    }
+
+    /// <summary>The cavity's OPEN cells, empty on a floor without one. Handed to
+    /// den bodies so they scatter across the hole instead of huddling at a
+    /// point -- half B. Returned as a fresh list rather than the live set,
+    /// because DungeonMonster.InitialiseWild copies what it is given and a
+    /// caller holding the generator's own collection would see it mutate under
+    /// an excavator's growth.</summary>
+    public List<Vector3Int> DenCavityCells
+    {
+        get
+        {
+            var list = new List<Vector3Int>();
+            if (featureData == null || featureData.denCavity == null) return list;
+            foreach (var sv in featureData.denCavity.cells) list.Add(sv.ToVector3Int());
+            return list;
+        }
+    }
+
+    public bool HasDenCavity => featureData != null && featureData.denCavity != null;
+
+    public int DenCavityCellCount
+        => featureData != null && featureData.denCavity != null
+            ? featureData.denCavity.cells.Count : 0;
+
+    public int DenCavityReserveCount
+        => featureData != null && featureData.denCavity != null
+            ? featureData.denCavity.reserveCells.Count : 0;
+
+    public bool IsDenCavity(Vector3Int cell) => GetFeatureAt(cell) == FeatureType.DenCavity;
+
+    public bool IsDenCavityRevealed
+        => featureData != null && featureData.denCavity != null
+        && featureData.denCavity.revealed;
+
+    /// <summary>Reveals the cavity ENTIRE, on the CHAMBER rule rather than the
+    /// tunnel rule. A tunnel comes into view a stretch at a time because a run
+    /// crossing half the floor would otherwise hand over the network's shape
+    /// from one touched cell; a cavity is a single room twenty cells across, and
+    /// unfogging it in pieces would read as broken fog rather than as
+    /// discovery.</summary>
+    public void RevealDenCavity()
+    {
+        if (featureData == null || featureData.denCavity == null) return;
+        if (featureData.denCavity.revealed) return;
+        featureData.denCavity.revealed = true;
+        RevealVersion++;
+        UnfogDenCavity();
+    }
+
+    /// <summary>Reveal is the carved cells plus their one-cell halo, and nothing
+    /// else -- entry 19's invariant, which UnfogDenTunnelSegment already
+    /// satisfies by construction and which this copies rather than reinvents:
+    /// reveal exactly the cells the wall renderer will paint, no more and no
+    /// fewer. The renderer caps a solid 8-adjacent to a MINED cell,
+    /// MarkNaturalFloor below makes these cells mined, and the halo is precisely
+    /// their 8-neighbourhood.
+    ///
+    /// THE RESERVE IS DELIBERATELY NOT REVEALED AND NOT MARKED. An excavator's
+    /// unopened ground has to stay indistinguishable from the rock around it, or
+    /// the player can see the shape of a hole that has not been dug -- and fog
+    /// is one-way, so showing it early cannot be undone. This is the resting
+    /// pocket's rule, applied to a bigger reservation.</summary>
+    private void UnfogDenCavity()
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null || featureData == null || featureData.denCavity == null) return;
+
+        var open = new List<Vector3Int>(featureData.denCavity.cells.Count);
+        foreach (var sv in featureData.denCavity.cells) open.Add(sv.ToVector3Int());
+        if (open.Count == 0) return;
+
+        foreach (var c in open)
+        {
+            terrain.RevealTile(c);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+        }
+
+        floor.TileInfluence?.MarkNaturalFloor(open);
+    }
 
     public int DenTunnelCount => featureData?.denTunnels?.Count ?? 0;
 
@@ -2978,6 +3110,15 @@ public class TerrainFeatureGenerator : MonoBehaviour
             return;
         }
 
+        // The cavity, BEFORE the runs are drawn. Canon 42's precedence puts the
+        // cavity ahead of den tunnels, and that is a statement about CELL
+        // OWNERSHIP rather than about call order: RebuildDenTunnelCells hands
+        // back every cell the cavity owns, so a run keeps only the stretch
+        // outside the hole. It is carved here, inside this method, because the
+        // anchor is Plan's output and splitting the two would mean picking the
+        // anchor twice or storing it in a third place.
+        CarveDenCavity(rng, plan, entry, centerCell, floorRadius);
+
         int clampRadius = Mathf.Max(1, floorRadius - denTunnelRimMargin);
         featureData.denTunnels = DenTunnelBuilder.Rasterise(
             rng, plan, clampRadius, denTunnelWobbleStep, denTunnelWobbleAmplitude);
@@ -2986,6 +3127,174 @@ public class TerrainFeatureGenerator : MonoBehaviour
             Debug.Log($"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} den tunnels: "
                     + $"{plan.ChamberLinks} chamber links, {plan.DeadEnds} dead ends, "
                     + $"den at {plan.den}, band {plan.bandInner}-{plan.bandOuter}.");
+    }
+
+    /// <summary>
+    /// Carves the den's hole at the anchor Plan chose.
+    ///
+    /// TWO SHIPPED CARVERS, NO THIRD. Canon 42 says outright not to write
+    /// another centreline carver and the same argument applies to blobs, so the
+    /// silhouette is RunChamberCA -- the cellular automata that already makes
+    /// every cave on the floor -- and the size clamp is
+    /// GenerateCoreCavernAndTunnels' own top-up and trim. Neither would do
+    /// alone: the CA has NO size control whatever (measured spread 6 to 133
+    /// cells at fixed parameters), and the top-up disc reads as a bubble rather
+    /// than a cave.
+    ///
+    /// THE BOX SIZE IS MEASURED, NOT CHOSEN, and this is the part a tidy-up
+    /// would undo. Tools/sim_den_cavity.py sweeps box sizes and reports how many
+    /// cells the clamp has to CORRECT, because the clamp always hits the band by
+    /// construction and the final count therefore proves nothing. Box 22 for the
+    /// occupier band and 28 for the excavator reserve land the RAW yield inside
+    /// the target, so the clamp corrects a median of zero cells and the CA's own
+    /// outline survives. A first pass guessed 28 and 36 and the sweep rejected
+    /// both: the trim removes the cell farthest from the centre, so a box that
+    /// overshoots comes out rounder the more it is cut.
+    ///
+    /// A DEAD ROLL IS RETRIED RATHER THAN DISCARDED, which is the one place this
+    /// departs from GenerateChambers. A chamber whose centre closes is simply not
+    /// placed and the floor carries one fewer cave. The den is GUARANTEED, so
+    /// there is no "one fewer" to fall back on -- a dead roll here would leave a
+    /// den with no hole in it.
+    /// </summary>
+    private void CarveDenCavity(
+        System.Random rng, DenTunnelPlan plan, DenTunnelFloorEntry entry,
+        Vector3Int floorCentre, int floorRadius)
+    {
+        if (plan == null || !plan.valid || entry == null) return;
+
+        int box = Mathf.Max(8, entry.cavityBox);
+        int lo = Mathf.Max(16, entry.cavityMinCells);
+        int hi = Mathf.Max(lo, entry.cavityMaxCells);
+
+        List<Vector3Int> reserve = null;
+        for (int attempt = 0; attempt < 8 && reserve == null; attempt++)
+        {
+            var raw = LargestConnectedRegion(
+                RunChamberCA(rng, plan.den, box, floorCentre, floorRadius));
+            if (raw.Count > 0) reserve = raw;
+        }
+        if (reserve == null)
+        {
+            Debug.LogWarning(
+                $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} den cavity: the CA "
+              + "closed on all 8 attempts, so this den has no hole. Report it -- at the "
+              + "shipped fill this happens on well under one seed in a thousand.");
+            return;
+        }
+
+        reserve = ClampCellCount(rng, reserve, plan.den, lo, hi);
+
+        // The anchor must be IN its own hole: every run starts there, and a den
+        // whose centre sat in rock would bank hauls inside a wall. The CA floods
+        // from the box centre so this holds by construction, but the trim can in
+        // principle take it, and an assertion here is cheaper than finding out
+        // from a goblin walking at a wall.
+        if (!reserve.Contains(plan.den)) reserve.Add(plan.den);
+
+        // Tier 1 opens a connected sub-blob grown from the centre. An occupier
+        // authors this equal to the maximum and opens the lot at once, because
+        // it never digs; an excavator opens the rest as it tiers, which is half
+        // B and deliberately not built here.
+        int tier1 = Mathf.Clamp(entry.cavityTier1Cells, 1, reserve.Count);
+        var open = tier1 >= reserve.Count
+            ? new List<Vector3Int>(reserve)
+            : GrowFromCentre(reserve, plan.den, tier1);
+
+        featureData.denCavity = new DenCavityData
+        {
+            centreCell = SerializableVector3Int.From(plan.den),
+            cells = ToSerializable(open),
+            reserveCells = ToSerializable(reserve),
+            kind = (int)entry.kind,
+            revealed = false,
+        };
+
+        if (logDenTunnelGeneration)
+            Debug.Log($"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} den cavity: "
+                    + $"{open.Count} open of {reserve.Count} reserved at {plan.den} "
+                    + $"(box {box}, band {lo}-{hi}, {entry.kind}).");
+    }
+
+    /// <summary>GenerateCoreCavernAndTunnels' size clamp, lifted to where a
+    /// second caller needs it: grow outward to a random 4-adjacent cell while
+    /// under the floor, drop the cell farthest from the centre while over the
+    /// ceiling.
+    ///
+    /// The core cavern is deliberately NOT retrofitted onto this. Its own copy
+    /// is interleaved with the reservedCoreCells mirroring, it runs on floor
+    /// index 0 only, and floor features PERSIST rather than regenerate -- so
+    /// refactoring shipped generation for tidiness could only ever reshape
+    /// something, never improve it.</summary>
+    private static List<Vector3Int> ClampCellCount(
+        System.Random rng, List<Vector3Int> cells, Vector3Int centre, int lo, int hi)
+    {
+        var set = new HashSet<Vector3Int>(cells);
+
+        int safety = 0;
+        var candidates = new List<Vector3Int>();
+        while (set.Count < lo && safety++ < 4000)
+        {
+            candidates.Clear();
+            foreach (var c in set)
+            {
+                TryAddCandidate(new Vector3Int(c.x + 1, c.y, 0), set, candidates);
+                TryAddCandidate(new Vector3Int(c.x - 1, c.y, 0), set, candidates);
+                TryAddCandidate(new Vector3Int(c.x, c.y + 1, 0), set, candidates);
+                TryAddCandidate(new Vector3Int(c.x, c.y - 1, 0), set, candidates);
+            }
+            if (candidates.Count == 0) break;
+            set.Add(candidates[rng.Next(candidates.Count)]);
+        }
+
+        while (set.Count > hi)
+        {
+            Vector3Int farthest = centre;
+            int maxSq = -1;
+            foreach (var c in set)
+            {
+                if (c == centre) continue;
+                int sq = (c.x - centre.x) * (c.x - centre.x)
+                       + (c.y - centre.y) * (c.y - centre.y);
+                if (sq > maxSq) { maxSq = sq; farthest = c; }
+            }
+            if (farthest == centre) break;
+            set.Remove(farthest);
+        }
+
+        return new List<Vector3Int>(set);
+    }
+
+    /// <summary>A connected sub-blob of `all`, breadth-first from `centre`, up to
+    /// `target` cells. Breadth-first rather than nearest-first so the result is
+    /// guaranteed 4-connected and guaranteed to contain the centre: the runs all
+    /// originate there, and a tier-1 hole that did not reach its own tunnel
+    /// mouths would seal the den.</summary>
+    private static List<Vector3Int> GrowFromCentre(
+        List<Vector3Int> all, Vector3Int centre, int target)
+    {
+        var pool = new HashSet<Vector3Int>(all);
+        var outSet = new HashSet<Vector3Int>();
+        var queue = new Queue<Vector3Int>();
+
+        var seed = pool.Contains(centre) ? centre : all[0];
+        queue.Enqueue(seed);
+        outSet.Add(seed);
+
+        while (queue.Count > 0 && outSet.Count < target)
+        {
+            var c = queue.Dequeue();
+            var n0 = new Vector3Int(c.x + 1, c.y, 0);
+            var n1 = new Vector3Int(c.x - 1, c.y, 0);
+            var n2 = new Vector3Int(c.x, c.y + 1, 0);
+            var n3 = new Vector3Int(c.x, c.y - 1, 0);
+            if (outSet.Count < target && pool.Contains(n0) && outSet.Add(n0)) queue.Enqueue(n0);
+            if (outSet.Count < target && pool.Contains(n1) && outSet.Add(n1)) queue.Enqueue(n1);
+            if (outSet.Count < target && pool.Contains(n2) && outSet.Add(n2)) queue.Enqueue(n2);
+            if (outSet.Count < target && pool.Contains(n3) && outSet.Add(n3)) queue.Enqueue(n3);
+        }
+
+        return new List<Vector3Int>(outSet);
     }
 
     /// <summary>
@@ -3010,6 +3319,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData.chambers != null)
             foreach (var ch in featureData.chambers)
                 foreach (var sv in ch.cells) taken.Add(sv.ToVector3Int());
+        // The cavity owns its own hole, exactly as a chamber owns the cave a run
+        // breaches. The run keeps only the stretch outside, and the two stay
+        // 4-connected for the reason the chamber breach does: consecutive
+        // dilations overlap, and every run STARTS at the cavity centre, so a run
+        // leaves the hole through its own carved cells rather than meeting it
+        // edge on. Den Cavity Report is the standing regression test.
+        if (featureData.denCavity != null)
+            foreach (var sv in featureData.denCavity.cells) taken.Add(sv.ToVector3Int());
         if (featureData.rivers != null)
             foreach (var r in featureData.rivers)
             {
@@ -3105,6 +3422,18 @@ public class TerrainFeatureGenerator : MonoBehaviour
             foreach (var seg in denTunnelSegments)
                 foreach (var c in seg.cells)
                     debugOverlayTilemap.SetTile(c, debugDenTunnelTile);
+
+        // The cavity, drawn whether revealed or not on the same site rule. The
+        // RESERVE is painted first and the OPEN cells over it, so an excavator's
+        // unopened ground shows as cavity-coloured underneath -- which is the
+        // one view that answers "has this hole got room left to grow".
+        if (debugDenCavityTile != null && featureData.denCavity != null)
+        {
+            foreach (var sv in featureData.denCavity.reserveCells)
+                debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugDenCavityTile);
+            foreach (var sv in featureData.denCavity.cells)
+                debugOverlayTilemap.SetTile(sv.ToVector3Int(), debugDenCavityTile);
+        }
 
         if (debugRoadTile != null)
             foreach (var seg in roadSegments)
@@ -3807,6 +4136,8 @@ public class TerrainFeatureGenerator : MonoBehaviour
         if (featureData.revealedDenTunnelSegmentIds != null)
             foreach (var sid in featureData.revealedDenTunnelSegmentIds)
                 UnfogDenTunnelSegment(sid);
+        if (featureData.denCavity != null && featureData.denCavity.revealed)
+            UnfogDenCavity();
 
         // Once, at the end. Each UnfogRoadSegment above bumps RevealVersion, so
         // rebuilding per segment would be quadratic on a floor with eighty of them.
@@ -3838,10 +4169,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // to the one tool built to look at it.
         foreach (var seg in denTunnelSegments) RevealDenTunnelSegment(seg.segmentId);
 
+        // The cavity, same reason, third time of asking. Canon 42 records this
+        // failure being made for sites and then made again for den tunnels; a
+        // feature added to a floor is added to ALL THREE surfaces in the pass
+        // that adds it.
+        RevealDenCavity();
+
         Debug.Log($"[TerrainFeatureGenerator] All features revealed (debug): " +
                   $"{featureData.chambers.Count} chambers, {featureData.rivers.Count} rivers, " +
                   $"{roadSegments.Count} road segments, " +
                   $"{denTunnelSegments.Count} den tunnel segments, " +
+                  $"{(featureData.denCavity != null ? featureData.denCavity.cells.Count : 0)} den cavity cells, " +
                   $"{(featureData.sites != null ? featureData.sites.Count : 0)} sites.");
     }
 
@@ -3872,6 +4210,12 @@ public class TerrainFeatureGenerator : MonoBehaviour
             $"{roadCells.Count} cells, {featureData.revealedRoadSegmentIds.Count} revealed). " +
             $"{DenTunnelCount} den tunnels ({denTunnelSegments.Count} segments, " +
             $"{denTunnelCells.Count} cells, {RevealedDenTunnelSegmentCount} revealed). " +
+            (featureData.denCavity != null
+                ? $"Den cavity {DenCavityCellCount} open of {DenCavityReserveCount} reserved at "
+                + $"{featureData.denCavity.centreCell.ToVector3Int()} "
+                + $"({(DenKind)featureData.denCavity.kind}, "
+                + $"{(IsDenCavityRevealed ? "revealed" : "unrevealed")}). "
+                : "No den cavity. ") +
             $"Lookup size {cellLookup.Count}.");
     }
 }

@@ -65,6 +65,12 @@ public class FloorFeatureSaveData
     // otherwise hand over the network's whole shape from one touched cell, and
     // that shape is the clue there is a den at the end of it.
     public List<int> revealedDenTunnelSegmentIds = new();
+
+    // The den's own hole (canon 42). Null on floors without a den and on every
+    // save written before it -- including saves that already carry den TUNNELS,
+    // since those shipped first. DenAnchor falls back to the old polyline origin
+    // in exactly that case, so no migration runs.
+    public DenCavityData denCavity;
 }
 
 [Serializable]
@@ -251,7 +257,55 @@ public struct FeatureRef
 }
 
 // Appended only, never reordered: the values are serialised into saves as ints.
-public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road, AncientSite, DenTunnel }
+public enum FeatureType { None, River, Chamber, CoreCavern, RiverBank, EntranceCave, Road, AncientSite, DenTunnel, DenCavity }
+
+/// <summary>
+/// The hole a den lives in (canon 42). Cells ARE stored, and the contract is
+/// the SITE's rather than the road's: a road or a tunnel is pure geometry that
+/// a polyline rebuilds exactly, but a cavity is a cellular-automata carve, so
+/// a later edit to the fill chance, the iteration count or the box size would
+/// silently reshape every existing save -- moving walls the player has already
+/// dug around. That is precisely the reason SiteData persists its cells.
+///
+/// TWO SETS, AND THE SECOND IS NOT REDUNDANT. `reserveCells` is the MAXIMUM
+/// footprint, fixed at generation, so chambers and rivers negotiate around
+/// ground the den has not opened yet -- the reservedCoreCells mechanism, and
+/// the resting pocket's precedent of reserving stone that is never carved.
+/// `cells` is what is actually open. An occupier writes the two identical and
+/// never touches them again, because it never digs; an excavator opens more of
+/// its reserve as it tiers.
+///
+/// Note what is NOT here: minedTiles. That records openness and carries no
+/// identity, so it cannot answer "which cells are the cavity" -- and
+/// TileInfluenceManager.LoadSaveData clears and rebuilds it from the save,
+/// which is why ReassertOpenGround has to re-run afterwards. Every feature in
+/// the game persists its own identity separately for that reason.
+/// </summary>
+[Serializable]
+public class DenCavityData
+{
+    /// <summary>The den anchor: DenTunnelBuilder.Plan's chosen point, which is
+    /// also where every run originates (Plan sets run.a = den for all of them),
+    /// so the cavity seats against the whole network without any run moving.</summary>
+    public SerializableVector3Int centreCell;
+
+    /// <summary>Open ground. Occupier: the whole hole, fixed. Excavator: what
+    /// has been dug so far, growing inside reserveCells.</summary>
+    public List<SerializableVector3Int> cells = new List<SerializableVector3Int>();
+
+    /// <summary>The maximum footprint, reserved at generation and never
+    /// re-rolled. Ordinary rock to the player, who may mine it first and keep
+    /// it -- which is the race, and the resting place's own trick.</summary>
+    public List<SerializableVector3Int> reserveCells = new List<SerializableVector3Int>();
+
+    /// <summary>True once influence has touched it. The cavity reveals ENTIRE,
+    /// on the chamber rule rather than the tunnel rule.</summary>
+    public bool revealed;
+
+    /// <summary>Which den kind carved it, as an int (appended only). Read by the
+    /// report so a floor can be checked without resolving its profile.</summary>
+    public int kind;
+}
 
 [Serializable]
 public class CoreCavernData

@@ -1378,6 +1378,299 @@ public class Commands : MonoBehaviour
     }
 
     /// <summary>Radius per floor, from the progression table's shipped figures.</summary>
+    /// <summary>
+    /// The cavity's standing regression test, and the companion to Den Tunnel
+    /// Breach Check. Four things, each of which has a way of going quietly wrong:
+    ///
+    ///   SIZE      does the carve land in its authored band, and how many cells
+    ///             did the clamp have to correct to get it there? Correction is
+    ///             the quality signal -- the clamp always hits the band by
+    ///             construction, so the final count on its own proves nothing.
+    ///   SPAN      entry 19's rule, which is the one the sizes actually rest on
+    ///             after its cell-count comparator was measured and corrected: a
+    ///             cave chamber is a median of 49 cells and never more than 133,
+    ///             not the 100-200 that entry asserted, so the budget to check
+    ///             against is a span near twice the chamber box size -- 16 to 28.
+    ///   SEATING   is every run 4-connected to the hole after the cavity takes
+    ///             its cells back? A den whose runs are severed from it is a den
+    ///             with no way out, and nothing on screen would say so.
+    ///   RESERVE   for an excavator, is there room left to grow, and does the
+    ///             tier-1 sub-blob still contain the anchor every run starts at?
+    ///
+    /// Headless: it plans and carves against the shipped profile rather than
+    /// reading a live floor, so it runs without generating anything and answers
+    /// in seconds. Tools/sim_den_cavity.py is the same measurement at 2000 seeds;
+    /// this is the in-editor spot check that catches a profile edit.
+    /// </summary>
+    [ContextMenu("Den Cavity Report")]
+    void DenCavityReport()
+    {
+        if (denTunnelProfile == null) { Debug.Log("[Commands] Assign Den Tunnel Profile first."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Den cavity report  (span budget 16-28, entry 19)");
+        sb.AppendLine("floor  kind        open/reserve   band      span  corrected  severed  verdict");
+        bool allGood = true;
+
+        foreach (var entry in denTunnelProfile.Floors)
+        {
+            if (entry == null) continue;
+            int radius = FloorRadiusFor(entry.floorIndex);
+            var centre = new Vector3Int(0, 0, 0);
+
+            int seeds = 0, inBand = 0, severed = 0, runs = 0, noAnchor = 0;
+            int spanSum = 0, spanMax = 0, openSum = 0, reserveSum = 0, correctedSum = 0;
+            int tier1MissingAnchor = 0;
+
+            for (int s = 0; s < 200; s++)
+            {
+                var rng = new System.Random(s * 7919 + entry.floorIndex);
+
+                var centres = new System.Collections.Generic.List<Vector3Int>();
+                var ids = new System.Collections.Generic.List<int>();
+                int n = rng.Next(3, 7);
+                for (int i = 0; i < n; i++)
+                {
+                    int dx = rng.Next(-radius + 10, radius - 10);
+                    int dy = rng.Next(-radius + 10, radius - 10);
+                    if (dx * dx + dy * dy > (radius - 10) * (radius - 10)) continue;
+                    centres.Add(new Vector3Int(dx, dy, 0));
+                    ids.Add(centres.Count - 1);
+                }
+                if (centres.Count == 0) continue;
+
+                var plan = DenTunnelBuilder.Plan(rng, centre, radius, entry, 4,
+                                                 centres, ids, centre, 6);
+                if (!plan.valid) { noAnchor++; continue; }
+
+                var carve = CarveCavityForReport(rng, plan.den, entry, centre, radius);
+                if (carve == null) continue;
+                seeds++;
+
+                openSum += carve.open.Count;
+                reserveSum += carve.reserve.Count;
+                correctedSum += carve.corrected;
+                if (carve.reserve.Count >= entry.cavityMinCells
+                    && carve.reserve.Count <= entry.cavityMaxCells) inBand++;
+                if (!carve.open.Contains(plan.den)) tier1MissingAnchor++;
+
+                int span = SpanOf(carve.reserve);
+                spanSum += span;
+                if (span > spanMax) spanMax = span;
+
+                var tunnels = DenTunnelBuilder.Rasterise(rng, plan, radius - 10, 16, 3f);
+                foreach (var t in tunnels)
+                {
+                    runs++;
+                    var outside = new System.Collections.Generic.HashSet<Vector3Int>();
+                    foreach (var cc in DenTunnelBuilder.Cells(t))
+                        if (!carve.open.Contains(cc)) outside.Add(cc);
+                    if (outside.Count == 0) continue;   // wholly inside the hole
+                    if (!ReachesSet(outside, carve.open)) severed++;
+                }
+            }
+
+            if (seeds == 0)
+            {
+                sb.AppendLine($"  {entry.floorIndex}    {entry.kind,-10}  NO VALID SEED ({noAnchor} anchor failures)");
+                allGood = false;
+                continue;
+            }
+
+            bool ok = severed == 0 && inBand == seeds && tier1MissingAnchor == 0;
+            allGood = allGood && ok;
+            sb.AppendLine(
+                $"  {entry.floorIndex}    {entry.kind,-10}  {openSum / seeds,4}/{reserveSum / seeds,-4}     "
+              + $"{100 * inBand / seeds,3}%      {spanSum / seeds,2} (max {spanMax})   "
+              + $"{correctedSum / seeds,4}      {severed,3}/{runs,-4}  {(ok ? "OK" : "FAIL")}");
+
+            if (tier1MissingAnchor > 0)
+                sb.AppendLine($"         !! tier-1 carve missed the anchor on {tier1MissingAnchor} seeds -- "
+                            + "the runs all start there, so those dens would be sealed.");
+            if (spanMax > 28)
+                sb.AppendLine($"         .. span reaches {spanMax} against entry 19's budget of 28. "
+                            + "Accepted at the 600 cap by decision; investigate if it grows.");
+        }
+
+        sb.AppendLine(allGood ? "VERDICT: OK" : "VERDICT: FAIL -- see rows above.");
+        Debug.Log(sb.ToString());
+    }
+
+    private class CavityCarve
+    {
+        public System.Collections.Generic.HashSet<Vector3Int> open;
+        public System.Collections.Generic.List<Vector3Int> reserve;
+        public int corrected;
+    }
+
+    /// <summary>Mirrors TerrainFeatureGenerator.CarveDenCavity closely enough to
+    /// measure it, without a live floor. It is a MIRROR and not the thing itself,
+    /// which is the honest limitation of a headless report: the generator filters
+    /// against the floor radius, the core exclusion and reservedCoreCells, and
+    /// none of those exist here. Numbers from this are therefore an upper bound
+    /// on size and a lower bound on trouble; Tools/sim_den_cavity.py carries the
+    /// same caveat and says so.</summary>
+    private static CavityCarve CarveCavityForReport(
+        System.Random rng, Vector3Int den, DenTunnelFloorEntry entry,
+        Vector3Int floorCentre, int floorRadius)
+    {
+        int box = Mathf.Max(8, entry.cavityBox);
+        int lo = Mathf.Max(16, entry.cavityMinCells);
+        int hi = Mathf.Max(lo, entry.cavityMaxCells);
+
+        System.Collections.Generic.List<Vector3Int> raw = null;
+        for (int a = 0; a < 8 && raw == null; a++)
+        {
+            var r = CaBlob(rng, den, box);
+            if (r.Count > 0) raw = r;
+        }
+        if (raw == null) return null;
+
+        int before = raw.Count;
+        var set = new System.Collections.Generic.HashSet<Vector3Int>(raw);
+        int safety = 0;
+        var cand = new System.Collections.Generic.List<Vector3Int>();
+        while (set.Count < lo && safety++ < 4000)
+        {
+            cand.Clear();
+            foreach (var c in set)
+                for (int d = 0; d < Orth4Dirs.Length; d++)
+                    if (!set.Contains(c + Orth4Dirs[d])) cand.Add(c + Orth4Dirs[d]);
+            if (cand.Count == 0) break;
+            set.Add(cand[rng.Next(cand.Count)]);
+        }
+        while (set.Count > hi)
+        {
+            Vector3Int far = den; int maxSq = -1;
+            foreach (var c in set)
+            {
+                if (c == den) continue;
+                int sq = (c.x - den.x) * (c.x - den.x) + (c.y - den.y) * (c.y - den.y);
+                if (sq > maxSq) { maxSq = sq; far = c; }
+            }
+            if (far == den) break;
+            set.Remove(far);
+        }
+
+        var reserve = new System.Collections.Generic.List<Vector3Int>(set);
+        if (!set.Contains(den)) { reserve.Add(den); set.Add(den); }
+
+        int tier1 = Mathf.Clamp(entry.cavityTier1Cells, 1, reserve.Count);
+        var open = new System.Collections.Generic.HashSet<Vector3Int>();
+        if (tier1 >= reserve.Count) open = new System.Collections.Generic.HashSet<Vector3Int>(reserve);
+        else
+        {
+            var q = new System.Collections.Generic.Queue<Vector3Int>();
+            q.Enqueue(den); open.Add(den);
+            while (q.Count > 0 && open.Count < tier1)
+            {
+                var c = q.Dequeue();
+                for (int d = 0; d < Orth4Dirs.Length && open.Count < tier1; d++)
+                {
+                    var p = c + Orth4Dirs[d];
+                    if (set.Contains(p) && open.Add(p)) q.Enqueue(p);
+                }
+            }
+        }
+
+        return new CavityCarve
+        {
+            open = open,
+            reserve = reserve,
+            corrected = Mathf.Abs(reserve.Count - before),
+        };
+    }
+
+    /// <summary>RunChamberCA's shape, reimplemented because the generator's copy
+    /// is private and needs a live floor. Same fill, same smoothing rule, same
+    /// flood from the box centre.</summary>
+    private static System.Collections.Generic.List<Vector3Int> CaBlob(
+        System.Random rng, Vector3Int centre, int size)
+    {
+        var walls = new bool[size, size];
+        for (int x = 0; x < size; x++)
+            for (int y = 0; y < size; y++)
+                walls[x, y] = (x == 0 || y == 0 || x == size - 1 || y == size - 1)
+                              || rng.NextDouble() < 0.45;
+
+        for (int it = 0; it < 4; it++)
+        {
+            var next = new bool[size, size];
+            for (int x = 0; x < size; x++)
+                for (int y = 0; y < size; y++)
+                {
+                    int n = 0;
+                    for (int dx = -1; dx <= 1; dx++)
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            if (dx == 0 && dy == 0) continue;
+                            int nx = x + dx, ny = y + dy;
+                            if (nx < 0 || ny < 0 || nx >= size || ny >= size) { n++; continue; }
+                            if (walls[nx, ny]) n++;
+                        }
+                    next[x, y] = n >= 5;
+                }
+            walls = next;
+        }
+
+        var outCells = new System.Collections.Generic.List<Vector3Int>();
+        int half = size / 2;
+        if (walls[half, half]) return outCells;
+
+        var seen = new bool[size, size];
+        var stack = new System.Collections.Generic.Stack<Vector2Int>();
+        stack.Push(new Vector2Int(half, half));
+        while (stack.Count > 0)
+        {
+            var p = stack.Pop();
+            if (p.x < 0 || p.y < 0 || p.x >= size || p.y >= size) continue;
+            if (seen[p.x, p.y] || walls[p.x, p.y]) continue;
+            seen[p.x, p.y] = true;
+            outCells.Add(new Vector3Int(centre.x + p.x - half, centre.y + p.y - half, 0));
+            stack.Push(new Vector2Int(p.x + 1, p.y));
+            stack.Push(new Vector2Int(p.x - 1, p.y));
+            stack.Push(new Vector2Int(p.x, p.y + 1));
+            stack.Push(new Vector2Int(p.x, p.y - 1));
+        }
+        return outCells;
+    }
+
+    private static int SpanOf(System.Collections.Generic.List<Vector3Int> cells)
+    {
+        if (cells == null || cells.Count == 0) return 0;
+        int minX = int.MaxValue, maxX = int.MinValue, minY = int.MaxValue, maxY = int.MinValue;
+        foreach (var c in cells)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.y > maxY) maxY = c.y;
+        }
+        return Mathf.Max(maxX - minX, maxY - minY) + 1;
+    }
+
+    /// <summary>Is any cell of `from` 4-connected to `target`, walking only
+    /// through the union of the two? The breach question, asked at the den end.</summary>
+    private static bool ReachesSet(
+        System.Collections.Generic.HashSet<Vector3Int> from,
+        System.Collections.Generic.HashSet<Vector3Int> target)
+    {
+        var seen = new System.Collections.Generic.HashSet<Vector3Int>();
+        var q = new System.Collections.Generic.Queue<Vector3Int>();
+        foreach (var c in from) { q.Enqueue(c); seen.Add(c); break; }
+        while (q.Count > 0)
+        {
+            var c = q.Dequeue();
+            if (target.Contains(c)) return true;
+            for (int d = 0; d < Orth4Dirs.Length; d++)
+            {
+                var p = c + Orth4Dirs[d];
+                if ((from.Contains(p) || target.Contains(p)) && seen.Add(p)) q.Enqueue(p);
+            }
+        }
+        return false;
+    }
+
     private static int FloorRadiusFor(int floorIndex)
     {
         switch (floorIndex)

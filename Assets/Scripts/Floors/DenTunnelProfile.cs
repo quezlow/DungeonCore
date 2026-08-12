@@ -69,6 +69,39 @@ public class DenTunnelFloorEntry
     [Tooltip("Cells of centreline per reveal segment. The road contract: a run "
            + "comes into view a stretch at a time, never entire.")]
     [Min(4)] public int segmentLength = 40;
+
+    [Header("Cavity")]
+    [Tooltip("Cellular-automata box the cavity is carved in. READ OFF THE SWEEP "
+           + "in Tools/sim_den_cavity.py, not chosen: a box whose RAW yield "
+           + "already lands in the target band keeps the CA's own silhouette, "
+           + "while one that overshoots is trimmed farthest-cell-first and comes "
+           + "out rounder the more it is cut. 22 for the occupier band and 28 "
+           + "for the excavator reserve both correct a median of ZERO cells.")]
+    [Min(8)] public int cavityBox = 22;
+
+    [Tooltip("Smallest cavity, in cells. The size clamp tops up to this.")]
+    [Min(16)] public int cavityMinCells = 250;
+
+    [Tooltip("Largest cavity, in cells -- the RESERVED footprint. Canon 42: the "
+           + "occupier hole is 250-400 FIXED because goblins never dig; the "
+           + "excavator reserves up to 600 and opens it over tiers. Measured "
+           + "against entry 19's SPAN budget of 16-28 cells (twice the chamber "
+           + "box size), NOT against its cell count -- that comparator was wrong "
+           + "and is corrected in canon.")]
+    [Min(16)] public int cavityMaxCells = 400;
+
+    [Tooltip("Cells open at tier 1. Equal to cavityMaxCells for an occupier, "
+           + "which opens its whole hole at once. Lower for an excavator, which "
+           + "grows into its reserve -- that growth is half B and is not built.")]
+    [Min(16)] public int cavityTier1Cells = 400;
+
+    [Tooltip("Reject a den anchor within this many cells of a chamber centre. "
+           + "Without it minRunCells lets a nearby chamber BE the den, which "
+           + "with a real cavity means a 49-cell cave standing in for a "
+           + "300-cell hole. Sized as cavity radius plus the largest chamber "
+           + "radius plus margin; measured to cost 0.09 rejected samples per "
+           + "seed and to starve no seed at all.")]
+    [Min(0)] public int chamberSeatClearance = 20;
 }
 
 /// <summary>What holds a den, which decides the verb rather than the stats.</summary>
@@ -100,6 +133,12 @@ public class DenTunnelProfile : ScriptableObject
             floorIndex = 1,
             kind = DenKind.Occupier,
             runCount = 3,
+            // The hole is FIXED: they never dig, so tier reads off how full it
+            // is rather than how big. Tier 1 opens all of it.
+            cavityBox = 22,
+            cavityMinCells = 250,
+            cavityMaxCells = 400,
+            cavityTier1Cells = 400,
         },
 
         // Floor index 2, radius 250 -- the kobold den. Four runs: 3.38 links
@@ -111,6 +150,13 @@ public class DenTunnelProfile : ScriptableObject
             floorIndex = 2,
             kind = DenKind.Excavator,
             runCount = 4,
+            // Reserves 600 and opens ~150 at tier 1. The reserve is carved into
+            // the feature data at generation so chambers and rivers keep off it;
+            // opening the rest as tier rises is half B.
+            cavityBox = 28,
+            cavityMinCells = 550,
+            cavityMaxCells = 600,
+            cavityTier1Cells = 150,
         },
     };
 

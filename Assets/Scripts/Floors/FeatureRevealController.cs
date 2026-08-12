@@ -293,6 +293,19 @@ public class FeatureRevealController : MonoBehaviour
                           silent || !firstDenOnFloor);
                 break;
 
+            // The cavity reveals ENTIRE, on the chamber rule rather than the
+            // tunnel rule beside it. A run comes into view a stretch at a time
+            // because it can cross half the floor; a cavity is one room about
+            // twenty cells across, and unfogging it in pieces would read as
+            // broken fog. It always speaks: a floor holds exactly one, so it is
+            // a set-piece like a site rather than one of eighty-five stretches.
+            case FeatureType.DenCavity:
+                if (features.IsDenCavityRevealed) return;
+                features.RevealDenCavity();
+                FireAlert(FeatureType.DenCavity, 0,
+                          "The tunnels open into a den", silent);
+                break;
+
             case FeatureType.EntranceCave:
                 if (features.IsEntranceDiscovered) return;
                 features.MarkEntranceDiscovered();

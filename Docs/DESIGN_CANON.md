@@ -8119,65 +8119,104 @@ passively too, since adventurers fighting goblins trip the same line. A den's
 reward is its hoard, paid once, on clearing. The run statistic still counts them,
 because something did die there.
 
-### The den cavity and its residents (DECIDED, NOT BUILT)
+### The den cavity and its residents (BUILT: the hole; residents are half B)
 
-Status: DECIDED, NOT BUILT. Recorded before any code so a later session builds
-the agreed version rather than re-deriving it.
+Status: BUILT for the HOLE. The cavity is carved, reserved, persisted, revealed
+and diagnosable, and `DenAnchor` now means its centre. NOT built: resident
+scatter across it, the excavator's runtime growth into its reserve, and the
+visible hoard -- half B, which waits on the hoard sprites, because canon makes
+tier legible off population AND visible hoard and half a legibility rule is
+worse than none.
 
-**There is no den cavity.** This entry specifies the goblin hole at "250-400
-cells, FIXED" with tier reading off "how full it is". None of that exists. Shape
-E shipped the tunnel PLAN LAYER only: `TerrainFeatureGenerator.DenAnchor` returns
-`denTunnels[0].polyline[0]`, the origin point of tunnel run 0, and there is no den
-footprint, no cell set and no carve anywhere. `DenTunnelProfile.minRunCells` says
-"Nearer than this and the chamber IS the den", so a den's home today is either an
-incidental existing cave chamber -- a MEDIAN OF 49 CELLS and never more than
-133 by the chamber generator, measured, not the 100-200 entry 19 asserted and
-not 250-400 -- or a bare junction in tunnel three cells wide. Residents currently
-loiter within `denLoiterRadius` of that point, which reads as goblins in a tunnel
-rather than a hole that fills as it tiers.
+**The carve.** Two shipped carvers and no third, which is this entry's own rule
+about `BuildTunnel` applied to blobs: `RunChamberCA` supplies the silhouette and
+`GenerateCoreCavernAndTunnels`' top-up/trim supplies the size. Neither alone
+would do -- the CA has NO size control whatever, measured at a spread of 6 to
+133 cells at fixed parameters, and the top-up disc reads as a bubble. The clamp
+is lifted into `ClampCellCount` for the second caller; the core cavern is
+deliberately NOT retrofitted onto it, because its copy is interleaved with the
+`reservedCoreCells` mirroring and floor features persist rather than regenerate,
+so refactoring shipped generation could only reshape something.
 
-What the arc needs:
+**The box size is measured, not chosen, and a tidy-up would undo it.** The
+quality signal is how many cells the CLAMP HAS TO CORRECT, because the clamp
+always hits the band by construction and the final count therefore proves
+nothing. Box 22 for the occupier band and 28 for the excavator reserve land the
+RAW yield inside the target, correcting a median of ZERO cells. A first pass
+guessed 28 and 36 and the sweep in `Tools/sim_den_cavity.py` rejected both: the
+trim removes the cell farthest from the centre, so a box that overshoots comes
+out rounder the more it is cut.
 
-- **Carve the cavity at generation.** 250-400 cells for the occupier hole, fixed,
-  because they never dig. About 150 cells at tier 1 for the excavator, widening
-  per tier, hard-capped at 600.
-- **Re-point `DenAnchor` at the cavity centre** rather than a polyline origin, and
-  expose the cavity cell set so residents scatter across it instead of huddling.
-- **A visible hoard prop**, since tier is meant to be legible off population AND
-  visible hoard, and the hoard half is unbuilt.
-- **Decide whether the cavity is excluded from `WildMonsterController` chamber
-  spawns.** If the den seats against an existing chamber, that chamber may already
-  carry unrelated wild monsters, giving the hole a population it never asked for.
+**Two cell sets, and the second is not redundant.** `reserveCells` is the
+maximum footprint fixed at generation, so chambers and rivers negotiate around
+ground the den has not opened; `cells` is what is actually open. The reserve
+enters `reservedCoreCells` and NOT the lookup, so it owns no cell and renders as
+nothing -- unopened rock, indistinguishable from the rock around it, which is
+the resting pocket's rule applied to a bigger reservation. The player may mine
+it first and keep it, and that is the race rather than a leak.
 
-Sim before C#, as the tunnels got. DONE: `Tools/sim_den_cavity.py`, 2000 seeds
-per den floor, and it settled the carve before a line of C# was written.
+**Cells are persisted, on the SITE contract rather than the road's.** A road or
+a tunnel is pure geometry a polyline rebuilds; a cavity is a CA carve, so an
+edit to the fill chance or the box would silently reshape every existing save,
+moving walls the player had already dug around. `minedTiles` does not help here
+and it is worth recording why: it stores openness and carries NO IDENTITY, and
+`TileInfluenceManager.LoadSaveData` clears and rebuilds it from the save --
+which is exactly why `ReassertOpenGround` has to run afterwards. Every feature
+persists its own identity for that reason.
 
-**What it measured, and what moved because of it.** The comparator first: a cave
-chamber is a median of 49 cells and never more than 133, NOT the 100-200 entry 19
-asserted -- so a 300-cell hole is 6.6x the median chamber and 2.5x the largest
-that can exist. The sizes stand on entry 19's SPAN budget instead (16-28 cells,
-twice the chamber box size): the occupier hole spans 20, the excavator's 600-cell
-reserve spans 26, and 4 per cent of excavator seeds reach 33 and sit over budget
--- accepted, because 600 is the declared ceiling and the overshoot is the cap
-doing its job.
+**`DenAnchor` means the cavity centre, and keeps a fallback for ever.** Den
+tunnels shipped a release before the cavity, so a save can hold a good network
+with no hole at the end of it; floor features persist rather than regenerate and
+no migration can carve one after the fact, so those floors keep the polyline
+origin. On any floor with both, the two agree by construction:
+`DenTunnelBuilder.Plan` sets `run.a = den` for EVERY run, which is also why the
+cavity seats against the whole network without a single run moving. Measured at
+14,000 runs across both floors: all 4-connected to the hole after it takes its
+cells back, none severed.
 
-The carve is `RunChamberCA` for the silhouette and
-`GenerateCoreCavernAndTunnels`' top-up/trim for the size, which is both shipped
-carvers and no third one. THE BOX SIZE IS READ OFF A SWEEP, NOT CHOSEN: box 22
-for the occupier and 28 for the excavator put the RAW CA yield inside the target
-band, so the clamp corrects a median of ZERO cells and the CA's own silhouette
-survives. A first pass guessed 28 and 36; the sweep rejected both, because a box
-that overshoots gets trimmed farthest-cell-first and comes out rounder the more
-it is cut. Correction magnitude, not final count, is the quality signal -- the
-clamp always hits the band by construction.
+**Fork 2: an anchor is rejected within `chamberSeatClearance` of a chamber
+centre.** `minRunCells` used to mean "a chamber this close IS the den", which was
+fine while a den was a point and wrong once it is a 250-400 cell hole -- it let a
+cave stand in for one. Measured cost: 0.09 rejected samples per seed, no seed
+starved, chamber overlap down to 0.00 and 0.05 per cent. A profile leaving the
+clearance at 0 keeps the old behaviour exactly.
 
-Seating is free and the reason is worth keeping: `DenTunnelBuilder.Plan` sets
-`run.a = den` for EVERY run, so a cavity carved at the anchor seats against all
-of them without the runs moving. 14,000 runs measured across both floors, all
-4-connected to the cavity after it takes its cells back, none severed.
+**Reveal is the CHAMBER rule, not the tunnel rule.** The cavity comes into view
+entire on first influence touch, because a room twenty cells across arriving in
+forty-cell stretches would read as broken fog rather than as discovery. The
+reserve is never revealed and never marked: fog is one-way, and showing the shape
+of a hole that has not been dug cannot be undone.
 
-Unmeasured cavities are how a site once reached 15-30x a cave chamber before
-anyone noticed. This one is measured.
+**Added to all three diagnostic surfaces in the pass that added the feature.**
+`DebugRevealAll`, `LogFeatureStats` and the debug overlay, plus a
+`GetFeatureCenterWorld` case so the discovery alert does not click-jump to the
+floor origin. This entry already records that failure being made for sites and
+then made again for den tunnels. `Den Cavity Report` in `Commands` is the
+standing regression test, and the place the `DigCellsPerDay` keep-in-sync pair
+gets asserted once half B makes it real geometry.
+
+**Span, not cell count, and 4 per cent sit over budget by decision.** The sizes
+rest on entry 19's span rule -- 16 to 28 cells, twice the chamber box size --
+because its cell-count comparator was measured and corrected. The occupier hole
+spans 20 and the excavator reserve 26; roughly 4 per cent of excavator seeds
+reach 33. ACCEPTED: 600 is the declared ceiling and the overshoot is the cap
+doing its job. The report prints the maximum every run so a drift shows.
+
+#### What half B still owes
+
+- Resident scatter across the cell set. `IsWild` already includes
+  `denFloorIndex >= 0`, so den bodies route through `PickWildWanderTarget`
+  already -- but `SpawnScavenger` passes `null` for `chamberCells`, so
+  `wildChamberCells` is EMPTY and that method returns `spawnPosition` on its
+  first line. That, not `denLoiterRadius`, is why residents read as goblins
+  standing in a corridor. Handing it `DenCavityCells` is most of the fix.
+- `wildAggroOutwardChance` (0.3) must be suppressed for den bodies, or residents
+  press outward at the player's ground against this entry's "residents never
+  forage".
+- The excavator's dawn growth into its reserve, and with it the
+  `DigCellsPerDay` pair: that number currently feeds the hoard only, and making
+  it drive geometry gives it a second consumer that must not drift.
+- The visible hoard prop and its sprites.
 
 
 ## 43. Art Debt (the Audit and its Ledger)

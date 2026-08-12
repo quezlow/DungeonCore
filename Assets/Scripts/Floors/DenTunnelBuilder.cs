@@ -94,6 +94,19 @@ public static class DenTunnelBuilder
 
         // -- The den anchor. Uniform in the band, rejecting anything on the
         //    landing. 96 samples is TryPickAnchor's own budget.
+        //
+        //    IT ALSO REJECTS A SEAT ON TOP OF A CHAMBER, and that rule is the
+        //    reason the cavity can exist at all. minRunCells used to mean "a
+        //    chamber this close IS the den" -- fine while a den was a point,
+        //    wrong once it is a 250-400 cell hole, because it let a cave whose
+        //    MEASURED median is 49 cells and whose ceiling is 133 stand in for
+        //    one. Measured over 2000 seeds per floor in
+        //    Tools/sim_den_cavity.py: 0.09 samples lost per seed, no seed
+        //    starved, and chamber overlap falls to 0.00 and 0.05 per cent.
+        //
+        //    A profile that leaves the clearance at 0 keeps the old behaviour
+        //    exactly, so this cannot change a floor nobody re-authored.
+        int seatClear = entry.chamberSeatClearance;
         Vector3Int den = default(Vector3Int);
         bool found = false;
         for (int i = 0; i < 96 && !found; i++)
@@ -104,6 +117,8 @@ public static class DenTunnelBuilder
             if (d2 < inner * inner || d2 > outer * outer) continue;
             var c = new Vector3Int(centre.x + dx, centre.y + dy, 0);
             if (ChebyshevOrEuclid(c, landing) < keepClear) continue;
+            if (seatClear > 0 && chamberCentres != null
+                && TooCloseToAnyChamber(c, chamberCentres, seatClear)) continue;
             den = c;
             found = true;
         }
@@ -229,6 +244,18 @@ public static class DenTunnelBuilder
     }
 
     private static float ChebyshevOrEuclid(Vector3Int a, Vector3Int b) => Dist(a, b);
+
+    /// <summary>Would a cavity seated here land on a chamber? Tested against
+    /// chamber CENTRES rather than their cells, because Plan is handed centres
+    /// and because the clearance is already sized to cover the largest chamber
+    /// a CA can produce -- box 14, so a radius of about 7.</summary>
+    private static bool TooCloseToAnyChamber(
+        Vector3Int c, IReadOnlyList<Vector3Int> centres, int clearance)
+    {
+        for (int i = 0; i < centres.Count; i++)
+            if (Dist(c, centres[i]) < clearance) return true;
+        return false;
+    }
 
     /// <summary>Distance from a point to the segment ab, against a keep-clear.
     /// The landing test has to be on the SEGMENT rather than on either end: a
