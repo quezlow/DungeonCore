@@ -41,6 +41,14 @@ public class FloatingDamageNumber : MonoBehaviour
         canvas.sortingOrder = 20;
         if (TryGetComponent<UnityEngine.UI.GraphicRaycaster>(out var gr))
             Destroy(gr);
+
+        // Nothing floats out of the fog. WorldUI draws above the fog tilemap, so
+        // a fight on unrevealed ground would otherwise throw numbers over bodies
+        // the player cannot see -- and canon expects such fights, because
+        // pre-mined den tunnels are open ground adventurers get routed down.
+        // Checked here rather than at the dozen spawn sites; Instantiate sets the
+        // transform before Awake, so the position is already right.
+        if (!FloorRoot.IsRevealedWorld(transform.position)) { Destroy(gameObject); return; }
     }
 
     // ── Public API ────────────────────────────────────────────────

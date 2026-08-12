@@ -25,6 +25,11 @@ public class FloatingBarkText : MonoBehaviour
         canvas.sortingLayerName = "WorldUI";
         canvas.sortingOrder = 22;   // just above the damage numbers
         if (TryGetComponent<UnityEngine.UI.GraphicRaycaster>(out var gr)) Destroy(gr);
+
+        // Same fog rule as the damage numbers: WorldUI is above the fog, so a
+        // bark from something the player cannot see would be a voice from an
+        // empty corridor.
+        if (!FloorRoot.IsRevealedWorld(transform.position)) { Destroy(gameObject); return; }
     }
 
     public void Initialise(string text, Color colour)

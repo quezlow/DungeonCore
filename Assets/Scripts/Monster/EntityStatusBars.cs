@@ -66,6 +66,12 @@ public class EntityStatusBars : MonoBehaviour
     // ── State ─────────────────────────────────────────────────────
 
     private Canvas barsCanvas;
+
+    // Fog gate state. Starts revealed so a body is never invisible for its
+    // first frames while the poll settles.
+    private const float RevealRecheckSeconds = 0.25f;
+    private float revealTimer;
+    private bool revealedHere = true;
     private Transform trackedEntity;
     private SpriteRenderer trackedSprite;
     private Color defaultLabelColour = Color.white;   // the prefab's own label colour (boss styling)
@@ -99,7 +105,27 @@ public class EntityStatusBars : MonoBehaviour
     {
         // Remembered Sight gate: the whole world-space canvas is the bars.
         if (barsCanvas == null) barsCanvas = GetComponent<Canvas>();
-        bool sight = UnlockState.IsUnlocked("tech.status_bars");
+
+        // ...and a fog gate beside it. This canvas sits on WorldUI, which by
+        // design stays clear ABOVE the fog, so the bars kept drawing over bodies
+        // the fog had already hidden -- confirmed in play once den scavengers
+        // became the first entities to stand on unrevealed ground. It reads as a
+        // health bar floating in the dark.
+        //
+        // Throttled, not per-frame: this is a tilemap lookup running in LateUpdate
+        // on every entity in the scene. A body crossing a fog edge appearing a
+        // quarter-second late is imperceptible; sixty lookups a second per entity
+        // is not free. Poll rather than event, as LootAbsorbGate does, and on
+        // UNSCALED time so the gate still resolves while the game is paused.
+        revealTimer -= Time.unscaledDeltaTime;
+        if (revealTimer <= 0f)
+        {
+            revealTimer = RevealRecheckSeconds;
+            revealedHere = trackedEntity == null
+                        || FloorRoot.IsRevealedWorld(trackedEntity.position);
+        }
+
+        bool sight = UnlockState.IsUnlocked("tech.status_bars") && revealedHere;
         if (barsCanvas != null && barsCanvas.enabled != sight) barsCanvas.enabled = sight;
         if (!sight) return;
         if (trackedEntity == null) { Destroy(gameObject); return; }

@@ -75,6 +75,33 @@ public class FloorRoot : MonoBehaviour
     public static bool IsOnFloor(Vector3 worldPos, int floorIndex)
         => FloorIndexFromWorld(worldPos) == floorIndex;
 
+    /// <summary>True when the fog has lifted from this cell. The ABSENCE of a
+    /// fog tile is the test, which is the rule ReachabilityDirector has used
+    /// since it shipped -- its influence wash skips unrevealed cells so it does
+    /// not give away rivers and chambers the player has not met. Hoisted here so
+    /// the drawing code can ask the same question the pathing code already
+    /// asked, rather than each keeping its own copy.</summary>
+    public bool IsRevealed(Vector3Int cell)
+    {
+        var fog = terrain != null ? terrain.FogTilemap : null;
+        return fog == null || fog.GetTile(cell) == null;
+    }
+
+    /// <summary>True when the fog has lifted where a world position stands.
+    ///
+    /// FAILS OPEN. Every caller is a visibility gate, so anything unresolvable
+    /// -- no manager, no floor, no tile grid -- counts as revealed. A hidden
+    /// interface is far worse than a briefly over-shown one, and this runs
+    /// during scene setup when those references are legitimately still
+    /// null.</summary>
+    public static bool IsRevealedWorld(Vector3 worldPos)
+    {
+        if (FloorManager.Instance == null) return true;
+        var floor = FloorManager.Instance.GetFloor(FloorIndexFromWorld(worldPos));
+        if (floor == null || floor.TileInfluence == null) return true;
+        return floor.IsRevealed(floor.TileInfluence.WorldToCell(worldPos));
+    }
+
     // Does this floor carry a LIVING dwarven holding (outpost or village)?
     // Drives the road claim price and, with it, the granite holdings overlay.
     // Cached because sites are authored once at generation and never added

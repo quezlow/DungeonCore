@@ -370,6 +370,12 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     private bool OnThisFloor(float worldY)
         => floor != null && Mathf.Abs(worldY - floor.WorldOriginY) < 1000f;
 
+    /// <summary>Has the fog lifted where this thing stands? Fails open, so a
+    /// floor without a tile grid still draws its dots.</summary>
+    private bool SeenHere(Vector3 worldPos)
+        => floor == null || influence == null
+        || floor.IsRevealed(influence.WorldToCell(worldPos));
+
     // -- per-frame overlays ------------------------------------------------------
 
     private void UpdateDots()
@@ -377,13 +383,22 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
         int used = 0;
         if (hasPaint && floor != null && floor.Entities != null)
         {
+            // Fog hides the map as well as the eye. Until den populations shipped
+            // nothing had ever STOOD on unrevealed ground -- wild chamber monsters
+            // spawn on reveal -- so this filter had never been needed. Without it a
+            // den paints its own location in red dots from the day its floor is
+            // created, and canon 42 requires first contact to be the player's doing.
+            // Adventurers are filtered too: pre-mined den tunnels are open ground the
+            // pathfinder routes them down, and a dot over an occluded body is the
+            // same giveaway.
             floor.Entities.FillAll(advBuf);
             for (int i = 0; i < advBuf.Count; i++)
-                if (advBuf[i] != null) used = PlaceDot(used, advBuf[i].transform.position, adventurerDot);
+                if (advBuf[i] != null && SeenHere(advBuf[i].transform.position))
+                    used = PlaceDot(used, advBuf[i].transform.position, adventurerDot);
 
             floor.Entities.FillAll(monBuf);
             for (int i = 0; i < monBuf.Count; i++)
-                if (monBuf[i] != null)
+                if (monBuf[i] != null && SeenHere(monBuf[i].transform.position))
                     used = PlaceDot(used, monBuf[i].transform.position,
                                     monBuf[i].IsWild ? hostileMonsterDot : monsterDot);
 

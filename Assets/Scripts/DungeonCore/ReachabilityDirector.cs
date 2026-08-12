@@ -289,11 +289,11 @@ public class ReachabilityDirector : MonoBehaviour
     /// without this the wash would trace routes through undiscovered ground and
     /// give away rivers and chambers the player has not met yet. Reachability
     /// itself still counts those cells -- only the painting waits.</summary>
+    // Forwards to FloorRoot, which now owns the test. The rule described above
+    // turned out to be wanted by the minimap and the world-space UI too, and
+    // three copies of a fog check is three chances to disagree.
     private static bool IsRevealed(FloorRoot floor, Vector3Int cell)
-    {
-        var fog = floor.Terrain != null ? floor.Terrain.FogTilemap : null;
-        return fog == null || fog.GetTile(cell) == null;
-    }
+        => floor.IsRevealed(cell);
 
     /// <summary>Diffs the wash against what is reachable-and-seen, then lets the
     /// difference SPREAD rather than snap: new ground is queued into rings by
