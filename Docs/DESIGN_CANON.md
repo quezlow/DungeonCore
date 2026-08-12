@@ -8140,6 +8140,75 @@ fog rather than a building". Unmeasured cavities are how a site once reached
 15-30x a cave chamber before anyone noticed.
 
 
+## 43. Art Debt (the Audit and its Ledger)
+
+Status: SHIPPED. Verified: 2026-08-12.
+
+`Dungeon Core / Audit Art Debt` (`Assets/Editor/ArtDebtAuditor.cs`) is the
+standing account of which art slots are owed, which are deliberately empty,
+and which are wearing borrowed clothes. It writes `Docs/ART_DEBT.md`, which
+is committed.
+
+**Why a tool and not a checklist.** Every art consumer in this project
+degrades GRACEFULLY, and each of those fallbacks is correct: the spell picker
+renders a plain block, the tech tree renders a plain block, the panel button
+row falls back to its text label (entry 40), and a monster prefab variant
+with no sprite override wears the base prefab's body. Their combined effect
+is that art debt is INVISIBLE in play -- a dungeon with no icons at all looks
+exactly like a finished one. Entry 27's roster norm already says as much in
+writing: "stand-in sprites borrowed from donor prefabs and no icons, pending
+bespoke art". A norm nobody can measure is a norm nobody pays down.
+
+**Two rulings the tool exists to encode**, because both defeat a null check:
+
+- ASSIGNED IS NOT DONE. Three monster sprites are named `*REPLACE` and are
+  wired into live definitions, and seventeen of the nineteen trap prefabs
+  share ONE donor spike sprite under an affinity tint. A null check scores
+  all twenty as complete. A slot counts as FILLED only when its art is
+  neither placeholder-named nor shared with a sibling prefab.
+- NULL IS NOT DEBT. `CaveWallSheetLayout.overrideSprite`,
+  `StairsDefinition.upVariantSprite` and `DivineAudienceScript.backdrop` are
+  documented optional: null is the INTENDED value and assigning art changes
+  behaviour rather than completing anything. Reflection cannot tell those
+  from an empty spell icon, so a hand-authored ruling table in the auditor
+  says which is which.
+
+**UNCLASSIFIED is a state, and so is FILLED.** A sprite field absent from the
+ruling table reports as UNCLASSIFIED rather than being quietly counted or
+quietly skipped, and every group prints its counts even when clean. Both are
+the same rule: "not in the list" and "nothing owed" must never look alike,
+which is the ambiguous-default failure this project designs against.
+
+**Definition icons and prefab sprites are separate categories.**
+`MonsterDefinition.icon` is the spawner-picker icon; the body the player
+actually sees is the prefab's `SpriteRenderer`. Different art, different
+passes, and merging them into one number hides whichever is smaller. Only
+`MonsterDefinition` links the two (`public DungeonMonster prefab`) -- traps,
+furniture, chests and stairs have no prefab field, so their prefabs are
+scanned by folder.
+
+**Prefabs are LOADED, not parsed.** 49 of the 50 monster prefabs are
+variants; one that never overrides `m_Sprite` has no sprite line on disk and
+inherits the donor body. Reading the YAML reports two shared sprites where
+there are two dozen, so the scan goes through `AssetDatabase` and lets Unity
+resolve the variant.
+
+**The tint coupling.** `projectileTint` MULTIPLIES the projectile sprite, so
+a definition keeping a non-white tint after bespoke art arrives renders the
+new art through the old colour and reads as bad art rather than a stale
+field. The audit flags this only once a `projectileSprite` is assigned: quiet
+through the whole deferred period, loud exactly when it becomes true.
+
+**Baseline at first run**, kept as a reference point rather than a target:
+234 null sprite fields across 8 type/field pairs -- 100 `MonsterDefinition`
+icons, 51 tech nodes (the entire research tree), 27 projectile sprites
+(deferred by entry 27's ranged decision), 21 patterns, 13 traps, 11 spells,
+6 trophies, 5 furniture.
+
+`Docs/ART_DEBT.md` is fully sorted, so a re-run with nothing changed rewrites
+the same bytes. A report that churns its own diff is a report nobody commits.
+
+
 ## A. Content Registries and Authoring Keys
 
 Status: SHIPPED (documentation of as-built behaviour). Verified: 2026-07-09.

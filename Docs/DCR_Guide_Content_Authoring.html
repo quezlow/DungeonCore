@@ -96,7 +96,8 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <br><b>Rev 8 (2026-08-09):</b> chapter 26a rewritten to the shipped format after a drift check found it four glyph-generations behind -- nine glyphs, nine headers, <code>@doors:</code> required, <code>_SYMBOLS.txt</code> and the tag audit referenced as the on-disk truth. Chapter 33 added: Site Relations (canon's site relations entry). Chapter 29 gains the per-cell <code>'o'</code> / <code>piecePrefab</code> decor path. Chapter 0 map row added. Rider: <code>_SYMBOLS.txt</code> gains the relation headers. <br><b>Rev 9 (2026-08-09):</b> chapter 34 added -- sightseer draws: the <code>novel</code> monster flag (eight shipped wonders) and authoring a Fame trophy (<code>TrophyEffectType.Fame</code>).
       <br><b>Rev 10 (2026-08-09):</b> chapter 35 added -- World Events (canon 37): the generator recipe, the effect-kind boundary, and the two silent-failure scene steps. Chapter 0 map row added.
       <br><b>Rev 12 (2026-08-10):</b> chapter 37 added -- Core Spells (canon 38): the generator recipe, the two access shapes (researched vs god-given), the append-only effect enum, and nine outstanding icons with motifs. Chapter 0 map row added.
-      <br><b>Rev 11 (2026-08-10):</b> chapter 36 added -- Divine Audiences (canon 19A): the one-asset writing surface, the sovereign-to-servant voice rule, the only-promise-what-is-built rule for tier hints, and the six manifestation backdrops. Chapter 0 map row added.</div>
+      <br><b>Rev 11 (2026-08-10):</b> chapter 36 added -- Divine Audiences (canon 19A): the one-asset writing surface, the sovereign-to-servant voice rule, the only-promise-what-is-built rule for tier hints, and the six manifestation backdrops. Chapter 0 map row added.
+      <br><b>Rev 13 (2026-08-12):</b> chapter 39 added -- the Art Debt audit (canon 43): the standing ledger at <code>Docs/ART_DEBT.md</code>, the ruling table that separates owed slots from intentionally-empty ones, and the two cases a null check gets wrong. No chapter 0 map row: the map lists content types with a create menu and a save key, and an audit tool has neither.</div>
 
   <details open>
     <summary>0. The Pattern, the Rules, the Map</summary>
@@ -1052,6 +1053,31 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s10"><label for="dcr-authoring-v1-c38s10"><b>Leave the Coalborn out of <code>MonsterDefinitionRegistry</code>.</b> That registry is what <code>MonsterSelectionUI</code> lists and what the save controller resolves by name; a summoned body belongs in neither, and adding it would put a thrall in the build picker. Its <code>requiredTechKey</code> is a key nothing grants, as belt and braces. Both are deliberate &mdash; do not "fix" either.</label></div>
 
       <div class="step"><input type="checkbox" id="dcr-authoring-v1-c38s11"><label for="dcr-authoring-v1-c38s11"><b>Testing without a vendor.</b> <code>Commands</code> &rarr; <b>Grant Spell Charges</b> banks castings of the first working this core does not hold; <b>Print Spell Charges</b> reports counts, permanent holds, heard-of state and the alignment penalty on each. You never need to wait for the wagon to test a new working.</label></div>
+    </div>
+  </details>
+
+  <details>
+    <summary>39. Art Debt (finding what to generate next)</summary>
+    <div class="body">
+      <div class="why">Canon 43. Every art consumer in this project degrades gracefully, so
+      a dungeon with no icons looks exactly like a finished one. This chapter is how you get a
+      list of what is actually owed before opening ComfyUI, and how to keep that list honest.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s1"><label for="dcr-authoring-v1-c39s1"><b>Run <code>Dungeon Core &rarr; Audit Art Debt</code>.</b> Console gets a per-group count; the full breakdown lands in <code>Docs/ART_DEBT.md</code>. Commit that file &mdash; it is the work queue, and it is what a fresh chat reads to know what art is outstanding without re-deriving it.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s2"><label for="dcr-authoring-v1-c39s2"><b>Read the five states.</b> <b>UNCLASSIFIED</b> first (a sprite field nobody has ruled on), then <b>REQUIRED</b> (owed), <b>DEFERRED</b> (a shipped decision with a written road back), <b>BY DESIGN</b> (null is the intended value &mdash; do not "fix" these), and <b>FILLED</b> last. Filled prints on purpose: a group that vanishes when clean cannot be told from a group the scan dropped.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s3"><label for="dcr-authoring-v1-c39s3"><b>Two categories, not one.</b> <i>Definition icons</i> are the picker/UI sprites on the ScriptableObject. <i>In-game sprites</i> are the body on the prefab's <code>SpriteRenderer</code>. Only <code>MonsterDefinition</code> links the two, via its <code>prefab</code> field &mdash; traps, furniture, chests and stairs have no prefab field at all, so their prefabs are scanned by folder. Authoring an icon does not clear the body, and the reverse.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s4"><label for="dcr-authoring-v1-c39s4"><b>Borrowed bodies show up as DEFERRED, not FILLED.</b> A prefab sprite shared with a sibling in the same folder is reported with its share count &mdash; seventeen of the nineteen trap prefabs wear one donor spike under an affinity tint. So does any sprite whose name carries a placeholder marker (<code>REPLACE</code>, <code>PLACEHOLDER</code>, <code>STANDIN</code>, <code>TODO</code>, or a <i>delimited</i> <code>_TEMP</code>). <b>Bare "TEMP" is deliberately not matched</b> &mdash; it is a substring of Temple and Templar, and a report that flags shipped art teaches you to ignore it.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s5"><label for="dcr-authoring-v1-c39s5"><b>A new definition type with a <code>Sprite</code> field needs a ruling row.</b> The scan finds every project ScriptableObject automatically, so a new type cannot escape it &mdash; but its field lands in UNCLASSIFIED until you add a line to <code>RULINGS</code> in <code>Assets/Editor/ArtDebtAuditor.cs</code> saying <code>Required</code>, <code>Deferred</code> or <code>ByDesign</code>, with the one-line reason. Do this in the same commit as the field; UNCLASSIFIED is a prompt, not a resting state.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s6"><label for="dcr-authoring-v1-c39s6"><b>Projectile sprites carry a trap.</b> The 27 empty <code>projectileSprite</code> slots are DEFERRED on purpose &mdash; ranged v1 ships a runtime soft-glow bolt (ch 21). When you author real bolt art, <b>set <code>projectileTint</code> back to white</b>: the tint multiplies the sprite, so a leftover tint renders good art through the wrong colour. The audit flags this the moment a sprite is assigned and stays silent until then.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s7"><label for="dcr-authoring-v1-c39s7"><b>Then generate, per chapter 0's Style Contract.</b> Fixed head, subject slot, fixed tail. Icons and props: drop the tall-proportions clause, lead with the orthographic front-view angle clause, target 2 cells = 64 px, palette <code>dcr-props-1x.png</code>. Creatures keep the proportions clause and a facing word. Background removal with INSPYRENET, then downscale, then import at PPU 32. CFG 1 leaves the negative prompt inert &mdash; do not put anything there.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c39s8"><label for="dcr-authoring-v1-c39s8"><b>Re-run the audit after an art pass</b> and commit the regenerated <code>ART_DEBT.md</code>. The file is sorted throughout, so an unchanged run rewrites the same bytes and the diff shows exactly the slots you closed.</label></div>
     </div>
   </details>
 
