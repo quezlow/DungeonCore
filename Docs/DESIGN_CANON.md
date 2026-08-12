@@ -7671,6 +7671,80 @@ active part of the loop, sits on a different axis from entry 39's pause rule,
 and needs its own pass. Open, and known to differ from the designer's
 expectation.
 
+### The den ledger -- hoard, tier and raids (BUILT: accounting only)
+
+Status: the LEDGER is built (`DenController`). Populations, scavenger agents and
+raid bodies are the next pass; a raid currently takes its gold and logs, with no
+bodies on screen.
+
+**One ledger, two income functions -- and this is what closed the gap this entry
+left open.** Canon said the goblin hoard feeds tier and never said what feeds a
+kobold's, because kobolds do not steal. Both kinds now share one curve, one tier
+table and one raid table, and differ only in how they earn. One controller, one
+save shape, and the verbs stay distinct.
+
+**Occupier income is a CHASE, not a tax.** A scavenger runs to loose loot, picks
+it up, carries it home, and the hoard grows only when it arrives
+(`DepositCarriedLoot`). The first design skimmed a cut as loot absorbed, and it
+was wrong: an invisible deduction gives the player nothing to see, nothing to
+chase and nothing to recover, whereas a carrier can be intercepted the whole way
+and killing it drops the haul back for the core. Hauls are carried as a plain
+VALUE rather than object references -- the adventurer path already keeps
+`restoredCarriedGold` for exactly that reason, and a goblin haul is short-lived
+and floor-local.
+
+A consequence worth stating: an occupier earns NOTHING while the player is off
+that floor, because no fighting there means no loose loot and no scavengers
+abroad. Correct rather than a gap -- the den only profits from battles it can
+pick over.
+
+**Excavator income responds to the player.** Spoil per cell dug at dawn, scaled
+by claimed cells on that floor (clamped 0.5-1.8x). Without that scaling
+excavation is a PURE CLOCK -- the sim gave identical kobold figures on every
+player profile, which is the real weakness of digging-as-income. Entry 12A's
+logic: threat scales with the player's own expansion, not with wall-clock time.
+
+**Two measured facts that must not be tidied**, both commented at the site:
+
+1. **Tier 1 income is non-zero.** The first curve had occupiers earning nothing
+   at tier 1, so there was no hoard, so tier 2 never came, for ever. An income
+   curve gated on its own output needs a non-zero seed. The same trap bit twice:
+   a 6 per cent share of a 3-gold coin FLOORS TO ZERO, so a den would never take
+   small change -- fractional shares round up to one coin.
+2. **A raid takes a FLAT tier-scaled amount, capped** at a fraction of gold, not
+   a straight percentage. Measured: a percentage had a spend-to-zero player
+   paying nothing while a hoarder fed the den 8,174 gold over sixty days, so the
+   rule punished SAVING rather than losing. Flat always bites; the cap stops it
+   emptying a poor dungeon.
+
+**The curve, measured over 60 days in `Tools/sim_den_growth.py`:** thresholds
+60/200/550/1400 across five tiers. Typical dungeon reaches tier 2 about day 12
+and tier 5 about day 38 as an occupier, day 13 and day 49 as an excavator.
+Passive play pushes tier 2 to day 16-18; a killer dungeon pulls it to 10-11. So
+the escalation spans a run and answers how the player plays rather than the
+clock.
+
+**Theft share is now EMERGENT, and the scavenger count is the knob.** With theft
+carried by bodies rather than skimmed as a fraction, the tuned shares
+(6/12/20/30/42 per cent by tier) become the TARGET and `ScavengersByTier`
+(1/2/4/6/8, inside canon 42's budget of ten goblins) is what hits it. Both live
+in the same file so they cannot drift apart silently: if a den steals far off its
+share in play, move the count and re-check the sim.
+
+**Registration is free.** A den registers on `OnFloorCreated`, and only when the
+floor's profile entry exists AND the generator actually cut tunnels -- a den
+without its network is a den nobody can reach. A floor does not exist until the
+player places a down stair, so a den on an unopened floor costs nothing at all.
+
+**Save is additive.** A null blob is a legacy save with no dens and needs no
+migration. Floors already created carry no den, which matches the substrate --
+they carry no tunnels either.
+
+**Key files:** `DungeonCore/DenController.cs` (+ `DenSaveEntry`, `DenSaveData`),
+`Floors/TerrainFeatureGenerator.cs` (`DenProfileEntry`), `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs`, `TESTING/Commands.cs` ("Print Den Ledger"),
+`Tools/sim_den_growth.py`.
+
 **Walkability follows reveal, per feature.** Tunnel and chamber each become
 walkable when their OWN unfog runs. A revealed run abutting an unrevealed
 chamber therefore ends at rock until the chamber reveals -- which it does,

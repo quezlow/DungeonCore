@@ -2868,6 +2868,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
             : (Vector3Int?)null;
 
     public int DenTunnelCount => featureData?.denTunnels?.Count ?? 0;
+
+    /// <summary>This floor's den profile entry, or null when the floor
+    /// carries no den. Read by DenController to learn the DenKind, which is
+    /// what decides whether the den steals or digs.</summary>
+    public DenTunnelFloorEntry DenProfileEntry =>
+        denTunnelProfile != null && floor != null
+            ? denTunnelProfile.For(floor.FloorIndex) : null;
     public int RevealedDenTunnelSegmentCount
         => featureData?.revealedDenTunnelSegmentIds?.Count ?? 0;
 

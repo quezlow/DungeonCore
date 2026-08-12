@@ -1052,6 +1052,41 @@ public class Commands : MonoBehaviour
     /// runs to the chamber CENTRE rather than its edge, consecutive dilations
     /// OVERLAP so a 2-wide tip stays 4-connected across a diagonal step, and
     /// handing the overlap back to the chamber severs nothing.</summary>
+    /// <summary>Every den in the run, with its hoard, tier and raid timing.
+    /// Built because a ledger earning nothing looks exactly like a ledger
+    /// earning slowly: the stolen/dug column separates them at a glance, and the
+    /// share it implies is the number to check against
+    /// Tools/sim_den_growth.py when a den feels wrong in play.</summary>
+    [ContextMenu("Print Den Ledger")]
+    void PrintDenLedger()
+    {
+        if (DenController.Instance == null) { Debug.Log("[Commands] No DenController in the scene."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        sb.AppendLine($"[Commands] Den ledger -- day {day}");
+        sb.AppendLine("floor  kind        tier  hoard    next tier  stolen   raids  state");
+
+        bool any = false;
+        foreach (var den in DenController.Instance.AllDens)
+        {
+            any = true;
+            int tier = DenController.Instance.TierOf(den.floorIndex);
+            float next = tier < DenController.MaxTier
+                ? DenController.ThresholdFor(tier + 1) : 0f;
+            string state = den.cleared ? "CLEARED"
+                : (day - den.awakenedDay < 5 ? $"grace ({5 - (day - den.awakenedDay)}d)" : "active");
+            sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tier,-5} "
+                        + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
+                        + $"{den.stolenTotal,-8:F0} {den.raidsLaunched,-6} {state}");
+        }
+
+        if (!any)
+            sb.AppendLine("  (no dens registered -- only floors CREATED since the profile "
+                        + "was assigned carry one)");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Den Tunnel Breach Check")]
     void DenTunnelBreachCheck()
     {

@@ -403,6 +403,9 @@ public class DungeonSaveController : MonoBehaviour
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
 
+        if (DenController.Instance != null)
+            currentSave.dens = DenController.Instance.GetSaveData();
+
         if (NobleRetaliation.Instance != null)
             currentSave.nobleRetaliation = NobleRetaliation.Instance.GetSaveData();
 
@@ -814,6 +817,7 @@ public class DungeonSaveController : MonoBehaviour
             // saved trap state — each restored member registers with its floor at once.
             AdventurerSpawner.Instance?.RestoreLiveParties(currentSave.liveParties);
             WildMonsterEvent.Instance?.RestoreFromSave(currentSave.wildMonsterEvent);
+            DenController.Instance?.RestoreFromSave(currentSave.dens);
             TodoListUI.Instance?.LoadSaveData(currentSave.playerTodos);
 
             // Pass 4: spawners, chests, furniture, anchors, traps, stairs.

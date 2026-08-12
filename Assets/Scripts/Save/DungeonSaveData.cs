@@ -107,6 +107,8 @@ public class DungeonSaveData
 
     public WildMonsterEventSaveData wildMonsterEvent;
 
+    public DenSaveData dens;                              // den hoards and tiers (canon 42; additive, null on old saves)
+
     public NobleRetaliationSaveData nobleRetaliation;
 
     public WorldEventsSaveData worldEvents;   // random world events (additive; null on old saves)
