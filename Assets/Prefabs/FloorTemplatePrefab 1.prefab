@@ -2316,6 +2316,12 @@ MonoBehaviour:
   chamberReferenceRadius: 150
   chamberCountCeiling: 30
   chamberRimMargin: 10
+  denTunnelProfile: {fileID: 11400000, guid: 2dabe632b8bb00b4d81794e2f8133809, type: 2}
+  denTunnelRimMargin: 10
+  denTunnelWobbleStep: 16
+  denTunnelWobbleAmplitude: 3
+  starterBlobRadiusForDens: 6
+  logDenTunnelGeneration: 1
   riverBankRimMargin: 7
   minRivers: 1
   maxRivers: 3
