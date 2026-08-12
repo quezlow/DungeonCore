@@ -8199,11 +8199,28 @@ new art through the old colour and reads as bad art rather than a stale
 field. The audit flags this only once a `projectileSprite` is assigned: quiet
 through the whole deferred period, loud exactly when it becomes true.
 
-**Baseline at first run**, kept as a reference point rather than a target:
-234 null sprite fields across 8 type/field pairs -- 100 `MonsterDefinition`
-icons, 51 tech nodes (the entire research tree), 27 projectile sprites
-(deferred by entry 27's ranged decision), 21 patterns, 13 traps, 11 spells,
-6 trophies, 5 furniture.
+**Baseline, measured on the first real run** and kept as a reference point
+rather than a target: 213 owed, 160 deferred, 119 by design, 247 filled, and
+NOTHING unclassified -- the ruling table covers every sprite field shipped.
+
+Owed splits 210 definition icons (103 `MonsterDefinition`, 51 tech nodes --
+the entire research tree -- 21 patterns, 13 traps, 11 spells, 6 trophies, 5
+furniture) and 3 prefab bodies. Deferred splits 112 `projectileSprite` slots
+(entry 27's ranged decision) and 48 borrowed prefab bodies, of which 24
+monsters wear `down_stand_0` and 13 traps wear one spike.
+
+**This paragraph replaced an estimate, and the correction is the lesson.**
+The pre-build figure was scanned from the .asset YAML and said 27 projectile
+sprites. The truth is 112: 84 `MonsterDefinition` assets have no
+`projectileSprite` line on disk AT ALL, because the field post-dates their
+last serialisation and Unity fills the default on load, writing it only on
+re-save. A YAML scan therefore undercounts by however many assets have not
+been touched since a field was added -- silently, and in the safe-looking
+direction. That is the same failure as reading prefab variants off disk, one
+level up, and it is why the audit measures through `AssetDatabase` rather
+than by parsing. Six slots also came back OWNED-but-assigned: three `*REPLACE`
+icons and the three prefab bodies wearing them, which every null check in the
+project's history had scored as done.
 
 `Docs/ART_DEBT.md` is fully sorted, so a re-run with nothing changed rewrites
 the same bytes. A report that churns its own diff is a report nobody commits.
