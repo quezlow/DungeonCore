@@ -86,7 +86,7 @@ public class Commands : MonoBehaviour
         // Live bodies, walked from the scene rather than the ledger, so the two can
         // be compared: a mismatch means the population loop is not keeping up, or
         // bodies are being destroyed by something that is not a death.
-        var bodies = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var bodies = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
         int scavengers = 0, laden = 0, haul = 0;
         for (int i = 0; i < bodies.Length; i++)
         {

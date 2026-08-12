@@ -2201,14 +2201,20 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// floor below's coins whenever this floor is quiet -- which, for a den on a
     /// floor the player is not fighting on, is most of the time. The goblin would
     /// then walk at a wall for ever, because DungeonPathfinder is scoped to its own
-    /// floor and cannot route to a goal 2000 units off it.</summary>
+    /// floor and cannot route to a goal 2000 units off it.
+    ///
+    /// No sort mode: the ordered overload is deprecated, because the order
+    /// it promised cannot survive InstanceID becoming EntityId. Nothing here
+    /// depends on order anyway -- this takes a minimum by distance and
+    /// TakeDropAt takes everything inside a radius. Match the shipped idiom
+    /// and do not add the argument back.</summary>
     private bool TryClaimNearestDrop()
     {
         float best = float.MaxValue;
         Vector3 bestPos = Vector3.zero;
         bool found = false;
 
-        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude);
         for (int i = 0; i < carriable.Length; i++)
         {
             Vector3 p = carriable[i].transform.position;
@@ -2217,7 +2223,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             if (d < best) { best = d; bestPos = p; found = true; }
         }
 
-        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude);
         for (int i = 0; i < dropped.Length; i++)
         {
             Vector3 p = dropped[i].transform.position;
@@ -2238,7 +2244,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         int taken = 0;
 
-        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude);
         for (int i = 0; i < carriable.Length; i++)
         {
             if (!FloorRoot.IsOnFloor(carriable[i].transform.position, denFloorIndex)) continue;
@@ -2246,7 +2252,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                 taken += carriable[i].TakeForCarrying();
         }
 
-        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude);
         for (int i = 0; i < dropped.Length; i++)
         {
             if (!FloorRoot.IsOnFloor(dropped[i].transform.position, denFloorIndex)) continue;
