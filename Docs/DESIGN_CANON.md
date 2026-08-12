@@ -7454,11 +7454,26 @@ take what you drop; kobolds take what you have not found yet.
   and a digging faction that claims would collide with the influence model and
   with `DwarvenClaimLedger`'s per-cell billing.
 - Size ~150 cells at tier 1, WIDENING per tier, hard-capped at 600. Tier reads
-  off how big it is. The cap is measured against entry 19's scale rule: a cave
-  chamber is 100-200 cells and the largest dwarven village is 2588, and a
-  span-62 plaza at roughly 3000 cells "read as a hole in the fog rather than a
-  building". 600 leaves the top-tier den clearly the biggest natural cavity on
-  its floor without becoming a set-piece.
+  off how big it is. The cap is measured against entry 19's scale rule, and the
+  COMPARATOR IN THAT RULE HAS SINCE BEEN CORRECTED -- see the note below. 600
+  survives on entry 19's span budget rather than on its cell count: a 600-cell
+  blob spans about 26 cells, inside the "near twice the chamber box size"
+  budget of 16-28 that the span-62 plaza failure actually produced. It is NOT
+  "clearly the biggest natural cavity without becoming a set-piece" on a cell
+  count -- it is 12x the median chamber -- and that earlier claim is retired
+  rather than quietly left standing.
+
+  **The chamber comparator was wrong, and three entries leaned on it.** Entry 19
+  says a cave chamber is "roughly 100--200" cells. It was never measured.
+  `RunChamberCA` at the shipped parameters -- box 8-14, fill 0.45, four
+  smoothing iterations, all read off `FloorTemplatePrefab 1` -- has a MEDIAN OF
+  49 and CANNOT EXCEED 133, because box 14 is the largest roll and its interior
+  is 12x12. 200 is unreachable. Measured over 4000 rolls in
+  `Tools/sim_den_cavity.py`, which prints the figure every run so it cannot
+  drift back. Entry 19's OTHER rule from the same paragraph -- "keep a span near
+  twice the chamber box size, not five times it" -- was derived from the real
+  failure and is sound; it is the one to size against, and the one every cavity
+  number here now rests on.
 - **Contested discovery lives here.** Kobolds excavate buried remains before
   the player finds them. An excavated cell leaves a VISIBLE EMPTY HOLE --
   without that the loss is invisible, because the claim-halo murmur only fires
@@ -8115,8 +8130,9 @@ E shipped the tunnel PLAN LAYER only: `TerrainFeatureGenerator.DenAnchor` return
 `denTunnels[0].polyline[0]`, the origin point of tunnel run 0, and there is no den
 footprint, no cell set and no carve anywhere. `DenTunnelProfile.minRunCells` says
 "Nearer than this and the chamber IS the den", so a den's home today is either an
-incidental existing cave chamber -- 100-200 cells by the chamber generator, not
-250-400 -- or a bare junction in tunnel three cells wide. Residents currently
+incidental existing cave chamber -- a MEDIAN OF 49 CELLS and never more than
+133 by the chamber generator, measured, not the 100-200 entry 19 asserted and
+not 250-400 -- or a bare junction in tunnel three cells wide. Residents currently
 loiter within `denLoiterRadius` of that point, which reads as goblins in a tunnel
 rather than a hole that fills as it tiers.
 
@@ -8133,11 +8149,35 @@ What the arc needs:
   spawns.** If the den seats against an existing chamber, that chamber may already
   carry unrelated wild monsters, giving the hole a population it never asked for.
 
-Sim before C#, as the tunnels got (`Tools/sim_den_tunnels.py`, 2000 seeds), and
-measured against entry 19's scale rule -- a cave chamber is 100-200 cells, the
-largest dwarven village 2588, and a roughly 3000-cell plaza "read as a hole in the
-fog rather than a building". Unmeasured cavities are how a site once reached
-15-30x a cave chamber before anyone noticed.
+Sim before C#, as the tunnels got. DONE: `Tools/sim_den_cavity.py`, 2000 seeds
+per den floor, and it settled the carve before a line of C# was written.
+
+**What it measured, and what moved because of it.** The comparator first: a cave
+chamber is a median of 49 cells and never more than 133, NOT the 100-200 entry 19
+asserted -- so a 300-cell hole is 6.6x the median chamber and 2.5x the largest
+that can exist. The sizes stand on entry 19's SPAN budget instead (16-28 cells,
+twice the chamber box size): the occupier hole spans 20, the excavator's 600-cell
+reserve spans 26, and 4 per cent of excavator seeds reach 33 and sit over budget
+-- accepted, because 600 is the declared ceiling and the overshoot is the cap
+doing its job.
+
+The carve is `RunChamberCA` for the silhouette and
+`GenerateCoreCavernAndTunnels`' top-up/trim for the size, which is both shipped
+carvers and no third one. THE BOX SIZE IS READ OFF A SWEEP, NOT CHOSEN: box 22
+for the occupier and 28 for the excavator put the RAW CA yield inside the target
+band, so the clamp corrects a median of ZERO cells and the CA's own silhouette
+survives. A first pass guessed 28 and 36; the sweep rejected both, because a box
+that overshoots gets trimmed farthest-cell-first and comes out rounder the more
+it is cut. Correction magnitude, not final count, is the quality signal -- the
+clamp always hits the band by construction.
+
+Seating is free and the reason is worth keeping: `DenTunnelBuilder.Plan` sets
+`run.a = den` for EVERY run, so a cavity carved at the anchor seats against all
+of them without the runs moving. 14,000 runs measured across both floors, all
+4-connected to the cavity after it takes its cells back, none severed.
+
+Unmeasured cavities are how a site once reached 15-30x a cave chamber before
+anyone noticed. This one is measured.
 
 
 ## 43. Art Debt (the Audit and its Ledger)
