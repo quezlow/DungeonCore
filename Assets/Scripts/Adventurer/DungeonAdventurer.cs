@@ -362,6 +362,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     private readonly List<CarriableLoot> carriedLoot = new();
     private int restoredCarriedGold;                   // carried gold from a mid-raid save (no loot objects)
+    private int restoredCarriedDenGold;                // ...of which was recovered den plunder
     private LiveMemberSaveData pendingRestore;         // applied at the end of Start once status bars exist
 
     // ── Tribute bearing (Pilgrim / Cultist gift delivery) ────────
@@ -1214,6 +1215,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         if (state == AdventurerState.Retreating)
         {
             int carried = CarriedLootValue;   // capture before the haul is destroyed
+            int carriedDenLoot = CarriedDenLootValue;   // ...and how much was den plunder
 
             foreach (var loot in carriedLoot)
                 if (loot != null) Destroy(loot.gameObject);
@@ -1258,9 +1260,25 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 if (party != null) party.notorietyDelta -= drop;
             }
 
+            // Gold recovered from a slain den thief leaves the OUTFLOW ledgers
+            // alone. The player already lost this coin once, when it was stolen;
+            // charging them a second time -- in mercenary reprisal and in
+            // alignment drift -- for adventurers cleaning out a den on a floor
+            // they were not even watching is a cost with nothing to see and
+            // nothing to intervene in. Canon 42 rejected exactly that shape once
+            // already, when an invisible skim was replaced by a carried haul.
+            //
+            // Reputation and notoriety are deliberately NOT exempted: those read
+            // as word getting round, which is true however the coin was got.
+            //
+            // No exploit here: the player cannot feed gold to a den. Scavengers
+            // take only loose loot the core would otherwise have absorbed, and it
+            // is lost either way, so nothing can be laundered past the window.
+            int outflow = Mathf.Max(0, carried - carriedDenLoot);
+
             party?.OnMemberResolved(partyMember, true, false, carried);
-            AlignmentSystem.Instance?.OnAdventurerLeftAlive(carried);
-            MercenaryContract.Instance?.RegisterLootExit(carried);
+            AlignmentSystem.Instance?.OnAdventurerLeftAlive(outflow);
+            MercenaryContract.Instance?.RegisterLootExit(outflow);
             // A noble driven out in flight (not one leaving of its own accord) triggers the family reprisal.
             if (type == AdventurerType.Noble && !leftSatisfied)
                 NobleRetaliation.Instance?.RegisterNobleFall(displayName);
@@ -2275,6 +2293,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
                 transform.position + new Vector3(lumpScatter.x, lumpScatter.y, 0f), Quaternion.identity);
             d.Initialise(restoredCarriedGold);
             restoredCarriedGold = 0;
+            restoredCarriedDenGold = 0;
         }
         carriedLoot.Clear();
     }
@@ -2866,6 +2885,21 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         }
     }
 
+    /// <summary>The part of the haul that was recovered from a slain den thief.
+    /// Counts toward what this unit is CARRYING in every ordinary sense -- the
+    /// stats panel, encumbrance, what it drops on death -- and is subtracted
+    /// only from the outflow ledgers on a successful escape.</summary>
+    public int CarriedDenLootValue
+    {
+        get
+        {
+            int v = restoredCarriedDenGold;
+            foreach (var l in carriedLoot)
+                if (l != null && l.IsDenSourced) v += l.GoldValue;
+            return v;
+        }
+    }
+
     // ── Save / restore (live persistence) ───────────────
     /// <summary>Writes this unit's dynamic state into its roster save record.</summary>
     public void CaptureLiveState(LiveMemberSaveData rec)
@@ -2879,6 +2913,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         rec.roomsObserved = roomsObserved;
         rec.leftSatisfied = leftSatisfied;
         rec.carriedGold = CarriedLootValue;
+        rec.carriedDenGold = CarriedDenLootValue;
         rec.tributeValue = tributeValue;
         rec.returnGrudge = returnGrudge;
         rec.grudgeMonster = grudgeMonster;
@@ -2897,6 +2932,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         currentHP = Mathf.Clamp(rec.currentHP, 1f, maxHP);
         statusBars?.SetHP(currentHP, maxHP);
         restoredCarriedGold = rec.carriedGold;
+        restoredCarriedDenGold = rec.carriedDenGold;
         returnGrudge = rec.returnGrudge;
         grudgeMonster = rec.grudgeMonster;
         grudgeDamage = rec.grudgeDamage;

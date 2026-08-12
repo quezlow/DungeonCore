@@ -40,7 +40,16 @@ public static class LootAbsorbGate
     /// the registry is empty.</summary>
     public static bool Held(Vector3 worldPos)
     {
-        var floor = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloor : null;
+        // The coin's OWN floor, not the camera's. This read ActiveFloor, which
+        // is the floor being LOOKED AT -- so a coin on any other floor was
+        // tested against an entity registry 2000 world units away, never came
+        // back held, and absorbed on the bare minimum delay no matter how big
+        // the fight around it was. Floors all run at once, so "the fight" can
+        // be anywhere; and the hold exists precisely so a den's scavengers have
+        // something to come for, which made unwatched floors the exact case it
+        // was failing.
+        if (FloorManager.Instance == null) return false;
+        var floor = FloorManager.Instance.GetFloor(FloorRoot.FloorIndexFromWorld(worldPos));
         if (floor == null || floor.Entities == null) return false;
 
         floor.Entities.FillAll(Buffer);

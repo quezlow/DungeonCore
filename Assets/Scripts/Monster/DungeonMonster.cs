@@ -66,7 +66,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
-    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade }
+    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade, Scavenge }
     private MonsterState state = MonsterState.Wander;
     private float tauntImmuneUntil;   // set when peeled off a taunt by a heavy ally hit
     [SerializeField, Min(0f)] private float tauntPeelDuration = 2.5f;
@@ -304,7 +304,11 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private Vector3Int wanderPathTargetCell;
 
     public bool IsBoss => bossDefinition != null;
-    public bool IsWild => wildChamberId >= 0 || isInvader;
+    // Den population counts as wild. Without the third clause a scavenger has
+    // neither a wild chamber nor the invader flag, so it would read as one of
+    // the PLAYER's monsters -- friendly to the dungeon it is robbing, and
+    // counted as prey by the great predator.
+    public bool IsWild => wildChamberId >= 0 || isInvader || denFloorIndex >= 0;
 
     /// <summary>Specifically an INVADER -- a beast marching on the core -- and
     /// not merely wild. IsWild is true for wild-chamber dwellers too, and those
@@ -688,6 +692,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             case MonsterState.Invade:
                 TickInvade();
                 break;
+            case MonsterState.Scavenge:
+                TickScavenge();
+                break;
         }
     }
 
@@ -698,6 +705,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private MonsterState DetermineDesiredState()
     {
+        // Den population answers FIRST. This runs every frame, and the IsWild
+        // branch below matches a scavenger too -- so anywhere lower in this
+        // method and a goblin would be shoved back to Wander every frame and
+        // stranded mid-errand with a haul in hand.
+        if (denFloorIndex >= 0) return MonsterState.Scavenge;
+
         // An invader ignores everything and drives for the core.
         if (isInvader) return MonsterState.Invade;
 
@@ -1785,7 +1798,25 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         currentFloor?.Entities?.Unregister(this);
         if (statusBars != null) Destroy(statusBars.gameObject);
-        var lootTable = GetComponent<LootTable>();
+
+        // A den scavenger reports its death before anything else, so the den
+        // learns whether the DUNGEON wore it down -- the same wound-not-killing-
+        // blow test the bestiary uses, and for the same reason: a goblin your
+        // monsters ground down should still count when an adventurer takes the
+        // last hit.
+        if (denFloorIndex >= 0)
+        {
+            DenController.Instance?.NotifyScavengerDied(this, denFloorIndex, dungeonDealtDamage);
+            DropHaulOnDeath();
+        }
+
+        // Den scavengers roll NO loot table, and the null here is what enforces
+        // it. The goblin prefabs ARE ordinary monster prefabs and now carry gold
+        // tables of their own, so without this a den would MINT gold on every
+        // death -- a fountain, when the whole design is that its income is theft
+        // -- and the minted coins would be stealable by the next scavenger along.
+        // Their value is the haul they are carrying, and nothing else.
+        var lootTable = denFloorIndex >= 0 ? null : GetComponent<LootTable>();
         if (lootTable != null)
         {
             var promoTemplate = DungeonBuildController.Instance != null
@@ -2019,6 +2050,309 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
                   isVeteran,
             CustomName,
             TypeName);
+    }
+
+    // ---- Den scavenging (canon 42) -------------------------------
+
+    [Header("Den")]
+    [Tooltip("Floor index of the den this creature belongs to, or -1 for anything "
+           + "that is not den population. Set by the den spawner, never authored.")]
+    [SerializeField] private int denFloorIndex = -1;
+
+    [Tooltip("How often a scavenger looks for loose loot. Throttled because the "
+           + "search is a scene-wide FindObjectsByType, exactly as the adventurer's "
+           + "own ScanForLoot is -- run per frame it would cost far more than the "
+           + "behaviour is worth.")]
+    [SerializeField, Min(0.1f)] private float scavengeScanInterval = 0.75f;
+
+    [Tooltip("How close a scavenger must be to snatch a drop.")]
+    [SerializeField, Min(0.1f)] private float scavengePickupRadius = 0.6f;
+
+    [Tooltip("How close to the den mouth counts as home.")]
+    [SerializeField, Min(0.1f)] private float denArrivalDistance = 1.2f;
+
+    [Tooltip("How far from the den mouth an idle resident will drift before it "
+           + "turns back. Widened from the arrival distance because a den reads as "
+           + "a place its people live in, not a doorway they queue at.")]
+    [SerializeField, Min(1f)] private float denLoiterRadius = 6f;
+
+    /// <summary>Value carried, not objects. A goblin haul is short-lived and
+    /// floor-local, so it needs none of the object tracking an adventurer keeps to
+    /// carry loot out of the dungeon -- the adventurer path already falls back to a
+    /// plain restoredCarriedGold for the same reason.</summary>
+    private int carriedHaul;
+
+    /// <summary>Content that rode in with a stolen adventurer drop. Gold is
+    /// fungible and a plain int will do; a research node and a spoil rarity are
+    /// NOT -- one grants authored content outright and the other rolls the primary
+    /// material-pattern channel. Pooling those into the haul total would delete
+    /// them silently.</summary>
+    private readonly List<TechNodeDefinition> heldNodes = new List<TechNodeDefinition>();
+    private readonly List<Rarity> heldSpoilRarities = new List<Rarity>();
+
+    private Vector3 denAnchorWorld;
+    private bool denAnchorKnown;
+    private float scavengeScanTimer;
+    private List<Vector3> scavengePath = new List<Vector3>();
+    private int scavengePathIndex;
+    private float scavengePathRefreshTimer;
+    private Vector3 scavengeGoal;
+    private bool scavengeGoalSet;
+
+    public bool IsDenScavenger => denFloorIndex >= 0;
+    public int CarriedHaul => carriedHaul;
+    public int DenFloorIndex => denFloorIndex;
+
+    /// <summary>Called by the den spawner as the body is created.</summary>
+    public void InitialiseAsDenScavenger(int floorIndex, Vector3 denAnchor)
+    {
+        denFloorIndex = floorIndex;
+        denAnchorWorld = denAnchor;
+        denAnchorKnown = true;
+        state = MonsterState.Scavenge;
+    }
+
+    /// <summary>
+    /// Fetch and carry. A scavenger with nothing in hand walks to the nearest loose
+    /// drop and takes it; one with a haul walks home and banks it.
+    ///
+    /// Hostiles are still scanned for, so a scavenger fights when cornered and
+    /// resumes afterwards -- which is what makes the chase work. The player can let
+    /// it run and lose the coins, or intercept it and get them back, and that
+    /// choice is the whole point of carrying loot home rather than skimming a cut
+    /// off the ledger.
+    ///
+    /// Foraging is gated by the den, not by this body: during the grace days after
+    /// a floor is created the den answers no, and its people simply live there.
+    /// </summary>
+    private void TickScavenge()
+    {
+        ScanForHostiles();
+        if (state == MonsterState.Attack) { scavengePath.Clear(); return; }
+
+        if (carriedHaul > 0 || heldNodes.Count > 0 || heldSpoilRarities.Count > 0)
+        {
+            if (!denAnchorKnown) { DropHaulOnDeath(); return; }   // nowhere to bank it
+
+            if (Vector2.Distance(transform.position, denAnchorWorld) <= denArrivalDistance)
+            {
+                DenController.Instance?.DepositCarriedLoot(
+                    denFloorIndex, carriedHaul, heldNodes, heldSpoilRarities);
+                carriedHaul = 0;
+                heldNodes.Clear();
+                heldSpoilRarities.Clear();
+                scavengeGoalSet = false;
+                scavengePath.Clear();
+                return;
+            }
+            StepTowards(denAnchorWorld);
+            return;
+        }
+
+        bool mayForage = DenController.Instance != null
+                      && DenController.Instance.MayForage(denFloorIndex, this);
+
+        if (mayForage)
+        {
+            scavengeScanTimer -= Time.deltaTime;
+            if (scavengeScanTimer <= 0f)
+            {
+                scavengeScanTimer = scavengeScanInterval;
+                if (!TryClaimNearestDrop()) scavengeGoalSet = false;
+            }
+        }
+        else scavengeGoalSet = false;
+
+        if (!scavengeGoalSet)
+        {
+            // Nothing to fetch: stay about the den rather than wandering the floor,
+            // so a den reads as a place its people come back to.
+            if (denAnchorKnown
+                && Vector2.Distance(transform.position, denAnchorWorld) > denLoiterRadius)
+                StepTowards(denAnchorWorld);
+            else
+                Wander();
+            return;
+        }
+
+        if (Vector2.Distance(transform.position, scavengeGoal) <= scavengePickupRadius)
+        {
+            carriedHaul += TakeDropAt(scavengeGoal);
+            scavengeGoalSet = false;
+            scavengePath.Clear();
+            // Nothing there after all, or it was pure content with no coin in it:
+            // re-scan at once rather than idling out the interval.
+            if (carriedHaul <= 0 && heldNodes.Count == 0 && heldSpoilRarities.Count == 0)
+                scavengeScanTimer = 0f;
+            return;
+        }
+
+        StepTowards(scavengeGoal);
+    }
+
+    /// <summary>Nearest loose drop of either class ON THIS FLOOR. BOTH streams are
+    /// fair game -- a scavenger does not care who was carrying it. Monster drops are
+    /// CarriableLoot and are contested with adventurers, who pick them up and carry
+    /// them out; adventurer drops are DroppedLoot and are contested with nobody but
+    /// the core's own absorb timer.
+    ///
+    /// The floor test is load-bearing, not tidiness. Floors sit FloorSpacingY apart
+    /// and every floor runs at once, so a plain nearest-by-distance search finds the
+    /// floor below's coins whenever this floor is quiet -- which, for a den on a
+    /// floor the player is not fighting on, is most of the time. The goblin would
+    /// then walk at a wall for ever, because DungeonPathfinder is scoped to its own
+    /// floor and cannot route to a goal 2000 units off it.</summary>
+    private bool TryClaimNearestDrop()
+    {
+        float best = float.MaxValue;
+        Vector3 bestPos = Vector3.zero;
+        bool found = false;
+
+        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < carriable.Length; i++)
+        {
+            Vector3 p = carriable[i].transform.position;
+            if (!FloorRoot.IsOnFloor(p, denFloorIndex)) continue;
+            float d = Vector2.Distance(transform.position, p);
+            if (d < best) { best = d; bestPos = p; found = true; }
+        }
+
+        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < dropped.Length; i++)
+        {
+            Vector3 p = dropped[i].transform.position;
+            if (!FloorRoot.IsOnFloor(p, denFloorIndex)) continue;
+            float d = Vector2.Distance(transform.position, p);
+            if (d < best) { best = d; bestPos = p; found = true; }
+        }
+
+        if (!found) return false;
+        scavengeGoal = bestPos;
+        scavengeGoalSet = true;
+        return true;
+    }
+
+    /// <summary>Take whatever drop is within reach of a point, in gold, pocketing any
+    /// node or spoil rarity that rode with it.</summary>
+    private int TakeDropAt(Vector3 pos)
+    {
+        int taken = 0;
+
+        var carriable = FindObjectsByType<CarriableLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < carriable.Length; i++)
+        {
+            if (!FloorRoot.IsOnFloor(carriable[i].transform.position, denFloorIndex)) continue;
+            if (Vector2.Distance(pos, carriable[i].transform.position) <= scavengePickupRadius)
+                taken += carriable[i].TakeForCarrying();
+        }
+
+        var dropped = FindObjectsByType<DroppedLoot>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < dropped.Length; i++)
+        {
+            if (!FloorRoot.IsOnFloor(dropped[i].transform.position, denFloorIndex)) continue;
+            if (Vector2.Distance(pos, dropped[i].transform.position) > scavengePickupRadius) continue;
+            TechNodeDefinition node;
+            Rarity spoil;
+            taken += dropped[i].TakeForCarrying(out node, out spoil);
+            if (node != null) heldNodes.Add(node);
+            heldSpoilRarities.Add(spoil);
+        }
+
+        return taken;
+    }
+
+    /// <summary>Walk one step along a refreshed path. The Invade contract, reused
+    /// rather than rewritten: same pathfinder, same waypoint distance, same refresh
+    /// interval.</summary>
+    private void StepTowards(Vector3 goal)
+    {
+        scavengePathRefreshTimer -= Time.deltaTime;
+        bool needsRefresh = scavengePath.Count == 0
+                         || scavengePathIndex >= scavengePath.Count
+                         || scavengePathRefreshTimer <= 0f;
+        if (needsRefresh)
+        {
+            scavengePath = DungeonPathfinder.FindPath(currentFloor, transform.position, goal);
+            scavengePathIndex = 0;
+            scavengePathRefreshTimer = DefendCorePathRefreshInterval;
+        }
+
+        if (scavengePath.Count == 0 || scavengePathIndex >= scavengePath.Count) return;
+
+        Vector3 stepTarget = scavengePath[scavengePathIndex];
+        transform.position = Vector2.MoveTowards(
+            transform.position, stepTarget, EffectiveMoveSpeed * Time.deltaTime);
+        if (Vector2.Distance(transform.position, stepTarget) < waypointArrivalDistance)
+            scavengePathIndex++;
+    }
+
+    /// <summary>Kill the carrier, get the plunder back.
+    ///
+    /// The GOLD returns as CarriableLoot, so whoever killed the thief may take it --
+    /// including an adventurer, who picks it up under the ordinary rules for any
+    /// monster drop. It is marked den-sourced so it stays out of the outflow
+    /// ledgers: the player already lost this coin once when it was stolen, and must
+    /// not also earn a mercenary reprisal because adventurers cleaned out a den on a
+    /// floor they were not watching.
+    ///
+    /// NODES return as DroppedLoot, which only the core absorbs. A tome is authored
+    /// content with one home, and losing it to a passing looter would be the silent
+    /// content loss the original refuse-to-steal-books rule was guarding against.
+    /// Spoil rarities ride back the same way so the pattern channel still rolls.</summary>
+    private void DropHaulOnDeath()
+    {
+        // Prefabs come from the DEN, not from a LootTable on this body. A den
+        // scavenger deliberately carries no loot table (see Die), so reading the
+        // prefabs off one would work only for as long as the authored goblin prefab
+        // happened to keep a component we have just finished saying it must not use
+        // -- and would silently drop every haul the day somebody removed it.
+        var den = DenController.Instance;
+
+        if (carriedHaul > 0)
+        {
+            var carriablePrefab = den != null ? den.HaulDropPrefab : null;
+            if (carriablePrefab != null)
+            {
+                var c = Instantiate(carriablePrefab, transform.position, Quaternion.identity);
+                c.Initialise(carriedHaul);
+                c.MarkDenSourced();
+            }
+            else DungeonCore.Instance?.AddGold(carriedHaul);
+        }
+        carriedHaul = 0;
+
+        var droppedPrefab = den != null ? den.HaulContentPrefab : null;
+        for (int i = 0; i < heldSpoilRarities.Count; i++)
+        {
+            TechNodeDefinition node = i < heldNodes.Count ? heldNodes[i] : null;
+            if (droppedPrefab == null)
+            {
+                // No prefab to carry it: grant the node directly rather than lose it.
+                if (node != null) ResearchController.Instance?.GrantNodeFully(node);
+                continue;
+            }
+            Vector2 scatter = Random.insideUnitCircle * 0.3f;
+            var d = Instantiate(droppedPrefab,
+                transform.position + new Vector3(scatter.x, scatter.y, 0f), Quaternion.identity);
+            d.Initialise(0, heldSpoilRarities[i], node);
+        }
+        heldNodes.Clear();
+        heldSpoilRarities.Clear();
+    }
+
+    /// <summary>Hands the in-flight haul to the den without a body dying. Used by the
+    /// save path: a scavenger caught mid-errand has state that nothing snapshots, and
+    /// losing a tome to a save would be exactly the silent content loss this whole
+    /// ledger exists to prevent.</summary>
+    public void ForceDepositHaul()
+    {
+        if (denFloorIndex < 0) return;
+        if (carriedHaul <= 0 && heldNodes.Count == 0 && heldSpoilRarities.Count == 0) return;
+        DenController.Instance?.DepositCarriedLoot(
+            denFloorIndex, carriedHaul, heldNodes, heldSpoilRarities);
+        carriedHaul = 0;
+        heldNodes.Clear();
+        heldSpoilRarities.Clear();
     }
 
     public FloorRoot CurrentFloor => currentFloor;

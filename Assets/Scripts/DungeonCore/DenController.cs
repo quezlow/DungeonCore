@@ -16,6 +16,30 @@ public class DenSaveEntry
     public float raidCountdown; // days until the next raid attempt
     public int raidsLaunched;
     public float stolenTotal;   // lifetime theft, for tuning against the sim
+
+    /// <summary>Research nodes taken with stolen adventurer spoils, held until
+    /// the den is cleared. STRING KEYS, never object references:
+    /// TechNodeDefinition.Key is the stable save-safe identifier and is already
+    /// what the research layer keys on.</summary>
+    public List<string> heldNodeKeys = new List<string>();
+
+    /// <summary>Spoil rarities taken with stolen adventurer drops, held until
+    /// the den is cleared. Names rather than enum ordinals, per the save rule.
+    /// The RARITY is stored and the pattern is rolled at clearing, because a
+    /// drop carries no pattern identity -- NotifyLootAbsorbed rolls a chance
+    /// and then picks from the undiscovered pool, so there is nothing to hold
+    /// until the moment of the grant.</summary>
+    public List<string> heldSpoilRarities = new List<string>();
+
+    /// <summary>True once the DUNGEON has wounded any of this den's people.
+    /// Gates clearing: adventurers wiping a den the player never touched must
+    /// not pay out a hoard to someone who was on another floor and never knew.</summary>
+    public bool contested;
+
+    /// <summary>Whether the waking line has been said for this den. The wisp's
+    /// own once-ever store would suffice for one den, but this keeps the ledger
+    /// self-describing and survives a den on a second floor later.</summary>
+    public bool spokenWaking;
 }
 
 [Serializable]
@@ -179,6 +203,13 @@ public class DenController : MonoBehaviour
             if (den.cleared) continue;
             if (InGrace(den)) continue;
 
+            // The first dawn past grace is the den waking. Speak once, ever.
+            if (!den.spokenWaking)
+            {
+                den.spokenWaking = true;
+                WispCompanion.Instance?.Speak("den_wakes");
+            }
+
             int tier = TierOf(den);
 
             // Occupier income arrives through DepositCarriedLoot when a
@@ -255,17 +286,30 @@ public class DenController : MonoBehaviour
     /// the carrier drops the haul back for the core -- so theft becomes a chase
     /// rather than a tax.
     ///
-    /// A consequence worth knowing: an occupier earns NOTHING while the player
-    /// is off that floor, because no fighting there means no loose loot and no
-    /// scavengers abroad. That is correct rather than a gap -- the den only
-    /// profits from battles it can pick over.
+    /// An occupier earns from ANY fight on its floor, watched or not. This
+    /// previously claimed a den earned nothing while the player was elsewhere,
+    /// on the reasoning that no scavengers were abroad -- true only while bodies
+    /// despawned on a floor change, which they no longer do. Floors all run at
+    /// once and adventurers descend by stairs on their own, so a den picks over
+    /// battles nobody watched. Do not restore the old claim.
     /// </summary>
-    public void DepositCarriedLoot(int floorIndex, int gold)
+    public void DepositCarriedLoot(int floorIndex, int gold,
+                                   List<TechNodeDefinition> nodes = null,
+                                   List<Rarity> spoilRarities = null)
     {
-        if (gold <= 0) return;
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return;
-        den.hoard += gold;
-        den.stolenTotal += gold;
+        if (gold > 0)
+        {
+            den.hoard += gold;
+            den.stolenTotal += gold;
+        }
+        if (nodes != null)
+            for (int i = 0; i < nodes.Count; i++)
+                if (nodes[i] != null && !den.heldNodeKeys.Contains(nodes[i].Key))
+                    den.heldNodeKeys.Add(nodes[i].Key);
+        if (spoilRarities != null)
+            for (int i = 0; i < spoilRarities.Count; i++)
+                den.heldSpoilRarities.Add(spoilRarities[i].ToString());
     }
 
     /// <summary>
@@ -321,7 +365,11 @@ public class DenController : MonoBehaviour
     /// hits it. Kept beside those figures so the two cannot drift apart
     /// silently -- if a den steals far off its share in play, this is the number
     /// to move, and Tools/sim_den_growth.py is where to check what it should be.
-    /// Capped at the agent budget canon 42 fixed: 10 goblins.</summary>
+    ///
+    /// This is the number ABROAD, not the number alive: see ResidentsByTier for
+    /// the den's actual population, which is twice this. Canon 42's original
+    /// ten-goblin agent cap was called provisional there and has since moved to
+    /// sixteen to accommodate that.</summary>
     public int ScavengerBudget(int floorIndex)
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
@@ -331,6 +379,18 @@ public class DenController : MonoBehaviour
     }
 
     private static readonly int[] ScavengersByTier = { 1, 2, 4, 6, 8 };
+
+    /// <summary>How many bodies the den HOLDS, as against how many are out
+    /// fetching. Twice the forager count: canon 42 makes tier legible off "how
+    /// full it is -- population and visible hoard", and a den whose entire
+    /// population is permanently abroad is a den that reads as empty whenever
+    /// it is working. Residents never forage, so the scan cost is unchanged and
+    /// still bounded by ScavengersByTier.
+    ///
+    /// The top of this table exceeds canon 42's original ten-goblin agent cap,
+    /// which that entry called provisional and expected to move after testing.
+    /// It moved.</summary>
+    private static readonly int[] ResidentsByTier = { 2, 4, 8, 12, 16 };
 
     private bool InGrace(DenSaveEntry den)
     {
@@ -349,6 +409,47 @@ public class DenController : MonoBehaviour
         int payout = Mathf.FloorToInt(den.hoard);
         den.hoard = 0f;
         DungeonCore.Instance?.AddGold(payout);
+
+        bool heldMoreThanGold = den.heldNodeKeys.Count > 0
+                             || den.heldSpoilRarities.Count > 0;
+
+        // Tomes first. GrantNodeFully is duplicate-safe -- it returns early on an
+        // already-unlocked key, and the gold has paid regardless, so a tome the
+        // player had already earned is never a dead drop.
+        var tree = ResearchController.Instance != null ? ResearchController.Instance.Tree : null;
+        for (int i = 0; i < den.heldNodeKeys.Count; i++)
+        {
+            var node = tree != null ? tree.GetByKey(den.heldNodeKeys[i]) : null;
+            if (node != null) ResearchController.Instance?.GrantNodeFully(node);
+        }
+        den.heldNodeKeys.Clear();
+
+        // Then the pattern rolls, run NOW rather than when the coin was stolen.
+        // A drop carries no pattern identity: NotifyLootAbsorbed rolls a chance
+        // and then picks from whatever is still undiscovered, so rolling at the
+        // moment of the grant is both lossless and robust against the player
+        // having learned that pattern by another channel meanwhile.
+        Vector3 where = transform.position;
+        var floor = FindFloor(floorIndex);
+        if (floor != null && floor.FeatureGenerator != null && floor.TileInfluence != null)
+        {
+            var anchor = floor.FeatureGenerator.DenAnchor;
+            if (anchor != null) where = floor.TileInfluence.CellToWorld(anchor.Value);
+        }
+        for (int i = 0; i < den.heldSpoilRarities.Count; i++)
+        {
+            Rarity r;
+            if (!System.Enum.TryParse(den.heldSpoilRarities[i], out r)) continue;
+            PatternDiscovery.NotifyLootAbsorbed(r, where);
+        }
+        den.heldSpoilRarities.Clear();
+
+        // Fires on having HELD more than coin, not on the rolls landing. Most
+        // pattern rolls fizzle by design, and whether the line is true has
+        // nothing to do with the dice: they were holding more than gold either
+        // way, and RNG must not decide whether the player is told so.
+        if (heldMoreThanGold) WispCompanion.Instance?.Speak("den_hoard_content");
+
         return payout;
     }
 
@@ -372,6 +473,207 @@ public class DenController : MonoBehaviour
     public static float ThresholdFor(int tier)
         => tier >= 1 && tier <= TierThresholds.Length ? TierThresholds[tier - 1] : 0f;
 
+
+    // ---- Population (canon 42, as amended) -------------------------------
+
+    [Header("Population")]
+    [Tooltip("How often the controller tops each den's population back up to "
+           + "budget. Cheap: it counts a list and, at most, instantiates one body.")]
+    [SerializeField, Min(0.5f)] private float populationCheckInterval = 3f;
+
+    [Tooltip("Where bodies appear relative to the den mouth, in cells.")]
+    [SerializeField, Min(0f)] private float spawnScatter = 1.5f;
+
+    [Tooltip("What a slain thief's GOLD returns as. CarriableLoot, so whoever "
+           + "killed it may take it -- adventurers included, under the ordinary "
+           + "rules for any monster drop.")]
+    [SerializeField] private CarriableLoot haulDropPrefab;
+
+    [Tooltip("What a slain thief's TOMES and spoil rarities return as. "
+           + "DroppedLoot, which only the core absorbs: authored content has one "
+           + "home and must not be lost to a passing looter.")]
+    [SerializeField] private DroppedLoot haulContentPrefab;
+
+    public CarriableLoot HaulDropPrefab => haulDropPrefab;
+    public DroppedLoot HaulContentPrefab => haulContentPrefab;
+
+    private readonly Dictionary<int, List<DungeonMonster>> livePopulation
+        = new Dictionary<int, List<DungeonMonster>>();
+    private float populationTimer;
+
+    /// <summary>
+    /// Keeps each den stocked to its population budget, on EVERY floor.
+    ///
+    /// Bodies are NOT tied to the floor the camera is on. Canon 42 originally ruled
+    /// that they instantiate only while the player is on that floor; that ruling was
+    /// reversed, because floors are always active and simulate together -- so
+    /// despawning den bodies on a floor change would have made them the only entity
+    /// class in the game that stops existing when you look away, and you would never
+    /// walk in on goblins mid-errand. They would populate as you arrived.
+    ///
+    /// The cost is small and bounded: one occupier den, and a population budget that
+    /// tops out well inside the agent cap. Only the foragers among them scan.
+    /// </summary>
+    private void Update()
+    {
+        populationTimer -= Time.deltaTime;
+        if (populationTimer > 0f) return;
+        populationTimer = populationCheckInterval;
+
+        foreach (var kv in dens)
+        {
+            var den = kv.Value;
+            PruneDead(den.floorIndex);
+
+            if (den.cleared) { DespawnAll(den.floorIndex); continue; }
+
+            int budget = PopulationBudget(den.floorIndex);
+            var live = LiveOn(den.floorIndex);
+            for (int i = live.Count; i < budget; i++) SpawnScavenger(den);
+        }
+    }
+
+    private List<DungeonMonster> LiveOn(int floorIndex)
+    {
+        if (!livePopulation.TryGetValue(floorIndex, out var list))
+        {
+            list = new List<DungeonMonster>();
+            livePopulation[floorIndex] = list;
+        }
+        return list;
+    }
+
+    /// <summary>Drops destroyed bodies from the roll. Only bodies that DIED reach
+    /// NotifyScavengerDied; this sweep exists for anything removed by other means
+    /// (a scene teardown, a floor rebuild) and must never be read as a clearing.</summary>
+    private void PruneDead(int floorIndex)
+    {
+        var live = LiveOn(floorIndex);
+        for (int i = live.Count - 1; i >= 0; i--)
+            if (live[i] == null) live.RemoveAt(i);
+    }
+
+    private void DespawnAll(int floorIndex)
+    {
+        var live = LiveOn(floorIndex);
+        for (int i = live.Count - 1; i >= 0; i--)
+        {
+            if (live[i] != null) Destroy(live[i].gameObject);
+            live.RemoveAt(i);
+        }
+    }
+
+    private void SpawnScavenger(DenSaveEntry den)
+    {
+        var floor = FindFloor(den.floorIndex);
+        if (floor == null || floor.FeatureGenerator == null) return;
+
+        var entry = floor.FeatureGenerator.DenProfileEntry;
+        if (entry == null || entry.scavengerDefinition == null
+            || entry.scavengerDefinition.prefab == null) return;
+
+        var anchorCell = floor.FeatureGenerator.DenAnchor;
+        if (anchorCell == null) return;
+        var influence = floor.TileInfluence;
+        if (influence == null) return;
+
+        Vector3 anchorWorld = influence.CellToWorld(anchorCell.Value);
+        Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatter;
+        Vector3 pos = anchorWorld + new Vector3(scatter.x, scatter.y, 0f);
+
+        var def = entry.scavengerDefinition;
+        var monster = Instantiate(def.prefab, pos, Quaternion.identity);
+        monster.transform.SetParent(floor.transform, true);
+
+        // Wild first, so it inherits the hostility, regeneration and clearing
+        // behaviour that machinery already provides; then re-pointed at the den.
+        // Chamber id -1 marks it as belonging to no chamber, so nothing counts it
+        // toward a chamber's alive tally or its cleared state.
+        monster.InitialiseWild(-1, floor, null, def);
+        monster.InitialiseAsDenScavenger(den.floorIndex, anchorWorld);
+
+        LiveOn(den.floorIndex).Add(monster);
+    }
+
+    /// <summary>How many bodies a den keeps. This is what the player SEES, and canon
+    /// 42 makes tier legible off it -- "tier reads off how full it is". Distinct from
+    /// ScavengerBudget, which is how many of them are out fetching at any moment.
+    ///
+    /// A den is populated from the day its floor is created, INCLUDING through the
+    /// grace days: its people are simply at home and not yet robbing anyone. An empty
+    /// hole that suddenly contains goblins on day five reads as a spawn; a hole that
+    /// was always inhabited and then starts taking things reads as a warning that was
+    /// there all along.</summary>
+    public int PopulationBudget(int floorIndex)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
+        if ((DenKind)den.kind != DenKind.Occupier) return 0;
+        return ResidentsByTier[TierOf(den) - 1];
+    }
+
+    /// <summary>Whether this particular body may go out and rob.
+    ///
+    /// TWO gates, and both matter. Through the grace days the answer is always no --
+    /// that is what "the den does not tick yet" means for bodies: they exist, they
+    /// are visible, and they take nothing. After that, only the first
+    /// ScavengerBudget of the den's people are abroad at once and the rest keep
+    /// house, which is what keeps the theft rate on the curve the sim tuned even
+    /// though the population is twice that number.
+    ///
+    /// The role is read off position in the population list rather than held as a
+    /// flag, so a death re-assigns it for free and nothing can drift out of sync
+    /// with the roll.</summary>
+    public bool MayForage(int floorIndex, DungeonMonster body)
+    {
+        if (body == null) return false;
+        if (!MayForageAny(floorIndex)) return false;
+        int idx = LiveOn(floorIndex).IndexOf(body);
+        return idx >= 0 && idx < ScavengerBudget(floorIndex);
+    }
+
+    /// <summary>The den-level half of the foraging gate, without asking about a
+    /// particular body: is this den robbing anyone at all yet? Split out so the
+    /// grace rule lives in ONE place and the headless report can ask it.</summary>
+    public bool MayForageAny(int floorIndex)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return false;
+        if ((DenKind)den.kind != DenKind.Occupier) return false;
+        return !InGrace(den);
+    }
+
+    /// <summary>
+    /// A scavenger died. Two jobs, and the second is the whole reason this exists.
+    ///
+    /// CONTEST: dungeonDealtDamage is true when the player's side WOUNDED it -- the
+    /// bestiary's test, reused rather than re-invented, and reused for its stated
+    /// reason: a creature your monsters wore down should still count when an
+    /// adventurer steals the last hit. Traps and spells count as the dungeon;
+    /// adventurers pass fromOutsider and do not.
+    ///
+    /// CLEARING: a den is cleared only when its last body dies AND the dungeon had a
+    /// hand in it. Adventurers wiping a den the player never touched does NOT clear
+    /// it -- the population regrows and the hoard stays in the hole, which is canon
+    /// 42's own regrow rule doing the work. Otherwise a den could pay out its whole
+    /// hoard to a player who was on another floor and never knew it happened.
+    /// </summary>
+    public void NotifyScavengerDied(DungeonMonster body, int floorIndex, bool dungeonDealtDamage)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return;
+        if (dungeonDealtDamage) den.contested = true;
+
+        // Drop the dying body from the roll HERE rather than counting live ones.
+        // Counting was the obvious version and is wrong twice over: IsAlive is an
+        // explicit IMonsterTarget implementation and unreachable without a cast, and
+        // a corpse lingers for deathAnimSeconds before Destroy runs, so a plain
+        // null-check would count bodies that are already gone.
+        var live = LiveOn(floorIndex);
+        live.Remove(body);
+        for (int i = live.Count - 1; i >= 0; i--)
+            if (live[i] == null) live.RemoveAt(i);
+
+        if (live.Count == 0 && den.contested) ClearDen(floorIndex);
+    }
+
     private static FloorRoot FindFloor(int floorIndex)
     {
         if (FloorManager.Instance == null) return null;
@@ -384,6 +686,18 @@ public class DenController : MonoBehaviour
 
     public DenSaveData GetSaveData()
     {
+        // Bank whatever is in transit before serialising. Live bodies are not
+        // snapshotted -- they are rebuilt from the ledger on load -- so a
+        // scavenger caught mid-errand would otherwise take its haul out of
+        // existence, tomes included. The den collecting what was already on its
+        // way home is the reading that loses nothing.
+        foreach (var kv in livePopulation)
+        {
+            var live = kv.Value;
+            for (int i = 0; i < live.Count; i++)
+                if (live[i] != null) live[i].ForceDepositHaul();
+        }
+
         var data = new DenSaveData();
         foreach (var kv in dens) data.dens.Add(kv.Value);
         return data;

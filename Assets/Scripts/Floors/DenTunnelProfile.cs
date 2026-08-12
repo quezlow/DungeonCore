@@ -19,6 +19,13 @@ public class DenTunnelFloorEntry
            + "it finds it; Excavator widens and extends it over days.")]
     public DenKind kind = DenKind.Occupier;
 
+    [Tooltip("The creature this den is populated with. Occupier dens only for "
+           + "now -- excavators have no diggers yet. Its prefab must NOT be "
+           + "relied on for a LootTable: den bodies deliberately roll no drops, "
+           + "or every death would mint gold for a den whose whole income is "
+           + "theft.")]
+    public MonsterDefinition scavengerDefinition;
+
     [Header("Band (fractions of floor radius)")]
     [Tooltip("Canon 19's placement band, and canon 42 holds the den to it: "
            + "reveal is influence-touch only, and a den outside the band is a "

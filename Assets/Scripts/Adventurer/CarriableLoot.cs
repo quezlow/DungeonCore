@@ -27,6 +27,37 @@ public class CarriableLoot : MonoBehaviour
     // ── Public ────────────────────────────────────────────────────
     public int GoldValue => goldValue;
 
+    /// <summary>True when this pile was recovered from a slain den thief
+    /// rather than dropped by the dungeon's own dead. Such gold is EXEMPT from
+    /// the outflow ledgers (see DungeonAdventurer's retreat path): the player
+    /// already lost it once when it was stolen, and a den on a floor they were
+    /// not watching must not also buy them a mercenary assault when passing
+    /// adventurers clean the place out. Canon 42 rejected invisible deductions
+    /// for the same reason -- a cost with nothing to see and nothing to
+    /// intervene in is not a decision.</summary>
+    public bool IsDenSourced => denSourced;
+
+    private bool denSourced;
+
+    /// <summary>Marks this pile as recovered den plunder. Called by the
+    /// scavenger death path only.</summary>
+    public void MarkDenSourced() { denSourced = true; }
+
+    /// <summary>
+    /// Taken off the floor by a thief that carries VALUE rather than the
+    /// object. The adventurer path keeps the object alive because a carrying
+    /// adventurer must still answer CarriedLootValue and DropCarriedLoot; a den
+    /// scavenger carries a plain total and needs none of that, so this destroys
+    /// the pickup and hands back its worth.
+    /// </summary>
+    public int TakeForCarrying()
+    {
+        StopAllCoroutines();
+        int value = goldValue;
+        Destroy(gameObject);
+        return value;
+    }
+
     // ─────────────────────────────────────────────────────────────
 
     private void Start()

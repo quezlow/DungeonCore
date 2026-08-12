@@ -6355,6 +6355,10 @@ MonoBehaviour:
   expansionBaselineCells: 900
   graceDays: 5
   logDawnTick: 0
+  populationCheckInterval: 3
+  spawnScatter: 1.5
+  haulDropPrefab: {fileID: 2510184261249386949, guid: 8dd25799e128f934e83875d915b29aa8, type: 3}
+  haulContentPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
 --- !u!1 &198049947
 GameObject:
   m_ObjectHideFlags: 0
@@ -52288,7 +52292,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000072982424}
+  m_AnchoredPosition: {x: 0, y: -0.000020947793}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -62329,7 +62333,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.000072982424}
+  m_AnchoredPosition: {x: 0, y: -0.000020947793}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

@@ -7494,8 +7494,10 @@ take what you drop; kobolds take what you have not found yet.
   inherit its plumbing.
 - **Growth is a dawn-ticked ledger**, on the `CampGrowthController` model
   (`OnDayStarted`, grace days, decay, buildout rebuilt from ledger and tiers
-  rather than saved). Bodies instantiate only when the player is on that floor
-  or a raid fires.
+  rather than saved). ~~Bodies instantiate only when the player is on that
+  floor or a raid fires.~~ **REVERSED -- see "Den populations" below.** Floors
+  are always active and all simulate together, so den bodies persist exactly as
+  every other entity does.
 - **Its own controller.** `WildMonsterController` cannot be extended into
   this: it is chamber-scoped end to end (`spawnedPerChamber`,
   `HandleChamberRevealed`, `MarkChamberCleared`) and its clearing is
@@ -7739,10 +7741,11 @@ VALUE rather than object references -- the adventurer path already keeps
 `restoredCarriedGold` for exactly that reason, and a goblin haul is short-lived
 and floor-local.
 
-A consequence worth stating: an occupier earns NOTHING while the player is off
-that floor, because no fighting there means no loose loot and no scavengers
-abroad. Correct rather than a gap -- the den only profits from battles it can
-pick over.
+~~A consequence worth stating: an occupier earns NOTHING while the player is
+off that floor.~~ **RETIRED.** That followed from bodies despawning on a floor
+change, which they no longer do; it was a consequence of the despawn rather
+than a design position, and it is now false. Adventurers descend on their own
+and floors all run at once, so a den picks over fights nobody watched.
 
 **Excavator income responds to the player.** Spoil per cell dug at dawn, scaled
 by claimed cells on that floor (clamped 0.5-1.8x). Without that scaling
@@ -7967,6 +7970,146 @@ entry.
 ---
 
 # APPENDIX
+
+### Den populations -- bodies, and why they persist (BUILT)
+
+Status: BUILT for the OCCUPIER. Goblin scavengers are live bodies that fetch
+loose loot and carry it home. Excavator diggers do not exist yet and the kobold
+extension remains a separate pass.
+
+**This reverses the ruling above that "bodies instantiate only when the player is
+on that floor or a raid fires."** That ruling was wrong about the engine.
+`FloorManager`'s own class doc opens "Manages all dungeon floors. Floors are
+ALWAYS active"; `SetActiveFloor` moves the camera anchor and fires events and
+nothing more; no code path deactivates a floor root; and `DungeonMonster.Update`
+gates on `PauseController.IsGamePaused` and nothing else. Every `ActiveFloor`
+reader outside `FloorManager` is a player-interaction consumer -- the build
+controller, room validation, UI, the saved camera index. So "active floor" means
+THE FLOOR THE CAMERA IS ON, never "the only floor running".
+
+Despawning den bodies on a floor change would therefore have made them the one
+entity class in the game that stops existing when the player looks away. You
+could never walk in on goblins mid-errand; they would populate as you arrived.
+Adventurers spawn at floor index 0 and descend by stairs under their own
+direction, so fights -- and loose loot -- genuinely happen on floors nobody is
+watching, and a den picks over them. **The earlier claim that an occupier earns
+nothing while the player is off its floor is retired: it was a consequence of the
+despawn, not a design position, and it is now false. Do not restore it.**
+
+**Residents and foragers are different numbers.** `ResidentsByTier` is
+2/4/8/12/16 and is what the den HOLDS; `ScavengersByTier` is 1/2/4/6/8 and is how
+many are abroad at once. Canon makes tier legible off "how full it is", and a den
+whose whole population is permanently out reads as empty exactly when it is
+working. The theft rate stays on the tuned curve because only the foragers
+forage. The sixteen at the top exceeds the ten-goblin agent cap this entry set;
+that cap was recorded as provisional and expected to move after testing, and it
+moved.
+
+**Foraging is gated, population is not.** A den is inhabited from the day its
+floor is created, grace days included -- its people are simply at home and taking
+nothing. A hole that is empty and then contains goblins on day five reads as a
+spawn point; a hole that was always lived in and then starts stealing reads as a
+warning that was there all along. The wisp speaks once when it wakes.
+
+**Loot scans are floor-scoped, and that is load-bearing.** Floors sit
+`FloorRoot.FloorSpacingY` apart and all run at once, so a nearest-by-distance
+search finds the floor below's coins whenever this floor is quiet -- which, for a
+den on a floor with no fighting, is most of the time. The goblin would then walk
+at a wall for ever, because the pathfinder is scoped to its own floor and cannot
+route to a goal that far off it. `FloorRoot.FloorIndexFromWorld` is now the one
+place that answers which floor a position is on; `PatternDiscovery` held a
+private copy of the spacing and forwards to it instead.
+
+**`LootAbsorbGate` asked the wrong floor and was fixed with this pass.** It
+resolved adventurer proximity against `ActiveFloor` rather than the floor the
+coin was on, so a coin anywhere else was tested against an entity registry
+`FloorSpacingY` away, never came back held, and absorbed on the bare minimum
+delay however large the fight around it. The hold exists precisely so a den's
+scavengers have something to come for, which made unwatched floors the exact case
+it was failing.
+
+**Clearing requires the dungeon to have had a hand in it.** `dungeonDealtDamage`
+-- the bestiary's wound test, reused for its stated reason that a creature your
+monsters wore down should still count when an adventurer steals the last hit --
+marks a den `contested`. Adventurers wiping a den the player never touched does
+NOT clear it: the population regrows and the hoard stays in the hole, which is
+this entry's own regrow rule doing the work. Without that gate a den could pay
+its whole hoard to a player who was on another floor and never knew.
+
+**The den holds more than coin, and gives it back on clearing.** Stolen
+`DroppedLoot` carries a research node and a spoil rarity, and both would be
+destroyed silently if melted into hoard gold -- a tome is authored content and a
+rarity rolls the PRIMARY material-pattern channel. Goblins steal them anyway and
+hold them; clearing grants the tomes through `GrantNodeFully` and runs the
+pattern rolls then. The rolls are deferred rather than resolved at theft because
+a drop carries no pattern identity at all: `NotifyLootAbsorbed` rolls a chance and
+then picks from whatever is still undiscovered. The wisp line fires on the den
+having HELD such things, not on the rolls landing -- most fizzle by design, and
+RNG must not decide whether the player is told.
+
+**Killing a laden thief returns the plunder, split by kind.** Gold returns as
+`CarriableLoot`, so whoever killed it may take it, adventurers included under the
+ordinary rules for any monster drop. Tomes and rarities return as `DroppedLoot`,
+which only the core absorbs, because authored content has one home.
+
+**Recovered den gold is EXEMPT from the outflow ledgers.** Gold marked
+den-sourced is subtracted before `AlignmentSystem.OnAdventurerLeftAlive` and
+`MercenaryContract.RegisterLootExit`. The player lost that coin once already when
+it was stolen; charging them a second time, in reprisal and in alignment drift,
+because adventurers cleaned out a den on a floor they were not watching is a cost
+with nothing to see and nothing to intervene in -- the shape this entry already
+rejected when an invisible skim was replaced by a carried haul. Reputation and
+notoriety are deliberately NOT exempt: those read as word getting round, which is
+true however the coin was got. There is no exploit, because the player cannot
+feed a den -- scavengers take only loose loot the core would otherwise have
+absorbed, and it is lost either way.
+
+**Den scavengers roll no loot table.** The goblin prefabs are ordinary monster
+prefabs, so inheriting a gold table would make the den MINT gold on every death
+-- a fountain, when the entire design is that its income is theft -- and the
+minted coins would be stealable by the next scavenger along. Their value is the
+haul they carry. Haul prefabs are therefore held on `DenController`, not read off
+a `LootTable` the body must not have.
+
+**In-flight hauls are banked on save.** Live bodies are rebuilt from the ledger
+on load rather than snapshotted, so a scavenger caught mid-errand would otherwise
+take its haul out of existence, tomes included.
+
+### The den cavity and its residents (DECIDED, NOT BUILT)
+
+Status: DECIDED, NOT BUILT. Recorded before any code so a later session builds
+the agreed version rather than re-deriving it.
+
+**There is no den cavity.** This entry specifies the goblin hole at "250-400
+cells, FIXED" with tier reading off "how full it is". None of that exists. Shape
+E shipped the tunnel PLAN LAYER only: `TerrainFeatureGenerator.DenAnchor` returns
+`denTunnels[0].polyline[0]`, the origin point of tunnel run 0, and there is no den
+footprint, no cell set and no carve anywhere. `DenTunnelProfile.minRunCells` says
+"Nearer than this and the chamber IS the den", so a den's home today is either an
+incidental existing cave chamber -- 100-200 cells by the chamber generator, not
+250-400 -- or a bare junction in tunnel three cells wide. Residents currently
+loiter within `denLoiterRadius` of that point, which reads as goblins in a tunnel
+rather than a hole that fills as it tiers.
+
+What the arc needs:
+
+- **Carve the cavity at generation.** 250-400 cells for the occupier hole, fixed,
+  because they never dig. About 150 cells at tier 1 for the excavator, widening
+  per tier, hard-capped at 600.
+- **Re-point `DenAnchor` at the cavity centre** rather than a polyline origin, and
+  expose the cavity cell set so residents scatter across it instead of huddling.
+- **A visible hoard prop**, since tier is meant to be legible off population AND
+  visible hoard, and the hoard half is unbuilt.
+- **Decide whether the cavity is excluded from `WildMonsterController` chamber
+  spawns.** If the den seats against an existing chamber, that chamber may already
+  carry unrelated wild monsters, giving the hole a population it never asked for.
+
+Sim before C#, as the tunnels got (`Tools/sim_den_tunnels.py`, 2000 seeds), and
+measured against entry 19's scale rule -- a cave chamber is 100-200 cells, the
+largest dwarven village 2588, and a roughly 3000-cell plaza "read as a hole in the
+fog rather than a building". Unmeasured cavities are how a site once reached
+15-30x a cave chamber before anyone noticed.
+
 
 ## A. Content Registries and Authoring Keys
 

@@ -214,11 +214,11 @@ public class PatternDiscovery : MonoBehaviour
         }
     }
 
+    // Forwards to FloorRoot, which owns the spacing. This used to hold its
+    // own copy of the 2000 constant with a comment pointing at FloorRoot --
+    // which is a duplicate waiting to drift the first time the spacing moves.
     private static int FloorIndexFromWorld(Vector3 worldPos)
-    {
-        // Floors are offset by floorIndex * -2000 on Y (see FloorRoot).
-        return Mathf.Max(0, Mathf.RoundToInt(-worldPos.y / 2000f));
-    }
+        => FloorRoot.FloorIndexFromWorld(worldPos);
 
     // -- Learned-from persistence --------------------------------------------
 

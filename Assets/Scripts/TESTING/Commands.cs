@@ -36,6 +36,77 @@ public class Commands : MonoBehaviour
     /// every player-reachable action with its ruling, so drift is visible in one
     /// place instead of being rediscovered by sweeping eleven files. A new
     /// action belongs in this table the day it is written.</summary>
+    /// <summary>
+    /// Headless den report: what every den currently holds, and who is out.
+    ///
+    /// Exists because a den's whole state is invisible in play by design -- the
+    /// hoard is a number, the held tomes and spoil rarities are strings in a save
+    /// entry, and the contest flag decides whether clearing pays out at all. A
+    /// ledger that quietly earns nothing looks exactly like a ledger that is
+    /// working, which is the failure the dawn-tick log was added to catch and this
+    /// is the same argument one level up.
+    ///
+    /// Prints the population split as well as the totals, because residents and
+    /// foragers are different numbers and a den stealing far off its tuned share is
+    /// diagnosed by which of the two is wrong.
+    /// </summary>
+    [ContextMenu("Print Den Report")]
+    private void PrintDenReport()
+    {
+        var den = DenController.Instance;
+        if (den == null) { Debug.Log("[DenReport] No DenController in the scene."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[DenReport]");
+
+        int dens = 0;
+        foreach (var entry in den.AllDens)
+        {
+            dens++;
+            int tier = den.TierOf(entry.floorIndex);
+            sb.AppendLine("  floor " + entry.floorIndex + "  " + (DenKind)entry.kind
+                + "  tier " + tier + (entry.cleared ? "  CLEARED" : ""));
+            sb.AppendLine("    hoard " + entry.hoard.ToString("0")
+                + "   stolen lifetime " + entry.stolenTotal.ToString("0")
+                + "   raids " + entry.raidsLaunched
+                + "   next raid in " + entry.raidCountdown.ToString("0") + "d");
+            sb.AppendLine("    awakened day " + entry.awakenedDay
+                + "   foraging " + (den.MayForageAny(entry.floorIndex) ? "yes" : "no (grace)")
+                + "   contested " + (entry.contested ? "yes" : "NO -- clearing will not pay out"));
+            sb.AppendLine("    population budget " + den.PopulationBudget(entry.floorIndex)
+                + "   of which abroad " + den.ScavengerBudget(entry.floorIndex)
+                + "   target share " + (den.TargetStealShare(entry.floorIndex) * 100f).ToString("0") + "%");
+            sb.AppendLine("    held tomes " + entry.heldNodeKeys.Count
+                + "   held spoil rarities " + entry.heldSpoilRarities.Count
+                + "   remains taken " + entry.remainsTaken);
+        }
+        if (dens == 0) sb.AppendLine("  No dens registered. No floor above 0 has been created yet,");
+        sb.AppendLine("");
+
+        // Live bodies, walked from the scene rather than the ledger, so the two can
+        // be compared: a mismatch means the population loop is not keeping up, or
+        // bodies are being destroyed by something that is not a death.
+        var bodies = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        int scavengers = 0, laden = 0, haul = 0;
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            if (!bodies[i].IsDenScavenger) continue;
+            scavengers++;
+            if (bodies[i].CarriedHaul > 0) { laden++; haul += bodies[i].CarriedHaul; }
+        }
+        sb.AppendLine("  live den bodies in scene: " + scavengers
+            + "   carrying: " + laden + "   gold in transit: " + haul);
+        for (int i = 0; i < bodies.Length; i++)
+        {
+            if (!bodies[i].IsDenScavenger) continue;
+            sb.AppendLine("    floor " + bodies[i].DenFloorIndex
+                + "  haul " + bodies[i].CarriedHaul
+                + "  at " + bodies[i].transform.position);
+        }
+
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Pause Audit")]
     private void PrintPauseAudit()
     {

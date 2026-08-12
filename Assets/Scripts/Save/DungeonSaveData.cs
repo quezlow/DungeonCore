@@ -354,6 +354,10 @@ public class LiveMemberSaveData
     public int roomsObserved;
     public bool leftSatisfied;
     public int carriedGold;
+    // Of carriedGold, how much was recovered den plunder -- exempt from the
+    // outflow ledgers on escape. Additive: absent on legacy saves, defaults to
+    // zero, which reads as "none of it was", and no migration is needed.
+    public int carriedDenGold;
     public int tributeValue;
     public string returnGrudge;
     public float grudgeDamage;

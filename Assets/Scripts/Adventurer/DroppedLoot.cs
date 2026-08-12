@@ -63,6 +63,29 @@ public class DroppedLoot : MonoBehaviour
         Destroy(gameObject);
     }
 
+    /// <summary>
+    /// Taken off the floor by a thief that carries VALUE rather than the
+    /// object -- a den scavenger, which unlike an adventurer has no need to
+    /// keep the coin itself.
+    ///
+    /// Hands back the node and the rarity as well as the gold, and BOTH matter.
+    /// A Book grants its node outright on absorb, and a rarity rolls the loot
+    /// channel for material patterns -- canon's PRIMARY pattern source. Melting
+    /// either into hoard gold would destroy authored content silently, which is
+    /// the failure the first design guarded against by refusing to steal tomes
+    /// at all. Holding them is better than refusing them: it turns a guard
+    /// clause into a reason to go and clear the den.
+    /// </summary>
+    public int TakeForCarrying(out TechNodeDefinition node, out Rarity spoilRarity)
+    {
+        StopAllCoroutines();
+        node = grantsNode;
+        spoilRarity = rarity;
+        int value = goldValue;
+        Destroy(gameObject);
+        return value;
+    }
+
     /// <summary>Set value, rarity tint, and (for Book drops) the granted node
     /// before the coroutine starts (called by the spawner).</summary>
     public void Initialise(int value, Rarity rarity = Rarity.Common,

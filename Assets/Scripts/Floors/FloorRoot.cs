@@ -52,7 +52,28 @@ public class FloorRoot : MonoBehaviour
     public PolygonCollider2D CameraBounds => cameraBounds;
     public Tilemap HighlightTilemap => highlightTilemap;
 
-    public float WorldOriginY => floorIndex * -2000f;
+    /// <summary>World Y between one floor and the next. Floors are ALL
+    /// ALWAYS ACTIVE and simulate together -- see FloorManager's class doc --
+    /// so this offset keeps their geometry from overlapping and is NOT a
+    /// visibility or activation mechanism. Anything that treats "the active
+    /// floor" as "the only floor running" is wrong.</summary>
+    public const float FloorSpacingY = 2000f;
+
+    public float WorldOriginY => floorIndex * -FloorSpacingY;
+
+    /// <summary>Which floor a world position sits on. The ONE place that
+    /// answers it. PatternDiscovery carried a private copy with the spacing
+    /// hard-coded and a comment pointing back here; a second copy was about to
+    /// appear for den scavengers, which need to tell their own floor's loot
+    /// from the floor below's. A distance test written twice is a distance
+    /// test that will disagree with itself -- the same argument LootAbsorbGate
+    /// already makes about proximity.</summary>
+    public static int FloorIndexFromWorld(Vector3 worldPos)
+        => Mathf.Max(0, Mathf.RoundToInt(-worldPos.y / FloorSpacingY));
+
+    /// <summary>True when a world position belongs to the given floor.</summary>
+    public static bool IsOnFloor(Vector3 worldPos, int floorIndex)
+        => FloorIndexFromWorld(worldPos) == floorIndex;
 
     // Does this floor carry a LIVING dwarven holding (outpost or village)?
     // Drives the road claim price and, with it, the granite holdings overlay.
