@@ -8,6 +8,12 @@ public class Commands : MonoBehaviour
     [SerializeField] private TrapDefinitionRegistry trapRegistry;
     [Tooltip("Name of the spike-trap definition to lay for the wall test.")]
     [SerializeField] private string spikeTrapName = "Spike Trap";
+    [Header("Den Tunnels")]
+    [Tooltip("The DenTunnelProfile asset. Only the headless report reads it.")]
+    [SerializeField] private DenTunnelProfile denTunnelProfile;
+    [Tooltip("Seeds per floor for the headless den tunnel report.")]
+    [SerializeField, Min(1)] private int denReportSeeds = 2000;
+
     [Tooltip("Where along the entrance->core approach to place the wall (0 = at core, 1 = at entrance).")]
     [SerializeField, Range(0.1f, 0.9f)] private float wallApproachFraction = 0.45f;
 
@@ -1025,6 +1031,132 @@ public class Commands : MonoBehaviour
         var floor = FloorManager.Instance?.ActiveFloor;
         if (floor?.FeatureGenerator == null) { Debug.Log("[Commands] Active floor has no feature generator."); return; }
         floor.FeatureGenerator.DebugRevealAll();
+    }
+
+    /// <summary>Runs the REAL DenTunnelBuilder across many seeds and prints what
+    /// it produces, without entering play mode or generating a floor. Built
+    /// before the generator that will call it, because the shape it implements
+    /// was chosen by measurement (Tools/sim_den_tunnels.py) and a C# builder
+    /// that disagrees with the sim it was written from has a bug in it. The
+    /// figures to expect, at the shipped profile: floor index 1 about 2.1
+    /// chamber links, 0.9 dead ends, no link at all on 5.8 per cent of seeds,
+    /// 508 cells; floor index 2 about 3.3 links, 0.7 dead ends, 0.9 per cent,
+    /// 1107 cells.</summary>
+    [ContextMenu("Den Tunnel Report (headless)")]
+    void DenTunnelReport()
+    {
+        if (denTunnelProfile == null)
+        {
+            Debug.Log("[Commands] Assign Den Tunnel Profile first.");
+            return;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"[Commands] Den tunnel plan report -- {denReportSeeds} seeds per floor");
+        sb.AppendLine("floor  radius  links   deadends  nolink%  short%  cells");
+
+        foreach (var entry in denTunnelProfile.Floors)
+        {
+            if (entry == null) continue;
+            int radius = FloorRadiusFor(entry.floorIndex);
+            var centre = new Vector3Int(0, 0, 0);
+
+            double links = 0, dead = 0, cells = 0;
+            int nolink = 0, shortNet = 0, ok = 0;
+
+            for (int s = 0; s < denReportSeeds; s++)
+            {
+                var rng = new System.Random(s * 7919 + entry.floorIndex);
+                var chambers = SampleChamberCentres(rng, radius, centre);
+                var ids = new System.Collections.Generic.List<int>();
+                for (int i = 0; i < chambers.Count; i++) ids.Add(i);
+
+                // The landing is wherever the player put the stair, which
+                // generation cannot know; sampling it in the inner band is the
+                // pessimistic model, because that is where a descending player is.
+                int inner = Mathf.RoundToInt(radius * entry.bandInner);
+                var landing = centre;
+                for (int t = 0; t < 64; t++)
+                {
+                    int lx = rng.Next(-inner, inner + 1);
+                    int ly = rng.Next(-inner, inner + 1);
+                    if (lx * lx + ly * ly <= inner * inner)
+                    { landing = new Vector3Int(lx, ly, 0); break; }
+                }
+
+                var plan = DenTunnelBuilder.Plan(rng, centre, radius, entry,
+                                                 4, chambers, ids, landing, 6);
+                if (!plan.valid) continue;
+                ok++;
+                links += plan.ChamberLinks;
+                dead += plan.DeadEnds;
+                if (plan.ChamberLinks == 0) nolink++;
+                if (plan.runs.Count < entry.runCount) shortNet++;
+                foreach (var r in plan.runs)
+                {
+                    float dx = r.b.x - r.a.x, dy = r.b.y - r.a.y;
+                    cells += Mathf.Sqrt(dx * dx + dy * dy) * (r.width + r.tipWidth) / 2f;
+                }
+            }
+
+            if (ok == 0) { sb.AppendLine($"{entry.floorIndex,-6} {radius,-7} NO VALID PLANS"); continue; }
+            sb.AppendLine($"{entry.floorIndex,-6} {radius,-7} {links / ok,-7:F2} {dead / ok,-9:F2} "
+                        + $"{100.0 * nolink / ok,-8:F1} {100.0 * shortNet / ok,-7:F1} {cells / ok,-7:F0}");
+        }
+
+        sb.AppendLine("short% is networks with fewer runs than the profile authored; "
+                    + "it must read 0.0, and read 23 before the dead-end retry was added.");
+        Debug.Log(sb.ToString());
+    }
+
+    /// <summary>GenerateChambers' placement, mirrored so the report can run with
+    /// no floor in the scene. Kept beside the report rather than shared: this is
+    /// a MODEL of the generator for measurement, and the day the generator moves
+    /// on, a shared helper would quietly make the report agree with the wrong
+    /// thing.</summary>
+    private static System.Collections.Generic.List<Vector3Int> SampleChamberCentres(
+        System.Random rng, int radius, Vector3Int centre)
+    {
+        const int MinChambers = 3, MaxChambers = 6, RefRadius = 150, Ceiling = 30;
+        const int Spacing = 10, RimMargin = 10, Exclusion = 4;
+
+        float scale = Mathf.Max(1f, radius / (float)RefRadius);
+        int rolled = rng.Next(MinChambers, MaxChambers + 1);
+        int desired = Mathf.Clamp(Mathf.RoundToInt(rolled * scale), 1, Ceiling);
+        int disc = Mathf.Max(Exclusion + 1, radius - RimMargin);
+
+        var centres = new System.Collections.Generic.List<Vector3Int>();
+        int attempts = 0;
+        while (centres.Count < desired && attempts < desired * 6)
+        {
+            attempts++;
+            int dx = rng.Next(-disc, disc + 1);
+            int dy = rng.Next(-disc, disc + 1);
+            int d2 = dx * dx + dy * dy;
+            if (d2 > disc * disc || d2 < Exclusion * Exclusion) continue;
+            bool clash = false;
+            foreach (var c in centres)
+            {
+                int ex = c.x - centre.x - dx, ey = c.y - centre.y - dy;
+                if (ex * ex + ey * ey < Spacing * Spacing) { clash = true; break; }
+            }
+            if (clash) continue;
+            centres.Add(new Vector3Int(centre.x + dx, centre.y + dy, 0));
+        }
+        return centres;
+    }
+
+    /// <summary>Radius per floor, from the progression table's shipped figures.</summary>
+    private static int FloorRadiusFor(int floorIndex)
+    {
+        switch (floorIndex)
+        {
+            case 0: return 100;
+            case 1: return 150;
+            case 2: return 250;
+            case 3: return 400;
+            default: return 600;
+        }
     }
 
     [ContextMenu("Test Print Feature Stats (all floors)")]

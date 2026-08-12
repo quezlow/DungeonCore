@@ -7570,6 +7570,86 @@ open questions collapse into one answer -- elegant, and it spends all three at
 once. Floor index 4 implies and never states; the dwarves refusing to discuss
 it does the work.
 
+### The tunnel substrate -- shape E (BUILT: plan layer)
+
+Status of this section: the PLAN layer is built (`DenTunnelBuilder`,
+`DenTunnelProfile`, the headless report). Rasterise, save and reveal are not,
+and are deliberately a separate pass -- fog is one-way and both of its failure
+modes are uncorrectable after the fact, so that half is written with the reveal
+internals read rather than remembered.
+
+**The agreed fork 7 was WRONG, and the measurement is the record.** Tunnels
+were to link chambers AND stay inside the 15-65 per cent band. They cannot do
+both: `GenerateChambers` places chambers UNIFORMLY across the disc and says so
+in its own comment. Measured over 2000 seeds in `Tools/sim_den_tunnels.py`:
+
+| floor | chambers | in band | fewer than 2 in band |
+|---|---|---|---|
+| 1 | 4.48 | 2.12 | **30.8%** |
+| 2 | 7.56 | 3.25 | **12.9%** |
+
+Three shapes were measured before any C# was written:
+
+- **A -- link the nearest chambers, band or not.** 17-18 per cent of tunnel
+  length falls outside the band and the worst endpoint reaches 0.96 of the
+  radius, inside the bedrock rim's approach.
+- **D -- a self-contained in-band network, chambers joined opportunistically.**
+  Robust and pointless: touches NO chamber on some 40 per cent of seeds.
+- **E -- a FIXED number of runs, each taking a chamber if one is in range and
+  ending in the rock if none is.** SHIPS. It cannot starve by construction,
+  because chamber count changes the FLAVOUR of a network rather than whether
+  one exists.
+
+**A dead end is content, not failure.** It reads as an unfinished dig, and on
+an Excavator floor it is exactly what the population extends.
+
+**Tuned by sweep, not by taste.** Endpoint clamp 0.85 of radius, longest run
+0.90 of radius, minimum 12 cells, section 3 tapering to 2. Runs: 3 on floor
+index 1, 4 on floor index 2.
+
+| floor | chamber links | dead ends | no link at all | carved cells |
+|---|---|---|---|---|
+| 1 | 2.10 | 0.91 | 5.8% | 508 (worst ~960) |
+| 2 | 3.29 | 0.71 | 0.9% | 1107 (worst ~2070) |
+
+**Raising the run count does NOT reduce the no-link rate** -- it is invariant
+at 5.8 per cent across three, four and five runs on floor index 1, because
+"no link" means no ELIGIBLE CHAMBER EXISTS and more runs cannot conjure one.
+Extra runs buy dead ends and carved rock only (508 / 650 / 772 cells), which is
+why floor index 1 stays at three. Anyone tempted to raise it to fix starvation
+should read this paragraph instead.
+
+**Nearest-first, never bearing-first.** Runs choose their chambers by distance.
+Bearing-first was written and dropped: it discarded a perfectly good chamber
+for sitting off its run's assigned heading, costing floor index 1 a chamber
+link on a quarter of seeds and buying nothing.
+
+**Dead-end bearings RETRY rather than surrender**, shortening the run before
+giving up. The first version abandoned a blocked bearing outright, which handed
+a den fewer runs than the profile authored -- invisible in the inspector, and
+indistinguishable from the generator having quietly failed. The headless
+report's `short%` column exists to catch exactly that regression: it reads 0.0
+now and read 23 before the retry.
+
+**The landing test is on the SEGMENT, not the endpoints.** A run whose two ends
+both clear the starter blob can still drive straight through it.
+
+**The mana gift, sized rather than waved through.** Fork 11 accepted that
+pre-mined tunnel cells cost the player no digging. That is 508 cells on floor
+index 1 and 1107 on floor index 2 -- under one per cent of either disc, and
+well clear of the roughly 3000-cell site scale entry 19 warned about.
+
+**Cross-checked, C# against Python.** The report reproduces the sim's figures
+(mean run 71 against 70, and 111 against 112; cells 508 against 522, and 1107
+against 1121). The RNGs differ, so the numbers cannot match cell for cell, but
+a builder that disagrees with the sim it was written from has a bug -- which is
+how the dropped-run fault above was found.
+
+**Key files:** `Floors/DenTunnelProfile.cs` (+ `DenTunnelFloorEntry`,
+`DenKind`), `Floors/DenTunnelBuilder.cs` (+ `DenTunnelPlan`, `DenTunnelRun`;
+pure static), `TESTING/Commands.cs` (the headless report),
+`Tools/sim_den_tunnels.py`.
+
 ### Open, and deliberately so
 
 - **Fork 7 was AMENDED by the read pass, and the reason is recorded rather
@@ -7591,6 +7671,10 @@ it does the work.
 - No Ancient Sites are added to floor index 1. Entry 19 calls index 2's lone
   guard post "deliberate reach -- without it most players would never meet the
   Buried Age at all", and sites at index 1 spend that reveal a floor early.
+- Rasterise, save and reveal for den tunnels: the second substrate pass.
+- Floor index 1 links no chamber at all on 5.8 per cent of seeds. Accepted:
+  the only levers are the clamp, the run bounds, or the landing clearance that
+  fork 8 made a hard rule, and a den of pure dead ends is legitimate content.
 - Goblin tier is legible from population and hoard; exactly what renders the
   hoard is not yet decided.
 - Cross-den hostility, and the readout it needs.
