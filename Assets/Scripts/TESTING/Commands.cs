@@ -1136,7 +1136,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   state");
+        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   pop  out  dig  work  lost  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1157,15 +1157,142 @@ public class Commands : MonoBehaviour
             var denFeatures = denFloor != null ? denFloor.FeatureGenerator : null;
             string left = denFeatures != null && denFeatures.HasDenCavity
                 ? denFeatures.DenCavityGrowthHeadroom.ToString() : "-";
-            sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tier,-5} "
+            // The den's tribe is read off the AUTHORED definition rather than off
+            // a live body, so it still prints for a den standing empty at dawn --
+            // and a profile whose scavengerDefinition was never assigned shows as
+            // "-", which is the fault that would otherwise look exactly like a
+            // den that simply has not spawned yet.
+            var denEntry = denFeatures != null ? denFeatures.DenProfileEntry : null;
+            var denDef = denEntry != null ? denEntry.scavengerDefinition : null;
+            string tribe = denDef != null ? denDef.tribe.ToString() : "-";
+
+            // Bodies, and what they are doing. work is the count holding a work
+            // site: zero until stage 2 sets one, and the line that will say so.
+            int pop = 0, work = 0;
+            if (denFloor != null && denFloor.Entities != null)
+            {
+                var bodies = denFloor.Entities.GetAll<DungeonMonster>();
+                for (int b = 0; b < bodies.Count; b++)
+                {
+                    if (bodies[b] == null || bodies[b].DenFloorIndex != den.floorIndex) continue;
+                    pop++;
+                    if (bodies[b].HasDenWorkSite) work++;
+                }
+            }
+
+            sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tribe,-8} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {state}");
+                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} "
+                        + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {den.deathsNotByDungeon,-5} {state}");
         }
 
         if (!any)
             sb.AppendLine("  (no dens registered -- only floors CREATED since the profile "
                         + "was assigned carry one)");
         Debug.Log(sb.ToString());
+    }
+
+    /// <summary>Who is hostile to whom, off the LIVE rule, plus what is actually
+    /// standing on each floor.
+    ///
+    /// BUILT BECAUSE CROSS-TRIBE HOSTILITY IS INVISIBLE UNTIL TWO THINGS HAPPEN
+    /// TO BE NEAR EACH OTHER, on a floor nobody may be watching. A predicate
+    /// reading None on both sides looks exactly like peace, and a tribe left
+    /// unset on one definition is a silent no-op -- the den simply never fights
+    /// anything, for ever, and no other surface would show it.
+    ///
+    /// Drives DungeonMonster.AreHostile directly rather than restating the rule.
+    /// A matrix that reimplemented the test would confirm itself and nothing
+    /// else, which is the shape this project has already been bitten by.</summary>
+    [ContextMenu("Print Tribe Matrix")]
+    void PrintTribeMatrix()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Tribe matrix -- WILD against WILD, off DungeonMonster.AreHostile");
+        sb.AppendLine("  (the dungeon's own fight every wild body regardless: that is IsWild, not tribe)");
+
+        var tribes = (MonsterTribe[])System.Enum.GetValues(typeof(MonsterTribe));
+        sb.Append("  ".PadRight(14));
+        for (int c = 0; c < tribes.Length; c++) sb.Append(tribes[c].ToString().PadRight(9));
+        sb.AppendLine();
+        for (int r = 0; r < tribes.Length; r++)
+        {
+            sb.Append(("  " + tribes[r]).PadRight(14));
+            for (int c = 0; c < tribes.Length; c++)
+                sb.Append((DungeonMonster.AreHostile(true, (int)tribes[r], true, (int)tribes[c])
+                           ? "FIGHT" : "peace").PadRight(9));
+            sb.AppendLine();
+        }
+
+        // Every definition that can actually reach a floor: the shared chamber
+        // pool and each den's authored population. A tribe is only as good as
+        // what carries it, so the roster prints beside the rule.
+        sb.AppendLine();
+        sb.AppendLine("Definitions in play      tribe     wild count");
+        var seen = new System.Collections.Generic.HashSet<MonsterDefinition>();
+        if (FloorManager.Instance != null)
+        {
+            foreach (var f in FloorManager.Instance.AllFloors)
+            {
+                var fg = f != null ? f.FeatureGenerator : null;
+                if (fg == null) continue;
+                if (fg.WildMonsterPool != null)
+                    foreach (var d in fg.WildMonsterPool)
+                        if (d != null) seen.Add(d);
+                var pe = fg.DenProfileEntry;
+                if (pe != null && pe.scavengerDefinition != null) seen.Add(pe.scavengerDefinition);
+            }
+        }
+        if (seen.Count == 0)
+            sb.AppendLine("  (no floors created yet -- nothing to list)");
+        foreach (var d in seen)
+            sb.AppendLine($"  {d.monsterName,-23}{d.tribe,-10}{d.wildCountMin}-{d.wildCountMax}");
+
+        // Live bodies, so a matrix that says FIGHT can be checked against two
+        // things that are genuinely on the same floor.
+        sb.AppendLine();
+        sb.AppendLine("Live wild bodies by floor and tribe");
+        bool anyBody = false;
+        if (FloorManager.Instance != null)
+        {
+            foreach (var f in FloorManager.Instance.AllFloors)
+            {
+                if (f == null || f.Entities == null) continue;
+                var counts = new System.Collections.Generic.Dictionary<MonsterTribe, int>();
+                var bodies = f.Entities.GetAll<DungeonMonster>();
+                for (int b = 0; b < bodies.Count; b++)
+                {
+                    var m = bodies[b];
+                    if (m == null || !m.IsWild) continue;
+                    counts.TryGetValue(m.Tribe, out int n);
+                    counts[m.Tribe] = n + 1;
+                    anyBody = true;
+                }
+                if (counts.Count == 0) continue;
+                sb.Append($"  floor {f.FloorIndex}: ");
+                foreach (var kv in counts) sb.Append($"{kv.Key} x{kv.Value}   ");
+                sb.AppendLine();
+            }
+        }
+        if (!anyBody) sb.AppendLine("  (none alive)");
+
+        // The number that answers whether the tribe rule is eating the occupier
+        // theft curve. Read it beside the ledger's lost column.
+        sb.AppendLine();
+        sb.AppendLine($"Cross-tribe target acquisitions this session: {DungeonMonster.CrossTribeEngagements}");
+        sb.AppendLine("  (acquisitions that exist ONLY because the tribes differ -- both sides wild)");
+        Debug.Log(sb.ToString());
+    }
+
+    /// <summary>Zero the cross-tribe counter, so a run can be measured from a
+    /// known point rather than from whenever the domain last reloaded. Statics
+    /// survive entering play mode when reload is disabled, which is exactly the
+    /// setup in which a stale total reads as a fresh one.</summary>
+    [ContextMenu("Reset Cross-Tribe Counter")]
+    void ResetCrossTribeCounter()
+    {
+        DungeonMonster.ResetCrossTribeEngagements();
+        Debug.Log("[Commands] Cross-tribe acquisition counter reset to 0.");
     }
 
     [ContextMenu("Den Tunnel Breach Check")]

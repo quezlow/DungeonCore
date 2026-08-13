@@ -10,39 +10,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2cc54abd1951bf45ba82e4108efac65, type: 3}
-  m_Name: WildDef_CaveTroll
+  m_Name: WildDef_Kobold
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
-  monsterName: Cave Troll
+  monsterName: Kobold
+  category: 1
+  tribe: 2
   icon: {fileID: 0}
-  voice: 1
-  category: 0
-  tribe: 0
-  prefab: {fileID: 7395350954221493971, guid: e27e76492590e504186021dac4ba568f, type: 3}
-  capacityCost: 26
-  manaCost: 60
-  requiredTier: 1
-  requiredRank: 4
+  voice: 3
+  prefab: {fileID: 1641251687284604916, guid: 161e931387e395a873f9271faff11b21, type: 3}
+  capacityCost: 6
+  manaCost: 35
+  requiredTier: 0
+  requiredRank: 1
   requiresDiscovery: 1
-  requiredTechKey: 
-  affinityType: 0
-  description: The deep floors' landlord. Wounds close as fast as they open unless
-    the thing is put down in one sustained push - slay one wild and the core learns
-    the shape.
+  description: 
   isAquatic: 0
   wildCountMin: 2
-  wildCountMax: 3
-  minWildFloor: 1
-  wildCoreXpOnDeath: 12
-  passiveRegenPerSecond: 2
-  regenCooldown: 8
+  wildCountMax: 4
+  minWildFloor: 2
+  wildCoreXpOnDeath: 5
+  passiveRegenPerSecond: 1
+  regenCooldown: 5
   wildRegenMultiplier: 1
   maxStamina: 0
   attackStaminaCost: 0
   targetPriority: 0
-  knockbackForce: 0.7
-  knockbackMinDamage: 8
-  breaksFormation: 1
-  formationBreakSeconds: 5
+  knockbackForce: 0
+  knockbackMinDamage: 0
   isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5

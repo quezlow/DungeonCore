@@ -42,6 +42,13 @@ public class MonsterDefinition : ScriptableObject
            + "to the Boss Room by type and ignore this; sub-bosses follow it.")]
     public MonsterCategory category = MonsterCategory.Beast;
 
+    [Tooltip("Which people this creature belongs to. Read ONLY by the "
+           + "wild-versus-wild hostility test: two wild creatures of different "
+           + "tribes fight. None counts as its own side rather than as unset, "
+           + "so leaving it alone keeps cave life at peace with cave life. The "
+           + "dungeon-versus-outsider rule is IsWild and is untouched by this.")]
+    public MonsterTribe tribe = MonsterTribe.None;
+
     [Tooltip("A living wonder: rarity worth travelling for. Each distinct "
            + "novel species alive adds sightseer weight (Scholar/Noble) and "
            + "quickens arrivals, floored. Keep the flag scarce -- novelty "
@@ -89,6 +96,23 @@ public class MonsterDefinition : ScriptableObject
            + "0 = any floor. Lets deeper floors carry stronger wilds from the one "
            + "shared template pool.")]
     [Min(0)] public int minWildFloor = 0;
+
+    [Tooltip("Fewest of this creature a chamber fields, once the chamber has "
+           + "picked it. A CHAMBER IS ONE SPECIES, so this band is the only "
+           + "thing standing between the roster and six cave trolls arriving "
+           + "where six spiders would have. Count = clamp(chamberCells / "
+           + "cellDivisor, this, Wild Count Max). Size it against the "
+           + "ENCOUNTER rather than the creature: a troll band and a rat band "
+           + "should cost a defence about the same.")]
+    [Min(1)] public int wildCountMin = 2;
+
+    [Tooltip("Most of this creature a chamber fields. There is no global "
+           + "ceiling above this any more -- TerrainFeatureGenerator's "
+           + "wildMonsterMin and wildMonsterMax were RETIRED when these "
+           + "arrived, because an outer clamp would have silently capped a "
+           + "band of eight back to six and read in the inspector exactly like "
+           + "a band that does not work.")]
+    [Min(1)] public int wildCountMax = 6;
 
     [Header("Core XP")]
     [Tooltip("Core XP granted when this beast is slain in the wild. Keep it well below an " +

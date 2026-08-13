@@ -5506,6 +5506,19 @@ seeded chamber roll (restore path untouched). First user: Cave Troll
 (minWildFloor 1, requiresDiscovery, wildRegenMultiplier 1) -- the discovery
 channel's Silver-band entry, placeable at Silver 4 after a wild kill.
 
+**A CHAMBER IS ONE SPECIES (amended with the den arc's stage 1).** The
+definition was drawn per body, which read as a menagerie sharing a cave and,
+against a two-entry pool, averaged every chamber on a floor to the same fight.
+One draw per chamber puts the variety BETWEEN a floor's caves. The count band
+moved with it, onto `MonsterDefinition.wildCountMin`/`wildCountMax`, and
+`TerrainFeatureGenerator`'s global `wildMonsterMin`/`wildMonsterMax` were
+RETIRED rather than left as an outer clamp -- see entry 42 for the measurement
+that forced the bands into the same pass, and for why an outer clamp would have
+been an ambiguous default. `wildMonsterCellDivisor` stays, because chamber size
+is a chamber property. **`MonsterDefinition.tribe` also lands here**: cave life
+is `MonsterTribe.None`, which is a side rather than a blank, and the depth pool
+is unaffected by it.
+
 **Key files:** `Monster/MonsterDefinition.cs`, `UI/MonsterSelectionUI.cs`,
 `DungeonCore/DungeonBuildController.cs`, `Monster/WildMonsterController.cs`,
 `Editor/TechContentGenerator.cs` (in Assets/Editor).
@@ -7583,12 +7596,15 @@ is the point: it makes the bestiary a conquest record and tells every future
 author where unlocks come from. It is not bundled into the dens and does not
 wait on them.
 
-**Allegiance is a field now, hostility is a pass later.** `IsWild` is derived
+**Allegiance is a field now, hostility is a pass later.** ~~`IsWild` is derived
 (`wildChamberId >= 0 || isInvader`) and is the hostility test in exactly two
 places -- `_hostileMonsterPred` and `NearestPrey`. Add the allegiance field
-with the dens so the door is built; leave cross-den hostility DISABLED. When
-it is enabled it needs a readout, because the payoff otherwise happens in fog
-on a floor nobody is looking at.
+with the dens so the door is built; leave cross-den hostility DISABLED.~~
+**SHIPPED, AND THE AXIS MOVED -- see "Tribes, hostility and kobold bodies"
+below.** Hostility is by TRIBE rather than by den, because den-versus-den is
+unreachable: no monster in the project has a stair path, scavenger scans are
+floor-scoped, and this entry holds one den per floor. The readout the paragraph
+demanded is `Print Tribe Matrix`, and it was right to demand one.
 
 ### The deep occupants -- lore locked, nothing built
 
@@ -8013,7 +8029,8 @@ destroyed one fails by being absent rather than by being wrong.
   fork 8 made a hard rule, and a den of pure dead ends is legitimate content.
 - Goblin tier is legible from population and hoard; exactly what renders the
   hoard is not yet decided.
-- Cross-den hostility, and the readout it needs.
+- ~~Cross-den hostility, and the readout it needs.~~ SHIPPED as TRIBE
+  hostility with `Print Tribe Matrix`; see below.
 - `DCR_Backlog.html` is stale against canon and was NOT refreshed with this
   entry, by decision. Section E is shipped as entry 34, section D item 1 is
   largely shipped as the `DeadCoreVault`, and world events, chest tiers, core
@@ -8390,13 +8407,212 @@ is why they live there rather than on the prefab. `Resolve` walks the
 ScriptableObject's type, so the ruling key is `DenTunnelProfile.floors.hoardSprites`
 and NOT the nested entry class.
 
+#### Tribes, hostility and kobold bodies (BUILT: stage 1)
+
+Status: BUILT. Floor index 2 has people in it for the first time, wild-versus-
+wild hostility is decided by tribe, and a chamber emptied without the dungeon's
+hand goes quiet. The DIG is stage 2 and is not built.
+
+**Hostility is by TRIBE, not by den, and den-versus-den was never reachable.**
+The obvious axis was the den a body belongs to. It cannot work: no monster in
+this project has any stair path -- only `DungeonAdventurer` reparents across
+floors -- scavenger scans are floor-scoped by construction, and this entry holds
+one den per floor. Two dens can therefore never meet. `MonsterTribe` on
+`MonsterDefinition` is the axis instead, so a goblin abroad is a goblin wherever
+it stands.
+
+**`MonsterCategory` could not serve.** Goblins and kobolds are both `Humanoid`,
+so it cannot separate them, and it routes muster-room placement -- overloading
+it would tie a den's politics to where the player may build a spawner.
+
+**`None` IS ITS OWN SIDE, not "unset".** Cave trolls and giant spiders both
+answer `None`, so they stay at peace with each other while anything that answers
+otherwise becomes their enemy. That is what lets the dens acquire enemies with
+the shipped cave ecology unchanged underneath them, and it is the
+ambiguous-default rule met head-on: the safe reading of a blank field had to be
+a real position rather than a wildcard.
+
+**One rule, and the readout drives it directly.** `DungeonMonster.AreHostile`
+has two overloads over one body; `_hostileMonsterPred` calls one and `Print
+Tribe Matrix` the other. A matrix that restated the test would confirm itself
+and nothing else. `IsWild` is tested FIRST and did not move: it has consumers all
+over the project, and the tribe only decides once both sides are already wild.
+
+**The rule shipped without a measurement, and a counter is why that was
+allowed.** The shared chamber pool is Giant Spider and Cave Troll, both `None`,
+so the first thing this does in play is send goblin scavengers into fights they
+used to walk past -- on the errand the occupier theft curve (6/12/20/30/42 per
+cent by tier) is tuned around. Two diagnostics answer whether that is costing
+the curve: `DungeonMonster.CrossTribeEngagements`, runtime only, counting
+acquisitions that exist ONLY because the tribes differ; and
+`DenSaveEntry.deathsNotByDungeon`, persisted, counting bodies lost to anything
+that was not the dungeon. A den earning under its share and a den losing its
+people on the way home are identical in the hoard column and separable in these.
+**If theft comes in low, read those two before moving `ScavengersByTier`.**
+
+**A chamber cleared without the dungeon's hand goes SILENT.** `ClearChamber`
+still calls `MarkChamberCleared` -- the cave really is empty, nothing respawns --
+but the Discovery alert, the banner and the sound are withheld. A den's people
+can now empty a cave the player never touched and may never have seen, and
+congratulating them on it is the game claiming somebody else's work. The gate is
+`dungeonDealtDamage`, reused from the bestiary and the den ledger so there is one
+answer to "did the player have a hand in this", and it is NOT persisted: a reload
+part-way through a clear asks for one more blow, which is that flag's own
+documented precedent.
+
+**A CHAMBER IS ONE SPECIES, and the count bands had to arrive with it.** The
+definition used to be drawn per body, which read as a menagerie sharing a cave
+and -- against a two-entry pool -- averaged every chamber on a floor to the same
+encounter. The variety now sits BETWEEN a floor's caves. But the shipped clamp
+was one global 2-6 pair, and a median chamber (49 cells over a divisor of 6)
+lands on the ceiling, so before this pass the expected fight was three trolls and
+three spiders: 468 HP, about 30 damage a second. One species per chamber with
+that clamp left standing would have made half of them SIX TROLLS -- 840 HP and 42
+damage a second. So `wildCountMin`/`wildCountMax` moved onto `MonsterDefinition`
+in the same pass, sized against the ENCOUNTER rather than the creature: Spider
+4-8, Troll 2-3, Bear 1-2, Rat 6-12, Wolf 2-4, Goblin Scout 3-6.
+
+**The global `wildMonsterMin`/`wildMonsterMax` were RETIRED, not kept as an outer
+clamp.** Kept, they would have silently capped a band of eight back to six, and a
+band that is quietly overridden reads in the inspector exactly like a band that
+does not work. `wildMonsterCellDivisor` stays: chamber size is a chamber
+property.
+
+**The type is chosen BEFORE the count, and the two agree by construction.**
+`PickChamberWildType` is seeded from the floor seed and the chamber id and is
+its RNG's FIRST draw, so a fresh instance always answers the same. That is what
+keeps the coarse re-roll on the load path consistent with the count persisted at
+reveal, rather than by two call sites being kept in step by hand.
+
+**Legacy saves need no migration.** A revealed chamber carries a per-monster
+snapshot and restores by name; an unrevealed one sits at `aliveWildCount = -1`
+and rolls fresh under the new rule.
+
+**Both kinds are inhabited; only one forages.** `PopulationBudget` answered zero
+for an `Excavator`, which was right only while kobolds had no bodies -- it left
+floor index 2 as tunnels with nothing living in them. `ResidentsByTier` is shared
+because its reason is shared: tier is legible off how full a den looks, whether
+its people steal or dig. `MayForageAny` was deliberately NOT loosened. Kobolds do
+not steal -- that is the whole split between the verbs -- and its "no" is exactly
+what routes an excavator's residents down `TickScavenge`'s idle branch and holds
+them in the cavity.
+
+**`DiggersByTier` ships with a reader before it has a behaviour.** {1,1,2,3,4},
+reached through `DiggerBudget`, which mirrors `ScavengerBudget` line for line. It
+is printed by `Print Den Ledger` every run, because this entry already records
+twice what an unread constant costs: `remainsLump` agreed with its sim and was
+never read, and `StealShare` went dead the moment its caller was replaced.
+
+**A work site is an OVERRIDE on the cavity leash, never a wider leash.** The
+leash is membership of the cavity's cell set, and it was made so for a measured
+reason -- the yo-yo at radius six. Stage 2's diggers must leave the hole, and
+widening the leash again to let them would reopen a fault already paid for.
+`SetDenWorkSite`/`ClearDenWorkSite` exempt a body while it holds one; nothing
+sets one yet, so behaviour is identical to today, and the ledger's `work` column
+prints the count so this cannot sit here doing nothing without saying so.
+
+**Clearing an excavator den pays DWARVEN STANDING, at last.** This entry has
+asserted it since the decision record against a den nobody could clear; stage 1
+is what made it reachable. +10 serialized, gated on `Excavator` because the
+reason is the TRUNK ROAD -- floor index 1's goblins are not the Deep Holds'
+problem. The dwarves start at 15 and their first regard step is 25, so one
+clearing moves a fresh player exactly one step, and it offsets roughly 200 cells
+of claim-ledger drift.
+
+**The kobold is NOT in `MonsterDefinitionRegistry`, and this is the second stated
+exception to "you field what you defeat".** At 22 HP / 1.9 speed / 6 damage it is
+strictly dominated by the Goblin Scout (30 / 1.6 / 7) at the same `capacityCost`
+and the same rank and discovery gate -- a roster row nobody would ever pick. Nor
+is there a fiction for it: this entry gives goblins a servant history and even a
+wisp line for it, and gives kobolds the trunk road instead. It costs nothing to
+omit, because `BestiaryState` is a bare name set whose only display surface is
+the build menu, which reads the registry -- so the discovery on first kill writes
+a harmless string and shows nowhere. Stating the exception is what keeps the rule
+reading as a rule, exactly as the floor-index-4 exception above does.
+
+**Art debt: the kobold ships in the goblin scout's clothes.** The auditor's
+prefab pass counts sprites shared within `Assets/Prefabs/Monsters` and rules a
+shared body `Deferred -- borrowed donor`, so this needs no ruling change. The
+`icon` is left NULL on purpose: pointing it at the goblin sprite would score
+`Filled`, which would be a lie, and null scores `Required`, which is the truth.
+`DCR_Guide_Content_Authoring.html` gains the chapter this entry requires.
+
+**Key files:** `Monster/MonsterTribe.cs`, `Monster/MonsterDefinition.cs`,
+`Monster/DungeonMonster.cs`, `Monster/WildMonsterController.cs`,
+`Floors/TerrainFeatureGenerator.cs`, `DungeonCore/DenController.cs`,
+`TESTING/Commands.cs` ("Print Tribe Matrix"),
+`Prefabs/Monsters/Wild/Kobold Variant.prefab`,
+`ScriptableObjects/Monsters/Wild/Regular/WildDef_Kobold.asset`.
+
 #### What the den arc still owes
 
 - **Kobold diggers.** `NotifyRemainsExcavated` still has no caller, so the
   runtime dig toward buried remains -- this entry's "a dig visibly heading
   somewhere over days is a stronger race than a tunnel that always pointed
-  there" -- does not exist, and floor index 2 has no bodies at all.
-- **Cross-den hostility, and the readout it needs.**
+  there" -- does not exist. Floor index 2 now has BODIES; what it has not got is
+  a dig. The exploratory-dig measurements in `Tools/sim_den_digger.py` are what
+  that stage rests on and must not be re-derived.
+
+- **KOBOLD THEFT AND THE STOLEN HOARD -- decided, deferred to stage 2.**
+  Kobolds will steal as well as dig, so that clearing them returns something the
+  player watched leave. The measured objection, and the shape that survives it,
+  are recorded here so stage 2 does not re-derive either.
+
+  *Measured*, patching `Tools/sim_den_growth.py` over 60 days, typical dungeon,
+  excavator reaching tier 5 on day 49 today:
+
+  | kobold theft | T2 | T3 | T4 | T5 | hoard |
+  |---|---|---|---|---|---|
+  | none (shipped) | 13 | 17 | 25 | 49 | 2073 |
+  | 0.25x the occupier share | 11 | 17 | 23 | 38 | 3098 |
+  | 0.5x | 10 | 16 | 23 | 33 | 4073 |
+  | full occupier share | 9 | 13 | 19 | 27 | 6215 |
+
+  A killer dungeon at full share reaches tier 5 on day 20 against 35 today.
+
+  *The pacing is retunable; THE COUPLING IS NOT.* This entry states that hoard is
+  exactly `cellsDug` times `spoilPerCell` and that tier 5 IS the completed hole.
+  Theft uncouples 33 / 49 / 67 per cent of a typical excavator's hoard at those
+  three shares, and at full share tier 5 lands on day 27 against a hole that is
+  not finished until day 49 -- so `Den Cavity Report`'s coupling assertion becomes
+  a permanent red, which this entry already records as worse than no check.
+
+  *The shape that keeps both:* a separate additive `stolenHoard` on
+  `DenSaveEntry`, credited by excavator theft and EXCLUDED FROM TIER. `ClearDen`
+  pays `hoard + stolenHoard`; tier still reads off `hoard` alone, so the geometry
+  and the ledger stay one statement. It also needs `MayForageAny` loosened for
+  `Excavator` and its own forager count knob, distinct from `DiggersByTier`.
+  Re-run `sim_den_growth.py` AND `sim_den_cavity_growth.py` before trusting any
+  number: the latter's own header says it is re-run the day
+  `NotifyRemainsExcavated` acquires a caller.
+
+- **Dwarven skirmishes are still OWED.** `DwarfWalkerPuppet`'s class doc is
+  explicit that it is deliberately not an entity -- never registered with
+  `FloorEntityRegistry`, no HP, no `IMonsterTarget`, no collider -- and villagers,
+  patrols and the caravan all ride it. Kobold-versus-dwarf combat means promoting
+  dwarves to combat entities, which reverses a locked Living Holds fork, so it is
+  its own arc. A cheap substitute was proposed and NOT ruled on: a dig reaching
+  the trunk road drives `DwarvenPatrolController`'s existing
+  `withdrawing`/`watchRadius`/`clearRadius` choreography plus a wisp line, with no
+  puppet needing a health bar.
+
+- **`BuriedRemainsController` persistence is dead code.** `GatherConsumed`,
+  `RestoreConsumed`, `GatherSensed` and `RestoreSensed` have no callers anywhere
+  in `Assets/`, so consumed and sensed state is not persisted -- the same fault
+  class this entry records for `remainsLump`. Nearly harmless today, since a
+  mined cell is not re-minable, but it is the natural home for a kobold-taken
+  remains and stage 2 must rule on it before using it.
+
+- **`NotifyRemainsExcavated`'s cap is a guess.** `sitesPerFloor` is private with
+  no accessor, so the `remainsOnFloor = 2` default is hardcoded and WRONG on any
+  floor with an Ossuary, since `SitesFor` appends a guaranteed remains per placed
+  Ossuary on top of it. Recommended and unbuilt: expose
+  `BuriedRemainsController.SiteCountFor(floor)`.
+
+- **The player cannot be paid twice for a kobold-opened remains, and it needs no
+  flag.** `MineTile` early-returns on `minedTiles.Contains(pos)` and
+  `MarkNaturalFloor` never fires `OnTileMined`. Enforced by geometry; recorded
+  here rather than guarded in code.
 
 
 ## 43. Art Debt (the Audit and its Ledger)

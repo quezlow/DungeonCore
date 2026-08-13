@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Dire Wolf
   category: 0
+  tribe: 0
   icon: {fileID: -7359341877028699669, guid: 5fa641a3d89f5c849a8fbca91a25f9e6, type: 3}
   prefab: {fileID: 3942167234838127389, guid: c648799ce0caa8a43a66e1b468912447, type: 3}
   capacityCost: 9
@@ -23,6 +24,8 @@ MonoBehaviour:
   requiresDiscovery: 1
   description: 
   isAquatic: 0
+  wildCountMin: 2
+  wildCountMax: 4
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 1

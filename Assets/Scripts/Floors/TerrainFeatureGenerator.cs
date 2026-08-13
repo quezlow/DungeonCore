@@ -180,19 +180,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
     // ── Inspector — Wild Monsters (DAY 31 PART 2) ─────────────────
 
     [Header("Wild Monsters")]
-    [Tooltip("MonsterDefinitions eligible to spawn as wild cave monsters in chambers " +
-             "on this floor. Empty or null = chambers auto-clear (no gate). " +
-             "Picked from at random per spawn slot, deterministic from floorSeed + chamberId.")]
+    [Tooltip("MonsterDefinitions eligible to spawn as wild cave monsters in "
+           + "chambers on this floor. Empty or null = chambers auto-clear (no "
+           + "gate). ONE definition is drawn PER CHAMBER, not per body -- a "
+           + "chamber is one species -- deterministic from floorSeed + "
+           + "chamberId, and filtered by each definition's minWildFloor first.")]
     [SerializeField] private List<MonsterDefinition> wildMonsterPool = new();
 
-    [Tooltip("Minimum wild monsters per chamber. Used by the WildMonsterController formula.")]
-    [SerializeField, Min(0)] private int wildMonsterMin = 2;
-
-    [Tooltip("Maximum wild monsters per chamber.")]
-    [SerializeField, Min(1)] private int wildMonsterMax = 6;
-
-    [Tooltip("Divisor on chamber cell count to scale wild monster spawn target. " +
-             "Final count = clamp(cellCount / divisor, min, max).")]
+    [Tooltip("Divisor on chamber cell count to scale the wild monster spawn "
+           + "target. Final count = clamp(cellCount / divisor, the chosen "
+           + "definition's Wild Count Min, its Wild Count Max). The global min "
+           + "and max that used to sit here were RETIRED when those bands moved "
+           + "onto MonsterDefinition: an outer clamp would have silently capped "
+           + "a band of eight back to six, and read in the inspector exactly "
+           + "like a band that does not work.")]
     [SerializeField, Min(1)] private int wildMonsterCellDivisor = 6;
 
     // ── Inspector — Debug ─────────────────────────────────────────
@@ -356,8 +357,6 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     // DAY 31 PART 2 — Wild monster pool access for WildMonsterController.
     public IReadOnlyList<MonsterDefinition> WildMonsterPool => wildMonsterPool;
-    public int WildMonsterMin => wildMonsterMin;
-    public int WildMonsterMax => wildMonsterMax;
     public int WildMonsterCellDivisor => wildMonsterCellDivisor;
 
     // ── Events ────────────────────────────────────────────────────

@@ -1081,6 +1081,32 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
     </div>
   </details>
 
+  <details>
+    <summary>40. Kobold body art (and the borrowed-donor rule in practice)</summary>
+    <div class="body">
+      <div class="why">Canon 42 requires this chapter. The kobold shipped wearing the
+      goblin scout's sprite so that floor index 2 could have people in it before the art
+      existed &mdash; that is a deliberate debt, recorded as one, and this is how to pay it.
+      Everything here applies unchanged to the next borrowed body.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s1"><label for="dcr-authoring-v1-c40s1"><b>Confirm the debt before generating.</b> Run <code>Dungeon Core &rarr; Audit Art Debt</code> and find <code>Kobold Variant</code> under <i>In-game sprites</i>. It reads <b>DEFERRED &mdash; borrowed donor body</b> and names the sprite it shares and how many prefabs share it. If it reads <b>FILLED</b>, somebody has already pointed it at bespoke art and this chapter is done.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s2"><label for="dcr-authoring-v1-c40s2"><b>The icon is a SEPARATE slot and is deliberately null.</b> <code>WildDef_Kobold.icon</code> reads <b>REQUIRED</b>, not deferred. Pointing it at the goblin sprite to make the report quieter would score it <b>FILLED</b> &mdash; a lie that survives in a document whose whole job is to be the honest work queue. Author the icon or leave it null; never borrow into an icon slot.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s3"><label for="dcr-authoring-v1-c40s3"><b>Generate at the project floor, not the target size.</b> ComfyUI with Z&#8209;Image Turbo, generation floor <code>256x192</code>, INSPYRENET for background removal (not RMBG&#8209;2.0 &mdash; confirmed broken). Then <code>Tools/dcr_sprite_post.py</code> for the area downscale and own-palette quantisation down to the shipped <code>48x36</code> at PPU 32. This is the same pipeline every other body used; do not shortcut it, because the painted-art-downsampled look is what makes the roster read as one set.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s4"><label for="dcr-authoring-v1-c40s4"><b>Draw the kobold AGAINST the goblin, not in a vacuum.</b> They share a floor band and the player meets goblins first, so the read has to be instant: the kobold is smaller and quicker (22 HP against 30, move 1.9 against 1.6) and it is a <i>digger</i>. Give it the tools &mdash; a pick, a spoil sack, chalk on the hands. Canon gives goblins a servant history and gives kobolds the trunk road; the silhouette should say which one you are looking at before the health bar does.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s5"><label for="dcr-authoring-v1-c40s5"><b>One body sprite is enough to clear the debt.</b> The prefab has a single <code>SpriteRenderer</code>, and the auditor rules on what that renderer resolves to. Directional and animated sets are a separate pass with its own guide &mdash; do not let the animation controllers block a sprite that would take the kobold off the borrowed list today.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s6"><label for="dcr-authoring-v1-c40s6"><b>Wire it on the PREFAB, not on the definition.</b> Open <code>Assets/Prefabs/Monsters/Wild/Kobold Variant.prefab</code> and set the <code>SpriteRenderer</code>'s sprite. Stats and the body both live on the prefab in this project; the definition only points at it. Setting a sprite on <code>WildDef_Kobold</code> fills the ICON slot and changes nothing on screen.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s7"><label for="dcr-authoring-v1-c40s7"><b>Re-run the audit and commit <code>Docs/ART_DEBT.md</code>.</b> The kobold should move from DEFERRED to FILLED, and the goblin scout's shared count should drop by one. If the goblin's own count does not move, the sprite was assigned somewhere other than the renderer the auditor reads.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c40s8"><label for="dcr-authoring-v1-c40s8"><b>Check it against the den, not against a sprite sheet.</b> Floor index 2, <code>Print Den Ledger</code> to confirm bodies are alive, then look at the cavity. A den reads as a den at a glance or it does not; a body that is legible at 100% zoom and mud at the zoom the game is actually played at is not finished.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

@@ -55,6 +55,21 @@ public class DenSaveEntry
     /// own once-ever store would suffice for one den, but this keeps the ledger
     /// self-describing and survives a den on a second floor later.</summary>
     public bool spokenWaking;
+
+    /// <summary>Bodies this den lost to anything that was NOT the dungeon --
+    /// adventurers, and now other tribes.
+    ///
+    /// THE DIAGNOSTIC THE TRIBE RULE SHIPPED IN PLACE OF A MEASUREMENT.
+    /// Wild-versus-wild hostility goes by tribe now, and the shared chamber pool
+    /// is Giant Spider and Cave Troll, both tribe None -- so a goblin scavenger
+    /// fights things it used to walk past, on the very errand the occupier theft
+    /// curve is tuned around. A den earning under its target share and a den
+    /// losing its people on the way home look identical in the hoard column;
+    /// this separates them. Persisted because the question is asked across
+    /// sessions, unlike DungeonMonster.CrossTribeEngagements beside it.
+    ///
+    /// Additive: a legacy save reads zero and needs no migration.</summary>
+    public int deathsNotByDungeon;
 }
 
 [Serializable]
@@ -170,6 +185,15 @@ public class DenController : MonoBehaviour
     [Tooltip("Days after a floor is created before its den ticks at all. The "
            + "wisp speaks when it wakes: they stirred because the player arrived.")]
     [SerializeField, Min(0)] private int graceDays = 5;
+
+    [Tooltip("Standing the Deep Holds pay when an EXCAVATOR den is cleared. The "
+           + "dwarves start at 15 and their first regard step is at 25, so 10 "
+           + "moves a fresh player exactly one step -- a thank-you that is "
+           + "legible rather than a rounding error. It also offsets roughly 200 "
+           + "cells of claim-ledger drift. Occupier dens pay nothing: the reason "
+           + "for this is the trunk road on floor index 2, not dens in general. "
+           + "Serialized so tuning it is not a recompile.")]
+    [SerializeField, Min(0f)] private float dwarvenStandingOnClear = 10f;
 
     [Tooltip("Log each den's dawn tick. Cheap, and the only way to see a ledger "
            + "that is quietly earning nothing.")]
@@ -482,6 +506,30 @@ public class DenController : MonoBehaviour
     /// It moved.</summary>
     private static readonly int[] ResidentsByTier = { 2, 4, 8, 12, 16 };
 
+    /// <summary>How many of an excavator's residents are AT THE FACE at any
+    /// moment, as against keeping house. ScavengerBudget's opposite number, and
+    /// deliberately far smaller: a digging party is a few bodies at a rock wall,
+    /// not a floor-wide errand, and an excavator's income is coupled to geometry
+    /// rather than to how many of its people are out.
+    ///
+    /// SHIPPED WITH A READER BEFORE IT HAS A BEHAVIOUR, because the alternative
+    /// is the fault this file already records twice: remainsLump agreed with its
+    /// sim and was never read, and StealShare went dead the moment its caller was
+    /// replaced. Print Den Ledger prints this figure every run, so it cannot go
+    /// quietly dead while stage 2 is being written.</summary>
+    private static readonly int[] DiggersByTier = { 1, 1, 2, 3, 4 };
+
+    /// <summary>How many diggers this den fields. Mirrors ScavengerBudget line
+    /// for line -- zero when cleared, zero on the wrong kind, zero through the
+    /// grace days -- so the two roles cannot drift apart in their gating.</summary>
+    public int DiggerBudget(int floorIndex)
+    {
+        if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
+        if ((DenKind)den.kind != DenKind.Excavator) return 0;
+        if (InGrace(den)) return 0;
+        return DiggersByTier[TierOf(den) - 1];
+    }
+
     private bool InGrace(DenSaveEntry den)
     {
         int today = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
@@ -512,6 +560,19 @@ public class DenController : MonoBehaviour
         int payout = Mathf.FloorToInt(den.hoard);
         den.hoard = 0f;
         DungeonCore.Instance?.AddGold(payout);
+
+        // Canon 42: clearing the kobolds EARNS DWARVEN STANDING -- the first
+        // positive lever in this game that is not shopping, against a negative
+        // side that is otherwise the entire story (the claim ledger at -0.05 a
+        // cell, robbery at -25). Gated on Excavator because the REASON is the
+        // trunk road: the diggings cross it, and floor index 1's goblins are not
+        // the Deep Holds' problem.
+        //
+        // Built in the same pass that gave the excavator its first bodies, which
+        // is when this became reachable at all. Canon had asserted it since the
+        // decision record, against a den nobody could yet clear.
+        if ((DenKind)den.kind == DenKind.Excavator && dwarvenStandingOnClear > 0f)
+            FactionSystem.Instance?.AddStanding(FactionId.Dwarves, dwarvenStandingOnClear);
 
         bool heldMoreThanGold = den.heldNodeKeys.Count > 0
                              || den.heldSpoilRarities.Count > 0;
@@ -744,7 +805,19 @@ public class DenController : MonoBehaviour
     public int PopulationBudget(int floorIndex)
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
-        if ((DenKind)den.kind != DenKind.Occupier) return 0;
+        // BOTH KINDS ARE INHABITED. This gate used to answer zero for an
+        // excavator, which was correct only while kobolds had no bodies at all --
+        // it left floor index 2 as a hole with tunnels and nothing living in it.
+        // The TABLE is shared because the reason for it is shared: canon 42 makes
+        // tier legible off how full a den looks, and that reads the same whether
+        // its people steal or dig. What differs is what they are FOR, and that is
+        // ScavengerBudget against DiggerBudget rather than how many there are.
+        //
+        // Foraging is deliberately NOT loosened alongside it. Kobolds do not
+        // steal -- that is the whole split between the two verbs -- so
+        // MayForageAny still answers no for an excavator, which is exactly what
+        // routes its residents down TickScavenge's idle branch and holds them in
+        // the cavity.
         return ResidentsByTier[TierOf(den) - 1];
     }
 
@@ -809,6 +882,14 @@ public class DenController : MonoBehaviour
             // and a player who has been told it once knows it.
             if (!den.contested) WispCompanion.Instance?.Speak("den_one_way");
             den.contested = true;
+        }
+        else
+        {
+            // Something else killed it: an adventurer, or -- since wild-versus-
+            // wild hostility went by tribe -- a cave troll it walked past on the
+            // way home. See the field's own comment for why that is worth a save
+            // slot rather than a console line.
+            den.deathsNotByDungeon++;
         }
 
         // Drop the dying body from the roll HERE rather than counting live ones.

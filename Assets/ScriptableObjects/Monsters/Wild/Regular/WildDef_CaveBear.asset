@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: -9116242927022400561, guid: 8648090f015eeca4ea248ef811e417c2, type: 3}
   voice: 1
   category: 0
+  tribe: 0
   prefab: {fileID: 6027699923266516027, guid: c3187518769e12941ac20e3f8f34ca7a, type: 3}
   capacityCost: 16
   manaCost: 110
@@ -26,6 +27,8 @@ MonoBehaviour:
   affinityType: 0
   description: 
   isAquatic: 0
+  wildCountMin: 1
+  wildCountMax: 2
   minWildFloor: 0
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1

@@ -141,6 +141,13 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     // Class-aware target priority — cached from the definition.
     private TargetPriority targetPriority = TargetPriority.Nearest;
+
+    /// <summary>This creature's tribe, resolved once from its definition and held
+    /// as a plain int. The hostility predicate below runs for every candidate on
+    /// the floor every frame, so the test must compare ints -- never strings, and
+    /// never a boxed enum. The cached-delegate comment further down records what
+    /// per-frame allocation on this path already cost once.</summary>
+    private int tribeId;
     private static readonly List<DungeonAdventurer> _advScanBuf = new();
 
     private IMonsterTarget target;
@@ -255,6 +262,16 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// monster's HP snapshot restores but its history does not, so a reload
     /// mid-fight asks the player to land one more blow.</summary>
     private bool dungeonDealtDamage;
+
+    /// <summary>Whether the DUNGEON's side has wounded this creature.
+    ///
+    /// Exposed for WildMonsterController, which needs it at the moment a chamber
+    /// empties: a chamber cleared by another tribe with no help from the player
+    /// is cleared SILENTLY, and this flag is the only thing that tells the two
+    /// cases apart. The den ledger already reads the same flag through
+    /// NotifyScavengerDied, and the bestiary through Die -- one answer to "did
+    /// the player have a hand in this", asked in three places.</summary>
+    public bool DungeonDealtDamage => dungeonDealtDamage;
     private float pendingHealDisplay = 0f;
     private float effectiveRegenPerSecond = 0f;
     private float effectiveRegenCooldown = 5f;
@@ -616,6 +633,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentStamina = maxStamina;
 
         targetPriority = def.targetPriority;
+        tribeId = (int)def.tribe;
     }
 
     // ── Stamina ──────────────────────────────────────────
@@ -1429,8 +1447,50 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (_taunterPred != null) return;
         _taunterPred = a => !a.IsPinned && a.IsTaunting && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
         _advPred = a => !a.IsPinned && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
-        _hostileMonsterPred = candidate => candidate != this && candidate.IsWild != this.IsWild;
+        _hostileMonsterPred = candidate => AreHostile(candidate, this);
     }
+
+    /// <summary>THE ONE HOSTILITY RULE for monster against monster, in the form a
+    /// diagnostic can ask about without a live body. Print Tribe Matrix drives
+    /// this overload directly, so the readout cannot drift from the behaviour --
+    /// a matrix that restated the test would confirm itself and nothing else.
+    ///
+    /// ORDER MATTERS. IsWild differing is tested FIRST and is unchanged: that is
+    /// the dungeon-versus-outsider line, it has consumers all over the project,
+    /// and nothing here may move it. Only when both sides are wild does the tribe
+    /// decide, and None is its own side rather than a wildcard -- so cave life
+    /// stays at peace with cave life while a den acquires enemies.</summary>
+    public static bool AreHostile(bool aWild, int aTribe, bool bWild, int bTribe)
+    {
+        if (aWild != bWild) return true;   // the dungeon's own against an outsider
+        if (!aWild) return false;          // two of the dungeon's own never fight
+        return aTribe != bTribe;           // both wild: the tribe decides
+    }
+
+    /// <summary>The live-body form. Nothing tests hostility any other way.</summary>
+    public static bool AreHostile(DungeonMonster a, DungeonMonster b)
+        => a != null && b != null && a != b
+        && AreHostile(a.IsWild, a.tribeId, b.IsWild, b.tribeId);
+
+    /// <summary>This body's tribe, for the readouts.</summary>
+    public MonsterTribe Tribe => (MonsterTribe)tribeId;
+
+    /// <summary>Monster-target acquisitions that exist ONLY because of the tribe
+    /// rule -- both sides wild, so the IsWild test had already answered no.
+    ///
+    /// THIS COUNTER IS WHY THE TRIBE RULE COULD SHIP WITHOUT A MEASUREMENT
+    /// BEHIND IT. A goblin scavenger's errand is what the occupier theft curve
+    /// is tuned on, and the shared chamber pool is Giant Spider and Cave Troll,
+    /// both tribe None -- so the first thing this rule does in play is send
+    /// scavengers into fights they used to walk straight past. If theft comes in
+    /// under its target share, this number beside DenSaveEntry.deathsNotByDungeon
+    /// says whether that is the cause or whether the curve itself is wrong.
+    ///
+    /// Runtime only, and deliberately: the question is answered inside one
+    /// session, so it is not worth a save field.</summary>
+    public static int CrossTribeEngagements { get; private set; }
+
+    public static void ResetCrossTribeEngagements() => CrossTribeEngagements = 0;
 
     private void ScanForHostiles()
     {
@@ -1475,7 +1535,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // monster still preempts the chosen adventurer (unchanged behaviour).
         var m = currentFloor.Entities.Nearest<DungeonMonster>(
             transform.position, nearestDist, _hostileMonsterPred);
-        if (m != null) { nearest = m; }
+        if (m != null)
+        {
+            // Both sides wild means the IsWild test had already answered no, so
+            // this acquisition exists only because the tribes differ. Counted on
+            // ACQUISITION and not inside the predicate: that runs per candidate
+            // per frame and would measure scanning rather than fighting.
+            // ReferenceEquals rather than != : target is IMonsterTarget and m is
+            // a DungeonMonster, and Unity's own == overload does not apply across
+            // that pair. Identity is all this wants, and this says so plainly.
+            if (!ReferenceEquals(m, target) && IsWild && m.IsWild) CrossTribeEngagements++;
+            nearest = m;
+        }
 
         if (nearest != null) { target = nearest; state = MonsterState.Attack; TryTauntBark(); }
     }
@@ -2131,6 +2202,27 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private bool scavengeGoalSet;
 
     public bool IsDenScavenger => denFloorIndex >= 0;
+
+    /// <summary>Where this body has been sent to work, if anywhere. A den body
+    /// holding a work site is EXEMPT from the cavity leash while it holds it.
+    ///
+    /// BUILT BEFORE ITS CALLER, deliberately, on the precedent canon 42 already
+    /// set with DepositCarriedLoot and NotifyRemainsExcavated. The leash is
+    /// MEMBERSHIP of the cavity's cell set and was made so for a measured reason
+    /// -- the yo-yo at radius six -- so letting stage 2's diggers out by widening
+    /// it again would reopen a fault that has already been paid for once. An
+    /// override is additive instead: nothing sets a work site yet, so behaviour
+    /// is identical to today, and the day a digger sets one the leash is
+    /// untouched. Print Den Ledger prints how many bodies hold one, so this
+    /// cannot sit here doing nothing without saying so.</summary>
+    private Vector3 denWorkSite;
+    private bool denWorkSiteSet;
+
+    public bool HasDenWorkSite => denWorkSiteSet;
+
+    public void SetDenWorkSite(Vector3 world) { denWorkSite = world; denWorkSiteSet = true; }
+
+    public void ClearDenWorkSite() { denWorkSiteSet = false; }
     public int CarriedHaul => carriedHaul;
     public int DenFloorIndex => denFloorIndex;
 
@@ -2229,6 +2321,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             // test is MEMBERSHIP of the cavity where there is one and the old
             // radius only where there is not -- see IsInOwnDenCavity for why
             // the radius could not stay.
+
+            // A body sent somewhere is not dragged home while it holds the
+            // assignment -- see SetDenWorkSite for why this is an override
+            // rather than a wider leash. A no-op until stage 2 sets one.
+            if (denWorkSiteSet) { StepTowards(denWorkSite); return; }
+
             bool away = HasDenCavityLeash
                 ? !IsInOwnDenCavity()
                 : denAnchorKnown

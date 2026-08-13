@@ -6354,8 +6354,8 @@ MonoBehaviour:
   expansionSensitivity: 0.8
   expansionBaselineCells: 900
   graceDays: 5
+  dwarvenStandingOnClear: 10
   logDawnTick: 0
-  populationCheckInterval: 3
   spawnScatter: 1.5
   haulDropPrefab: {fileID: 2510184261249386949, guid: 8dd25799e128f934e83875d915b29aa8, type: 3}
   haulContentPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
@@ -15592,8 +15592,8 @@ MonoBehaviour:
   fordingSpeedMultiplier: 0.5
   wildMonsterPool:
   - {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
-  wildMonsterMin: 2
-  wildMonsterMax: 6
+  - {fileID: 11400000, guid: aefaaeda293364b43b8a501bddb6644b, type: 2}
+  - {fileID: 11400000, guid: 8ac96bb06d9bb5c43a6be90874037b0f, type: 2}
   wildMonsterCellDivisor: 6
   roadProfile: {fileID: 0}
   siteProfile: {fileID: 11400000, guid: 9c13ac2d3ee6b7d4392b47f93dd2900f, type: 2}
@@ -15618,6 +15618,7 @@ MonoBehaviour:
   debugRoadTile: {fileID: 0}
   debugSiteTile: {fileID: 0}
   debugDenTunnelTile: {fileID: 0}
+  debugDenCavityTile: {fileID: 0}
   logSiteGeneration: 1
   junctionFilletRadius: 3
 --- !u!4 &468668986
@@ -52292,7 +52293,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000020947793}
+  m_AnchoredPosition: {x: 0, y: 0.00059103774}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -62333,7 +62334,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000020947793}
+  m_AnchoredPosition: {x: 0, y: 0.00059103774}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104

@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83f92dba98be4c34ebd9127fb3382b24, type: 3}
   m_Name: DenTunnelProfile
   m_EditorClassIdentifier: Assembly-CSharp::DenTunnelProfile
-  hoardPrefab: {fileID: 0}
   floors:
   - floorIndex: 1
     kind: 0
@@ -30,19 +29,19 @@ MonoBehaviour:
     landingKeepClear: 10
     segmentLength: 40
     cavityBox: 19
+    hoardSprites:
+    - {fileID: 670177157, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: -262122405, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: -269729494, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: 1271366404, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: 68070450, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
     cavityMinCells: 167
     cavityMaxCells: 268
     cavityTier1Cells: 268
     chamberSeatClearance: 20
-    hoardSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
   - floorIndex: 2
     kind: 1
-    scavengerDefinition: {fileID: 0}
+    scavengerDefinition: {fileID: 11400000, guid: 1e64c976f67ade3c1cb31b4afa8fb85c, type: 2}
     bandInner: 0.15
     bandOuter: 0.65
     runCount: 4
@@ -56,13 +55,14 @@ MonoBehaviour:
     landingKeepClear: 10
     segmentLength: 40
     cavityBox: 24
+    hoardSprites:
+    - {fileID: 670177157, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: -262122405, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: -269729494, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: 1271366404, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
+    - {fileID: 68070450, guid: 26d874532b05d8244977cf9e1c9ab21c, type: 3}
     cavityMinCells: 350
     cavityMaxCells: 400
     cavityTier1Cells: 150
     chamberSeatClearance: 20
-    hoardSprites:
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
-    - {fileID: 0}
+  hoardPrefab: {fileID: 7951733088947934359, guid: 5fbbea327160b144f8233aeed7b44789, type: 3}

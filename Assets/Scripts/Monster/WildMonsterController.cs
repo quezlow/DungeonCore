@@ -25,6 +25,12 @@ public class WildMonsterController : MonoBehaviour
     private readonly Dictionary<DungeonMonster, int> monsterToChamber = new();
     private bool subscribed;
 
+    /// <summary>Chambers the DUNGEON has wounded something in. NOT persisted, on
+    /// dungeonDealtDamage's own documented precedent: a reload part-way through a
+    /// clear asks for one more blow, which is a fair price for not adding a save
+    /// field to a flag that lives for the length of one fight.</summary>
+    private readonly HashSet<int> contestedChambers = new HashSet<int>();
+
     private void Awake()
     {
         floor = GetComponentInParent<FloorRoot>();
@@ -151,23 +157,26 @@ public class WildMonsterController : MonoBehaviour
         return best;
     }
 
-    private int RollWildMonsterCount(ChamberData ch)
-    {
-        int divisor = Mathf.Max(1, features.WildMonsterCellDivisor);
-        int target = ch.cells.Count / divisor;
-        int count = Mathf.Clamp(target, features.WildMonsterMin, features.WildMonsterMax);
-        return Mathf.Min(count, ch.cells.Count);
-    }
-
-    private void SpawnWildMonstersInChamber(ChamberData ch, int count)
+    /// <summary>The ONE wild type this chamber fields, or null if none is
+    /// eligible.
+    ///
+    /// A CHAMBER IS ONE SPECIES. The draw used to run per body, which read as a
+    /// menagerie sharing a cave and -- with a two-entry pool -- averaged every
+    /// chamber on the floor to the same encounter. One species per chamber is
+    /// legible on sight and puts the variety BETWEEN a floor's caves instead of
+    /// inside each one.
+    ///
+    /// The type has to be chosen BEFORE the count, because the count is clamped
+    /// by that type's own band. So this is called from RollWildMonsterCount and
+    /// from SpawnWildMonstersInChamber, and the two agree BY CONSTRUCTION rather
+    /// than by being kept in step: the RNG is seeded from the floor seed and the
+    /// chamber id, and this is its FIRST draw, so a fresh instance always answers
+    /// the same. That is also what keeps the coarse re-roll on the load path
+    /// consistent with the count persisted at reveal.</summary>
+    private MonsterDefinition PickChamberWildType(ChamberData ch)
     {
         var pool = features.WildMonsterPool;
-        if (pool == null || pool.Count == 0)
-        {
-            ch.aliveWildCount = 0;
-            features.MarkChamberCleared(ch.id);
-            return;
-        }
+        if (pool == null || pool.Count == 0) return null;
 
         // Depth banding: a definition below its minimum wild floor never rolls
         // here, so one shared template pool can carry deep-floor wilds without
@@ -176,15 +185,51 @@ public class WildMonsterController : MonoBehaviour
         for (int p = 0; p < pool.Count; p++)
             if (pool[p] != null && floor.FloorIndex >= pool[p].minWildFloor)
                 depthPool.Add(pool[p]);
-        if (depthPool.Count == 0)
+        if (depthPool.Count == 0) return null;
+
+        int floorSeed = FloorManager.Instance != null ? FloorManager.Instance.GetFloorSeed(floor.FloorIndex) : 0;
+        var rng = new System.Random(unchecked(floorSeed * 31 + ch.id));
+        return depthPool[rng.Next(depthPool.Count)];
+    }
+
+    /// <summary>How many bodies this chamber holds. Chamber size still drives the
+    /// target through the shared cell divisor; the CLAMP is now the chosen type's
+    /// own band rather than one global pair.
+    ///
+    /// The global wildMonsterMin and wildMonsterMax were RETIRED rather than kept
+    /// as an outer clamp. Kept, they would have silently capped a band of eight
+    /// back to six, and a band that is quietly overridden reads in the inspector
+    /// exactly like a band that does not work.</summary>
+    private int RollWildMonsterCount(ChamberData ch)
+    {
+        var def = PickChamberWildType(ch);
+        if (def == null) return 0;
+
+        int divisor = Mathf.Max(1, features.WildMonsterCellDivisor);
+        int target = ch.cells.Count / divisor;
+        int lo = Mathf.Max(1, def.wildCountMin);
+        int hi = Mathf.Max(lo, def.wildCountMax);
+        int count = Mathf.Clamp(target, lo, hi);
+        return Mathf.Min(count, ch.cells.Count);
+    }
+
+    private void SpawnWildMonstersInChamber(ChamberData ch, int count)
+    {
+        // One species per chamber -- see PickChamberWildType. This resolves to the
+        // same definition the count was clamped against, including on the coarse
+        // re-roll the load path falls back to.
+        var def = PickChamberWildType(ch);
+        if (def == null || def.prefab == null)
         {
             ch.aliveWildCount = 0;
             features.MarkChamberCleared(ch.id);
             return;
         }
 
+        // A SEPARATE seed from the type draw, so the species a chamber gets and
+        // the cells its bodies stand on are not one number read twice.
         int floorSeed = FloorManager.Instance != null ? FloorManager.Instance.GetFloorSeed(floor.FloorIndex) : 0;
-        var rng = new System.Random(unchecked(floorSeed * 31 + ch.id));
+        var rng = new System.Random(unchecked(floorSeed * 31 + ch.id + 7919));
 
         var influence = floor.TileInfluence;
         if (influence == null) return;
@@ -199,9 +244,6 @@ public class WildMonsterController : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            MonsterDefinition def = depthPool[rng.Next(depthPool.Count)];
-            if (def == null || def.prefab == null) continue;
-
             var spawnCell = openCells[rng.Next(openCells.Count)];
             Vector3 worldPos = influence.CellToWorld(spawnCell);
 
@@ -274,6 +316,13 @@ public class WildMonsterController : MonoBehaviour
         if (spawnedPerChamber.TryGetValue(chamberId, out var list))
             list.Remove(m);
 
+        // Record the dungeon's hand BEFORE the clear test, because the killing
+        // blow arrives through here and a flag set afterwards would be too late.
+        // Same wound-not-killing-blow test the bestiary and the den ledger use,
+        // for the same stated reason: a creature your monsters wore down should
+        // still count when something else takes the last hit.
+        if (m.DungeonDealtDamage) contestedChambers.Add(chamberId);
+
         var ch = features.GetChamberById(chamberId);
         if (ch == null) return;
         ch.aliveWildCount = Mathf.Max(0, ch.aliveWildCount - 1);
@@ -282,9 +331,25 @@ public class WildMonsterController : MonoBehaviour
             ClearChamber(chamberId);
     }
 
+    /// <summary>Mark the chamber cleared, and ANNOUNCE it only if the dungeon had
+    /// a hand in it.
+    ///
+    /// A CHAMBER CLEARED WITHOUT THE DUNGEON'S HAND GOES SILENT. Wild-versus-wild
+    /// hostility is by tribe now, so a den's people can empty a cave the player
+    /// never touched and may never have seen -- and a Discovery alert, a banner
+    /// and a sound for that is the game congratulating the player on somebody
+    /// else's work, on a floor they are probably not even looking at.
+    ///
+    /// THE CLEARED STATE STILL STANDS. The chamber really is empty, nothing
+    /// respawns, and the player finds it quiet when they eventually arrive. Only
+    /// the announcement is withheld, which is the same split canon 42 already
+    /// draws for a den: adventurers can empty one, but only the dungeon's own
+    /// hand collects on it.</summary>
     private void ClearChamber(int chamberId)
     {
         features.MarkChamberCleared(chamberId);
+        if (!contestedChambers.Remove(chamberId)) return;
+
         int floorIdx = floor.FloorIndex;
         Vector3 worldPos = features.GetFeatureCenterWorld(FeatureType.Chamber, chamberId);
         string message = $"A cavern has been cleared on Floor {floorIdx + 1}";
