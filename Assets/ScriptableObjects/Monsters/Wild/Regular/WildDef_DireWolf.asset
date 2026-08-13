@@ -13,19 +13,25 @@ MonoBehaviour:
   m_Name: WildDef_DireWolf
   m_EditorClassIdentifier: Assembly-CSharp::MonsterDefinition
   monsterName: Dire Wolf
+  icon: {fileID: -7359341877028699669, guid: 5fa641a3d89f5c849a8fbca91a25f9e6, type: 3}
+  voice: 1
   category: 0
   tribe: 0
-  icon: {fileID: -7359341877028699669, guid: 5fa641a3d89f5c849a8fbca91a25f9e6, type: 3}
+  novel: 0
   prefab: {fileID: 3942167234838127389, guid: c648799ce0caa8a43a66e1b468912447, type: 3}
   capacityCost: 9
   manaCost: 55
   requiredTier: 0
   requiredRank: 1
   requiresDiscovery: 1
+  requiredTechKey: 
+  affinityType: 0
   description: 
   isAquatic: 0
+  minWildFloor: 0
   wildCountMin: 2
-  wildCountMax: 4
+  wildCountMax: 3
+  wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 1
   regenCooldown: 5
   wildRegenMultiplier: 1
@@ -34,6 +40,8 @@ MonoBehaviour:
   targetPriority: 0
   knockbackForce: 0
   knockbackMinDamage: 0
+  breaksFormation: 0
+  formationBreakSeconds: 5
   isNecromancer: 0
   raiseRange: 3
   raiseChannelSeconds: 1.5
@@ -42,3 +50,7 @@ MonoBehaviour:
   risenLifetime: 45
   risenDefinitions: []
   telegraphSeconds: 0
+  firesProjectile: 0
+  projectileSpeed: 7
+  projectileTint: {r: 1, g: 1, b: 1, a: 1}
+  projectileSprite: {fileID: 0}
