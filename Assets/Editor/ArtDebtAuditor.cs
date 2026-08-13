@@ -91,6 +91,14 @@ public static class ArtDebtAuditor
         { "TechNodeDefinition.icon",       new Ruling(ArtRuling.Required, "Research tree node. Null-safe (plain block) -- still owed.") },
         { "PatternDefinition.icon",        new Ruling(ArtRuling.Required, "Pattern Codex entry. Null-safe -- still owed.") },
 
+        // Ten slots, five per floor. NOT keyed on DenTunnelFloorEntry: Resolve
+        // walks the SCRIPTABLEOBJECT's type, so the key is the profile's own
+        // name plus the stripped path, which StripIndices reduces from
+        // floors.Array.data[N].hoardSprites.Array.data[M] to floors.hoardSprites.
+        { "DenTunnelProfile.floors.hoardSprites", new Ruling(ArtRuling.Required,
+            "The pile in a den cavity, one per tier (canon 42). An excavator has "
+            + "no population, so on floor index 2 this is its only tier signal.") },
+
         // -- Deferred by an explicit shipped decision, with a written road back.
         { "MonsterDefinition.projectileSprite", new Ruling(ArtRuling.Deferred,
             "Ranged v1 ships a runtime soft-glow bolt tinted per definition. " +

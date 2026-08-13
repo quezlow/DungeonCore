@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83f92dba98be4c34ebd9127fb3382b24, type: 3}
   m_Name: DenTunnelProfile
   m_EditorClassIdentifier: Assembly-CSharp::DenTunnelProfile
+  hoardPrefab: {fileID: 0}
   floors:
   - floorIndex: 1
     kind: 0
@@ -33,6 +34,12 @@ MonoBehaviour:
     cavityMaxCells: 268
     cavityTier1Cells: 268
     chamberSeatClearance: 20
+    hoardSprites:
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
   - floorIndex: 2
     kind: 1
     scavengerDefinition: {fileID: 0}
@@ -53,3 +60,9 @@ MonoBehaviour:
     cavityMaxCells: 400
     cavityTier1Cells: 150
     chamberSeatClearance: 20
+    hoardSprites:
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}

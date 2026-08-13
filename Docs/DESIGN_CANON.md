@@ -8320,12 +8320,72 @@ to say so.
 digging alone and the sim models the remains lumps at zero. The day the kobold
 digger pass gives it one, the sim is re-run before the numbers are trusted.
 
-#### What half B still owes
+#### The visible hoard (BUILT: half B part 2)
 
-- The visible hoard prop and its sprites (part 2). Floor index 2 authors no
-  `scavengerDefinition` and `PopulationBudget` returns zero off `Occupier`, so
-  an excavator has no bodies at all -- the prop is its ONLY population-side
-  legibility, and until it lands the growing hole is the whole of it.
+**The pile is one prop at the cavity centre, spawned on reveal, with its sprite
+swapped by tier.** It follows `SpawnSiteDecor` -- instantiate at a cell centre,
+unrotated, parented to the floor, guarded so a second call is free, with a
+load-path sweep for a save holding an already-revealed cavity. Worth recording
+that `SiteDecorEntry` had shipped with NO prefab authored against it anywhere,
+so the hoard is the first real use of the only prop hook this project has.
+
+**Tier is POLLED at dawn, not evented.** The site-discovery precedent applies
+exactly: the load path spawns the prop directly and would bypass an event, so an
+event would need the poll beside it anyway. The cost is at most a day of lag on
+an occupier whose hoard crossed a threshold at noon, which reads as the pile
+having grown overnight.
+
+**The starting tier is asked for rather than assumed.** A den can be at tier 4
+by the time the player first walks in, and spawning at tier 1 would show the
+wrong pile for a full day -- a legibility rule saying the wrong thing is worse
+than one saying nothing.
+
+**Cleared dens have no pile, and the LOAD PATH IS NOT WHERE THAT IS DECIDED.**
+`ClearDen` moves the whole hoard into the player's purse, so a pile still lying
+there is claiming gold already paid -- and a lie that survives a reload is the
+worst kind. The first cut spawned the pile from
+`TerrainFeatureGenerator.LoadFromSave`, which is WRONG: the save controller
+restores feature data in pass 1 and the den ledger long afterwards, so that
+spawn asks an EMPTY dictionary for the tier and the cleared flag. It gets tier 0
+and cleared false -- a tier-1 pile on a tier-4 den, and a resurrected hoard on a
+den the player emptied. The rebuild therefore hangs off
+`DenController.RestoreFromSave`, beside `TopUpAll`, which already carries a
+comment recording this exact ordering for BODIES. Second feature, same trap; the
+comment was right and reading it was what caught this before a test cycle paid
+for it.
+
+**An unassigned slot DISABLES the renderer** rather than falling back to the
+tier below. The ten slots are authored over time, and a den whose pile silently
+stops growing at tier 3 is a worse lie than a den with no pile at all. This is
+the ambiguous-default rule in its usual form.
+
+**Sorting: `Player`, pivot at the base.** Appendix B puts every Y-sorting entity
+there, and a pile with height is one. The pivot matters and is recorded because
+it is invisible until it is wrong: `Player` sorts on Y, so a centre pivot makes
+a tall hoard sort half a tile behind where it stands and the avatar clips
+through it.
+
+**The hoard is INERT, and deliberately.** Adventurers are hostile to dens and a
+Treasure Hunter takes the first thing it finds, so a reachable pile is a strong
+beat -- and one that collides with `ClearDen` paying the whole hoard out and
+with den gold being exempt from the outflow ledgers. Flagged as its own arc
+rather than forced in as a field.
+
+**Art debt: ten slots, five per floor, ruled Required.** The auditor's
+`ScanScriptableObjects` recurses with `p.Next(true)` and `StripIndices` collapses
+`floors.Array.data[N].hoardSprites.Array.data[M]` to `floors.hoardSprites`, so
+sprites on the profile are picked up with no change to `PREFAB_GROUPS` -- which
+is why they live there rather than on the prefab. `Resolve` walks the
+ScriptableObject's type, so the ruling key is `DenTunnelProfile.floors.hoardSprites`
+and NOT the nested entry class.
+
+#### What the den arc still owes
+
+- **Kobold diggers.** `NotifyRemainsExcavated` still has no caller, so the
+  runtime dig toward buried remains -- this entry's "a dig visibly heading
+  somewhere over days is a stronger race than a tunnel that always pointed
+  there" -- does not exist, and floor index 2 has no bodies at all.
+- **Cross-den hostility, and the readout it needs.**
 
 
 ## 43. Art Debt (the Audit and its Ledger)

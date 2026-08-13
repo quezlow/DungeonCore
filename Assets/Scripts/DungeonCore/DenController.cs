@@ -262,6 +262,14 @@ public class DenController : MonoBehaviour
 
             int tier = TierOf(den);
 
+            // The pile, polled rather than evented. The site-discovery precedent
+            // applies exactly: the load path spawns the prop directly and would
+            // bypass an event, so an event would need this poll beside it anyway.
+            // Costs at most one day of lag on an occupier whose hoard crossed a
+            // threshold at noon -- which reads as the pile having grown
+            // overnight, not as a fault.
+            UpdateHoardProp(den.floorIndex, tier);
+
             // Occupier income arrives through DepositCarriedLoot when a
             // scavenger reaches home, so there is nothing to tick here -- the
             // dawn pass exists for tier recompute and raid timing only.
@@ -495,6 +503,12 @@ public class DenController : MonoBehaviour
         // that could strand bodies, now that nothing polls.
         DespawnAll(floorIndex);
 
+        // And the pile, which has just become a lie: the payout below moves the
+        // whole hoard into the player's purse.
+        var clearedFloor = FindFloor(floorIndex);
+        if (clearedFloor != null && clearedFloor.FeatureGenerator != null)
+            clearedFloor.FeatureGenerator.DespawnDenHoard();
+
         int payout = Mathf.FloorToInt(den.hoard);
         den.hoard = 0f;
         DungeonCore.Instance?.AddGold(payout);
@@ -546,6 +560,25 @@ public class DenController : MonoBehaviour
 
     public bool HasDen(int floorIndex) => dens.ContainsKey(floorIndex);
     public IEnumerable<DenSaveEntry> AllDens => dens.Values;
+
+
+    /// <summary>Points a floor's hoard prop at the right tier, if it has one.
+    /// Silent on a floor whose cavity the player has never met: the prop is
+    /// spawned on reveal, so its absence here is the normal case rather than a
+    /// fault worth logging.</summary>
+    private void UpdateHoardProp(int floorIndex, int tier)
+    {
+        var floor = FindFloor(floorIndex);
+        var features = floor != null ? floor.FeatureGenerator : null;
+        var prop = features != null ? features.DenHoard : null;
+        if (prop != null) prop.SetTier(tier);
+    }
+
+    /// <summary>Whether a den has been cleared. Read by the feature generator's
+    /// load path, which must not respawn the pile for a den the player emptied
+    /// in a previous session.</summary>
+    public bool IsDenCleared(int floorIndex)
+        => dens.TryGetValue(floorIndex, out var den) && den.cleared;
 
     public int TierOf(int floorIndex)
         => dens.TryGetValue(floorIndex, out var den) ? TierOf(den) : 0;
@@ -837,5 +870,27 @@ public class DenController : MonoBehaviour
         // controller restores feature data in pass 1 and tile influence in pass 3,
         // both before this runs, so the anchor and the grid are ready.
         TopUpAll();
+        SpawnHoardsForRevealedCavities();
+    }
+
+    /// <summary>Rebuilds the visible piles after a load, and deliberately HERE
+    /// rather than in TerrainFeatureGenerator.LoadFromSave.
+    ///
+    /// The ordering is the whole reason. The save controller restores feature
+    /// data in pass 1 and this ledger long after, so a spawn driven off the
+    /// feature load asks an EMPTY den dictionary for the tier and the cleared
+    /// flag: it gets tier 0 and cleared false, which shows a tier-1 pile on a
+    /// tier-4 den and resurrects the hoard of a den the player emptied last
+    /// session. This is the same trap already recorded two lines above for
+    /// bodies, met a second time by a second feature.</summary>
+    private void SpawnHoardsForRevealedCavities()
+    {
+        foreach (var kv in dens)
+        {
+            if (kv.Value == null || kv.Value.cleared) continue;
+            var floor = FindFloor(kv.Key);
+            var features = floor != null ? floor.FeatureGenerator : null;
+            if (features != null) features.SpawnDenHoard();
+        }
     }
 }

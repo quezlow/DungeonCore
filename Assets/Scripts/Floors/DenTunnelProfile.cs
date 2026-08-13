@@ -86,6 +86,14 @@ public class DenTunnelFloorEntry
            + "there is.")]
     [Min(8)] public int cavityBox = 19;
 
+    [Tooltip("The pile in the cavity, one sprite per tier, index 0 being tier 1. "
+           + "Canon 42 makes a den's tier legible off population AND hoard, and "
+           + "an excavator has no population at all -- so on floor index 2 this "
+           + "array is the whole of the signal. An empty slot disables the "
+           + "renderer rather than showing the tier below, so a partly authored "
+           + "set reads as absent rather than as a den that stopped growing.")]
+    public Sprite[] hoardSprites = new Sprite[5];
+
     [Tooltip("Smallest cavity, in cells. The size clamp tops up to this.")]
     [Min(16)] public int cavityMinCells = 167;
 
@@ -190,6 +198,18 @@ public class DenTunnelProfile : ScriptableObject
     };
 
     public IReadOnlyList<DenTunnelFloorEntry> Floors => floors;
+
+    [Tooltip("The hoard prop, shared by every den. A SpriteRenderer on the "
+           + "Player sorting layer (Appendix B: every Y-sorting entity lives "
+           + "there, and a pile with height is one -- the avatar passes behind "
+           + "it from above and in front from below). PIVOT AT THE BASE OF THE "
+           + "PILE, not its centre: Player sorts on Y, and a centre pivot makes "
+           + "a tall hoard sort half a tile further back than it stands. The "
+           + "per-tier sprites live on each floor entry, not here, because an "
+           + "occupier hoards stolen coin and an excavator hoards dug spoil.")]
+    [SerializeField] private GameObject hoardPrefab;
+
+    public GameObject HoardPrefab => hoardPrefab;
 
     /// <summary>The entry for a floor, or null when that floor carries no den.</summary>
     public DenTunnelFloorEntry For(int floorIndex)

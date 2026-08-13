@@ -894,6 +894,81 @@ public class TerrainFeatureGenerator : MonoBehaviour
         }
     }
 
+
+    // -- The den hoard prop (canon 42: tier is legible off the pile) --------
+
+    private DenHoardProp denHoard;
+
+    /// <summary>The live hoard prop for this floor, or null. DenController
+    /// drives its tier and destroys it on clear; this class owns only its
+    /// existence, which is a reveal question and therefore this class's.</summary>
+    public DenHoardProp DenHoard => denHoard;
+
+    /// <summary>Spawns the pile, once, at the cavity centre. Modelled on
+    /// SpawnSiteDecor, which is the only prop hook this project has: instantiate
+    /// at a cell centre, unrotated, parented to the floor, guarded so a second
+    /// call is free. The guard is a single reference rather than SpawnSiteDecor's
+    /// HashSet because there is at most one cavity per floor.
+    ///
+    /// SPAWNED ON REVEAL, which reduces the whole fog question to this call --
+    /// the cavity reveals entire and fog is one-way, so a prop that exists at
+    /// all is a prop the player has already been shown the room of.
+    ///
+    /// The starting tier is asked for rather than assumed to be 1. A den can be
+    /// at tier 4 by the time the player first walks into it, and spawning at
+    /// tier 1 would show the wrong pile until the next dawn poll corrected
+    /// it -- a full day of a legibility rule saying the wrong thing.
+    ///
+    /// PUBLIC BECAUSE THE LOAD PATH CANNOT LIVE IN THIS CLASS. LoadFromSave
+    /// runs in the save controller's pass 1 and the den ledger is not restored
+    /// until much later, so calling this from LoadFromSave asks an EMPTY
+    /// dictionary whether the den is cleared -- it answers no, and the pile
+    /// respawns for a den the player emptied last session. Exactly the trap
+    /// already recorded on RestoreFromSave for bodies, which is why the hoard
+    /// is rebuilt from the ledger in the same place and for the same
+    /// reason.</summary>
+    public void SpawnDenHoard()
+    {
+        if (denHoard != null) return;
+        if (featureData == null || featureData.denCavity == null) return;
+        if (!featureData.denCavity.revealed) return;
+        if (denTunnelProfile == null || floor == null) return;
+
+        var prefab = denTunnelProfile.HoardPrefab;
+        var entry = denTunnelProfile.For(floor.FloorIndex);
+        if (prefab == null || entry == null) return;
+
+        // A cleared den has already paid its hoard out. Spawning the pile on the
+        // load path for a den the player emptied last session would be a lie
+        // that survives a reload, which is the worst kind.
+        var control = DenController.Instance;
+        if (control != null && control.IsDenCleared(floor.FloorIndex)) return;
+
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+
+        Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(
+            featureData.denCavity.centreCell.ToVector3Int());
+        var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
+        go.name = "DenHoard_Floor" + floor.FloorIndex;
+
+        denHoard = go.GetComponent<DenHoardProp>();
+        if (denHoard == null) denHoard = go.AddComponent<DenHoardProp>();
+
+        int tier = control != null ? control.TierOf(floor.FloorIndex) : 1;
+        denHoard.Bind(entry.hoardSprites, Mathf.Max(1, tier));
+    }
+
+    /// <summary>Removes the pile. ClearDen pays the whole hoard to the player,
+    /// so anything still lying there afterwards is claiming gold that is already
+    /// in the player's purse.</summary>
+    public void DespawnDenHoard()
+    {
+        if (denHoard == null) return;
+        Destroy(denHoard.gameObject);
+        denHoard = null;
+    }
+
     /// <summary>Load-path sweep: a save can hold already-revealed sites, whose
     /// reveal call happened in a previous session. LoadFromSave runs this after
     /// the feature data is restored.</summary>
@@ -3073,6 +3148,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData.denCavity.revealed = true;
         RevealVersion++;
         UnfogDenCavity();
+        SpawnDenHoard();
     }
 
     /// <summary>Reveal is the carved cells plus their one-cell halo, and nothing
