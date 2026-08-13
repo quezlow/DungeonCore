@@ -17,6 +17,21 @@ public class DenSaveEntry
     public int raidsLaunched;
     public float stolenTotal;   // lifetime theft, for tuning against the sim
 
+    /// <summary>Fractional cells carried between dawns. Excavators only. At the
+    /// shipped rates the slowest tier opens 1.5 cells a day before the
+    /// expansion multiplier, so flooring each day independently would throw
+    /// away roughly a third of the dig -- and would throw it away silently,
+    /// slipping the whole curve with nothing on screen to say so.</summary>
+    public float digCarry;
+
+    /// <summary>Lifetime cells this den has opened. Coupled income means hoard
+    /// is exactly this times spoilPerCell, so a ledger that has drifted from
+    /// its own geometry shows up in one line of the report.</summary>
+    public int cellsDug;
+
+    /// <summary>Whether the stalled-dig line has been said for this den.</summary>
+    public bool spokenDiggingsDone;
+
     /// <summary>Research nodes taken with stolen adventurer spoils, held until
     /// the den is cleared. STRING KEYS, never object references:
     /// TechNodeDefinition.Key is the stable save-safe identifier and is already
@@ -100,15 +115,40 @@ public class DenController : MonoBehaviour
     private static readonly float[] StealShare = { 0.06f, 0.12f, 0.20f, 0.30f, 0.42f };
 
     /// <summary>Cells an excavator opens per day, by tier, before the expansion
-    /// multiplier below.</summary>
-    private static readonly float[] DigCellsPerDay = { 7f, 11f, 17f, 26f, 38f };
+    /// multiplier below.
+    ///
+    /// SCALED TO 0.22 OF THE ORIGINAL {7, 11, 17, 26, 38} WHEN THIS NUMBER
+    /// ACQUIRED A SECOND CONSUMER. It used to feed the hoard alone and had no
+    /// ceiling; it now drives real geometry, and geometry has one -- the
+    /// 200-250 cells between cavityTier1Cells and the reserve. At the old rate
+    /// a den dug its entire hole out by day 23-40 and then sat there. Measured
+    /// in Tools/sim_den_cavity_growth.py: these rates put the last cell and the
+    /// tier-5 threshold within a day or two of each other on a typical dungeon,
+    /// which is the point of coupling them at all. THE FIGURES ARE FRACTIONAL
+    /// ON PURPOSE -- see DenSaveEntry.digCarry.</summary>
+    private static readonly float[] DigCellsPerDay = { 1.5f, 2.4f, 3.7f, 5.7f, 8.4f };
 
     private static readonly float[] RaidIntervalDays = { 14f, 9f, 6f, 4f, 3f };
     private static readonly float[] RaidFlatGold = { 12f, 30f, 65f, 130f, 240f };
 
     [Header("Tuning (measured -- see Tools/sim_den_growth.py)")]
-    [Tooltip("Spoil per cell an excavator opens.")]
-    [SerializeField, Min(0f)] private float spoilPerCell = 1.4f;
+    [Tooltip("Spoil per cell an excavator opens. RAISED FROM 1.4 WHEN INCOME "
+           + "BECAME COUPLED TO GEOMETRY. Paying on cells actually dug bounds "
+           + "an excavator's lifetime income at (reserve - tier 1) cells times "
+           + "this number: at 1.4 that was 280-350 against a tier-5 threshold "
+           + "of 1400, so every excavator capped at tier 3 and the tier-4 and "
+           + "tier-5 raid rows became dead content -- silently, because a den "
+           + "that has stopped earning looks exactly like one earning slowly. "
+           + "Solved at 1400 / (0.9 x 200) against the SMALLEST reserve, never "
+           + "the largest: sizing on the widest hole leaves narrow seeds short "
+           + "of the top tier for ever. The 0.9 is not spare margin -- solving "
+           + "for the final cell landed two of six profiles on a hoard of "
+           + "1399.9999999999998, and this ledger is a float.")]
+    [SerializeField, Min(0f)] private float spoilPerCell = 7.8f;
+
+    /// <summary>Read by the headless cavity report so its coupling assertion
+    /// uses the authored figure rather than a copy that could drift.</summary>
+    public float SpoilPerCell => spoilPerCell;
 
     [Tooltip("Hoard added when an excavator reaches a buried remains.")]
     [SerializeField, Min(0f)] private float remainsLump = 120f;
@@ -242,10 +282,42 @@ public class DenController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// The excavator's dawn income, and since half B the excavator's dawn DIG:
+    /// one call opens ground and pays for exactly the ground it opened.
+    ///
+    /// PAID ON CELLS OPENED, NEVER ON CELLS REQUESTED. That is the whole of
+    /// fork 4b, and the alternative is worse than it sounds: a den whose
+    /// reserve is spent, or whose reserve the player mined first and kept,
+    /// would otherwise keep earning spoil for digging that did not happen, and
+    /// the ledger and the hole would drift apart with nothing able to notice.
+    /// </summary>
     private void EarnByDigging(DenSaveEntry den, int tier)
     {
-        float dug = DigCellsPerDay[tier - 1] * ExpansionMultiplier(den.floorIndex);
-        den.hoard += dug * spoilPerCell;
+        var floor = FindFloor(den.floorIndex);
+        var features = floor != null ? floor.FeatureGenerator : null;
+        if (features == null) return;
+
+        float wanted = DigCellsPerDay[tier - 1] * ExpansionMultiplier(den.floorIndex)
+                     + den.digCarry;
+        int whole = Mathf.FloorToInt(wanted);
+        den.digCarry = wanted - whole;
+        if (whole <= 0) return;
+
+        int opened = features.GrowDenCavity(whole);
+        den.cellsDug += opened;
+        den.hoard += opened * spoilPerCell;
+
+        // THE LEDGER NOTICES A STALLED DIG, and this is the one place that can.
+        // Growth is the first den feature whose failure is INVISIBLE: a stalled
+        // dig looks exactly like a slow one, and coupled income means the tier
+        // stops climbing with it. Said once rather than left to be inferred
+        // from a number that never moves again.
+        if (opened < whole && !den.spokenDiggingsDone)
+        {
+            den.spokenDiggingsDone = true;
+            WispCompanion.Instance?.Speak("den_diggings_done");
+        }
     }
 
     /// <summary>Scales an excavator's dig rate by how far the player has spread on
@@ -610,7 +682,18 @@ public class DenController : MonoBehaviour
         // behaviour that machinery already provides; then re-pointed at the den.
         // Chamber id -1 marks it as belonging to no chamber, so nothing counts it
         // toward a chamber's alive tally or its cleared state.
-        monster.InitialiseWild(-1, floor, null, def);
+        //
+        // THE CAVITY CELLS ARE THE THIRD ARGUMENT AND USED TO BE NULL, which is
+        // why residents read as goblins standing in a corridor rather than as a
+        // den full of them: PickWildWanderTarget returns spawnPosition on its
+        // first line when the pool is empty, so every body picked the spot it
+        // had spawned on, for ever. Handed the open cells, they use the whole
+        // hole. The list is a fresh copy from the generator each call, so an
+        // excavator's growth cannot mutate a body's pool underneath it -- a
+        // body picks up new ground at its next respawn, which is the dawn
+        // rhythm the rest of the den already runs on.
+        monster.InitialiseWild(-1, floor,
+            floor.FeatureGenerator.DenCavityCells, def);
         monster.InitialiseAsDenScavenger(den.floorIndex, anchorWorld);
 
         LiveOn(den.floorIndex).Add(monster);

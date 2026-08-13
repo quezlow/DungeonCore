@@ -1136,7 +1136,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tier  hoard    next tier  earned   rem  raids  tgt%  state");
+        sb.AppendLine("floor  kind        tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1147,9 +1147,19 @@ public class Commands : MonoBehaviour
                 ? DenController.ThresholdFor(tier + 1) : 0f;
             string state = den.cleared ? "CLEARED"
                 : (day - den.awakenedDay < 5 ? $"grace ({5 - (day - den.awakenedDay)}d)" : "active");
+            // Geometry beside the ledger, because coupled income means the two
+            // are the same statement and a disagreement between them is the
+            // fault this pass exists to make visible. `left` is raw unopened
+            // reserve: a den can stall with it above zero when the player
+            // claimed the remaining cells first, which is the race working.
+            var denFloor = FloorManager.Instance != null
+                ? FloorManager.Instance.GetFloor(den.floorIndex) : null;
+            var denFeatures = denFloor != null ? denFloor.FeatureGenerator : null;
+            string left = denFeatures != null && denFeatures.HasDenCavity
+                ? denFeatures.DenCavityGrowthHeadroom.ToString() : "-";
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {state}");
+                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {state}");
         }
 
         if (!any)
@@ -1499,7 +1509,56 @@ public class Commands : MonoBehaviour
         }
 
         sb.AppendLine(allGood ? "VERDICT: OK" : "VERDICT: FAIL -- see rows above.");
+
+        // THE COUPLING ASSERTION (canon 42, fork 4b), and the fault it exists
+        // to catch already happened once. Growth pays the ledger on cells
+        // ACTUALLY OPENED, so an excavator's lifetime income is bounded by
+        // geometry: (reserve - tier 1) cells times spoilPerCell. At the numbers
+        // the ledger originally shipped with that bound was 350 against a
+        // tier-5 threshold of 1400, and every excavator capped at tier 3
+        // without a single thing on screen saying so.
+        //
+        // Checked against the SMALLEST reserve, never the largest. Sizing on
+        // the widest hole leaves narrow seeds permanently short of the top
+        // tier, which is seed-dependent and therefore worse than a flat
+        // failure -- this entry's own "a maximum is the least stable statistic"
+        // rule pointing the other way for once.
+        AppendCouplingAssertion(sb);
         Debug.Log(sb.ToString());
+    }
+
+    /// <summary>The DigCellsPerDay / spoilPerCell keep-in-sync check. Split out
+    /// so the report above stays readable, and so the reason it exists sits
+    /// next to the arithmetic rather than three screens above it.</summary>
+    private void AppendCouplingAssertion(System.Text.StringBuilder sb)
+    {
+        var den = DenController.Instance;
+        if (den == null)
+        {
+            sb.AppendLine("Coupling assertion SKIPPED: no DenController in the scene, "
+                        + "so spoilPerCell cannot be read. Open the dungeon scene "
+                        + "and re-run -- a magic-number fallback here would be "
+                        + "exactly the ambiguous default this project bans.");
+            return;
+        }
+
+        float threshold = DenController.ThresholdFor(DenController.MaxTier);
+        foreach (var entry in denTunnelProfile.Floors)
+        {
+            if (entry == null || entry.kind != DenKind.Excavator) continue;
+            int diggable = entry.cavityMinCells - entry.cavityTier1Cells;
+            float ceiling = diggable * den.SpoilPerCell;
+            bool ok = ceiling >= threshold;
+            sb.AppendLine($"Coupling floor {entry.floorIndex}: {diggable} diggable cells "
+                        + $"x {den.SpoilPerCell:F1} spoil = {ceiling:F0} lifetime hoard "
+                        + $"against a tier-{DenController.MaxTier} threshold of {threshold:F0} "
+                        + $"-- {(ok ? "OK" : "FAIL")}");
+            if (!ok)
+                sb.AppendLine("         !! this excavator can NEVER reach the top tier. "
+                            + "Raise spoilPerCell or re-run Tools/sim_den_cavity_growth.py; "
+                            + "do not widen the reserve, whose span is already at 27 of a "
+                            + "budget of 28.");
+        }
     }
 
     private class CavityCarve

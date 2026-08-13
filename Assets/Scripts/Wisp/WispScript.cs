@@ -115,6 +115,14 @@ public class WispScript : ScriptableObject
             new Line { id = "den_hoard_content", once = true,
                 text = "Not only coin in that hole. They took things they could not read and kept them anyway - and now those are yours, which is the closest thing to justice this place offers." },
 
+            // The diggings stopping. Fires on the dig falling short of what it
+            // asked for, which covers BOTH ways it ends -- the reserve spent,
+            // and the player having mined it first and kept it. Coupled income
+            // means the hoard stops with it, so this is the only warning that a
+            // tier which has stopped moving has stopped for good.
+            new Line { id = "den_diggings_done", once = true,
+                text = "The digging below has stopped. Either they have run out of rock worth breaking or you took it from under them - either way that hole grows no further, and neither does what they have put in it." },
+
             // First arrival of the Wandering Merchant, once ever.
             new Line { id = "merchant_first", once = true,
                 text = "A wagon on the road. He has come a long way to sell to something like you - do look at what he carries." },

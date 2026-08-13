@@ -185,6 +185,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private int wildChamberId = -1;
     private List<Vector3Int> wildChamberCells;
 
+    /// <summary>The same cells as wildChamberCells, as a set. Two readers ask
+    /// "am I standing in my own hole?" EVERY FRAME -- the den leash below and
+    /// the outward-wander gate -- and a List.Contains across four hundred
+    /// cavity cells per body per frame is not a lookup, it is a scan. The list
+    /// stays because PickWildWanderTarget needs to pick a random element from
+    /// it, which a HashSet cannot do.</summary>
+    private HashSet<Vector3Int> wildCellSet = new HashSet<Vector3Int>();
+
     // DAY 31 — direct back-reference to the MonsterDefinition that spawned this
     // wild monster. Replaces the brittle prefab-name heuristic. Null for player monsters.
     private MonsterDefinition wildDefinition;
@@ -382,6 +390,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         wildChamberCells = chamberCells != null
             ? new List<Vector3Int>(chamberCells)
             : new List<Vector3Int>();
+        wildCellSet = new HashSet<Vector3Int>(wildChamberCells);
         wildDefinition = def;
     }
 
@@ -1330,7 +1339,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // stalls at the water re-rolling forever.
         var reachable = DungeonPathfinder.ReachableCells(currentFloor, transform.position);
 
-        bool tryOutward = Random.value < wildAggroOutwardChance;
+        // RESIDENTS NEVER FORAGE (canon 42), and this branch is precisely what
+        // would make them. It picks cells adjacent to MINED ground, and for a
+        // den that means the tunnel mouths and whatever the player has dug up
+        // to them -- so an unsuppressed resident presses outward at the
+        // player's own ground on roughly a third of its wanders.
+        //
+        // Suppressed only while the body stands in its own hole. A scavenger
+        // already abroad KEEPS it: it left by design, and pressing outward is
+        // the errand rather than a leak. Non-den wild monsters are unaffected,
+        // because IsInOwnDenCavity answers false without a den floor index.
+        bool tryOutward = !IsInOwnDenCavity()
+                       && Random.value < wildAggroOutwardChance;
         if (tryOutward)
         {
             var adjacentOwned = new List<Vector3Int>();
@@ -2079,9 +2099,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [Tooltip("How close to the den mouth counts as home.")]
     [SerializeField, Min(0.1f)] private float denArrivalDistance = 1.2f;
 
-    [Tooltip("How far from the den mouth an idle resident will drift before it "
-           + "turns back. Widened from the arrival distance because a den reads as "
-           + "a place its people live in, not a doorway they queue at.")]
+    [Tooltip("LEGACY FALLBACK ONLY. How far from the den mouth an idle "
+           + "resident drifts before turning back. Superseded by membership of "
+           + "the den cavity's own cell set, and read only on a floor whose "
+           + "save predates the cavity -- den tunnels shipped a release "
+           + "earlier, so a save can hold a good network with no hole at the "
+           + "end of it and those floors have no cell set to test.")]
     [SerializeField, Min(1f)] private float denLoiterRadius = 6f;
 
     /// <summary>Value carried, not objects. A goblin haul is short-lived and
@@ -2110,6 +2133,34 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public bool IsDenScavenger => denFloorIndex >= 0;
     public int CarriedHaul => carriedHaul;
     public int DenFloorIndex => denFloorIndex;
+
+
+    /// <summary>Whether this body has a cavity to be leashed to at all. False
+    /// for every non-den monster, and false on a pre-cavity save.</summary>
+    private bool HasDenCavityLeash => denFloorIndex >= 0 && wildCellSet.Count > 0;
+
+    /// <summary>True when this den body is standing inside its own cavity.
+    ///
+    /// THE CAVITY'S OWN EXTENT IS THE LEASH, NOT A RADIUS, and the number it
+    /// replaces was not merely loose -- it actively fought the scatter it was
+    /// sitting beside. denLoiterRadius was authored at 6 cells when DenAnchor
+    /// still meant a polyline origin. The anchor is now the cavity CENTRE and
+    /// the hole spans 17 to 22 cells, so a 6-cell leash covers under half of
+    /// it: a resident whose wander picked a cell on the far side walked out to
+    /// six, was pulled back toward the centre on a SEPARATE path list that
+    /// never cleared the wander path, and walked out again. A yo-yo at radius
+    /// six, not a den full of goblins.
+    ///
+    /// Answers false where there is no cell set, which is what routes a
+    /// pre-cavity floor back to the radius fallback rather than leaving it
+    /// with no leash whatever.</summary>
+    private bool IsInOwnDenCavity()
+    {
+        if (denFloorIndex < 0 || wildCellSet.Count == 0) return false;
+        var influence = currentFloor != null ? currentFloor.TileInfluence : null;
+        if (influence == null) return false;
+        return wildCellSet.Contains(influence.WorldToCell(transform.position));
+    }
 
     /// <summary>Called by the den spawner as the body is created.</summary>
     public void InitialiseAsDenScavenger(int floorIndex, Vector3 denAnchor)
@@ -2173,10 +2224,16 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         if (!scavengeGoalSet)
         {
-            // Nothing to fetch: stay about the den rather than wandering the floor,
-            // so a den reads as a place its people come back to.
-            if (denAnchorKnown
-                && Vector2.Distance(transform.position, denAnchorWorld) > denLoiterRadius)
+            // Nothing to fetch: stay about the den rather than wandering the
+            // floor, so a den reads as a place its people come back to. The
+            // test is MEMBERSHIP of the cavity where there is one and the old
+            // radius only where there is not -- see IsInOwnDenCavity for why
+            // the radius could not stay.
+            bool away = HasDenCavityLeash
+                ? !IsInOwnDenCavity()
+                : denAnchorKnown
+                  && Vector2.Distance(transform.position, denAnchorWorld) > denLoiterRadius;
+            if (away && denAnchorKnown)
                 StepTowards(denAnchorWorld);
             else
                 Wander();

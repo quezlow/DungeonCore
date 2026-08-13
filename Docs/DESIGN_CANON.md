@@ -8247,21 +8247,85 @@ through the real anchor and seating path reversed it to 27 and 29. A MAXIMUM IS
 THE LEAST STABLE STATISTIC IN THE REPORT and must never decide a fork alone --
 box 24 also won on median, on compactness spread and on tier headroom.
 
+#### Residents and growth (BUILT: half B part 1)
+
+**Scatter needed BOTH halves, and half A's read that it was near a one-line fix
+was wrong.** Handing `DenCavityCells` to `InitialiseWild` was necessary --
+`PickWildWanderTarget` returns `spawnPosition` on its first line against an
+empty pool, so every body picked the spot it spawned on for ever -- but
+`denLoiterRadius` then fought it. That radius is 6 cells, authored when
+`DenAnchor` still meant a polyline origin; the anchor is now the cavity CENTRE
+and the hole spans 17 to 22, so the leash covered under half of it. A resident
+whose wander picked the far side walked out to six, was pulled back toward the
+centre on a SEPARATE path list that never cleared the wander path, and walked
+out again. A yo-yo at radius six. THE LEASH IS NOW MEMBERSHIP of the cavity's
+own cell set, which scales with a hole that changes size; the radius survives
+only as the fallback for a pre-cavity save, which the `DenAnchor` fallback
+paragraph above already requires to exist for ever.
+
+**`wildAggroOutwardChance` is suppressed only AT HOME.** The branch picks cells
+adjacent to MINED ground, which for a den means the tunnel mouths and whatever
+the player dug up to them, so an unsuppressed resident pressed outward at the
+player's ground on roughly a third of its wanders. A scavenger already abroad
+keeps it: it left by design, and pressing outward is the errand. Worth recording
+that the old radius was the only thing suppressing this, so the two forks were
+one decision and could not have been shipped apart.
+
+**Growth re-runs the tier-1 carve rather than walking a frontier.**
+`GrowFromCentre` is a breadth-first flood from the anchor through the reserve,
+so raising its target from N to N+k yields a SUPERSET of its result at N. An
+incremental frontier would have been the third carver this entry forbids, and
+free to disagree with the other two. Cadence is dawn, matching repopulation.
+Growth on an unrevealed den writes no tiles and reveals nothing.
+
+**Two ways a den loses a cell, and both are the design.** A cell the player
+claimed first is theirs -- the reserve is invisible precisely so that race
+exists -- and a cell a later carver took was never the den's. Neither is dug,
+and the shortfall reaches the ledger rather than being swallowed.
+
+**FORK 4b: THE LEDGER IS PAID ON CELLS OPENED, AND THE SHIPPED NUMBERS COULD
+NOT SURVIVE IT.** `DigCellsPerDay` fed the hoard alone and had no ceiling.
+Geometry has one: the 200-250 cells between `cavityTier1Cells` and the reserve.
+At the shipped `spoilPerCell` of 1.4 an excavator's LIFETIME income was 280-350
+against a tier-5 threshold of 1400, so every excavator capped at tier 3, froze
+on day 23-40, and made the tier-4 and tier-5 raid rows dead content -- silently,
+because a den that has stopped earning looks exactly like one earning slowly.
+Both knobs are read in exactly one place each, inside the `Excavator` branch of
+`EarnByDigging`, so re-tuning them cannot touch the occupier: the shared
+thresholds, the shared raid table and the occupier's measured pacing all stand.
+`spoilPerCell` 1.4 to 7.8, `DigCellsPerDay` scaled to 0.22. Measured over 204
+profile-by-reserve combinations in `Tools/sim_den_cavity_growth.py`: every one
+reaches tier 5, and canon's recorded excavator pacing is REPRODUCED rather than
+moved -- tier 2 on day 13 and tier 5 on day 49 for a typical dungeon.
+
+**Tier 5 is now the completed hole**, within a day or two on a typical dungeon.
+That is the reason to prefer coupling over an assertion: the geometry and the
+ledger stop being two accounts of one den that can drift.
+
+**A curve solved to its own boundary is solved wrong.** Sizing spoil so the
+tier-5 threshold is met by the FINAL cell put two of six profiles at tier 4 for
+ever on a hoard of 1399.9999999999998 -- float accumulation over forty partial
+days, and this ledger is a `float` rather than a `double`. Solved at 90 per cent
+of the smallest hole instead. Solved against the SMALLEST, too: the reserve is a
+350-400 band, and sizing on the widest would leave narrow seeds permanently
+short of the top tier, seed-dependent and invisible. Both are this entry's own
+"a maximum is the least stable statistic" rule, in a second form.
+
+**Fractional cells CARRY between dawns.** The slowest tier opens 1.5 cells a day
+before the expansion multiplier, so flooring each day independently would
+discard about a third of the dig and slip the whole curve with nothing on screen
+to say so.
+
+**`NotifyRemainsExcavated` still has NO CALLER**, so the curve above rests on
+digging alone and the sim models the remains lumps at zero. The day the kobold
+digger pass gives it one, the sim is re-run before the numbers are trusted.
+
 #### What half B still owes
 
-- Resident scatter across the cell set. `IsWild` already includes
-  `denFloorIndex >= 0`, so den bodies route through `PickWildWanderTarget`
-  already -- but `SpawnScavenger` passes `null` for `chamberCells`, so
-  `wildChamberCells` is EMPTY and that method returns `spawnPosition` on its
-  first line. That, not `denLoiterRadius`, is why residents read as goblins
-  standing in a corridor. Handing it `DenCavityCells` is most of the fix.
-- `wildAggroOutwardChance` (0.3) must be suppressed for den bodies, or residents
-  press outward at the player's ground against this entry's "residents never
-  forage".
-- The excavator's dawn growth into its reserve, and with it the
-  `DigCellsPerDay` pair: that number currently feeds the hoard only, and making
-  it drive geometry gives it a second consumer that must not drift.
-- The visible hoard prop and its sprites.
+- The visible hoard prop and its sprites (part 2). Floor index 2 authors no
+  `scavengerDefinition` and `PopulationBudget` returns zero off `Occupier`, so
+  an excavator has no bodies at all -- the prop is its ONLY population-side
+  legibility, and until it lands the growing hole is the whole of it.
 
 
 ## 43. Art Debt (the Audit and its Ledger)

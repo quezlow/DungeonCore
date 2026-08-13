@@ -6348,7 +6348,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbee89b7089660144b302cf914940ff5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DenController
-  spoilPerCell: 1.4
+  spoilPerCell: 7.8
   remainsLump: 120
   raidCapFraction: 0.25
   expansionSensitivity: 0.8

@@ -2936,6 +2936,116 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
     public bool HasDenCavity => featureData != null && featureData.denCavity != null;
 
+    /// <summary>
+    /// Opens more of the cavity's RESERVE and returns how many cells it
+    /// actually managed. Half B's growth verb, and the excavator's only one.
+    ///
+    /// IT RE-RUNS THE TIER-1 CARVE RATHER THAN WALKING ITS OWN FRONTIER, which
+    /// is the whole reason it cannot drift from the shape the generator made.
+    /// GrowFromCentre is a breadth-first flood from the anchor through the
+    /// reserve, so raising its target from N to N+k yields a SUPERSET of what
+    /// it yielded at N -- the queue order is fixed and the pool is unchanged.
+    /// An incremental frontier written here would have been the third carver
+    /// canon 42 spends a paragraph forbidding, and it would have been free to
+    /// disagree with the other two.
+    ///
+    /// TWO WAYS A DEN LOSES A CELL, AND BOTH ARE THE DESIGN RATHER THAN A BUG.
+    /// A cell the player has already claimed is THEIRS -- canon 42 reserves the
+    /// footprint invisibly precisely so mining it first is a race the player
+    /// can win -- and a cell some later carver took (a river wins outright) was
+    /// never the den's to open. Neither is dug, and the caller sees the
+    /// shortfall as opened &lt; requested rather than having it swallowed.
+    ///
+    /// Returns 0 on a floor with no cavity, on an occupier (whose open set and
+    /// reserve are authored identical), and on a reserve already spent.
+    /// </summary>
+    public int GrowDenCavity(int cells)
+    {
+        if (cells <= 0 || featureData == null || featureData.denCavity == null) return 0;
+
+        var cavity = featureData.denCavity;
+        if (cavity.cells.Count >= cavity.reserveCells.Count) return 0;
+
+        var reserve = new List<Vector3Int>(cavity.reserveCells.Count);
+        foreach (var sv in cavity.reserveCells) reserve.Add(sv.ToVector3Int());
+
+        var before = new HashSet<Vector3Int>();
+        foreach (var sv in cavity.cells) before.Add(sv.ToVector3Int());
+
+        Vector3Int centre = cavity.centreCell.ToVector3Int();
+        int target = Mathf.Min(before.Count + cells, reserve.Count);
+        var grown = GrowFromCentre(reserve, centre, target);
+
+        var influence = floor != null ? floor.TileInfluence : null;
+        var added = new List<Vector3Int>();
+        foreach (var c in grown)
+        {
+            if (before.Contains(c)) continue;
+            if (influence != null && influence.IsTileClaimed(c)) continue;
+            if (GetFeatureAt(c) != FeatureType.None) continue;
+            added.Add(c);
+        }
+        if (added.Count == 0) return 0;
+
+        foreach (var c in added)
+        {
+            cavity.cells.Add(SerializableVector3Int.From(c));
+            // The cell stops being reserved rock and becomes cavity proper.
+            // BOTH halves matter: left in reservedCoreCells it would keep
+            // later carvers off ground that is now open, and left out of the
+            // lookup it would be unreveal-able, because FeatureRevealController
+            // resolves an influence touch through cellLookup and nothing else.
+            reservedCoreCells.Remove(c);
+            cellLookup[c] = new FeatureRef { type = FeatureType.DenCavity, featureId = 0 };
+        }
+
+        // Growth on a den the player has never met stays SILENT AND CHEAP: no
+        // reveal, no tile writes, no wall rebuild. Fog is one-way, so showing
+        // newly cut ground before the hole itself has been found would hand
+        // over the den's position and could not be undone.
+        if (cavity.revealed) RevealGrownCells(added);
+
+        return added.Count;
+    }
+
+    /// <summary>Brings newly carved cells into view on exactly the terms
+    /// UnfogDenCavity uses for the original hole: the cells plus their one-cell
+    /// halo, then MarkNaturalFloor. Canon 42's reveal invariant is reveal
+    /// exactly what the wall renderer will paint, and the halo is precisely the
+    /// 8-neighbourhood MarkNaturalFloor's mined cells cause to be capped.
+    ///
+    /// The wall rebuild is free and deliberately not asked for: MarkNaturalFloor
+    /// fires OnTileCountChanged, CaveWallRenderer marks itself dirty off that
+    /// and rebuilds in its own LateUpdate. Calling RebuildAll here would run it
+    /// twice on every growth day.</summary>
+    private void RevealGrownCells(List<Vector3Int> added)
+    {
+        var terrain = floor != null ? floor.Terrain : null;
+        if (terrain == null) return;
+
+        RevealVersion++;
+        foreach (var c in added)
+        {
+            terrain.RevealTile(c);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        terrain.RevealTile(new Vector3Int(c.x + dx, c.y + dy, c.z));
+        }
+        floor.TileInfluence?.MarkNaturalFloor(added);
+    }
+
+    /// <summary>Cells of reserve still unopened. Zero means the diggings are
+    /// finished, and -- coupled -- that the ledger has stopped earning with
+    /// them, which is why the report prints it. NOT the same as diggable
+    /// headroom: cells the player claimed first stay counted here and will
+    /// never be opened, so a den can stall with this above zero. The ledger
+    /// detects that case from the shortfall instead.</summary>
+    public int DenCavityGrowthHeadroom
+        => featureData != null && featureData.denCavity != null
+            ? featureData.denCavity.reserveCells.Count - featureData.denCavity.cells.Count
+            : 0;
+
     public int DenCavityCellCount
         => featureData != null && featureData.denCavity != null
             ? featureData.denCavity.cells.Count : 0;
