@@ -8014,11 +8014,27 @@ destroyed one fails by being absent rather than by being wrong.
   remains, which is what they do anyway and by which time the type map exists.
   This is better than the original: a dig visibly heading somewhere over days
   is a stronger race than a tunnel that always pointed there.
-- **Buried remains are NOT band-confined.** `GetBuriedSites` samples uniformly
-  across the usable disc, so a remains cell can land in the outer third that
-  entry 19 says nobody reaches. Kobolds target only remains INSIDE the 15-65
-  per cent band; remains outside it are left alone, so the band measurement
-  stays intact.
+- **Buried remains are NOT band-confined**, and ~~kobolds target only remains
+  INSIDE the 15-65 per cent band~~ **AMENDED IN STAGE 2a, because that rule
+  could not survive the model the arc had already chosen.** `GetBuriedSites`
+  samples uniformly across the usable disc, so a remains cell can land in the
+  outer third entry 19 says nobody reaches. The band clause was written for the
+  BEELINE dig -- drive at a known remains -- which `Tools/sim_den_digger.py`
+  killed. Under the wander model the diggers target nothing; they find what they
+  pass.
+
+  Measured, and the reason the clause had to go: only **12.4 per cent of seeds
+  carry any in-band remains at all**, so band-confined targeting is a hard
+  ceiling of 12.4 per cent before a single cell is cut, and delivers **2.8 per
+  cent** in play against 15.2 for the shipped rule. It would have held this
+  entry's own headline beat -- "the first thing in DCR that punishes slowness
+  rather than aggression" -- to one dungeon in thirty-five.
+
+  The band measurement stays intact by a different route, and the digger sim
+  had already made the argument: the DEN, its CAVITY and its tunnel MOUTHS are
+  all in band, and a leg turns at `endpointClamp` (0.85). A dig that goes out to
+  fetch is not content placed out there, because the beat still happens where
+  the player is.
 - No Ancient Sites are added to floor index 1. Entry 19 calls index 2's lone
   guard post "deliberate reach -- without it most players would never meet the
   Buried Age at all", and sites at index 1 spend that reveal a floor early.
@@ -8544,14 +8560,180 @@ shared body `Deferred -- borrowed donor`, so this needs no ruling change. The
 `Prefabs/Monsters/Wild/Kobold Variant.prefab`,
 `ScriptableObjects/Monsters/Wild/Regular/WildDef_Kobold.asset`.
 
+#### The exploratory dig (BUILT: stage 2a)
+
+Status: BUILT. `NotifyRemainsExcavated` has a caller at last, the contested
+discovery fires and is recovered on clearing, and `SetDenWorkSite` and
+`DiggersByTier` both have behaviours. NOT built: kobold theft and `stolenHoard`,
+which are stage 2b.
+
+**A leg is an ordinary `DenTunnelData` appended to the END of the list, and only
+the last one ever grows.** This is not tidiness, it is the only shape that
+survives the reveal machinery. `RebuildDenTunnelCells` numbers reveal segments
+with ONE counter running across every tunnel in list order, and
+`revealedDenTunnelSegmentIds` is persisted -- so lengthening any but the last
+run past a `segmentLength` boundary renumbers every later run's segments and a
+reload unfogs the wrong stretches. Appending at the end can only add ids above
+the ones already saved. It also means the dig inherits the save shape, the
+reveal model, the ownership order, the debug overlay, `DebugRevealAll` and
+`LogFeatureStats` for nothing -- this entry's "any feature added to a floor is
+added to all three surfaces in the same pass" satisfied by construction rather
+than by remembering.
+
+**The section is UNIFORM 2, and 1 was never available.** A 1-wide run is not
+4-connected and nothing could walk it: `Centreline` is Bresenham and takes
+diagonal steps, and `Dilate` at width 1 emits the cell alone. This entry already
+rests the generated network's breach guarantee on the same fact. Uniform rather
+than tapered is what makes GROWTH safe: the shared rasteriser lerps the taper
+across the run's CURRENT length, so a tapered leg would rewiden its own older
+cells every time it grew -- new cells appearing inside stretches revealed days
+ago. The digger sim's recorded 2->1 crawlway is corrected accordingly, and every
+reach figure it printed at mean width 1.5 was optimistic by 25 per cent.
+
+**THE BRUSH IS TESTED, NOT THE CENTRELINE, and that is what keeps the live tree
+and the reloaded tree identical.** Cells are derived from the polyline, and the
+rebuild on load cannot know which cells were claimed when they were cut -- worse,
+it runs in the save controller's pass 1, before tile influence is restored in
+pass 3, so it could not ask. A leg that only turned when its CENTRELINE met
+claimed ground would still clip the player's frontier with its 2-wide brush, and
+that cell would be re-carved and marked walkable on the next load: the player's
+own claimed stone quietly opening itself. Testing the whole footprint means a
+leg's cells contain no claimed ground by construction.
+
+**A leg never retraces itself**, for the same class of reason. `Centreline`
+de-duplicates, so a revisited cell would be dropped from the line and shift
+every later index -- and the index is what decides which reveal stretch a cell
+belongs to.
+
+**THE DIG NEEDS A CAP, AND THE TWO CONTAINMENTS THAT LOOK LIKE ONE ARE NOT.**
+Claimed ground is refused and a leg turns at `endpointClamp`. Both bound WHERE
+and neither bounds HOW MUCH: making claimed ground a hard wall changes the total
+by **under half a per cent**, because a typical dungeon's claim is under three
+per cent of the diggable disc -- an island in a lake. Uncapped, a typical den
+cuts **4,725 cells by day 200 at x2 and 7,028 at x3**, against a generated
+network of 1107, a cavity reserve of 400, and this entry's own mana-gift
+paragraph sizing the whole gift at "under one per cent of either disc, and well
+clear of the roughly 3000-cell site scale entry 19 warned about".
+
+`exploratoryCellCap` is 2400 on floor index 2 -- about twice the generated
+network, so **the den at most triples its own diggings**. A cap of 1107 was
+measured and rejected: it holds the contested-discovery beat to **7.3-8.0 per
+cent** of dungeons, and a set-piece firing on under one run in twelve is content
+nobody meets -- entry 19's own argument about the placement band, pointed
+inward.
+
+**The cap is the CONTENT knob and the budget is only the PACING knob**, which is
+measured rather than asserted and is the useful half of the sweep. Section J of
+`Tools/sim_den_digger.py`, typical dungeon:
+
+| cap | rate | finds by d150 | remains ever | first find | dig stops | cells |
+|---|---|---|---|---|---|---|
+| 1107 | x2 / x3 | 0.8 / 0.6 | 8.0% / 7.3% | d55 / d47 | d87 / d73 | ~1120 |
+| 1600 | x2 / x3 | 1.1 / 0.9 | 12.0% / 12.0% | d68 / d57 | d104 / d86 | ~1615 |
+| **2400** | **x2 / x3** | 1.9 / 1.5 | **14.7% / 14.0%** | d75 / **d64** | d129 / **d104** | ~2420 |
+| none | x2 / x3 | 2.5 / 3.8 | 24.0% / 32.0% | d99 / d92 | never | 4725 / 7028 |
+
+Read the 2400 row across: the beat rate hardly moves with the budget (14.7
+against 14.0) while the first find moves eleven days and the end moves
+twenty-five. Read the `none` row across and the rate matters again, because with
+no cap the rate IS the total. **Tune content with the cap, pacing with the
+budget, and do not read a rate change as a content change.** Shipped at **x3**:
+first find about day 64, digging over about day 104.
+
+**The budget is ADDITIVE and pays nothing**, which is ruling 5 unchanged: reserve
+cells pay the ledger, tunnel cells do not. A share was measured and is a trap --
+the ledger pays on reserve cells alone, so diverting the cavity budget freezes
+the hoard, freezes the tier and thereby slows the very dig it was diverted to.
+Share 1.00 arrives LATER than share 0.50. This is also what keeps "tier 5 IS the
+completed hole" true against a dig that runs another fifty days past it.
+
+**THE REMAINS LUMP DOES NOT BREAK THE COUPLING, and it was checked rather than
+assumed** -- `Tools/sim_den_cavity_growth.py` said in its own header that it
+would be re-run the day `NotifyRemainsExcavated` acquired a caller, and this is
+that day. On a typical or killer dungeon the lump moves the tier-5 day by
+NOTHING: the median first find lands about day 64 and tier 5 is already reached
+on day 49 or day 40, so the lump arrives after the race and only pads the hoard.
+Only a passive dungeon moves, by three days, which is less than the reserve BAND
+already moves it with no lump at all. **The recorded pacing stands -- tier 2 on
+day 13, tier 5 on day 49 -- and nothing was re-tuned.**
+
+**Only remains is sensed at a distance; everything else is met on contact.** A
+nearest-search over every road and site cell on the floor, once per walked cell,
+would cost more than the behaviour is worth, and remains are the one kind the
+dig is FOR. The consequence is recorded rather than hidden: a leg ranges
+slightly further between turns than a range-sensing one would, and the sim now
+MIRRORS this rule rather than leading it.
+
+**Two ways the diggings end, and the first is the point of them.** Every remains
+on the floor is theirs, or the cap is spent. A wisp line says so once, because
+coupled or not, a dig that has stopped looks exactly like a dig that is slow.
+
+**A new stretch inherits the reveal of the one before it**, so a dig the player
+has walked up to goes on being visible as it advances -- this entry's "progress
+VISIBLE between visits", literally. It can only ever show tunnel the diggers
+have actually cut and never reaches past ground the player has already been
+shown, so fog stays one-way in the direction that matters.
+
+**The dig refuses its own reserve.** `reserveCells` enter `reservedCoreCells`
+and NOT the lookup, so they read as `FeatureType.None` -- a leg testing only
+`GetFeatureAt` would tunnel through the hole `GrowDenCavity` is waiting for and
+the den's two verbs would eat each other.
+
+**The wisp speaks at EXCAVATION, not when the hole is seen.** Tying the telling
+to the seeing was the tidier design and was rejected on a dependency: the marker
+prop is authored art that does not exist yet, and a set-piece that waits for a
+sprite is a set-piece that does not exist. The PROP is the lasting record; the
+line is the event. The alert pins the cell, so a player can click straight to
+what they lost -- the camera roams the whole floor by Appendix C, so pointing at
+fog leaks nothing.
+
+**The markers are NOT taken down on clearing, and the hoard is.** A pile left
+standing after `ClearDen` would be claiming gold already in the player's purse;
+an emptied remains is a thing that actually happened, and the hole is its
+record. Clearing recovers the GRANT, not the stone.
+
+**Clearing pays the remains back**, through `BuriedRemainsController.
+GrantExternalDiscovery` -- which this entry has named as the beat's re-entry
+point since the decision record, and whose own doc comment has named the
+desecration arc as its ONLY caller since it shipped. This is the second.
+
+**`sitesPerFloor` stopped being a guess.** `SiteCountFor` exposes the real
+count, so `NotifyRemainsExcavated`'s cap is right on a floor carrying an
+Ossuary, where `SitesFor` appends one guaranteed cell per placed one on top of
+the sampled sites.
+
+**The four dead persistence methods are ALIVE, and the dig is why they had to
+be.** `GatherConsumed`, `RestoreConsumed`, `GatherSensed` and `RestoreSensed`
+had no callers anywhere. Losing consumed state was nearly harmless while the
+player was the only one digging, because a mined cell is not re-minable. It stops
+being harmless the moment something else can take a remains: `MarkNaturalFloor`
+fires no `OnTileMined`, so a kobold-opened cell would never be marked consumed,
+and `HandleClaimed` would go on murmuring "something waits in the stone nearby --
+dig, and I will remember" at ground `MineTile` silently refuses. **An invitation
+the game then declines is worse than saying nothing.** `NotifyTakenExternally`
+marks the cell sensed as well as consumed for exactly that reason.
+
+**A work site is an OVERRIDE, and the leash did not move.** `DiggerBudget`
+bodies are sent to the leg's head each dawn and everyone else is called home;
+the role is read off position in the population list exactly as `MayForage`
+reads the forager role, so a death re-assigns it for free. The cavity leash is
+membership of the cavity's own cell set and stays so -- widening it would
+reopen the yo-yo at radius six that this entry already paid for once.
+
+**Key files:** `Floors/TerrainFeatureGenerator.cs` (`AdvanceDenDig`,
+`CanCutAt`, `CarveLegCell`, `SpawnDenRemainsMarkers`),
+`Floors/DenTunnelProfile.cs`, `Floors/FloorFeatureSaveData.cs`
+(`DenTunnelData.exploratory`, `denTakenRemainsCells`),
+`DungeonCore/DenController.cs` (`TickExploratoryDig`, `AssignWorkSites`),
+`Gameplay/BuriedRemainsController.cs` (`SiteCountFor`, `UntakenRemainsOn`,
+`NotifyTakenExternally`), `Save/DungeonSaveController.cs`,
+`TESTING/Commands.cs` ("Print Den Dig"), `Tools/sim_den_digger.py`,
+`Tools/sim_den_cavity_growth.py`.
+
 #### What the den arc still owes
 
-- **Kobold diggers.** `NotifyRemainsExcavated` still has no caller, so the
-  runtime dig toward buried remains -- this entry's "a dig visibly heading
-  somewhere over days is a stronger race than a tunnel that always pointed
-  there" -- does not exist. Floor index 2 now has BODIES; what it has not got is
-  a dig. The exploratory-dig measurements in `Tools/sim_den_digger.py` are what
-  that stage rests on and must not be re-derived.
+- ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
+  above.**
 
 - **KOBOLD THEFT AND THE STOLEN HOARD -- decided, deferred to stage 2.**
   Kobolds will steal as well as dig, so that clearing them returns something the
@@ -8596,18 +8778,12 @@ shared body `Deferred -- borrowed donor`, so this needs no ruling change. The
   `withdrawing`/`watchRadius`/`clearRadius` choreography plus a wisp line, with no
   puppet needing a health bar.
 
-- **`BuriedRemainsController` persistence is dead code.** `GatherConsumed`,
-  `RestoreConsumed`, `GatherSensed` and `RestoreSensed` have no callers anywhere
-  in `Assets/`, so consumed and sensed state is not persisted -- the same fault
-  class this entry records for `remainsLump`. Nearly harmless today, since a
-  mined cell is not re-minable, but it is the natural home for a kobold-taken
-  remains and stage 2 must rule on it before using it.
+- ~~**`BuriedRemainsController` persistence is dead code.**~~ **RULED ON AND
+  WIRED in stage 2a: all four methods have callers, and the dig is what made
+  losing consumed state stop being harmless.**
 
-- **`NotifyRemainsExcavated`'s cap is a guess.** `sitesPerFloor` is private with
-  no accessor, so the `remainsOnFloor = 2` default is hardcoded and WRONG on any
-  floor with an Ossuary, since `SitesFor` appends a guaranteed remains per placed
-  Ossuary on top of it. Recommended and unbuilt: expose
-  `BuriedRemainsController.SiteCountFor(floor)`.
+- ~~**`NotifyRemainsExcavated`'s cap is a guess.**~~ **FIXED in stage 2a:
+  `SiteCountFor` exposes the real count, Ossuary included.**
 
 - **The player cannot be paid twice for a kobold-opened remains, and it needs no
   flag.** `MineTile` early-returns on `minedTiles.Contains(pos)` and

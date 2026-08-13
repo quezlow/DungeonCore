@@ -71,6 +71,12 @@ public class FloorFeatureSaveData
     // since those shipped first. DenAnchor falls back to the old polyline origin
     // in exactly that case, so no migration runs.
     public DenCavityData denCavity;
+
+    // Buried-remains cells the diggers opened before the player found them
+    // (canon 42's contested discovery). Persisted because the empty hole and
+    // its marker have to survive a reload; the GRANT is recovered by clearing
+    // the den rather than from here. Appended: legacy saves load it empty.
+    public List<SerializableVector3Int> denTakenRemainsCells = new();
 }
 
 [Serializable]
@@ -163,6 +169,20 @@ public class DenTunnelData
     public int clampRadius;
 
     public List<SerializableVector3Int> polyline = new List<SerializableVector3Int>();
+
+    /// <summary>True on a LEG the diggers cut at runtime, as against a run the
+    /// generator laid down. Appended, so a legacy save reads false and carries
+    /// no legs -- which is exactly true of any save written before the dig.
+    ///
+    /// LEGS ARE APPENDED TO THE END OF THE TUNNEL LIST AND ONLY THE LAST ONE
+    /// EVER GROWS, and that is load-bearing rather than tidy. Segment ids come
+    /// from ONE counter running across every tunnel in list order
+    /// (RebuildDenTunnelCells), so lengthening any but the last run past a
+    /// segmentLength boundary renumbers every later run's segments -- and
+    /// revealedDenTunnelSegmentIds is PERSISTED, so a reload would then unfog
+    /// the wrong stretches. Appending at the end can only ever add ids above
+    /// the ones already saved.</summary>
+    public bool exploratory;
 }
 
 /// <summary>One placed Buried Age site (canon 19).</summary>

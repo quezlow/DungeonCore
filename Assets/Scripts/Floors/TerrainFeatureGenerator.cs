@@ -968,6 +968,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         denHoard = null;
     }
 
+    /// <summary>The markers are deliberately NOT taken down with the pile.
+    /// A hoard left standing after ClearDen would be claiming gold already
+    /// in the player's purse; an emptied remains is a thing that actually
+    /// happened, and the hole is the record of it. Clearing recovers the
+    /// GRANT, not the stone.</summary>
+    public int DenRemainsMarkerCount => denRemainsMarkers.Count;
+
     /// <summary>Load-path sweep: a save can hold already-revealed sites, whose
     /// reveal call happened in a previous session. LoadFromSave runs this after
     /// the feature data is restored.</summary>
@@ -3148,6 +3155,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         RevealVersion++;
         UnfogDenCavity();
         SpawnDenHoard();
+        SpawnDenRemainsMarkers();
     }
 
     /// <summary>Reveal is the carved cells plus their one-cell halo, and nothing
@@ -3184,6 +3192,495 @@ public class TerrainFeatureGenerator : MonoBehaviour
         floor.TileInfluence?.MarkNaturalFloor(open);
     }
 
+    // -- The exploratory dig (canon 42, stage 2) ---------------------------
+
+    /// <summary>Next reveal-segment id this floor will hand out.
+    ///
+    /// A FIELD RATHER THAN A MAXIMUM OVER denTunnelSegments, and the difference
+    /// is not cosmetic: RebuildDenTunnelCells advances the id for every index
+    /// block whether or not the block kept a single cell, so a stretch entirely
+    /// swallowed by a chamber leaves a gap. The highest LIVE id can therefore
+    /// sit below the true next one, and a leg numbering itself off the live
+    /// list would collide with a stretch the next reload is going to
+    /// recreate.</summary>
+    private int nextDenSegmentId;
+
+    /// <summary>Markers already standing, so a sweep is free to re-run.</summary>
+    private readonly Dictionary<Vector3Int, GameObject> denRemainsMarkers
+        = new Dictionary<Vector3Int, GameObject>();
+
+    /// <summary>What one dawn of digging did. Returned rather than logged
+    /// because the ledger has to bank the rock, speak for a remains and place
+    /// the work site off a single call.</summary>
+    public class DenDigStep
+    {
+        /// <summary>Novel cells of rock opened. COUNTED, never predicted: the
+        /// brush overlaps itself as the leg advances, so the cells a step
+        /// yields depend on the turn it just took.</summary>
+        public int cellsCut;
+
+        /// <summary>The leg could not find a legal cell in any direction. A
+        /// den boxed in by the player's own claim is the race working, so this
+        /// is reported rather than treated as a fault.</summary>
+        public bool boxedIn;
+
+        public Vector3Int head;
+        public bool headKnown;
+        public float headingRadians;
+        public int finds;
+
+        /// <summary>Remains cells broken into this dawn. Empty on almost every
+        /// dawn -- this is the set-piece, not the routine.</summary>
+        public readonly List<Vector3Int> remainsTaken = new List<Vector3Int>();
+    }
+
+    /// <summary>Cells of rock the legs have opened so far. Derived from the
+    /// legs themselves rather than counted into a field, so the cap can never
+    /// drift from the geometry it is capping -- canon 42's own coupling
+    /// argument, applied to the tunnel.</summary>
+    public int DenExploratoryCellCount
+    {
+        get
+        {
+            if (featureData == null || featureData.denTunnels == null) return 0;
+            int n = 0;
+            foreach (var seg in denTunnelSegments)
+            {
+                var t = TunnelById(seg.tunnelId);
+                if (t != null && t.exploratory) n += seg.cells.Count;
+            }
+            return n;
+        }
+    }
+
+    private DenTunnelData TunnelById(int id)
+    {
+        if (featureData == null || featureData.denTunnels == null) return null;
+        foreach (var t in featureData.denTunnels) if (t.id == id) return t;
+        return null;
+    }
+
+    /// <summary>The leg currently being cut, or null before the first one.
+    /// ALWAYS THE LAST ELEMENT -- see DenTunnelData.exploratory for why that is
+    /// a rule rather than a convenience.</summary>
+    private DenTunnelData GrowingLeg()
+    {
+        if (featureData == null || featureData.denTunnels == null) return null;
+        int last = featureData.denTunnels.Count - 1;
+        if (last < 0) return null;
+        var t = featureData.denTunnels[last];
+        return t != null && t.exploratory ? t : null;
+    }
+
+    /// <summary>
+    /// Advances the diggings by one dawn's worth of rock, and returns what
+    /// happened. Null on a floor with no den, no profile or no cap.
+    ///
+    /// THE WALK IS PERSISTENT, NOT RANDOM. Each step turns the bearing by a
+    /// bounded amount rather than re-rolling it, because a pure random walk's
+    /// displacement grows as the square root of its length -- a thousand cells
+    /// of digging would end thirty cells from the den and read as a scribble.
+    /// BuildTunnel already wobbles a bearing for the same reason.
+    ///
+    /// THE BRUSH IS TESTED, NOT THE CENTRELINE, and that is what keeps the live
+    /// tree and the reloaded tree identical. Cells are DERIVED from the
+    /// polyline, and the rebuild on load has no idea which cells were claimed
+    /// when they were cut -- worse, it runs in the save controller's pass 1,
+    /// before tile influence is restored in pass 3, so it could not ask. If the
+    /// leg only turned when its CENTRELINE met claimed ground, its 2-wide brush
+    /// could still clip a cell of the player's frontier, and that cell would be
+    /// re-carved and marked walkable on the next load -- the player's own
+    /// claimed stone quietly opening itself. Testing the whole footprint means
+    /// a leg's cells contain no claimed ground by construction, so the rebuild
+    /// reproduces them whatever the influence manager happens to know.
+    ///
+    /// A LEG NEVER RETRACES ITSELF, for the same class of reason.
+    /// DenTunnelBuilder.Centreline de-duplicates, so a revisited cell would be
+    /// dropped from the line and shift every later index -- and the index is
+    /// what decides which reveal segment a cell belongs to. Refusing the step
+    /// keeps polyline and centreline the same length, so runtime and reload
+    /// partition segments identically.
+    /// </summary>
+    public DenDigStep AdvanceDenDig(int rockBudget, float headingRadians,
+                                    bool hasHeading, int senseRadiusOverride = -1)
+    {
+        var entry = DenProfileEntry;
+        if (entry == null || entry.exploratoryCellCap <= 0) return null;
+        if (rockBudget <= 0) return null;
+        if (featureData == null || featureData.denTunnels == null
+            || featureData.denTunnels.Count == 0) return null;
+        if (floor == null || floor.Terrain == null) return null;
+
+        var step = new DenDigStep { headingRadians = headingRadians };
+
+        var leg = GrowingLeg();
+        if (leg == null)
+        {
+            leg = StartExploratoryLeg(entry, ref headingRadians);
+            if (leg == null) return null;
+            hasHeading = true;
+        }
+        if (!hasHeading) headingRadians = HeadingOfLeg(leg);
+
+        var line = DenTunnelBuilder.Centreline(leg);
+        if (line.Count == 0) return null;
+        var onLeg = new HashSet<Vector3Int>(line);
+
+        Vector3Int head = line[line.Count - 1];
+        float x = head.x, y = head.y;
+
+        Vector3Int centre = leg.floorCentre != null
+            ? leg.floorCentre.ToVector3Int() : Vector3Int.zero;
+        // Canon's own clamp, NOT the persisted rasterise clamp. clampRadius is
+        // floorRadius minus the rim margin -- about 0.96 of the disc -- and
+        // nothing about the dig was ever measured out there. endpointClamp is
+        // the number entry 19's reach argument produced and the one the sim
+        // turns at.
+        float clampR = floor.Terrain.CurrentRadius * Mathf.Clamp01(entry.endpointClamp);
+        float drift = entry.exploratoryDriftDegrees * Mathf.Deg2Rad;
+        int width = Mathf.Max(2, entry.exploratoryWidth);
+        int sense = senseRadiusOverride >= 0
+            ? senseRadiusOverride : Mathf.Max(1, entry.exploratorySenseRadius);
+        int segStep = Mathf.Max(4, leg.segmentLength);
+        int segBase = nextDenSegmentId - SegmentsIn(line.Count, segStep);
+
+        bool driving = false;
+        Vector3Int driveTo = default(Vector3Int);
+        int blocked = 0;
+        int guard = rockBudget * 4 + 32;
+
+        while (step.cellsCut < rockBudget && guard-- > 0)
+        {
+            if (driving)
+            {
+                headingRadians = Mathf.Atan2(driveTo.y - y, driveTo.x - x);
+            }
+            else
+            {
+                headingRadians += UnityEngine.Random.Range(-drift, drift);
+            }
+
+            float nx = x + Mathf.Cos(headingRadians);
+            float ny = y + Mathf.Sin(headingRadians);
+            var cell = new Vector3Int(Mathf.RoundToInt(nx), Mathf.RoundToInt(ny), 0);
+
+            string findKey;
+            if (!CanCutAt(cell, centre, clampR, width, onLeg, out findKey))
+            {
+                if (findKey != null && step.finds < int.MaxValue) step.finds++;
+                // Turn hard rather than nudging: a small correction against a
+                // wall walks along it, which reads as a tunnel tracing the
+                // player's frontier instead of prospecting away from it.
+                headingRadians += Mathf.PI * UnityEngine.Random.Range(0.5f, 1.5f);
+                driving = false;
+                if (++blocked > 64) { step.boxedIn = true; break; }
+                continue;
+            }
+            blocked = 0;
+
+            x = nx; y = ny;
+            line.Add(cell);
+            onLeg.Add(cell);
+            leg.polyline.Add(SerializableVector3Int.From(cell));
+
+            int segId = segBase + (line.Count - 1) / segStep;
+            step.cellsCut += CarveLegCell(leg, segId, cell, centre, clampR, width);
+
+            if (driving && cell == driveTo)
+            {
+                driving = false;
+                if (TakeRemainsAt(cell))
+                {
+                    step.remainsTaken.Add(cell);
+                    step.finds++;
+                }
+                headingRadians = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+            }
+            else if (!driving)
+            {
+                Vector3Int target;
+                if (SenseRemains(cell, sense, out target)) { driving = true; driveTo = target; }
+            }
+        }
+
+        // The id advances by INDEX BLOCK, never by surviving stretch, because
+        // that is exactly what the rebuild on load does.
+        nextDenSegmentId = Mathf.Max(nextDenSegmentId,
+                                     segBase + SegmentsIn(line.Count, segStep));
+
+        step.head = line[line.Count - 1];
+        step.headKnown = true;
+        step.headingRadians = headingRadians;
+        return step;
+    }
+
+    private static int SegmentsIn(int lineCount, int segStep)
+        => segStep <= 0 ? 0 : (lineCount + segStep - 1) / segStep;
+
+    /// <summary>May the leg put its brush down here? Answers the FIND as well,
+    /// because in this model breaking into something and being stopped by it
+    /// are the same event -- ruling 4's "digs to it, then stops and picks a new
+    /// bearing", with contact standing in for the breaking in.
+    ///
+    /// Only REMAINS are sensed at a distance (see SenseRemains). Everything
+    /// else is met on contact, deliberately: a nearest-search over every road
+    /// and site cell on the floor, once per walked cell, would cost more than
+    /// the behaviour is worth, and remains are the one kind the dig is
+    /// actually FOR. The consequence is recorded rather than hidden -- a leg
+    /// ranges slightly further between turns than a range-sensing one would,
+    /// so the sim mirrors this rule rather than the other way round.</summary>
+    private bool CanCutAt(Vector3Int cell, Vector3Int centre, float clampR,
+                          int width, HashSet<Vector3Int> onLeg, out string findKey)
+    {
+        findKey = null;
+        if (onLeg.Contains(cell)) return false;      // never retrace: see AdvanceDenDig
+
+        var influence = floor != null ? floor.TileInfluence : null;
+        var types = floor != null ? floor.TerrainTypeMap : null;
+
+        int half = (width - 1) / 2;
+        int extra = (width - 1) - 2 * half;
+        for (int dx = -half; dx <= half + extra; dx++)
+            for (int dy = -half; dy <= half + extra; dy++)
+            {
+                var p = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                float ddx = p.x - centre.x, ddy = p.y - centre.y;
+                if (ddx * ddx + ddy * ddy > clampR * clampR) return false;
+                if (types != null && types.IsBedrock(p)) return false;
+
+                // The player's ground is theirs. The cavity growth already
+                // refuses a claimed cell for this reason and the tunnel must
+                // agree, or the two halves of one den would disagree about
+                // whose the rock is.
+                if (influence != null && influence.IsTileClaimed(p))
+                { findKey = "claim:" + (p.x >> 3) + ":" + (p.y >> 3); return false; }
+
+                // The den's OWN unopened reserve. Not a find and not a
+                // trespass: digging it would take cells GrowDenCavity is
+                // waiting for, so the two verbs would eat each other.
+                if (reservedCoreCells.Contains(p)) return false;
+
+                var f = GetFeatureAt(p);
+                if (f == FeatureType.Chamber)
+                { findKey = "chamber:" + GetChamberId(p); return false; }
+                if (f == FeatureType.Road)
+                { findKey = "road:" + (p.x >> 3) + ":" + (p.y >> 3); return false; }
+                if (f == FeatureType.AncientSite)
+                { findKey = "site:" + (p.x >> 3) + ":" + (p.y >> 3); return false; }
+            }
+        return true;
+    }
+
+    /// <summary>Lays one centreline cell's brush, returning the NOVEL cells it
+    /// opened. Everything already owned is left alone, which is
+    /// RebuildDenTunnelCells' ownership rule applied a cell at a time.</summary>
+    private int CarveLegCell(DenTunnelData leg, int segId, Vector3Int cell,
+                             Vector3Int centre, float clampR, int width)
+    {
+        var seg = GetDenTunnelSegment(segId);
+        if (seg == null)
+        {
+            seg = new DenTunnelSegmentRuntime { segmentId = segId, tunnelId = leg.id };
+            denTunnelSegments.Add(seg);
+
+            // A NEW STRETCH INHERITS THE REVEAL OF THE ONE BEFORE IT, so a dig
+            // the player has walked up to goes on being visible as it advances
+            // -- canon 42's "progress VISIBLE between visits", literally. It
+            // can only ever show tunnel the diggers have actually cut, and it
+            // never reaches past ground the player has already been shown.
+            if (featureData.revealedDenTunnelSegmentIds.Contains(segId - 1)
+                && !featureData.revealedDenTunnelSegmentIds.Contains(segId))
+                featureData.revealedDenTunnelSegmentIds.Add(segId);
+        }
+
+        bool revealed = featureData.revealedDenTunnelSegmentIds.Contains(segId);
+        var opened = new List<Vector3Int>();
+
+        int half = (width - 1) / 2;
+        int extra = (width - 1) - 2 * half;
+        for (int dx = -half; dx <= half + extra; dx++)
+            for (int dy = -half; dy <= half + extra; dy++)
+            {
+                var p = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                float ddx = p.x - centre.x, ddy = p.y - centre.y;
+                if (ddx * ddx + ddy * ddy > clampR * clampR) continue;
+                if (cellLookup.ContainsKey(p)) continue;
+                if (!denTunnelCells.Add(p)) continue;
+                seg.cells.Add(p);
+                cellLookup[p] = new FeatureRef { type = FeatureType.DenTunnel, featureId = segId };
+                opened.Add(p);
+            }
+
+        // Unrevealed ground is left UNMARKED as well as unlit. Fog is one-way
+        // and walkable-but-invisible is the reserve's own banned state.
+        if (revealed && opened.Count > 0) RevealGrownCells(opened);
+        return opened.Count;
+    }
+
+    /// <summary>Starts the first leg, at the tip of a generated run. Prefers a
+    /// DEAD END, which canon already names as "exactly what the population
+    /// extends"; falls back to the longest run so a den whose every run found a
+    /// chamber still digs. Deterministic tiebreak on id, so two calls on one
+    /// floor can never pick differently.</summary>
+    private DenTunnelData StartExploratoryLeg(DenTunnelFloorEntry entry, ref float heading)
+    {
+        DenTunnelData best = null;
+        int bestScore = int.MinValue;
+        foreach (var t in featureData.denTunnels)
+        {
+            if (t == null || t.exploratory || t.polyline == null || t.polyline.Count < 2) continue;
+            var lineT = DenTunnelBuilder.Centreline(t);
+            int score = lineT.Count + (t.chamberId < 0 ? 100000 : 0);
+            if (score > bestScore) { bestScore = score; best = t; }
+        }
+        if (best == null) return null;
+
+        var parent = DenTunnelBuilder.Centreline(best);
+        var mouth = parent[parent.Count - 1];
+        heading = parent.Count >= 2
+            ? Mathf.Atan2(mouth.y - parent[parent.Count - 2].y,
+                          mouth.x - parent[parent.Count - 2].x)
+            : UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+        return AppendLeg(entry, mouth, best);
+    }
+
+    /// <summary>Appends a fresh leg at the END of the tunnel list. Every leg
+    /// after the first starts where the last one stopped, because a digger that
+    /// has just broken into something carries on from where it stands --
+    /// sending it home to start again would read as the tunnel being
+    /// deleted.</summary>
+    public void StartNextExploratoryLeg(float heading)
+    {
+        var entry = DenProfileEntry;
+        if (entry == null || entry.exploratoryCellCap <= 0) return;
+        var leg = GrowingLeg();
+        if (leg == null) return;
+        var line = DenTunnelBuilder.Centreline(leg);
+        if (line.Count == 0) return;
+        AppendLeg(entry, line[line.Count - 1], leg);
+    }
+
+    private DenTunnelData AppendLeg(DenTunnelFloorEntry entry, Vector3Int mouth,
+                                    DenTunnelData parent)
+    {
+        int id = 0;
+        foreach (var t in featureData.denTunnels) if (t.id >= id) id = t.id + 1;
+
+        var leg = new DenTunnelData
+        {
+            id = id,
+            chamberId = -1,
+            width = Mathf.Max(2, entry.exploratoryWidth),
+            tipWidth = Mathf.Max(2, entry.exploratoryWidth),
+            segmentLength = entry.segmentLength,
+            floorCentre = parent != null ? parent.floorCentre : null,
+            clampRadius = parent != null ? parent.clampRadius : 0,
+            exploratory = true,
+        };
+        leg.polyline.Add(SerializableVector3Int.From(mouth));
+        featureData.denTunnels.Add(leg);
+
+        // The leg picks up the reveal of whatever stretch its mouth stands in,
+        // so a dig starting at ground the player has already walked is visible
+        // from its first cell rather than from its second stretch.
+        FeatureRef fref;
+        if (cellLookup.TryGetValue(mouth, out fref) && fref.type == FeatureType.DenTunnel
+            && featureData.revealedDenTunnelSegmentIds.Contains(fref.featureId)
+            && !featureData.revealedDenTunnelSegmentIds.Contains(nextDenSegmentId))
+            featureData.revealedDenTunnelSegmentIds.Add(nextDenSegmentId);
+
+        return leg;
+    }
+
+    private float HeadingOfLeg(DenTunnelData leg)
+    {
+        var line = DenTunnelBuilder.Centreline(leg);
+        if (line.Count < 2) return UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+        var a = line[line.Count - 2];
+        var b = line[line.Count - 1];
+        return Mathf.Atan2(b.y - a.y, b.x - a.x);
+    }
+
+    private bool SenseRemains(Vector3Int from, int radius, out Vector3Int target)
+    {
+        target = default(Vector3Int);
+        var brc = BuriedRemainsController.Instance;
+        if (brc == null || floor == null) return false;
+        var cells = brc.UntakenRemainsOn(floor);
+        if (cells == null || cells.Count == 0) return false;
+
+        long best = (long)radius * radius + 1;
+        bool found = false;
+        for (int i = 0; i < cells.Count; i++)
+        {
+            long dx = cells[i].x - from.x, dy = cells[i].y - from.y;
+            long d2 = dx * dx + dy * dy;
+            if (d2 < best) { best = d2; target = cells[i]; found = true; }
+        }
+        return found;
+    }
+
+    private bool TakeRemainsAt(Vector3Int cell)
+    {
+        var brc = BuriedRemainsController.Instance;
+        if (brc == null || floor == null) return false;
+        if (!brc.NotifyTakenExternally(floor, cell)) return false;
+
+        if (featureData.denTakenRemainsCells == null)
+            featureData.denTakenRemainsCells = new List<SerializableVector3Int>();
+        featureData.denTakenRemainsCells.Add(SerializableVector3Int.From(cell));
+        SpawnDenRemainsMarkers();
+        return true;
+    }
+
+    /// <summary>Stands a marker in every taken remains the player can actually
+    /// see, and is free to re-run. Idempotent by cell rather than by a flag,
+    /// because the same sweep serves excavation, reveal and the load path.
+    ///
+    /// GATED ON THE CELL BEING REVEALED, not on the den being anything: the
+    /// hole is the whole of what makes the loss legible, and a prop standing in
+    /// fog would be a legibility rule talking to nobody.</summary>
+    public void SpawnDenRemainsMarkers()
+    {
+        if (featureData == null || featureData.denTakenRemainsCells == null) return;
+        if (denTunnelProfile == null || floor == null) return;
+        var prefab = denTunnelProfile.RemainsMarkerPrefab;
+        if (prefab == null) return;                 // null-safe: the beat still plays
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+
+        foreach (var sv in featureData.denTakenRemainsCells)
+        {
+            var cell = sv.ToVector3Int();
+            if (denRemainsMarkers.ContainsKey(cell)) continue;
+            if (!floor.IsRevealed(cell)) continue;
+            var go = Instantiate(prefab, terrain.FloorTilemap.GetCellCenterWorld(cell),
+                                 Quaternion.identity, floor.transform);
+            go.name = "DenRemainsMarker_" + cell.x + "_" + cell.y;
+            denRemainsMarkers[cell] = go;
+        }
+    }
+
+    /// <summary>Reveal stretches this floor holds, generated and dug alike.
+    /// Printed beside the revealed count, because "3 of 3 revealed" and "3 of
+    /// 14 revealed" are the difference between a dig nobody has found and a dig
+    /// that is not happening.</summary>
+    public int DenTunnelSegmentCount => denTunnelSegments.Count;
+
+    /// <summary>False when the profile carries no marker prefab, so a robbed
+    /// remains leaves no visible hole. Surfaced rather than inferred: canon 42
+    /// makes the hole the whole of what tells the player they were robbed, and
+    /// an unassigned prop is the ambiguous default in its usual form -- it
+    /// looks exactly like a den that has taken nothing.</summary>
+    public bool DenRemainsMarkerPrefabAssigned
+        => denTunnelProfile != null && denTunnelProfile.RemainsMarkerPrefab != null;
+
+    /// <summary>How many remains the diggers have opened on this floor. Read by
+    /// the report and by the marker sweep's own diagnostics.</summary>
+    public int DenTakenRemainsCount
+        => featureData != null && featureData.denTakenRemainsCells != null
+            ? featureData.denTakenRemainsCells.Count : 0;
+
     public int DenTunnelCount => featureData?.denTunnels?.Count ?? 0;
 
     /// <summary>This floor's den profile entry, or null when the floor
@@ -3212,6 +3709,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         featureData.revealedDenTunnelSegmentIds.Add(segmentId);
         RevealVersion++;
         UnfogDenTunnelSegment(segmentId);
+        SpawnDenRemainsMarkers();
     }
 
     private DenTunnelSegmentRuntime GetDenTunnelSegment(int segmentId)
@@ -3549,6 +4047,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 if (seg.cells.Count > 0) denTunnelSegments.Add(seg);
             }
         }
+
+        // The runtime dig hands out ids from here on. Set from the same
+        // counter that just partitioned the saved runs, so a leg cut this
+        // session numbers itself exactly as the next reload will.
+        nextDenSegmentId = nextSegmentId;
     }
 
     /// <summary>The cells of one stretch, dilated at the width the run has

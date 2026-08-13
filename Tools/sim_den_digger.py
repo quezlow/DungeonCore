@@ -418,7 +418,22 @@ def report_exploration(seeds, radius):
 # DenTunnelProfile.asset floor 2 authors 3->2; the crawlway recommendation is
 # 2->1. Mean width is what converts centreline cells into rock cut, and rock
 # cut is what the budget buys.
-CRAWLWAY_MOUTH, CRAWLWAY_TIP = 2, 1
+# CORRECTED FROM 2->1 TO A UNIFORM 2, AND EVERY REACH FIGURE ABOVE MOVED WITH
+# IT. A 1-wide tip is NOT 4-CONNECTED and nothing could walk the far end of it:
+# DenTunnelBuilder.Centreline is Bresenham and takes diagonal steps, and
+# RoadNetworkBuilder.Dilate at width 1 emits the cell alone, so two consecutive
+# diagonal cells share no edge. Canon already rests the generated network's
+# breach guarantee on exactly this -- "a 2-wide tip stays 4-connected across a
+# diagonal step" -- so 2 is a floor rather than a preference.
+#
+# Uniform is also what makes a GROWING leg safe: the shared rasteriser lerps the
+# taper across the run's CURRENT length, so a tapered leg would rewiden its own
+# older cells every time it grew.
+#
+# Cost: the same rock buys 25 per cent fewer centreline cells, so the reach
+# figures printed here are the honest ones and anything quoted from the 1.5
+# model was optimistic.
+CRAWLWAY_MOUTH, CRAWLWAY_TIP = 2, 2
 CRAWLWAY_MEAN_WIDTH = (CRAWLWAY_MOUTH + CRAWLWAY_TIP) / 2.0
 
 # TileInfluenceManager.ClaimStarterArea opens at the stair landing, which
@@ -453,15 +468,24 @@ def build_targets(seed, radius, detect, claimed_cells):
     would put a guessed number beside measured ones. Both are LARGE targets --
     a trunk road is a line clean across the floor -- so every found-rate below
     is a FLOOR on the true figure, never a ceiling. Recorded rather than
-    quietly omitted."""
+    quietly omitted.
+
+    ONLY REMAINS ARE SENSED AT RANGE, and this file now MIRRORS the shipped rule
+    rather than leading it. TerrainFeatureGenerator.CanCutAt meets a chamber, a
+    road, a site or the player's frontier ON CONTACT -- a nearest-search over
+    every road and site cell on the floor, once per walked cell, would cost more
+    than the behaviour is worth, and remains are the one kind the dig is
+    actually FOR. The consequence is that a leg ranges slightly further between
+    turns than a range-sensing one would.
+    """
     out = []
     for t in buried_sites(seed * 7919 + EXCAVATOR_FLOOR, radius):
         out.append(("remains", t[0], t[1], detect))
     centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
                              radius)[0]
     for c in centres:
-        out.append(("chamber", c[0], c[1], detect + CHAMBER_EFFECTIVE_RADIUS))
-    out.append(("claimed", 0.0, 0.0, detect + claimed_radius(claimed_cells)))
+        out.append(("chamber", c[0], c[1], CHAMBER_EFFECTIVE_RADIUS))
+    out.append(("claimed", 0.0, 0.0, claimed_radius(claimed_cells)))
     return out
 
 
@@ -533,7 +557,8 @@ def explore_poi(seed, radius, detect, drift_deg, days, profile,
 
 def report_poi(seeds, radius):
     print("I. THE CONFIRMED MODEL -- exploratory digging, full POI set")
-    print("   2->1 crawlway, additive tunnel budget, stop-and-new-bearing.")
+    print("   uniform %d-wide crawlway, additive budget, stop-and-new-bearing."
+          % CRAWLWAY_MOUTH)
     print("   ROAD and SITES are not modelled, so every figure is a FLOOR.")
     print()
     for extra_rate in (1.0, 2.0):
@@ -569,6 +594,113 @@ def report_poi(seeds, radius):
     for kind in sorted(tally, key=lambda k: -tally[k]):
         print("     %-10s %5.1f%%" % (kind, 100.0 * tally[kind] / total))
     print()
+
+
+def report_cap(seeds, radius):
+    """WHY THE DIG NEEDS A CAP, AND WHAT A CAP COSTS.
+
+    Two containments already exist and BOTH WERE ALREADY MODELLED here: the leg
+    turns at endpointClamp, and claimed ground stops it. Neither BOUNDS the dig,
+    they only aim it -- making claimed ground a hard wall changes the total by
+    under half a per cent, because a typical dungeon's claim is under three per
+    cent of the diggable disc. Uncapped, a typical den cuts 2,894 cells by day
+    150 and 7,430 by day 300 against a GENERATED network of 1107.
+
+    The sweep also separates the two knobs, which is the useful part: at a fixed
+    cap the BUDGET barely moves how much is found, and the CAP barely moves how
+    fast. Tune content with one and pacing with the other.
+    """
+    print("J. THE CAP  (typical dungeon, uniform %d-wide section, sense 15)"
+          % CRAWLWAY_MOUTH)
+    print("   cap     rate  finds/d150  remains ever%  1st find  dig stops  cells")
+    for cap in (1107, 1600, 2400, 0):
+        for rate in (2.0, 3.0):
+            f150, rem, cells, first, stops = [], 0, [], [], []
+            for s in range(seeds):
+                finds, cut, stopped = career_capped(s, radius, PROFILES[1], rate, cap)
+                f150.append(sum(1 for d, _k in finds if d <= 150))
+                if any(k == "remains" for _d, k in finds):
+                    rem += 1
+                cells.append(cut)
+                if finds:
+                    first.append(finds[0][0])
+                if stopped:
+                    stops.append(stopped)
+            print("   %-7s x%-4.0f %-11.1f %-14.1f %-9s %-10s %.0f"
+                  % (cap if cap else "none", rate,
+                     statistics.mean(f150), 100.0 * rem / seeds,
+                     ("d%.0f" % pct(first, 0.5)) if first else "-",
+                     ("d%.0f" % statistics.mean(stops)) if stops else "never",
+                     statistics.mean(cells)))
+    print()
+    print("   SHIPPED: cap 2400 (about twice the generated network, so the den at")
+    print("   most triples its own diggings) at budget x3. A cap of 1107 was")
+    print("   measured and rejected -- it holds the contested-discovery beat to")
+    print("   under one dungeon in ten, and a set-piece nobody meets is not one.")
+    print()
+
+
+def career_capped(seed, radius, profile, rate, cap, detect=15, drift_deg=12,
+                  days=200, clamp_fraction=0.85):
+    """explore_poi, plus a cap on NOVEL cells and a brush that counts them.
+
+    Cells are counted rather than predicted because the brush overlaps itself as
+    the leg advances, so what a step yields depends on the turn it just took.
+    """
+    rng = random.Random(seed ^ 0x51E2C0DE)
+    centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
+                             radius)[0]
+    anchor, _i, _o, _r = pick_anchor(
+        random.Random(seed * 7919 + EXCAVATOR_FLOOR), radius, centres,
+        CHAMBER_SEAT_CLEARANCE)
+    if anchor is None:
+        return [], 0, None
+
+    name, claimed, per_day = profile
+    lim = radius * clamp_fraction
+    drift = math.radians(drift_deg)
+    x, y = float(anchor[0]), float(anchor[1])
+    theta = rng.uniform(0.0, 2.0 * math.pi)
+    carry, hoard = 0.0, 0.0
+    open_cells = EXCAVATOR_TIER1_CELLS
+    cut, finds, hit_already = set(), [], set()
+    stopped_on = None
+
+    for day in range(1, days + 1):
+        claimed += per_day
+        if day <= GRACE_DAYS:
+            continue
+        if cap and len(cut) >= cap:
+            if stopped_on is None:
+                stopped_on = day
+            continue
+        tier = tier_for(hoard)
+        reserve_budget = SHIPPED_DIG_CELLS_PER_DAY[tier - 1] \
+            * expansion_multiplier(claimed)
+        opened = min(int(reserve_budget), EXCAVATOR_MAX_CELLS - open_cells)
+        open_cells += max(0, opened)
+        hoard += max(0, opened) * SPOIL_PER_CELL
+
+        carry += reserve_budget * rate / CRAWLWAY_MEAN_WIDTH
+        steps = int(carry)
+        carry -= steps
+        targets = build_targets(seed, radius, detect, claimed)
+        for _ in range(steps):
+            theta += rng.uniform(-drift, drift)
+            nx, ny = x + math.cos(theta), y + math.sin(theta)
+            if math.hypot(nx, ny) > lim:
+                theta += math.pi * rng.uniform(0.5, 1.5)
+                continue
+            x, y = nx, ny
+            cx, cy = int(round(x)), int(round(y))
+            cut.update(((cx, cy), (cx + 1, cy), (cx, cy + 1), (cx + 1, cy + 1)))
+            kind = poi_hit(x, y, targets)
+            key = (kind, round(x / 8.0), round(y / 8.0))
+            if kind and key not in hit_already:
+                hit_already.add(key)
+                finds.append((day, kind))
+                theta = rng.uniform(0.0, 2.0 * math.pi)
+    return finds, len(cut), stopped_on
 
 
 def main():
@@ -659,6 +791,7 @@ def main():
 
     report_exploration(min(seeds, 600), radius)
     report_poi(min(seeds, 400), radius)
+    report_cap(min(seeds, 250), radius)
 
     print("E. THE SHARED-BUDGET QUESTION (fork 1)")
     print("   Reserve headroom is %d cells; the median tunnel is %.0f. A shared"

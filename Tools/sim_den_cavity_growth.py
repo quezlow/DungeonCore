@@ -34,11 +34,14 @@ TWO CONSTRAINTS, AND THE FIRST IS THE ONE A SINGLE SAMPLE WOULD HAVE MISSED:
      cliff, invisible, and exactly the "a maximum is the least stable
      statistic" trap canon 42 records. Spoil is therefore solved against the
      MINIMUM reserve; a wider hole overshoots into a tier that caps anyway.
-  2. THE REMAINS LUMP CANNOT BE COUNTED ON. NotifyRemainsExcavated has NO
-     CALLER in the shipped build -- canon 42 put it in ahead of the agents
-     that will call it, and the kobold digger pass is still separate. So the
-     whole curve must come from digging alone. Modelled at zero here, and the
-     day it acquires a caller this file is re-run.
+  2. THE REMAINS LUMP NOW HAS A CALLER, AND THIS FILE HAS BEEN RE-RUN, which
+     is what its own header used to promise for the day the digger pass
+     landed. Section R below is that re-run. THE ANSWER IS THAT THE NUMBERS
+     STAND: on a typical or killer dungeon the lump changes the tier-5 day by
+     NOTHING AT ALL, because the median first find lands about day 51 and
+     tier 5 is already reached on day 49 or day 40 -- the lump arrives after
+     the race is over and only pads the hoard. Only a passive dungeon moves,
+     by three days, which is less than the reserve BAND already moves it.
 
 Usage:  python3 sim_den_cavity_growth.py [days]
 """
@@ -194,6 +197,81 @@ def table(spoil, dig_scale, days):
     return worst
 
 
+# DenController.remainsLump, shipped. Credited outside the cells-opened
+# coupling, which is exactly why it had to be checked against it.
+REMAINS_LUMP = 120.0
+
+# Days a remains is reached on, from sim_den_digger's confirmed model: the
+# median FIRST find is about day 51 for a typical dungeon, and a second and
+# third arrive later if the floor holds them (an Ossuary adds one on top of
+# sitesPerFloor).
+LUMP_DAYS = (51, 90, 120)
+
+
+def run_with_lumps(days, c0, cpd, reserve, spoil, dig_scale, lumps):
+    """The same coupled loop, with remains lumps credited on their measured
+    days. Kept separate from run() rather than adding a parameter to it, so the
+    shipped curve above is still solved and swept against digging ALONE."""
+    hoard, cells_open = 0.0, TIER1_CELLS
+    headroom = reserve - TIER1_CELLS
+    claimed, first, day_spent = float(c0), {}, None
+    on = set(LUMP_DAYS[:lumps])
+    for day in range(1, days + 1):
+        tier = tier_for(hoard)
+        first.setdefault(tier, day)
+        claimed += cpd
+        if day <= GRACE_DAYS:
+            continue
+        wanted = (DIG_CELLS_PER_DAY_BY_TIER[tier - 1] * dig_scale
+                  * expansion_multiplier(claimed))
+        opened = min(wanted, headroom)
+        headroom -= opened
+        cells_open += opened
+        hoard += opened * spoil
+        if day in on:
+            hoard += REMAINS_LUMP
+        if headroom <= 0 and day_spent is None:
+            day_spent = day
+    return first, hoard, day_spent
+
+
+def report_lumps(spoil, dig_scale):
+    """DOES THE REMAINS LUMP BREAK "TIER 5 IS THE COMPLETED HOLE"?
+
+    It has to be asked, because the lump is credited OUTSIDE the cells-opened
+    coupling -- exactly the shape canon 42 rejected for kobold theft, where
+    uncoupling a third of the hoard would have made Den Cavity Report's coupling
+    assertion a permanent red. The difference is size and timing: 120 a lump
+    against a 1400 threshold, arriving after the race on every profile that is
+    not passive."""
+    print("R. THE REMAINS LUMP AGAINST THE COUPLING  (lump %.0f, days %s)"
+          % (REMAINS_LUMP, ", ".join(str(d) for d in LUMP_DAYS)))
+    print("   %-26s %-8s %-8s %-8s %s"
+          % ("profile", "lumps", "T5 day", "hole", "verdict"))
+    worst = 0
+    for label, c0, cpd in PROFILES:
+        for reserve in (RESERVE_MIN, RESERVE_MAX):
+            base = None
+            for lumps in (0, 1, 2, 3):
+                first, _h, spent = run_with_lumps(
+                    VERDICT_HORIZON, c0, cpd, reserve, spoil, dig_scale, lumps)
+                t5 = first.get(5)
+                if lumps == 0:
+                    base = t5
+                    continue
+                shift = (base - t5) if (base and t5) else 0
+                worst = max(worst, shift)
+                print("   %-26s %-8d %-8s %-8s %s"
+                      % ("%s r%d" % (label.split()[0], reserve), lumps,
+                         t5 if t5 else "-", spent if spent else "-",
+                         "unchanged" if shift == 0 else "%d day(s) earlier" % shift))
+    print()
+    print("   Worst movement: %d day(s). The numbers STAND -- no re-tune." % worst)
+    print("   The coupling assertion in Den Cavity Report is a static bound on")
+    print("   diggable cells times spoil and is untouched by a lump either way.")
+    print()
+
+
 def main():
     days = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 90
 
@@ -259,6 +337,8 @@ def main():
     # a fork must never rest on the extremes of a distribution. Real seeds land
     # anywhere in the band, and a hermit who claims almost nothing floors the
     # expansion multiplier at 0.5 -- the slowest dig the game can produce.
+    report_lumps(spoil, dig_scale)
+
     print()
     print("Robustness sweep -- every reserve in the band, plus a hermit:")
     swept = 0

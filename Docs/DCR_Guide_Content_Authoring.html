@@ -1107,6 +1107,33 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
     </div>
   </details>
 
+  <details>
+    <summary>41. The excavated-remains marker (the hole they leave behind)</summary>
+    <div class="body">
+      <div class="why">Canon 42 requires this chapter. The marker is not decoration &mdash;
+      it is the ONLY lasting evidence that the kobolds robbed the player of a buried
+      remains. The claim-halo murmur fires within two cells of a claimed tile, so a player
+      who never sensed that stone would otherwise have nothing to look at. The wisp speaks
+      once at the moment of excavation; the hole is what is still there a week later.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s1"><label for="dcr-authoring-v1-c41s1"><b>Confirm the debt first.</b> <code>Print Den Dig</code> on a floor-2 run prints <i>no remains marker prefab assigned on the profile</i> while the slot is empty, and <code>Dungeon Core &rarr; Audit Art Debt</code> lists <code>DenTunnelProfile.remainsMarkerPrefab</code> as <b>REQUIRED</b>. It is left null on purpose: a placeholder here would score FILLED, and this is the one document whose whole job is to be an honest work queue.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s2"><label for="dcr-authoring-v1-c41s2"><b>It is a PROP, not a creature, so drop the proportions clause.</b> Chapter 0's Style Contract, prop branch: fixed head, subject slot, fixed tail; orthographic front view; target <b>2 cells = 64&nbsp;px</b>; palette <code>dcr-props-1x.png</code>. Generation floor <code>256x192</code>, INSPYRENET for background removal, then <code>Tools/dcr_sprite_post.py</code> for the area downscale and own-palette quantisation. CFG 1 leaves the negative prompt inert &mdash; put nothing there.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s3"><label for="dcr-authoring-v1-c41s3"><b>Draw the ABSENCE, not the find.</b> This is the opposite of the resting place: broken stone, a shallow scraped pit, spoil heaped to one side, maybe a splinter of bone nobody bothered to take. If it reads as treasure the beat inverts &mdash; the player is meant to feel late, not rewarded. Nothing gold, nothing glinting.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s4"><label for="dcr-authoring-v1-c41s4"><b>PIVOT AT THE BASE, sorting layer <code>Player</code>.</b> Appendix B puts every Y-sorting entity on <code>Player</code>, and the hoard prop already records why the pivot matters: <code>Player</code> sorts on Y, so a centre pivot makes a prop with height sort half a tile behind where it stands and the avatar clips through it. Copy <code>HoardPrefab.prefab</code>'s transform setup rather than rebuilding it.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s5"><label for="dcr-authoring-v1-c41s5"><b>No collider, no interaction, no script.</b> The marker is a pure visual skin like <code>DenHoardProp</code>. Nothing pathfinds around it and nothing mines it &mdash; the cell underneath it is already open ground, and <code>MineTile</code> refuses a mined cell, which is what stops the player being paid twice for stone the kobolds opened.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s6"><label for="dcr-authoring-v1-c41s6"><b>Assign it on the PROFILE, not per floor.</b> <code>Assets/ScriptableObjects/Floors/DenTunnelProfile.asset</code> &rarr; <code>remainsMarkerPrefab</code>. It is shared by every den, exactly as <code>hoardPrefab</code> is; the per-floor entries carry only the things that differ between an occupier and an excavator.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s7"><label for="dcr-authoring-v1-c41s7"><b>ONE sprite is the whole slot.</b> There is no tier ladder here &mdash; unlike the hoard, a robbed remains does not grow. If you want variation later it belongs in a future array with an explicit toggle, never in an empty-slot-means-something convention.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c41s8"><label for="dcr-authoring-v1-c41s8"><b>Check it in the dark, at the zoom the game is played at.</b> Floor index 2, let the dig run or force it, then <code>Print Den Dig</code> for the marker count and go and look. A marker that reads at 100% and vanishes into tunnel floor at play zoom has not done the one job it exists for.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

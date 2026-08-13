@@ -273,6 +273,58 @@ public class BuriedRemainsController : MonoBehaviour
         DeedsController.Instance?.NotifyMoment("found_self");
     }
 
+    // -- The diggers' door in (canon 42) ---------------------------
+
+    /// <summary>How many buried-remains cells this floor really holds.
+    ///
+    /// EXISTS BECAUSE THE DEN LEDGER WAS GUESSING. sitesPerFloor is private and
+    /// had no accessor, so NotifyRemainsExcavated's cap was a hardcoded 2 --
+    /// wrong on any floor carrying an Ossuary, since AppendOssuaryRemains adds
+    /// one guaranteed cell per placed one ON TOP of the sampled sites. A den
+    /// that could mint no discoveries and a den that could mint one extra look
+    /// identical from the ledger.</summary>
+    public int SiteCountFor(FloorRoot floor)
+        => floor == null || floor.TerrainTypeMap == null ? 0 : SitesFor(floor).Count;
+
+    /// <summary>Remains on this floor that nobody has opened yet -- the
+    /// diggers' target list. A fresh list each call: the caller walks it per
+    /// cell and must not be handed the live consumed set to iterate.</summary>
+    public List<Vector3Int> UntakenRemainsOn(FloorRoot floor)
+    {
+        var open = new List<Vector3Int>();
+        if (floor == null || floor.TerrainTypeMap == null) return open;
+        var used = ConsumedFor(floor.FloorIndex);
+        foreach (var cell in SitesFor(floor))
+            if (!used.Contains(cell)) open.Add(cell);
+        return open;
+    }
+
+    /// <summary>
+    /// Something other than the player has opened this remains. Returns false
+    /// if it was not a site, or was already taken.
+    ///
+    /// MARKS IT SENSED AS WELL AS CONSUMED, and the second half is the whole
+    /// point rather than belt and braces. HandleClaimed murmurs "something
+    /// waits in the stone nearby -- dig, and I will remember" for any site in
+    /// its halo that is neither consumed nor sensed. A kobold-opened cell is
+    /// made walkable by MarkNaturalFloor, which fires no OnTileMined, so
+    /// without this it would stay unconsumed for ever -- and the wisp would
+    /// invite the player to dig ground MineTile silently refuses, because that
+    /// method early-returns on a cell already in minedTiles. An invitation the
+    /// game then declines is worse than saying nothing.
+    ///
+    /// The player cannot be paid twice for the same stone and needs no flag for
+    /// it: the same early return enforces it by geometry.
+    /// </summary>
+    public bool NotifyTakenExternally(FloorRoot floor, Vector3Int cell)
+    {
+        if (floor == null || floor.TerrainTypeMap == null) return false;
+        if (!SitesFor(floor).Contains(cell)) return false;
+        if (!ConsumedFor(floor.FloorIndex).Add(cell)) return false;
+        SensedFor(floor.FloorIndex).Add(cell);
+        return true;
+    }
+
     // -- Save / restore surface ------------------------------------
 
     public void GatherConsumed(FloorRoot floor, List<SerializableVector3Int> into)

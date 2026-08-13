@@ -117,6 +117,69 @@ public class DenTunnelFloorEntry
            + "radius plus margin; measured to cost 0.09 rejected samples per "
            + "seed and to starve no seed at all.")]
     [Min(0)] public int chamberSeatClearance = 20;
+
+    [Header("Exploratory dig (canon 42, stage 2)")]
+    [Tooltip("Rock the diggings may cut in TOTAL, over the whole run. 0 "
+           + "disables the dig, which is what an Occupier authors -- goblins "
+           + "never dig, and a blank here would be indistinguishable from a "
+           + "floor whose cap nobody filled in.\n\n"
+           + "THIS IS THE CONTENT KNOB; THE BUDGET BELOW IS ONLY THE PACING "
+           + "KNOB, and that split is measured rather than asserted. At this "
+           + "cap, moving the budget from x2 to x3 changes the share of "
+           + "dungeons that lose a remains from 14.7 to 14.0 per cent -- "
+           + "nothing -- while the first find moves from day 75 to day 64 and "
+           + "the digging ends on day 129 against day 104.\n\n"
+           + "IT NEEDS A CAP BECAUSE NOTHING ELSE BOUNDS IT. Claimed ground is "
+           + "refused and a leg turns at endpointClamp, but both bound WHERE "
+           + "and neither bounds HOW MUCH: making claimed ground a hard wall "
+           + "changed the total by under half a per cent, because a typical "
+           + "dungeon's claim is under three per cent of the diggable disc -- "
+           + "an island in a lake. Uncapped, a typical den cuts 4,725 cells by "
+           + "day 200 at x2 and 7,028 at x3, against a GENERATED network of "
+           + "1107 and entry 19's warning at 3000.\n\n"
+           + "2400 is about twice the generated network, so the den at most "
+           + "TRIPLES its own diggings. Lower was measured and rejected: a cap "
+           + "of 1107 holds the contested-discovery beat to 7.3-8.0 per cent "
+           + "of dungeons, and a set-piece firing on under one run in twelve "
+           + "is content nobody meets. Section J of Tools/sim_den_digger.py "
+           + "prints the whole sweep.")]
+    [Min(0)] public int exploratoryCellCap = 0;
+
+    [Tooltip("Rock the diggings cut per day, as a MULTIPLE of that tier's "
+           + "cavity rate. ADDITIVE, never a share of it: the ledger pays on "
+           + "reserve cells only, so diverting the cavity budget into a tunnel "
+           + "freezes the hoard, freezes the tier and slows the very dig that "
+           + "was diverted -- measured, and share 1.00 arrives LATER than "
+           + "share 0.50.")]
+    [Min(0f)] public float exploratoryBudget = 3f;
+
+    [Tooltip("Section of an exploratory leg, in cells. UNIFORM rather than "
+           + "tapered, and 2 is a FLOOR rather than a preference.\n\n"
+           + "A 1-wide leg is not 4-CONNECTED and nothing could walk it: "
+           + "Centreline is Bresenham and takes diagonal steps, and Dilate at "
+           + "width 1 emits the cell alone, so two consecutive diagonal cells "
+           + "share no edge. Canon already rests the generated network's "
+           + "breach guarantee on the same fact -- 'a 2-wide tip stays "
+           + "4-connected across a diagonal step'.\n\n"
+           + "Uniform is what makes GROWTH safe. The shared rasteriser lerps "
+           + "the taper across the run's CURRENT length, so a tapered leg "
+           + "would rewiden its own older cells every time it grew -- new "
+           + "cells appearing inside stretches that were revealed days ago.")]
+    [Min(2)] public int exploratoryWidth = 2;
+
+    [Tooltip("How far off its path a leg notices something worth breaking "
+           + "into, in cells.")]
+    [Min(1)] public int exploratorySenseRadius = 15;
+
+    [Tooltip("How far a leg's bearing may wander per cell, in degrees. A "
+           + "PERSISTENT walk rather than a pure one, and the distinction is "
+           + "the whole model: a pure random walk's displacement grows as the "
+           + "square root of its length, so a thousand cells of digging would "
+           + "end thirty cells from the den and read as a scribble rather than "
+           + "as prospecting. BuildTunnel already wobbles a bearing rather "
+           + "than re-rolling one, so persistence is the shipped idiom as well "
+           + "as the legible one.")]
+    [Min(0f)] public float exploratoryDriftDegrees = 12f;
 }
 
 /// <summary>What holds a den, which decides the verb rather than the stats.</summary>
@@ -162,6 +225,10 @@ public class DenTunnelProfile : ScriptableObject
             cavityMinCells = 167,
             cavityMaxCells = 268,
             cavityTier1Cells = 268,
+            // Goblins never dig, so the cap is zero and the dig never runs.
+            // Written explicitly rather than inherited: a blank cap and an
+            // authored zero are indistinguishable in the inspector.
+            exploratoryCellCap = 0,
         },
 
         // Floor index 2, radius 250 -- the kobold den. Four runs: 3.38 links
@@ -194,6 +261,16 @@ public class DenTunnelProfile : ScriptableObject
             cavityMinCells = 350,
             cavityMaxCells = 400,
             cavityTier1Cells = 150,
+            // The dig. 2400 cells of rock is about twice the generated
+            // network, so the den at most triples its own diggings; at x3 the
+            // first find lands about day 64 and the digging stops about day
+            // 105. See the field tooltips for what each number was measured
+            // against and what a lower cap costs.
+            exploratoryCellCap = 2400,
+            exploratoryBudget = 3f,
+            exploratoryWidth = 2,
+            exploratorySenseRadius = 15,
+            exploratoryDriftDegrees = 12f,
         },
     };
 
@@ -210,6 +287,21 @@ public class DenTunnelProfile : ScriptableObject
     [SerializeField] private GameObject hoardPrefab;
 
     public GameObject HoardPrefab => hoardPrefab;
+
+    [Tooltip("The empty hole left where the diggers reached a buried remains "
+           + "before the player did. Shared by every den, on the hoard "
+           + "prefab's contract: a SpriteRenderer on the Player sorting layer "
+           + "with its pivot at the BASE.\n\n"
+           + "It is the whole of what makes the loss visible. The claim-halo "
+           + "murmur only fires within two cells of a claimed tile, so a "
+           + "player who never sensed that remains would otherwise never learn "
+           + "they had been robbed of it -- canon 42 requires the visible hole "
+           + "for exactly that reason. Null-safe: without art the beat still "
+           + "plays and the auditor rules the slot Required, which is the "
+           + "truth.")]
+    [SerializeField] private GameObject remainsMarkerPrefab;
+
+    public GameObject RemainsMarkerPrefab => remainsMarkerPrefab;
 
     /// <summary>The entry for a floor, or null when that floor carries no den.</summary>
     public DenTunnelFloorEntry For(int floorIndex)

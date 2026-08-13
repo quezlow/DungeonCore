@@ -1136,7 +1136,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   pop  out  dig  work  lost  state");
+        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   tunnel      find  pop  out  dig  work  lost  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1166,6 +1166,16 @@ public class Commands : MonoBehaviour
             var denDef = denEntry != null ? denEntry.scavengerDefinition : null;
             string tribe = denDef != null ? denDef.tribe.ToString() : "-";
 
+            // The DIG, beside the hole, because they are two budgets on one
+            // den and the whole reason the tunnel is additive is that they
+            // must not be read as one. A trailing * means the diggings have
+            // stopped -- cap spent, or every remains on the floor taken --
+            // which is otherwise indistinguishable from a den digging slowly.
+            int digCap = denEntry != null ? denEntry.exploratoryCellCap : 0;
+            string tunnel = digCap <= 0 ? "-"
+                : (denFeatures.DenExploratoryCellCount + "/" + digCap
+                   + (den.digStopped ? "*" : ""));
+
             // Bodies, and what they are doing. work is the count holding a work
             // site: zero until stage 2 sets one, and the line that will say so.
             int pop = 0, work = 0;
@@ -1182,7 +1192,7 @@ public class Commands : MonoBehaviour
 
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tribe,-8} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} "
+                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} "
                         + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {den.deathsNotByDungeon,-5} {state}");
         }
 
@@ -1288,6 +1298,84 @@ public class Commands : MonoBehaviour
     /// known point rather than from whenever the domain last reloaded. Statics
     /// survive entering play mode when reload is disabled, which is exactly the
     /// setup in which a stale total reads as a fresh one.</summary>
+    /// <summary>The diggings, leg by leg.
+    ///
+    /// BUILT BECAUSE A STALLED DIG AND A SLOW ONE LOOK IDENTICAL ON SCREEN, and
+    /// this arc has already paid for that lesson twice -- once when an
+    /// excavator capped at tier 3 in silence, and once when den tunnels shipped
+    /// absent from every diagnostic surface and read as a generator that had
+    /// done nothing. A leg that is boxed in by the player's own claim is the
+    /// race WORKING; a leg that never started is a fault; the two are one line
+    /// apart here and indistinguishable anywhere else.</summary>
+    [ContextMenu("Print Den Dig")]
+    void PrintDenDig()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Den diggings");
+
+        if (FloorManager.Instance == null)
+        {
+            Debug.Log("[Commands] No FloorManager in the scene.");
+            return;
+        }
+
+        bool any = false;
+        foreach (var f in FloorManager.Instance.AllFloors)
+        {
+            var fg = f != null ? f.FeatureGenerator : null;
+            if (fg == null) continue;
+            var pe = fg.DenProfileEntry;
+            if (pe == null || pe.exploratoryCellCap <= 0) continue;
+            any = true;
+
+            var data = fg.FeatureData;
+            int legs = 0, generated = 0;
+            if (data != null && data.denTunnels != null)
+                foreach (var t in data.denTunnels)
+                {
+                    if (t == null) continue;
+                    if (t.exploratory) legs++; else generated++;
+                }
+
+            sb.AppendLine($"  floor {f.FloorIndex}: {generated} generated runs, {legs} legs, "
+                        + $"{fg.DenExploratoryCellCount}/{pe.exploratoryCellCap} cells cut "
+                        + $"at section {pe.exploratoryWidth}, budget x{pe.exploratoryBudget:F1}");
+            sb.AppendLine($"    reveal: {fg.RevealedDenTunnelSegmentCount} of "
+                        + $"{fg.DenTunnelSegmentCount} stretches");
+
+            var brc = BuriedRemainsController.Instance;
+            int onFloor = brc != null ? brc.SiteCountFor(f) : -1;
+            int untaken = brc != null ? brc.UntakenRemainsOn(f).Count : -1;
+            sb.AppendLine($"    remains: {fg.DenTakenRemainsCount} taken of "
+                        + $"{(onFloor < 0 ? "?" : onFloor.ToString())} on the floor, "
+                        + $"{(untaken < 0 ? "?" : untaken.ToString())} still buried, "
+                        + $"{fg.DenRemainsMarkerCount} markers standing");
+            if (onFloor == 0)
+                sb.AppendLine("    !! this floor has NO buried remains at all, so the "
+                            + "contested-discovery beat cannot fire here. Expected on "
+                            + "some seeds -- GetBuriedSites takes only Stone and Granite.");
+            if (!fg.DenRemainsMarkerPrefabAssigned)
+                sb.AppendLine("    !! no remains marker prefab assigned on the profile, so "
+                            + "a robbed remains leaves no visible hole. The wisp still "
+                            + "speaks; the lasting record does not exist.");
+
+            var ledger = DenController.Instance;
+            if (ledger != null)
+                foreach (var den in ledger.AllDens)
+                {
+                    if (den.floorIndex != f.FloorIndex) continue;
+                    sb.AppendLine($"    ledger: heading {den.digHeadingDegrees:F0} deg, "
+                                + $"carry {den.tunnelCarry:F2}, finds {den.digFinds}, "
+                                + $"{(den.digStopped ? "STOPPED" : "digging")}");
+                }
+        }
+
+        if (!any)
+            sb.AppendLine("  (no floor carries a dig -- only an Excavator with a non-zero "
+                        + "exploratoryCellCap does)");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Reset Cross-Tribe Counter")]
     void ResetCrossTribeCounter()
     {

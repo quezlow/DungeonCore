@@ -39,6 +39,11 @@ MonoBehaviour:
     cavityMaxCells: 268
     cavityTier1Cells: 268
     chamberSeatClearance: 20
+    exploratoryCellCap: 0
+    exploratoryBudget: 3
+    exploratoryWidth: 2
+    exploratorySenseRadius: 15
+    exploratoryDriftDegrees: 12
   - floorIndex: 2
     kind: 1
     scavengerDefinition: {fileID: 11400000, guid: 1e64c976f67ade3c1cb31b4afa8fb85c, type: 2}
@@ -65,4 +70,10 @@ MonoBehaviour:
     cavityMaxCells: 400
     cavityTier1Cells: 150
     chamberSeatClearance: 20
+    exploratoryCellCap: 2400
+    exploratoryBudget: 3
+    exploratoryWidth: 2
+    exploratorySenseRadius: 15
+    exploratoryDriftDegrees: 12
   hoardPrefab: {fileID: 7951733088947934359, guid: 5fbbea327160b144f8233aeed7b44789, type: 3}
+  remainsMarkerPrefab: {fileID: 0}

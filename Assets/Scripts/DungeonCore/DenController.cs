@@ -70,6 +70,29 @@ public class DenSaveEntry
     ///
     /// Additive: a legacy save reads zero and needs no migration.</summary>
     public int deathsNotByDungeon;
+
+    // ---- the exploratory dig (canon 42, stage 2) --------------------------
+
+    /// <summary>Fractional rock carried between dawns, for the TUNNEL. Separate
+    /// from digCarry above because the two budgets are separate: the cavity's
+    /// is what the ledger pays on and the tunnel's pays nothing, and pooling
+    /// them would be the shared-budget model that was measured and rejected.</summary>
+    public float tunnelCarry;
+
+    /// <summary>The leg's bearing, in DEGREES. Degrees rather than radians only
+    /// so a ledger dump is readable; the dig converts on both sides.</summary>
+    public float digHeadingDegrees;
+    public bool digHeadingKnown;
+
+    /// <summary>The diggings have finished -- the cap is spent, or every
+    /// remains on the floor is already theirs.</summary>
+    public bool digStopped;
+    public bool spokenDigDone;
+
+    /// <summary>Everything the legs have broken into. Diagnostics only, and it
+    /// exists because a dig that has found nothing and a dig that is not
+    /// running look identical in every other column.</summary>
+    public int digFinds;
 }
 
 [Serializable]
@@ -298,7 +321,14 @@ public class DenController : MonoBehaviour
             // scavenger reaches home, so there is nothing to tick here -- the
             // dawn pass exists for tier recompute and raid timing only.
             if ((DenKind)den.kind == DenKind.Excavator)
+            {
                 EarnByDigging(den, tier);
+                // The tunnel AFTER the hole, and paying nothing for itself.
+                // Canon 42's ruling 5: reserve cells pay, tunnel cells do
+                // not, and that is what keeps "tier 5 IS the completed
+                // hole" true against a dig that runs for another fifty days.
+                TickExploratoryDig(den, tier);
+            }
 
             den.raidCountdown -= 1f;
             if (den.raidCountdown <= 0f)
@@ -517,6 +547,134 @@ public class DenController : MonoBehaviour
     /// sim and was never read, and StealShare went dead the moment its caller was
     /// replaced. Print Den Ledger prints this figure every run, so it cannot go
     /// quietly dead while stage 2 is being written.</summary>
+    /// <summary>
+    /// One dawn of the exploratory dig (canon 42, stage 2).
+    ///
+    /// ADDITIVE, NOT A SHARE, and that was measured rather than preferred. The
+    /// ledger pays on RESERVE cells alone, so diverting the cavity budget into
+    /// a tunnel freezes the hoard, freezes the tier and thereby slows the very
+    /// dig it was diverted to -- share 1.00 arrives LATER than share 0.50.
+    ///
+    /// TWO WAYS IT ENDS, and the first is the point of the whole thing: every
+    /// remains on the floor is theirs, or the cap is spent. It needs the cap
+    /// because nothing else bounds it -- see exploratoryCellCap's own tooltip
+    /// for what claimed ground and the endpoint clamp do and do not do.
+    /// </summary>
+    private void TickExploratoryDig(DenSaveEntry den, int tier)
+    {
+        var floor = FindFloor(den.floorIndex);
+        var features = floor != null ? floor.FeatureGenerator : null;
+        if (features == null) return;
+
+        var entry = features.DenProfileEntry;
+        if (entry == null || entry.exploratoryCellCap <= 0) return;
+
+        if (den.digStopped) { ClearWorkSites(den.floorIndex); return; }
+
+        var brc = BuriedRemainsController.Instance;
+        int onFloor = brc != null ? brc.SiteCountFor(floor) : 0;
+        if (onFloor > 0 && den.remainsTaken >= onFloor) { StopDig(den); return; }
+
+        int cut = features.DenExploratoryCellCount;
+        if (cut >= entry.exploratoryCellCap) { StopDig(den); return; }
+
+        float wanted = DigCellsPerDay[tier - 1] * ExpansionMultiplier(den.floorIndex)
+                     * Mathf.Max(0f, entry.exploratoryBudget) + den.tunnelCarry;
+        int rock = Mathf.FloorToInt(wanted);
+        den.tunnelCarry = wanted - rock;
+        rock = Mathf.Min(rock, entry.exploratoryCellCap - cut);
+        if (rock <= 0) return;
+
+        var step = features.AdvanceDenDig(
+            rock, den.digHeadingDegrees * Mathf.Deg2Rad, den.digHeadingKnown);
+        if (step == null) return;
+
+        den.digHeadingDegrees = step.headingRadians * Mathf.Rad2Deg;
+        den.digHeadingKnown = true;
+        den.digFinds += step.finds;
+
+        for (int i = 0; i < step.remainsTaken.Count; i++)
+        {
+            // The cap is the floor's REAL count now. It used to be a hardcoded
+            // 2, which is wrong on any floor with an Ossuary -- SitesFor
+            // appends one guaranteed cell per placed one on top of
+            // sitesPerFloor.
+            if (!NotifyRemainsExcavated(den.floorIndex, Mathf.Max(1, onFloor))) continue;
+            AnnounceRemainsTaken(floor, step.remainsTaken[i]);
+        }
+
+        // A leg that has arrived somewhere starts a fresh one FROM WHERE IT
+        // STANDS. Sending it back to the den to begin again would read as the
+        // tunnel having been deleted.
+        if (step.remainsTaken.Count > 0 || step.boxedIn)
+            features.StartNextExploratoryLeg(den.digHeadingDegrees * Mathf.Deg2Rad);
+
+        if (step.headKnown) AssignWorkSites(den.floorIndex, floor, step.head);
+    }
+
+    private void StopDig(DenSaveEntry den)
+    {
+        den.digStopped = true;
+        ClearWorkSites(den.floorIndex);
+        if (den.spokenDigDone) return;
+        den.spokenDigDone = true;
+        WispCompanion.Instance?.Speak("den_tunnel_done");
+    }
+
+    /// <summary>
+    /// The contested discovery, said out loud.
+    ///
+    /// SPOKEN AT EXCAVATION RATHER THAN WHEN THE HOLE IS SEEN, and the
+    /// alternative was tried on paper first: firing when the marker prop
+    /// spawns ties the telling to the seeing, but it also makes the beat depend
+    /// on art that is not authored yet, and a set-piece that waits for a sprite
+    /// is a set-piece that does not exist. The PROP is the lasting record; this
+    /// is the event. The alert pins the cell itself, so a player who wants to
+    /// go and look at what they lost can click straight to it -- the camera
+    /// roams the whole floor by Appendix C, so pointing at fog leaks nothing.
+    /// </summary>
+    private void AnnounceRemainsTaken(FloorRoot floor, Vector3Int cell)
+    {
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (influence == null) return;
+        Vector3 where = influence.CellToWorld(cell);
+        WispCompanion.Instance?.Speak("den_remains_taken");
+        AlertsLog.Instance?.AddAlert(
+            "Old stone below has been opened by someone else.",
+            where, floor.FloorIndex, AlertCategory.Discovery);
+    }
+
+    /// <summary>Sends the den's diggers to the face and calls everyone else
+    /// home. THE ROLE IS READ OFF POSITION IN THE POPULATION LIST, exactly as
+    /// MayForage reads the forager role, so a death re-assigns it for free and
+    /// nothing can drift out of step with the roll.
+    ///
+    /// A work site is an OVERRIDE on the cavity leash and never a wider leash:
+    /// the leash is membership of the cavity's own cell set and was made so for
+    /// a measured reason -- the yo-yo at radius six -- so letting diggers out
+    /// by widening it again would reopen a fault already paid for once.</summary>
+    private void AssignWorkSites(int floorIndex, FloorRoot floor, Vector3Int face)
+    {
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (influence == null) return;
+        Vector3 world = influence.CellToWorld(face);
+        int diggers = DiggerBudget(floorIndex);
+        var live = LiveOn(floorIndex);
+        for (int i = 0; i < live.Count; i++)
+        {
+            if (live[i] == null) continue;
+            if (i < diggers) live[i].SetDenWorkSite(world);
+            else live[i].ClearDenWorkSite();
+        }
+    }
+
+    private void ClearWorkSites(int floorIndex)
+    {
+        var live = LiveOn(floorIndex);
+        for (int i = 0; i < live.Count; i++)
+            if (live[i] != null) live[i].ClearDenWorkSite();
+    }
+
     private static readonly int[] DiggersByTier = { 1, 1, 2, 3, 4 };
 
     /// <summary>How many diggers this den fields. Mirrors ScavengerBudget line
@@ -607,6 +765,23 @@ public class DenController : MonoBehaviour
             PatternDiscovery.NotifyLootAbsorbed(r, where);
         }
         den.heldSpoilRarities.Clear();
+
+        // THE CONTESTED DISCOVERY, RECOVERED. Canon 42 has named
+        // GrantExternalDiscovery as this beat's re-entry point since the
+        // decision record, and that method's own doc comment has named the
+        // desecration arc as its ONLY caller since it shipped -- this is the
+        // second, and the one canon was waiting for. What the diggers took
+        // before the player found it, killing them gives back.
+        //
+        // The COUNT is kept rather than cleared: remainsTaken is the record of
+        // what happened on that floor, and ClearDen cannot run twice on one den
+        // anyway, so there is nothing for a reset to protect against.
+        if (den.remainsTaken > 0)
+        {
+            for (int i = 0; i < den.remainsTaken; i++)
+                BuriedRemainsController.Instance?.GrantExternalDiscovery(where, floorIndex);
+            WispCompanion.Instance?.Speak("den_remains_returned");
+        }
 
         // Fires on having HELD more than coin, not on the rolls landing. Most
         // pattern rolls fizzle by design, and whether the line is true has

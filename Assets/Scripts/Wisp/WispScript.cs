@@ -120,6 +120,17 @@ public class WispScript : ScriptableObject
             // and the player having mined it first and kept it. Coupled income
             // means the hoard stops with it, so this is the only warning that a
             // tier which has stopped moving has stopped for good.
+            // The dig (canon 42, stage 2). Only REMAINS speaks: a den finds
+            // roughly seven things by day 150 and a line for each would be
+            // spam, so a chamber or a stretch of the player's own frontier
+            // being broken into is silent and consequential.
+            new Line { id = "den_remains_taken", once = true,
+                text = "They have opened old stone down there - and whatever was resting in it is theirs now, not yours. That is what waiting costs, and it is the only debt in this place that grows while you do nothing." },
+            new Line { id = "den_remains_returned", once = true,
+                text = "What they dug out of your stone has come back with the rest of it. Late, and by the only road that was ever open - through them." },
+            new Line { id = "den_tunnel_done", once = true,
+                text = "The digging has stopped for good. They went as far as they had rock and patience for, and what they found on the way they have already taken." },
+
             new Line { id = "den_diggings_done", once = true,
                 text = "The digging below has stopped. Either they have run out of rock worth breaking or you took it from under them - either way that hole grows no further, and neither does what they have put in it." },
 

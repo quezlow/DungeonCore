@@ -213,6 +213,17 @@ public class FloorSaveData
     public List<TrapSaveData> traps = new();
     public List<StairsSaveData> stairs = new();
     public string floorName;   // player-set floor name (additive; null on old saves)
+
+    // Buried remains already opened, and already felt through the claim halo
+    // (canon 17). NOT PERSISTED UNTIL NOW, and the gap only became visible
+    // when the kobolds acquired a way to open one: a mined cell is not
+    // re-minable, so losing consumed state was nearly harmless while the
+    // player was the only one digging. It is not harmless once something
+    // else can take a remains, because the murmur would come back after a
+    // reload and point at stone that is already open. Additive: both load
+    // empty on an old save, which is the pre-dig behaviour exactly.
+    public List<SerializableVector3Int> buriedConsumed = new();
+    public List<SerializableVector3Int> buriedSensed = new();
 }
 
 [Serializable]

@@ -514,6 +514,16 @@ public class DungeonSaveController : MonoBehaviour
             floorName = FloorManager.Instance.GetFloorName(floor.FloorIndex),
         };
 
+        // Buried-remains state, which four methods on the controller have
+        // been waiting to be called by since they shipped. They were dead
+        // code, and canon 42 required stage 2 to rule on them before the
+        // diggers used the same store.
+        if (BuriedRemainsController.Instance != null)
+        {
+            BuriedRemainsController.Instance.GatherConsumed(floor, data.buriedConsumed);
+            BuriedRemainsController.Instance.GatherSensed(floor, data.buriedSensed);
+        }
+
         if (floor.WildMonsterController != null && data.featureData != null)
         {
             foreach (var ch in data.featureData.chambers)
@@ -782,6 +792,15 @@ public class DungeonSaveController : MonoBehaviour
                 var floor = FloorManager.Instance.GetFloor(floorData.floorIndex);
                 if (floor?.FeatureGenerator != null)
                     floor.FeatureGenerator.LoadFromSave(floorData.featureData);
+
+                // Consumed and sensed remains, restored beside the feature data
+                // they refer to. Safe this early: the controller keys both on
+                // floor INDEX and needs nothing from the floor but that.
+                if (floor != null && BuriedRemainsController.Instance != null)
+                {
+                    BuriedRemainsController.Instance.RestoreConsumed(floor, floorData.buriedConsumed);
+                    BuriedRemainsController.Instance.RestoreSensed(floor, floorData.buriedSensed);
+                }
             }
 
             // Pass 2: wild monsters per floor (controller pulls from feature data).
