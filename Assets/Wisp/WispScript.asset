@@ -61,6 +61,19 @@ MonoBehaviour:
     text: Not only coin in that hole. They took things they could not read and kept
       them anyway - and now those are yours, which is the closest thing to justice
       this place offers.
+  - id: den_remains_taken
+    once: 1
+    text: They have opened old stone down there - and whatever was resting in it
+      is theirs now, not yours. That is what waiting costs, and it is the only debt
+      in this place that grows while you do nothing.
+  - id: den_remains_returned
+    once: 1
+    text: What they dug out of your stone has come back with the rest of it. Late,
+      and by the only road that was ever open - through them.
+  - id: den_tunnel_done
+    once: 1
+    text: The digging has stopped for good. They went as far as they had rock and
+      patience for, and what they found on the way they have already taken.
   - id: den_diggings_done
     once: 1
     text: The digging below has stopped. Either they have run out of rock worth breaking
