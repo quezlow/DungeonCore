@@ -7974,6 +7974,17 @@ how the dropped-run fault above was found.
 pure static), `TESTING/Commands.cs` (the headless report),
 `Tools/sim_den_tunnels.py`.
 
+**The tunnel sim was destroyed by the cavity-growth commit, and the loss was
+silent both ways.** `78f52cd6` wrote the cavity-growth simulation to
+`Tools/sim_den_tunnels.py` as well as to its own name. `Tools/sim_den_cavity.py`
+imports twelve names from it and went dead on import -- so the standing box
+sweep this entry says is re-run whenever a band moves was unavailable, and
+nothing said so -- while the table above went on citing a file that no longer
+held the measurement. Restored from `600668f2`, verified to resolve every
+import and to reproduce the figures quoted here. RECORDED BECAUSE A SIM IS A
+LOAD-BEARING ARTEFACT: this entry rests numbers on four of them, and a
+destroyed one fails by being absent rather than by being wrong.
+
 ### Open, and deliberately so
 
 - **Fork 7 was AMENDED by the read pass, and the reason is recorded rather

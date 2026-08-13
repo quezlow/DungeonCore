@@ -1,278 +1,454 @@
 #!/usr/bin/env python3
 """
-Headless simulation of EXCAVATOR CAVITY GROWTH (canon 42, den cavity half B).
+Headless simulation of the DEN TUNNEL substrate (canon 42), built on
+sim_holy_quota's band model (imported, not duplicated).
 
-sim_den_cavity.py measured the HOLE. sim_den_growth.py measured the LEDGER.
-Neither measured the thing half B creates by joining them: DigCellsPerDay now
-drives GEOMETRY as well as hoard, and geometry has a hard ceiling the ledger
-never had -- reserveCells minus cavityTier1Cells.
+There is no Unity here, so this cannot prove code compiles or renders. What it
+CAN prove, ahead of the expensive test cycle, is whether the AGREED design is
+geometrically viable on the two den floors -- and the first thing it measures
+is the one that worries me, because canon 42 fixed the den to the 15-65 per
+cent band while GenerateChambers places chambers UNIFORMLY across the disc and
+says so in a comment. If most chambers land outside the band, a network that
+must link chambers and stay in band cannot exist, and that is a fork to settle
+before a line of C# is written rather than after a generate-and-look cycle.
 
-THE COLLISION THIS FILE FOUND, AND WHY THE SHIPPED NUMBERS COULD NOT STAND.
-At the shipped spoilPerCell of 1.4, an excavator's LIFETIME income is the
-200-250 cells it can ever dig times 1.4 -- 280 to 350 hoard against a tier-5
-threshold of 1400. Paying the ledger on cells ACTUALLY opened therefore capped
-every excavator at tier 3, froze its hoard on day 23-40, and made the tier-4
-and tier-5 rows of the raid table dead content. The failure is invisible in
-play: a den that has stopped earning looks exactly like a den earning slowly.
+What it models, and from where:
 
-THE RESOLUTION (fork 4b). Couple the two and re-tune the EXCAVATOR'S OWN
-knobs. spoilPerCell is read in exactly one place, inside the DenKind.Excavator
-branch of EarnByDigging, so moving it cannot touch the occupier -- the shared
-thresholds, the shared raid table and the occupier's measured pacing all stand
-exactly as canon shipped them. Only two excavator numbers move.
+  BAND          AncientSiteBuilder.Build via sim_holy_quota.band, 0.15-0.65.
+  CHAMBERS      GenerateChambers as authored on FloorTemplatePrefab 1:
+                minChambers 3 / maxChambers 6, scaled LINEARLY by
+                floorRadius / chamberReferenceRadius (150) and clamped to
+                chamberCountCeiling 30; centres drawn from a disc shrunk by
+                chamberRimMargin 10 and excluding exclusionRadiusFromCenter 4;
+                rejected within chamberSpacing 10 of another centre;
+                maxAttempts = desired * 6.
+  LANDING       ClaimStarterArea's blob at the stair cell, starterRoomRadius 6,
+                plus a keep-clear margin (canon 42: tunnels never touch it).
+  TRUNK ROAD    PlanTrunk on floor index 2: two rim points at usable radius
+                (radius - rimMargin 7), bearings roughly opposed within
+                trunkBearingSpread 30 degrees, retried up to 24 times until the
+                chord clears coreExclusion + trunkWidth of the centre.
+                Carriageway half-width 2 (trunkWidth 5).
 
-WHAT THE COUPLING BUYS, AND IT IS THE REASON TO PREFER IT: tier 5 becomes THE
-COMPLETED HOLE. The geometry and the ledger stop being two accounts of one den
-that can drift; a den at full strength is visibly a den that has finished
-digging, and a stalled dig is visibly a stalled ledger.
+  NOT modelled, deliberately: the CA interior of a chamber (the sim links
+  centres, and a tunnel that reaches a centre reaches the cave), rivers (they
+  are carved after tunnels and simply win, per canon 42's precedence), and the
+  wobble of BuildTunnel's centreline (it drifts by at most a cell per step and
+  cannot move an endpoint).
 
-TWO CONSTRAINTS, AND THE FIRST IS THE ONE A SINGLE SAMPLE WOULD HAVE MISSED:
-
-  1. THE RESERVE IS A BAND, 350-400, so the lifetime dig budget is 200-250
-     cells depending on the seed. Sizing spoil against the MAXIMUM would leave
-     every reserve-350 den permanently short of tier 5 -- a seed-dependent
-     cliff, invisible, and exactly the "a maximum is the least stable
-     statistic" trap canon 42 records. Spoil is therefore solved against the
-     MINIMUM reserve; a wider hole overshoots into a tier that caps anyway.
-  2. THE REMAINS LUMP CANNOT BE COUNTED ON. NotifyRemainsExcavated has NO
-     CALLER in the shipped build -- canon 42 put it in ahead of the agents
-     that will call it, and the kobold digger pass is still separate. So the
-     whole curve must come from digging alone. Modelled at zero here, and the
-     day it acquires a caller this file is re-run.
-
-Usage:  python3 sim_den_cavity_growth.py [days]
+Usage:  python3 sim_den_tunnels.py [seeds]
 """
 
+import math
 import os
+import random
+import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from sim_den_growth import (
-    DIG_CELLS_PER_DAY_BY_TIER,
-    EXPANSION_SENSITIVITY,
-    GRACE_DAYS,
-    SPOIL_PER_CELL,
-    TIER_THRESHOLDS,
-    tier_for,
-)
+from sim_holy_quota import CORE_EXCLUSION, band
 
-# ---- read off DenTunnelProfile.asset, floor index 2 ---------------------
+# ---- authored constants, each read off a shipped asset ------------------
 
-RESERVE_MIN = 350
-RESERVE_MAX = 400
-TIER1_CELLS = 150
+MIN_CHAMBERS = 3             # FloorTemplatePrefab 1
+MAX_CHAMBERS = 6
+CHAMBER_REFERENCE_RADIUS = 150
+CHAMBER_COUNT_CEILING = 30
+CHAMBER_SPACING = 10
+CHAMBER_RIM_MARGIN = 10
+EXCLUSION_FROM_CENTRE = 4
+STARTER_ROOM_RADIUS = 6      # ClaimStarterArea
 
-# DenController.expansionBaselineCells. sim_den_growth models expansion off
-# gold-per-day as a proxy; here the CLAIMED CELL COUNT is what the shipped
-# ExpansionMultiplier actually reads, so it is modelled directly.
-EXPANSION_BASELINE_CELLS = 900
+BAND_INNER = 0.15            # canon 19 / 42
+BAND_OUTER = 0.65
 
-# Canon 42 records the excavator reaching tier 5 about day 49. Coupled, that
-# day is now also the day the hole is finished, so it is the single target
-# both knobs are solved against.
-TARGET_TIER5_DAY = 49
+LANDING_KEEP_CLEAR = 10      # starter blob (6) plus slack; a fork below
+CLAMP_FRACTION = 0.85        # outer clamp on a tunnel endpoint, x radius
+MAX_RUN_FRACTION = 0.90      # longest run the den will drive, x radius
+MIN_RUN_CELLS = 12           # nearer than this and the chamber IS the den
+TUNNEL_WIDTH = 3             # carriageway-style dilation, mouth
+TUNNEL_TIP_WIDTH = 2         # ...tapering to this at the tip
+
+TRUNK_RIM_MARGIN = 7         # RoadNetworkProfile floorIndex 2
+TRUNK_WIDTH = 5
+TRUNK_BEARING_SPREAD = 30
+
+# floorIndex: (radius, has_trunk_road)
+DEN_FLOORS = {1: (150, False), 2: (250, True)}
 
 
-def expansion_multiplier(claimed_cells):
-    """DenController.ExpansionMultiplier, mirrored exactly."""
-    ratio = claimed_cells / float(max(1, EXPANSION_BASELINE_CELLS))
-    return max(0.5, min(1.8, 1.0 + EXPANSION_SENSITIVITY * (ratio - 1.0)))
+# ---- chamber placement, mirroring GenerateChambers ----------------------
+
+def place_chambers(rng, radius):
+    """GenerateChambers' loop: uniform in a shrunk disc, spacing-rejected."""
+    scale = max(1.0, radius / float(CHAMBER_REFERENCE_RADIUS))
+    rolled = rng.randint(MIN_CHAMBERS, MAX_CHAMBERS)
+    desired = min(max(int(round(rolled * scale)), 1), CHAMBER_COUNT_CEILING)
+
+    disc = max(EXCLUSION_FROM_CENTRE + 1, radius - CHAMBER_RIM_MARGIN)
+    centres = []
+    attempts = 0
+    while len(centres) < desired and attempts < desired * 6:
+        attempts += 1
+        # PickRandomCellInDisc: rejection-sample the annulus.
+        dx = rng.randint(-disc, disc)
+        dy = rng.randint(-disc, disc)
+        d2 = dx * dx + dy * dy
+        if d2 > disc * disc or d2 < EXCLUSION_FROM_CENTRE * EXCLUSION_FROM_CENTRE:
+            continue
+        if any((dx - x) ** 2 + (dy - y) ** 2 < CHAMBER_SPACING ** 2
+               for x, y in centres):
+            continue
+        centres.append((dx, dy))
+    return centres, desired
 
 
-def run(days, claimed_start, claimed_per_day, reserve, spoil, dig_scale):
-    """One COUPLED excavator run: the ledger is paid on cells actually opened.
+# ---- the trunk road, mirroring PlanTrunk -------------------------------
 
-    Returns (first_day_at_tier, hoard, cells_open, day_reserve_spent).
+def plan_trunk(rng, radius):
+    """Returns (a, b) rim endpoints of the trunk chord, or None."""
+    usable = max(CORE_EXCLUSION + 4, radius - TRUNK_RIM_MARGIN)
+    spread = math.radians(TRUNK_BEARING_SPREAD)
+    clearance = EXCLUSION_FROM_CENTRE + TRUNK_WIDTH
+    for _ in range(24):
+        start = rng.random() * 2.0 * math.pi
+        end = start + math.pi + (rng.random() - 0.5) * 2.0 * spread
+        a = (round(usable * math.cos(start)), round(usable * math.sin(start)))
+        b = (round(usable * math.cos(end)), round(usable * math.sin(end)))
+        if perp_distance(a, b, (0, 0)) >= clearance:
+            return a, b
+    return None
+
+
+def perp_distance(a, b, p):
+    ax, ay = a
+    bx, by = b
+    px, py = p
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    return abs(dy * (px - ax) - dx * (py - ay)) / math.hypot(dx, dy)
+
+
+def segment_point_distance(a, b, p):
+    ax, ay = a
+    bx, by = b
+    px, py = p
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    t = ((px - ax) * dx + (py - ay) * dy) / float(dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+# ---- the measurements ---------------------------------------------------
+
+def in_band(p, inner, outer):
+    d2 = p[0] * p[0] + p[1] * p[1]
+    return inner * inner <= d2 <= outer * outer
+
+
+def segment_clears(a, b, p, keep):
+    return segment_point_distance(a, b, p) >= keep
+
+
+def run_floor(fi, radius, has_road, seeds):
+    inner, outer = band(radius, BAND_INNER, BAND_OUTER, CHAMBER_RIM_MARGIN)
+
+    total_chambers = []
+    band_chambers = []
+    starved = 0            # fewer than 2 in-band chambers: no network possible
+    thin = 0               # exactly 2: a single link, no network
+    landing_conflicts = 0  # an in-band chamber sitting on the stair landing
+    road_reachable = 0
+    road_gap = []
+    span = []
+
+    for s in range(seeds):
+        rng = random.Random(s * 7919 + fi)
+        centres, _desired = place_chambers(rng, radius)
+        total_chambers.append(len(centres))
+
+        # The stair landing: the player places it, but generation cannot know
+        # where, so the pessimistic model is that it lands anywhere the player
+        # can reach -- sampled uniformly in the inner band, where a descending
+        # player actually is.
+        for _ in range(64):
+            lx = rng.randint(-inner, inner)
+            ly = rng.randint(-inner, inner)
+            if lx * lx + ly * ly <= inner * inner:
+                landing = (lx, ly)
+                break
+        else:
+            landing = (0, 0)
+
+        band_set = [c for c in centres if in_band(c, inner, outer)]
+        band_chambers.append(len(band_set))
+
+        if len(band_set) < 2:
+            starved += 1
+        elif len(band_set) == 2:
+            thin += 1
+
+        for c in band_set:
+            if math.hypot(c[0] - landing[0], c[1] - landing[1]) < \
+                    STARTER_ROOM_RADIUS + LANDING_KEEP_CLEAR:
+                landing_conflicts += 1
+                break
+
+        if len(band_set) >= 2:
+            span.append(max(math.hypot(p[0] - q[0], p[1] - q[1])
+                            for p in band_set for q in band_set))
+
+        if has_road:
+            chord = plan_trunk(rng, radius)
+            if chord is not None and band_set:
+                a, b = chord
+                nearest = min(segment_point_distance(a, b, c) for c in band_set)
+                road_gap.append(nearest)
+                # A spur reaching the carriageway from the nearest in-band
+                # chamber: cheap if the gap is short, absurd if it crosses the
+                # floor. 60 cells is the yardstick -- roughly the spurMinLength
+                # the road builder itself authors (30) doubled.
+                if nearest <= 60:
+                    road_reachable += 1
+
+    return dict(
+        floor=fi, radius=radius, band=(inner, outer),
+        chambers_mean=statistics.mean(total_chambers),
+        band_mean=statistics.mean(band_chambers),
+        band_min=min(band_chambers),
+        starved_pct=100.0 * starved / seeds,
+        thin_pct=100.0 * thin / seeds,
+        landing_pct=100.0 * landing_conflicts / seeds,
+        span_mean=statistics.mean(span) if span else 0.0,
+        road_gap_mean=statistics.mean(road_gap) if road_gap else None,
+        road_gap_worst=max(road_gap) if road_gap else None,
+        road_pct=100.0 * road_reachable / seeds if has_road else None,
+    )
+
+
+def measure_remedies(fi, radius, seeds):
+    """Two candidate fixes for the band/chamber disagreement, measured rather
+    than argued.
+
+    A -- RELAX ENDPOINTS. The den anchor stays in band; tunnels may reach any
+         chamber. Cheap to state, but reveal is influence-touch only and canon
+         19 measures a plausible late run as reaching roughly the inner 65 per
+         cent, so any stretch beyond the band is a stretch nobody unfogs. The
+         number that matters is what FRACTION of the network sits out there.
+
+    D -- SELF-CONTAINED NETWORK. Tunnels are their own geometry inside the
+         band -- den plus a few nodes, the road builder's own shape -- and
+         chambers are joined opportunistically wherever one happens to fall
+         near a run. Robust to chamber placement by construction; the number
+         that matters is how many chambers it still touches.
     """
-    hoard = 0.0
-    cells_open = TIER1_CELLS
-    headroom = reserve - TIER1_CELLS
-    claimed = float(claimed_start)
-    first_day_at_tier = {}
-    day_spent = None
+    inner, outer = band(radius, BAND_INNER, BAND_OUTER, CHAMBER_RIM_MARGIN)
 
-    for day in range(1, days + 1):
-        tier = tier_for(hoard)
-        first_day_at_tier.setdefault(tier, day)
-        claimed += claimed_per_day
+    a_out_frac = []
+    a_len = []
+    a_reach = []
+    ac_endpoints = []
+    e_links = []
+    e_deadends = []
+    e_len = []
+    e_cells = []
+    d_touched = []
+    d_nodes = 3 if radius <= 150 else 4
 
-        if day <= GRACE_DAYS:
+    for s in range(seeds):
+        rng = random.Random(s * 7919 + fi + 1013904223)
+        centres, _ = place_chambers(rng, radius)
+        if not centres:
             continue
 
-        wanted = (DIG_CELLS_PER_DAY_BY_TIER[tier - 1] * dig_scale
-                  * expansion_multiplier(claimed))
-        opened = min(wanted, headroom)
-        headroom -= opened
-        cells_open += opened
-        hoard += opened * spoil          # COUPLED: intent pays nothing
-
-        if headroom <= 0 and day_spent is None:
-            day_spent = day
-
-    return first_day_at_tier, hoard, cells_open, day_spent
-
-
-PROFILES = [
-    # label,            claimed at start, claimed added per day
-    ("passive dungeon",      300,   8),
-    ("typical dungeon",      450,  18),
-    ("killer dungeon",       600,  30),
-]
-
-
-# Fraction of the SMALLEST hole that must be dug to reach tier 5. Not 1.0, and
-# the first draft of this file proved why: solving spoil so the threshold is met
-# by the very last cell put two of six profiles at tier 4 for ever on a hoard of
-# 1399.9999999999998. That is float accumulation over forty-odd partial days,
-# and the shipped ledger is a C# FLOAT rather than a double, so its error is
-# larger still. A den that digs out its entire hole and is then denied the tier
-# it earned is the invisible failure this whole arc is about. The margin also
-# reads better: tier 5 arrives as the dig NEARS completion rather than on the
-# final shovelful, so the beat survives a seed that rolled a wide hole.
-TIER5_AT_FRACTION_OF_SMALLEST = 0.90
-
-
-def solve_spoil():
-    """Spoil that reaches tier 5 at TIER5_AT_FRACTION_OF_SMALLEST of the
-    smallest hole, rounded to a tidy authored figure."""
-    exact = TIER_THRESHOLDS[4] / (
-        TIER5_AT_FRACTION_OF_SMALLEST * (RESERVE_MIN - TIER1_CELLS))
-    return round(exact + 0.049, 1)      # round UP to a tenth, never down
-
-
-def sweep_dig_scale(spoil, days):
-    """Scale on DigCellsPerDay landing the typical dungeon's tier 5 nearest the
-    day canon already recorded. Swept rather than solved: the expansion
-    multiplier makes cells-per-day depend on the player, so there is no closed
-    form."""
-    best = None
-    for step in range(5, 121):
-        scale = step / 100.0
-        first, _, _, _ = run(days, 450, 18, RESERVE_MIN, spoil, scale)
-        if 5 not in first:
+        # Den anchor: uniform in band, as canon 42 fixes it.
+        den = None
+        for _ in range(96):
+            dx = rng.randint(-outer, outer)
+            dy = rng.randint(-outer, outer)
+            if in_band((dx, dy), inner, outer):
+                den = (dx, dy)
+                break
+        if den is None:
             continue
-        miss = abs(first[5] - TARGET_TIER5_DAY)
-        if best is None or miss < best[1]:
-            best = (scale, miss, first[5])
-    return best
 
+        # --- Remedy A: link the three nearest chambers, band or not.
+        nearest = sorted(centres, key=lambda c: math.hypot(c[0] - den[0],
+                                                           c[1] - den[1]))[:3]
+        out_cells = total_cells = 0
+        for c in nearest:
+            steps = int(math.hypot(c[0] - den[0], c[1] - den[1]))
+            a_len.append(steps)
+            a_reach.append(math.hypot(c[0], c[1]) / float(radius))
+            for i in range(max(1, steps)):
+                t = i / float(max(1, steps))
+                p = (den[0] + (c[0] - den[0]) * t, den[1] + (c[1] - den[1]) * t)
+                total_cells += 1
+                if not in_band(p, inner, outer):
+                    out_cells += 1
+        a_out_frac.append(100.0 * out_cells / max(1, total_cells))
 
-def table(spoil, dig_scale, days):
-    print("%-22s %-7s %-7s %-7s %-7s %-8s %-8s %s"
-          % ("profile", "T2 day", "T3 day", "T4 day", "T5 day",
-             "hoard", "cells", "hole finished"))
-    worst = {"t5_missing": 0, "t5_early": None, "t5_late": None}
-    for label, c0, cpd in PROFILES:
-        for reserve in (RESERVE_MIN, RESERVE_MAX):
-            first, hoard, cells, spent = run(
-                days, c0, cpd, reserve, spoil, dig_scale)
+        # --- Remedy A-clamped: the same, but a chamber past CLAMP_FRACTION of
+        # the radius is not worth a tunnel -- it is inside the bedrock rim's
+        # approach and past anything the player reaches. Measures what the
+        # clamp COSTS: how often it leaves fewer than two endpoints.
+        keep = [c for c in nearest
+                if math.hypot(c[0], c[1]) <= radius * CLAMP_FRACTION]
+        ac_endpoints.append(len(keep))
 
-            def d(t):
-                return str(first[t]) if t in first else "-"
+        # --- Remedy E: the shape that CANNOT starve. The den throws a fixed
+        # number of runs on spread bearings. A run that finds a chamber inside
+        # the clamp ends there; a run that finds none ends in the rock as a
+        # DEAD END, which is what an unfinished dig looks like and is content
+        # rather than failure. Chamber count therefore changes the FLAVOUR of a
+        # network, never whether one exists.
+        runs_wanted = 3 if radius <= 150 else 4
+        # Eligible chambers FIRST, nearest out, then dead ends fill the rest.
+        # Choosing by bearing was tried and dropped: it discarded a perfectly
+        # good chamber for sitting off the run's assigned heading, which cost
+        # floor index 1 a chamber link on a quarter of seeds for nothing.
+        eligible = [c for c in centres
+                    if math.hypot(c[0], c[1]) <= radius * CLAMP_FRACTION
+                    and MIN_RUN_CELLS <= math.hypot(c[0] - den[0], c[1] - den[1])
+                            <= radius * MAX_RUN_FRACTION]
+        eligible.sort(key=lambda c: math.hypot(c[0] - den[0], c[1] - den[1]))
+        chosen = eligible[:runs_wanted]
+        links = len(chosen)
+        deadends = runs_wanted - links
+        for c in chosen:
+            e_len.append(math.hypot(c[0] - den[0], c[1] - den[1]))
+        for _ in range(deadends):
+            e_len.append(min(radius * 0.30, 30 + rng.random() * 50))
+        e_cells.append(sum(
+            int(l * (TUNNEL_WIDTH + TUNNEL_TIP_WIDTH) / 2.0)
+            for l in e_len[-runs_wanted:]))
+        e_links.append(links)
+        e_deadends.append(deadends)
 
-            if 5 not in first:
-                worst["t5_missing"] += 1
-            else:
-                e, l = worst["t5_early"], worst["t5_late"]
-                worst["t5_early"] = first[5] if e is None else min(e, first[5])
-                worst["t5_late"] = first[5] if l is None else max(l, first[5])
+        # --- Remedy D: nodes scattered in band, runs between them.
+        nodes = [den]
+        for _ in range(d_nodes):
+            for _try in range(96):
+                dx = rng.randint(-outer, outer)
+                dy = rng.randint(-outer, outer)
+                if in_band((dx, dy), inner, outer) and \
+                        all(math.hypot(dx - n[0], dy - n[1]) > outer * 0.35
+                            for n in nodes):
+                    nodes.append((dx, dy))
+                    break
+        runs = [(nodes[i], nodes[i + 1]) for i in range(len(nodes) - 1)]
+        # A chamber is JOINED when a run passes within a short spur of its
+        # centre. 20 cells is a spur the length of a chamber's own box.
+        touched = sum(1 for c in centres
+                      if any(segment_point_distance(a, b, c) <= 20
+                             for a, b in runs))
+        d_touched.append(touched)
 
-            print("%-22s %-7s %-7s %-7s %-7s %-8.0f %-8.0f %s"
-                  % ("%s r%d" % (label, reserve),
-                     d(2), d(3), d(4), d(5), hoard, cells,
-                     ("day %d" % spent) if spent else "not finished"))
-    return worst
+    return dict(
+        a_out_frac=statistics.mean(a_out_frac) if a_out_frac else 0.0,
+        a_len=statistics.mean(a_len) if a_len else 0.0,
+        a_reach_mean=statistics.mean(a_reach) if a_reach else 0.0,
+        a_reach_worst=max(a_reach) if a_reach else 0.0,
+        ac_thin_pct=100.0 * sum(1 for n in ac_endpoints if n < 2)
+                    / max(1, len(ac_endpoints)),
+        d_touched=statistics.mean(d_touched) if d_touched else 0.0,
+        d_none_pct=100.0 * sum(1 for t in d_touched if t == 0)
+                   / max(1, len(d_touched)),
+        e_links=statistics.mean(e_links) if e_links else 0.0,
+        e_deadends=statistics.mean(e_deadends) if e_deadends else 0.0,
+        e_len=statistics.mean(e_len) if e_len else 0.0,
+        e_cells=statistics.mean(e_cells) if e_cells else 0.0,
+        e_cells_worst=max(e_cells) if e_cells else 0,
+        e_nolink_pct=100.0 * sum(1 for n in e_links if n == 0)
+                     / max(1, len(e_links)),
+    )
 
 
 def main():
-    days = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 90
-
-    spoil = solve_spoil()
-    print("Excavator cavity growth, COUPLED (canon 42 fork 4b) -- %d days" % days)
-    print("reserve %d-%d, tier 1 opens %d, so the lifetime dig budget is "
-          "%d-%d cells" % (RESERVE_MIN, RESERVE_MAX, TIER1_CELLS,
-                           RESERVE_MIN - TIER1_CELLS, RESERVE_MAX - TIER1_CELLS))
-    print("remains lumps modelled at ZERO: NotifyRemainsExcavated has no caller")
+    seeds = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
+    print("Den tunnel substrate -- %d seeds per floor" % seeds)
+    print("band %.2f-%.2f of radius; chambers uniform across the disc"
+          % (BAND_INNER, BAND_OUTER))
     print()
-    print("Solved against the SMALLEST hole, never the largest:")
-    print("   spoilPerCell = %d / (%.2f x %d cells) = %.1f   (shipped %.1f)"
-          % (TIER_THRESHOLDS[4], TIER5_AT_FRACTION_OF_SMALLEST,
-             RESERVE_MIN - TIER1_CELLS, spoil, SPOIL_PER_CELL))
+    print("%-6s %-7s %-12s %-9s %-9s %-6s %-9s %-8s %-8s"
+          % ("floor", "radius", "band", "chambers", "in-band", "worst",
+             "starved%", "thin%", "landing%"))
 
-    best = sweep_dig_scale(spoil, days)
-    if best is None:
-        print("!! no dig scale reaches tier 5 -- the sweep found nothing.")
-        return 1
-    dig_scale, miss, t5 = best
-    scaled = [round(c * dig_scale, 1) for c in DIG_CELLS_PER_DAY_BY_TIER]
-    print("   DigCellsPerDay x%.2f -> %s   (shipped %s)"
-          % (dig_scale, scaled, DIG_CELLS_PER_DAY_BY_TIER))
-    print("   typical dungeon reaches tier 5 on day %d against canon's %d"
-          % (t5, TARGET_TIER5_DAY))
-    print()
-
-    worst = table(spoil, dig_scale, days)
+    results = []
+    for fi in sorted(DEN_FLOORS):
+        radius, has_road = DEN_FLOORS[fi]
+        r = run_floor(fi, radius, has_road, seeds)
+        results.append(r)
+        print("%-6d %-7d %-12s %-9.2f %-9.2f %-6d %-9.1f %-8.1f %-8.1f"
+              % (fi, r['radius'], "%d-%d" % r['band'], r['chambers_mean'],
+                 r['band_mean'], r['band_min'], r['starved_pct'],
+                 r['thin_pct'], r['landing_pct']))
 
     print()
-    print("Verdict checks:")
-    bad = False
-    if worst["t5_missing"]:
-        print("!! %d of %d profile/reserve combinations never reach tier 5 -- "
-              "a seed-dependent cliff is exactly what solving against the "
-              "minimum reserve was meant to remove."
-              % (worst["t5_missing"], 2 * len(PROFILES)))
-        bad = True
-    else:
-        print("   every profile and BOTH reserve bounds reach tier 5: "
-              "day %d to %d." % (worst["t5_early"], worst["t5_late"]))
-
-    # Tier 5 arriving in the first fortnight would flatten the rest of the run,
-    # which is the check sim_den_growth already applies to the occupier.
-    if worst["t5_early"] is not None and worst["t5_early"] < 20:
-        print("!! tier 5 by day %d on the fastest profile -- saturates."
-              % worst["t5_early"])
-        bad = True
-
-    first, hoard, cells, spent = run(days, 450, 18, RESERVE_MIN, spoil, dig_scale)
-    if spent is None:
-        print("!! the smallest hole is never finished inside %d days, so the "
-              "coupling's whole point -- tier 5 IS the completed hole -- does "
-              "not land." % days)
-        bad = True
-    elif 5 in first:
-        print("   typical/r%d: tier 5 on day %d, hole finished day %d -- "
-              "%d days apart." % (RESERVE_MIN, first[5], spent,
-                                  abs(spent - first[5])))
-
-    # The six rows above are two reserve BOUNDS, and canon 42 is explicit that
-    # a fork must never rest on the extremes of a distribution. Real seeds land
-    # anywhere in the band, and a hermit who claims almost nothing floors the
-    # expansion multiplier at 0.5 -- the slowest dig the game can produce.
-    print()
-    print("Robustness sweep -- every reserve in the band, plus a hermit:")
-    swept = 0
-    failed = []
-    latest = 0
-    for reserve in range(RESERVE_MIN, RESERVE_MAX + 1):
-        for label, c0, cpd in PROFILES + [("hermit", 60, 1)]:
-            first, _, _, spent = run(days, c0, cpd, reserve, spoil, dig_scale)
-            swept += 1
-            if 5 not in first:
-                failed.append((label, reserve))
-            else:
-                latest = max(latest, first[5])
-    if failed:
-        print("!! %d of %d combinations never reach tier 5, worst: %s"
-              % (len(failed), swept, failed[:4]))
-        bad = True
-    else:
-        print("   %d combinations, all reach tier 5, latest day %d."
-              % (swept, latest))
+    for r in results:
+        if r['road_gap_mean'] is not None:
+            print("floor %d trunk road: nearest in-band chamber is %.1f cells "
+                  "from the carriageway on average (worst %.1f); a spur of 60 "
+                  "cells or less reaches it on %.1f%% of seeds."
+                  % (r['floor'], r['road_gap_mean'], r['road_gap_worst'],
+                     r['road_pct']))
+        print("floor %d widest in-band chamber pair: %.1f cells apart on average."
+              % (r['floor'], r['span_mean']))
 
     print()
-    print("VERDICT: %s" % ("FAIL -- see the flagged rows above." if bad
-                           else "OK"))
-    return 1 if bad else 0
+    print("Candidate remedies, measured:")
+    for r in results:
+        fi = r['floor']
+        radius = DEN_FLOORS[fi][0]
+        m = measure_remedies(fi, radius, seeds)
+        print("  floor %d  A (link nearest chambers, band or not): "
+              "%.1f%% of tunnel length falls OUTSIDE the band, "
+              "mean run %.0f cells; endpoints reach %.2f of radius on "
+              "average, worst %.2f"
+              % (fi, m['a_out_frac'], m['a_len'], m['a_reach_mean'],
+                 m['a_reach_worst']))
+        print("  floor %d  A clamped at %.2f of radius:                "
+              "leaves fewer than two endpoints on %.1f%% of seeds"
+              % (fi, CLAMP_FRACTION, m['ac_thin_pct']))
+        print("  floor %d  E (fixed runs; chamber or dead end):    "
+              "%.2f chamber links + %.2f dead ends per den, mean run %.0f "
+              "cells; NO chamber link at all on %.1f%% of seeds"
+              % (fi, m['e_links'], m['e_deadends'], m['e_len'],
+                 m['e_nolink_pct']))
+        print("           carves %.0f cells per den on average (worst %d) -- "
+              "compare a cave chamber at 100-200 and the disc at %d"
+              % (m['e_cells'], m['e_cells_worst'],
+                 int(math.pi * radius * radius)))
+        print("  floor %d  D (self-contained in-band network):     "
+              "touches %.2f chambers on average; touches NONE on %.1f%% of seeds"
+              % (fi, m['d_touched'], m['d_none_pct']))
+
+    print()
+    fail = False
+    for r in results:
+        fi = r['floor']
+        m = measure_remedies(fi, DEN_FLOORS[fi][0], seeds)
+        if m['e_nolink_pct'] > 5.0:
+            print("!! floor %d: shape E leaves the den with NO chamber link on "
+                  "%.1f%% of seeds." % (fi, m['e_nolink_pct']))
+            fail = True
+        if m['e_cells'] > 2500:
+            print("!! floor %d: shape E carves %.0f cells per den -- past the "
+                  "site scale entry 19 warned about." % (fi, m['e_cells']))
+            fail = True
+    print()
+    print("FINDING: the AGREED fork 7 (link chambers, stay in band) is NOT")
+    print("viable -- chambers are placed uniformly across the disc, so floor")
+    print("index 1 has fewer than two in-band chambers on 30.8% of seeds.")
+    print()
+    print("VERDICT: " + ("shape E does not hold at the tuned values"
+                         if fail else
+                         "shape E (fixed runs; chamber where one is in range, "
+                         "dead end where none is) holds on both floors"))
+    return 1 if fail else 0
 
 
 if __name__ == '__main__':
