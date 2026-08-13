@@ -2211,10 +2211,15 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// MEMBERSHIP of the cavity's cell set and was made so for a measured reason
     /// -- the yo-yo at radius six -- so letting stage 2's diggers out by widening
     /// it again would reopen a fault that has already been paid for once. An
-    /// override is additive instead: nothing sets a work site yet, so behaviour
-    /// is identical to today, and the day a digger sets one the leash is
-    /// untouched. Print Den Ledger prints how many bodies hold one, so this
-    /// cannot sit here doing nothing without saying so.</summary>
+    /// override is additive instead, and since stage 2a
+    /// DenController.AssignWorkSites sets one on each digger every dawn.
+    /// Print Den Ledger prints how many bodies hold one.
+    ///
+    /// HOLDING ONE ALSO MEANS NOT ROBBING. DenController.MayForage answers
+    /// false for any body with a work site, which is what keeps a digger and
+    /// a thief from ever being the same body now that an excavator fields
+    /// both. Do not tidy that test away: the roles are also disjoint index
+    /// ranges, and this is the belt to that pair of braces.</summary>
     private Vector3 denWorkSite;
     private bool denWorkSiteSet;
 
@@ -2324,7 +2329,9 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
             // A body sent somewhere is not dragged home while it holds the
             // assignment -- see SetDenWorkSite for why this is an override
-            // rather than a wider leash. A no-op until stage 2 sets one.
+            // rather than a wider leash. Reached only by a DIGGER: a body
+            // holding a work site never gets past MayForage, so it is never
+            // carrying and never has a scavenge goal to be here without.
             if (denWorkSiteSet) { StepTowards(denWorkSite); return; }
 
             bool away = HasDenCavityLeash

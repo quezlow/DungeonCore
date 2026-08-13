@@ -38,10 +38,11 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - Definition icons | CaveWallSheetLayout.stoneVariants.lower.overrideSprite: 0 owed, 0 deferred, 4 by design, 0 unclassified, 0 filled.
 - Definition icons | CaveWallSheetLayout.stoneVariants.upper.overrideSprite: 0 owed, 0 deferred, 4 by design, 0 unclassified, 0 filled.
 - Definition icons | ChestDefinition.icon: 0 owed, 0 deferred, 0 by design, 0 unclassified, 4 filled.
+- Definition icons | DenTunnelProfile.floors.hoardSprites: 0 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
 - Definition icons | DivineAudienceScript.deities.backdrop: 0 owed, 0 deferred, 6 by design, 0 unclassified, 0 filled.
 - Definition icons | FurnitureDefinition.icon: 5 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- Definition icons | MonsterDefinition.icon: 103 owed, 0 deferred, 0 by design, 0 unclassified, 8 filled.
-- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 111 deferred, 0 by design, 0 unclassified, 0 filled.
+- Definition icons | MonsterDefinition.icon: 104 owed, 0 deferred, 0 by design, 0 unclassified, 8 filled.
+- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 112 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | NPCDialogue.npcPortrait: 0 owed, 0 deferred, 0 by design, 0 unclassified, 22 filled.
 - Definition icons | PatternDefinition.icon: 21 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | SpellDefinition.icon: 11 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -54,7 +55,7 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - Definition icons | UnlockedTile.m_Sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | Items prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 9 filled.
 - In-game sprites | Loot prefab.SpriteRenderer.sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 3 owed, 26 deferred, 0 by design, 0 unclassified, 21 filled.
+- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 4 owed, 26 deferred, 0 by design, 0 unclassified, 21 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 17 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (BrassButton): 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (NPC_Goose): 0 owed, 1 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -386,6 +387,9 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - `WildDef_GoblinScout` MonsterDefinition.icon -- placeholder art assigned: GoblinScoutREPLACE_0
   `Assets/ScriptableObjects/Monsters/Wild/Regular/WildDef_GoblinScout.asset`
   Spawner selection UI icon.
+- `WildDef_Kobold` MonsterDefinition.icon
+  `Assets/ScriptableObjects/Monsters/Wild/Regular/WildDef_Kobold.asset`
+  Spawner selection UI icon.
 - `AncientMasonry` PatternDefinition.icon
   `Assets/ScriptableObjects/Patterns/AncientMasonry.asset`
   Pattern Codex entry. Null-safe -- still owed.
@@ -700,6 +704,9 @@ chapter 0 -- fixed head, subject slot, fixed tail.
   Placeholder art is wired in; a null-check scores this as done.
 - `GoblinScout Variant` Monsters prefab.SpriteRenderer.sprite -- placeholder: GoblinScoutREPLACE_0
   `Assets/Prefabs/Monsters/Wild/GoblinScout Variant.prefab`
+  Placeholder art is wired in; a null-check scores this as done.
+- `Kobold Variant` Monsters prefab.SpriteRenderer.sprite -- placeholder: GoblinScoutREPLACE_0
+  `Assets/Prefabs/Monsters/Wild/Kobold Variant.prefab`
   Placeholder art is wired in; a null-check scores this as done.
 
 ## DEFERRED
@@ -1037,6 +1044,9 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - `WildDef_GoblinScout` MonsterDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Wild/Regular/WildDef_GoblinScout.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `WildDef_Kobold` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Wild/Regular/WildDef_Kobold.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
 - `WildDef_Spider` MonsterDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Wild/Regular/WildDef_Spider.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
@@ -1229,6 +1239,7 @@ Real art assigned, not placeholder-named, not shared with a sibling prefab.
 - Definition icons | CaveWallSheetLayout.families.variants.lower.overrideSprite: 6
 - Definition icons | CaveWallSheetLayout.families.variants.upper.overrideSprite: 6
 - Definition icons | ChestDefinition.icon: 4
+- Definition icons | DenTunnelProfile.floors.hoardSprites: 10
 - Definition icons | FurnitureDefinition.icon: 2
 - Definition icons | MonsterDefinition.icon: 8
 - Definition icons | NPCDialogue.npcPortrait: 22

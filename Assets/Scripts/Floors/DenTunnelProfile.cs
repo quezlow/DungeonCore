@@ -19,8 +19,9 @@ public class DenTunnelFloorEntry
            + "it finds it; Excavator widens and extends it over days.")]
     public DenKind kind = DenKind.Occupier;
 
-    [Tooltip("The creature this den is populated with. Occupier dens only for "
-           + "now -- excavators have no diggers yet. Its prefab must NOT be "
+    [Tooltip("The creature this den is populated with. BOTH kinds are "
+           + "inhabited -- goblins hold the hole, kobolds dig it and rob "
+           + "the floor. Its prefab must NOT be "
            + "relied on for a LootTable: den bodies deliberately roll no drops, "
            + "or every death would mint gold for a den whose whole income is "
            + "theft.")]

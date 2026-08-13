@@ -38,10 +38,16 @@ TWO CONSTRAINTS, AND THE FIRST IS THE ONE A SINGLE SAMPLE WOULD HAVE MISSED:
      is what its own header used to promise for the day the digger pass
      landed. Section R below is that re-run. THE ANSWER IS THAT THE NUMBERS
      STAND: on a typical or killer dungeon the lump changes the tier-5 day by
-     NOTHING AT ALL, because the median first find lands about day 51 and
-     tier 5 is already reached on day 49 or day 40 -- the lump arrives after
-     the race is over and only pads the hoard. Only a passive dungeon moves,
-     by three days, which is less than the reserve BAND already moves it.
+     NOTHING AT ALL, because the first find lands about day 65 and tier 5 is
+     already reached on day 49 or day 40 -- the lump arrives after the race is
+     over and only pads the hoard. Only a passive dungeon moves, and only by
+     one day, which is less than the reserve BAND already moves it.
+
+  3. KOBOLD THEFT CANNOT REACH THE COUPLING AT ALL (stage 2b). Section T.
+     Theft is paid into stolenHoard, tier reads hoard alone, and Den Cavity
+     Report's assertion is a static bound on diggable cells times spoil -- so
+     it is the same number at every share. That is the property canon 42
+     rejected the first shape for lacking.
 
 Usage:  python3 sim_den_cavity_growth.py [days]
 """
@@ -51,24 +57,28 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sim_den_growth import (
-    DIG_CELLS_PER_DAY_BY_TIER,
-    EXPANSION_SENSITIVITY,
+    DIG_CELLS_PER_DAY_BASE,
+    DIG_SCALE,
+    EXCAVATOR_STEAL_SHARE_BY_TIER,
     GRACE_DAYS,
+    LUMP_DAYS,
+    REMAINS_LUMP,
+    RESERVE_MAX,
+    RESERVE_MIN,
     SPOIL_PER_CELL,
+    TIER1_CELLS,
     TIER_THRESHOLDS,
+    expansion_multiplier,
     tier_for,
 )
 
-# ---- read off DenTunnelProfile.asset, floor index 2 ---------------------
-
-RESERVE_MIN = 350
-RESERVE_MAX = 400
-TIER1_CELLS = 150
-
-# DenController.expansionBaselineCells. sim_den_growth models expansion off
-# gold-per-day as a proxy; here the CLAIMED CELL COUNT is what the shipped
-# ExpansionMultiplier actually reads, so it is modelled directly.
-EXPANSION_BASELINE_CELLS = 900
+# EVERY CONSTANT ABOVE IS IMPORTED RATHER THAN RESTATED, and this file used to
+# restate four of them. The import runs ONE WAY: sim_den_growth.py holds what was
+# read off source and off DenTunnelProfile.asset, and this file SOLVES and
+# SWEEPS against it. main() then asserts that what it solves equals what the
+# other file declares as shipped -- so a re-tune here that never reaches the
+# other file fails loudly instead of leaving two sims quietly disagreeing about
+# the same den, which is exactly what happened for two releases.
 
 # Canon 42 records the excavator reaching tier 5 about day 49. Coupled, that
 # day is now also the day the hole is finished, so it is the single target
@@ -84,12 +94,6 @@ TARGET_TIER5_DAY = 49
 # standing regression test that fails on its own default is worse than no test,
 # because the next reader learns to ignore it.
 VERDICT_HORIZON = 150
-
-
-def expansion_multiplier(claimed_cells):
-    """DenController.ExpansionMultiplier, mirrored exactly."""
-    ratio = claimed_cells / float(max(1, EXPANSION_BASELINE_CELLS))
-    return max(0.5, min(1.8, 1.0 + EXPANSION_SENSITIVITY * (ratio - 1.0)))
 
 
 def run(days, claimed_start, claimed_per_day, reserve, spoil, dig_scale):
@@ -112,7 +116,7 @@ def run(days, claimed_start, claimed_per_day, reserve, spoil, dig_scale):
         if day <= GRACE_DAYS:
             continue
 
-        wanted = (DIG_CELLS_PER_DAY_BY_TIER[tier - 1] * dig_scale
+        wanted = (DIG_CELLS_PER_DAY_BASE[tier - 1] * dig_scale
                   * expansion_multiplier(claimed))
         opened = min(wanted, headroom)
         headroom -= opened
@@ -197,17 +201,6 @@ def table(spoil, dig_scale, days):
     return worst
 
 
-# DenController.remainsLump, shipped. Credited outside the cells-opened
-# coupling, which is exactly why it had to be checked against it.
-REMAINS_LUMP = 120.0
-
-# Days a remains is reached on, from sim_den_digger's confirmed model: the
-# median FIRST find is about day 51 for a typical dungeon, and a second and
-# third arrive later if the floor holds them (an Ossuary adds one on top of
-# sitesPerFloor).
-LUMP_DAYS = (51, 90, 120)
-
-
 def run_with_lumps(days, c0, cpd, reserve, spoil, dig_scale, lumps):
     """The same coupled loop, with remains lumps credited on their measured
     days. Kept separate from run() rather than adding a parameter to it, so the
@@ -222,7 +215,7 @@ def run_with_lumps(days, c0, cpd, reserve, spoil, dig_scale, lumps):
         claimed += cpd
         if day <= GRACE_DAYS:
             continue
-        wanted = (DIG_CELLS_PER_DAY_BY_TIER[tier - 1] * dig_scale
+        wanted = (DIG_CELLS_PER_DAY_BASE[tier - 1] * dig_scale
                   * expansion_multiplier(claimed))
         opened = min(wanted, headroom)
         headroom -= opened
@@ -272,6 +265,39 @@ def report_lumps(spoil, dig_scale):
     print()
 
 
+def report_theft(spoil):
+    """DOES KOBOLD THEFT BREAK THE COUPLING?  (canon 42, stage 2b)
+
+    It has to be asked here as well as in sim_den_growth.py, because this file
+    owns the coupling assertion Den Cavity Report runs. The answer is that it
+    CANNOT, and the reason is structural rather than numerical: theft is paid
+    into stolenHoard, tier reads hoard alone, and the assertion is a STATIC
+    BOUND on diggable cells times spoil. Nothing on the theft side appears in
+    it at any share.
+
+    That is precisely the property canon 42 rejected the first shape for
+    lacking. Theft credited to hoard would have uncoupled a third to two thirds
+    of a typical excavator's purse and turned this assertion permanently red --
+    which this entry already records as worse than no check at all.
+    """
+    print("T. KOBOLD THEFT AGAINST THE COUPLING  (stage 2b)")
+    ceiling = (RESERVE_MIN - TIER1_CELLS) * spoil
+    top = TIER_THRESHOLDS[4]
+    ok = ceiling >= top
+    print("   the assertion: (%d - %d) diggable cells x %.1f spoil = %.0f "
+          "against a tier-5 threshold of %.0f -- %s"
+          % (RESERVE_MIN, TIER1_CELLS, spoil, ceiling, top,
+             "OK" if ok else "FAIL"))
+    print("   theft share by tier: %s  (half the occupier's, nothing at tier 1)"
+          % (EXCAVATOR_STEAL_SHARE_BY_TIER,))
+    print("   stolenHoard is ADDITIVE and appears in neither term, so the bound")
+    print("   above is the same number at every share. sim_den_growth.py holds")
+    print("   the ledger-side proof: the tier days are identical with theft at")
+    print("   none, 0.25x, 0.5x and the full occupier share.")
+    print()
+    return ok
+
+
 def main():
     days = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 90
 
@@ -281,10 +307,12 @@ def main():
     print("reserve %d-%d, tier 1 opens %d, so the lifetime dig budget is "
           "%d-%d cells" % (RESERVE_MIN, RESERVE_MAX, TIER1_CELLS,
                            RESERVE_MIN - TIER1_CELLS, RESERVE_MAX - TIER1_CELLS))
-    print("remains lumps modelled at ZERO: NotifyRemainsExcavated has no caller")
+    print("the base table for the sweep is %s; the shipped rates are the "
+          "solved ones below" % (DIG_CELLS_PER_DAY_BASE,))
     print()
     print("Solved against the SMALLEST hole, never the largest:")
-    print("   spoilPerCell = %d / (%.2f x %d cells) = %.1f   (shipped %.1f)"
+    print("   spoilPerCell = %d / (%.2f x %d cells) = %.1f   (declared "
+          "shipped %.1f)"
           % (TIER_THRESHOLDS[4], TIER5_AT_FRACTION_OF_SMALLEST,
              RESERVE_MIN - TIER1_CELLS, spoil, SPOIL_PER_CELL))
 
@@ -293,11 +321,30 @@ def main():
         print("!! no dig scale reaches tier 5 -- the sweep found nothing.")
         return 1
     dig_scale, miss, t5 = best
-    scaled = [round(c * dig_scale, 1) for c in DIG_CELLS_PER_DAY_BY_TIER]
-    print("   DigCellsPerDay x%.2f -> %s   (shipped %s)"
-          % (dig_scale, scaled, DIG_CELLS_PER_DAY_BY_TIER))
+    scaled = [round(c * dig_scale, 1) for c in DIG_CELLS_PER_DAY_BASE]
+    print("   DigCellsPerDay x%.2f -> %s   (declared shipped x%.2f)"
+          % (dig_scale, scaled, DIG_SCALE))
     print("   typical dungeon reaches tier 5 on day %d against canon's %d"
           % (t5, TARGET_TIER5_DAY))
+
+    # THE CROSS-CHECK THAT WAS MISSING FOR TWO RELEASES. This file solves the
+    # spoil and sweeps the scale; sim_den_growth.py declares what DenController
+    # actually ships. Nothing compared them, so that file went on modelling the
+    # pre-coupling excavator -- printing a hoard of 2073 against this file's
+    # 1560 -- and canon 42 recorded a theft table measured on the wrong one.
+    # A drift is a FAILURE here, not a footnote.
+    drift = False
+    if abs(spoil - SPOIL_PER_CELL) > 0.05:
+        print("!! solved spoil %.2f against sim_den_growth's declared %.2f -- "
+              "one of the two has been re-tuned and the other has not."
+              % (spoil, SPOIL_PER_CELL))
+        drift = True
+    if abs(dig_scale - DIG_SCALE) > 0.005:
+        print("!! swept dig scale x%.3f against sim_den_growth's declared "
+              "x%.3f -- same fault, other knob." % (dig_scale, DIG_SCALE))
+        drift = True
+    if not drift:
+        print("   both agree with sim_den_growth.py's declared shipped values.")
     print()
 
     worst = table(spoil, dig_scale, VERDICT_HORIZON)
@@ -338,6 +385,8 @@ def main():
     # anywhere in the band, and a hermit who claims almost nothing floors the
     # expansion multiplier at 0.5 -- the slowest dig the game can produce.
     report_lumps(spoil, dig_scale)
+    if not report_theft(spoil):
+        bad = True
 
     print()
     print("Robustness sweep -- every reserve in the band, plus a hermit:")

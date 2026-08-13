@@ -67,13 +67,15 @@ public class Commands : MonoBehaviour
             sb.AppendLine("  floor " + entry.floorIndex + "  " + (DenKind)entry.kind
                 + "  tier " + tier + (entry.cleared ? "  CLEARED" : ""));
             sb.AppendLine("    hoard " + entry.hoard.ToString("0")
+                + "   stolen purse " + entry.stolenHoard.ToString("0")
                 + "   stolen lifetime " + entry.stolenTotal.ToString("0")
                 + "   raids " + entry.raidsLaunched
                 + "   next raid in " + entry.raidCountdown.ToString("0") + "d");
             sb.AppendLine("    awakened day " + entry.awakenedDay
-                + "   foraging " + (den.MayForageAny(entry.floorIndex) ? "yes" : "no (grace)")
+                + "   foraging " + (den.MayForageAny(entry.floorIndex) ? "yes" : "no")
                 + "   contested " + (entry.contested ? "yes" : "NO -- clearing will not pay out"));
             sb.AppendLine("    population budget " + den.PopulationBudget(entry.floorIndex)
+                + "   at the face " + den.DiggerBudget(entry.floorIndex)
                 + "   of which abroad " + den.ScavengerBudget(entry.floorIndex)
                 + "   target share " + (den.TargetStealShare(entry.floorIndex) * 100f).ToString("0") + "%");
             sb.AppendLine("    held tomes " + entry.heldNodeKeys.Count
@@ -1136,7 +1138,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  earned   rem  raids  tgt%  dug    left   tunnel      find  pop  out  dig  work  lost  state");
+        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  stolen   earned   rem  raids  tgt%  dug    left   tunnel      find  pop  out  dig  work  lost  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1192,8 +1194,35 @@ public class Commands : MonoBehaviour
 
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tribe,-8} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} "
+                        + $"{den.stolenHoard,-8:F0} {den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} "
                         + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {den.deathsNotByDungeon,-5} {state}");
+
+            // THE HOARD INVARIANT, and the one line that catches stage 2b's
+            // characteristic failure. An excavator's hoard is the geometry's
+            // own account of itself -- cells opened times spoil, plus a lump
+            // per remains taken -- and NOTHING else may pay into it. A stolen
+            // coin credited there, or a raid cut, uncouples the ledger from
+            // the hole in silence: the tier climbs, the pile grows, and Den
+            // Cavity Report goes on passing because its assertion is a STATIC
+            // bound that never looks at a live den. Asserted rather than
+            // assumed, because canon 42 twice records a constant that agreed
+            // with its sim and was wrong anyway -- a check that compares
+            // values and not liveness is not a check.
+            //
+            // Relative epsilon: this ledger is a float and accumulates over
+            // forty-odd partial days, which canon already records putting a
+            // den on a hoard of 1399.9999999999998.
+            if ((DenKind)den.kind == DenKind.Excavator && !den.cleared)
+            {
+                float expected = den.cellsDug * DenController.Instance.SpoilPerCell
+                               + den.remainsTaken * DenController.Instance.RemainsLump;
+                if (Mathf.Abs(den.hoard - expected) > Mathf.Max(0.5f, expected * 0.0001f))
+                    sb.AppendLine($"       !! hoard {den.hoard:F1} against {expected:F1} expected "
+                                + $"({den.cellsDug} cells x {DenController.Instance.SpoilPerCell:F1} spoil "
+                                + $"+ {den.remainsTaken} remains x {DenController.Instance.RemainsLump:F0}) "
+                                + "-- something outside the dig is paying into hoard. Theft and "
+                                + "raid cuts belong in stolenHoard, which tier cannot see.");
+            }
         }
 
         if (!any)

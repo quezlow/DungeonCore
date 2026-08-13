@@ -8504,14 +8504,20 @@ reveal, rather than by two call sites being kept in step by hand.
 snapshot and restores by name; an unrevealed one sits at `aliveWildCount = -1`
 and rolls fresh under the new rule.
 
-**Both kinds are inhabited; only one forages.** `PopulationBudget` answered zero
-for an `Excavator`, which was right only while kobolds had no bodies -- it left
-floor index 2 as tunnels with nothing living in them. `ResidentsByTier` is shared
-because its reason is shared: tier is legible off how full a den looks, whether
-its people steal or dig. `MayForageAny` was deliberately NOT loosened. Kobolds do
-not steal -- that is the whole split between the verbs -- and its "no" is exactly
-what routes an excavator's residents down `TickScavenge`'s idle branch and holds
-them in the cavity.
+**Both kinds are inhabited**, and ~~only one forages~~ **BOTH DO, as of stage
+2b.** `PopulationBudget` answered zero for an `Excavator`, which was right only
+while kobolds had no bodies -- it left floor index 2 as tunnels with nothing
+living in them. `ResidentsByTier` is shared because its reason is shared: tier
+is legible off how full a den looks, whether its people steal or dig.
+
+~~`MayForageAny` was deliberately NOT loosened. Kobolds do not steal -- that is
+the whole split between the verbs -- and its "no" is exactly what routes an
+excavator's residents down `TickScavenge`'s idle branch and holds them in the
+cavity.~~ **REVERSED IN STAGE 2b.** Kobolds steal as well as dig. The split
+between the verbs was never foraging against not foraging -- it is what the den
+does to the FLOOR, and that is unchanged: goblins take what you drop, kobolds
+take what you have not found yet and now take what you drop as well. What
+differs is the SPLIT of the bodies abroad, between the face and the errand.
 
 **`DiggersByTier` ships with a reader before it has a behaviour.** {1,1,2,3,4},
 reached through `DiggerBudget`, which mirrors `ScavengerBudget` line for line. It
@@ -8564,8 +8570,9 @@ shared body `Deferred -- borrowed donor`, so this needs no ruling change. The
 
 Status: BUILT. `NotifyRemainsExcavated` has a caller at last, the contested
 discovery fires and is recovered on clearing, and `SetDenWorkSite` and
-`DiggersByTier` both have behaviours. NOT built: kobold theft and `stolenHoard`,
-which are stage 2b.
+`DiggersByTier` both have behaviours. ~~NOT built: kobold theft and
+`stolenHoard`, which are stage 2b.~~ **SHIPPED as stage 2b -- see "Kobold
+theft and the stolen hoard" below.**
 
 **A leg is an ordinary `DenTunnelData` appended to the END of the list, and only
 the last one ever grows.** This is not tidiness, it is the only shape that
@@ -8730,43 +8737,195 @@ reopen the yo-yo at radius six that this entry already paid for once.
 `TESTING/Commands.cs` ("Print Den Dig"), `Tools/sim_den_digger.py`,
 `Tools/sim_den_cavity_growth.py`.
 
+#### Kobold theft and the stolen hoard (BUILT: stage 2b)
+
+Status: BUILT. Kobolds steal as well as dig, into a purse tier cannot see, and
+`ClearDen` pays both. NOT built: the dwarven skirmish substitute, still unruled.
+
+**THE PROBLEM THIS SOLVES IS NOT "KOBOLDS SHOULD STEAL".** It is that an
+excavator's purse FREEZES. Income is coupled to geometry, so it stops the day
+the hole is finished -- about day 50 on a typical dungeon -- and never moves
+again, at 1560 on the narrow reserve. Against an occupier's 20,242 over the same
+150 days that is not merely small; it means that after day 50 there is no reason
+whatever to delay clearing a kobold den, and this entry's own rule that clearing
+is "WHEN to spend a one-off harvest" simply does not apply to one of the two
+dens. Theft is what restores the decision. The legibility argument the decision
+record gave -- clearing returns something the player WATCHED LEAVE -- is true and
+was always the better-sounding reason, but it is the second one.
+
+**THEFT IS EXCLUDED FROM TIER, AND THAT IS THE WHOLE SHAPE.** `stolenHoard` is
+additive on `DenSaveEntry`; `TierOf` reads `hoard` alone. So `hoard` stays
+exactly `cellsDug` times `spoilPerCell` plus a lump per remains taken, "tier 5 IS
+the completed hole" survives a den that also robs, and `Den Cavity Report`'s
+coupling assertion stays a STATIC BOUND on diggable cells times spoil rather
+than becoming the permanent red the first shape would have made it.
+
+**THE SHARE IS HALF THE OCCUPIER'S AND THE COUNT IS THE KNOB**, which is the
+goblins' arrangement unchanged. `ExcavatorStealShare` is {0, 6, 10, 15, 21} per
+cent and `ThievesByTier` is {0, 1, 2, 3, 4}. Zero at tier 1 is not rounding: a
+tier-1 excavator holds two bodies and one is already at the face. The occupier's
+"tier 1 income must be non-zero" trap does not apply, because that trap is an
+income curve gated on its OWN output and theft does not feed an excavator's
+tier -- the dig does, from the first dawn past grace.
+
+`ThievesByTier` is AUTHORED, NOT DERIVED, though it happens to equal
+`ScavengersByTier` minus `DiggersByTier` at every tier. Writing it as the
+subtraction would mean moving the digger count silently moved the thief count
+and the tuned share with it. The identity is the ARGUMENT for the numbers rather
+than a coincidence: an excavator sends abroad exactly as many bodies as an
+occupier of the same tier and splits them between the face and the errand, so
+HALF THE POPULATION IS AT HOME at every tier for both kinds. That keeps this
+entry's rule that a den whose whole population is permanently out reads as empty
+exactly when it is working, and it leaves the abroad count -- and so the
+loot-scan cost, a scene-wide search per foraging body -- unchanged between kinds.
+
+**THE ROLES ARE DISJOINT RANGES OVER ONE LIST, AND THEY HAD TO BE MADE SO.**
+Both roles are read off position in the population list, and both indexed from
+zero: `MayForage` tested `idx < ScavengerBudget` and `AssignWorkSites` sent
+`i < diggers` to the face. Give an excavator a forager budget and bodies
+`0..min(diggers, thieves)-1` are BOTH -- and `TickScavenge` decides foraging
+BEFORE it reads the work site, so such a body forages whenever there is loot and
+falls back to the face only when there is not. The digger count would have gone
+on printing in the ledger while meaning something else. Diggers now hold
+`[0, diggers)` and thieves start where they end; `DiggerBudget` answers zero for
+an occupier, so floor index 1 is untouched.
+
+A second guard sits at the point of consumption: `MayForage` answers false for
+any body HOLDING a work site. The ranges make it redundant, and it is there
+anyway because the ranges are an invariant three methods apart and this is one
+line. Not to be tidied away. **The leash was NOT widened** -- that is the fault
+already paid for once at radius six.
+
+**A RAID CUT NOW LANDS IN A POT FOR BOTH KINDS, AND THE EXCEPTION IT CLOSES WAS
+NEVER A RULE.** This entry states that a cut in a pot is a decision and a
+vanished one is a bleed, and then credited `hoard` for `Occupier` only -- so an
+excavator took the player's gold and it disappeared, the one pure bleed left in
+the den system. That gate was never the rule being waived; it was that an
+excavator had no purse tier could not see, and raid gold in `hoard` breaks the
+coupling exactly as theft does. `stolenHoard` is that purse. Recorded because it
+is a real move and not a tidy-up: it is worth 8,775 of a typical excavator's
+15,325 over 150 days, more than the theft it shipped beside.
+
+**BOTH LOOT STREAMS, AND NO BRANCH.** Kobolds take `CarriableLoot` and
+`DroppedLoot` alike, down the same code path the goblins use. Restricting them
+to monster drops was measured and rejected: that stream is 14.5 per cent of
+floor gold, so it is an effective 0.14x share, and it exists only where the
+player has already lost monsters on that floor -- a feature that would read as
+doing nothing. The consequence is accepted: an excavator den can hold tomes and
+spoil rarities, and `den_hoard_content` fires on clearing one. The line still
+tells the truth.
+
+**`den_wakes` STOPS BEING A HALF-LIE ON FLOOR INDEX 2.** It says the den "has
+decided you are worth robbing", which was simply false of a den that only dug.
+No new line was added; the existing one became true.
+
+**THE PILE STILL READS TIER, AND DOES NOT SHOW THE STOLEN PURSE.** A pile sized
+on `hoard + stolenHoard` would disagree with the raid tier -- a pile saying five
+on a den raiding at three -- and this entry already holds that a legibility rule
+saying the wrong thing is worse than one saying nothing. Deliberate gap, not an
+oversight. It does strengthen the case, already recorded, for authoring the
+excavator its own hoard sprites: floor 1 and floor 2 carry the identical five
+placeholders, and an excavator's pile is now a mixed thing.
+
+**THE HOARD INVARIANT IS ASSERTED AGAINST A LIVE DEN.** `Print Den Ledger`
+checks `hoard == cellsDug x spoilPerCell + remainsTaken x remainsLump` for every
+uncleared excavator and prints the drift when it fails. This is the one surface
+that catches theft leaking into `hoard`; `Den Cavity Report`'s assertion cannot,
+because it is a static bound that never looks at a live den. `remainsLump` was
+private with no accessor and is now exposed as `SpoilPerCell` already was --
+a check comparing against a COPY of an authored number is checking the copy.
+Relative epsilon, because this ledger is a `float` accumulating over forty-odd
+partial days and this entry already records a den sitting on 1399.9999999999998.
+
+**TWO SIMS, ONE DEN -- AND THEY HAD BEEN DISAGREEING FOR TWO RELEASES.**
+`sim_den_growth.py` was still modelling the PRE-COUPLING excavator: fork 4b
+scaled `DigCellsPerDay` by 0.22 and raised `spoilPerCell` to 7.8, but only
+`sim_den_cavity_growth.py` knew, because it imported the base rates and applied
+the change itself. Growth also had no geometry ceiling, and modelled expansion
+off gold-per-day where `ExpansionMultiplier` reads CLAIMED CELLS. It therefore
+reported a typical excavator hoard of 2073 and tiers of 13/17/25/49 against the
+coupled model's 1560 and 13/22/34/49 -- and the theft table this section
+replaces was measured on it.
+
+Fixed by direction rather than by duplication. `sim_den_growth.py` DECLARES what
+`DenController` ships and what `DenTunnelProfile.asset` holds;
+`sim_den_cavity_growth.py` SOLVES and SWEEPS against it and now ASSERTS that the
+two agree, failing loudly on drift. The import runs one way and four restated
+constants were deleted. This is the C#-against-Python cross-check this entry
+already relies on, pointed at the two sims themselves. **A SIM IS A LOAD-BEARING
+ARTEFACT, and this entry now records it failing in all three available ways: by
+being destroyed, by being silently filtered, and by being quietly out of date.**
+
+`LUMP_DAYS` was corrected with it, from a guessed (51, 90, 120) to (65, 90, 104)
+-- both ends printed by `sim_den_digger.py` section J at the shipped cap and
+budget. The lump's worst movement of the tier-5 day falls from three days to
+one, so that conclusion strengthens rather than moves. The lump is also modelled
+at ZERO by default in the growth ledger, because the same section measures only
+14.4 per cent of typical dungeons as EVER losing a remains: the median excavator
+takes none, and the tail is stress-tested in section R where it belongs.
+
+**WHAT IT PAYS.** From `sim_den_growth.py`, typical dungeon, 150 days, narrow
+reserve. The tier columns are identical in every row, which is the claim and is
+now asserted by the sim rather than argued here:
+
+| excavator theft | T2 | T3 | T4 | T5 | hoard | stolen | payout |
+|---|---|---|---|---|---|---|---|
+| none | 13 | 22 | 34 | 49 | 1560 | 8775 | 10335 |
+| 0.25x the occupier share | 13 | 22 | 34 | 49 | 1560 | 11291 | 12851 |
+| **0.5x (SHIPPED)** | **13** | **22** | **34** | **49** | **1560** | **13765** | **15325** |
+| full occupier share | 13 | 22 | 34 | 49 | 1560 | 18838 | 20398 |
+
+Read the payout column against an occupier's 20,242 over the same 150 days, and
+then read it BROKEN DOWN, because the gross figures flatter the excavator. Of
+its 15,325: 8,775 is recovered raid gold, 1,560 is dug spoil, and 4,990 is
+theft -- against the occupier's 10,667 of theft. **On the stream this section is
+about, the excavator takes half, which is what was designed.** The gross gap is
+narrower only because a refund of the player's own gold looks the same in both
+columns. At the FULL share the excavator's payout equals a goblin's outright,
+on a den that also pays dwarven standing and hands back the remains it took,
+which is what ruled that option out.
+
+**KNOWN, ACCEPTED, AND THE REASON THE HIGHER SHARE WAS TAKEN:** the sim gives
+floor index 2 the same kill rate as floor index 0, and it will not have it.
+Adventurers must descend two flights to leave anything there, so theft will land
+UNDER its target in play. That is what the ledger's `tgt%` and `earned` columns
+are for, and this entry's standing rule applies before anything is moved -- read
+`lost` (`deathsNotByDungeon`) and `Print Tribe Matrix` FIRST, because a den
+earning under its share and a den losing its people on the way home are
+identical in the hoard column and separable only in those.
+
+**Key files:** `DungeonCore/DenController.cs` (`stolenHoard`, `ThievesByTier`,
+`ExcavatorStealShare`, `RemainsLump`, the `MayForage` ranges),
+`Monster/DungeonMonster.cs`, `TESTING/Commands.cs` (the ledger's `stolen` column
+and the hoard invariant), `Tools/sim_den_growth.py`,
+`Tools/sim_den_cavity_growth.py`.
+
 #### What the den arc still owes
 
 - ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
   above.**
 
-- **KOBOLD THEFT AND THE STOLEN HOARD -- decided, deferred to stage 2.**
-  Kobolds will steal as well as dig, so that clearing them returns something the
-  player watched leave. The measured objection, and the shape that survives it,
-  are recorded here so stage 2 does not re-derive either.
+- ~~**Kobold theft and the stolen hoard.**~~ **SHIPPED as stage 2b -- see
+  "Kobold theft and the stolen hoard" above.** The decision record that stood
+  here chose the shape correctly and it shipped unchanged: an additive
+  `stolenHoard` on `DenSaveEntry`, excluded from tier, paid out with the hoard
+  on clearing.
 
-  *Measured*, patching `Tools/sim_den_growth.py` over 60 days, typical dungeon,
-  excavator reaching tier 5 on day 49 today:
+  **ITS MEASURED TABLE IS STRUCK RATHER THAN LEFT STANDING, and the reason is
+  the more useful record.** The table read T2/T3/T4/T5 of 13/17/25/49 at no
+  theft moving to 9/13/19/27 at the full occupier share, against hoards of
+  2073 to 6215. Every one of those numbers is now known to be wrong, in two
+  independent ways, and a struck table that says why is worth more than a
+  deleted one:
 
-  | kobold theft | T2 | T3 | T4 | T5 | hoard |
-  |---|---|---|---|---|---|
-  | none (shipped) | 13 | 17 | 25 | 49 | 2073 |
-  | 0.25x the occupier share | 11 | 17 | 23 | 38 | 3098 |
-  | 0.5x | 10 | 16 | 23 | 33 | 4073 |
-  | full occupier share | 9 | 13 | 19 | 27 | 6215 |
-
-  A killer dungeon at full share reaches tier 5 on day 20 against 35 today.
-
-  *The pacing is retunable; THE COUPLING IS NOT.* This entry states that hoard is
-  exactly `cellsDug` times `spoilPerCell` and that tier 5 IS the completed hole.
-  Theft uncouples 33 / 49 / 67 per cent of a typical excavator's hoard at those
-  three shares, and at full share tier 5 lands on day 27 against a hole that is
-  not finished until day 49 -- so `Den Cavity Report`'s coupling assertion becomes
-  a permanent red, which this entry already records as worse than no check.
-
-  *The shape that keeps both:* a separate additive `stolenHoard` on
-  `DenSaveEntry`, credited by excavator theft and EXCLUDED FROM TIER. `ClearDen`
-  pays `hoard + stolenHoard`; tier still reads off `hoard` alone, so the geometry
-  and the ledger stay one statement. It also needs `MayForageAny` loosened for
-  `Excavator` and its own forager count knob, distinct from `DiggersByTier`.
-  Re-run `sim_den_growth.py` AND `sim_den_cavity_growth.py` before trusting any
-  number: the latter's own header says it is re-run the day
-  `NotifyRemainsExcavated` acquires a caller.
+  - **The tier columns were a prediction made under the shape the arc then
+    REJECTED.** They moved because theft fed `hoard` in that model. Under the
+    `stolenHoard` shape theft cannot reach tier at all, so the tier columns are
+    identical at every share BY CONSTRUCTION -- 13/22/34/49 throughout, which
+    `sim_den_growth.py` now asserts rather than asserting by hand.
+  - **They were measured on a sim that was modelling the pre-coupling
+    excavator.** See "Two sims, one den" below. The correct no-theft row is
+    13/22/34/49 on a hoard of 1560, not 13/17/25/49 on 2073.
 
 - **Dwarven skirmishes are still OWED.** `DwarfWalkerPuppet`'s class doc is
   explicit that it is deliberately not an entity -- never registered with

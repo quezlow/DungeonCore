@@ -17,6 +17,23 @@ public class DenSaveEntry
     public int raidsLaunched;
     public float stolenTotal;   // lifetime theft, for tuning against the sim
 
+    /// <summary>An EXCAVATOR's stolen purse, held apart from the hoard and
+    /// EXCLUDED FROM TIER (canon 42, stage 2b).
+    ///
+    /// THE WHOLE POINT IS WHAT TierOf CANNOT SEE. Kobolds steal as well as
+    /// dig now, and folding theft into hoard was measured and rejected: it
+    /// uncouples a third to two thirds of a typical excavator's hoard from
+    /// the geometry that is supposed to explain it, so "tier 5 IS the
+    /// completed hole" stops being true and Den Cavity Report's coupling
+    /// assertion goes permanently red -- which canon already records as
+    /// worse than no check at all. Kept apart, hoard stays exactly
+    /// cellsDug x spoilPerCell plus the remains lumps, and Print Den Ledger
+    /// asserts precisely that, every run, against a live den.
+    ///
+    /// ClearDen pays hoard + stolenHoard, so the player is paid for both.
+    /// Additive: a legacy save reads zero and needs no migration.</summary>
+    public float stolenHoard;
+
     /// <summary>Fractional cells carried between dawns. Excavators only. At the
     /// shipped rates the slowest tier opens 1.5 cells a day before the
     /// expansion multiplier, so flooring each day independently would throw
@@ -152,6 +169,32 @@ public class DenController : MonoBehaviour
     /// monsters are competing for the same corpses.</summary>
     private static readonly float[] StealShare = { 0.06f, 0.12f, 0.20f, 0.30f, 0.42f };
 
+    /// <summary>What an EXCAVATOR steals, by tier -- half the occupier's
+    /// share, and nothing at all at tier 1.
+    ///
+    /// HALF, BECAUSE KOBOLDS ARE DIGGERS FIRST. Measured over 150 days on a
+    /// typical dungeon in Tools/sim_den_growth.py: at this share an
+    /// excavator's purse reaches roughly a third of an occupier's, which
+    /// leaves the goblins plainly the bigger payday while giving the kobolds
+    /// one that keeps growing. At the FULL occupier share it reaches over
+    /// half, on a den that ALSO pays dwarven standing and hands back the
+    /// remains it took.
+    ///
+    /// ZERO AT TIER 1 IS NOT A ROUNDING ARTEFACT. A tier-1 excavator holds
+    /// two bodies and one of them is already at the face, so there is nobody
+    /// left to send. The occupier's "tier 1 income must be non-zero" trap
+    /// does not apply: that trap is an income curve gated on its own output,
+    /// and theft does not feed an excavator's tier. The dig does, and the
+    /// dig runs from the first dawn past grace.
+    ///
+    /// The SHARE is the target and ThievesByTier is the knob, exactly as for
+    /// the goblins; both live in this file so they cannot drift apart
+    /// silently. If theft comes in under this in play, read the ledger's
+    /// `lost` column and Print Tribe Matrix BEFORE moving the count --
+    /// a den earning under its share and a den losing its people on the way
+    /// home are identical in the hoard column.</summary>
+    private static readonly float[] ExcavatorStealShare = { 0f, 0.06f, 0.10f, 0.15f, 0.21f };
+
     /// <summary>Cells an excavator opens per day, by tier, before the expansion
     /// multiplier below.
     ///
@@ -190,6 +233,13 @@ public class DenController : MonoBehaviour
 
     [Tooltip("Hoard added when an excavator reaches a buried remains.")]
     [SerializeField, Min(0f)] private float remainsLump = 120f;
+
+    /// <summary>Read by Print Den Ledger's hoard invariant, which is the
+    /// natural place to catch theft leaking into hoard and could not be
+    /// written at all while this was private. Exposed the way SpoilPerCell
+    /// is, and for the same reason: a check that compares against a COPY of
+    /// an authored number is checking the copy.</summary>
+    public float RemainsLump => remainsLump;
 
     [Tooltip("Most a raid may take, as a fraction of the player's gold. Caps the "
            + "flat amount so a poor dungeon is not emptied.")]
@@ -412,16 +462,27 @@ public class DenController : MonoBehaviour
         core.TrySpendGold(taken);
         den.raidsLaunched++;
 
-        // The cut joins the hoard, so clearing the den recovers it. Loot that
+        // The cut joins the den's purse, so clearing recovers it. Loot that
         // merely vanished would be a bleed; loot in a pot is a decision.
+        //
+        // AN EXCAVATOR'S CUT NOW LANDS IN A POT TOO, and until stage 2b it
+        // simply vanished -- the only pure bleed left in the den system, and
+        // a straight contradiction of the rule stated one line above. The
+        // Occupier-only gate was never that rule being waived; it was that
+        // an excavator had no purse tier could not see, and raid gold in
+        // `hoard` would have broken the coupling exactly as theft would.
+        // stolenHoard is that purse, so the exception closes here.
         if ((DenKind)den.kind == DenKind.Occupier) den.hoard += taken;
+        else den.stolenHoard += taken;
     }
 
     // -- occupier income: a scavenger reaching home -----------------------
 
     /// <summary>
-    /// A scavenger has carried a haul back into the den. The ONLY way an
-    /// occupier's hoard grows from theft.
+    /// A den body has carried a haul back into the den. The ONLY way either
+    /// kind's purse grows from theft -- an occupier's into `hoard`, and
+    /// since stage 2b an excavator's into `stolenHoard`, which tier cannot
+    /// see.
     ///
     /// Not a cut skimmed as loot absorbs, which was the first design and was
     /// wrong: an invisible deduction gives the player nothing to see, nothing to
@@ -444,7 +505,15 @@ public class DenController : MonoBehaviour
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return;
         if (gold > 0)
         {
-            den.hoard += gold;
+            // THE LINE THE WHOLE STAGE TURNS ON. An excavator's haul must
+            // NOT reach `hoard`: hoard is the geometry's own account of
+            // itself -- cells opened times spoil, plus a lump per remains
+            // taken -- and a coin credited there makes the ledger and the
+            // hole two stories that can drift, which is the entire reason
+            // stolenHoard exists. stolenTotal counts BOTH kinds' lifetime
+            // theft and is a diagnostic, not a purse.
+            if ((DenKind)den.kind == DenKind.Excavator) den.stolenHoard += gold;
+            else den.hoard += gold;
             den.stolenTotal += gold;
         }
         if (nodes != null)
@@ -498,8 +567,11 @@ public class DenController : MonoBehaviour
     public float TargetStealShare(int floorIndex)
     {
         if (!dens.TryGetValue(floorIndex, out var den)) return 0f;
-        if ((DenKind)den.kind != DenKind.Occupier) return 0f;
-        return StealShare[TierOf(den) - 1];
+        // BOTH KINDS HAVE A TARGET NOW, so the report's tgt% column means
+        // something on floor index 2 as well.
+        return (DenKind)den.kind == DenKind.Occupier
+            ? StealShare[TierOf(den) - 1]
+            : ExcavatorStealShare[TierOf(den) - 1];
     }
 
     /// <summary>How many scavengers this den may have abroad at once. Derived
@@ -517,9 +589,12 @@ public class DenController : MonoBehaviour
     public int ScavengerBudget(int floorIndex)
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
-        if ((DenKind)den.kind != DenKind.Occupier) return 0;
         if (InGrace(den)) return 0;
-        return ScavengersByTier[TierOf(den) - 1];
+        // BOTH KINDS FORAGE AS OF STAGE 2b. This answered zero for an
+        // excavator, which was right only while kobolds did not steal.
+        return (DenKind)den.kind == DenKind.Occupier
+            ? ScavengersByTier[TierOf(den) - 1]
+            : ThievesByTier[TierOf(den) - 1];
     }
 
     private static readonly int[] ScavengersByTier = { 1, 2, 4, 6, 8 };
@@ -663,6 +738,15 @@ public class DenController : MonoBehaviour
         for (int i = 0; i < live.Count; i++)
         {
             if (live[i] == null) continue;
+            // THE DIGGER RANGE IS [0, diggers) AND THE THIEF RANGE STARTS
+            // WHERE IT ENDS -- see MayForage, which is the other half of
+            // this contract. Both roles are read off this one list and both
+            // used to index from zero, which would have made bodies
+            // 0..min(diggers, thieves)-1 BOTH: TickScavenge decides foraging
+            // before it reads the work site, so such a body would forage
+            // whenever there was loot and fall back to the face only when
+            // there was not -- and the digger count would silently stop
+            // meaning what the ledger prints.
             if (i < diggers) live[i].SetDenWorkSite(world);
             else live[i].ClearDenWorkSite();
         }
@@ -676,6 +760,28 @@ public class DenController : MonoBehaviour
     }
 
     private static readonly int[] DiggersByTier = { 1, 1, 2, 3, 4 };
+
+    /// <summary>How many of an excavator's residents are ABROAD ROBBING, as
+    /// against at the face or keeping house (canon 42, stage 2b).
+    ///
+    /// AUTHORED, NOT DERIVED, and deliberately so: it happens to equal
+    /// ScavengersByTier minus DiggersByTier at every tier, and writing it
+    /// that way would mean moving the digger count silently moved the thief
+    /// count and the tuned share with it. Canon asks for a forager knob
+    /// DISTINCT from DiggersByTier, and a subtraction is not a knob.
+    ///
+    /// The identity is worth recording even so, because it is the ARGUMENT
+    /// for these numbers rather than a coincidence: an excavator sends
+    /// abroad exactly as many bodies as an occupier of the same tier and
+    /// splits them between the face and the errand, so HALF THE POPULATION
+    /// IS AT HOME at every tier for both kinds. That keeps canon's rule that
+    /// a den whose whole population is permanently out reads as empty
+    /// exactly when it is working, and it leaves the abroad count -- and so
+    /// the loot-scan cost, which is a scene-wide search per foraging body --
+    /// unchanged between the kinds.
+    ///
+    /// Zero at tier 1: two residents, one of them already at the face.</summary>
+    private static readonly int[] ThievesByTier = { 0, 1, 2, 3, 4 };
 
     /// <summary>How many diggers this den fields. Mirrors ScavengerBudget line
     /// for line -- zero when cleared, zero on the wrong kind, zero through the
@@ -715,8 +821,13 @@ public class DenController : MonoBehaviour
         if (clearedFloor != null && clearedFloor.FeatureGenerator != null)
             clearedFloor.FeatureGenerator.DespawnDenHoard();
 
-        int payout = Mathf.FloorToInt(den.hoard);
+        // BOTH PURSES. hoard is what the geometry paid for and stolenHoard
+        // is what they took off the floor and out of the player's own gold;
+        // they are kept apart so tier reads the first alone, and they are
+        // paid together because the player lost both to the same hole.
+        int payout = Mathf.FloorToInt(den.hoard + den.stolenHoard);
         den.hoard = 0f;
+        den.stolenHoard = 0f;
         DungeonCore.Instance?.AddGold(payout);
 
         // Canon 42: clearing the kobolds EARNS DWARVEN STANDING -- the first
@@ -988,11 +1099,13 @@ public class DenController : MonoBehaviour
         // its people steal or dig. What differs is what they are FOR, and that is
         // ScavengerBudget against DiggerBudget rather than how many there are.
         //
-        // Foraging is deliberately NOT loosened alongside it. Kobolds do not
-        // steal -- that is the whole split between the two verbs -- so
-        // MayForageAny still answers no for an excavator, which is exactly what
-        // routes its residents down TickScavenge's idle branch and holds them in
-        // the cavity.
+        // Foraging WAS deliberately not loosened alongside it, on the reading
+        // that kobolds do not steal. Stage 2b reversed that: they steal as
+        // well as dig, into a purse tier cannot see, so that clearing them
+        // returns something the player WATCHED LEAVE rather than only spoil
+        // out of rock nobody saw. What still differs is the SPLIT -- an
+        // excavator divides its abroad bodies between the face and the
+        // errand; an occupier sends all of them on the errand.
         return ResidentsByTier[TierOf(den) - 1];
     }
 
@@ -1012,8 +1125,25 @@ public class DenController : MonoBehaviour
     {
         if (body == null) return false;
         if (!MayForageAny(floorIndex)) return false;
+
+        // A BODY SENT TO THE FACE DOES NOT ROB, and this line is what makes
+        // that impossible rather than merely arranged. The ranges below are
+        // already disjoint, so it can only fire on a body whose role changed
+        // between dawns while it still held yesterday's work site -- but the
+        // failure it prevents is silent and costs a test cycle, so it is
+        // asserted where it is consumed rather than inferred from index
+        // arithmetic three methods away.
+        if (body.HasDenWorkSite) return false;
+
         int idx = LiveOn(floorIndex).IndexOf(body);
-        return idx >= 0 && idx < ScavengerBudget(floorIndex);
+        if (idx < 0) return false;
+
+        // THE ROLES ARE DISJOINT RANGES OVER ONE LIST. Diggers hold
+        // [0, diggers) and thieves start where they end. DiggerBudget answers
+        // zero for an occupier, so the goblins keep exactly the range they
+        // have always had and this is a no-op on floor index 1.
+        int first = DiggerBudget(floorIndex);
+        return idx >= first && idx < first + ScavengerBudget(floorIndex);
     }
 
     /// <summary>The den-level half of the foraging gate, without asking about a
@@ -1022,8 +1152,14 @@ public class DenController : MonoBehaviour
     public bool MayForageAny(int floorIndex)
     {
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return false;
-        if ((DenKind)den.kind != DenKind.Occupier) return false;
-        return !InGrace(den);
+        if (InGrace(den)) return false;
+        // LOOSENED FOR THE EXCAVATOR IN STAGE 2b. Its "no" used to be what
+        // routed a kobold down TickScavenge's idle branch and held it in the
+        // cavity; kobolds steal now, so the honest test is whether this den
+        // has anybody to send. That also answers NO for a tier-1 excavator,
+        // whose thief count is zero -- which is the truth, and better than a
+        // yes no body can act on.
+        return ScavengerBudget(floorIndex) > 0;
     }
 
     /// <summary>
