@@ -7464,15 +7464,27 @@ take what you drop; kobolds take what you have not found yet.
 - They dig UNCLAIMED rock only and never claim. Claiming is the player's verb
   and a digging faction that claims would collide with the influence model and
   with `DwarvenClaimLedger`'s per-cell billing.
-- Size ~150 cells at tier 1, WIDENING per tier, hard-capped at 600. Tier reads
+- Size ~150 cells at tier 1, WIDENING per tier, hard-capped at 400. Tier reads
   off how big it is. The cap is measured against entry 19's scale rule, and the
-  COMPARATOR IN THAT RULE HAS SINCE BEEN CORRECTED -- see the note below. 600
-  survives on entry 19's span budget rather than on its cell count: a 600-cell
-  blob spans about 26 cells, inside the "near twice the chamber box size"
-  budget of 16-28 that the span-62 plaza failure actually produced. It is NOT
-  "clearly the biggest natural cavity without becoming a set-piece" on a cell
-  count -- it is 12x the median chamber -- and that earlier claim is retired
-  rather than quietly left standing.
+  COMPARATOR IN THAT RULE HAS SINCE BEEN CORRECTED -- see the note below. The
+  cap rests on entry 19's SPAN budget rather than on its cell count: a 400-cell
+  blob spans about 22 cells, inside the "near twice the chamber box size" budget
+  of 16-28 that the span-62 plaza failure actually produced. The original claim
+  that 600 was "clearly the biggest natural cavity without becoming a set-piece"
+  is retired rather than quietly left standing -- 600 was 12x the median chamber.
+
+  **Shrunk from 600 to 400, following the goblin hole down.** Both read too big
+  in play. THE WIN IS THE SPAN TAIL, NOT THE MEDIAN: at 600 the reserve reached
+  span 33 on roughly 4 per cent of seeds, which this entry used to ACCEPT as the
+  cap doing its job; at 400 the worst of 1500 seeds is 27, so the whole
+  distribution sits inside the budget and the exception is DELETED rather than
+  carried. `Den Cavity Report` now treats an over-budget span as a regression.
+  At 400 the reserve is 8x the median chamber and 3x the largest that can exist.
+
+  **Tier 1 deliberately stays at 150.** Scaling it by the same third gives 100
+  cells against a largest-possible cave chamber of 133, so a tier-1 den would be
+  smaller than an ordinary cave on its own floor -- the same trap that ruled out
+  span-scaling for the goblin hole. 150 to 400 is still 2.7x of visible growth.
 
   **The chamber comparator was wrong, and three entries leaned on it.** Entry 19
   says a cave chamber is "roughly 100--200" cells. It was never measured.
@@ -8152,7 +8164,7 @@ so refactoring shipped generation could only reshape something.
 **The box size is measured, not chosen, and a tidy-up would undo it.** The
 quality signal is how many cells the CLAMP HAS TO CORRECT, because the clamp
 always hits the band by construction and the final count therefore proves
-nothing. Box 19 for the occupier band and 28 for the excavator reserve land the
+nothing. Box 19 for the occupier band and 24 for the excavator reserve land the
 RAW yield inside the target, correcting a median of ZERO cells. A first pass
 guessed 28 and 36 and the sweep in `Tools/sim_den_cavity.py` rejected both: the
 trim removes the cell farthest from the centre, so a box that overshoots comes
@@ -8219,12 +8231,21 @@ then made again for den tunnels. `Den Cavity Report` in `Commands` is the
 standing regression test, and the place the `DigCellsPerDay` keep-in-sync pair
 gets asserted once half B makes it real geometry.
 
-**Span, not cell count, and 4 per cent sit over budget by decision.** The sizes
-rest on entry 19's span rule -- 16 to 28 cells, twice the chamber box size --
-because its cell-count comparator was measured and corrected. The occupier hole
-spans 17 and the excavator reserve 26; roughly 4 per cent of excavator seeds
-reach 33. ACCEPTED: 600 is the declared ceiling and the overshoot is the cap
-doing its job. The report prints the maximum every run so a drift shows.
+**Span, not cell count, and the whole distribution now fits.** The sizes rest on
+entry 19's span rule -- 16 to 28 cells, twice the chamber box size -- because its
+cell-count comparator was measured and corrected. The occupier hole spans 17 and
+the excavator reserve 22, and after both were shrunk by a third every measured
+seed sits inside the budget: worst of 1500 is 19 for the occupier and 27 for the
+excavator. The earlier "4 per cent reach 33, ACCEPTED at the 600 cap" exception
+is RETIRED, and `Den Cavity Report` now reports an over-budget span as a
+regression rather than as a known allowance.
+
+**Sweep a box on the FULL pipeline, never on a single carve.** Choosing the
+excavator's box from a 1000-sample carve sweep would have picked the wrong one:
+that sweep put box 24's worst span at 32 and box 23's at 28, and 1500 seeds
+through the real anchor and seating path reversed it to 27 and 29. A MAXIMUM IS
+THE LEAST STABLE STATISTIC IN THE REPORT and must never decide a fork alone --
+box 24 also won on median, on compactness spread and on tier headroom.
 
 #### What half B still owes
 

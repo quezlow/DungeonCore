@@ -1487,9 +1487,15 @@ public class Commands : MonoBehaviour
             if (tier1MissingAnchor > 0)
                 sb.AppendLine($"         !! tier-1 carve missed the anchor on {tier1MissingAnchor} seeds -- "
                             + "the runs all start there, so those dens would be sealed.");
+            // No longer an accepted exception. At the old 600 reserve about 4 per
+            // cent of excavator seeds spanned over budget and canon carried that
+            // as the cap doing its job; at 400 the worst of 1500 seeds is 27, so
+            // anything over 28 now means something has drifted rather than that
+            // a known overshoot has recurred.
             if (spanMax > 28)
-                sb.AppendLine($"         .. span reaches {spanMax} against entry 19's budget of 28. "
-                            + "Accepted at the 600 cap by decision; investigate if it grows.");
+                sb.AppendLine($"         !! span reaches {spanMax} against entry 19's budget of 28. "
+                            + "Both bands were sized to sit inside it, so this is a regression "
+                            + "rather than a known exception -- re-run Tools/sim_den_cavity.py.");
         }
 
         sb.AppendLine(allGood ? "VERDICT: OK" : "VERDICT: FAIL -- see rows above.");

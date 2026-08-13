@@ -94,7 +94,7 @@ DEN_KIND = {1: 'Occupier', 2: 'Excavator'}
 OCCUPIER_MIN_CELLS = 167
 OCCUPIER_MAX_CELLS = 268
 EXCAVATOR_TIER1_CELLS = 150
-EXCAVATOR_MAX_CELLS = 600
+EXCAVATOR_MAX_CELLS = 400
 
 # Fork 2: a seat nearer than this to a chamber centre is rejected, so a real
 # cavity is never replaced by a 48-cell chamber standing in for it. Sized as
@@ -106,7 +106,7 @@ CHAMBER_SEAT_CLEARANCE = 20
 # box whose raw yield already lands in band keeps the CA's own silhouette,
 # while a box that overshoots gets trimmed farthest-cell-first and comes out
 # rounder the more it is cut.
-CA_BOX = {'Occupier': 19, 'Excavator': 28}
+CA_BOX = {'Occupier': 19, 'Excavator': 24}
 
 ORTH4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
@@ -451,15 +451,19 @@ def sweep_boxes(seeds):
         raw_sorted = sorted(raw)
         n = len(raw_sorted)
         occ = sum(1 for r in raw if OCCUPIER_MIN_CELLS <= r <= OCCUPIER_MAX_CELLS)
-        exc = sum(1 for r in raw if 550 <= r <= EXCAVATOR_MAX_CELLS)
+        exc = sum(1 for r in raw if EXCAVATOR_MAX_CELLS - 50 <= r <= EXCAVATOR_MAX_CELLS)
         print('  %3d   %8d   %5d  %5d   %4.1f%%   %8.1f%%   %8.1f%%'
               % (box, statistics.median(raw_sorted), raw_sorted[n // 10],
                  raw_sorted[n * 9 // 10], 100.0 * dead / n,
                  100.0 * occ / n, 100.0 * exc / n))
     print()
-    print('  The occupier band is the SHRUNK one (the hole read too big at')
-    print('  250-400). Box 19 lands the raw yield inside 167-268; box 22, which')
-    print('  the first pass shipped, now overshoots it.')
+    print('  BOTH bands are the SHRUNK ones -- each hole read too big in play and')
+    print('  came down by a third. Occupier 250-400 -> 167-268 at box 19;')
+    print('  excavator 550-600 -> 350-400 at box 24. The boxes were re-swept')
+    print('  rather than scaled, and on the FULL pipeline rather than on a single')
+    print('  carve: a 1000-sample sweep of the excavator picked the wrong box,')
+    print('  because it decided on a worst-case span, and a maximum is the least')
+    print('  stable statistic in the report.')
     print()
 
 

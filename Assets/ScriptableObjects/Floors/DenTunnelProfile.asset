@@ -48,8 +48,8 @@ MonoBehaviour:
     tipWidth: 2
     landingKeepClear: 10
     segmentLength: 40
-    cavityBox: 28
-    cavityMinCells: 550
-    cavityMaxCells: 600
+    cavityBox: 24
+    cavityMinCells: 350
+    cavityMaxCells: 400
     cavityTier1Cells: 150
     chamberSeatClearance: 20

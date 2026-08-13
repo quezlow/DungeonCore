@@ -75,10 +75,15 @@ public class DenTunnelFloorEntry
            + "in Tools/sim_den_cavity.py, not chosen: a box whose RAW yield "
            + "already lands in the target band keeps the CA's own silhouette, "
            + "while one that overshoots is trimmed farthest-cell-first and comes "
-           + "out rounder the more it is cut. 19 for the occupier band and 28 "
+           + "out rounder the more it is cut. 19 for the occupier band and 24 "
            + "for the excavator reserve both correct a median of ZERO cells. "
-           + "The occupier was re-swept, not scaled, when its hole shrank by a "
-           + "third: scaling a box does not scale its yield linearly.")]
+           + "BOTH were re-swept, not scaled, when their holes shrank by a "
+           + "third: scaling a box does not scale its yield linearly. Sweep on "
+           + "the FULL pipeline and not on a single carve -- a 1000-sample "
+           + "sweep put the excavator's worst span at 32 for box 24 and 28 for "
+           + "box 23, and 1500 seeds through the real anchor and seating path "
+           + "reversed it to 27 and 29. A maximum is the least stable statistic "
+           + "there is.")]
     [Min(8)] public int cavityBox = 19;
 
     [Tooltip("Smallest cavity, in cells. The size clamp tops up to this.")]
@@ -160,12 +165,26 @@ public class DenTunnelProfile : ScriptableObject
             floorIndex = 2,
             kind = DenKind.Excavator,
             runCount = 4,
-            // Reserves 600 and opens ~150 at tier 1. The reserve is carved into
+            // Reserves 400 and opens ~150 at tier 1. The reserve is carved into
             // the feature data at generation so chambers and rivers keep off it;
             // opening the rest as tier rises is half B.
-            cavityBox = 28,
-            cavityMinCells = 550,
-            cavityMaxCells = 600,
+            //
+            // SHRUNK BY A THIRD from 550-600, following the goblin hole down.
+            // The win is the span tail rather than the median: at 600 the
+            // reserve reached span 33 on about 4 per cent of seeds and canon
+            // accepted that as the cap doing its job, and at 400 the worst of
+            // 1500 seeds is 27, so the whole distribution now sits inside entry
+            // 19's 16-28 budget and the exception is deleted rather than
+            // carried.
+            //
+            // TIER 1 DELIBERATELY STAYS AT 150. Scaling it by the same third
+            // gives 100 cells against a largest-possible cave chamber of 133,
+            // so a tier-1 den would be smaller than an ordinary cave on its own
+            // floor -- the same trap that killed span-scaling for the goblin
+            // hole. 150 to 400 is still 2.7x of visible growth.
+            cavityBox = 24,
+            cavityMinCells = 350,
+            cavityMaxCells = 400,
             cavityTier1Cells = 150,
         },
     };
