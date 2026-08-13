@@ -91,8 +91,8 @@ RUN_COUNT = {1: 3, 2: 4}
 DEN_KIND = {1: 'Occupier', 2: 'Excavator'}
 
 # Canon 42's cavity sizes, confirmed by the designer this session.
-OCCUPIER_MIN_CELLS = 250
-OCCUPIER_MAX_CELLS = 400
+OCCUPIER_MIN_CELLS = 167
+OCCUPIER_MAX_CELLS = 268
 EXCAVATOR_TIER1_CELLS = 150
 EXCAVATOR_MAX_CELLS = 600
 
@@ -106,7 +106,7 @@ CHAMBER_SEAT_CLEARANCE = 20
 # box whose raw yield already lands in band keeps the CA's own silhouette,
 # while a box that overshoots gets trimmed farthest-cell-first and comes out
 # rounder the more it is cut.
-CA_BOX = {'Occupier': 22, 'Excavator': 28}
+CA_BOX = {'Occupier': 19, 'Excavator': 28}
 
 ORTH4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
@@ -434,12 +434,12 @@ def sweep_boxes(seeds):
     print('FORK 1 -- box sweep: raw CA yield before the size clamp corrects it')
     print('=' * 72)
     print()
-    print('  target bands: occupier %d-%d, excavator reserve %d'
+    print('  target bands: occupier %d-%d (shrunk), excavator reserve %d'
           % (OCCUPIER_MIN_CELLS, OCCUPIER_MAX_CELLS, EXCAVATOR_MAX_CELLS))
     print()
     print('  box   median raw   p10    p90    dead    in 250-400   in 550-600')
     print('  ' + '-' * 66)
-    for box in range(20, 41, 2):
+    for box in range(14, 41, 2):
         rng = random.Random(90210 + box)
         raw = []
         dead = 0
@@ -456,6 +456,10 @@ def sweep_boxes(seeds):
               % (box, statistics.median(raw_sorted), raw_sorted[n // 10],
                  raw_sorted[n * 9 // 10], 100.0 * dead / n,
                  100.0 * occ / n, 100.0 * exc / n))
+    print()
+    print('  The occupier band is the SHRUNK one (the hole read too big at')
+    print('  250-400). Box 19 lands the raw yield inside 167-268; box 22, which')
+    print('  the first pass shipped, now overshoots it.')
     print()
 
 

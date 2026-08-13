@@ -7437,8 +7437,19 @@ take what you drop; kobolds take what you have not found yet.
   the den is a pinata -- gold carries no interest or upkeep in DCR, so a hoard
   that only accumulates costs the player nothing to ignore.
 - Clearing returns the full hoard.
-- Size 250-400 cells, FIXED. Because they do not dig, the hole cannot grow, so
+- Size 167-268 cells, FIXED. Because they do not dig, the hole cannot grow, so
   TIER READS OFF HOW FULL IT IS -- population and visible hoard.
+
+  **Shrunk by a third from 250-400, on the screen rather than on a number.** It
+  read too big in play. The CELL COUNT was scaled and the SPAN deliberately was
+  not, and the comparator settled which: scaling the span by the same third
+  would have given roughly 145 cells, against a largest-possible cave chamber of
+  133 -- so the den would have been the size of an ordinary cave on its own
+  floor, and a den indistinguishable from a cave is not a den. At 167-268 it is
+  4.6x the median chamber and 1.7x the largest, and spans 17 against entry 19's
+  budget of 16-28. The excavator was left alone: its reserve is a separate call,
+  and its TIER 1 is 150 cells, so the first hole anyone meets down there is
+  already smaller than this one was.
 - No new art. `MonsterDef_GoblinCutthroat`, both Hobgoblins and
   `WildDef_GoblinScout` already ship.
 - **The identity question is answered by saying it out loud.** Goblins already
@@ -8141,11 +8152,24 @@ so refactoring shipped generation could only reshape something.
 **The box size is measured, not chosen, and a tidy-up would undo it.** The
 quality signal is how many cells the CLAMP HAS TO CORRECT, because the clamp
 always hits the band by construction and the final count therefore proves
-nothing. Box 22 for the occupier band and 28 for the excavator reserve land the
+nothing. Box 19 for the occupier band and 28 for the excavator reserve land the
 RAW yield inside the target, correcting a median of ZERO cells. A first pass
 guessed 28 and 36 and the sweep in `Tools/sim_den_cavity.py` rejected both: the
 trim removes the cell farthest from the centre, so a box that overshoots comes
-out rounder the more it is cut.
+out rounder the more it is cut. THE BOX IS RE-SWEPT WHENEVER A BAND MOVES, never
+scaled with it -- when the occupier hole shrank by a third its box went 22 to 19,
+which is not the same proportion, because a CA's yield does not scale linearly
+with its box.
+
+**The authored numbers live in the ASSET, not only in the C# defaults.** Unity
+keeps a field initialiser's value for any serialised field a saved asset does not
+carry, so when the cavity fields were added the existing `DenTunnelProfile.asset`
+kept inheriting them from `DenTunnelFloorEntry` -- correct, invisible, and fragile:
+the first time anyone opens that asset in the inspector Unity re-serialises it and
+bakes whatever the defaults were at that instant, after which editing the C# does
+nothing at all. The fields are therefore written explicitly into the asset. This
+is the "avoid ambiguous defaults" rule in its serialisation form -- an inherited
+value and an authored one are indistinguishable in the inspector.
 
 **Two cell sets, and the second is not redundant.** `reserveCells` is the
 maximum footprint fixed at generation, so chambers and rivers negotiate around
@@ -8176,7 +8200,7 @@ cells back, none severed.
 
 **Fork 2: an anchor is rejected within `chamberSeatClearance` of a chamber
 centre.** `minRunCells` used to mean "a chamber this close IS the den", which was
-fine while a den was a point and wrong once it is a 250-400 cell hole -- it let a
+fine while a den was a point and wrong once it is a 167-268 cell hole -- it let a
 cave stand in for one. Measured cost: 0.09 rejected samples per seed, no seed
 starved, chamber overlap down to 0.00 and 0.05 per cent. A profile leaving the
 clearance at 0 keeps the old behaviour exactly.
@@ -8198,7 +8222,7 @@ gets asserted once half B makes it real geometry.
 **Span, not cell count, and 4 per cent sit over budget by decision.** The sizes
 rest on entry 19's span rule -- 16 to 28 cells, twice the chamber box size --
 because its cell-count comparator was measured and corrected. The occupier hole
-spans 20 and the excavator reserve 26; roughly 4 per cent of excavator seeds
+spans 17 and the excavator reserve 26; roughly 4 per cent of excavator seeds
 reach 33. ACCEPTED: 600 is the declared ceiling and the overshoot is the cap
 doing its job. The report prints the maximum every run so a drift shows.
 

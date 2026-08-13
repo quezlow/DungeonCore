@@ -28,6 +28,11 @@ MonoBehaviour:
     tipWidth: 2
     landingKeepClear: 10
     segmentLength: 40
+    cavityBox: 19
+    cavityMinCells: 167
+    cavityMaxCells: 268
+    cavityTier1Cells: 268
+    chamberSeatClearance: 20
   - floorIndex: 2
     kind: 1
     scavengerDefinition: {fileID: 0}
@@ -43,3 +48,8 @@ MonoBehaviour:
     tipWidth: 2
     landingKeepClear: 10
     segmentLength: 40
+    cavityBox: 28
+    cavityMinCells: 550
+    cavityMaxCells: 600
+    cavityTier1Cells: 150
+    chamberSeatClearance: 20

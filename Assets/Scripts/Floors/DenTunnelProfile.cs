@@ -75,12 +75,14 @@ public class DenTunnelFloorEntry
            + "in Tools/sim_den_cavity.py, not chosen: a box whose RAW yield "
            + "already lands in the target band keeps the CA's own silhouette, "
            + "while one that overshoots is trimmed farthest-cell-first and comes "
-           + "out rounder the more it is cut. 22 for the occupier band and 28 "
-           + "for the excavator reserve both correct a median of ZERO cells.")]
-    [Min(8)] public int cavityBox = 22;
+           + "out rounder the more it is cut. 19 for the occupier band and 28 "
+           + "for the excavator reserve both correct a median of ZERO cells. "
+           + "The occupier was re-swept, not scaled, when its hole shrank by a "
+           + "third: scaling a box does not scale its yield linearly.")]
+    [Min(8)] public int cavityBox = 19;
 
     [Tooltip("Smallest cavity, in cells. The size clamp tops up to this.")]
-    [Min(16)] public int cavityMinCells = 250;
+    [Min(16)] public int cavityMinCells = 167;
 
     [Tooltip("Largest cavity, in cells -- the RESERVED footprint. Canon 42: the "
            + "occupier hole is 250-400 FIXED because goblins never dig; the "
@@ -88,12 +90,12 @@ public class DenTunnelFloorEntry
            + "against entry 19's SPAN budget of 16-28 cells (twice the chamber "
            + "box size), NOT against its cell count -- that comparator was wrong "
            + "and is corrected in canon.")]
-    [Min(16)] public int cavityMaxCells = 400;
+    [Min(16)] public int cavityMaxCells = 268;
 
     [Tooltip("Cells open at tier 1. Equal to cavityMaxCells for an occupier, "
            + "which opens its whole hole at once. Lower for an excavator, which "
            + "grows into its reserve -- that growth is half B and is not built.")]
-    [Min(16)] public int cavityTier1Cells = 400;
+    [Min(16)] public int cavityTier1Cells = 268;
 
     [Tooltip("Reject a den anchor within this many cells of a chamber centre. "
            + "Without it minRunCells lets a nearby chamber BE the den, which "
@@ -135,10 +137,18 @@ public class DenTunnelProfile : ScriptableObject
             runCount = 3,
             // The hole is FIXED: they never dig, so tier reads off how full it
             // is rather than how big. Tier 1 opens all of it.
-            cavityBox = 22,
-            cavityMinCells = 250,
-            cavityMaxCells = 400,
-            cavityTier1Cells = 400,
+            //
+            // SHRUNK BY A THIRD after it read too big on screen at 250-400.
+            // Cell count was scaled, NOT span: span x0.67 would have given about
+            // 145 cells, and the largest chamber RunChamberCA can produce is 133
+            // -- so the den would have been the size of an ordinary cave on its
+            // own floor and stopped reading as a den at all. At 167-268 it is
+            // 4.6x the median chamber, 1.7x the largest, and spans 17 against
+            // entry 19's budget of 16-28.
+            cavityBox = 19,
+            cavityMinCells = 167,
+            cavityMaxCells = 268,
+            cavityTier1Cells = 268,
         },
 
         // Floor index 2, radius 250 -- the kobold den. Four runs: 3.38 links
