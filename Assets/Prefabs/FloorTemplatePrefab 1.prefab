@@ -2363,8 +2363,9 @@ MonoBehaviour:
   wildMonsterPool:
   - {fileID: 11400000, guid: 1053c28e3a67f1643846b1af302737e4, type: 2}
   - {fileID: 11400000, guid: 58d52f690d9084243b56898f6f829816, type: 2}
-  wildMonsterMin: 2
-  wildMonsterMax: 6
+  - {fileID: 11400000, guid: aefaaeda293364b43b8a501bddb6644b, type: 2}
+  - {fileID: 11400000, guid: 846bfd866cde3b54c998359cdf18a751, type: 2}
+  - {fileID: 11400000, guid: 8ac96bb06d9bb5c43a6be90874037b0f, type: 2}
   wildMonsterCellDivisor: 6
   roadProfile: {fileID: 11400000, guid: e9217db15fe4c3f41b40e6787abc6019, type: 2}
   siteProfile: {fileID: 11400000, guid: 9c13ac2d3ee6b7d4392b47f93dd2900f, type: 2}
