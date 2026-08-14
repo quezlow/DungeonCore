@@ -78,6 +78,7 @@ public class DungeonSaveData
     public bool holyFirstBreakDone = false;               // one seal has been broken, so the rest are Critical (additive)
     public List<string> holyBrokenSeals = new();          // "floorIndex:siteId" already unsealed and paid out (additive)
     public List<string> dwarvenAlertedOwners = new();     // "floorIndex:ownerKey" already alerted about (additive; empty on old saves)
+    public List<string> dwarvenVillagerDead = new();      // "slot:deathDay" (additive; empty on old saves -- a village nobody has touched)
     public List<string> dwarvenPatrolDead = new();        // "patrolId:slot:deathDay" (additive; empty on old saves -- a patrol nobody has killed)
     public List<QuestProgress> wispQuestsActive = new();  // wisp urgings in progress (additive; empty on old saves)
     public List<string> wispQuestsHandedIn = new();       // wisp urgings completed (additive)

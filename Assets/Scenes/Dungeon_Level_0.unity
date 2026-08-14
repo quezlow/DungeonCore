@@ -15463,7 +15463,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999902
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16951,15 +16951,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f1dfe10506e4ca46a9fab159d743256, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DwarvenVillageController
+  villagerDefinition: {fileID: 11400000, guid: 9616cb54834a5f54eae8f8b63d489d33, type: 2}
   villagerSprites:
   - {fileID: 3295236706101327806, guid: 1ff6ef66db060074386776a1560851b4, type: 3}
   villagerCount: 12
-  sortingLayerName: Player
-  sortingOrder: 5
   clickRadius: 0.9
   walkSpeed: 1.2
   pauseSecondsMin: 4
   pauseSecondsMax: 10
+  villageStanceRadius: 40
   wanderHopCells: 6
   villageNames:
   - The Hearth of the Deep
@@ -16988,8 +16988,6 @@ MonoBehaviour:
   - {fileID: 3295236706101327806, guid: da4dd994bb54a8242880cf8e3f181a84, type: 3}
   - {fileID: 3295236706101327806, guid: 901b290db4df652469934b572e9ebbc6, type: 3}
   - {fileID: 3295236706101327806, guid: d7520995b3e13ca4e898f4548f3da48e, type: 3}
-  sortingLayerName: Player
-  sortingOrder: 5
   gateBeatHalfCells: 60
   villagePatrolCount: 2
   gateSquadSize: 1
@@ -59715,7 +59713,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9999916
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

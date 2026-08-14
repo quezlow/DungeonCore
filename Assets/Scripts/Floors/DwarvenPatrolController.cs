@@ -50,8 +50,13 @@ public class DwarvenPatrolController : MonoBehaviour
              "prefab draws itself, which is the ordinary case now that a guard " +
              "is a real body.")]
     [SerializeField] private List<Sprite> patrolSprites = new List<Sprite>();
-    [SerializeField] private string sortingLayerName = "Player";
-    [SerializeField] private int sortingOrder = 5;
+    // sortingLayerName and sortingOrder are DELETED rather than suppressed.
+    // They fed DwarfWalkerPuppet.Create, which built a bare GameObject and its
+    // own SpriteRenderer and therefore had to be told where to draw. A guard is
+    // a prefab body now and brings a renderer with its sorting already
+    // authored on it; a controller-level override would be a second source of
+    // truth for the same two values, free to disagree with the prefab and
+    // invisible when it did.
 
     [Header("Routes")]
     [Tooltip("Half-length, in centreline cells, of the gatehouse patrol's beat " +

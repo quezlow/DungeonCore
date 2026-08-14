@@ -9331,6 +9331,48 @@ bill is a fault in the player's model of the game rather than a consequence in
 it. `WispScript.asset` must be regenerated from its context menu; the failure
 mode is silent.
 
+### Villagers (SHIPPED: stage 1a-ii part 3)
+
+Villagers are bodies on the same layer the patrols ride, and this is the piece
+floor index 3's siege was blocked on: **a village whose people cannot die
+cannot fall**, and a hold that cannot be lost is scenery. Entry 19's
+"walkers, not entities" is reversed here as it was on the road.
+
+**DEFENSIVE, AND RAISED ONLY AT HOME.** A villager fights back when struck and
+otherwise ignores what walks past -- which is what keeps a hold full of unarmed
+dwarves from behaving like a garrison. While anything hostile stands INSIDE the
+village's own cells they all go to Normal TOGETHER: a people cornered in their
+own lanes turn, and they turn at once. Doing it per-body would have read as a
+bug -- eight dwarves deciding one at a time, at three cells of detection each,
+looks like a queue forming. The probe is `laneCells`, which the controller
+already built for the wander, so the footprint costs no new geometry.
+
+**THE BODIES JOIN THE EXISTING INDEX-PARALLEL LISTS rather than folding the
+file into records**, and that choice is worth its line. A destroyed body takes
+its puppet with it -- one GameObject, both components -- so `villagers[i]` goes
+null on death, and every null guard already in `WanderTick`, `HandleClick` and
+`Establish` keeps working untouched. A record refactor would have rewritten
+four methods to gain nothing.
+
+**A villager's HOME MOVES with him.** Where he last chose to stand is where his
+replacement stands tomorrow; otherwise the whole hold snaps back to its opening
+formation after one bad night, which is the sort of tell that makes a place
+read as a diorama rather than a town.
+
+**Two CS0414 warnings rolled in.** `sortingLayerName` and `sortingOrder` on both
+dwarven controllers fed `DwarfWalkerPuppet.Create`, which built a bare
+GameObject and its own renderer and so had to be told where to draw. A prefab
+body brings a renderer with its sorting already authored. DELETED rather than
+suppressed: a second copy of those two values on the controller could only ever
+disagree with the prefab, and would be invisible when it did.
+
+**Still owed: the caravan (part 4).** Its position is a pure function of the
+clock, `Lead` is `walkers[0]`, and the cart is a walker that must NOT become a
+body. A dead roster has to break none of that, and the total-wipe cooldown
+needs its number -- **20 days** proposed, about three missed journeys against a
+cycle of roughly seven, and it only ever fires on a KOBOLD wipe: a player who
+kills the column pays 3 x -25 and the tier gate stops the road anyway.
+
 **Key files:** `Monster/MonsterAllegiance.cs` (new),
 `Adventurer/FactionBodyRole.cs` (new), `Floors/DwarfWalkerPuppet.cs`
 (`SnapTo`, and the fork-5 reversal recorded in its class doc),

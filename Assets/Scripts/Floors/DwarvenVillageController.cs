@@ -14,9 +14,21 @@ using UnityEngine.InputSystem;
 /// this before ever unfogging the gatehouse), and sets a handful of villagers
 /// WALKING the lanes. No vendor: they trade at the gate, they live here.
 ///
-/// WALKERS, NOT ENTITIES (The Living Holds). Villagers are DwarfWalkerPuppets
-/// -- no pathfinding registry, no combat entity, no adventurer or monster
-/// interaction. Each waits a few seconds, hops to a nearby lane cell found by
+/// MORTAL NOW (canon 44). The Living Holds ruled villagers were walkers and
+/// not entities; floor index 3's siege reverses it, because a village whose
+/// people cannot die cannot fall, and a hold that cannot be lost is scenery.
+/// Each villager is a DungeonMonster with MonsterAllegiance.Faction and
+/// FactionBodyRole.Villager, wearing a demoted DwarfWalkerPuppet as a movement
+/// override -- the patrols' arrangement exactly.
+///
+/// DEFENSIVE, AND RAISED ONLY AT HOME. A villager fights back when struck and
+/// otherwise ignores what walks past, which is what keeps a hold full of
+/// unarmed dwarves from behaving like a garrison. While something hostile
+/// stands INSIDE the village's own cells they all go to Normal together: a
+/// people cornered in their own lanes turn, and they turn at once. The probe
+/// is laneCells, which this controller already owns -- no new geometry.
+///
+/// The walk is unchanged. Each waits a few seconds, hops to a nearby lane cell found by
 /// a bounded BFS INSIDE the site's own cells (so nobody strays onto the
 /// carriageway or into the rock -- the candidate rule that placed them picks
 /// every destination too), and waits again. Night stills the lanes: walkers
@@ -41,16 +53,20 @@ public class DwarvenVillageController : MonoBehaviour
     public static DwarvenVillageController Instance { get; private set; }
 
     [Header("Villagers")]
-    [Tooltip("Optional. The dwarves who walk the lanes -- any number of " +
-             "variants. Assignment is a seeded round-robin over a shuffled " +
-             "copy, so counts stay as even as the list allows. Leave empty " +
-             "and the village still establishes -- nobody is drawn yet.")]
+    [Tooltip("The villager body. Its PREFAB carries the stats -- a " +
+             "DungeonMonster with NO LootTable component, which is what " +
+             "enforces canon 44's no-loot rule. Leave unassigned and the " +
+             "village still establishes with nobody drawn, exactly as an " +
+             "empty sprite list used to do.")]
+    [SerializeField] private MonsterDefinition villagerDefinition;
     [SerializeField] private List<Sprite> villagerSprites = new List<Sprite>();
     [Tooltip("How many villagers walk the lanes. Eight since The Living " +
              "Holds -- they earn the head-count by moving.")]
     [SerializeField, Min(0)] private int villagerCount = 8;
-    [SerializeField] private string sortingLayerName = "Player";
-    [SerializeField] private int sortingOrder = 5;
+    // sortingLayerName and sortingOrder deleted with the same reasoning as on
+    // DwarvenPatrolController: a prefab body brings its own renderer and its
+    // own sorting, and a second copy of those two values on the controller
+    // could only ever disagree with it.
     [SerializeField, Min(0.1f)] private float clickRadius = 0.9f;
 
     [Header("Walking (The Living Holds)")]
@@ -60,6 +76,11 @@ public class DwarvenVillageController : MonoBehaviour
     [Tooltip("Seconds a villager stands between hops (min..max, rolled).")]
     [SerializeField, Min(0.5f)] private float pauseSecondsMin = 4f;
     [SerializeField, Min(0.5f)] private float pauseSecondsMax = 10f;
+    [Tooltip("World radius the hold scans for intruders in its own lanes. " +
+             "Generous on purpose: the probe that decides is laneCells, and " +
+             "this only has to be wide enough to catch the whole footprint " +
+             "from one villager's doorstep.")]
+    [SerializeField, Min(4f)] private float villageStanceRadius = 40f;
     [Tooltip("Chebyshev radius, in cells, of one wander hop.")]
     [SerializeField, Min(1)] private int wanderHopCells = 6;
 
@@ -87,9 +108,25 @@ public class DwarvenVillageController : MonoBehaviour
     private float nextPoll;
     private readonly List<DwarfWalkerPuppet> villagers = new List<DwarfWalkerPuppet>();
 
-    // Wander bookkeeping, index-parallel with villagers.
+    // Wander bookkeeping, index-parallel with villagers. The bodies join the
+    // SAME index-parallel idiom rather than folding everything into a record:
+    // a destroyed body takes its puppet with it (one GameObject, both
+    // components), so villagers[i] goes null on death and every null guard
+    // already in this file keeps working untouched.
+    private readonly List<DungeonMonster> bodies = new List<DungeonMonster>();
+    private readonly List<Vector3Int> homeCells = new List<Vector3Int>();
+    private readonly List<int> deathDays = new List<int>();   // -1 alive
     private readonly List<float> wanderAt = new List<float>();
     private readonly List<bool> waiting = new List<bool>();
+    private readonly List<DungeonMonster> hostileBuf = new List<DungeonMonster>();
+    private FloorRoot villageFloor;
+    private float stanceCheckAt;
+    private bool cornered;
+    private bool dawnSubscribed;
+
+    // The ledger, static so a load can restore it before the village has been
+    // established -- the poll can be many seconds behind the load path.
+    private static readonly Dictionary<int, int> deadVillagers = new Dictionary<int, int>();
     private readonly HashSet<Vector3Int> laneCells = new HashSet<Vector3Int>();
     private readonly List<Vector3Int> laneCandidates = new List<Vector3Int>();
     private TileInfluenceManager villageInfluence;
@@ -111,6 +148,8 @@ public class DwarvenVillageController : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (dawnSubscribed && DayNightCycle.Instance != null)
+            DayNightCycle.Instance.OnDayStarted -= HandleDayStarted;
         if (Instance == this) Instance = null;
     }
 
@@ -123,7 +162,13 @@ public class DwarvenVillageController : MonoBehaviour
             TryEstablish();
             return;
         }
+        if (!dawnSubscribed && DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted += HandleDayStarted;
+            dawnSubscribed = true;
+        }
         HandleClick();
+        StanceTick();
         WanderTick();
     }
 
@@ -172,9 +217,13 @@ public class DwarvenVillageController : MonoBehaviour
 
         PlaceVillagers(floor, site, rng);
 
-        Vector3 at = villagers.Count > 0
-            ? villagers[0].transform.position
-            : new Vector3(0f, floor.WorldOriginY, 0f);
+        // The FIRST LIVE villager, not villagers[0]. Slot 0 can be a corpse
+        // before this line ever runs: the dead are restored from the save
+        // before the village establishes, so a player who killed one dwarf and
+        // reloaded would have dereferenced a null here on the discovery alert.
+        Vector3 at = new Vector3(0f, floor.WorldOriginY, 0f);
+        foreach (var v in villagers)
+            if (v != null) { at = v.transform.position; break; }
 
         AlertsLog.Instance?.AddAlert(
             "Hearthsmoke in the deep - " + VillageName + " still stands.",
@@ -209,7 +258,12 @@ public class DwarvenVillageController : MonoBehaviour
         if (villagerSprites != null)
             foreach (var s in villagerSprites)
                 if (s != null) deck.Add(s);
-        if (deck.Count == 0) return;
+        // The DEFINITION is what the village now needs; the sprite list became
+        // an optional override the day a villager started bringing its own
+        // renderer. Dormant without a body: an invisible villager who can be
+        // killed for -15 standing is worse than no villager.
+        if (villagerDefinition == null || villagerDefinition.prefab == null) return;
+        villageFloor = floor;
         for (int i = deck.Count - 1; i > 0; i--)
         {
             int j = rng.Next(i + 1);
@@ -246,17 +300,139 @@ public class DwarvenVillageController : MonoBehaviour
             }
             taken.Add(pick);
 
-            var puppet = DwarfWalkerPuppet.Create("DwarvenVillager" + (i + 1),
-                deck[i % deck.Count], sortingLayerName, sortingOrder,
-                influence.CellToWorld(pick));
-            puppet.Speed = walkSpeed;
-            villagers.Add(puppet);
+            villagers.Add(null);
+            bodies.Add(null);
+            homeCells.Add(pick);
+            deathDays.Add(-1);
             waiting.Add(true);
+            if (deadVillagers.TryGetValue(i, out int fellOn))
+                deathDays[i] = fellOn;          // still lying where they fell
+            else
+                RaiseVillager(i, deck);
             // Staggered first hops, or the whole hold sets off in lockstep on
             // the same frame -- which reads as a cutscene, not a town.
             wanderAt.Add(Time.time + Random.Range(pauseSecondsMin, pauseSecondsMax));
         }
     }
+
+    /// <summary>Stand one villager up on their home cell.</summary>
+    private void RaiseVillager(int i, List<Sprite> deck)
+    {
+        if (villagerDefinition == null || villagerDefinition.prefab == null) return;
+        if (villageFloor == null || villageInfluence == null) return;
+
+        Vector3 at = villageInfluence.CellToWorld(homeCells[i]);
+        var monster = Instantiate(villagerDefinition.prefab, at, Quaternion.identity);
+        monster.transform.SetParent(villageFloor.transform, true);
+        monster.name = "DwarvenVillager" + (i + 1);
+        // DEFENSIVE, not Normal. A hold full of unarmed dwarves that drew on
+        // everything within three cells would be a garrison, and the Holds keep
+        // their soldiers on the road for a reason.
+        monster.InitialiseAsFactionBody(villageFloor, villagerDefinition,
+            FactionId.Dwarves, FactionBodyRole.Villager, MonsterAggression.Defensive);
+
+        var puppet = DwarfWalkerPuppet.AttachTo(monster.gameObject);
+        puppet.Speed = walkSpeed;
+        if (deck != null && deck.Count > 0) puppet.SetSprite(deck[i % deck.Count]);
+
+        villagers[i] = puppet;
+        bodies[i] = monster;
+        deathDays[i] = -1;
+        int slot = i;
+        monster.OnDied += _ => HandleVillagerDied(slot);
+    }
+
+    private void HandleVillagerDied(int i)
+    {
+        int today = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        deathDays[i] = today;
+        deadVillagers[i] = today;
+        bool ours = bodies[i] != null && bodies[i].DungeonDealtDamage;
+        bodies[i] = null;
+        villagers[i] = null;
+        if (ours) WispCompanion.Instance?.Speak("dwarf_slain_first");
+    }
+
+    /// <summary>Losses made good overnight, never during the day -- the
+    /// patrols' rhythm and the den's, for the same reason.</summary>
+    private void HandleDayStarted()
+    {
+        int today = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        var deck = new List<Sprite>();
+        if (villagerSprites != null)
+            foreach (var s in villagerSprites) if (s != null) deck.Add(s);
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            if (bodies[i] != null || deathDays[i] < 0) continue;
+            if (deathDays[i] >= today) continue;   // fell today; tomorrow, not tonight
+            deadVillagers.Remove(i);
+            RaiseVillager(i, deck);
+            wanderAt[i] = Time.time + Random.Range(pauseSecondsMin, pauseSecondsMax);
+            waiting[i] = true;
+        }
+    }
+
+    /// <summary>Raise the whole hold to Normal while anything hostile stands in
+    /// its lanes, and drop it back when the lanes are clear.
+    ///
+    /// ALL TOGETHER RATHER THAN INDIVIDUALLY, because a people cornered in
+    /// their own streets turn at once and because the alternative reads as a
+    /// bug: eight dwarves deciding one at a time, at three cells each, looks
+    /// like a queue forming. The probe is laneCells -- the site's own cells,
+    /// already built for the wander -- so the footprint costs no new
+    /// geometry.</summary>
+    private void StanceTick()
+    {
+        if (Time.time < stanceCheckAt) return;
+        stanceCheckAt = Time.time + 0.5f;
+        if (villageFloor?.Entities == null || villageInfluence == null) return;
+
+        bool anyInside = false;
+        villageFloor.Entities.WithinRadius(
+            villageInfluence.CellToWorld(homeCells.Count > 0 ? homeCells[0] : Vector3Int.zero),
+            villageStanceRadius, hostileBuf);
+        foreach (var m in hostileBuf)
+        {
+            if (m == null || m.Allegiance == MonsterAllegiance.Faction) continue;
+            if (!laneCells.Contains(villageInfluence.WorldToCell(m.transform.position))) continue;
+            anyInside = true;
+            break;
+        }
+
+        if (anyInside == cornered) return;
+        cornered = anyInside;
+        foreach (var b in bodies)
+            if (b != null)
+                b.SetAggressionOverride(cornered
+                    ? MonsterAggression.Normal : MonsterAggression.Defensive);
+    }
+
+    // -- Persistence -----------------------------------------------------------
+
+    /// <summary>The dead, for the save: "slot:deathDay".</summary>
+    public static List<string> DeadForSave()
+    {
+        var list = new List<string>();
+        foreach (var kv in deadVillagers) list.Add(kv.Key + ":" + kv.Value);
+        return list;
+    }
+
+    public static void RestoreDeadFromSave(List<string> saved)
+    {
+        deadVillagers.Clear();
+        if (saved == null) return;
+        foreach (var entry in saved)
+        {
+            if (string.IsNullOrEmpty(entry)) continue;
+            var parts = entry.Split(':');
+            if (parts.Length != 2) continue;
+            if (!int.TryParse(parts[0], out int slot)) continue;
+            if (!int.TryParse(parts[1], out int day)) continue;
+            deadVillagers[slot] = day;
+        }
+    }
+
+    public static void ResetForNewGame() => deadVillagers.Clear();
 
     // -- The wander (The Living Holds) ---------------------------------------
 
@@ -270,6 +446,26 @@ public class DwarvenVillageController : MonoBehaviour
         {
             var v = villagers[i];
             if (v == null) continue;
+
+            // Combat has the body: this controller must not touch it at all
+            // until it is handed back, and then the walker adopts wherever the
+            // fight left it rather than resuming a path from a cell it no
+            // longer stands on. Same contract the patrols keep.
+            var body = bodies[i];
+            if (body != null && body.CombatHoldsBody)
+            {
+                v.Suspended = true;
+                continue;
+            }
+            if (v.Suspended)
+            {
+                v.Suspended = false;
+                if (body != null) v.SnapTo(body.transform.position);
+                waiting[i] = true;
+                wanderAt[i] = Time.time + Random.Range(pauseSecondsMin, pauseSecondsMax);
+                continue;
+            }
+
             v.Frozen = night;
             if (night) continue;
 
@@ -303,6 +499,11 @@ public class DwarvenVillageController : MonoBehaviour
 
             var path = BfsPath(from, target);
             if (path == null) continue;
+            // Where a villager last chose to stand is where his replacement
+            // stands tomorrow. Without this the whole hold would drift back to
+            // its opening formation after one bad night, which is the sort of
+            // tell that makes a place read as a diorama.
+            RememberHome(v, target);
 
             var world = new List<Vector3>(path.Count);
             foreach (var c in path) world.Add(villageInfluence.CellToWorld(c));
@@ -310,6 +511,14 @@ public class DwarvenVillageController : MonoBehaviour
             return true;
         }
         return false;
+    }
+
+    /// <summary>Record a villager's chosen destination as their new home cell,
+    /// matched by identity against the index-parallel lists.</summary>
+    private void RememberHome(DwarfWalkerPuppet v, Vector3Int cell)
+    {
+        for (int i = 0; i < villagers.Count; i++)
+            if (ReferenceEquals(villagers[i], v)) { homeCells[i] = cell; return; }
     }
 
     /// <summary>4-neighbour BFS inside laneCells, capped at 200 expansions --

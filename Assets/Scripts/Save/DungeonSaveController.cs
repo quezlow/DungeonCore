@@ -213,6 +213,7 @@ public class DungeonSaveController : MonoBehaviour
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
         DwarvenPatrolController.ResetForNewGame();       // fresh dungeon, every guard on his feet
+        DwarvenVillageController.ResetForNewGame();      // fresh dungeon, every villager likewise
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
         WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
         DivineAudienceLedger.ResetForNewGame();          // fresh dungeon, the gods attend again
@@ -345,6 +346,7 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.dwarvenPressureWarned = DwarvenClaimLedger.PressureWarned;
         currentSave.dwarvenAlertedOwners = DwarvenClaimLedger.AlertedOwnersForSave();
         currentSave.dwarvenPatrolDead = DwarvenPatrolController.DeadForSave();
+        currentSave.dwarvenVillagerDead = DwarvenVillageController.DeadForSave();
         currentSave.holyTouchMurmured = HolyGroundLedger.TouchMurmured;
         currentSave.holyFirstBreakDone = HolyGroundLedger.FirstBreakDone;
         currentSave.holyBrokenSeals = HolyGroundLedger.BrokenSealsForSave();
@@ -891,6 +893,7 @@ public class DungeonSaveController : MonoBehaviour
                                                currentSave.dwarvenPressureWarned,
                                                currentSave.dwarvenAlertedOwners);
             DwarvenPatrolController.RestoreDeadFromSave(currentSave.dwarvenPatrolDead);
+            DwarvenVillageController.RestoreDeadFromSave(currentSave.dwarvenVillagerDead);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);
