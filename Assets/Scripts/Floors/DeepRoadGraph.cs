@@ -168,11 +168,21 @@ public static class DeepRoadGraph
     /// well under a millisecond on floor index 3's eight rails.</summary>
     public static bool NearestWalkCell(Graph g, Vector3Int near,
         out int railIndex, out int cellIndex)
+        => NearestWalkCell(g, near, null, out railIndex, out cellIndex);
+
+    /// <summary>The same search, restricted to the rails a caller will accept.
+    /// One implementation rather than two, because the unfiltered form is this
+    /// one with a null filter -- a second copy of a nearest-cell loop is a
+    /// second copy free to disagree.</summary>
+    public static bool NearestWalkCell(Graph g, Vector3Int near,
+        System.Func<Rail, bool> admit, out int railIndex, out int cellIndex)
     {
         railIndex = -1; cellIndex = -1;
+        if (g == null) return false;
         long best = long.MaxValue;
         for (int r = 0; r < g.rails.Count; r++)
         {
+            if (admit != null && !admit(g.rails[r])) continue;
             var walk = g.rails[r].walk;
             for (int i = 0; i < walk.Count; i++)
             {
@@ -183,6 +193,119 @@ public static class DeepRoadGraph
         }
         return railIndex >= 0;
     }
+
+    /// <summary>WHERE A PATROL STANDS UP, and it is deliberately NOT simply the
+    /// nearest walk cell.
+    ///
+    /// Measured, 300 seeds of floor index 2: the rail nearest the outpost's own
+    /// anchor was a LANE on 199 and a SPUR on 101, and the TRUNK on NONE of
+    /// them. A Lane paints no carriageway at all -- RebuildRoadCells skips it
+    /// before any id is drawn -- and the outpost's approach spur is a doorway,
+    /// so plain proximity seated the guard of a road on everything except the
+    /// road. The preference is therefore GRADED rather than binary: excluding
+    /// Lane alone would still have left a third of seeds pacing a doorway.
+    ///
+    /// It degrades rather than fails, on SiteAnchor's own precedent, so a floor
+    /// whose roads are all spurs still seats a patrol somewhere.</summary>
+    public static bool SeatPatrol(Graph g, Vector3Int near,
+        out int railIndex, out int cellIndex)
+    {
+        if (NearestWalkCell(g, near, r => r.road != null && r.road.kind == RoadKind.Trunk,
+                            out railIndex, out cellIndex)) return true;
+        if (NearestWalkCell(g, near, r => r.road != null && r.road.kind != RoadKind.Lane,
+                            out railIndex, out cellIndex)) return true;
+        return NearestWalkCell(g, near, null, out railIndex, out cellIndex);
+    }
+
+    /// <summary>A patrol's BEAT: every walk cell reachable within `radiusCells`
+    /// STEPS of a seat, over the network rather than through the rock.
+    ///
+    /// GRAPH DISTANCE, NOT EUCLIDEAN, and that is the whole of the argument. A
+    /// straight-line ball counts a cell a few world-cells away that is three
+    /// hundred walk cells around the network, which a squad can never reach
+    /// inside its beat -- so a coverage figure taken off one would be a lie in
+    /// the direction that flatters it.
+    ///
+    /// AN INDEX WINDOW ON ONE RAIL CANNOT DO THIS JOB, which is what it was
+    /// doing before. AncientSiteBuilder.SplitChordsForSites chops the trunk
+    /// wherever it seats a site, so a beat bounded by index is bounded by an
+    /// artefact of site placement: prototyped over 2000 synthesised floor-2
+    /// graphs, an authored +/-60 delivered a mean of 40 cells that way against
+    /// 132 as a graph ball.
+    ///
+    /// LANES ARE ADMITTED AS TRANSIT, and the measurement is why. A laned site
+    /// is threaded gate-to-gate by a Lane, so excluding Lane rails DISCONNECTS
+    /// the two halves of the trunk at exactly the site the gate guard exists
+    /// for: coverage of the trunk fell to 13.6 per cent for a laned outpost
+    /// against 26.3 for a spur-seated one, purely because the site pass had
+    /// threaded the road through the building. Admitting the lane evens them at
+    /// 25.7 and 29.7. The guard walks through his own gatehouse, which is what
+    /// a gatehouse on a road is for.</summary>
+    public static HashSet<long> BeatSet(Graph g, int railIndex, int cellIndex,
+                                        int radiusCells)
+    {
+        var set = new HashSet<long>();
+        if (g == null || railIndex < 0 || railIndex >= g.rails.Count) return set;
+        if (cellIndex < 0 || cellIndex >= g.rails[railIndex].walk.Count) return set;
+        if (radiusCells < 0) return set;
+
+        var dist = new Dictionary<long, int>();
+        var queue = new Queue<long>();
+        long seed = BeatKey(railIndex, cellIndex);
+        dist[seed] = 0;
+        set.Add(seed);
+        queue.Enqueue(seed);
+
+        while (queue.Count > 0)
+        {
+            long cur = queue.Dequeue();
+            int d = dist[cur];
+            if (d >= radiusCells) continue;
+            int r = (int)(cur >> 32);
+            int i = (int)(cur & 0xFFFFFFFFL);
+            var rail = g.rails[r];
+
+            if (i > 0) BeatVisit(set, dist, queue, BeatKey(r, i - 1), d + 1);
+            if (i < rail.walk.Count - 1)
+                BeatVisit(set, dist, queue, BeatKey(r, i + 1), d + 1);
+
+            // A rail END steps to every other rail sharing that node cluster,
+            // entering at that rail's near end. Route() already stitches across
+            // the few cells a cluster can span, so the hop costs one step.
+            if (i == 0) BeatHop(g, set, dist, queue, rail.nodeStart, r, d + 1);
+            if (i == rail.walk.Count - 1)
+                BeatHop(g, set, dist, queue, rail.nodeEnd, r, d + 1);
+        }
+        return set;
+    }
+
+    private static void BeatVisit(HashSet<long> set, Dictionary<long, int> dist,
+                                  Queue<long> queue, long key, int d)
+    {
+        if (dist.ContainsKey(key)) return;
+        dist[key] = d;
+        set.Add(key);
+        queue.Enqueue(key);
+    }
+
+    private static void BeatHop(Graph g, HashSet<long> set, Dictionary<long, int> dist,
+                                Queue<long> queue, int node, int fromRail, int d)
+    {
+        if (node < 0 || node >= g.adjacency.Count) return;
+        foreach (var opt in g.adjacency[node])
+        {
+            if (opt.rail == fromRail) continue;
+            var other = g.rails[opt.rail];
+            if (other.walk.Count == 0) continue;
+            BeatVisit(set, dist, queue,
+                      BeatKey(opt.rail, opt.atStart ? 0 : other.walk.Count - 1), d);
+        }
+    }
+
+    /// <summary>Rail and cell index packed into one key. Indices are never
+    /// negative, so the low word is unsigned and the pack is exact.</summary>
+    public static long BeatKey(int railIndex, int cellIndex)
+        => ((long)railIndex << 32) | (uint)cellIndex;
 
     /// <summary>
     /// Ordered walkable cells from one on-road point to another, along the

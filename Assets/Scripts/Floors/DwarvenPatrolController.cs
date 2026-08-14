@@ -31,6 +31,17 @@ using UnityEngine;
 /// who did the killing. A den that grinds a patrol down and a player who clears
 /// it buy the same thing: one day of quiet road. What separates them is the
 /// standing bill, which only the player ever pays.
+///
+/// THE GATE BEAT IS A SET OF CELLS, NOT A WINDOW OF INDICES, and it had to
+/// become one. Measured over 300 seeds of floor index 2, the rail nearest the
+/// outpost anchor was a LANE on 199 and a SPUR on 101 and the TRUNK on NONE, so
+/// the squad guarding the road paced a gatehouse it never left -- the authored
+/// +/-60 clamped to a mean rail of nineteen cells and gateBeatHalfCells was
+/// inert. Two things fix it and both are load-bearing: the seat is GRADED
+/// (DeepRoadGraph.SeatPatrol prefers the trunk), and the bound is a
+/// GRAPH-DISTANCE ball (DeepRoadGraph.BeatSet) rather than an index range on
+/// one rail, because AncientSiteBuilder chops the trunk wherever it seats a
+/// site and an index-bounded beat is therefore bounded by site placement.
 /// </summary>
 public class DwarvenPatrolController : MonoBehaviour
 {
@@ -59,8 +70,12 @@ public class DwarvenPatrolController : MonoBehaviour
     // invisible when it did.
 
     [Header("Routes")]
-    [Tooltip("Half-length, in centreline cells, of the gatehouse patrol's beat " +
-             "either side of the outpost.")]
+    [Tooltip("Radius of the gatehouse patrol's beat, in STEPS THROUGH THE ROAD " +
+             "NETWORK from its seat -- not cells along one rail. The site pass " +
+             "splits the trunk wherever it seats a site, so an index range is " +
+             "bounded by site placement rather than by this number: prototyped " +
+             "over 2000 floor-2 graphs, 60 delivered a mean of 40 cells as an " +
+             "index window against 132 as a graph ball.")]
     [SerializeField, Min(10)] private int gateBeatHalfCells = 60;
     [SerializeField, Min(0)] private int villagePatrolCount = 2;
     [Tooltip("Bodies in the gatehouse beat. ONE, deliberately: a lone 100 HP " +
@@ -103,8 +118,14 @@ public class DwarvenPatrolController : MonoBehaviour
         public DeepRoadGraph.Graph graph;
         public readonly List<Body> bodies = new List<Body>();
         public int rail, index, direction;      // walk-cell cursor for the SQUAD
-        public int homeRail, homeIndex;
-        public int beatMin = -1, beatMax = -1;  // gatehouse beat window, or -1
+        // The beat, as the cells it contains. NULL on a roaming squad, and
+        // `bounded` says which rather than leaving an empty set to mean both --
+        // "not filled in" and "everywhere" must never look alike.
+        public HashSet<long> beat;
+        public bool bounded;
+        // homeRail and homeIndex were DELETED here. They were assigned at three
+        // sites and read at none since the class was written; the beat set is
+        // the only job they could have had, and it takes its seat directly.
         public float pauseUntil;
         public float scanAt;
         public float stepProgress;
@@ -270,10 +291,24 @@ public class DwarvenPatrolController : MonoBehaviour
 
         var graph = DeepRoadGraph.Build(floor.FeatureGenerator.FeatureData.roads);
         if (graph.rails.Count == 0) return true;   // a roadless outpost patrols nowhere
-        if (!DeepRoadGraph.NearestWalkCell(graph, site.anchorCell.ToVector3Int(),
+        // SeatPatrol rather than NearestWalkCell: the nearest rail to this
+        // anchor is the outpost's own lane or approach spur on every seed
+        // measured, and neither is the road the guard is there to guard.
+        if (!DeepRoadGraph.SeatPatrol(graph, site.anchorCell.ToVector3Int(),
                 out int rail, out int index)) return true;
 
-        int count = graph.rails[rail].walk.Count;
+        var beat = DeepRoadGraph.BeatSet(graph, rail, index, gateBeatHalfCells);
+        if (beat.Count <= 1)
+        {
+            // A beat of one cell is a squad standing still, which is the fault
+            // this replaced wearing different clothes. Say so and let it roam
+            // rather than pinning it silently.
+            Debug.LogWarning("[DwarvenPatrol] Gate beat resolved to " + beat.Count
+                           + " cell(s); the squad will roam instead. Check the "
+                           + "outpost's road graph.");
+            beat = null;
+        }
+
         var gate = new Patrol
         {
             id = 0,
@@ -282,10 +317,8 @@ public class DwarvenPatrolController : MonoBehaviour
             rail = rail,
             index = index,
             direction = 1,
-            homeRail = rail,
-            homeIndex = index,
-            beatMin = Mathf.Max(0, index - gateBeatHalfCells),
-            beatMax = Mathf.Min(count - 1, index + gateBeatHalfCells),
+            beat = beat,
+            bounded = beat != null,
         };
         BuildSquad(gate, gateSquadSize);
         patrols.Add(gate);
@@ -300,8 +333,6 @@ public class DwarvenPatrolController : MonoBehaviour
             rail = rail,
             index = index,
             direction = -1,          // sets off the other way from the gate beat
-            homeRail = rail,
-            homeIndex = index,
         };
         BuildSquad(road, roadSquadSize);
         patrols.Add(road);
@@ -329,8 +360,6 @@ public class DwarvenPatrolController : MonoBehaviour
                 rail = homeRail,
                 index = homeIndex,
                 direction = i % 2 == 0 ? 1 : -1,   // the pair sets off opposite ways
-                homeRail = homeRail,
-                homeIndex = homeIndex,
             };
             BuildSquad(p, 1);
             patrols.Add(p);
@@ -546,16 +575,28 @@ public class DwarvenPatrolController : MonoBehaviour
         var rail = p.graph.rails[p.rail];
         int next = p.index + p.direction;
 
-        int lo = p.beatMin >= 0 ? p.beatMin : 0;
-        int hi = p.beatMax >= 0 ? p.beatMax : rail.walk.Count - 1;
+        bool atRailEnd = next < 0 || next > rail.walk.Count - 1;
 
-        if (next < lo || next > hi)
+        // THE BEAT IS TESTED ONLY FROM INSIDE IT, which is StandsOnTakenGround's
+        // rule a few lines below arriving a second time for the same reason: a
+        // squad a fight has dragged off its beat must be able to walk back, and
+        // a test that fired wherever it stood would turn it on every step and
+        // jitter it in place. Leaving the beat is blocked; being outside one is
+        // not a trap.
+        bool onBeat = p.bounded
+                   && p.beat.Contains(DeepRoadGraph.BeatKey(p.rail, p.index));
+        bool leavesBeat = onBeat && !atRailEnd
+                       && !p.beat.Contains(DeepRoadGraph.BeatKey(p.rail, next));
+
+        if (atRailEnd || leavesBeat)
         {
-            bool atRailEnd = next < 0 || next > rail.walk.Count - 1;
             bool brokenHere = atRailEnd && RoadStopsDead(rail, next > 0);
 
-            if (atRailEnd && !brokenHere && p.beatMin < 0
-                && TryTurnAtJunction(p, next > 0)) return;
+            // A bounded squad MAY cross a junction now. It is held by the beat
+            // set on the far side instead, so its range stops being an accident
+            // of where the site pass happened to cut the trunk.
+            if (atRailEnd && !brokenHere
+                && TryTurnAtJunction(p, next > 0, onBeat)) return;
 
             // The beat: stop, look at where the road stops, turn back.
             p.pauseUntil = Time.time
@@ -625,8 +666,13 @@ public class DwarvenPatrolController : MonoBehaviour
     }
 
     /// <summary>At a junction, continue onto a connected rail, avoiding an
-    /// immediate about-face when the junction offers anywhere else to go.</summary>
-    private bool TryTurnAtJunction(Patrol p, bool leavingByEnd)
+    /// immediate about-face when the junction offers anywhere else to go.
+    ///
+    /// keepToBeat filters the options to rails a bounded squad may enter. It is
+    /// passed FALSE when the squad is already off its beat, so a guard a fight
+    /// carried away can find his way back rather than being refused at the one
+    /// junction that would return him.</summary>
+    private bool TryTurnAtJunction(Patrol p, bool leavingByEnd, bool keepToBeat)
     {
         var rail = p.graph.rails[p.rail];
         int node = leavingByEnd ? rail.nodeEnd : rail.nodeStart;
@@ -634,7 +680,17 @@ public class DwarvenPatrolController : MonoBehaviour
 
         var options = new List<(int rail, bool atStart)>();
         foreach (var opt in p.graph.adjacency[node])
-            if (opt.rail != p.rail) options.Add(opt);
+        {
+            if (opt.rail == p.rail) continue;
+            var other = p.graph.rails[opt.rail];
+            if (other.walk.Count == 0) continue;
+            if (keepToBeat)
+            {
+                int entry = opt.atStart ? 0 : other.walk.Count - 1;
+                if (!p.beat.Contains(DeepRoadGraph.BeatKey(opt.rail, entry))) continue;
+            }
+            options.Add(opt);
+        }
         if (options.Count == 0) return false;
 
         var pick = options[Random.Range(0, options.Count)];

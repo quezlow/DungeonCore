@@ -9063,7 +9063,11 @@ so, so it was extended before the number was acted on.
   so `gateBeatHalfCells = 60` is inert. `SpawnOutpostPatrols` takes
   `NearestWalkCell` across the WHOLE graph, and the outpost's lane or approach
   spur is always nearer to its anchor than the trunk is. A patrol fault, not a
-  den one, and owed separately.
+  den one, and owed separately. **DISCHARGED -- see entry 44, "The gate squad's
+  beat".** The re-run sharpened it before it was fixed: the trunk was the gate
+  rail on ZERO of 300 seeds, not merely seldom, and a SPUR carried the other
+  101, so excluding the lane alone would have left a third of them pacing a
+  doorway.
 - **The dig spent 1254 cells of a 2400 cap over 200 days**, where the available
   rock at the shipped rates is five to six thousand and the sim has the cap
   binding by d104. **A dig that stalls looks exactly like a dig that is slow** --
@@ -9244,10 +9248,23 @@ that had a 56 per cent chance of never digging at all:
   `FloorEntityRegistry`, no HP, no `IMonsterTarget`, no collider -- and villagers,
   patrols and the caravan all ride it. Kobold-versus-dwarf combat means promoting
   dwarves to combat entities, which reverses a locked Living Holds fork, so it is
-  its own arc. A cheap substitute was proposed and NOT ruled on: a dig reaching
+  its own arc. ~~A cheap substitute was proposed and NOT ruled on: a dig reaching
   the trunk road drives `DwarvenPatrolController`'s existing
   `withdrawing`/`watchRadius`/`clearRadius` choreography plus a wisp line, with no
-  puppet needing a health bar.
+  puppet needing a health bar.~~
+
+  **BOTH HALVES OF THAT BULLET ARE STALE AND ARE STRUCK RATHER THAN DELETED,
+  because the reason each went stale is the useful record.** First, the
+  promotion it calls "its own arc" HAS HAPPENED: entry 44 stage 1a-ii shipped
+  patrols, villagers and caravan members as `DungeonMonster` bodies, so dwarves
+  are already mortal and the Living Holds fork is already reversed. Second, the
+  cheap substitute names machinery that no longer exists -- `withdrawing` and
+  `clearRadius` were DELETED with the withdrawal in stage 1a-ii part 2, because
+  a patrol that can fight has no reason to retreat from the Holy Order. Only
+  `watchRadius` survives, and a substitute built on that alone is the
+  halt-and-look a patrol already does. **A proposal that names deleted
+  machinery reads as ready to build and is not**, which is why this is struck
+  where a later session would otherwise cost a round trip discovering it.
 
 - ~~**`BuriedRemainsController` persistence is dead code.**~~ **RULED ON AND
   WIRED in stage 2a: all four methods have callers, and the dig is what made
@@ -9712,13 +9729,124 @@ unregisters from the floor registry, so nothing is left behind for
 
 **Stage 1 is complete: the mortal layer has all five consumers** -- patrols,
 villagers, caravan members, and the two it was built for, surface villagers and
-floor index 3's siege, which now need no new substrate. Stage 2 is the road
+floor index 3's siege, which now need no new substrate. ~~Stage 2 is the road
 breach, and it remains gated on the unmeasured breach rate: the gatehouse beat
 covers about 120 walk cells of a floor carrying three rim trunks and four
 spurs, so the question is not only whether a dig meets the road but whether it
-meets it where anyone is standing.
+meets it where anyone is standing.~~ **STRUCK ON BOTH COUNTS.** The gate is
+DISCHARGED -- entry 42's road-breach section measures the beat as available on
+52.0 per cent of seeds against a 15 per cent rule. And the road geometry is
+wrong: floor index 2 is `RoadMode.Trunk`, ONE rim-to-rim chord, and the
+`rimTrunkCount 3` and `brokenSpurCount 4` sitting in its profile entry are
+`Network`-mode fields and INERT. What junctions the floor has, the SITE PASS
+cut. The question the sentence asks was the right one and is answered below.
 
-**Key files:** `Monster/MonsterAllegiance.cs` (new),
+### The gate squad's beat (SHIPPED)
+
+Status: SHIPPED. Entry 42's gate section recorded this as a patrol fault owed
+separately; this is it. **THE GUARD OF A ROAD NEVER WALKED THE ROAD**, on every
+seed measured, and no one would have found it by playing -- a guard pacing a
+gatehouse looks exactly like a guard on a short beat.
+
+**WHAT WAS WRONG.** `SpawnOutpostPatrols` seated both squads with
+`NearestWalkCell` across the whole graph, and the outpost's own Lane or
+approach spur is always nearer to its anchor than the trunk is. Measured, 300
+seeds of floor index 2: **LANE 199, SPUR 101, TRUNK 0**, mean rail 19 walk
+cells against an authored `gateBeatHalfCells` of 60 -- so `beatMin`/`beatMax`
+clamped to the whole of a nineteen-cell rail and the authored beat was inert.
+`Road Breach Report`'s beat column read **0.0 per cent** in consequence: the
+dig met the road on 52.0 per cent of seeds and never once met it where anyone
+was standing.
+
+**TWO CHANGES, AND BOTH ARE LOAD-BEARING.** Either alone leaves half the fault.
+
+1. **The seat is GRADED** -- `DeepRoadGraph.SeatPatrol` prefers the nearest
+   `Trunk` rail, then the nearest rail that paints carriageway, then anything.
+   Graded rather than binary because a Lane paints nothing but a SPUR does, and
+   a spur is a doorway: excluding Lane alone would still have seated a third of
+   seeds on an approach.
+2. **The bound is a GRAPH-DISTANCE BEAT SET** -- `DeepRoadGraph.BeatSet` walks
+   the network out to `gateBeatHalfCells` steps and returns the cells. An index
+   window cannot do this job, because `AncientSiteBuilder.SplitChordsForSites`
+   chops the trunk wherever it seats a site, so a beat bounded by index is
+   bounded by an artefact of site placement.
+
+**PROTOTYPED BEFORE THE C#, over 2000 synthesised floor-2 graphs built from the
+report's own measured shape** (439 mean walk cells, 19-cell gate rail, the
+199:101 lane-to-spur split). The prototype reproduces the fault exactly -- 0.0
+per cent coverage, 0.0 per cent trunk occupancy, 2000 of 2000 dens never
+reaching the trunk -- which is what makes the rest of its table worth reading:
+
+| rule | beat cells | trunk covered | occupancy trunk/spur/lane |
+|---|---|---|---|
+| shipped | 19 | 0.0% | 0 / 38 / 62 |
+| graded seat only | 40 | 11.6% | 100 / 0 / 0 |
+| beat set only | 125 | 25.7% | 71 / 11 / 18 |
+| both, lane excluded | 76 | 18.5% | 88 / 12 / 0 |
+| **both, lane as transit** | **132** | **27.2%** | 71 / 10 / 18 |
+
+**AN AUTHORED 60 DELIVERS 40 CELLS AS AN INDEX WINDOW AND 132 AS A GRAPH
+BALL**, which is the site-placement argument as a number rather than an
+assertion.
+
+**LANES ARE ADMITTED AS TRANSIT, and this is the one mechanism that changed
+mid-build.** The fork was locked as "exclude Lane rails from the set"; the
+measurement then showed that a laned site is threaded gate-to-gate by its Lane,
+so excluding Lane DISCONNECTS the two halves of the trunk at exactly the site
+the gate guard exists for. Split by outpost kind: trunk coverage 13.6 per cent
+for a laned outpost against 26.3 for a spur-seated one, purely because the site
+pass had threaded the road through the building -- the same fault the beat set
+exists to remove, in a second costume. Admitting the lane evens them at 25.7
+and 29.7, at a cost of about a fifth of the guard's steps spent inside his own
+gatehouse, which is what a gatehouse on a road is for. **The decision did not
+change and was not re-surfaced; the mechanism did, and it is recorded here.**
+
+**THE BEAT IS TESTED ONLY FROM INSIDE IT.** A squad a fight has dragged off its
+beat must walk back, so `StepOneCell` blocks LEAVING and never pins a squad
+that is already outside. That is `StandsOnTakenGround`'s existing rule in the
+same file -- "without the test on the cell underfoot, a patrol whose whole beat
+had been claimed would turn on every step and jitter in place forever" --
+arriving a second time for the same reason. `TryTurnAtJunction` takes the same
+distinction: it filters to in-beat options when the squad is on its beat and
+does not when it is off, so the one junction that would carry a guard home is
+never the one refused.
+
+**TWO DEAD MEMBERS FELL OUT AND ARE DELETED.** `Patrol.homeRail` and
+`homeIndex` were assigned at three sites and read at none since the class was
+written. `BreachWorld.gateRailIsLane` was assigned and read nowhere, shipped in
+the session that added it. Neither is the kind a compiler catches -- both are
+plain fields of private nested classes, where CS0414 does not fire -- so the
+standing sweep has to be by hand and this is the second time it has paid.
+
+**THE READOUT MOVED WITH THE CODE, AND BETTER THAN LAST TIME: IT CALLS THE
+RULE RATHER THAN MIRRORING IT.** `SeatPatrol` and `BeatSet` are pure statics on
+`DeepRoadGraph`, so `Road Breach Report` invokes the same two methods the
+controller does instead of restating the arithmetic. The seat and the bound
+therefore CANNOT drift, which is a strictly stronger guarantee than the walk
+mirror gets. The report gains a per-seed coverage line -- what fraction of the
+floor's trunk walk cells the beat holds -- and two assertions: the seat rule
+firing if the trunk stops being the usual seat, and the coverage line firing
+below 5 per cent.
+
+**SCOPE HELD: village patrols are untouched.** They are unbounded roamers on a
+`Network` floor and turn out of a lane by themselves, so they keep
+`NearestWalkCell`. The road squad shares the outpost's graded seat but stays
+unbounded.
+
+**gateBeatHalfCells STAYS AT 60, and there is now a curve to read rather than a
+guess.** Swept: radius 30 covers 13 per cent of the trunk, 45 covers 20, 60
+covers 27, 80 covers 36, 100 covers 45, 140 covers 59. Its tooltip was rewritten
+because its UNITS changed -- steps through the network, not cells along a rail
+-- and an inspector that goes on describing the old rule is a trap.
+
+**Standing check:** the gate line must keep reading TRUNK on essentially every
+seed and the coverage line must stay near its swept value. The day either
+moves, the seat or the beat has been tidied back.
+
+**Key files:** `Floors/DeepRoadGraph.cs` (`SeatPatrol`, `BeatSet`, `BeatKey`,
+the filtered `NearestWalkCell`), `Floors/DwarvenPatrolController.cs` (the seat
+and the bound), `TESTING/Commands.cs` (the gate line and its coverage),
+`Monster/MonsterAllegiance.cs` (new),
 `Adventurer/FactionBodyRole.cs` (new), `Floors/DwarfWalkerPuppet.cs`
 (`SnapTo`, and the fork-5 reversal recorded in its class doc),
 `Monster/DungeonMonster.cs`,

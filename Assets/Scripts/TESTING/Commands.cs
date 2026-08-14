@@ -2221,7 +2221,9 @@ public class Commands : MonoBehaviour
                 run = WalkTheDig(rng, world, entry, den, centre, radius, days),
                 gateKind = world.graph.rails[world.gateRail].road.kind,
                 gateWalk = world.gateWalkCount,
-                beatWidth = world.beatMax - world.beatMin + 1,
+                beatCells = world.beat != null ? world.beat.Count : 0,
+                trunkWalk = world.trunkWalkCells,
+                beatTrunk = world.beatTrunkCells,
                 totalWalk = world.totalWalkCells,
             };
             if (sample.run.metRoad)
@@ -2323,28 +2325,55 @@ public class Commands : MonoBehaviour
         System.Text.StringBuilder sb, List<BreachSample> all)
     {
         int lane = 0, spur = 0, trunk = 0;
-        long walk = 0, beat = 0, total = 0;
+        long walk = 0, beat = 0, total = 0, trunkWalk = 0, beatTrunk = 0;
+        var cover = new List<float>();
         foreach (var s in all)
         {
             if (s.gateKind == RoadKind.Lane) lane++;
             else if (s.gateKind == RoadKind.Spur) spur++;
             else trunk++;
             walk += s.gateWalk;
-            beat += s.beatWidth;
+            beat += s.beatCells;
             total += s.totalWalk;
+            trunkWalk += s.trunkWalk;
+            beatTrunk += s.beatTrunk;
+            if (s.trunkWalk > 0) cover.Add(100f * s.beatTrunk / s.trunkWalk);
         }
         int n = all.Count;
         sb.AppendLine("  gate squad: its rail is a LANE on " + lane + ", a SPUR on " + spur
                     + ", the TRUNK on " + trunk + " of " + n + " seeds; mean rail "
-                    + (walk / n) + " walk cells against a beat window of " + (beat / n)
-                    + ", authored at +/-60. Mean walkable road " + (total / n) + " cells.");
+                    + (walk / n) + " walk cells, mean beat " + (beat / n)
+                    + " cells at a radius of " + GateBeatHalfCells
+                    + ". Mean walkable road " + (total / n) + " cells, of which "
+                    + (trunkWalk / n) + " are TRUNK.");
+
+        // COVERAGE IS THE POINT. "Does the gate squad walk the road it guards"
+        // is not answerable from the rail kind alone -- a squad seated on the
+        // trunk with a beat clamped to a thirty-cell fragment guards no more of
+        // it than one pacing a lane. Per seed, so a mean cannot hide a floor
+        // where the beat covers everything and another where it covers none.
+        float meanCover = 0f;
+        foreach (var c in cover) meanCover += c;
+        if (cover.Count > 0) meanCover /= cover.Count;
+        sb.AppendLine("  gate beat covers " + meanCover.ToString("0.0")
+                    + " per cent of the floor's trunk walk cells (mean per seed, "
+                    + cover.Count + " seeds with a trunk).");
+
         if (trunk * 4 < n)
-            sb.AppendLine("         !! gateBeatHalfCells is INERT on this floor. "
-                        + "NearestWalkCell searches every rail, and the outpost's own "
-                        + "lane or approach spur is always nearer to its anchor than the "
-                        + "trunk is, so the squad paces the gatehouse. That is a patrol "
-                        + "fault, not a den one, and it is why the beat column reads what "
-                        + "it reads.");
+            sb.AppendLine("         !! THE SEAT RULE HAS BEEN TIDIED BACK. The gate squad "
+                        + "should seat on the TRUNK on essentially every seed: "
+                        + "DeepRoadGraph.SeatPatrol prefers it, and plain proximity does "
+                        + "not, because the outpost's own lane or approach spur is always "
+                        + "nearer to its anchor. Before that rule this column read LANE "
+                        + "199 / SPUR 101 / TRUNK 0 of 300 and the beat column read 0.0 "
+                        + "per cent.");
+        if (meanCover < 5f)
+            sb.AppendLine("         !! THE BEAT COVERS ALMOST NO TRUNK. Either the beat "
+                        + "set is not crossing junctions or gateBeatHalfCells has been "
+                        + "cut. Prototyped over 2000 synthesised floor-2 graphs, a radius "
+                        + "of 60 covered about 27 per cent; 30 covered 13 and 100 covered "
+                        + "45, so a reading far under that is a fault rather than a "
+                        + "tuning.");
     }
 
     /// <summary>WHERE THE ROCK BUDGET WENT. A dig that spends half its cap and
@@ -2491,9 +2520,15 @@ public class Commands : MonoBehaviour
         public Vector3Int denAnchor;
 
         public DeepRoadGraph.Graph graph;
-        public int gateRail = -1, gateIndex = -1, beatMin, beatMax;
+        public int gateRail = -1, gateIndex = -1;
+        public HashSet<long> beat;
         public int gateWalkCount, totalWalkCells;
-        public bool gateRailIsLane;
+        // Coverage: how much of the floor's TRUNK the gate beat actually holds.
+        // The point of the whole measurement -- a beat that geometrically
+        // covers nothing is what the 0.0 per cent beat column was made of.
+        public int trunkWalkCells, beatTrunkCells;
+        // gateRailIsLane was DELETED. It was assigned here and read nowhere;
+        // AppendGateLine counts kinds off BreachSample.gateKind instead.
         public List<int> reachableRails = new List<int>();
     }
 
@@ -2617,14 +2652,25 @@ public class Commands : MonoBehaviour
         foreach (var rail in w.graph.rails) w.totalWalkCells += rail.walk.Count;
 
         var anchorFor = haveOutpost ? outpostAnchor : centre;
-        if (!DeepRoadGraph.NearestWalkCell(w.graph, anchorFor, out int gr, out int gi)) return w;
+        // THE SEAT AND THE BEAT ARE CALLED, NOT COPIED. DwarvenPatrolController
+        // uses these same two statics, so this mirror cannot drift from the
+        // rule the way it would if the arithmetic were restated here -- which
+        // is exactly what an earlier index window did while the game moved on.
+        if (!DeepRoadGraph.SeatPatrol(w.graph, anchorFor, out int gr, out int gi)) return w;
         w.gateRail = gr;
         w.gateIndex = gi;
         var gateWalk = w.graph.rails[gr].walk;
         w.gateWalkCount = gateWalk.Count;
-        w.gateRailIsLane = w.graph.rails[gr].road.kind == RoadKind.Lane;
-        w.beatMin = Mathf.Max(0, gi - GateBeatHalfCells);
-        w.beatMax = Mathf.Min(gateWalk.Count - 1, gi + GateBeatHalfCells);
+        w.beat = DeepRoadGraph.BeatSet(w.graph, gr, gi, GateBeatHalfCells);
+
+        for (int r = 0; r < w.graph.rails.Count; r++)
+        {
+            var rr = w.graph.rails[r];
+            if (rr.road == null || rr.road.kind != RoadKind.Trunk) continue;
+            w.trunkWalkCells += rr.walk.Count;
+            for (int i = 0; i < rr.walk.Count; i++)
+                if (w.beat.Contains(DeepRoadGraph.BeatKey(r, i))) w.beatTrunkCells++;
+        }
 
         CollectReachableRails(w);
         w.valid = true;
@@ -2684,7 +2730,8 @@ public class Commands : MonoBehaviour
         onGateBeat = false;
         if (!DeepRoadGraph.NearestWalkCell(w.graph, cell, out int rail, out int index))
             return false;
-        if (rail == w.gateRail && index >= w.beatMin && index <= w.beatMax) onGateBeat = true;
+        if (w.beat != null && w.beat.Contains(DeepRoadGraph.BeatKey(rail, index)))
+            onGateBeat = true;
         return w.reachableRails.Contains(rail);
     }
 
@@ -2768,7 +2815,8 @@ public class Commands : MonoBehaviour
         public BreachRun run;
         public bool inReach, onBeat;
         public RoadKind gateKind;
-        public int gateWalk, beatWidth, totalWalk;
+        public int gateWalk, beatCells, totalWalk;
+        public int trunkWalk, beatTrunk;
     }
 
     /// <summary>AdvanceDenDig's walk and TickExploratoryDig's dawn, mirrored.
