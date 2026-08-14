@@ -1573,11 +1573,30 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private System.Predicate<DungeonAdventurer> _advPred;
     private System.Predicate<DungeonMonster> _hostileMonsterPred;
 
+    /// <summary>Whether this body will fight that adventurer at all.
+    ///
+    /// THE MIRROR OF DungeonAdventurer.Engages, AND IT HAS TO EXIST OR THE
+    /// FILTER IS ONE-SIDED. Canon 44 stopped adventurers hunting dwarves, but
+    /// the monster scan reaches adventurers through a predicate that tests only
+    /// pinning and pilgrim-sparing -- no faction anywhere. A guard on Normal
+    /// would therefore draw on a treasure hunter walking past him, and the
+    /// treasure hunter would not draw back: the road economy dies anyway, just
+    /// from the other end, and entry 7's matrix is contradicted just as flatly.
+    ///
+    /// Only faction bodies ask. The dungeon's own and the wild fight every
+    /// adventurer as they always have.</summary>
+    private bool EngagesAdventurer(DungeonAdventurer a)
+    {
+        if (!isFactionBody) return true;
+        return FactionRelations.AreHostile(bodyFaction,
+            AdventurerTypeInfo.FactionOf(a.Type));
+    }
+
     private void EnsureScanPredicates()
     {
         if (_taunterPred != null) return;
-        _taunterPred = a => !a.IsPinned && a.IsTaunting && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
-        _advPred = a => !a.IsPinned && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
+        _taunterPred = a => !a.IsPinned && a.IsTaunting && EngagesAdventurer(a) && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
+        _advPred = a => !a.IsPinned && EngagesAdventurer(a) && (!_scanSparePilgrims || (a.Intent != PartyIntent.Pilgrim && a.Intent != PartyIntent.GiftGiver));
         _hostileMonsterPred = candidate => AreHostile(candidate, this);
     }
 

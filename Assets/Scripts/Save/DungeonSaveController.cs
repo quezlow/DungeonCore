@@ -212,6 +212,7 @@ public class DungeonSaveController : MonoBehaviour
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
+        DwarvenPatrolController.ResetForNewGame();       // fresh dungeon, every guard on his feet
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
         WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
         DivineAudienceLedger.ResetForNewGame();          // fresh dungeon, the gods attend again
@@ -343,6 +344,7 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.dwarvenClaimWarned = DwarvenClaimLedger.FreeWarningSpent;
         currentSave.dwarvenPressureWarned = DwarvenClaimLedger.PressureWarned;
         currentSave.dwarvenAlertedOwners = DwarvenClaimLedger.AlertedOwnersForSave();
+        currentSave.dwarvenPatrolDead = DwarvenPatrolController.DeadForSave();
         currentSave.holyTouchMurmured = HolyGroundLedger.TouchMurmured;
         currentSave.holyFirstBreakDone = HolyGroundLedger.FirstBreakDone;
         currentSave.holyBrokenSeals = HolyGroundLedger.BrokenSealsForSave();
@@ -888,6 +890,7 @@ public class DungeonSaveController : MonoBehaviour
             DwarvenClaimLedger.RestoreFromSave(currentSave.dwarvenClaimWarned,
                                                currentSave.dwarvenPressureWarned,
                                                currentSave.dwarvenAlertedOwners);
+            DwarvenPatrolController.RestoreDeadFromSave(currentSave.dwarvenPatrolDead);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);

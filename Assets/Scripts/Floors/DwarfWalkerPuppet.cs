@@ -52,8 +52,21 @@ public class DwarfWalkerPuppet : MonoBehaviour
     public float Speed = 1.2f;
 
     /// <summary>Halted walkers hold position and stop bobbing: night camps,
-    /// the toll vignette, an open action panel.</summary>
+    /// the toll vignette, an open action panel. A frozen walker still PINS
+    /// its transform each frame -- that is the point of it.</summary>
     public bool Frozen;
+
+    /// <summary>Combat has the body; this class must not touch the transform
+    /// at all until it is handed back.
+    ///
+    /// DISTINCT FROM Frozen, AND THE DIFFERENCE IS THE WHOLE OVERRIDE. Frozen
+    /// still writes `transform.position = LogicalPosition` every frame, which
+    /// is correct for a night camp and catastrophic for a fight: a guard
+    /// chasing a kobold would be dragged back to his last walked cell on
+    /// every frame, standing on the spot swinging at nothing. Suspended
+    /// writes NOTHING. The owner sets it from DungeonMonster.CombatHoldsBody
+    /// and calls SnapTo when it clears.</summary>
+    public bool Suspended;
 
     /// <summary>Bob amplitude in world units; 0 disables. Sells walking with a
     /// single static sprite until animated dwarves exist.</summary>
@@ -66,6 +79,22 @@ public class DwarfWalkerPuppet : MonoBehaviour
 
     /// <summary>Logical position on the path (no bob).</summary>
     public Vector3 LogicalPosition { get; private set; }
+
+    /// <summary>Attach the override to a body that ALREADY EXISTS -- a
+    /// DungeonMonster prefab instance -- rather than building a bare sprite.
+    ///
+    /// Create() below makes its own GameObject and its own SpriteRenderer,
+    /// which is right for a villager or a caravan walker that is nothing but a
+    /// sprite. A mortal body brings its own renderer, animator, collider and
+    /// status bars, and adding a second SpriteRenderer to it would draw the
+    /// dwarf twice. This finds the one already there.</summary>
+    public static DwarfWalkerPuppet AttachTo(GameObject host)
+    {
+        var puppet = host.AddComponent<DwarfWalkerPuppet>();
+        puppet.sr = host.GetComponentInChildren<SpriteRenderer>();
+        puppet.LogicalPosition = host.transform.position;
+        return puppet;
+    }
 
     public static DwarfWalkerPuppet Create(string name, Sprite sprite,
         string sortingLayerName, int sortingOrder, Vector3 at)
@@ -113,7 +142,7 @@ public class DwarfWalkerPuppet : MonoBehaviour
     /// clock (the caravan) use SetDistance instead.</summary>
     public void Advance(float dt)
     {
-        if (Frozen || !HasPath) return;
+        if (Frozen || Suspended || !HasPath) return;
         SetDistance(distance + Speed * dt);
     }
 
@@ -154,6 +183,10 @@ public class DwarfWalkerPuppet : MonoBehaviour
 
     private void Update()
     {
+        // Suspended writes nothing at all -- see the field for why this is not
+        // the same as Frozen.
+        if (Suspended) return;
+
         // Render-time bob only; LogicalPosition is the truth every owner reads.
         if (!Frozen && HasPath && !Arrived && BobAmplitude > 0f)
         {

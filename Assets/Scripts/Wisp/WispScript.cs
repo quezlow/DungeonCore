@@ -199,6 +199,13 @@ public class WispScript : ScriptableObject
                 text = "Efficient. Unforgivable, in their ledgers - and they keep the ledgers. The Holds will not send another soon." },
             new Line { id = "patrol_first", once = true,
                 text = "Armed, unhurried, walking a road their grandfathers cut. They are not looking for you. Try to keep it that way." },
+            // Canon 44. Speaks only where the DUNGEON did it -- a trap counts,
+            // and a trap is precisely the case this line exists for: standing
+            // spent on a death the player never chose is a bill they cannot
+            // trace, which is a fault in their model of the game rather than a
+            // consequence in it.
+            new Line { id = "dwarf_slain_first", once = true,
+                text = "One of theirs, dead on our stone. They will not have seen who swung - only where he fell. Their ledgers are long and they do not forget an entry." },
 
             // The warning ladder (canon 19). Rung 2 speaks while the push is
             // still only LEANING on dwarven ground -- before the first cell is

@@ -149,6 +149,10 @@ MonoBehaviour:
     once: 1
     text: Armed, unhurried, walking a road their grandfathers cut. They are not looking
       for you. Try to keep it that way.
+  - id: dwarf_slain_first
+    once: 1
+    text: One of theirs, dead on our stone. They will not have seen who swung - only
+      where he fell. Their ledgers are long and they do not forget an entry.
   - id: holy_first_touch
     once: 1
     text: Careful. This stone is dressed, and it is cold in a way stone is not. A

@@ -9252,6 +9252,85 @@ the two figures are the same numbers meaning different things, and the next
 reader comparing a dwarf to a Guild escort will otherwise conclude they are
 equals. They are not: the dwarf is meaningfully harder, deliberately.
 
+### Patrol bodies (SHIPPED: stage 1a-ii part 2)
+
+The dwarves are mortal. `DwarvenPatrolController` spawns `DungeonMonster`
+bodies with `MonsterAllegiance.Faction` and attaches the demoted puppet to
+them; the caravan and the village still walk bare puppets and are part 3.
+
+**A PATROL IS A SQUAD, AND THE TWO SIZES ARE THE WHOLE ENCOUNTER DESIGN.**
+The gatehouse beat is ONE guard, which is what makes it beatable: a lone body
+loses to four kobolds, and four is exactly `ThievesByTier[4]`, so the den can
+take the gate at tier 5 and cannot touch it before. The roaming road patrol is
+TWO, which beats four comfortably. So the den's choice is a real one -- the
+lone guard is the opening and the pair is the wall -- and neither number is
+arbitrary.
+
+**BOTH OUTPOST PATROLS SHARE THE OUTPOST'S FLOOR, and the second one had to be
+put there rather than at the village.** The kobold den is on floor index 2 with
+the outpost; the village is one floor below. A patrol added at the village
+would have put no dwarf in front of a kobold at all. Bodies walk a TRAILING
+COLUMN on the squad's single rail cursor -- body i sits i spacings behind the
+leader -- so a squad needs no second path model.
+
+**COMBAT TAKES THE BODY AND THE SQUAD WAITS.** While any member answers
+`CombatHoldsBody` the whole squad suspends: walkers stop writing transforms,
+the fighter chases freely, the rest hold rather than marching on without him.
+When the last fight ends every walker is `SnapTo`'d to where its body actually
+stands and the cursor is re-derived from the leader's cell through
+`DeepRoadGraph.NearestWalkCell` -- a fight can end a long way from where it
+started, and resuming the old cursor would walk the squad back through rock.
+
+**`Suspended` IS NOT `Frozen`, and the puppet needed both.** Frozen pins the
+transform every frame, which is correct for a night camp and catastrophic for a
+fight: a guard chasing a kobold would be dragged back to his last walked cell
+on every frame, swinging at nothing on the spot. Suspended writes nothing at
+all. Reusing Frozen would have looked right and produced a guard who could not
+chase.
+
+**THE MONSTER'S OWN ADVENTURER SCAN NEEDED THE SAME FILTER CANON 44 GAVE
+ADVENTURERS, and shipping without it would have made that filter one-sided.**
+`ScanForHostiles` reaches adventurers through a predicate testing only pinning
+and pilgrim-sparing -- no faction anywhere -- so a guard on Normal would have
+drawn on a treasure hunter walking past him while the treasure hunter walked
+on. The road economy dies just the same, from the other end.
+`EngagesAdventurer` is the mirror of `DungeonAdventurer.Engages` and only
+faction bodies ask it.
+
+**The withdrawal is DELETED rather than kept.** A patrol used to retreat toward
+home from a Holy Order adventurer because it could not fight. It can now, and
+the matrix says it should -- Dwarves against the Holy Order is the one Hostile
+edge the Deep Holds carry. The Church gets a brawl where it used to get a back,
+and nothing in the controller arranges it: `ScanForHostiles` does. What
+survives is the halt-and-look at a NON-hostile adventurer, which is the one
+moment a player watches a dwarf notice them and decide to do nothing.
+
+**FOOTSTEPS ARE STILL NOT SAVED. AN ABSENCE IS.** The old class doc said
+patrols were "STATELESS on purpose ... persisting a guard's footsteps would be
+save weight spent on nothing a player could notice", and that sentence was
+true about positions and wrong about deaths: a player who clears the road and
+reloads must not find it walked again. `dwarvenPatrolDead` is a flat additive
+list of `"patrolId:slot:deathDay"`, empty on every old save, which is exactly
+a road nobody has touched.
+
+**REPLACEMENT IS THE NEXT DAWN, ALWAYS**, and deliberately not conditional on
+who did the killing -- a den that grinds a patrol down and a player who clears
+it buy the same thing, one day of quiet road. What separates them is the
+standing bill, which only the player ever pays. The `deathDay >= today` test is
+what stops a guard killed at dawn standing back up the same morning.
+
+**Dormant without a guard definition**, warned once, on the caravan's own
+precedent: an invisible guard who can be killed for standing is worse than no
+guard. `patrolSprites` survives as an OVERRIDE of the prefab's own sprite
+rather than as the source of one.
+
+**`dwarf_slain_first` speaks only where `DungeonDealtDamage` is true**, which
+includes a trap -- and the trap is the case the line exists for. Standing spent
+on a death the player never chose is a bill they cannot trace, and an untraceable
+bill is a fault in the player's model of the game rather than a consequence in
+it. `WispScript.asset` must be regenerated from its context menu; the failure
+mode is silent.
+
 **Key files:** `Monster/MonsterAllegiance.cs` (new),
 `Adventurer/FactionBodyRole.cs` (new), `Floors/DwarfWalkerPuppet.cs`
 (`SnapTo`, and the fork-5 reversal recorded in its class doc),

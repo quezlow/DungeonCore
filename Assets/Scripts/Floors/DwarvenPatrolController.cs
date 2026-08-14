@@ -3,35 +3,52 @@ using UnityEngine;
 
 /// <summary>
 /// Dwarven patrols: armed, unhurried, walking roads their grandfathers cut
-/// (canon 19, The Living Holds). One pacing a bounded stretch of the gatehouse
-/// trunk, two walking the village floor's network. STATELESS on purpose --
-/// patrols are ambient texture and re-derive each session; persisting a
-/// guard's footsteps would be save weight spent on nothing a player could
-/// notice.
+/// (canon 19, The Living Holds; canon 44, the mortal body layer).
 ///
-/// BROKEN ENDS get the beat the warning ladder wants: the patrol walks to
-/// where the road stops, pauses facing the collapse, and turns back. Rung 5 of
-/// canon 19's ladder is "a dwarf patrol stops, looks, and turns back" at a
-/// CLAIMED stretch -- that arrives with road claiming in step 8; exercising
-/// the same choreography on natural geometry now means step 8 re-aims a beat
-/// that already works instead of inventing one.
+/// THEY CAN DIE NOW, and the sentence this doc used to open with -- "STATELESS
+/// on purpose: patrols are ambient texture and re-derive each session;
+/// persisting a guard's footsteps would be save weight spent on nothing a
+/// player could notice" -- was true and is now false. Footsteps are still not
+/// saved and never will be. What IS saved is which guards are DEAD and when
+/// they fell, because a player who clears the road and reloads must not find it
+/// walked again. The distinction the old sentence missed is between a position
+/// nobody could notice and an absence everybody would.
 ///
-/// REACTIONS exercise the entry-7 matrix for the first time: any adventurer
-/// within watch range halts the patrol to watch; an adventurer of a faction
-/// the matrix marks Hostile to the Deep Holds sends it withdrawing toward
-/// home instead. Scans are throttled -- the ScanForHostiles allocation lesson.
+/// A PATROL IS A SQUAD, not a body. The gatehouse beat is one guard, which is
+/// what makes it beatable by a late-tier den; the road patrol is two, which is
+/// what makes it a choice rather than a formality. Bodies walk in a trailing
+/// column on the squad's single rail cursor -- body i sits i cells behind the
+/// leader -- so a squad needs no path arithmetic of its own.
 ///
-/// Walkers are DwarfWalkerPuppet: not combat entities, invisible to
-/// ScanForHostiles and traps, hidden by fog on unrevealed stretches for free.
+/// COMBAT TAKES THE BODY AND THE SQUAD WAITS. While any member answers
+/// DungeonMonster.CombatHoldsBody the whole squad suspends: its walkers stop
+/// writing transforms, the fighter chases freely, and the others hold rather
+/// than marching on without him. When the last fight ends every walker is
+/// SnapTo'd to where its body actually stands and the cursor is re-derived from
+/// the leader's cell, because the fight moved bodies this class never saw move.
+///
+/// REPLACEMENT IS THE NEXT DAWN, ALWAYS, and deliberately not conditional on
+/// who did the killing. A den that grinds a patrol down and a player who clears
+/// it buy the same thing: one day of quiet road. What separates them is the
+/// standing bill, which only the player ever pays.
 /// </summary>
 public class DwarvenPatrolController : MonoBehaviour
 {
     public static DwarvenPatrolController Instance { get; private set; }
 
+    [Header("Bodies")]
+    [Tooltip("The dwarven guard. Its PREFAB carries the stats -- a DungeonMonster " +
+             "with no LootTable component, which is what enforces canon 44's " +
+             "no-loot rule. Leave unassigned and patrols stay dormant, exactly " +
+             "as they do with no sprites: an invisible guard who can be killed " +
+             "for standing is worse than no guard.")]
+    [SerializeField] private MonsterDefinition guardDefinition;
+
     [Header("Sprites")]
-    [Tooltip("Optional. Dealt across patrols; falls back to the caravan's " +
-             "walker list, then stays dormant. Armed variants belong here once " +
-             "the art pass makes them.")]
+    [Tooltip("Optional OVERRIDE for the prefab's own sprite, dealt across " +
+             "patrols. Falls back to the caravan's walker list. Left empty the " +
+             "prefab draws itself, which is the ordinary case now that a guard " +
+             "is a real body.")]
     [SerializeField] private List<Sprite> patrolSprites = new List<Sprite>();
     [SerializeField] private string sortingLayerName = "Player";
     [SerializeField] private int sortingOrder = 5;
@@ -41,6 +58,15 @@ public class DwarvenPatrolController : MonoBehaviour
              "either side of the outpost.")]
     [SerializeField, Min(10)] private int gateBeatHalfCells = 60;
     [SerializeField, Min(0)] private int villagePatrolCount = 2;
+    [Tooltip("Bodies in the gatehouse beat. ONE, deliberately: a lone 100 HP " +
+             "guard loses to four kobolds, which is exactly ThievesByTier at " +
+             "tier 5, so the den can eventually take the gate and cannot take " +
+             "it early.")]
+    [SerializeField, Min(1)] private int gateSquadSize = 1;
+    [Tooltip("Bodies in the roaming road patrol on the outpost's floor. TWO: " +
+             "two guards beat four kobolds comfortably, so the roaming pair is " +
+             "the obstacle and the lone gate guard is the opening.")]
+    [SerializeField, Min(1)] private int roadSquadSize = 2;
 
     [Header("Movement")]
     [Tooltip("Plain speed, not day-derived: a patrol loops with no arrival to " +
@@ -49,33 +75,50 @@ public class DwarvenPatrolController : MonoBehaviour
     [SerializeField, Min(0f)] private float endPauseSeconds = 2f;
     [Tooltip("Longer pause at a broken end -- the stop-and-look beat.")]
     [SerializeField, Min(0f)] private float brokenEndPauseSeconds = 3f;
+    [Tooltip("World units between bodies in a squad's trailing column.")]
+    [SerializeField, Min(1)] private int columnSpacingCells = 2;
 
     [Header("Reactions")]
     [SerializeField, Min(1f)] private float watchRadius = 8f;
-    [Tooltip("A withdrawing patrol resumes once no hostile is inside this.")]
-    [SerializeField, Min(1f)] private float clearRadius = 14f;
+
+    private class Body
+    {
+        public DungeonMonster monster;
+        public DwarfWalkerPuppet puppet;
+        public int slot;
+        public int deathDay = -1;      // -1 = alive, otherwise the day it fell
+        public readonly List<Vector3> pathBuf = new List<Vector3>(2);
+        public int cachedFrom = -1, cachedTo = -1;
+    }
 
     private class Patrol
     {
+        public int id;                          // stable across a session AND a save
         public FloorRoot floor;
         public DeepRoadGraph.Graph graph;
-        public DwarfWalkerPuppet puppet;
-        public int rail, index, direction;      // walk-cell cursor
+        public readonly List<Body> bodies = new List<Body>();
+        public int rail, index, direction;      // walk-cell cursor for the SQUAD
         public int homeRail, homeIndex;
         public int beatMin = -1, beatMax = -1;  // gatehouse beat window, or -1
         public float pauseUntil;
-        public bool withdrawing;
         public float scanAt;
         public float stepProgress;
         public bool watching;
-        public int cachedFrom = -1, cachedTo = -1;
-        public readonly List<Vector3> pathBuf = new List<Vector3>(2);
+        public bool suspended;                  // combat held the squad last tick
     }
 
     private readonly List<Patrol> patrols = new List<Patrol>();
     private readonly List<DungeonAdventurer> advBuf = new List<DungeonAdventurer>();
     private bool gateSpawned, villageSpawned;
     private float establishPollAt;
+    private bool subscribed;
+
+    // The ledger: "<patrolId>:<slot>:<deathDay>". Static so it can be restored
+    // before any patrol has been spawned -- the load path runs long before the
+    // outpost poll establishes anything, exactly as the caravan's schedule does.
+    private static readonly Dictionary<string, int> deadSlots = new Dictionary<string, int>();
+
+    private static string SlotKey(int patrolId, int slot) => patrolId + ":" + slot;
 
     private void Awake()
     {
@@ -83,13 +126,29 @@ public class DwarvenPatrolController : MonoBehaviour
         Instance = this;
     }
 
+    private void Start()
+    {
+        if (subscribed || DayNightCycle.Instance == null) return;
+        DayNightCycle.Instance.OnDayStarted += HandleDayStarted;
+        subscribed = true;
+    }
+
     private void OnDestroy()
     {
+        if (subscribed && DayNightCycle.Instance != null)
+            DayNightCycle.Instance.OnDayStarted -= HandleDayStarted;
         if (Instance == this) Instance = null;
     }
 
     private void Update()
     {
+        // Late subscribe: this controller can wake before the day clock does.
+        if (!subscribed && DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted += HandleDayStarted;
+            subscribed = true;
+        }
+
         if (!gateSpawned || !villageSpawned)
         {
             if (Time.unscaledTime >= establishPollAt)
@@ -104,6 +163,61 @@ public class DwarvenPatrolController : MonoBehaviour
         foreach (var p in patrols) TickPatrol(p, dt);
     }
 
+    // -- Persistence ---------------------------------------------------------
+
+    /// <summary>The dead, for the save. Footsteps are still not persisted; an
+    /// absence is.</summary>
+    public static List<string> DeadForSave()
+    {
+        var list = new List<string>();
+        foreach (var kv in deadSlots) list.Add(kv.Key + ":" + kv.Value);
+        return list;
+    }
+
+    public static void RestoreDeadFromSave(List<string> saved)
+    {
+        deadSlots.Clear();
+        if (saved == null) return;
+        foreach (var entry in saved)
+        {
+            if (string.IsNullOrEmpty(entry)) continue;
+            var parts = entry.Split(':');
+            if (parts.Length != 3) continue;
+            if (!int.TryParse(parts[0], out int pid)) continue;
+            if (!int.TryParse(parts[1], out int slot)) continue;
+            if (!int.TryParse(parts[2], out int day)) continue;
+            deadSlots[SlotKey(pid, slot)] = day;
+        }
+    }
+
+    /// <summary>Fresh dungeon, every guard back on his feet. The statics outlive
+    /// a slot switch, so one core must never wake up remembering another core's
+    /// dead.</summary>
+    public static void ResetForNewGame() => deadSlots.Clear();
+
+    // -- Dawn ----------------------------------------------------------------
+
+    /// <summary>Losses are made good overnight and never during the day -- the
+    /// den's own rhythm, for the den's own reason: instant replacement makes a
+    /// patrol impossible to finish, and no replacement at all makes one killing
+    /// permanent. A day of quiet road is the price either way.</summary>
+    private void HandleDayStarted()
+    {
+        int today = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        foreach (var p in patrols)
+        {
+            foreach (var b in p.bodies)
+            {
+                if (b.monster != null) continue;
+                if (b.deathDay < 0) continue;
+                if (b.deathDay >= today) continue;   // fell today; tomorrow, not tonight
+                deadSlots.Remove(SlotKey(p.id, b.slot));
+                b.deathDay = -1;
+                RaiseBody(p, b);
+            }
+        }
+    }
+
     // -- Spawning ------------------------------------------------------------
 
     private void TrySpawn()
@@ -111,7 +225,7 @@ public class DwarvenPatrolController : MonoBehaviour
         if (!gateSpawned
             && DwarvenOutpostController.Instance != null
             && DwarvenOutpostController.Instance.Established)
-            gateSpawned = SpawnGatePatrol();
+            gateSpawned = SpawnOutpostPatrols();
 
         if (!villageSpawned
             && DwarvenVillageController.Instance != null
@@ -131,21 +245,33 @@ public class DwarvenPatrolController : MonoBehaviour
         return null;
     }
 
-    private bool SpawnGatePatrol()
+    private bool Dormant()
+    {
+        if (guardDefinition != null && guardDefinition.prefab != null) return false;
+        WarnDormantOnce();
+        return true;
+    }
+
+    /// <summary>Both of the outpost floor's patrols: the bounded gatehouse beat
+    /// and the roaming road squad. THEY SHARE A FLOOR ON PURPOSE -- the kobold
+    /// den is on the outpost's floor and the village is one below, so a second
+    /// patrol placed at the village would have put no dwarf in front of a kobold
+    /// at all.</summary>
+    private bool SpawnOutpostPatrols()
     {
         var floor = FloorWithOutpost(out var site);
         if (floor == null || site == null) return false;
+        if (Dormant()) return true;
+
         var graph = DeepRoadGraph.Build(floor.FeatureGenerator.FeatureData.roads);
         if (graph.rails.Count == 0) return true;   // a roadless outpost patrols nowhere
         if (!DeepRoadGraph.NearestWalkCell(graph, site.anchorCell.ToVector3Int(),
                 out int rail, out int index)) return true;
 
-        var sprite = PickSprite(0);
-        if (sprite == null) { WarnDormantOnce(); return true; }
-
         int count = graph.rails[rail].walk.Count;
-        var p = new Patrol
+        var gate = new Patrol
         {
+            id = 0,
             floor = floor,
             graph = graph,
             rail = rail,
@@ -156,8 +282,24 @@ public class DwarvenPatrolController : MonoBehaviour
             beatMin = Mathf.Max(0, index - gateBeatHalfCells),
             beatMax = Mathf.Min(count - 1, index + gateBeatHalfCells),
         };
-        p.puppet = MakePuppet("DwarvenPatrolGate", sprite, p);
-        patrols.Add(p);
+        BuildSquad(gate, gateSquadSize);
+        patrols.Add(gate);
+
+        // No beat window: the road squad wanders the whole floor network the way
+        // the village pair does, picking a connected rail at each junction.
+        var road = new Patrol
+        {
+            id = 1,
+            floor = floor,
+            graph = graph,
+            rail = rail,
+            index = index,
+            direction = -1,          // sets off the other way from the gate beat
+            homeRail = rail,
+            homeIndex = index,
+        };
+        BuildSquad(road, roadSquadSize);
+        patrols.Add(road);
         return true;
     }
 
@@ -165,6 +307,8 @@ public class DwarvenPatrolController : MonoBehaviour
     {
         var floor = FloorWithVillage(out var site);
         if (floor == null || site == null) return false;
+        if (Dormant()) return true;
+
         var graph = DeepRoadGraph.Build(floor.FeatureGenerator.FeatureData.roads);
         if (graph.rails.Count == 0) return true;
         if (!DeepRoadGraph.NearestWalkCell(graph, site.anchorCell.ToVector3Int(),
@@ -172,10 +316,9 @@ public class DwarvenPatrolController : MonoBehaviour
 
         for (int i = 0; i < villagePatrolCount; i++)
         {
-            var sprite = PickSprite(i);
-            if (sprite == null) { WarnDormantOnce(); break; }
             var p = new Patrol
             {
+                id = 2 + i,          // ids 0 and 1 belong to the outpost floor
                 floor = floor,
                 graph = graph,
                 rail = homeRail,
@@ -184,19 +327,77 @@ public class DwarvenPatrolController : MonoBehaviour
                 homeRail = homeRail,
                 homeIndex = homeIndex,
             };
-            p.puppet = MakePuppet("DwarvenPatrolVillage" + (i + 1), sprite, p);
+            BuildSquad(p, 1);
             patrols.Add(p);
         }
         return true;
     }
 
-    private DwarfWalkerPuppet MakePuppet(string name, Sprite sprite, Patrol p)
+    private void BuildSquad(Patrol p, int size)
     {
-        var cell = p.graph.rails[p.rail].walk[p.index];
-        var at = p.floor.TileInfluence.CellToWorld(cell);
-        var puppet = DwarfWalkerPuppet.Create(name, sprite, sortingLayerName, sortingOrder, at);
+        for (int i = 0; i < size; i++)
+        {
+            var b = new Body { slot = i };
+            p.bodies.Add(b);
+            // A guard killed before this session still lies where he fell.
+            if (deadSlots.TryGetValue(SlotKey(p.id, i), out int day))
+            {
+                b.deathDay = day;
+                continue;
+            }
+            RaiseBody(p, b);
+        }
+    }
+
+    /// <summary>Stand a guard up at his squad's current cell.</summary>
+    private void RaiseBody(Patrol p, Body b)
+    {
+        if (guardDefinition == null || guardDefinition.prefab == null) return;
+        if (p.floor == null || p.floor.TileInfluence == null) return;
+
+        var walk = p.graph.rails[p.rail].walk;
+        int idx = Mathf.Clamp(p.index - b.slot * p.direction * columnSpacingCells,
+                              0, walk.Count - 1);
+        Vector3 at = p.floor.TileInfluence.CellToWorld(walk[idx]);
+
+        var monster = Instantiate(guardDefinition.prefab, at, Quaternion.identity);
+        monster.transform.SetParent(p.floor.transform, true);
+        monster.name = "DwarvenGuard" + p.id + "_" + b.slot;
+        // Normal rather than Aggressive: Aggressive would have a guard cut down
+        // pilgrims on the road, and the Holds' quarrel with the Church is the
+        // matrix's business rather than a stance's.
+        monster.InitialiseAsFactionBody(p.floor, guardDefinition, FactionId.Dwarves,
+                                        FactionBodyRole.Guard, MonsterAggression.Normal);
+
+        var puppet = DwarfWalkerPuppet.AttachTo(monster.gameObject);
         puppet.Speed = patrolSpeed;
-        return puppet;
+        var over = PickSprite(p.id + b.slot);
+        if (over != null) puppet.SetSprite(over);
+
+        b.monster = monster;
+        b.puppet = puppet;
+        b.cachedFrom = -1;
+        b.cachedTo = -1;
+
+        var captured = b;
+        var capturedPatrol = p;
+        monster.OnDied += _ => HandleBodyDied(capturedPatrol, captured);
+    }
+
+    private void HandleBodyDied(Patrol p, Body b)
+    {
+        int today = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        b.deathDay = today;
+        deadSlots[SlotKey(p.id, b.slot)] = today;
+
+        // The wisp speaks the FIRST time the dungeon is responsible, and only
+        // then. A trap laid near the road bills standing for a death the player
+        // never chose, and a bill nobody can trace is a bug in the player's
+        // model of the game rather than a consequence.
+        bool ours = b.monster != null && b.monster.DungeonDealtDamage;
+        b.monster = null;
+        b.puppet = null;
+        if (ours) WispCompanion.Instance?.Speak("dwarf_slain_first");
     }
 
     private bool warned;
@@ -204,8 +405,8 @@ public class DwarvenPatrolController : MonoBehaviour
     {
         if (warned) return;
         warned = true;
-        Debug.LogWarning("[DwarvenPatrol] No patrol or fallback sprites assigned - " +
-                         "patrols stay dormant until a list is filled.");
+        Debug.LogWarning("[DwarvenPatrol] No guard definition or prefab assigned - " +
+                         "patrols stay dormant until one is.");
     }
 
     private static FloorRoot FloorWithOutpost(out SiteData site)
@@ -242,7 +443,54 @@ public class DwarvenPatrolController : MonoBehaviour
 
     private void TickPatrol(Patrol p, float dt)
     {
-        if (p.puppet == null) return;
+        bool anyAlive = false;
+        bool inCombat = false;
+        foreach (var b in p.bodies)
+        {
+            if (b.monster == null) continue;
+            anyAlive = true;
+            if (b.monster.CombatHoldsBody) inCombat = true;
+        }
+        if (!anyAlive) return;   // the dawn puts them back up
+
+        if (inCombat)
+        {
+            if (!p.suspended)
+            {
+                p.suspended = true;
+                foreach (var b in p.bodies)
+                    if (b.puppet != null) b.puppet.Suspended = true;
+            }
+            return;
+        }
+
+        if (p.suspended)
+        {
+            // Handing the bodies back. Every walker adopts where its body now
+            // stands, and the squad cursor is re-derived from the leader's cell
+            // -- a fight can end a long way from where it started, and resuming
+            // the old cursor would walk everyone back through the rock.
+            p.suspended = false;
+            Body leader = null;
+            foreach (var b in p.bodies)
+            {
+                if (b.monster == null || b.puppet == null) continue;
+                b.puppet.Suspended = false;
+                b.puppet.SnapTo(b.monster.transform.position);
+                b.cachedFrom = -1;
+                b.cachedTo = -1;
+                if (leader == null) leader = b;
+            }
+            if (leader != null
+                && DeepRoadGraph.NearestWalkCell(p.graph,
+                       p.floor.TileInfluence.WorldToCell(leader.monster.transform.position),
+                       out int rail, out int index))
+            {
+                p.rail = rail;
+                p.index = index;
+                p.stepProgress = 0f;
+            }
+        }
 
         // Reactions, throttled.
         if (Time.time >= p.scanAt)
@@ -250,14 +498,11 @@ public class DwarvenPatrolController : MonoBehaviour
             p.scanAt = Time.time + 0.5f;
             ScanReactions(p);
         }
-        if (p.watching)
-        {
-            p.puppet.Frozen = true;
-            return;
-        }
-        p.puppet.Frozen = false;
 
-        if (Time.time < p.pauseUntil) { p.puppet.Frozen = true; return; }
+        bool held = p.watching || Time.time < p.pauseUntil;
+        foreach (var b in p.bodies)
+            if (b.puppet != null) b.puppet.Frozen = held;
+        if (held) return;
 
         // Step cell to cell along the current rail. Fractional progress carries
         // across cells so speed is exact regardless of frame rate.
@@ -267,23 +512,28 @@ public class DwarvenPatrolController : MonoBehaviour
             p.stepProgress -= 1f;
             StepOneCell(p);
         }
+
         var walk = p.graph.rails[p.rail].walk;
-        var cellNow = walk[p.index];
-        int nextIndex = Mathf.Clamp(p.index + p.direction, 0, walk.Count - 1);
-
-        // Re-path only on a cell change - a fresh two-point path per frame is
-        // the per-frame allocation habit this project already paid to unlearn.
-        if (p.cachedFrom != p.index || p.cachedTo != nextIndex)
+        foreach (var b in p.bodies)
         {
-            p.cachedFrom = p.index; p.cachedTo = nextIndex;
-            p.pathBuf.Clear();
-            p.pathBuf.Add(p.floor.TileInfluence.CellToWorld(cellNow));
-            p.pathBuf.Add(p.floor.TileInfluence.CellToWorld(walk[nextIndex]));
-            p.puppet.SetPath(p.pathBuf);
+            if (b.monster == null || b.puppet == null) continue;
+            // The trailing column: body i walks i spacings behind the leader on
+            // the squad's own cursor, so a squad needs no second path model.
+            int here = Mathf.Clamp(p.index - b.slot * p.direction * columnSpacingCells,
+                                   0, walk.Count - 1);
+            int next = Mathf.Clamp(here + p.direction, 0, walk.Count - 1);
+            if (b.cachedFrom != here || b.cachedTo != next)
+            {
+                b.cachedFrom = here; b.cachedTo = next;
+                b.pathBuf.Clear();
+                b.pathBuf.Add(p.floor.TileInfluence.CellToWorld(walk[here]));
+                b.pathBuf.Add(p.floor.TileInfluence.CellToWorld(walk[next]));
+                b.puppet.SetPath(b.pathBuf);
+            }
+            b.puppet.SetDistance(p.stepProgress * b.puppet.PathLength);
         }
-        p.puppet.SetDistance(p.stepProgress * p.puppet.PathLength);
 
-        FirstSightingLine(p, cellNow);
+        FirstSightingLine(p, walk[p.index]);
     }
 
     private void StepOneCell(Patrol p)
@@ -305,7 +555,7 @@ public class DwarvenPatrolController : MonoBehaviour
             // The beat: stop, look at where the road stops, turn back.
             p.pauseUntil = Time.time
                 + (brokenHere ? brokenEndPauseSeconds : endPauseSeconds);
-            if (brokenHere && p.puppet != null && rail.walk.Count >= 2)
+            if (brokenHere && rail.walk.Count >= 2)
             {
                 // Look PAST the collapse: extend the last walk step's own
                 // direction, so a north-running spur gets a northward stare.
@@ -313,7 +563,7 @@ public class DwarvenPatrolController : MonoBehaviour
                 int prevIdx = p.direction > 0 ? rail.walk.Count - 2 : 1;
                 var endW = p.floor.TileInfluence.CellToWorld(rail.walk[endIdx]);
                 var prevW = p.floor.TileInfluence.CellToWorld(rail.walk[prevIdx]);
-                p.puppet.Face(endW + (endW - prevW));
+                FaceAll(p, endW + (endW - prevW));
             }
             p.direction = -p.direction;
             return;
@@ -332,19 +582,20 @@ public class DwarvenPatrolController : MonoBehaviour
             && StandsOnTakenGround(p, rail.walk[next]))
         {
             p.pauseUntil = Time.time + brokenEndPauseSeconds;
-            if (p.puppet != null)
-            {
-                // Look PAST the edge, along the road's own bearing, the same
-                // way the collapse beat does.
-                var hereW = p.floor.TileInfluence.CellToWorld(rail.walk[p.index]);
-                var aheadW = p.floor.TileInfluence.CellToWorld(rail.walk[next]);
-                p.puppet.Face(aheadW + (aheadW - hereW));
-            }
+            var hereW = p.floor.TileInfluence.CellToWorld(rail.walk[p.index]);
+            var aheadW = p.floor.TileInfluence.CellToWorld(rail.walk[next]);
+            FaceAll(p, aheadW + (aheadW - hereW));
             p.direction = -p.direction;
             return;
         }
 
         p.index = next;
+    }
+
+    private static void FaceAll(Patrol p, Vector3 worldPos)
+    {
+        foreach (var b in p.bodies)
+            if (b.puppet != null) b.puppet.Face(worldPos);
     }
 
     /// <summary>True when this cell is dwarven ground the player holds.
@@ -386,80 +637,57 @@ public class DwarvenPatrolController : MonoBehaviour
         var newWalk = p.graph.rails[p.rail].walk;
         p.index = pick.atStart ? 0 : newWalk.Count - 1;
         p.direction = pick.atStart ? 1 : -1;
+        foreach (var b in p.bodies) { b.cachedFrom = -1; b.cachedTo = -1; }
         return true;
     }
 
     // -- Reactions -----------------------------------------------------------
 
+    /// <summary>The watch beat, and ONLY the watch beat.
+    ///
+    /// THE WITHDRAWAL IS GONE, and its removal is the fork-5 reversal arriving
+    /// where it is most visible. A patrol used to retreat toward home when a
+    /// Holy Order adventurer came near, because it could not fight. It can now,
+    /// and the entry-7 matrix says it should: Dwarves against the Holy Order is
+    /// the one Hostile edge the Deep Holds carry. So the Church gets a brawl
+    /// where it used to get a back, and nothing here needs to arrange it --
+    /// DungeonMonster.ScanForHostiles does, through EngagesAdventurer.
+    ///
+    /// What survives is the halt-and-look at a NON-hostile adventurer, which was
+    /// always flavour and is still worth having: it is the one moment a player
+    /// sees a dwarf notice them and decide to do nothing.</summary>
     private void ScanReactions(Patrol p)
     {
         p.watching = false;
-        if (p.floor?.Entities == null || p.puppet == null) return;
+        if (p.floor?.Entities == null) return;
 
-        var pos = p.puppet.LogicalPosition;
-        p.floor.Entities.WithinRadius(pos, p.withdrawing ? clearRadius : watchRadius, advBuf);
+        Body lead = null;
+        foreach (var b in p.bodies)
+            if (b.monster != null) { lead = b; break; }
+        if (lead == null) return;
 
-        bool any = false, hostile = false;
+        var pos = lead.monster.transform.position;
+        p.floor.Entities.WithinRadius(pos, watchRadius, advBuf);
+
         DungeonAdventurer nearest = null;
         float nearestSq = float.MaxValue;
         foreach (var a in advBuf)
         {
             if (a == null) continue;
-            any = true;
+            // Someone the guards are about to fight is not someone they stop to
+            // watch. Leaving hostiles in would freeze the squad on the spot the
+            // moment a pilgrim party arrived, mid-fight.
+            if (FactionRelations.AreHostile(FactionId.Dwarves,
+                    AdventurerTypeInfo.FactionOf(a.Type))) continue;
             float d = ((Vector2)(a.transform.position - pos)).sqrMagnitude;
             if (d < nearestSq) { nearestSq = d; nearest = a; }
-            if (FactionRelations.AreHostile(FactionId.Dwarves,
-                    AdventurerTypeInfo.FactionOf(a.Type)))
-                hostile = true;
         }
 
-        if (p.withdrawing)
-        {
-            if (!any) p.withdrawing = false;
-            else SetCourseHome(p);
-            return;
-        }
-
-        if (hostile)
-        {
-            // The matrix, felt: the Holds do not brawl the Church's people in
-            // the road. They leave.
-            p.withdrawing = true;
-            SetCourseHome(p);
-        }
-        else if (any)
+        if (nearest != null)
         {
             p.watching = true;
-            if (nearest != null) p.puppet.Face(nearest.transform.position);
+            FaceAll(p, nearest.transform.position);
         }
-    }
-
-    private static void SetCourseHome(Patrol p)
-    {
-        if (p.rail == p.homeRail)
-        {
-            p.direction = p.index > p.homeIndex ? -1 : 1;
-            return;
-        }
-        // Off the home rail: head for the junction end that leads back. The
-        // network is a handful of rails, so one BFS hop query is cheap enough
-        // to just re-route through DeepRoadGraph.
-        var route = DeepRoadGraph.Route(p.graph, p.rail, p.index, p.homeRail, p.homeIndex);
-        if (route.Count > 1)
-        {
-            var rail = p.graph.rails[p.rail];
-            // Second route cell tells us which way along the current rail.
-            int here = p.index;
-            int nextIdx = IndexOnRail(rail, route[1]);
-            p.direction = nextIdx >= here ? 1 : -1;
-        }
-    }
-
-    private static int IndexOnRail(DeepRoadGraph.Rail rail, Vector3Int cell)
-    {
-        for (int i = 0; i < rail.walk.Count; i++)
-            if (rail.walk[i] == cell) return i;
-        return 0;
     }
 
     // -- First sighting --------------------------------------------------------

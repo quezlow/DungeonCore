@@ -15463,7 +15463,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.9999902
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -16983,6 +16983,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a523b51b381fdc646b298f42d2f0e00c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DwarvenPatrolController
+  guardDefinition: {fileID: 11400000, guid: 142eb6792d934dd448224fe85c2f9630, type: 2}
   patrolSprites:
   - {fileID: 3295236706101327806, guid: da4dd994bb54a8242880cf8e3f181a84, type: 3}
   - {fileID: 3295236706101327806, guid: 901b290db4df652469934b572e9ebbc6, type: 3}
@@ -16991,11 +16992,13 @@ MonoBehaviour:
   sortingOrder: 5
   gateBeatHalfCells: 60
   villagePatrolCount: 2
+  gateSquadSize: 1
+  roadSquadSize: 2
   patrolSpeed: 2.2
   endPauseSeconds: 2
   brokenEndPauseSeconds: 3
+  columnSpacingCells: 2
   watchRadius: 8
-  clearRadius: 14
 --- !u!114 &512393929
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37814,6 +37817,7 @@ MonoBehaviour:
   adventurerDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
   monsterDot: {r: 0.35, g: 0.85, b: 0.4, a: 1}
   hostileMonsterDot: {r: 0.9, g: 0.25, b: 0.25, a: 1}
+  neutralMonsterDot: {r: 0.55, g: 0.6, b: 0.85, a: 1}
   coreDot: {r: 1, g: 0.82, b: 0.25, a: 1}
   dotSize: 5
   repaintInterval: 0.2
@@ -52293,7 +52297,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00059103774}
+  m_AnchoredPosition: {x: 0, y: -0.000026172425}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1695653670
@@ -59711,7 +59715,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 1
+  m_Size: 0.9999916
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -62334,7 +62338,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00059103774}
+  m_AnchoredPosition: {x: 0, y: -0.000026172425}
   m_SizeDelta: {x: 1083, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &2053538104
@@ -63121,6 +63125,9 @@ MonoBehaviour:
   standingLossPerKill: 4
   standingGainPilgrimage: 6
   standingGainTribute: 3
+  standingLossGuard: 10
+  standingLossVillager: 15
+  standingLossCaravanMember: 25
   tier1Standing: -20
   tier2Standing: -50
   tier3Standing: -80
