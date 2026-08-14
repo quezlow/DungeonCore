@@ -66,7 +66,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     [SerializeField] private EntityStatusBars statusBarsPrefab;
 
     // ── State ─────────────────────────────────────────────────────
-    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade, Scavenge }
+    private enum MonsterState { Wander, Patrol, Idle, Attack, DefendCore, Invade, Scavenge, Posted }
     private MonsterState state = MonsterState.Wander;
     private float tauntImmuneUntil;   // set when peeled off a taunt by a heavy ally hit
     [SerializeField, Min(0f)] private float tauntPeelDuration = 2.5f;
@@ -343,6 +343,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // research, counted toward crowding, and healed by Knit.
     private bool isFactionBody;
     private FactionId bodyFaction;
+    private FactionBodyRole bodyRole;
 
     /// <summary>Which side this body is on. THE ORDER OF THE TESTS MATTERS: the
     /// faction flag answers first, because a faction body sets none of the three
@@ -358,6 +359,18 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// a sentinel -- FactionId has no None, and inventing one would put an
     /// unreachable value in an enum that serialises into every save.</summary>
     public FactionId Faction => bodyFaction;
+
+    /// <summary>What this body did for its people, which is what its death
+    /// costs. MEANINGLESS unless Allegiance is Faction, on the same terms as
+    /// Faction above.</summary>
+    public FactionBodyRole BodyRole => bodyRole;
+
+    /// <summary>True while COMBAT owns this body and its owner must not drive
+    /// it. A controller walking a faction body freezes its walker on this and
+    /// re-paths from the body's actual cell when it clears -- the fight moves
+    /// the transform, so a path resumed at its old distance would teleport the
+    /// body back to where the fight started.</summary>
+    public bool CombatHoldsBody => state == MonsterState.Attack;
 
     /// <summary>THE PLAYER COMMANDS THIS. Everything the dungeon does FOR its
     /// own -- veteran promotion, the mastery multipliers, Knit, Boon, Rally,
@@ -485,15 +498,32 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// can be verified in isolation. The dwarven controllers call this next
     /// stage.
     ///
+    /// THE STANCE IS A REQUIRED ARGUMENT, NOT A DEFAULT, and that is how the
+    /// second hole canon 44 recorded gets closed. EffectiveAggression resolves
+    /// spawner override, then the individual override, then IsWild, then
+    /// MonsterAggressionSettings.Global -- so a faction body with no override
+    /// takes its posture from the PLAYER'S three-button stance control, and a
+    /// player who clicked Defensive would pacify the dwarves. A branch in
+    /// EffectiveAggression would fix it and be unreachable the moment every
+    /// caller sets a stance anyway, which is the dead-member class; making the
+    /// argument mandatory fixes it at the only place it can be got wrong.
+    /// Guards take Normal. Villagers take Defensive, so they fight only when
+    /// struck -- and their controller raises them to Normal while a hostile
+    /// stands inside the village footprint.
+    ///
     /// Call immediately after Instantiate, before Start runs -- the invader
     /// contract, for the invader reason.</summary>
     public void InitialiseAsFactionBody(FloorRoot floor, MonsterDefinition def,
-                                        FactionId faction)
+                                        FactionId faction, FactionBodyRole role,
+                                        MonsterAggression stance)
     {
         currentFloor = floor;
         wildDefinition = def;
         bodyFaction = faction;
+        bodyRole = role;
         isFactionBody = true;
+        SetAggressionOverride(stance);
+        state = MonsterState.Posted;
     }
 
     /// <summary>Marks an invader as the endgame climax beast: on breaching the core it is
@@ -797,16 +827,39 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             case MonsterState.Scavenge:
                 TickScavenge();
                 break;
+            case MonsterState.Posted:
+                // Scan, and otherwise HOLD. Movement belongs to the owning
+                // controller -- the patrol, the village, the caravan -- which
+                // is the den work site's shape rather than the den scavenger's:
+                // an override on top of a body that would otherwise stand
+                // still, not a behaviour of its own. Combat takes the body by
+                // switching to Attack and hands it back here, and the owner
+                // re-paths from wherever the fight left it rather than resuming
+                // a path whose start it no longer stands on.
+                ScanForHostiles();
+                break;
         }
     }
 
     private static bool IsRegenState(MonsterState s)
-        => s == MonsterState.Wander || s == MonsterState.Patrol || s == MonsterState.Idle;
+        => s == MonsterState.Wander || s == MonsterState.Patrol || s == MonsterState.Idle
+        || s == MonsterState.Posted;   // a guard on his beat is out of combat
 
     // ── State resolution (DAY 31 PART 3D) ─────────────────────────
 
     private MonsterState DetermineDesiredState()
     {
+        // A FACTION BODY ANSWERS BEFORE EVEN THE DEN, and for a sharper form
+        // of the same reason. A faction body sets none of the three fields
+        // IsWild reads and has no spawner, so with no branch here it falls all
+        // the way through to the final `return MonsterState.Wander` and walks
+        // the DUNGEON'S OWN wander rules -- PickWanderTarget enumerating mined
+        // cells around its spawn point. That would drag a guard off his road,
+        // every frame, against an owner trying to walk him along a rail.
+        // Canon 44 shipped with this hole recorded rather than hidden; this is
+        // the line that closes it.
+        if (isFactionBody) return MonsterState.Posted;
+
         // Den population answers FIRST. This runs every frame, and the IsWild
         // branch below matches a scavenger too -- so anywhere lower in this
         // method and a goblin would be shoved back to Wander every frame and
@@ -1984,6 +2037,29 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void Die()
     {
         OnAnyMonsterSlain?.Invoke();
+
+        // A faction's mortal body bills its people, and ONLY where the dungeon
+        // wounded it -- dungeonDealtDamage, the discriminator the bestiary
+        // unlock and the den ledger already share, for the reason they share
+        // it. A guard your skeleton softened and a kobold finished still counts
+        // as yours; one the kobolds took alone costs nothing, because you did
+        // nothing. Traps and workings set the flag too, so a corridor trapped
+        // near the road bills the player for a death they did not choose --
+        // correct, since a trap IS the dungeon, and the reason the first one
+        // has to speak.
+        //
+        // FIRST IN THE METHOD, before the bestiary line, because Die() runs
+        // from inside TakeDamage and anything after a Destroy or an event
+        // handler is at the mercy of what that handler does.
+        //
+        // NOTHING ELSE IN Die() NEEDS A FACTION CLAUSE, and saying so is what
+        // stops the next reader adding one: the bestiary grant, the run
+        // statistic and the core XP are all gated on IsWild, which a faction
+        // body answers false, and the loot table needs no guard because a
+        // faction body's prefab carries no LootTable component.
+        if (isFactionBody && dungeonDealtDamage)
+            FactionSystem.Instance?.RegisterFactionBodyKill(bodyFaction, bodyRole);
+
         // You field what you defeat. The unlock is gated on the dungeon having
         // wounded it; the XP and the run statistic below deliberately are NOT,
         // because those record that something died here while the bestiary

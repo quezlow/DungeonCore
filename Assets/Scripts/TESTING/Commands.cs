@@ -1231,6 +1231,71 @@ public class Commands : MonoBehaviour
         Debug.Log(sb.ToString());
     }
 
+    /// <summary>What a faction's bodies cost, against the bands the figures were
+    /// sized against.
+    ///
+    /// THE ONLY PART OF THE MORTAL BODY LAYER THAT CAN BE EXERCISED BEFORE ANY
+    /// BODY EXISTS, which is why it is worth a menu item of its own. The costs
+    /// are only meaningful relative to the headroom between where the Deep Holds
+    /// start and where their tier ratchets, and that headroom is three
+    /// serialised fields that can each be tuned independently -- so a figure
+    /// that reads fine in the inspector can silently stop meaning what canon 44
+    /// says it means. This prints the relationship rather than the numbers.
+    ///
+    /// Reads FactionSystem for every value. A readout that restated the costs
+    /// would confirm itself and nothing else.</summary>
+    [ContextMenu("Print Faction Body Costs")]
+    void PrintFactionBodyCosts()
+    {
+        var fs = FactionSystem.Instance;
+        if (fs == null) { Debug.Log("[Commands] No FactionSystem in the scene."); return; }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Faction body costs (canon 44)");
+
+        float standing = fs.Standing(FactionId.Dwarves);
+        float trip = fs.Tier1Standing;
+        float headroom = standing - trip;
+        sb.AppendLine($"  Deep Holds standing now {standing:F1}, tier trips at {trip:F1}"
+                    + $"  ->  headroom {headroom:F1}");
+        sb.AppendLine($"  at war: {FactionSystem.AtWarWithDungeon(FactionId.Dwarves)}"
+                    + $"   tier {fs.Tier(FactionId.Dwarves)}"
+                    + $"   regard {FactionSystem.RegardName(fs.LiveRegardStep())}");
+        sb.AppendLine();
+        sb.AppendLine("  role            cost   bodies until the tier trips");
+        foreach (FactionBodyRole role in System.Enum.GetValues(typeof(FactionBodyRole)))
+        {
+            float cost = fs.StandingLossFor(role);
+            // Ceiling of headroom/cost: the band is tested with <=, so a
+            // headroom that divides exactly is met by that many bodies -- and
+            // any remainder needs one more. 35 over 10 is 4, not 3.
+            string n = cost > 0f
+                ? Mathf.CeilToInt(headroom / cost).ToString()
+                : "never";
+            if (headroom <= 0f) n = "already tripped";
+            sb.AppendLine($"  {role,-15} {cost,5:F1}   {n}");
+        }
+        sb.AppendLine();
+        sb.AppendLine("  the same ladder, for scale");
+        // Claiming is a public const, so it can be READ. The robbery's -25 is a
+        // private serialised field on DwarvenCaravanController and is
+        // deliberately NOT printed here: restating it from memory is the drift
+        // this readout exists to avoid, and exposing an accessor for a line of
+        // flavour is not worth widening an API for.
+        float hundredCells = DwarvenClaimLedger.StandingPerCell * 100f;
+        sb.AppendLine("  " + "100 road cells".PadRight(15)
+                    + hundredCells.ToString("F1").PadLeft(5) + "   "
+                    + Mathf.CeilToInt(headroom / hundredCells));
+        sb.AppendLine();
+        sb.AppendLine("  Canon 44: clearing the whole road patrol (3 guards, -30) leaves");
+        sb.AppendLine("  standing five short of the embargo -- a commitment that puts the");
+        sb.AppendLine("  player ONE act from the consequence, not a cliff they walk off in");
+        sb.AppendLine("  one. On a fresh dungeon the guard row reads 4 and headroom 35.0.");
+        sb.AppendLine("  If either has moved, one of three serialised fields was retuned");
+        sb.AppendLine("  and that reading no longer holds.");
+        Debug.Log(sb.ToString());
+    }
+
     /// <summary>Who is hostile to whom, off the LIVE rule, plus what is actually
     /// standing on each floor.
     ///

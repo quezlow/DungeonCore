@@ -35,6 +35,22 @@ public class FactionSystem : MonoBehaviour
     [Tooltip("Cultist standing gained per cultist that departs in peace.")]
     [SerializeField] private float standingGainTribute = 3f;
 
+    [Header("Faction Body Kills (canon 44)")]
+    [Tooltip("Standing lost when the DUNGEON kills a faction's armed body -- a " +
+             "dwarven guard. Sized against Tier 1 Standing rather than against " +
+             "the other deltas: two guards is exactly -20, so taking a patrol " +
+             "trips the embargo in ONE act. A decision, not a nibble.")]
+    [SerializeField] private float standingLossGuard = 10f;
+    [Tooltip("Standing lost for an unarmed body at home. HIGHER THAN A SOLDIER " +
+             "ON PURPOSE -- a guard walks a road knowing what walks it, and a " +
+             "villager does not.")]
+    [SerializeField] private float standingLossVillager = 15f;
+    [Tooltip("Standing lost for a body on the road with the cargo. Matches the " +
+             "caravan's own robbery price, so murdering the column is never " +
+             "cheaper than robbing it -- free murder would route straight " +
+             "around the toll economy's one priced choice.")]
+    [SerializeField] private float standingLossCaravanMember = 25f;
+
     [Header("Escalation Tier Bands")]
     [Tooltip("Standing at or below which the tier ratchets to 1 / 2 / 3. Tier never falls on its own.")]
     [SerializeField] private float tier1Standing = -20f;
@@ -126,6 +142,35 @@ public class FactionSystem : MonoBehaviour
 
     public void RegisterKill(AdventurerType type, FormationType formation)
         => AddStanding(FactionForKill(type, formation), -standingLossPerKill);
+
+    /// <summary>What a faction charges for one of its mortal bodies.
+    ///
+    /// A NEW ENTRY POINT RATHER THAN A WIDER SIGNATURE ON RegisterKill, because
+    /// that one takes an AdventurerType and there is no honest value to pass it
+    /// for a dwarf. Until this existed there was no standing path AT ALL for
+    /// killing something that was not an adventurer -- which is the shape of
+    /// the gap the mortal body layer had to fill, not an oversight in the old
+    /// method. Called from DungeonMonster.Die, gated on dungeonDealtDamage.</summary>
+    public void RegisterFactionBodyKill(FactionId faction, FactionBodyRole role)
+        => AddStanding(faction, -StandingLossFor(role));
+
+    /// <summary>The three prices, in the one file that holds every other
+    /// standing delta and the bands they were sized against. Public so the
+    /// diagnostic can print them against those bands rather than restating
+    /// them -- a readout that repeated the figures would confirm itself and
+    /// nothing else.</summary>
+    public float StandingLossFor(FactionBodyRole role) => role switch
+    {
+        FactionBodyRole.Guard => standingLossGuard,
+        FactionBodyRole.Villager => standingLossVillager,
+        FactionBodyRole.CaravanMember => standingLossCaravanMember,
+        _ => standingLossGuard,
+    };
+
+    /// <summary>The band a faction's tier ratchets to 1 at, exposed so the
+    /// diagnostic can show how many bodies fit inside the headroom rather than
+    /// hard-coding -20 beside a serialised field that can be tuned.</summary>
+    public float Tier1Standing => tier1Standing;
 
     public void RegisterPilgrimage() => AddStanding(FactionId.HolyOrder, standingGainPilgrimage);
     public void RegisterTribute() => AddStanding(FactionId.Cultists, standingGainTribute);

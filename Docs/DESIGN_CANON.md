@@ -2732,8 +2732,16 @@ alone: kind Trunk with the RAW polyline end within 2 cells of `clampRadius`
 floor 3's collapsed rim trunks qualify exactly as floor 2's unbroken one, and
 spurs never do). All walkers are `DwarfWalkerPuppet`: one SpriteRenderer,
 distance-along-path movement, flipX and a small sine bob, scaled time, and
-NEVER registered with `FloorEntityRegistry` -- dwarves are not combat
-entities; a rob is a verb, not a fight. Fog hides walkers on unrevealed road
+~~NEVER registered with `FloorEntityRegistry` -- dwarves are not combat
+entities; a rob is a verb, not a fight.~~ **FORK 5 IS REVERSED -- see canon
+44.** Dwarves ARE combat entities: a `DungeonMonster` with
+`MonsterAllegiance.Faction`, and the puppet is demoted to a movement override
+that suspends while combat holds the body. The reversal is not about the road.
+Floor index 3's siege needs villagers who can DIE for the village to fall, and a
+hold that cannot be lost is scenery. Splitting the puppet so that only patrols
+became mortal was proposed and rejected: an invulnerable caravan is exactly what
+lets free murder route around the toll's one priced choice, so everything is
+mortal and scarcity prices the murder instead. Fog hides walkers on unrevealed road
 for free (the shadow tilemap renders above the Player layer).
 
 *Patrols* (`DwarvenPatrolController`, stateless -- ambient texture re-derives
@@ -9139,9 +9147,13 @@ question 3: the property itself, `wildRegenMultiplier`, `PickWanderTarget`, the
 `CrossTribeEngagements` counter, `Die()`'s three gates, and `CanRename` (already
 guarded by a null spawner).
 
-**TWO WHITELISTED SITES ARE NOT AUDITED, THEY ARE UNFINISHED, and the difference
+~~**TWO WHITELISTED SITES ARE NOT AUDITED, THEY ARE UNFINISHED, and the difference
 has to be written down or the whitelist launders them.** Both are inert while no
-body answers `Faction`, and both are wrong the moment one does:
+body answers `Faction`, and both are wrong the moment one does:~~
+
+**BOTH CLOSED in stage 1a-ii part 1. The record of what they were stays, because
+the second one was fixed somewhere other than where it was broken.** The
+original text:
 
 - `DetermineDesiredState` has no `Faction` branch, so a faction body falls
   through `spawner == null` to `Wander` and walks the dungeon's own wander rules
@@ -9159,20 +9171,91 @@ Neither is built here because both are one decision with the puppet demotion,
 and a state nothing can enter is the dead-member class this project has paid for
 before. They are stage 1a-ii's first two lines.
 
-**The standing path is also owed, and its numbers are already locked** so that
-1a-ii does not re-litigate them. `RegisterKill` takes an `AdventurerType`, so
-there is no path today for killing anything that is not an adventurer. Costs:
-**guard -10, villager -15, caravan member -25.** Villagers cost more than
-soldiers deliberately -- a guard walks a road knowing what walks it. Two guards
-is exactly `tier1Standing`, so taking a patrol trips the embargo in ONE act: a
-decision, not a nibble. The caravan member matches the robbery's own -25, so
-murdering the column is never cheaper than robbing it, which is what stops free
-murder routing around the toll economy's one priced choice. The bill keys on
-`dungeonDealtDamage` -- the discriminator the bestiary and the den ledger already
-share -- so a guard your skeleton softened and a kobold finished counts as yours,
-and one the kobolds took alone costs nothing.
+**HOW THEY WERE CLOSED.** `DetermineDesiredState` gained a `Faction` branch
+returning a new `MonsterState.Posted` -- scan, and otherwise HOLD, with movement
+left to the owning controller. That is the den WORK SITE's shape rather than the
+den scavenger's: an override on a body that would otherwise stand still, not a
+behaviour of its own.
 
-**Key files:** `Monster/MonsterAllegiance.cs` (new), `Monster/DungeonMonster.cs`,
+`EffectiveAggression` was NOT given a branch, and the reason is the more useful
+record. A branch there would work and would be unreachable the moment every
+caller sets a stance anyway -- the dead-member class again. The stance is instead
+a REQUIRED ARGUMENT on `InitialiseAsFactionBody`, which fixes the fault at the
+only place it can be got wrong. Guards Normal, villagers Defensive. **A fault
+does not have to be fixed where it shows.**
+
+`CombatHoldsBody` is the third piece and belongs with them: it is what an owner
+reads to know combat has taken the body, so it can freeze its walker and re-path
+afterwards instead of resuming a path whose start the body no longer stands on.
+
+**The standing path SHIPPED in stage 1a-ii part 1**, at the numbers locked
+before it was built. `RegisterKill` takes an `AdventurerType`, so there was no
+path at all for killing anything that is not an adventurer, and
+`RegisterFactionBodyKill` is a new entry point rather than a wider signature on
+the old one -- there is no honest `AdventurerType` to pass for a dwarf. Costs:
+**guard -10, villager -15, caravan member -25.** Villagers cost more than
+soldiers deliberately -- a guard walks a road knowing what walks it. The caravan
+member matches the robbery's own -25, so murdering the column is never cheaper
+than robbing it, which is what stops free murder routing around the toll
+economy's one priced choice. The bill keys on `dungeonDealtDamage` -- the
+discriminator the bestiary and the den ledger already share -- so a guard your
+skeleton softened and a kobold finished counts as yours, and one the kobolds
+took alone costs nothing. It runs FIRST in `Die()`, before the bestiary line:
+`Die()` is reached from inside `TakeDamage`, and anything sequenced after an
+event handler is at the mercy of what that handler does.
+
+~~Two guards is exactly `tier1Standing`, so taking a patrol trips the embargo in
+ONE act: a decision, not a nibble.~~ **STRUCK -- THE ARITHMETIC WAS WRONG, and
+the error is worth keeping because it is an easy one to make twice.**
+`tier1Standing` is an ABSOLUTE BAND, not a delta budget: `EvaluateTier` tests
+`standing <= -20f`, and the Deep Holds START at +15. The headroom is therefore
+**35, not 20**, and two guards leaves standing at -5 -- nowhere near the
+embargo. Four would be needed, and floor index 2 only ever fields three.
+
+**THE COSTS ARE KEPT AND THE INTENT IS REWRITTEN, which is the better design
+anyway.** Clearing the whole road patrol -- three bodies, -30 -- leaves standing
+at -15, FIVE SHORT of the embargo. So taking the road is not a cliff the player
+walks off in one act; it is a commitment that leaves them one act from the
+consequence, and the act that tips it can be anything already on the ladder: a
+robbery at -25, a hundred cells of claimed road at -0.05 each, one more body.
+The warning ladder in entry 19 compounds rather than terminates, and the bodies
+now compound with it instead of standing apart as a special case.
+
+**`Print Faction Body Costs` caught this before a single figure was
+serialised**, which is the whole argument for building the readout before the
+content it measures. It prints headroom over cost, so it would have read 4 on
+the guard row against a canon sentence asserting 2. The lesson is narrower than
+"test things": a tuning claim that relates two independently serialised fields
+cannot be checked by reading either one, and this project has now been bitten by
+that shape in art debt, in den cavity spans, and here.
+
+**`Print Faction Body Costs` is the one part of this layer that can be exercised
+with no body in the world.** It reads every figure off `FactionSystem` rather
+than restating any of them, and prints each role's cost against the live
+headroom, beside one other rung of the same ladder for scale: a hundred cells of
+claimed road. The ROBBERY is deliberately absent -- `robStandingLoss` is a
+private serialised field on `DwarvenCaravanController`, and a readout that typed
+-25 from memory would be the exact drift it exists to prevent. On a fresh
+dungeon the guard row reads **4** and the headroom reads **35.0**; if either
+moves, `standingLossGuard`, `dwarvesStartingStanding` or `tier1Standing` has
+been retuned and the reading above no longer holds.
+
+**The stat table this arc was designed against was read off `GuardDef`, which is
+an `AdventurerDefinition`, and adventurers are SCALED where monsters are not.**
+`CombatBalance` multiplies an adventurer's HP by 0.75 and its damage by 0.65 as
+it spawns; the monster multipliers are both 1.0. So the 100 HP / 16 damage read
+off the asset is what an in-play Guard is authored at and NOT what it fights at
+-- 75 / 10.4 before class and level scaling. A dwarven guard is a monster, so a
+prefab authored at 100 / 16 will genuinely be 100 / 16, which is what the whole
+engagement curve assumes and is therefore correct to author. Recorded because
+the two figures are the same numbers meaning different things, and the next
+reader comparing a dwarf to a Guild escort will otherwise conclude they are
+equals. They are not: the dwarf is meaningfully harder, deliberately.
+
+**Key files:** `Monster/MonsterAllegiance.cs` (new),
+`Adventurer/FactionBodyRole.cs` (new), `Floors/DwarfWalkerPuppet.cs`
+(`SnapTo`, and the fork-5 reversal recorded in its class doc),
+`Monster/DungeonMonster.cs`,
 `Adventurer/FactionSystem.cs` (`AtWarWithDungeon`),
 `Adventurer/DungeonAdventurer.cs` (`Engages`), `Monster/MonsterSpawner.cs`,
 `DungeonCore/CrowdingController.cs`, `DungeonCore/DungeonRating.cs`,

@@ -8,10 +8,27 @@ using UnityEngine;
 /// pattern grown one mechanic, because three separate copies of "move a sprite
 /// along points" is how the three drift apart.
 ///
-/// DELIBERATELY NOT AN ENTITY. It is never registered with FloorEntityRegistry,
-/// so ScanForHostiles cannot see it, traps cannot fire on it, and nothing in
-/// the combat layer knows it exists. Fork 5 of the arc: dwarves are not combat
-/// entities; a rob is a verb, not a fight.
+/// NO LONGER "DELIBERATELY NOT AN ENTITY" -- and the sentence that stood here
+/// saying so is worth remembering rather than quietly deleting. Fork 5 of the
+/// Living Holds ruled that dwarves were not combat entities and that a rob was
+/// a verb rather than a fight. Canon 44 REVERSES that, because floor index 3's
+/// siege needs villagers who can die for the village to fall, and a hold that
+/// cannot be lost is scenery.
+///
+/// SO THIS IS A MOVEMENT OVERRIDE NOW, not a body. A dwarf is a DungeonMonster
+/// with MonsterAllegiance.Faction; the puppet drives it while it is walking and
+/// SUSPENDS while combat holds it. The contract every owner keeps:
+///
+///   - freeze the walker while DungeonMonster.CombatHoldsBody is true;
+///   - on release, SnapTo the body's actual position and re-path from the cell
+///     it now stands on. A path resumed at its old DistanceAlong would teleport
+///     the body back to where the fight began, because the fight moved the
+///     transform and this class never saw it happen.
+///
+/// The alternative was splitting the puppet so only patrols became mortal,
+/// which was proposed and REJECTED: villagers and caravan members ride the same
+/// class, and an invulnerable caravan is what lets free murder route around the
+/// toll's one priced choice. Everything is mortal; scarcity prices the murder.
 ///
 /// Movement is distance-along-path, not waypoint-index: owners that derive
 /// position from a saved walking clock (the caravan) set DistanceAlong
@@ -148,6 +165,23 @@ public class DwarfWalkerPuppet : MonoBehaviour
         {
             transform.position = LogicalPosition;
         }
+    }
+
+    /// <summary>Adopt a world position outright, discarding any path.
+    ///
+    /// THE RESYNC HALF OF THE COMBAT OVERRIDE. Movement here is
+    /// distance-along-path and LogicalPosition is derived from it, so this class
+    /// has no way to learn that something else moved the transform -- and combat
+    /// does exactly that, every frame it holds the body. Without this an owner
+    /// resuming after a fight would drag the body back along a stale path from
+    /// wherever it started. ClearPath rather than keepDistance: the old route
+    /// began somewhere this body no longer stands.</summary>
+    public void SnapTo(Vector3 worldPos)
+    {
+        ClearPath();
+        LogicalPosition = worldPos;
+        transform.position = worldPos;
+        bobPhase = 0f;
     }
 
     /// <summary>Face a world position without moving (patrols watching).</summary>
