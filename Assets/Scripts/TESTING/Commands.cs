@@ -2781,27 +2781,54 @@ public class Commands : MonoBehaviour
     {
         var run = new BreachRun();
 
-        // StartExploratoryLeg: the tip of the longest run, a DEAD END preferred,
-        // which canon already calls "exactly what the population extends".
+        float clampR = radius * Mathf.Clamp01(entry.endpointClamp);
+        int seatWidth = Mathf.Max(2, entry.exploratoryWidth);
+
+        // StartExploratoryLeg, mirrored INCLUDING ITS SEAT RULE. The tip of a
+        // chamber-linking run is the chamber CENTRE, so the seat walks back off
+        // whatever swallowed the run's end and the bearing is TESTED rather than
+        // inherited -- see the generator's own comment for the measurement that
+        // forced it. Dead ends still rank first.
         DenTunnelData best = null;
-        int bestScore = int.MinValue;
         List<Vector3Int> bestLine = null;
+        Vector3Int mouth = new Vector3Int(0, 0, 0);
+        double heading = 0.0;
+        var ranked = new List<DenTunnelData>();
+        var rankedLines = new List<List<Vector3Int>>();
+        var rankedScores = new List<int>();
         foreach (var t in w.tunnels)
         {
             var lineT = DenTunnelBuilder.Centreline(t);
             if (lineT.Count < 2) continue;
-            int score = lineT.Count + (t.chamberId < 0 ? 100000 : 0);
-            if (score > bestScore) { bestScore = score; best = t; bestLine = lineT; }
+            ranked.Add(t);
+            rankedLines.Add(lineT);
+            rankedScores.Add(lineT.Count + (t.chamberId < 0 ? 100000 : 0));
+        }
+        var usedRun = new bool[ranked.Count];
+        for (int take = 0; take < ranked.Count && best == null; take++)
+        {
+            int pick = -1;
+            for (int i = 0; i < ranked.Count; i++)
+            {
+                if (usedRun[i]) continue;
+                if (pick < 0 || rankedScores[i] > rankedScores[pick]) pick = i;
+            }
+            if (pick < 0) break;
+            usedRun[pick] = true;
+
+            int seat;
+            float bearing;
+            if (!SeatLegHere(w, rankedLines[pick], centre, clampR, seatWidth, out seat, out bearing))
+                continue;
+            best = ranked[pick];
+            bestLine = rankedLines[pick];
+            mouth = bestLine[seat];
+            heading = bearing;
         }
         if (best == null) return run;
 
-        var mouth = bestLine[bestLine.Count - 1];
         run.startWasDeadEnd = best.chamberId < 0;
         run.startInChamber = w.chamber.Contains(mouth);
-        double heading = System.Math.Atan2(mouth.y - bestLine[bestLine.Count - 2].y,
-                                           mouth.x - bestLine[bestLine.Count - 2].x);
-
-        float clampR = radius * Mathf.Clamp01(entry.endpointClamp);
         double drift = entry.exploratoryDriftDegrees * Mathf.Deg2Rad;
         int width = Mathf.Max(2, entry.exploratoryWidth);
         int sense = Mathf.Max(1, entry.exploratorySenseRadius);
@@ -2908,6 +2935,45 @@ public class Commands : MonoBehaviour
 
         run.cellsCut = cut.Count;
         return run;
+    }
+
+    /// <summary>TrySeatLeg, mirrored: where on a generated run can a leg
+    /// actually start, and on what bearing? Walks back past every cell another
+    /// feature owns, then a brush width more, then tries eight bearings from
+    /// straight on outwards.</summary>
+    private static bool SeatLegHere(
+        BreachWorld w, List<Vector3Int> line, Vector3Int centre, float clampR,
+        int width, out int seat, out float bearing)
+    {
+        seat = -1;
+        bearing = 0f;
+        if (line == null || line.Count == 0) return false;
+
+        var empty = new HashSet<Vector3Int>();
+        int i = line.Count - 1;
+        while (i > 0 && (w.chamber.Contains(line[i]) || w.site.Contains(line[i])
+                         || w.road.Contains(line[i]))) i--;
+        i = Mathf.Max(0, i - width);
+
+        for (; i >= 0; i--)
+        {
+            var at = line[i];
+            var prev = line[Mathf.Max(0, i - 1)];
+            float along = (at == prev) ? 0f : Mathf.Atan2(at.y - prev.y, at.x - prev.x);
+            for (int k = 0; k < 8; k++)
+            {
+                float b = along + Mathf.PI * 0.25f * k;
+                var step = new Vector3Int(
+                    at.x + Mathf.RoundToInt(Mathf.Cos(b)),
+                    at.y + Mathf.RoundToInt(Mathf.Sin(b)), 0);
+                if (step == at) continue;
+                if (CanCutHere(w, step, centre, clampR, width, empty) != CutOk) continue;
+                seat = i;
+                bearing = b;
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>CanCutAt, mirrored. 0 is "cut here"; the rest name the find, and

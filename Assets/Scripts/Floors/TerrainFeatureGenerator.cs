@@ -3517,33 +3517,136 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return opened.Count;
     }
 
-    /// <summary>Starts the first leg, at the tip of a generated run. Prefers a
-    /// DEAD END, which canon already names as "exactly what the population
-    /// extends"; falls back to the longest run so a den whose every run found a
-    /// chamber still digs. Deterministic tiebreak on id, so two calls on one
-    /// floor can never pick differently.</summary>
+    /// <summary>Starts the first leg at a WORKABLE point on a generated run.
+    /// Prefers a DEAD END, which canon already names as "exactly what the
+    /// population extends"; falls back to the longest run so a den whose every
+    /// run found a chamber still digs. Deterministic tiebreak on id, so two
+    /// calls on one floor can never pick differently.
+    ///
+    /// THE FALLBACK DID NOT DIG, AND THE READOUT IS WHY THIS IS WRITTEN THIS
+    /// WAY. A chamber-linking run's last centreline cell IS run.b -- the chamber
+    /// CENTRE, because DenTunnelBuilder drives runs to centres rather than to
+    /// edges -- and CanCutAt refuses FeatureType.Chamber. Seating the leg there
+    /// boxed it in on its first dawn, and StartNextExploratoryLeg re-seated the
+    /// next one at the same unmoved head, for ever. Measured in Road Breach
+    /// Report over 300 seeds on floor index 2: 168 took this fallback and 83.9
+    /// per cent of those never cut a single cell in two hundred days, against
+    /// 1.5 per cent of the dead-end starts. Chamber refusals were 87.6 per cent
+    /// of every refusal on the floor.
+    ///
+    /// TWO THINGS FIX IT AND BOTH ARE NEEDED. The seat WALKS BACK off whatever
+    /// the run ended inside, to the last cell the tunnel still owns and a brush
+    /// width clear of the lip. And the leg leaves on a bearing that is TESTED
+    /// rather than inherited: the run's own heading points into the thing it
+    /// reached, so continuing along it walks straight back into the refusal that
+    /// caused this. Eight bearings are tried from straight on outwards, so a run
+    /// that CAN continue still does and only one that cannot turns aside.
+    ///
+    /// EVERY CANDIDATE IS TESTED BEFORE IT IS TAKEN, against CanCutAt itself
+    /// rather than against a second opinion about what is diggable. A run whose
+    /// every cell has been swallowed is legitimate geometry, not an error, so it
+    /// is skipped and the next run is tried; a den with no workable run at all
+    /// returns null and simply does not dig, which AdvanceDenDig already
+    /// handles.</summary>
     private DenTunnelData StartExploratoryLeg(DenTunnelFloorEntry entry, ref float heading)
     {
-        DenTunnelData best = null;
-        int bestScore = int.MinValue;
+        if (featureData == null || featureData.denTunnels == null) return null;
+        if (floor == null || floor.Terrain == null) return null;
+
+        // Ranked once, with each run's centreline kept: Centreline is not free
+        // and a comparator that recomputed it would call it O(n log n) times.
+        var runs = new List<DenTunnelData>();
+        var lines = new List<List<Vector3Int>>();
+        var scores = new List<int>();
         foreach (var t in featureData.denTunnels)
         {
             if (t == null || t.exploratory || t.polyline == null || t.polyline.Count < 2) continue;
             var lineT = DenTunnelBuilder.Centreline(t);
-            int score = lineT.Count + (t.chamberId < 0 ? 100000 : 0);
-            if (score > bestScore) { bestScore = score; best = t; }
+            if (lineT.Count < 2) continue;
+            runs.Add(t);
+            lines.Add(lineT);
+            scores.Add(lineT.Count + (t.chamberId < 0 ? 100000 : 0));
         }
-        if (best == null) return null;
+        if (runs.Count == 0) return null;
 
-        var parent = DenTunnelBuilder.Centreline(best);
-        var mouth = parent[parent.Count - 1];
-        heading = parent.Count >= 2
-            ? Mathf.Atan2(mouth.y - parent[parent.Count - 2].y,
-                          mouth.x - parent[parent.Count - 2].x)
-            : UnityEngine.Random.Range(0f, Mathf.PI * 2f);
-        return AppendLeg(entry, mouth, best);
+        int width = Mathf.Max(2, entry.exploratoryWidth);
+        float clampR = floor.Terrain.CurrentRadius * Mathf.Clamp01(entry.endpointClamp);
+
+        // Selection sort over a handful of runs, in score order, so the first
+        // one that can actually be worked is the one taken.
+        var used = new bool[runs.Count];
+        for (int taken = 0; taken < runs.Count; taken++)
+        {
+            int pick = -1;
+            for (int i = 0; i < runs.Count; i++)
+            {
+                if (used[i]) continue;
+                if (pick < 0 || scores[i] > scores[pick]) pick = i;
+            }
+            if (pick < 0) break;
+            used[pick] = true;
+
+            var run = runs[pick];
+            var centre = run.floorCentre != null ? run.floorCentre.ToVector3Int() : Vector3Int.zero;
+            int seat;
+            float bearing;
+            if (!TrySeatLeg(lines[pick], centre, clampR, width, out seat, out bearing)) continue;
+
+            heading = bearing;
+            return AppendLeg(entry, lines[pick][seat], run);
+        }
+        return null;
     }
 
+    /// <summary>Finds a cell on a generated run that a leg can actually leave
+    /// from, and the bearing it leaves on. False when the whole run is
+    /// unworkable.
+    ///
+    /// Walks back from the tip past every cell the run no longer owns -- a
+    /// chamber, a site or a road took them in RebuildDenTunnelCells' ownership
+    /// pass, and the lookup is what says so -- then a further brush width, so
+    /// the 2-wide footprint clears the lip instead of grazing it. Then tries
+    /// eight bearings from straight on outwards at each cell, walking further
+    /// back until one passes.</summary>
+    private bool TrySeatLeg(List<Vector3Int> line, Vector3Int centre, float clampR,
+                            int width, out int seat, out float bearing)
+    {
+        seat = -1;
+        bearing = 0f;
+        if (line == null || line.Count == 0) return false;
+
+        var empty = new HashSet<Vector3Int>();
+        string ignored;
+
+        int i = line.Count - 1;
+        while (i > 0 && GetFeatureAt(line[i]) != FeatureType.DenTunnel) i--;
+        i = Mathf.Max(0, i - width);
+
+        for (; i >= 0; i--)
+        {
+            var at = line[i];
+            var prev = line[Mathf.Max(0, i - 1)];
+            float along = (at == prev)
+                ? UnityEngine.Random.Range(0f, Mathf.PI * 2f)
+                : Mathf.Atan2(at.y - prev.y, at.x - prev.x);
+
+            for (int k = 0; k < 8; k++)
+            {
+                // Straight on first, then progressively aside. A run that can
+                // still be continued is continued; only one that cannot turns.
+                float b = along + Mathf.PI * 0.25f * k;
+                var step = new Vector3Int(
+                    at.x + Mathf.RoundToInt(Mathf.Cos(b)),
+                    at.y + Mathf.RoundToInt(Mathf.Sin(b)), 0);
+                if (step == at) continue;
+                if (!CanCutAt(step, centre, clampR, width, empty, out ignored)) continue;
+                seat = i;
+                bearing = b;
+                return true;
+            }
+        }
+        return false;
+    }
     /// <summary>Appends a fresh leg at the END of the tunnel list. Every leg
     /// after the first starts where the last one stopped, because a digger that
     /// has just broken into something carries on from where it stands --

@@ -9095,6 +9095,82 @@ notice. If it fires, three things follow and all are larger than this gate: the
 fires nearer 1.7 per cent than 14.4; and `exploratoryCellCap` barely binds, so
 section J's cap sweep tuned a knob that mostly does nothing.
 
+#### The dig that never started (stage 2a repair)
+
+Status: REPAIRED. `Road Breach Report` found it, the report's own start-leg
+slice proved it, and the fix is in `StartExploratoryLeg`. **The measurement came
+first and the code second, which is the only reason this was found at all: the
+fault is invisible in play, because a den that never digs looks exactly like a
+den digging slowly** -- the same sentence this entry already writes about the
+ledger, arriving a second time in the same system.
+
+**WHAT WAS WRONG.** `StartExploratoryLeg` prefers a dead end and otherwise falls
+back to the longest run, seating the leg at `parent[parent.Count - 1]`. For a
+chamber-linking run that last centreline cell is `run.b`, and
+`DenTunnelBuilder` drives runs to chamber CENTRES rather than to their edges --
+so the leg was seated inside a chamber, every candidate's 2-wide brush landed on
+chamber cells, `CanCutAt` refused all of them, the leg reached `blocked > 64` on
+its first dawn, and `StartNextExploratoryLeg` re-seated the next leg at the same
+unmoved head. For ever. The doc comment said the fallback existed "so a den
+whose every run found a chamber still digs"; it did the opposite.
+
+**MEASURED, 300 seeds, floor index 2, sliced by where the leg was seated:**
+
+| start | seeds | stuck | contact | remains | cells cut | of a 2400 cap |
+|---|---|---|---|---|---|---|
+| dead end | 132 | **1.5%** | 56.8% | 3.0% | 2359 | binds, stops d106 |
+| chamber centre | 168 | **83.9%** | 10.1% | 0.6% | 385 | never binds |
+
+Chamber refusals were **87.6 per cent of every refusal on the floor**, and 59.2
+per cent of worked dawns ended boxed in. The dead-end row is the control and it
+is a good one: 2359 cells of a 2400 cap, stopping on day 106 against the sim's
+day 104, which says the walk and the cap are both sound and only the seat was
+wrong.
+
+**THE REPAIR IS TWO CHANGES AND BOTH ARE LOAD-BEARING.** The seat WALKS BACK off
+whatever swallowed the run's end -- to the last cell the lookup still calls
+`DenTunnel`, then a further brush width so the footprint clears the lip rather
+than grazing it. And the bearing is TESTED rather than inherited: the run's own
+heading points into the thing it reached, so continuing on it walks straight
+back into the refusal that caused this. Eight bearings are tried from straight
+on outwards, so a run that CAN be continued still is, and only one that cannot
+turns aside. Every candidate run is tested against `CanCutAt` ITSELF before it
+is taken, rather than against a second opinion about what is diggable; a run
+whose every cell has been swallowed is legitimate geometry and is skipped, and a
+den with no workable run returns null and does not dig, which `AdvanceDenDig`
+already handles.
+
+**THE READOUT MOVED WITH THE CODE, AND IT HAD TO.** `Road Breach Report` mirrors
+the walk, so a fix applied only to the generator would leave the instrument
+measuring the old rule and reporting a fault that no longer existed. The mirror
+carries the same seat rule and the same eight-bearing test; the start-leg slice
+stays, because it is now the regression test -- **the two rows must agree, and
+the day they stop agreeing something has been re-tidied back.**
+
+**WHAT THIS INVALIDATES, STATED PLAINLY RATHER THAN LEFT TO BE INFERRED.** Every
+figure this entry rests on the exploratory dig for was measured against a den
+that had a 56 per cent chance of never digging at all:
+
+- The road breach rate of 30.7 per cent is an average of a working den and an
+  inert one. Among dens that dug it was **56.8 per cent**, and that is the figure
+  the dwarven skirmish gate actually cleared on.
+- Contested discovery, this entry's own "first thing in DCR that punishes
+  slowness rather than aggression", fired at **1.7 per cent overall and 3.0 per
+  cent among dens that dug** -- against the 14.4 per cent
+  `Tools/sim_den_digger.py` reports and this entry quotes. Some of that gap is
+  the sim (which walks THROUGH a chamber, a road, a site and claimed ground
+  where `CanCutAt` is blocked by all four, models no never-retrace set, and
+  tests a point where the leg tests a brush). Some of it was this fault. **The
+  split between the two is not yet known and is owed.**
+- `exploratoryCellCap` barely bound on the seeds that mattered, so section J's
+  cap sweep -- the measurement that chose 2400 over 1107, on the argument that
+  1107 held the beat to 7.3-8.0 per cent -- was tuning a knob against a model
+  that does not match the shipped rules. **Re-measure the cap after this repair,
+  before quoting any of those figures again.**
+
+**Key files:** `Floors/TerrainFeatureGenerator.cs` (`StartExploratoryLeg`,
+`TrySeatLeg`), `TESTING/Commands.cs` (the mirror and its start-leg slice).
+
 #### What the den arc still owes
 
 - ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
