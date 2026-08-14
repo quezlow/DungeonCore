@@ -9261,6 +9261,26 @@ entry's own sentence about the ledger and the stalled dig arriving a third time.
 `Print Den Ledger` gained a `reach` column beside `work` so the two can never
 again be assumed equal.
 
+**FIXED BY NOT MAKING THE ASSIGNMENT, which is stage 2c's own ruling arriving a
+second time.** `AssignWorkSites` now tests whether the face's tunnel stretch is
+REVEALED -- `MarkNaturalFloor` runs inside the reveal and nowhere else, so
+revealed and walkable are one fact here -- and clears the work sites when it is
+not. Marking the tunnel walkable instead was never available: `CarveLegCell` bans
+walkable-but-invisible in as many words. **A digger without a work site is not
+idle**; it falls back to the cavity leash and wanders the hole, which is what a
+den's people do at home and reads better than the standing still it replaces.
+`reach` and `work` are now equal by construction, and the day they are not, the
+leash or the reveal has moved.
+
+**`pop` SPLIT INTO `pop/roll/bud`, because one count could not name its own
+fault.** A den that never spawned and a den whose bodies exist but never
+REGISTERED both read `pop 0`, and they want entirely different repairs -- the
+first is `SpawnScavenger` bailing on a missing prefab or an unresolved
+`DenAnchor`, the second is `FloorEntityRegistry`. The ledger prints the registry
+count, the den's own roll and the budget, and asserts each case separately. Found
+because floor index 2 read `pop 0` at day 1 against a `PopulationBudget` of two
+that has no grace gate.
+
 **FOG DOES NOT HIDE A FIGHT FROM THE PLAYER, IT HIDES IT FROM THE SCREEN, and
 that is what decided the staging.** `EntityStatusBars` records the measurement in
 its own comment: the bars had to gain a fog gate because they kept drawing over
@@ -9310,7 +9330,26 @@ and visibility was only half of it.
 DAWN rather than per refusal -- matching the trigger, where a counter driven off
 refusals would report forty skirmishes for every one the game stages -- and
 resolves each against the tier the den had reached, printing the stage every lost
-breach was lost at: no rail in reach, the road squad, the gate squad. It asserts
+breach was lost at: no rail in reach, the road squad, the gate squad.
+
+**IT RESOLVED THEM AFTER THE WALK AT FIRST, AND THAT WAS WRONG IN A WAY THE
+NUMBERS HID.** A breach the road holds ABANDONS THE LEG, so an engagement changes
+every dawn that follows it -- and a pass that resolved afterwards was measuring a
+dig that ground at the same stretch for two hundred days. It read **2.78 breaches
+a seed** against a dig that never turned away. Resolution moved INSIDE the walk,
+where the outcome can reverse the heading exactly as `ApplyBreachOutcome` does.
+**The first-contact columns were never affected** -- `contact` and `beat` are
+measured off the FIRST breach and stand unchanged, which is why the gate rule the
+feature was judged on did not move. The report now prints legs abandoned per seed
+beside the outcome, so the consequence layer is visible rather than inferred.
+
+**THE FIRST MEASURED SPLIT, recorded because it is the shape of the encounter
+rather than a tuning.** At a 70 HP guard the road squad of two is unbeatable by
+any party the den can field, and it meets about three quarters of breaches; the
+lone gate guard meets the rest and loses about two thirds of those, which is the
+tier-5 cases. So canon 44's "the lone guard is the opening and the pair is the
+wall" is exactly what the numbers show -- with the wall as the COMMON case, which
+that entry did not say and which is worth knowing before anyone retunes toward it. It asserts
 the gate window at both ends and asserts the STRIKE ORDER, which is the
 assumption underneath the whole model: the kobolds open the fight because their
 prefab authors the longer `detectionRange`, and retuning the guard's above it

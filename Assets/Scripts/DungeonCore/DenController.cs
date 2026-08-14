@@ -980,6 +980,36 @@ public class DenController : MonoBehaviour
     {
         var influence = floor != null ? floor.TileInfluence : null;
         if (influence == null) return;
+
+        // ONLY WHERE THE FACE CAN BE REACHED, WHICH IS ONLY WHERE IT CAN BE SEEN.
+        //
+        // THIS MECHANISM WAS INERT FROM THE DAY IT SHIPPED, and the reason is
+        // worth keeping. A body walks to its work site through StepTowards,
+        // which pathfinds; DungeonPathfinder expands only cells
+        // TileInfluenceManager calls mined; den tunnel becomes mined in
+        // RevealGrownCells, on REVEAL. So a digger sent up an UNREVEALED leg got
+        // an empty path and stood perfectly still -- and MayForage refuses any
+        // work-site holder, so it did not rob instead. Four of a tier-5 den's
+        // sixteen bodies did nothing at all, and nothing said so: a digger that
+        // cannot reach the face looks exactly like a digger working.
+        //
+        // The repair is NOT to mark the tunnel walkable. CarveLegCell bans that
+        // in as many words -- unrevealed ground is left unmarked as well as
+        // unlit, and walkable-but-invisible is the reserve's own banned state.
+        // It is to stop making an assignment that cannot be honoured, which is
+        // stage 2c's own ruling about staging a fight nobody can draw, arriving
+        // a second time for the same reason.
+        //
+        // A DIGGER WITHOUT A WORK SITE IS NOT IDLE, it falls back to the cavity
+        // leash and wanders the hole -- which is what a den's people do at home,
+        // and reads better than the standing still this replaces.
+        var features = floor.FeatureGenerator;
+        if (features == null || !FaceIsReachable(features, face))
+        {
+            ClearWorkSites(floorIndex);
+            return;
+        }
+
         Vector3 world = influence.CellToWorld(face);
         int diggers = DiggerBudget(floorIndex);
         var live = LiveOn(floorIndex);
@@ -998,6 +1028,21 @@ public class DenController : MonoBehaviour
             if (i < diggers) live[i].SetDenWorkSite(world);
             else live[i].ClearDenWorkSite();
         }
+    }
+
+    /// <summary>Is the dug face on ground a body could actually walk to? The
+    /// face is den tunnel by construction, so the question is whether its own
+    /// stretch has been revealed -- MarkNaturalFloor runs inside the reveal and
+    /// nowhere else, so revealed and walkable are the same fact here.
+    ///
+    /// The STRETCH rather than the cell: reveal is per segment, so a revealed
+    /// stretch is a walkable run of tunnel and the pathfinder has something to
+    /// route along rather than a single legal square.</summary>
+    private static bool FaceIsReachable(TerrainFeatureGenerator features, Vector3Int face)
+    {
+        if (!features.TryGetFeatureRef(face, out var fref)) return false;
+        if (fref.type != FeatureType.DenTunnel) return false;
+        return features.IsDenTunnelSegmentRevealed(fref.featureId);
     }
 
     private void ClearWorkSites(int floorIndex)
@@ -1279,6 +1324,17 @@ public class DenController : MonoBehaviour
         var live = LiveOn(den.floorIndex);
         for (int i = live.Count; i < budget; i++) SpawnScavenger(den);
     }
+
+    /// <summary>How many bodies this den believes it is holding.
+    ///
+    /// EXPOSED TO SEPARATE TWO FAULTS THAT LOOK IDENTICAL. Print Den Ledger
+    /// counts pop through the floor's entity registry; this counts the den's own
+    /// roll. A den that never spawned reads zero in BOTH, and a den whose bodies
+    /// exist but never registered reads zero in one and its budget in the other
+    /// -- and those want completely different repairs. Reading only the registry
+    /// cannot tell them apart, which is the shape this project keeps paying
+    /// for.</summary>
+    public int RollCount(int floorIndex) => LiveOn(floorIndex).Count;
 
     private List<DungeonMonster> LiveOn(int floorIndex)
     {

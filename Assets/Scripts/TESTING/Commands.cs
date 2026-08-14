@@ -1138,7 +1138,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  stolen   earned   rem  raids  tgt%  dug    left   tunnel      find  skirm  pop  out  dig  work  reach  lost  state");
+        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  stolen   earned   rem  raids  tgt%  dug    left   tunnel      find  skirm  pop/roll/bud  out  dig  work  reach  lost  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1203,10 +1203,30 @@ public class Commands : MonoBehaviour
                 }
             }
 
+            // THREE COUNTS, NOT ONE, because a den that never spawned and a den
+            // whose bodies never REGISTERED both read pop 0 and want entirely
+            // different repairs. pop is the floor's entity registry, roll is the
+            // den's own list, bud is what it should be holding.
+            int roll = DenController.Instance.RollCount(den.floorIndex);
+            int bud = DenController.Instance.PopulationBudget(den.floorIndex);
+            string popCol = pop + "/" + roll + "/" + bud;
+            if (bud > 0 && roll == 0)
+                sb.AppendLine("       !! the den is holding NOBODY against a budget of "
+                            + bud + ". SpawnScavenger bailed: check the profile's "
+                            + "scavengerDefinition has a PREFAB, and that DenAnchor is "
+                            + "set -- the cavity existing is not the same as the anchor "
+                            + "being resolved.");
+            else if (bud > 0 && roll > 0 && pop == 0)
+                sb.AppendLine("       !! " + roll + " bodies on the roll and NONE in the "
+                            + "floor's entity registry. They were instantiated and did "
+                            + "not register, which is a different fault from never "
+                            + "spawning -- look at FloorEntityRegistry rather than at "
+                            + "SpawnScavenger.");
+
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tribe,-8} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
                         + $"{den.stolenHoard,-8:F0} {den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} {den.skirmishes,-6} "
-                        + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {reach,-6} {den.deathsNotByDungeon,-5} {state}");
+                        + $"{popCol,-13} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {reach,-6} {den.deathsNotByDungeon,-5} {state}");
 
             // THE HOARD INVARIANT, and the one line that catches stage 2b's
             // characteristic failure. An excavator's hoard is the geometry's
@@ -2247,7 +2267,7 @@ public class Commands : MonoBehaviour
 
             var sample = new BreachSample
             {
-                run = WalkTheDig(rng, world, entry, den, centre, radius, days),
+                run = WalkTheDig(rng, world, entry, den, centre, radius, days, patrol),
                 gateKind = world.graph.rails[world.gateRail].road.kind,
                 gateWalk = world.gateWalkCount,
                 beatCells = world.beat != null ? world.beat.Count : 0,
@@ -2257,7 +2277,6 @@ public class Commands : MonoBehaviour
             };
             if (sample.run.metRoad)
                 sample.inReach = RailReachable(world, sample.run.firstRoadCell, out sample.onBeat);
-            ResolveEngagements(sample, world, patrol, entry);
             samples.Add(sample);
         }
         sw.Stop();
@@ -2767,65 +2786,63 @@ public class Commands : MonoBehaviour
     /// <summary>Is a breached road cell somewhere a patrol answers? The cell is
     /// carriageway, so it sits within half a width of a walk cell by
     /// construction; the question is WHICH rail owns that walk cell.</summary>
-    /// <summary>Every breach on this seed, turned into an engagement and an
-    /// outcome.
+    /// <summary>One breach, resolved where it happens. Returns TRUE when the
+    /// road holds and the den must therefore abandon the leg.
     ///
     /// THE ENGAGEMENT IS DERIVED, NEVER RESTATED. Both stat blocks are read off
     /// the PREFABS the game instantiates -- the guard's through the patrol
     /// controller's own Guard Definition, the kobold's through the den profile's
-    /// scavenger definition -- and the party size off DenController.DiggerBudget
-    /// at the tier the den had reached that dawn. Nothing about the encounter is
-    /// typed in here, so retuning any of it moves this readout with it. That is
-    /// the whole reason this column exists: canon 44 asserted that a lone guard
-    /// loses to four kobolds, sized the gate squad on it, and the assertion was
-    /// never checkable from either serialised field alone.
+    /// scavenger definition -- and the party size off DenController.DiggersAtTier
+    /// at the tier the den had reached that dawn. Retuning any of it moves this
+    /// readout with it, which is the whole reason the column exists: canon 44
+    /// sized the gate squad on an assertion that related two independently
+    /// serialised fields and was checkable from neither alone.
     ///
-    /// WHICH SQUAD ARRIVES IS GEOMETRY. A breach whose nearest rail is inside
-    /// the gate beat is met by the gate squad; one on a reachable rail outside
-    /// it is met by the roaming road squad, which is unbounded and walks the
-    /// whole network. A breach with no reachable rail is met by nobody, and is
-    /// counted rather than dropped.
+    /// WHICH SQUAD ARRIVES IS GEOMETRY, and it is the same test
+    /// DwarvenPatrolController.PatrolMeeting makes at runtime. A breach whose
+    /// nearest rail sits inside the gate beat is met by the gate squad; one on a
+    /// reachable rail outside it by the roaming road squad, which is unbounded.
+    /// A breach with no reachable rail is met by nobody and is counted rather
+    /// than dropped.
     ///
-    /// ARRIVAL IS NOT MODELLED, AND THAT IS A FINDING RATHER THAN AN OMISSION.
-    /// A guard walks at patrolSpeed over a beat of about a hundred and twenty
-    /// cells, against a day-night cycle of DayDuration + NightDuration seconds
-    /// -- a full cycle carries him several times the length of his own beat. A
-    /// party stands from the dawn that spawned it to the next, so a guard whose
-    /// beat contains the breach reaches it with room to spare and a transit
-    /// model would only add a term that is never binding.</summary>
-    private static void ResolveEngagements(
-        BreachSample sample, BreachWorld w,
-        DwarvenPatrolController patrol, DenTunnelFloorEntry entry)
+    /// THE SQUAD IS AT FULL STRENGTH EVERY TIME, and that is correct rather than
+    /// convenient: a guard felled by one breach is replaced at the next dawn and
+    /// breaches are at least a dawn apart, so no squad ever meets a second
+    /// breach short-handed.
+    ///
+    /// ARRIVAL IS NOT MODELLED. A guard walks at patrolSpeed over a network of
+    /// about four hundred and forty walk cells against a cycle of DayDuration
+    /// plus NightDuration; at the authored figures that carries him the whole
+    /// network inside one day, and a party stands from the dawn that spawned it
+    /// to the next. A transit term would never bind.</summary>
+    private static bool ResolveOneBreach(
+        BreachRun run, BreachWorld w, DwarvenPatrolController patrol,
+        DenTunnelFloorEntry entry, Vector3Int at, int tier)
     {
+        run.breaches++;
+
         var guardPrefab = patrol != null && patrol.GuardDefinition != null
             ? patrol.GuardDefinition.prefab : null;
         var koboldPrefab = entry != null && entry.scavengerDefinition != null
             ? entry.scavengerDefinition.prefab : null;
-        if (guardPrefab == null || koboldPrefab == null) return;
+        if (guardPrefab == null || koboldPrefab == null) return false;
 
-        var run = sample.run;
-        for (int i = 0; i < run.breachCells.Count; i++)
+        bool onBeat;
+        if (!RailReachable(w, at, out onBeat)) { run.breachesUnreachable++; return false; }
+
+        int guards = onBeat ? patrol.GateSquadSize : patrol.RoadSquadSize;
+        if (onBeat) run.breachesOnBeat++; else run.breachesOffBeat++;
+
+        int party = DenController.DiggersAtTier(tier);
+        if (party <= 0) return false;
+
+        if (SkirmishResolver.TakesTheRoad(guardPrefab, koboldPrefab, guards, party))
         {
-            sample.breaches++;
-
-            bool onBeat;
-            bool reachable = RailReachable(w, run.breachCells[i], out onBeat);
-            if (!reachable) { sample.breachesUnreachable++; continue; }
-
-            int guards = onBeat ? patrol.GateSquadSize : patrol.RoadSquadSize;
-            if (onBeat) sample.breachesOnBeat++; else sample.breachesOffBeat++;
-
-            // The party is DiggerBudget strong, which is what SendSkirmishParty
-            // raises. DiggerBudget reads a live den off its floor index, so the
-            // TABLE is reached through the tier the same way the dig rate is.
-            int party = DenController.DiggersAtTier(run.breachTiers[i]);
-            if (party <= 0) continue;
-
-            if (SkirmishResolver.TakesTheRoad(guardPrefab, koboldPrefab, guards, party))
-                sample.denWon++;
-            else
-                sample.guardWon++;
+            run.denWon++;
+            return false;      // the road lost a guard; the leg carries on
         }
+        run.guardWon++;
+        return true;           // the road held; ApplyBreachOutcome abandons the leg
     }
 
     /// <summary>What the beat actually comes to, with the stage each breach was
@@ -2836,17 +2853,20 @@ public class Commands : MonoBehaviour
     {
         long breaches = 0, unreachable = 0, offBeat = 0, onBeat = 0, denWon = 0, guardWon = 0;
         int seedsWithBreach = 0, seedsWithEngagement = 0, seedsDenTookOne = 0;
+        long abandoned = 0;
         foreach (var s in all)
         {
-            breaches += s.breaches;
-            unreachable += s.breachesUnreachable;
-            offBeat += s.breachesOffBeat;
-            onBeat += s.breachesOnBeat;
-            denWon += s.denWon;
-            guardWon += s.guardWon;
-            if (s.breaches > 0) seedsWithBreach++;
-            if (s.denWon + s.guardWon > 0) seedsWithEngagement++;
-            if (s.denWon > 0) seedsDenTookOne++;
+            var r = s.run;
+            breaches += r.breaches;
+            unreachable += r.breachesUnreachable;
+            offBeat += r.breachesOffBeat;
+            onBeat += r.breachesOnBeat;
+            denWon += r.denWon;
+            guardWon += r.guardWon;
+            abandoned += r.legsAbandoned;
+            if (r.breaches > 0) seedsWithBreach++;
+            if (r.denWon + r.guardWon > 0) seedsWithEngagement++;
+            if (r.denWon > 0) seedsDenTookOne++;
         }
 
         int n = all.Count;
@@ -2869,6 +2889,12 @@ public class Commands : MonoBehaviour
                     + " and the ROAD holds " + Pct((int)guardWon, (int)fights)
                     + ". " + Pct(seedsWithEngagement, n) + " of seeds fight at all and "
                     + Pct(seedsDenTookOne, n) + " win at least one.");
+        sb.AppendLine("         " + abandoned + " leg(s) abandoned, "
+                    + (abandoned / (double)Mathf.Max(1, n)).ToString("0.00")
+                    + " per seed -- the road holding is what turns a dig away from the "
+                    + "carriageway, so this is the consequence layer working and NOT a "
+                    + "dig being suppressed. Before it was modelled this report read "
+                    + "2.78 breaches a seed against a dig that never turned.");
 
         // THE ASSERTION CANON 44 SIZED THE GATE SQUAD ON, checked against the
         // prefabs rather than against itself. Both stat blocks are read live, so
@@ -2980,6 +3006,20 @@ public class Commands : MonoBehaviour
         /// engagement.</summary>
         public readonly List<Vector3Int> breachCells = new List<Vector3Int>();
         public readonly List<int> breachTiers = new List<int>();
+
+        /// <summary>What the breaches came to. RESOLVED INSIDE THE WALK rather
+        /// than after it, because the outcome CHANGES THE WALK: a breach the
+        /// road holds abandons the leg, and a pass that resolved afterwards
+        /// would be reporting engagements for a dig that never had them.
+        ///
+        /// The stages that can drop a breach are geometric -- no rail near
+        /// enough for a guard to be on, or a rail nobody's beat covers -- and
+        /// each is counted separately. A rate that cannot say which stage lost
+        /// the breach is the readout canon 42 already records paying a round
+        /// trip for.</summary>
+        public int breaches, breachesUnreachable, breachesOffBeat, breachesOnBeat;
+        public int denWon, guardWon;
+        public int legsAbandoned;
         public int remainsTaken;
         public int cellsCut;
 
@@ -3010,15 +3050,6 @@ public class Commands : MonoBehaviour
         public int gateWalk, beatCells, totalWalk;
         public int trunkWalk, beatTrunk;
 
-        /// <summary>What the breaches on this seed came to. Every breach sends a
-        /// party (SendSkirmishParty is unconditional), so the stages that can
-        /// drop one are GEOMETRIC -- no rail near enough for a guard to be on,
-        /// or a rail nobody's beat covers -- and each is counted separately
-        /// rather than folded into a single engagement rate. A rate that cannot
-        /// say which stage lost the breach is the readout canon 42 already
-        /// records paying a round trip for.</summary>
-        public int breaches, breachesUnreachable, breachesOffBeat, breachesOnBeat;
-        public int denWon, guardWon;
     }
 
     /// <summary>AdvanceDenDig's walk and TickExploratoryDig's dawn, mirrored.
@@ -3027,7 +3058,8 @@ public class Commands : MonoBehaviour
     /// that quietly stopped being the shipped one.</summary>
     private BreachRun WalkTheDig(
         System.Random rng, BreachWorld w, DenTunnelFloorEntry entry,
-        DenController den, Vector3Int centre, int radius, int days)
+        DenController den, Vector3Int centre, int radius, int days,
+        DwarvenPatrolController patrol)
     {
         var run = new BreachRun();
 
@@ -3188,19 +3220,32 @@ public class Commands : MonoBehaviour
             run.workedDawns++;
             if (boxedIn) run.boxedDawns++;
             if (spent < rock) run.shortDawns++;
+
+            // THE BREACH RESOLVES HERE, INSIDE THE WALK, and the first cut of
+            // this report resolved it afterwards -- which was wrong in a way the
+            // numbers hid. A breach the road holds ABANDONS THE LEG, so an
+            // engagement changes every dawn that follows it; resolving after the
+            // walk measured a dig that ground at the same stretch for two
+            // hundred days and reported 2.78 breaches a seed for it.
+            bool abandonLeg = false;
             if (breachedToday)
             {
                 run.breachCells.Add(breachAt);
                 run.breachTiers.Add(tier);
+                abandonLeg = ResolveOneBreach(run, w, patrol, entry, breachAt, tier);
             }
 
             // A leg that has arrived somewhere starts a fresh one FROM WHERE IT
             // STANDS, so the retrace set resets to the new mouth alone.
-            if (tookOne || boxedIn)
+            if (tookOne || boxedIn || abandonLeg)
             {
                 onLeg.Clear();
                 onLeg.Add(new Vector3Int((int)System.Math.Round(x), (int)System.Math.Round(y), 0));
             }
+            // ApplyBreachOutcome turns the leg back the way it came. Without the
+            // reversal the mirror would restart the leg pointing at the
+            // carriageway it was just driven off, and breach again immediately.
+            if (abandonLeg) { heading += Mathf.PI; run.legsAbandoned++; }
         }
 
         run.cellsCut = cut.Count;
