@@ -8078,8 +8078,6 @@ entry.
 
 ---
 
-# APPENDIX
-
 ### Den populations -- bodies, and why they persist (BUILT)
 
 Status: BUILT for the OCCUPIER. Goblin scavengers are live bodies that fetch
@@ -9127,6 +9125,49 @@ is a good one: 2359 cells of a 2400 cap, stopping on day 106 against the sim's
 day 104, which says the walk and the cap are both sound and only the seat was
 wrong.
 
+**CONFIRMED, AND THE CONFIRMATION IS THE HALF THAT MAKES THIS A FIX RATHER THAN
+A CLAIM.** Same report, same 300 seeds, after the repair:
+
+| start | seeds | stuck | contact | remains | cells cut | first contact |
+|---|---|---|---|---|---|---|
+| dead end | 132 | **0.0%** | 51.5% | 3.8% | 2381 | d65 |
+| chamber centre | 168 | **0.0%** | 52.4% | 5.4% | 2386 | d48 |
+| all | 300 | **0.0%** | **52.0%** | 4.7% | 2384 | d57 |
+
+The two rows now agree and the report's own assertion passes. Every den digs;
+the cap binds on essentially every seed and stops on day 106, where before only
+the dead-end half ever reached it.
+
+**THE REFUSAL PROFILE INVERTED, AND THAT IS THE FIX SHOWING ITS WORK RATHER THAN
+A NEW FAULT.** Chamber refusals fell from 87.6 per cent of all refusals to 1.4,
+and RETRACE rose to 85.3 -- but the total is far smaller: worked dawns fell from
+145 per seed to 101, dawns ending without spending their rock from 65.6 per cent
+to 5.8, and dawns ending boxed in from 59.2 per cent to 4.9. A leg that is
+digging instead of butting at a cave wall spends most of its refusals on its own
+old path, which is what a self-avoiding walk in a bounded disc does and is the
+`onLeg` rule working as designed. **If retrace ever falls back down the table,
+something else has started blocking the dig and this paragraph is the baseline
+to read it against.**
+
+**THE DEAD-END ROW MOVED TOO, by about a fifth of a standard error at this seed
+count, and the reason is recorded so it is not mistaken for drift.** The seat
+rule applies to every run, so a dead end now starts a brush width back from its
+tip on a tested bearing rather than at the tip on an inherited one. The backoff
+is unnecessary at a dead end -- nothing swallowed that tip -- and is harmless,
+because the leg's retrace set holds only its mouth and it cuts straight back out
+past the old tip on its first step. Left uniform rather than special-cased: a
+seat rule with an exception for the case that was already working is a second
+path to maintain and the one nobody would re-test.
+
+**WHAT THE CLEAN NUMBERS NOW SAY, with the stuck dens no longer averaged in.**
+The road breach beat is available on **52.0 per cent** of seeds rather than the
+30.7 it was first measured at, so the dwarven skirmish clears its gate by more
+than three times the rule. And contested discovery reads **4.7 per cent** --
+which is now a clean figure rather than a confounded one, and it is BELOW the
+7.3-8.0 per cent this entry rejected cap 1107 for delivering. The shipped
+configuration is under the bar this entry set for rejection. That is the whole
+of the case for re-measuring the cap against the shipped rules, and it is owed.
+
 **THE REPAIR IS TWO CHANGES AND BOTH ARE LOAD-BEARING.** The seat WALKS BACK off
 whatever swallowed the run's end -- to the last cell the lookup still calls
 `DenTunnel`, then a further brush width so the footprint clears the lip rather
@@ -9687,6 +9728,8 @@ meets it where anyone is standing.
 `Gameplay/SpellCaster.cs`, `Traps/PressurePlateTrap.cs`, `Traps/CrossbowTrap.cs`,
 `Traps/FireballTrap.cs`, `UI/Minimap.cs`, `TESTING/Commands.cs`
 (`Print Tribe Matrix`, now allegiance-first).
+
+# APPENDIX
 
 ## A. Content Registries and Authoring Keys
 
