@@ -73,9 +73,9 @@ public class DwarvenPatrolController : MonoBehaviour
     [Tooltip("Radius of the gatehouse patrol's beat, in STEPS THROUGH THE ROAD " +
              "NETWORK from its seat -- not cells along one rail. The site pass " +
              "splits the trunk wherever it seats a site, so an index range is " +
-             "bounded by site placement rather than by this number: prototyped " +
-             "over 2000 floor-2 graphs, 60 delivered a mean of 40 cells as an " +
-             "index window against 132 as a graph ball.")]
+             "bounded by site placement rather than by this number: measured " +
+             "on the live floor, 60 holds 61 cells as an index window on one " +
+             "approach against 124 as a graph ball across both.")]
     [SerializeField, Min(10)] private int gateBeatHalfCells = 60;
     [SerializeField, Min(0)] private int villagePatrolCount = 2;
     [Tooltip("Bodies in the gatehouse beat. ONE, deliberately: a lone 100 HP " +

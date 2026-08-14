@@ -229,9 +229,12 @@ public static class DeepRoadGraph
     /// AN INDEX WINDOW ON ONE RAIL CANNOT DO THIS JOB, which is what it was
     /// doing before. AncientSiteBuilder.SplitChordsForSites chops the trunk
     /// wherever it seats a site, so a beat bounded by index is bounded by an
-    /// artefact of site placement: prototyped over 2000 synthesised floor-2
-    /// graphs, an authored +/-60 delivered a mean of 40 cells that way against
-    /// 132 as a graph ball.
+    /// artefact of site placement. MEASURED on the live floor: a 191-cell gate
+    /// rail with the seat at its GATE END, because the nearest trunk cell to
+    /// the outpost anchor is the one just outside its gate -- so an index
+    /// window of +/-60 holds 61 cells of ONE approach where the ball holds 124
+    /// across both. The ball roughly doubles the beat and every extra cell is
+    /// on the far side of the gatehouse.
     ///
     /// LANES ARE ADMITTED AS TRANSIT, and the measurement is why. A laned site
     /// is threaded gate-to-gate by a Lane, so excluding Lane rails DISCONNECTS

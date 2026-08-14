@@ -9775,7 +9775,9 @@ was standing.
 report's own measured shape** (439 mean walk cells, 19-cell gate rail, the
 199:101 lane-to-spur split). The prototype reproduces the fault exactly -- 0.0
 per cent coverage, 0.0 per cent trunk occupancy, 2000 of 2000 dens never
-reaching the trunk -- which is what makes the rest of its table worth reading:
+reaching the trunk -- which is what makes the rest of its table worth reading.
+**Its composition was WRONG and the table below is SYNTHETIC**; see the
+measured figures underneath it, which supersede the index-window column:
 
 | rule | beat cells | trunk covered | occupancy trunk/spur/lane |
 |---|---|---|---|
@@ -9785,9 +9787,42 @@ reaching the trunk -- which is what makes the rest of its table worth reading:
 | both, lane excluded | 76 | 18.5% | 88 / 12 / 0 |
 | **both, lane as transit** | **132** | **27.2%** | 71 / 10 / 18 |
 
-**AN AUTHORED 60 DELIVERS 40 CELLS AS AN INDEX WINDOW AND 132 AS A GRAPH
+~~**AN AUTHORED 60 DELIVERS 40 CELLS AS AN INDEX WINDOW AND 132 AS A GRAPH
 BALL**, which is the site-placement argument as a number rather than an
-assertion.
+assertion.~~
+
+**STRUCK AND REPLACED BY THE MEASURED FIGURES, and the reason the prototype was
+wrong is the more useful record.** It assumed floor index 2 seats five to seven
+sites on its road, chopping the trunk into roughly seven rails. The live report
+prints the real composition: **439 walk cells of which 410 are TRUNK**, so the
+floor seats exactly ONE site on the road -- the outpost -- and the trunk is in
+two halves of 191 and about 219, not seven pieces. What actually happens:
+
+- The seat lands at the GATE END of its 191-cell half, because the nearest
+  trunk cell to the outpost anchor is the one just outside its gate. An index
+  window of +/-60 therefore holds **61 cells, all on one approach**.
+- The beat set holds **124** -- 61 near-side, 19 of lane, about 44 far-side --
+  covering **105 trunk cells of 410, or 25.6 per cent**. The arithmetic closes
+  exactly: 105 + 19 = 124.
+- Without lane transit it would be 61 cells and **14.9 per cent**, because the
+  only junction near the gate IS the lane. So the beat set roughly DOUBLES the
+  beat and every extra cell is across the gatehouse.
+
+**THE PROTOTYPE WAS RIGHT FOR THE WRONG REASON, which is the trap worth naming.**
+It predicted the lane-transit amendment almost exactly -- 13.6 to 25.7 per cent
+for a laned outpost against a measured 14.9 to 25.6 -- because the geometry AT
+THE GATE was modelled correctly. It missed the index-window comparison because
+the GLOBAL trunk composition was not. A synthetic model can be trusted for the
+question it models locally and not for the one that depends on the whole floor,
+and nothing in its output says which is which. **The radius sweep below is
+synthetic on the same footing and has not been re-measured.**
+
+**One finding that belongs to the skirmish rather than here.** 12.3 per cent of
+seeds meet the road on the beat against 52.0 per cent meeting it at all, so
+**23.7 per cent of breaches land on the beat against 25.6 per cent of trunk
+covered**. Breaches are essentially uniform along the trunk, which means the
+engagement frequency of any road beat is set by `gateBeatHalfCells` and by
+nothing about the dig.
 
 **LANES ARE ADMITTED AS TRANSIT, and this is the one mechanism that changed
 mid-build.** The fork was locked as "exclude Lane rails from the set"; the
