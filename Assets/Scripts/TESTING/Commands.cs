@@ -3,6 +3,65 @@ using UnityEngine;
 
 public class Commands : MonoBehaviour
 {
+    [ContextMenu("Test Generate All Floors")]
+    void TestGenerateAllFloors()
+    {
+        var fm = FloorManager.Instance;
+        if (fm == null) { Debug.LogWarning("[Commands] No FloorManager in scene."); return; }
+
+        var coreFloor = fm.GetFloor(fm.CoreFloorIndex);
+        var core = DungeonCore.Instance;
+        Vector3Int cell = coreFloor != null && coreFloor.TileInfluence != null && core != null
+            ? coreFloor.TileInfluence.WorldToCell(core.transform.position)
+            : Vector3Int.zero;
+
+        // Per-stage breakdown, so a slow floor points at a culprit instead of
+        // inviting a guess. Restored afterwards -- this is a live-game code path.
+        bool prevTimingFlag = FloorRoot.LogBootstrapTimings;
+        FloorRoot.LogBootstrapTimings = true;
+
+        int max = fm.MaxAllowedFloorIndex;
+        int start = fm.MaxFloorIndexCreated + 1;
+        if (start > max) { Debug.Log($"[Commands] All {max + 1} floors already exist."); return; }
+
+        for (int i = start; i <= max; i++)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            fm.EnsureFloorExists(i, cell);
+            sw.Stop();
+            bool ok = fm.FloorExists(i);
+
+            // Two radii, deliberately. The TABLE radius is what the progression asset
+            // says the floor should be; the ACTUAL radius is what DungeonTerrain
+            // resolved and painted. Logging only the first is how a floor generating
+            // at the wrong size hides -- chambers and rivers have fixed counts, so
+            // they never look wrong at any radius.
+            int tableRadius = DungeonCore.Instance?.Progression != null
+                ? DungeonCore.Instance.Progression.FloorRadius(i) : -1;
+            var created = fm.GetFloor(i);
+            int actualRadius = created?.Terrain != null ? created.Terrain.CurrentRadius : -1;
+
+            Debug.Log($"[Commands] Floor {i + 1} {(ok ? "created" : "FAILED")} in {sw.ElapsedMilliseconds} ms " +
+                      $"(table radius {tableRadius}, ACTUAL radius {actualRadius}).");
+            if (ok && tableRadius >= 0 && actualRadius >= 0 && actualRadius != tableRadius)
+                Debug.LogError($"[Commands] RADIUS MISMATCH on floor {i + 1}: painted {actualRadius}, " +
+                               $"table says {tableRadius}. Everything generated on this floor is the " +
+                               $"wrong size. Check DungeonTerrain.RadiusForThisFloor and fallbackRadius.");
+            if (!ok) break;
+        }
+
+        FloorRoot.LogBootstrapTimings = prevTimingFlag;
+
+        Debug.LogWarning($"[Commands] Dev side effect: core relocation is now pending on floor " +
+                         $"{fm.PendingCoreRelocationFloor + 1}. Stair placement stays blocked and " +
+                         $"place-core mode stays armed until a core is placed or the run is reloaded.");
+
+        int deepest = fm.MaxFloorIndexCreated;
+        fm.SwitchToFloor(deepest);
+        Debug.Log($"[Commands] Viewing floor {deepest + 1}. Select its TerrainFeatureGenerator and " +
+                  $"use 'Reveal All Features (debug)' to see what generated.");
+    }
+
     [Header("Rogue Disarm Test")]
     [Tooltip("Assign the same TrapDefinitionRegistry used by DungeonSaveController.")]
     [SerializeField] private TrapDefinitionRegistry trapRegistry;
@@ -817,65 +876,6 @@ public class Commands : MonoBehaviour
     [Tooltip("Assign the same AncientSiteProfile wired on the floor template's " +
              "TerrainFeatureGenerator. Leave null to report roads only.")]
     [SerializeField] private AncientSiteProfile siteReportProfile;
-
-    [ContextMenu("Test Generate All Floors")]
-    void TestGenerateAllFloors()
-    {
-        var fm = FloorManager.Instance;
-        if (fm == null) { Debug.LogWarning("[Commands] No FloorManager in scene."); return; }
-
-        var coreFloor = fm.GetFloor(fm.CoreFloorIndex);
-        var core = DungeonCore.Instance;
-        Vector3Int cell = coreFloor != null && coreFloor.TileInfluence != null && core != null
-            ? coreFloor.TileInfluence.WorldToCell(core.transform.position)
-            : Vector3Int.zero;
-
-        // Per-stage breakdown, so a slow floor points at a culprit instead of
-        // inviting a guess. Restored afterwards -- this is a live-game code path.
-        bool prevTimingFlag = FloorRoot.LogBootstrapTimings;
-        FloorRoot.LogBootstrapTimings = true;
-
-        int max = fm.MaxAllowedFloorIndex;
-        int start = fm.MaxFloorIndexCreated + 1;
-        if (start > max) { Debug.Log($"[Commands] All {max + 1} floors already exist."); return; }
-
-        for (int i = start; i <= max; i++)
-        {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            fm.EnsureFloorExists(i, cell);
-            sw.Stop();
-            bool ok = fm.FloorExists(i);
-
-            // Two radii, deliberately. The TABLE radius is what the progression asset
-            // says the floor should be; the ACTUAL radius is what DungeonTerrain
-            // resolved and painted. Logging only the first is how a floor generating
-            // at the wrong size hides -- chambers and rivers have fixed counts, so
-            // they never look wrong at any radius.
-            int tableRadius = DungeonCore.Instance?.Progression != null
-                ? DungeonCore.Instance.Progression.FloorRadius(i) : -1;
-            var created = fm.GetFloor(i);
-            int actualRadius = created?.Terrain != null ? created.Terrain.CurrentRadius : -1;
-
-            Debug.Log($"[Commands] Floor {i + 1} {(ok ? "created" : "FAILED")} in {sw.ElapsedMilliseconds} ms " +
-                      $"(table radius {tableRadius}, ACTUAL radius {actualRadius}).");
-            if (ok && tableRadius >= 0 && actualRadius >= 0 && actualRadius != tableRadius)
-                Debug.LogError($"[Commands] RADIUS MISMATCH on floor {i + 1}: painted {actualRadius}, " +
-                               $"table says {tableRadius}. Everything generated on this floor is the " +
-                               $"wrong size. Check DungeonTerrain.RadiusForThisFloor and fallbackRadius.");
-            if (!ok) break;
-        }
-
-        FloorRoot.LogBootstrapTimings = prevTimingFlag;
-
-        Debug.LogWarning($"[Commands] Dev side effect: core relocation is now pending on floor " +
-                         $"{fm.PendingCoreRelocationFloor + 1}. Stair placement stays blocked and " +
-                         $"place-core mode stays armed until a core is placed or the run is reloaded.");
-
-        int deepest = fm.MaxFloorIndexCreated;
-        fm.SwitchToFloor(deepest);
-        Debug.Log($"[Commands] Viewing floor {deepest + 1}. Select its TerrainFeatureGenerator and " +
-                  $"use 'Reveal All Features (debug)' to see what generated.");
-    }
 
     [Tooltip("Kerb radius the road report fillets junctions at. Mirror the value on " +
              "TerrainFeatureGenerator.junctionFilletRadius or the report stops " +
@@ -2094,6 +2094,715 @@ public class Commands : MonoBehaviour
             case 3: return 400;
             default: return 600;
         }
+    }
+
+    [Header("Road Breach")]
+    [Tooltip("Seeds per run. Each one builds a REAL road network, a REAL site " +
+             "pass and a REAL den plan, then walks two hundred dawns of digging, " +
+             "so this is the expensive report of the three. 300 is where the " +
+             "contact rate stops moving in the first decimal.")]
+    [SerializeField, Min(1)] private int roadBreachSeeds = 300;
+
+    [Tooltip("Claimed cells on the den's floor at day 0, and gained per day. The " +
+             "'typical' profile from Tools/sim_den_digger.py -- the profile every " +
+             "dig figure canon 42 quotes was measured on. Changing these makes " +
+             "this report incomparable with that table, which is the point of " +
+             "naming them here rather than burying them.")]
+    [SerializeField, Min(0)] private int roadBreachClaimedAtStart = 450;
+    [SerializeField, Min(0)] private int roadBreachClaimedPerDay = 12;
+
+    [Tooltip("Dawns walked per seed. The dig stops around day 104 at the shipped " +
+             "cap and budget, so 200 is comfortably past the end of it.")]
+    [SerializeField, Min(10)] private int roadBreachDays = 200;
+
+    /// <summary>
+    /// DOES A KOBOLD DIG EVER MEET THE DWARVEN ROAD, AND DOES IT MEET IT WHERE
+    /// ANYONE IS STANDING? The gate on canon 42's owed dwarven skirmish, built
+    /// before the beat it measures, because a beat nobody meets is not content
+    /// -- entry 19's argument, and the argument that has already killed two
+    /// pieces of this same arc at 12.4 and 7.3 per cent.
+    ///
+    /// THE ROAD AND THE SITES ARE REAL; THE DIG IS A MIRROR, and the split is
+    /// forced rather than chosen. TerrainFeatureGenerator.AdvanceDenDig needs a
+    /// live floor -- terrain, influence, the type map, the cell lookup -- so
+    /// exactly ONE of the two systems has to be modelled here. Mirroring the
+    /// ROAD would mean reproducing seven hundred lines of planner plus the site
+    /// pass's chord surgery; mirroring the WALK is about sixty lines of bearing
+    /// drift, hard turn, retrace refusal and brush test. The smaller mirror is
+    /// the honest one, and it is the reason this measurement is C# rather than
+    /// a fourth Python sim -- Den Cavity Report's own caveat, applied to the
+    /// other half of the problem.
+    ///
+    /// WHAT THE MIRROR IS AND IS NOT. It reproduces AdvanceDenDig's rules: the
+    /// persistent bearing, the hard turn on refusal, the never-retrace set, the
+    /// brush tested rather than the centreline, the clamp at endpointClamp, the
+    /// novel-cell cap, and remains sensed at range where everything else is met
+    /// on contact. It does NOT reproduce rivers (which do not block a dig
+    /// anyway), the bedrock rim (the clamp at 0.85 of the disc never reaches
+    /// it), or the player's real claim, which is a centred disc of equal area
+    /// here -- canon 42 measured claimed ground as worth under half a per cent
+    /// of the total either way.
+    ///
+    /// IT CHECKS ITSELF. The same walk re-measures the contested-discovery beat,
+    /// which Tools/sim_den_digger.py section J puts at 14.0 per cent at the
+    /// shipped cap and budget. The two models differ -- the sim tests a point
+    /// against POI discs where this tests a brush against real cells -- so exact
+    /// agreement is not expected and a BAND is. A remains figure outside 9-20
+    /// means one of the two has drifted, and this one is the closer model of
+    /// the shipped rule.
+    /// </summary>
+    [ContextMenu("Road Breach Report")]
+    void RoadBreachReport()
+    {
+        if (denTunnelProfile == null || roadReportProfile == null || siteReportProfile == null)
+        {
+            Debug.LogWarning("[Commands] Road breach report needs Den Tunnel Profile, "
+                           + "Road Report Profile and Site Report Profile all assigned. "
+                           + "A fallback here would be exactly the ambiguous default "
+                           + "this project bans.");
+            return;
+        }
+
+        var den = DenController.Instance;
+        if (den == null)
+        {
+            Debug.LogWarning("[Commands] Road breach report needs a DenController in the "
+                           + "scene: the dig rate, the tier curve and the expansion "
+                           + "multiplier are all read off it rather than copied. "
+                           + "Open the dungeon scene and re-run.");
+            return;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] ROAD BREACH REPORT");
+        bool anyFloor = false;
+
+        foreach (var entry in denTunnelProfile.Floors)
+        {
+            if (entry == null || entry.exploratoryCellCap <= 0) continue;
+            var roadEntry = roadReportProfile.GetEntry(entry.floorIndex);
+            if (roadEntry == null || roadEntry.mode == RoadMode.None) continue;
+            var siteEntry = siteReportProfile.GetEntry(entry.floorIndex);
+            anyFloor = true;
+            ReportOneFloor(sb, den, entry, roadEntry, siteEntry);
+        }
+
+        if (!anyFloor)
+        {
+            sb.AppendLine("  No floor both digs and carries a road. Floor index 1's "
+                        + "exploratoryCellCap is 0 -- the goblins never dig -- and it "
+                        + "has no road entry either, so there is nothing to measure "
+                        + "there and its absence is not a fault.");
+        }
+        Debug.Log(sb.ToString());
+    }
+
+    private void ReportOneFloor(
+        System.Text.StringBuilder sb, DenController den, DenTunnelFloorEntry entry,
+        RoadFloorEntry roadEntry, SiteFloorEntry siteEntry)
+    {
+        int radius = FloorRadiusFor(entry.floorIndex);
+        var centre = new Vector3Int(0, 0, 0);
+        int seeds = Mathf.Max(1, roadBreachSeeds);
+        int days = Mathf.Max(10, roadBreachDays);
+
+        int usable = 0, contact = 0, inReach = 0, inBeat = 0;
+        int outpostHit = 0, remainsAny = 0, neither = 0;
+        int laneGate = 0;
+        long cellsSum = 0, beatSum = 0, gateRailSum = 0, walkSum = 0;
+        var firstDays = new List<int>();
+        var firstTiers = new List<int>();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (int s = 0; s < seeds; s++)
+        {
+            int floorSeed = s * 7919 + entry.floorIndex;
+            var rng = new System.Random(floorSeed);
+            var world = BuildBreachWorld(
+                rng, floorSeed, entry, roadEntry, siteEntry, centre, radius);
+            if (world == null || !world.valid) continue;
+            usable++;
+
+            var run = WalkTheDig(rng, world, entry, den, centre, radius, days);
+            cellsSum += run.cellsCut;
+            if (run.remainsTaken > 0) remainsAny++;
+            if (run.outpostMet) outpostHit++;
+
+            beatSum += world.beatMax - world.beatMin + 1;
+            gateRailSum += world.gateWalkCount;
+            walkSum += world.totalWalkCells;
+            if (world.gateRailIsLane) laneGate++;
+
+            if (!run.metRoad) { if (run.remainsTaken == 0) neither++; continue; }
+            contact++;
+            firstDays.Add(run.firstRoadDay);
+            firstTiers.Add(run.firstRoadTier);
+            if (RailReachable(world, run.firstRoadCell, out bool onBeat))
+            {
+                inReach++;
+                if (onBeat) inBeat++;
+            }
+        }
+        sw.Stop();
+
+        if (usable == 0)
+        {
+            sb.AppendLine("  floor " + entry.floorIndex + ": NO USABLE SEED -- every one "
+                        + "failed to plan a road, a site pass or a den anchor.");
+            return;
+        }
+
+        sb.AppendLine("  floor index " + entry.floorIndex + ", radius " + radius
+                    + ", " + usable + "/" + seeds + " seeds usable, " + days + " days, "
+                    + "claim " + roadBreachClaimedAtStart + "+" + roadBreachClaimedPerDay
+                    + "/day (typical), built in " + sw.Elapsed.TotalSeconds.ToString("0.0") + " s");
+        sb.AppendLine("  contact  in-reach  gate-beat  1st   tier@1st  outpost  remains  neither  cells");
+        sb.AppendLine("  " + Pct(contact, usable) + "     " + Pct(inReach, usable)
+                    + "     " + Pct(inBeat, usable) + "      d"
+                    + Median(firstDays).ToString("0") + "  " + Median(firstTiers).ToString("0.0")
+                    + "       " + Pct(outpostHit, usable) + "    " + Pct(remainsAny, usable)
+                    + "    " + Pct(neither, usable) + "    " + (cellsSum / usable));
+
+        sb.AppendLine("  gate squad: its rail is the outpost's own LANE on "
+                    + laneGate + "/" + usable + " seeds; mean rail "
+                    + (gateRailSum / usable) + " walk cells against a beat window of "
+                    + (beatSum / usable) + ", authored at +/-60. Mean walkable road "
+                    + (walkSum / usable) + " cells.");
+
+        AppendBreachVerdict(sb, contact, inReach, remainsAny, usable);
+    }
+
+    /// <summary>The decision rule, driven off the numbers rather than restated
+    /// beside them. The comparator is deliberately NOT the 25 per cent the
+    /// arc brief proposed: the road beat is a second branch of a dig whose
+    /// FIRST branch -- contested discovery -- shipped and was accepted at 14
+    /// per cent, so a 25 per cent bar would bin something more available than
+    /// what is already in the game. The two beats also ride one walk, so the
+    /// number that matters most is the dungeon that meets neither.</summary>
+    /// <summary>The decision rule, driven off the numbers rather than restated
+    /// beside them. The comparator is deliberately NOT the 25 per cent first
+    /// proposed for this gate: the road beat is a second branch of a dig whose
+    /// FIRST branch -- contested discovery -- shipped and was accepted at about
+    /// 14 per cent, so a 25 per cent bar would bin something more available than
+    /// what is already in the game.</summary>
+    private void AppendBreachVerdict(
+        System.Text.StringBuilder sb, int contact, int inReach, int remainsAny, int usable)
+    {
+        float reachPct = 100f * inReach / usable;
+        float remainsPct = 100f * remainsAny / usable;
+
+        sb.AppendLine("  RULE: bin the road beat below about 15 per cent in-reach -- the "
+                    + "contested-discovery rate the same dig is recorded as delivering. "
+                    + "Reads " + reachPct.ToString("0.0") + " per cent.");
+        sb.AppendLine(reachPct >= 15f
+            ? "  VERDICT: CLEARS the rule. The beat is at least as available as the one "
+            + "that shipped, so the question moves from whether to build it to how."
+            : "  VERDICT: BELOW the rule. Recommend binning the road beat and recording "
+            + "the number and the reason, rather than building it.");
+
+        // NOT A BAND AND NOT A REGRESSION TEST, and the reason is the useful part.
+        // Asserting agreement with the sim would be asserting agreement with a
+        // model that omits shipped rules.
+        sb.AppendLine("  remains here " + remainsPct.ToString("0.0")
+                    + " per cent, against sim_den_digger.py section J's 14.4 at the same "
+                    + "cap and budget. THE TWO ARE NOT EXPECTED TO AGREE and a gap here "
+                    + "is a fact about the SIM, not a fault in this report.");
+        sb.AppendLine("  Three divergences, all in the same direction: the sim walks "
+                    + "THROUGH a chamber, a road, a site and claimed ground and merely "
+                    + "notes them, where CanCutAt is BLOCKED by all four; it models no "
+                    + "never-retrace set; and it tests a POINT where the leg tests its "
+                    + "2-wide BRUSH. A Python prototype of this walk put the last two at "
+                    + "about three points each. This is the closer model of "
+                    + "AdvanceDenDig, so read a disagreement that way.");
+        sb.AppendLine("  CONSEQUENCE, recorded rather than chased here: canon 42 chose cap "
+                    + "2400 over 1107 because 1107 held this beat to 7.3-8.0 per cent. "
+                    + "That comparison was made on the sim. Re-measuring the cap against "
+                    + "the shipped rules is OWED and is not this report's question.");
+
+        sb.AppendLine("  CAVEATS, so the next reader does not mistake this for the game: "
+                    + "roads and sites are the real builders; chambers, the cavity, the "
+                    + "remains and the walk are mirrors; rivers are absent (they do not "
+                    + "block a dig, but they do take cells back from a road, so contact "
+                    + "here is a slight over-estimate); masonry is NOT a refusal in "
+                    + "CanCutAt, so a leg can cut through a gatehouse wall and be stopped "
+                    + "only by its floor -- which is what the outpost column counts.");
+    }
+
+    private static string Pct(int n, int of)
+    {
+        float v = of > 0 ? 100f * n / of : 0f;
+        return v.ToString("0.0") + "%";
+    }
+
+    private static float Median(List<int> xs)
+    {
+        if (xs == null || xs.Count == 0) return 0f;
+        xs.Sort();
+        return xs[xs.Count / 2];
+    }
+
+    // -- the world one seed builds ------------------------------------------
+
+    private class BreachWorld
+    {
+        public bool valid;
+        public HashSet<Vector3Int> road = new HashSet<Vector3Int>();
+        public HashSet<Vector3Int> site = new HashSet<Vector3Int>();
+        public HashSet<Vector3Int> outpost = new HashSet<Vector3Int>();
+        public HashSet<Vector3Int> chamber = new HashSet<Vector3Int>();
+        public HashSet<Vector3Int> reserve = new HashSet<Vector3Int>();
+        public HashSet<Vector3Int> owned = new HashSet<Vector3Int>();
+        public List<Vector3Int> remains = new List<Vector3Int>();
+        public List<DenTunnelData> tunnels = new List<DenTunnelData>();
+        public Vector3Int denAnchor;
+
+        public DeepRoadGraph.Graph graph;
+        public int gateRail = -1, gateIndex = -1, beatMin, beatMax;
+        public int gateWalkCount, totalWalkCells;
+        public bool gateRailIsLane;
+        public List<int> reachableRails = new List<int>();
+    }
+
+    /// <summary>One seed's floor, in GenerateNew's order and on one Random, so
+    /// the road a den is measured against is the road that floor would carry.
+    /// Roads and sites are the shipped builders; everything after is a mirror
+    /// and is named as one in the report's own caveats.</summary>
+    private BreachWorld BuildBreachWorld(
+        System.Random rng, int floorSeed, DenTunnelFloorEntry entry,
+        RoadFloorEntry roadEntry, SiteFloorEntry siteEntry, Vector3Int centre, int radius)
+    {
+        var w = new BreachWorld();
+
+        var roadPlan = RoadNetworkBuilder.Plan(
+            rng, centre, radius, roadEntry, roadReportExclusionRadius);
+        if (roadPlan == null || !roadPlan.valid) return w;
+
+        // The site pass SPLITS the chords it seats on, so it has to run between
+        // the plan and the raster exactly as GenerateNew runs it. Floor index 2's
+        // single trunk becomes ingress, lane and egress because the outpost sits
+        // on it, and that split is the only reason the floor has a rail graph
+        // at all -- mode Trunk plans no junctions.
+        AncientSiteResult siteResult = null;
+        if (siteEntry != null)
+            siteResult = AncientSiteBuilder.Build(
+                rng, centre, radius, siteEntry, roadReportExclusionRadius,
+                roadPlan, siteReportProfile.GetAuthoredPlans());
+
+        var roads = RoadNetworkBuilder.Rasterise(rng, roadPlan);
+        if (roads == null || roads.roads.Count == 0) return w;
+
+        foreach (var road in roads.roads)
+        {
+            // A LANE paints nothing -- RebuildRoadCells skips it before any id is
+            // drawn, because the site already drew that ground. Counting lane
+            // cells as road here would invent carriageway inside the gatehouse.
+            if (road.kind == RoadKind.Lane) continue;
+            var line = RoadNetworkBuilder.Centreline(road);
+            var rc = road.floorCentre != null ? road.floorCentre.ToVector3Int() : centre;
+            foreach (var c in RoadNetworkBuilder.Dilate(line, road.width, rc, road.clampRadius))
+                w.road.Add(c);
+        }
+
+        var nodes = RoadNetworkBuilder.JunctionNodes(
+            roads.roads, TerrainFeatureGenerator.RoadJunctionMergeRadius);
+        if (nodes.Count > 0 && roadReportFilletRadius > 0)
+        {
+            var r0 = roads.roads[0];
+            var fill = RoadNetworkBuilder.FilletJunctions(
+                w.road, nodes, r0.width, roadReportFilletRadius,
+                r0.floorCentre != null ? r0.floorCentre.ToVector3Int() : centre,
+                r0.clampRadius, null);
+            foreach (var c in fill) w.road.Add(c);
+        }
+
+        // Only the CARVED interior is typed AncientSite in the lookup; masonry is
+        // solid rock and lives in the terrain type map, which CanCutAt never asks.
+        Vector3Int outpostAnchor = centre;
+        bool haveOutpost = false;
+        if (siteResult != null)
+            foreach (var sp in siteResult.sites)
+            {
+                foreach (var c in sp.cells)
+                {
+                    w.site.Add(c);
+                    if (sp.reservedForOutpost) w.outpost.Add(c);
+                }
+                if (sp.reservedForOutpost) { outpostAnchor = sp.anchor; haveOutpost = true; }
+            }
+
+        var centres = SampleChamberCentres(rng, radius, centre);
+        var ids = new List<int>();
+        for (int i = 0; i < centres.Count; i++) ids.Add(i);
+        foreach (var cc in centres)
+        {
+            int box = rng.Next(8, 15);
+            foreach (var c in CaBlob(rng, cc, box))
+                if (!w.road.Contains(c) && !w.site.Contains(c)) w.chamber.Add(c);
+        }
+
+        // The landing is wherever the player put the stair; sampled in the inner
+        // band, which is Den Tunnel Report's own pessimistic model and its reason.
+        int inner = Mathf.RoundToInt(radius * entry.bandInner);
+        var landing = centre;
+        for (int t = 0; t < 64; t++)
+        {
+            int lx = rng.Next(-inner, inner + 1);
+            int ly = rng.Next(-inner, inner + 1);
+            if (lx * lx + ly * ly <= inner * inner) { landing = new Vector3Int(lx, ly, 0); break; }
+        }
+
+        var plan = DenTunnelBuilder.Plan(rng, centre, radius, entry,
+                                         roadReportExclusionRadius, centres, ids, landing, 6);
+        if (plan == null || !plan.valid) return w;
+        w.denAnchor = plan.den;
+        w.tunnels = DenTunnelBuilder.Rasterise(rng, plan, radius - 10, 16, 3f);
+        if (w.tunnels.Count == 0) return w;
+
+        var carve = CarveCavityForReport(rng, plan.den, entry, centre, radius);
+        if (carve == null) return w;
+        // The dig refuses its own UNOPENED reserve: those cells enter
+        // reservedCoreCells and not the lookup, so a leg testing GetFeatureAt
+        // alone would tunnel through the hole GrowDenCavity is waiting for.
+        foreach (var c in carve.reserve)
+            if (!carve.open.Contains(c)) w.reserve.Add(c);
+
+        // Everything already owned. CarveLegCell opens a cell only when the
+        // lookup does not already hold it, so this is what decides how much of
+        // the cap a step spends.
+        foreach (var c in w.road) w.owned.Add(c);
+        foreach (var c in w.site) w.owned.Add(c);
+        foreach (var c in w.chamber) w.owned.Add(c);
+        foreach (var t in w.tunnels)
+            foreach (var c in DenTunnelBuilder.Cells(t)) w.owned.Add(c);
+        foreach (var c in carve.open) w.owned.Add(c);
+
+        w.remains = MirrorBuriedSites(centre, radius, RemainsPerFloor, floorSeed);
+
+        w.graph = DeepRoadGraph.Build(roads.roads);
+        if (w.graph.rails.Count == 0) return w;
+        foreach (var rail in w.graph.rails) w.totalWalkCells += rail.walk.Count;
+
+        var anchorFor = haveOutpost ? outpostAnchor : centre;
+        if (!DeepRoadGraph.NearestWalkCell(w.graph, anchorFor, out int gr, out int gi)) return w;
+        w.gateRail = gr;
+        w.gateIndex = gi;
+        var gateWalk = w.graph.rails[gr].walk;
+        w.gateWalkCount = gateWalk.Count;
+        w.gateRailIsLane = w.graph.rails[gr].road.kind == RoadKind.Lane;
+        w.beatMin = Mathf.Max(0, gi - GateBeatHalfCells);
+        w.beatMax = Mathf.Min(gateWalk.Count - 1, gi + GateBeatHalfCells);
+
+        CollectReachableRails(w);
+        w.valid = true;
+        return w;
+    }
+
+    /// <summary>DwarvenPatrolController's own figures, and the only two numbers
+    /// in this report that are typed rather than read: both are private
+    /// serialized fields on live controllers that a headless report cannot
+    /// reach. Flagged here rather than hidden, because they are exactly the
+    /// copy-of-an-authored-number shape this project has been bitten by.</summary>
+    private const int GateBeatHalfCells = 60;
+    private const int RemainsPerFloor = 2;
+
+    /// <summary>Every rail the roaming squad can reach from the gate rail.
+    /// Derived from nodeStart/nodeEnd rather than from Graph.adjacency, which
+    /// says the same thing: two rails are connected when they share an endpoint
+    /// cluster, and that is what the adjacency list is built out of.
+    ///
+    /// ON FLOOR INDEX 2 THIS IS NOT A WANDER. The road there is RoadMode.Trunk
+    /// -- one rim-to-rim chord, no junctions of its own -- and both its ends are
+    /// rim, so StepOneCell finds RoadStopsDead true at each and never reaches
+    /// TryTurnAtJunction. The pair ping-pongs. What junctions exist are the ones
+    /// the site pass cut into the trunk, and the squad turns at those.</summary>
+    private static void CollectReachableRails(BreachWorld w)
+    {
+        var seen = new HashSet<int>();
+        var queue = new Queue<int>();
+        seen.Add(w.gateRail);
+        queue.Enqueue(w.gateRail);
+        while (queue.Count > 0)
+        {
+            int r = queue.Dequeue();
+            w.reachableRails.Add(r);
+            var here = w.graph.rails[r];
+            for (int i = 0; i < w.graph.rails.Count; i++)
+            {
+                if (seen.Contains(i)) continue;
+                var other = w.graph.rails[i];
+                bool touches =
+                    (here.nodeStart >= 0 && (here.nodeStart == other.nodeStart
+                                          || here.nodeStart == other.nodeEnd))
+                 || (here.nodeEnd >= 0 && (here.nodeEnd == other.nodeStart
+                                        || here.nodeEnd == other.nodeEnd));
+                if (!touches) continue;
+                seen.Add(i);
+                queue.Enqueue(i);
+            }
+        }
+    }
+
+    /// <summary>Is a breached road cell somewhere a patrol answers? The cell is
+    /// carriageway, so it sits within half a width of a walk cell by
+    /// construction; the question is WHICH rail owns that walk cell.</summary>
+    private static bool RailReachable(BreachWorld w, Vector3Int cell, out bool onGateBeat)
+    {
+        onGateBeat = false;
+        if (!DeepRoadGraph.NearestWalkCell(w.graph, cell, out int rail, out int index))
+            return false;
+        if (rail == w.gateRail && index >= w.beatMin && index <= w.beatMax) onGateBeat = true;
+        return w.reachableRails.Contains(rail);
+    }
+
+    /// <summary>TerrainTypeMap.GetBuriedSites, mirrored: the same usable disc,
+    /// the same Chebyshev radial ladder, the same Stone-or-Granite rule and the
+    /// same 600-attempt ceiling. Held to sitesPerFloor exactly as
+    /// Tools/sim_den_digger.py holds it, WITHOUT the Ossuary's guaranteed extra
+    /// cell -- because the 14.0 per cent this report checks itself against was
+    /// measured on the two-site model, and a check against a figure measured
+    /// under different rules is not a check.</summary>
+    private static List<Vector3Int> MirrorBuriedSites(
+        Vector3Int centre, int radius, int count, int floorSeed)
+    {
+        var sites = new List<Vector3Int>();
+        const int MaxRingThickness = 5, MinDistFromCentre = 6, Attempts = 600;
+        int usable = radius - MaxRingThickness;
+        if (usable <= MinDistFromCentre) return sites;
+
+        // THE SEED IS THE FLOOR SEED. The first draft derived it from the radius
+        // alone, which handed every seed in the sweep the same two remains cells
+        // and would have made the remains column meaningless while looking fine.
+        // Caught in the Python walk prototype, not by reading this back.
+        var rng = new System.Random(unchecked(floorSeed ^ 0x0DDB0135));
+        int tries = 0;
+        while (sites.Count < count && tries++ < Attempts)
+        {
+            int dx = rng.Next(-usable, usable + 1);
+            int dy = rng.Next(-usable, usable + 1);
+            if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) < MinDistFromCentre) continue;
+            float norm = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) / (float)radius;
+            if (norm < 0.55f) continue;              // Dirt and Sand are refused
+            var cell = new Vector3Int(centre.x + dx, centre.y + dy, 0);
+            if (sites.Contains(cell)) continue;
+            sites.Add(cell);
+        }
+        return sites;
+    }
+
+    // -- the walk ------------------------------------------------------------
+
+    private class BreachRun
+    {
+        public bool metRoad;
+        public Vector3Int firstRoadCell;
+        public int firstRoadDay, firstRoadTier;
+        public bool outpostMet;
+        public int remainsTaken;
+        public int cellsCut;
+    }
+
+    /// <summary>AdvanceDenDig's walk and TickExploratoryDig's dawn, mirrored.
+    /// Every rule here has a counterpart in the generator and is commented with
+    /// it, because the ONE thing that would make this report worthless is a walk
+    /// that quietly stopped being the shipped one.</summary>
+    private BreachRun WalkTheDig(
+        System.Random rng, BreachWorld w, DenTunnelFloorEntry entry,
+        DenController den, Vector3Int centre, int radius, int days)
+    {
+        var run = new BreachRun();
+
+        // StartExploratoryLeg: the tip of the longest run, a DEAD END preferred,
+        // which canon already calls "exactly what the population extends".
+        DenTunnelData best = null;
+        int bestScore = int.MinValue;
+        List<Vector3Int> bestLine = null;
+        foreach (var t in w.tunnels)
+        {
+            var lineT = DenTunnelBuilder.Centreline(t);
+            if (lineT.Count < 2) continue;
+            int score = lineT.Count + (t.chamberId < 0 ? 100000 : 0);
+            if (score > bestScore) { bestScore = score; best = t; bestLine = lineT; }
+        }
+        if (best == null) return run;
+
+        var mouth = bestLine[bestLine.Count - 1];
+        double heading = System.Math.Atan2(mouth.y - bestLine[bestLine.Count - 2].y,
+                                           mouth.x - bestLine[bestLine.Count - 2].x);
+
+        float clampR = radius * Mathf.Clamp01(entry.endpointClamp);
+        double drift = entry.exploratoryDriftDegrees * Mathf.Deg2Rad;
+        int width = Mathf.Max(2, entry.exploratoryWidth);
+        int sense = Mathf.Max(1, entry.exploratorySenseRadius);
+        int cap = entry.exploratoryCellCap;
+
+        var onLeg = new HashSet<Vector3Int>();
+        onLeg.Add(mouth);
+        var cut = new HashSet<Vector3Int>();
+        double x = mouth.x, y = mouth.y;
+
+        float claimed = roadBreachClaimedAtStart;
+        float hoard = 0f, openCells = entry.cavityTier1Cells, carry = 0f;
+        var takenRemains = new HashSet<Vector3Int>();
+        bool driving = false;
+        var driveTo = new Vector3Int(0, 0, 0);
+
+        for (int day = 1; day <= days; day++)
+        {
+            claimed += roadBreachClaimedPerDay;
+            if (day <= den.GraceDays) continue;
+            if (takenRemains.Count >= w.remains.Count && w.remains.Count > 0) break;
+            if (cut.Count >= cap) break;
+
+            int tier = DenController.TierForHoard(hoard);
+            float expansion = den.ExpansionMultiplierForClaimed(claimed);
+
+            // The reserve keeps digging and keeps paying; the tunnel budget is
+            // ADDITIVE and pays nothing, which is what keeps "tier 5 is the
+            // completed hole" true against a dig that outlives it.
+            float reserveBudget = DenController.DigCellsPerDayFor(tier) * expansion;
+            float opened = Mathf.Min(reserveBudget, entry.cavityMaxCells - openCells);
+            if (opened > 0f) { openCells += opened; hoard += opened * den.SpoilPerCell; }
+
+            carry += reserveBudget * Mathf.Max(0f, entry.exploratoryBudget);
+            int rock = Mathf.FloorToInt(carry);
+            carry -= rock;
+            rock = Mathf.Min(rock, cap - cut.Count);
+            if (rock <= 0) continue;
+
+            int spent = 0, blocked = 0, guard = rock * 4 + 32;
+            bool boxedIn = false, tookOne = false;
+
+            while (spent < rock && guard-- > 0)
+            {
+                if (driving) heading = System.Math.Atan2(driveTo.y - y, driveTo.x - x);
+                else heading += (rng.NextDouble() * 2.0 - 1.0) * drift;
+
+                double nx = x + System.Math.Cos(heading);
+                double ny = y + System.Math.Sin(heading);
+                var cell = new Vector3Int((int)System.Math.Round(nx), (int)System.Math.Round(ny), 0);
+
+                int kind = CanCutHere(w, cell, centre, clampR, width, onLeg);
+                if (kind != 0)
+                {
+                    if (kind == 2 && !run.metRoad)
+                    {
+                        run.metRoad = true;
+                        run.firstRoadCell = cell;
+                        run.firstRoadDay = day;
+                        run.firstRoadTier = tier;
+                    }
+                    if (kind == 3) run.outpostMet = true;
+                    // Turn HARD rather than nudging: a small correction against a
+                    // wall walks along it, which reads as a tunnel tracing the
+                    // player's frontier instead of prospecting away from it.
+                    heading += Mathf.PI * (0.5 + rng.NextDouble());
+                    driving = false;
+                    if (++blocked > 64) { boxedIn = true; break; }
+                    continue;
+                }
+                blocked = 0;
+
+                x = nx; y = ny;
+                onLeg.Add(cell);
+                spent += CarveHere(w, cut, cell, centre, clampR, width);
+
+                if (driving && cell == driveTo)
+                {
+                    driving = false;
+                    if (takenRemains.Add(cell)) { run.remainsTaken++; tookOne = true; }
+                    heading = rng.NextDouble() * 2.0 * Mathf.PI;
+                }
+                else if (!driving)
+                {
+                    if (SenseRemainsHere(w, takenRemains, cell, sense, out driveTo)) driving = true;
+                }
+            }
+
+            run.cellsCut = cut.Count;
+
+            // A leg that has arrived somewhere starts a fresh one FROM WHERE IT
+            // STANDS, so the retrace set resets to the new mouth alone.
+            if (tookOne || boxedIn)
+            {
+                onLeg.Clear();
+                onLeg.Add(new Vector3Int((int)System.Math.Round(x), (int)System.Math.Round(y), 0));
+            }
+        }
+
+        run.cellsCut = cut.Count;
+        return run;
+    }
+
+    /// <summary>CanCutAt, mirrored. 0 is "cut here"; the rest name the find, and
+    /// the ORDER matters because RebuildLookup writes roads, then sites over
+    /// them, then chambers over those -- so one cell has one owner and a
+    /// chamber standing on a road answers chamber.</summary>
+    private static int CanCutHere(
+        BreachWorld w, Vector3Int cell, Vector3Int centre, float clampR,
+        int width, HashSet<Vector3Int> onLeg)
+    {
+        if (onLeg.Contains(cell)) return 1;           // never retrace
+        int half = (width - 1) / 2;
+        int extra = (width - 1) - 2 * half;
+        for (int dx = -half; dx <= half + extra; dx++)
+            for (int dy = -half; dy <= half + extra; dy++)
+            {
+                var p = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                float ddx = p.x - centre.x, ddy = p.y - centre.y;
+                if (ddx * ddx + ddy * ddy > clampR * clampR) return 1;
+                if (w.reserve.Contains(p)) return 1;   // the den's own unopened hole
+                if (w.chamber.Contains(p)) return 4;
+                if (w.outpost.Contains(p)) return 3;
+                if (w.site.Contains(p)) return 5;
+                if (w.road.Contains(p)) return 2;
+            }
+        return 0;
+    }
+
+    /// <summary>CarveLegCell, mirrored: the NOVEL cells a brush opens. Anything
+    /// already owned is left alone, which is RebuildDenTunnelCells' ownership
+    /// rule applied one cell at a time -- and it is why crossing a generated
+    /// tunnel costs a leg nothing out of its cap.</summary>
+    private static int CarveHere(
+        BreachWorld w, HashSet<Vector3Int> cut, Vector3Int cell,
+        Vector3Int centre, float clampR, int width)
+    {
+        int opened = 0;
+        int half = (width - 1) / 2;
+        int extra = (width - 1) - 2 * half;
+        for (int dx = -half; dx <= half + extra; dx++)
+            for (int dy = -half; dy <= half + extra; dy++)
+            {
+                var p = new Vector3Int(cell.x + dx, cell.y + dy, 0);
+                float ddx = p.x - centre.x, ddy = p.y - centre.y;
+                if (ddx * ddx + ddy * ddy > clampR * clampR) continue;
+                if (w.owned.Contains(p)) continue;
+                if (!cut.Add(p)) continue;
+                opened++;
+            }
+        return opened;
+    }
+
+    /// <summary>SenseRemains, mirrored. ONLY remains are sensed at a distance;
+    /// everything else is met on contact, which is the shipped rule and the
+    /// reason a leg ranges further between turns than a range-sensing one
+    /// would.</summary>
+    private static bool SenseRemainsHere(
+        BreachWorld w, HashSet<Vector3Int> taken, Vector3Int from, int sense,
+        out Vector3Int target)
+    {
+        target = new Vector3Int(0, 0, 0);
+        long best = long.MaxValue;
+        bool found = false;
+        foreach (var r in w.remains)
+        {
+            if (taken.Contains(r)) continue;
+            long dx = r.x - from.x, dy = r.y - from.y;
+            long d = dx * dx + dy * dy;
+            if (d > (long)sense * sense) continue;
+            if (d < best) { best = d; target = r; found = true; }
+        }
+        return found;
     }
 
     [ContextMenu("Test Print Feature Stats (all floors)")]

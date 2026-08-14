@@ -259,6 +259,11 @@ public class DenController : MonoBehaviour
            + "wisp speaks when it wakes: they stirred because the player arrived.")]
     [SerializeField, Min(0)] private int graceDays = 5;
 
+    /// <summary>Days after a floor is created before its den ticks. Read by the
+    /// headless road breach report, which walks this same dawn loop and must
+    /// skip the same grace or its pacing is not this class's.</summary>
+    public int GraceDays => graceDays;
+
     [Tooltip("Standing the Deep Holds pay when an EXCAVATOR den is cleared. The "
            + "dwarves start at 15 and their first regard step is at 25, so 10 "
            + "moves a fresh player exactly one step -- a thank-you that is "
@@ -441,9 +446,19 @@ public class DenController : MonoBehaviour
         var floor = FindFloor(floorIndex);
         var influence = floor != null ? floor.TileInfluence : null;
         if (influence == null) return 1f;
+        return ExpansionMultiplierForClaimed(influence.ClaimedTiles.Count);
+    }
 
-        float claimed = influence.ClaimedTiles.Count;
-        float ratio = claimed / Mathf.Max(1, expansionBaselineCells);
+    /// <summary>The same curve, for a caller with no floor to read it off --
+    /// the headless road breach report models a player profile rather than
+    /// standing on one. SPLIT OUT rather than copied over there: the curve
+    /// clamps at both ends, and a second copy would be free to disagree about
+    /// where. Tools/sim_den_digger.py was unrunnable for a release because it
+    /// kept exactly this kind of copy, so the alternative is not
+    /// hypothetical.</summary>
+    public float ExpansionMultiplierForClaimed(float claimedCells)
+    {
+        float ratio = claimedCells / Mathf.Max(1, expansionBaselineCells);
         return Mathf.Clamp(1f + expansionSensitivity * (ratio - 1f), 0.5f, 1.8f);
     }
 
@@ -930,17 +945,29 @@ public class DenController : MonoBehaviour
     public int TierOf(int floorIndex)
         => dens.TryGetValue(floorIndex, out var den) ? TierOf(den) : 0;
 
-    private static int TierOf(DenSaveEntry den)
+    private static int TierOf(DenSaveEntry den) => TierForHoard(den.hoard);
+
+    /// <summary>The tier a hoard buys, for a caller holding no den -- the
+    /// headless report models one. TierOf defers to this so the rule lives
+    /// once and a readout cannot restate it slightly differently.</summary>
+    public static int TierForHoard(float hoard)
     {
         int tier = 1;
         for (int i = 1; i < TierThresholds.Length; i++)
-            if (den.hoard >= TierThresholds[i]) tier = i + 1;
+            if (hoard >= TierThresholds[i]) tier = i + 1;
         return tier;
     }
 
     public static int MaxTier => TierThresholds.Length;
     public static float ThresholdFor(int tier)
         => tier >= 1 && tier <= TierThresholds.Length ? TierThresholds[tier - 1] : 0f;
+
+    /// <summary>Cells an excavator opens at this tier, before the expansion
+    /// multiplier. Exposed the way SpoilPerCell and RemainsLump are, and for the
+    /// identical reason: a readout that typed this curve would be checking its
+    /// own copy of it.</summary>
+    public static float DigCellsPerDayFor(int tier)
+        => tier >= 1 && tier <= DigCellsPerDay.Length ? DigCellsPerDay[tier - 1] : 0f;
 
 
     // ---- Population (canon 42, as amended) -------------------------------

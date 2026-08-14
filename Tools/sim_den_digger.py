@@ -77,6 +77,7 @@ from sim_den_growth import (
 )
 
 import random
+import re
 
 # ---- read off shipped assets and source ---------------------------------
 
@@ -91,10 +92,9 @@ SITES_PER_FLOOR = 2
 MIN_DIST_FROM_CENTRE = 6
 GET_BURIED_SITES_ATTEMPTS = 600        # TerrainTypeMap's own attempt ceiling
 
-# DenController, shipped values. DIG_CELLS_PER_DAY_BY_TIER is the ORIGINAL
-# {7,11,17,26,38}; fork 4b scaled it when the number acquired a second consumer.
-DIG_SCALE = 0.22
-SHIPPED_DIG_CELLS_PER_DAY = [1.5, 2.4, 3.7, 5.7, 8.4]
+# DenController, shipped values. DIG_CELLS_PER_DAY_BY_TIER is IMPORTED and is
+# already the shipped product -- see the assertion below for why this file no
+# longer carries a copy of it.
 SPOIL_PER_CELL = 7.8
 EXPANSION_BASELINE_CELLS = 900
 
@@ -106,15 +106,37 @@ EXCAVATOR_FLOOR = 2
 
 
 def _assert_shipped_constants():
-    """A cross-check rather than a transcription. sim_den_cavity_growth.py
-    solved DIG_SCALE and the asset carries the product; if either moves without
-    the other, this file must not quietly keep using the stale one."""
-    derived = [round(v * DIG_SCALE, 1) for v in DIG_CELLS_PER_DAY_BY_TIER]
-    if derived != SHIPPED_DIG_CELLS_PER_DAY:
+    """A cross-check against the SOURCE, which is what a transcription can
+    never be.
+
+    THIS FILE WAS UNRUNNABLE FOR A RELEASE AND THE REASON IS WORTH KEEPING.
+    It held its own copy of the shipped rates and multiplied the IMPORTED
+    DIG_CELLS_PER_DAY_BY_TIER by DIG_SCALE to reach them -- correct while that
+    import was the pre-scale base {7,11,17,26,38}. Stage 2b then made
+    sim_den_growth.py declare the PRODUCT, so this scaled an already-scaled
+    list, computed {0.3,...} and exited at import. Canon 42 records three ways a
+    sim fails: destroyed, silently filtered, quietly out of date. This is a
+    fourth -- KILLED BY A FIX TO A FILE IT IMPORTS FROM -- and the local copy is
+    what made it possible, so the copy is deleted rather than corrected.
+
+    What replaces it reads DenController.cs itself. A check against another
+    transcription is a check on the transcription."""
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Assets',
+                       'Scripts', 'DungeonCore', 'DenController.cs')
+    if not os.path.exists(src):
+        return                       # a Tools/ folder on its own still runs
+    text = open(src, encoding='utf-8').read()
+    m = re.search(r'DigCellsPerDay\s*=\s*\{([^}]*)\}', text)
+    if not m:
         raise SystemExit(
-            "DIG_CELLS_PER_DAY_BY_TIER * %.2f = %s, but DenController ships %s. "
+            "DenController.cs no longer declares DigCellsPerDay in a form this "
+            "check can read. Fix the pattern rather than deleting the check.")
+    shipped = [float(v.strip().rstrip('fF')) for v in m.group(1).split(',')]
+    if [round(v, 1) for v in DIG_CELLS_PER_DAY_BY_TIER] != [round(v, 1) for v in shipped]:
+        raise SystemExit(
+            "sim_den_growth.py derives %s but DenController.cs ships %s. "
             "Re-run sim_den_cavity_growth.py before trusting anything here."
-            % (DIG_SCALE, derived, SHIPPED_DIG_CELLS_PER_DAY))
+            % (DIG_CELLS_PER_DAY_BY_TIER, shipped))
 
 
 # ---- terrain, mirroring ComputeRadialBand -------------------------------
@@ -219,7 +241,7 @@ def days_to_reach(tunnel_cells, reserve, claimed_start, claimed_per_day,
             continue
 
         tier = tier_for(hoard)
-        budget = SHIPPED_DIG_CELLS_PER_DAY[tier - 1] * expansion_multiplier(claimed)
+        budget = DIG_CELLS_PER_DAY_BY_TIER[tier - 1] * expansion_multiplier(claimed)
 
         # Values at or below 1 are a SHARE of the day's dig (the tunnel competes
         # with the hole). Values above 1 are an ADDITIVE budget expressed as a
@@ -526,7 +548,7 @@ def explore_poi(seed, radius, detect, drift_deg, days, profile,
         # The reserve keeps digging and keeps paying; the tunnel is an ADDITIVE
         # budget on top, and pays nothing. That is fork 1 as ruled, and it is
         # what keeps 'tier 5 is the completed hole' true.
-        reserve_budget = SHIPPED_DIG_CELLS_PER_DAY[tier - 1] \
+        reserve_budget = DIG_CELLS_PER_DAY_BY_TIER[tier - 1] \
             * expansion_multiplier(claimed)
         opened = min(int(reserve_budget), EXCAVATOR_MAX_CELLS - open_cells)
         open_cells += max(0, opened)
@@ -675,7 +697,7 @@ def career_capped(seed, radius, profile, rate, cap, detect=15, drift_deg=12,
                 stopped_on = day
             continue
         tier = tier_for(hoard)
-        reserve_budget = SHIPPED_DIG_CELLS_PER_DAY[tier - 1] \
+        reserve_budget = DIG_CELLS_PER_DAY_BY_TIER[tier - 1] \
             * expansion_multiplier(claimed)
         opened = min(int(reserve_budget), EXCAVATOR_MAX_CELLS - open_cells)
         open_cells += max(0, opened)

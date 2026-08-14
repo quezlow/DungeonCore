@@ -8916,6 +8916,138 @@ identical in the hoard column and separable only in those.
 and the hoard invariant), `Tools/sim_den_growth.py`,
 `Tools/sim_den_cavity_growth.py`.
 
+#### The road breach, measured before it was built (GATE)
+
+Status: MEASURED, NOT BUILT. This section is the gate canon 42 put in front of
+the dwarven skirmish, discharged. `Road Breach Report` in `Commands` is the
+standing readout; whether the beat ships is decided by the number it prints, and
+the rule it is judged against is written down here so a later session cannot
+quietly move it.
+
+**THE RULE IS 15 PER CENT IN-REACH, NOT 25, AND THE COMPARATOR IS THE ARGUMENT.**
+The gate was first proposed at "bin under about a quarter of seeds", on the two
+precedents this arc already has for killing content on availability -- band-
+confined remains targeting at 12.4 per cent and the 1107-cell cap at 7.3. Both
+of those killed the ONLY beat their feature had. The road beat is a SECOND branch
+of a dig whose first branch -- contested discovery -- shipped and was accepted at
+about 14 per cent, so a 25 per cent bar would have binned something more
+available than what is already in the game. The two beats also ride one walk, so
+the report prints the dungeon that meets NEITHER, which is the failure the pair
+are jointly responsible for and which neither number shows alone.
+
+**FLOOR INDEX 2'S ROAD IS ONE TRUNK, NOT A NETWORK, and the whole shape of the
+question changed when that was read rather than recalled.** `RoadMode` is
+`None=0, Trunk=1, Network=2`; the asset's `mode: 1` on floor index 2 is **Trunk**
+-- a single rim-to-rim chord, width 5, both ends free, no junctions. The
+`junctionCount 7`, `rimTrunkCount 3`, `brokenSpurCount 4` and `extraLoopEdges 2`
+sitting in that entry are `Network mode only` fields and are INERT.
+`RoadNetworkProfile`'s own class doc says so in as many words: index 2's trunk
+has 0 offshoots.
+
+Two consequences, and the second is the one nobody would have guessed:
+
+- **There is no roaming squad to model.** With one rail and `startIsRim` and
+  `endIsRim` both true, `StepOneCell` finds `RoadStopsDead` at each end and never
+  reaches `TryTurnAtJunction`. The pair ping-pongs the whole rail. The "how
+  generously do we model a wander" question the gate was framed around does not
+  arise on this floor at all.
+- **What junctions the floor has, the SITE PASS cut.**
+  `AncientSiteBuilder.SplitChordsForSites` replaces the seated chord with
+  ingress, a `RoadKind.Lane` gate-to-gate, and egress, and appends spurs for
+  other sites. Floor index 2 carries `reserveOutpost`, so the trunk IS split --
+  and that split is the only reason the floor has a rail graph. The road profile
+  plans none.
+
+**THE GATE SQUAD MAY NOT BE ON THE ROAD AT ALL, and the report answers it rather
+than this entry.** `SpawnOutpostPatrols` takes the rail nearest the outpost's
+`anchorCell` across the WHOLE graph, and the lane runs through the outpost. A
+floor-2 site spans 13 to 21 cells, against a `gateBeatHalfCells` of 60 -- so if
+the nearest rail is the lane, `beatMin`/`beatMax` clamp to the whole of it and
+the authored beat is inert: the gate squad paces the gatehouse and never walks
+the trunk. The report prints the gate rail's KIND and LENGTH beside the beat
+window for exactly this reason. If it reads Lane, that is a bigger finding than
+the breach rate and it is a patrol bug, not a den one.
+
+**THE MEASUREMENT IS C#, WHICH DEVIATES FROM SIM-BEFORE-C#, AND THE REASON IS
+SHARPER THAN "THE ROAD PLANNER IS BIG".** `AdvanceDenDig` needs a live floor --
+terrain, influence, the type map, the cell lookup -- so a headless measurement
+must mirror exactly ONE of the two systems. Mirroring the ROAD means reproducing
+`RoadNetworkBuilder` plus the site pass's chord surgery; mirroring the WALK is
+about sixty lines. **Whichever language is chosen, one mirror is unavoidable; the
+choice is which one to carry, and the smaller mirror is the honest one.** Roads,
+sites, the den plan and the rail graph are the shipped builders. Chambers, the
+cavity, the remains and the walk are mirrors, and the report names every one of
+them in its own output.
+
+**A MIRROR IS NOT A GUESS IF IT IS COMPILED AND PROTOTYPED.** Two habits are
+recorded because they changed the outcome and are cheap to repeat. `mcs` installs
+from the Ubuntu archive, so the report was compiled against a stub harness whose
+declarations were COPIED out of the repo rather than recalled -- this project has
+lost rounds to invented signatures, and brace balance is not a build. And the
+walk was prototyped in Python before the C# shipped, which caught a fault reading
+would not have: the remains mirror derived its seed from the RADIUS, so every
+seed in the sweep drew the same two remains cells, and the column would have
+looked entirely reasonable while measuring one floor three hundred times.
+
+**`Tools/sim_den_digger.py` DID NOT RUN, AND THIS IS THE FOURTH WAY A SIM FAILS.**
+It kept its own copy of the shipped dig rates and multiplied the IMPORTED
+`DIG_CELLS_PER_DAY_BY_TIER` by `DIG_SCALE` to reach them -- correct while that
+import was the pre-scale base `{7,11,17,26,38}`. Stage 2b then made
+`sim_den_growth.py` declare the PRODUCT, in the "fixed by direction rather than
+by duplication" pass this entry already praises, and the digger began scaling an
+already-scaled list, computed `{0.3,...}` and exited at import. This entry
+records three ways a sim fails -- destroyed, silently filtered, quietly out of
+date. **This is a fourth: KILLED BY A FIX TO A FILE IT IMPORTS FROM**, and the
+local copy is what made it possible. Repaired by deleting the copy rather than
+correcting it, with the assertion re-pointed at `DenController.cs` itself: a
+check against another transcription is a check on the transcription. It now
+reproduces the figures this entry quotes -- 14.4 per cent remains, first find
+d65, digging over d104, 2422 cells at cap 2400 and budget x3.
+
+**THE SIM IS NOT MODELLING THE SHIPPED WALK, AND THE CAP DECISION RESTS ON IT.**
+Three divergences, found by prototyping and all pushing the same way:
+
+1. **The sim walks THROUGH what it finds.** In `career_capped`, `x, y = nx, ny`
+   happens BEFORE the find is noted; a chamber, a road, a site and claimed ground
+   are recorded and passed over. `CanCutAt` is BLOCKED by all four. The sim models
+   a find as passing by; the game models it as being stopped.
+2. **No never-retrace set.** `onLeg` refuses a revisited centreline cell, and it
+   has to -- `Centreline` de-duplicates, so a revisit would shift every later
+   index and repartition the reveal stretches.
+3. **A POINT test where the leg tests its 2-wide BRUSH.**
+
+The prototype put (2) and (3) at roughly three points of contested-discovery rate
+each. It is too crude an environment to yield a number for the game, and no
+number is claimed here. What IS established is that **canon chose cap 2400 over
+1107 because 1107 held the beat to 7.3-8.0 per cent, and that comparison was made
+under rules the dig does not have.** Re-measuring the cap against the shipped
+rules is OWED. It was deliberately not taken in the same session as the gate,
+because a session that re-opens a shipped tuning decision while measuring a new
+one answers neither.
+
+The report therefore does NOT assert agreement with the sim. A band would have
+been asserting agreement with a model known to omit shipped rules, and a red
+`REGRESSION` line on a correct report is how a readout stops being read. It
+prints both figures, names the three divergences, and says which is the closer
+model.
+
+**Four accessors were exposed on `DenController`**, on the `SpoilPerCell` and
+`RemainsLump` precedent and for the identical reason: `GraceDays`,
+`ExpansionMultiplierForClaimed`, `DigCellsPerDayFor` and `TierForHoard`. The last
+two are what stop the report carrying a copy of the dig curve -- which is the
+exact fault that had just made the digger sim unrunnable, so the alternative was
+not hypothetical. `ExpansionMultiplier(floorIndex)` and `TierOf(DenSaveEntry)`
+now delegate, so each rule lives once.
+
+**Editor step:** `Road Report Profile` and `Site Report Profile` must be assigned
+on the `Commands` component alongside `Den Tunnel Profile`, and the scene must
+carry a `DenController`. The report refuses and says which is missing rather than
+falling back to a figure -- the ambiguous default this entry already bans once.
+
+**Key files:** `TESTING/Commands.cs` (`Road Breach Report`),
+`DungeonCore/DenController.cs` (the four accessors),
+`Tools/sim_den_digger.py` (the repair).
+
 #### What the den arc still owes
 
 - ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
@@ -8943,7 +9075,7 @@ and the hoard invariant), `Tools/sim_den_growth.py`,
     excavator.** See "Two sims, one den" below. The correct no-theft row is
     13/22/34/49 on a hoard of 1560, not 13/17/25/49 on 2073.
 
-- **Dwarven skirmishes are still OWED.** `DwarfWalkerPuppet`'s class doc is
+- **Dwarven skirmishes are still OWED, and the gate in front of them is now DISCHARGED** -- see "The road breach, measured before it was built" above for the rule, the road geometry correction and the readout. `DwarfWalkerPuppet`'s class doc is
   explicit that it is deliberately not an entity -- never registered with
   `FloorEntityRegistry`, no HP, no `IMonsterTarget`, no collider -- and villagers,
   patrols and the caravan all ride it. Kobold-versus-dwarf combat means promoting
