@@ -204,6 +204,12 @@ public class WispScript : ScriptableObject
             // spent on a death the player never chose is a bill they cannot
             // trace, which is a fault in their model of the game rather than a
             // consequence in it.
+            // The road's own consequence, spoken however the column fell --
+            // the kobold case is the one the cooldown exists for, and a
+            // silence there would read as the caravan simply forgetting to
+            // come.
+            new Line { id = "caravan_wiped", once = false,
+                text = "All of them, on the stone. The Holds will send nobody down that road for a long while - and they will not need to be told why." },
             new Line { id = "dwarf_slain_first", once = true,
                 text = "One of theirs, dead on our stone. They will not have seen who swung - only where he fell. Their ledgers are long and they do not forget an entry." },
 

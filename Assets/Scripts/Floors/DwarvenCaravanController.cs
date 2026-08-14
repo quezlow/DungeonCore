@@ -38,9 +38,34 @@ public enum CaravanVerb { Rob = 0, Tax = 1, LetPass = 2 }
 /// vignette -- camera glides to the wagon under input lock, the wisp explains
 /// the choice, and the moment never replays; later crossings are one alert.
 ///
-/// Walkers are DwarfWalkerPuppet -- not combat entities, by fork. If no walker
-/// sprites are assigned the system stays dormant and says so once, because an
-/// invisible wagon that can be robbed blind is worse than no wagon.
+/// MEMBERS ARE MORTAL; THE CART IS NOT (canon 44). The Living Holds' fork 5
+/// made every walker a puppet so that a rob stayed a verb rather than a fight,
+/// and the toll economy was built on top of that: Rob is a PRICED choice at a
+/// vignette, -25 standing, one verb per wagon. Making the column killable
+/// threatens to route straight around that price -- free murder takes the
+/// cargo and pays nothing.
+///
+/// SPLITTING THE PUPPET so only patrols became mortal was proposed and
+/// REJECTED. What prices the murder instead is SCARCITY: a member's death
+/// bills -25, exactly matching the robbery so murdering is never the cheaper
+/// verb, and wiping the column out entirely stops the road for a long while.
+/// Everything is mortal; the consequence does the work invulnerability used
+/// to.
+///
+/// THE CART STAYS A PUPPET because it is a cart. It is spawned last, after
+/// every member slot, so the column spacing indices are unaffected by it.
+///
+/// A MEMBER WHO FIGHTS IS PUT BACK BY THE CLOCK. Position is a pure function
+/// of walkedSeconds; while combat holds a body this controller stops writing
+/// its distance, and when the fight ends the very next ApplyPositions returns
+/// it to wherever the clock says the column has got to. There is deliberately
+/// no rejoin logic: rejoin state would be state that could drift, and the one
+/// property this whole system rests on is that no per-frame progress field
+/// exists to drift.
+///
+/// If no caravan definition is assigned the system stays dormant and says so
+/// once, because an invisible wagon that can be robbed blind is worse than no
+/// wagon.
 /// </summary>
 public class DwarvenCaravanController : MonoBehaviour
 {
@@ -101,6 +126,18 @@ public class DwarvenCaravanController : MonoBehaviour
     // and the toll would have gone on costing 3 a wagon in silence.
 
     [Header("Column")]
+    [Tooltip("The caravan member's body. Its PREFAB carries the stats -- a " +
+             "DungeonMonster with NO LootTable component. The cargo is the " +
+             "wagon's, taken by the toll verbs; a member carrying loot of " +
+             "his own would be a second, unpriced way to take it.")]
+    [SerializeField] private MonsterDefinition caravanDefinition;
+    [Tooltip("Days the road stays quiet after the whole column is killed. " +
+             "Twenty: about three missed journeys against a cycle of roughly " +
+             "seven, long enough to read as an absence rather than a delay. " +
+             "Only ever fires on a KOBOLD wipe -- a player who kills the " +
+             "column pays three times -25 and the tier gate stops the road " +
+             "anyway.")]
+    [SerializeField, Min(1)] private int wipeCooldownDays = 20;
     [SerializeField, Min(1)] private int walkerCount = 3;
     [SerializeField, Min(0.5f)] private float columnSpacing = 1.6f;
     [Tooltip("Speed multiplier while an adventurer of a Hostile faction is near " +
@@ -138,7 +175,28 @@ public class DwarvenCaravanController : MonoBehaviour
     private int villageRimRail = -1, villageRimIndex = -1;
 
     private readonly List<DwarfWalkerPuppet> walkers = new List<DwarfWalkerPuppet>();
-    private DwarfWalkerPuppet Lead => walkers.Count > 0 ? walkers[0] : null;
+    // Index-parallel with walkers for the MEMBER slots only; the cart trails
+    // past the end of this list and has no body.
+    private readonly List<DungeonMonster> memberBodies = new List<DungeonMonster>();
+    // Slots killed THIS journey. A partial loss is a wound the column carries
+    // to the gate and no further -- next journey the Holds send a full roster.
+    // Only a total wipe reaches past the journey, and it reaches through the
+    // schedule rather than through this.
+    private readonly HashSet<int> deadSlots = new HashSet<int>();
+
+    /// <summary>The first LIVE walker. Was walkers[0], which is now a corpse's
+    /// empty slot whenever the man at the front is the one who fell -- and the
+    /// lead drives sighting, the held-stretch test, the hurry scan and the toll
+    /// vignette, so a null there silently stops all four.</summary>
+    private DwarfWalkerPuppet Lead
+    {
+        get
+        {
+            for (int i = 0; i < walkers.Count; i++)
+                if (walkers[i] != null) return walkers[i];
+            return null;
+        }
+    }
 
     private Vector3Int lastLeadCell = new Vector3Int(int.MinValue, 0, 0);
     private readonly HashSet<int> heldAlertedSegments = new HashSet<int>();
@@ -449,6 +507,23 @@ public class DwarvenCaravanController : MonoBehaviour
         {
             var w = walkers[i];
             if (w == null) continue;
+
+            // Combat has the body: write nothing at all until it is handed
+            // back. On release the clock puts him back in the column on the
+            // very next frame -- see the class doc for why there is no rejoin.
+            var body = i < memberBodies.Count ? memberBodies[i] : null;
+            if (body != null && body.CombatHoldsBody)
+            {
+                w.Suspended = true;
+                continue;
+            }
+            w.Suspended = false;
+
+            // The gap a dead man leaves is NOT closed up. Slot i keeps its
+            // spacing whether or not anyone is standing in it, because the
+            // alternative is a column that visibly shuffles forward the
+            // instant someone dies -- and because closing the gap would make
+            // the spacing depend on the death order.
             w.SetDistance(Mathf.Max(0f, leadDistance - columnSpacing * i));
         }
     }
@@ -477,6 +552,9 @@ public class DwarvenCaravanController : MonoBehaviour
     private void CompleteJourney()
     {
         DespawnWalkers();
+        // A partial loss is carried to the gate and no further: the Holds send
+        // a full roster next time. Only a total wipe reaches past the journey.
+        deadSlots.Clear();
         state = JourneyState.Idle;
         legWorld = null;
         cargo = 0;
@@ -489,6 +567,7 @@ public class DwarvenCaravanController : MonoBehaviour
     {
         Debug.LogError(why);
         DespawnWalkers();
+        deadSlots.Clear();
         state = JourneyState.Idle;
         legWorld = null;
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
@@ -504,16 +583,43 @@ public class DwarvenCaravanController : MonoBehaviour
 
         var deck = new List<Sprite>();
         foreach (var s in walkerSprites) if (s != null) deck.Add(s);
-        if (deck.Count == 0) return;
+        // The DEFINITION is what a member needs now; the sprite list is an
+        // override of the prefab's own renderer. The cart below still needs the
+        // deck-free Create path, so this check cannot simply move upward.
+        if (caravanDefinition == null || caravanDefinition.prefab == null) return;
 
         int count = Mathf.Max(1, walkerCount);
         for (int i = 0; i < count; i++)
         {
-            var w = DwarfWalkerPuppet.Create("DwarvenCaravan" + (i + 1),
-                deck[i % deck.Count], sortingLayerName, sortingOrder, legWorld[0]);
+            // A slot emptied earlier THIS journey stays empty and keeps its
+            // place, so the column's spacing does not depend on who died.
+            if (deadSlots.Contains(i))
+            {
+                walkers.Add(null);
+                memberBodies.Add(null);
+                continue;
+            }
+
+            var monster = Instantiate(caravanDefinition.prefab, legWorld[0],
+                                      Quaternion.identity);
+            if (legFloor != null) monster.transform.SetParent(legFloor.transform, true);
+            monster.name = "DwarvenCaravan" + (i + 1);
+            // DEFENSIVE. They are merchants: they fight when struck and not
+            // otherwise, and a trader who drew on a passing adventurer would
+            // start wars the Holds never chose.
+            monster.InitialiseAsFactionBody(legFloor, caravanDefinition,
+                FactionId.Dwarves, FactionBodyRole.CaravanMember,
+                MonsterAggression.Defensive);
+
+            var w = DwarfWalkerPuppet.AttachTo(monster.gameObject);
             w.Speed = legSpeed;
+            if (deck.Count > 0) w.SetSprite(deck[i % deck.Count]);
             walkers.Add(w);
+            memberBodies.Add(monster);
             w.SetPath(legWorld);
+
+            int slot = i;
+            monster.OnDied += _ => HandleMemberDied(slot);
         }
         if (cartSprite != null)
         {
@@ -528,8 +634,66 @@ public class DwarvenCaravanController : MonoBehaviour
 
     private void DespawnWalkers()
     {
+        // Destroying a body rather than killing it is correct: reaching a
+        // transit is not dying, so no standing is billed and no wisp speaks.
+        // DungeonMonster.OnDestroy unregisters from the floor registry, so a
+        // despawned member leaves nothing behind for ScanForHostiles to find.
         foreach (var w in walkers) if (w != null) Destroy(w.gameObject);
         walkers.Clear();
+        memberBodies.Clear();
+    }
+
+    /// <summary>One of the column is down.</summary>
+    private void HandleMemberDied(int slot)
+    {
+        // Where he fell, captured BEFORE the roster is emptied. After the
+        // nulling there is no walker left to ask, and the controller's own
+        // transform is the persistent manager GameObject -- an alert pointing
+        // there would send the camera to the origin rather than the road.
+        Vector3 fellAt = slot < walkers.Count && walkers[slot] != null
+            ? walkers[slot].LogicalPosition
+            : transform.position;
+        int fellOn = legFloor != null ? legFloor.FloorIndex : 0;
+
+        deadSlots.Add(slot);
+        if (slot < memberBodies.Count) memberBodies[slot] = null;
+        if (slot < walkers.Count) walkers[slot] = null;
+
+        int alive = 0;
+        int count = Mathf.Max(1, walkerCount);
+        for (int i = 0; i < count; i++) if (!deadSlots.Contains(i)) alive++;
+        if (alive > 0) return;
+
+        WipeCaravan(fellAt, fellOn);
+    }
+
+    /// <summary>The whole column is dead. The journey ends where it stands and
+    /// the road stays quiet for a long while.
+    ///
+    /// THIS IS WHAT PRICES THE MURDER, and it is the only reason making the
+    /// caravan killable does not route around the toll economy. A player who
+    /// does it also pays three times -25, which is deep enough to trip the
+    /// embargo on its own -- so for the PLAYER this cooldown is belt and
+    /// braces. It exists for the case the standing bill never covers: kobolds
+    /// taking the column, which costs the player nothing and should still cost
+    /// them the road.
+    ///
+    /// The cargo goes with it. Nobody is left to carry it.</summary>
+    private void WipeCaravan(Vector3 at, int floorIndex)
+    {
+        DespawnWalkers();
+        deadSlots.Clear();
+        state = JourneyState.Idle;
+        legWorld = null;
+        cargo = 0;
+        verbUsed = false;
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        nextDepartureDay = day + wipeCooldownDays;
+
+        AlertsLog.Instance?.AddAlert(
+            "The wagon stands empty on the road. Nobody walked back to the gate.",
+            at, floorIndex, AlertCategory.Threat);
+        WispCompanion.Instance?.Speak("caravan_wiped");
     }
 
     // -- Detection: sighting, held stretches ---------------------------------
@@ -803,6 +967,30 @@ public class DwarvenCaravanController : MonoBehaviour
     public float PhaseSecondsForSave => phaseSeconds;
     public int CargoForSave => cargo;
     public bool VerbUsedForSave => verbUsed;
+
+    /// <summary>Slots emptied this journey. Instance state rather than static,
+    /// because it dies with the journey exactly as cargo and verbUsed do.</summary>
+    public List<string> DeadSlotsForSave
+    {
+        get
+        {
+            var list = new List<string>();
+            foreach (int s in deadSlots) list.Add(s.ToString());
+            return list;
+        }
+    }
+
+    /// <summary>A SEPARATE entry point rather than another parameter on
+    /// RestoreJourneyFromSave: that signature is called from the save
+    /// controller and widening it would have touched a call site for no reason
+    /// beyond tidiness.</summary>
+    public void RestoreDeadSlotsFromSave(List<string> saved)
+    {
+        deadSlots.Clear();
+        if (saved == null) return;
+        foreach (var entry in saved)
+            if (int.TryParse(entry, out int slot)) deadSlots.Add(slot);
+    }
 
     public static void RestoreScheduleFromSave(int nextDay, bool wasSighted, bool vignetteDone)
     {

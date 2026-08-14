@@ -17027,6 +17027,8 @@ MonoBehaviour:
   cargoMax: 200
   tollFraction: 0.2
   robStandingLoss: 25
+  caravanDefinition: {fileID: 11400000, guid: 2bbffb03a8eef1947b22c3714f7eb1d4, type: 2}
+  wipeCooldownDays: 20
   walkerCount: 3
   columnSpacing: 1.6
   hurryMultiplier: 1.5

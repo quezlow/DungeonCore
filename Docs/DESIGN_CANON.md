@@ -9366,12 +9366,61 @@ body brings a renderer with its sorting already authored. DELETED rather than
 suppressed: a second copy of those two values on the controller could only ever
 disagree with the prefab, and would be invisible when it did.
 
-**Still owed: the caravan (part 4).** Its position is a pure function of the
-clock, `Lead` is `walkers[0]`, and the cart is a walker that must NOT become a
-body. A dead roster has to break none of that, and the total-wipe cooldown
-needs its number -- **20 days** proposed, about three missed journeys against a
-cycle of roughly seven, and it only ever fires on a KOBOLD wipe: a player who
-kills the column pays 3 x -25 and the tier gate stops the road anyway.
+### The caravan (SHIPPED: stage 1a-ii part 4 -- stage 1 complete)
+
+Members are mortal; **the cart is not, because it is a cart.** It spawns last,
+after every member slot, so column spacing is unaffected by it.
+
+**SCARCITY PRICES THE MURDER, IN PLACE OF INVULNERABILITY.** The toll economy
+rests on Rob being a PRICED choice -- -25, one verb per wagon -- and a killable
+column threatens to route straight around it. Splitting the puppet so only
+patrols became mortal was proposed and rejected. What replaces invulnerability
+is consequence: a member's death bills -25, exactly matching the robbery so
+murder is never the cheaper verb, and a TOTAL WIPE stops the road for
+**20 days** -- about three missed journeys against a cycle of roughly seven,
+long enough to read as an absence rather than a delay.
+
+**The cooldown exists for the KOBOLD case, not the player's.** A player who
+kills the column pays 3 x -25, which trips the embargo on its own, so for them
+the cooldown is belt and braces. It earns its keep only where the standing bill
+cannot reach: kobolds taking the wagon, which costs the player nothing and
+should still cost them the road.
+
+**A MEMBER WHO FIGHTS IS PUT BACK BY THE CLOCK, and there is deliberately no
+rejoin logic.** While combat holds a body the controller stops writing its
+distance; when the fight ends the next `ApplyPositions` returns it to wherever
+the clock says the column has reached. Rejoin state would be state that could
+drift, and the one property this whole system rests on -- restated in its own
+class doc -- is that no per-frame progress field exists to drift.
+
+**A dead man's gap is NOT closed up.** Slot i keeps its spacing whether or not
+anyone stands in it. Closing the gap would make the column visibly shuffle
+forward the instant someone died, and would make the spacing depend on the
+order of deaths.
+
+**`Lead` was `walkers[0]` and had to become the first LIVE walker.** The lead
+drives sighting, the held-stretch test, the hurry scan and the toll vignette,
+so a null there would have silently stopped all four the moment the man at the
+front was the one who fell.
+
+**A partial loss is carried to the gate and no further.** `deadSlots` clears at
+`CompleteJourney` and `AbortJourney`; next journey the Holds send a full
+roster. Only a total wipe reaches past the journey, and it reaches through the
+schedule rather than through the roster. `caravanDeadSlots` is additive and
+empty on every old save -- which is a full column.
+
+**Despawning is not dying.** Reaching a transit destroys the bodies without
+billing standing or speaking a line; `DungeonMonster.OnDestroy` already
+unregisters from the floor registry, so nothing is left behind for
+`ScanForHostiles` to find.
+
+**Stage 1 is complete: the mortal layer has all five consumers** -- patrols,
+villagers, caravan members, and the two it was built for, surface villagers and
+floor index 3's siege, which now need no new substrate. Stage 2 is the road
+breach, and it remains gated on the unmeasured breach rate: the gatehouse beat
+covers about 120 walk cells of a floor carrying three rim trunks and four
+spurs, so the question is not only whether a dig meets the road but whether it
+meets it where anyone is standing.
 
 **Key files:** `Monster/MonsterAllegiance.cs` (new),
 `Adventurer/FactionBodyRole.cs` (new), `Floors/DwarfWalkerPuppet.cs`

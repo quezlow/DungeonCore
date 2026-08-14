@@ -347,6 +347,9 @@ public class DungeonSaveController : MonoBehaviour
         currentSave.dwarvenAlertedOwners = DwarvenClaimLedger.AlertedOwnersForSave();
         currentSave.dwarvenPatrolDead = DwarvenPatrolController.DeadForSave();
         currentSave.dwarvenVillagerDead = DwarvenVillageController.DeadForSave();
+        currentSave.caravanDeadSlots = DwarvenCaravanController.Instance != null
+            ? DwarvenCaravanController.Instance.DeadSlotsForSave
+            : new List<string>();
         currentSave.holyTouchMurmured = HolyGroundLedger.TouchMurmured;
         currentSave.holyFirstBreakDone = HolyGroundLedger.FirstBreakDone;
         currentSave.holyBrokenSeals = HolyGroundLedger.BrokenSealsForSave();
@@ -894,6 +897,8 @@ public class DungeonSaveController : MonoBehaviour
                                                currentSave.dwarvenAlertedOwners);
             DwarvenPatrolController.RestoreDeadFromSave(currentSave.dwarvenPatrolDead);
             DwarvenVillageController.RestoreDeadFromSave(currentSave.dwarvenVillagerDead);
+            DwarvenCaravanController.Instance?.RestoreDeadSlotsFromSave(
+                currentSave.caravanDeadSlots);
             PrisonController.Instance?.RestoreReactionDay(currentSave.prisonReactionDay);
             QuestController.Instance?.RestoreHandedIn(currentSave.wispQuestsHandedIn);
             QuestController.Instance?.LoadQuestProgress(currentSave.wispQuestsActive);
