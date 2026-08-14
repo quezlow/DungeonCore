@@ -2206,13 +2206,7 @@ public class Commands : MonoBehaviour
         int seeds = Mathf.Max(1, roadBreachSeeds);
         int days = Mathf.Max(10, roadBreachDays);
 
-        int usable = 0, contact = 0, inReach = 0, inBeat = 0;
-        int outpostHit = 0, remainsAny = 0, neither = 0;
-        int laneGate = 0;
-        long cellsSum = 0, beatSum = 0, gateRailSum = 0, walkSum = 0;
-        var firstDays = new List<int>();
-        var firstTiers = new List<int>();
-
+        var samples = new List<BreachSample>();
         var sw = System.Diagnostics.Stopwatch.StartNew();
         for (int s = 0; s < seeds; s++)
         {
@@ -2221,31 +2215,22 @@ public class Commands : MonoBehaviour
             var world = BuildBreachWorld(
                 rng, floorSeed, entry, roadEntry, siteEntry, centre, radius);
             if (world == null || !world.valid) continue;
-            usable++;
 
-            var run = WalkTheDig(rng, world, entry, den, centre, radius, days);
-            cellsSum += run.cellsCut;
-            if (run.remainsTaken > 0) remainsAny++;
-            if (run.outpostMet) outpostHit++;
-
-            beatSum += world.beatMax - world.beatMin + 1;
-            gateRailSum += world.gateWalkCount;
-            walkSum += world.totalWalkCells;
-            if (world.gateRailIsLane) laneGate++;
-
-            if (!run.metRoad) { if (run.remainsTaken == 0) neither++; continue; }
-            contact++;
-            firstDays.Add(run.firstRoadDay);
-            firstTiers.Add(run.firstRoadTier);
-            if (RailReachable(world, run.firstRoadCell, out bool onBeat))
+            var sample = new BreachSample
             {
-                inReach++;
-                if (onBeat) inBeat++;
-            }
+                run = WalkTheDig(rng, world, entry, den, centre, radius, days),
+                gateKind = world.graph.rails[world.gateRail].road.kind,
+                gateWalk = world.gateWalkCount,
+                beatWidth = world.beatMax - world.beatMin + 1,
+                totalWalk = world.totalWalkCells,
+            };
+            if (sample.run.metRoad)
+                sample.inReach = RailReachable(world, sample.run.firstRoadCell, out sample.onBeat);
+            samples.Add(sample);
         }
         sw.Stop();
 
-        if (usable == 0)
+        if (samples.Count == 0)
         {
             sb.AppendLine("  floor " + entry.floorIndex + ": NO USABLE SEED -- every one "
                         + "failed to plan a road, a site pass or a den anchor.");
@@ -2253,43 +2238,162 @@ public class Commands : MonoBehaviour
         }
 
         sb.AppendLine("  floor index " + entry.floorIndex + ", radius " + radius
-                    + ", " + usable + "/" + seeds + " seeds usable, " + days + " days, "
+                    + ", " + samples.Count + "/" + seeds + " seeds usable, " + days + " days, "
                     + "claim " + roadBreachClaimedAtStart + "+" + roadBreachClaimedPerDay
                     + "/day (typical), built in " + sw.Elapsed.TotalSeconds.ToString("0.0") + " s");
-        sb.AppendLine("  contact  in-reach  gate-beat  1st   tier@1st  outpost  remains  neither  cells");
-        sb.AppendLine("  " + Pct(contact, usable) + "     " + Pct(inReach, usable)
-                    + "     " + Pct(inBeat, usable) + "      d"
-                    + Median(firstDays).ToString("0") + "  " + Median(firstTiers).ToString("0.0")
-                    + "       " + Pct(outpostHit, usable) + "    " + Pct(remainsAny, usable)
-                    + "    " + Pct(neither, usable) + "    " + (cellsSum / usable));
+        sb.AppendLine("  start        seeds  stuck  contact  reach  beat   1st   tier  outpost  remains  neither  cells  stop");
 
-        sb.AppendLine("  gate squad: its rail is the outpost's own LANE on "
-                    + laneGate + "/" + usable + " seeds; mean rail "
-                    + (gateRailSum / usable) + " walk cells against a beat window of "
-                    + (beatSum / usable) + ", authored at +/-60. Mean walkable road "
-                    + (walkSum / usable) + " cells.");
+        // SLICED BY WHERE THE FIRST LEG WAS SEATED, which is the whole reason
+        // this pass exists. StartExploratoryLeg prefers a dead end and falls
+        // back to the longest chamber-linking run, whose tip is the chamber
+        // CENTRE; if that fallback cannot dig, the two rows separate and the
+        // ALL row is an average of a working den and an inert one.
+        AppendGroupRow(sb, "dead end", Slice(samples, 1));
+        AppendGroupRow(sb, "chamber ctr", Slice(samples, 2));
+        AppendGroupRow(sb, "ALL", samples);
 
-        AppendBreachVerdict(sb, contact, inReach, remainsAny, usable);
+        AppendGateLine(sb, samples);
+        AppendRefusalLine(sb, samples);
+        AppendBreachVerdict(sb, samples);
+    }
+
+    /// <summary>0 all, 1 dead-end starts, 2 chamber-linking starts.</summary>
+    private static List<BreachSample> Slice(List<BreachSample> all, int which)
+    {
+        var outv = new List<BreachSample>();
+        foreach (var s in all)
+        {
+            if (which == 1 && !s.run.startWasDeadEnd) continue;
+            if (which == 2 && s.run.startWasDeadEnd) continue;
+            outv.Add(s);
+        }
+        return outv;
+    }
+
+    private static void AppendGroupRow(
+        System.Text.StringBuilder sb, string label, List<BreachSample> g)
+    {
+        if (g.Count == 0)
+        {
+            sb.AppendLine("  " + label.PadRight(12) + "  none");
+            return;
+        }
+
+        int stuck = 0, contact = 0, reach = 0, beat = 0, outpost = 0, remains = 0, neither = 0;
+        long cells = 0;
+        var firstDays = new List<int>();
+        var firstTiers = new List<int>();
+        var stopDays = new List<int>();
+        foreach (var s in g)
+        {
+            var r = s.run;
+            if (r.cellsCut == 0) stuck++;
+            cells += r.cellsCut;
+            if (r.remainsTaken > 0) remains++;
+            if (r.outpostMet) outpost++;
+            if (r.digStopDay > 0) stopDays.Add(r.digStopDay);
+            if (r.metRoad)
+            {
+                contact++;
+                firstDays.Add(r.firstRoadDay);
+                firstTiers.Add(r.firstRoadTier);
+                if (s.inReach) reach++;
+                if (s.onBeat) beat++;
+            }
+            else if (r.remainsTaken == 0) neither++;
+        }
+
+        sb.AppendLine("  " + label.PadRight(12)
+                    + " " + g.Count.ToString().PadLeft(5)
+                    + "  " + Pct(stuck, g.Count).PadLeft(5)
+                    + "  " + Pct(contact, g.Count).PadLeft(6)
+                    + " " + Pct(reach, g.Count).PadLeft(6)
+                    + " " + Pct(beat, g.Count).PadLeft(5)
+                    + "  " + ("d" + Median(firstDays).ToString("0")).PadLeft(4)
+                    + "  " + Median(firstTiers).ToString("0.0").PadLeft(4)
+                    + "  " + Pct(outpost, g.Count).PadLeft(7)
+                    + "  " + Pct(remains, g.Count).PadLeft(7)
+                    + "  " + Pct(neither, g.Count).PadLeft(7)
+                    + "  " + (cells / g.Count).ToString().PadLeft(5)
+                    + "  " + (stopDays.Count > 0
+                              ? "d" + Median(stopDays).ToString("0") : "-"));
+    }
+
+    private static void AppendGateLine(
+        System.Text.StringBuilder sb, List<BreachSample> all)
+    {
+        int lane = 0, spur = 0, trunk = 0;
+        long walk = 0, beat = 0, total = 0;
+        foreach (var s in all)
+        {
+            if (s.gateKind == RoadKind.Lane) lane++;
+            else if (s.gateKind == RoadKind.Spur) spur++;
+            else trunk++;
+            walk += s.gateWalk;
+            beat += s.beatWidth;
+            total += s.totalWalk;
+        }
+        int n = all.Count;
+        sb.AppendLine("  gate squad: its rail is a LANE on " + lane + ", a SPUR on " + spur
+                    + ", the TRUNK on " + trunk + " of " + n + " seeds; mean rail "
+                    + (walk / n) + " walk cells against a beat window of " + (beat / n)
+                    + ", authored at +/-60. Mean walkable road " + (total / n) + " cells.");
+        if (trunk * 4 < n)
+            sb.AppendLine("         !! gateBeatHalfCells is INERT on this floor. "
+                        + "NearestWalkCell searches every rail, and the outpost's own "
+                        + "lane or approach spur is always nearer to its anchor than the "
+                        + "trunk is, so the squad paces the gatehouse. That is a patrol "
+                        + "fault, not a den one, and it is why the beat column reads what "
+                        + "it reads.");
+    }
+
+    /// <summary>WHERE THE ROCK BUDGET WENT. A dig that spends half its cap and
+    /// cannot say why is the shape this project has paid for before -- a stalled
+    /// dig looks exactly like a slow one.</summary>
+    private static void AppendRefusalLine(
+        System.Text.StringBuilder sb, List<BreachSample> all)
+    {
+        var total = new long[RefusalNames.Length];
+        long boxed = 0, shortD = 0, worked = 0, sum = 0;
+        foreach (var s in all)
+        {
+            for (int i = 1; i < total.Length; i++) total[i] += s.run.refusals[i];
+            boxed += s.run.boxedDawns;
+            shortD += s.run.shortDawns;
+            worked += s.run.workedDawns;
+        }
+        for (int i = 1; i < total.Length; i++) sum += total[i];
+        if (sum == 0) { sb.AppendLine("  refusals: none recorded."); return; }
+
+        var line = new System.Text.StringBuilder("  refusals by kind:");
+        for (int i = 1; i < total.Length; i++)
+            line.Append(" ").Append(RefusalNames[i]).Append(" ")
+                .Append((100.0 * total[i] / sum).ToString("0.0")).Append("%");
+        sb.AppendLine(line.ToString());
+        sb.AppendLine("  dawns worked " + (worked / all.Count) + " per seed, of which "
+                    + (100.0 * shortD / System.Math.Max(1, worked)).ToString("0.0")
+                    + "% ended without spending their rock and "
+                    + (100.0 * boxed / System.Math.Max(1, worked)).ToString("0.0")
+                    + "% ended boxed in.");
     }
 
     /// <summary>The decision rule, driven off the numbers rather than restated
-    /// beside them. The comparator is deliberately NOT the 25 per cent the
-    /// arc brief proposed: the road beat is a second branch of a dig whose
-    /// FIRST branch -- contested discovery -- shipped and was accepted at 14
-    /// per cent, so a 25 per cent bar would bin something more available than
-    /// what is already in the game. The two beats also ride one walk, so the
-    /// number that matters most is the dungeon that meets neither.</summary>
-    /// <summary>The decision rule, driven off the numbers rather than restated
-    /// beside them. The comparator is deliberately NOT the 25 per cent first
-    /// proposed for this gate: the road beat is a second branch of a dig whose
-    /// FIRST branch -- contested discovery -- shipped and was accepted at about
-    /// 14 per cent, so a 25 per cent bar would bin something more available than
-    /// what is already in the game.</summary>
+    /// beside them, plus the check the first cut of this report could not make:
+    /// whether the two start-leg rows describe the same den.</summary>
     private void AppendBreachVerdict(
-        System.Text.StringBuilder sb, int contact, int inReach, int remainsAny, int usable)
+        System.Text.StringBuilder sb, List<BreachSample> all)
     {
-        float reachPct = 100f * inReach / usable;
-        float remainsPct = 100f * remainsAny / usable;
+        var dead = Slice(all, 1);
+        var cham = Slice(all, 2);
+
+        int reach = 0, remains = 0;
+        foreach (var s in all)
+        {
+            if (s.inReach) reach++;
+            if (s.run.remainsTaken > 0) remains++;
+        }
+        float reachPct = 100f * reach / all.Count;
+        float remainsPct = 100f * remains / all.Count;
 
         sb.AppendLine("  RULE: bin the road beat below about 15 per cent in-reach -- the "
                     + "contested-discovery rate the same dig is recorded as delivering. "
@@ -2300,25 +2404,55 @@ public class Commands : MonoBehaviour
             : "  VERDICT: BELOW the rule. Recommend binning the road beat and recording "
             + "the number and the reason, rather than building it.");
 
-        // NOT A BAND AND NOT A REGRESSION TEST, and the reason is the useful part.
-        // Asserting agreement with the sim would be asserting agreement with a
-        // model that omits shipped rules.
+        // THE ASSERTION. StartExploratoryLeg's own doc says the fallback exists
+        // "so a den whose every run found a chamber still digs". If that holds,
+        // the two rows differ only in flavour. Stated here as a MUST so the
+        // readout accuses the code rather than leaving a reader to notice.
+        if (dead.Count > 0 && cham.Count > 0)
+        {
+            int stuckC = 0, stuckD = 0;
+            long cellsC = 0, cellsD = 0;
+            foreach (var s in cham) { if (s.run.cellsCut == 0) stuckC++; cellsC += s.run.cellsCut; }
+            foreach (var s in dead) { if (s.run.cellsCut == 0) stuckD++; cellsD += s.run.cellsCut; }
+            float pctStuckC = 100f * stuckC / cham.Count;
+            float pctStuckD = 100f * stuckD / dead.Count;
+
+            sb.AppendLine("  MUST READ: the two start rows agree within noise. "
+                        + "StartExploratoryLeg's fallback exists, in its own words, so "
+                        + "that a den whose every run found a chamber still digs.");
+            if (pctStuckC > pctStuckD + 10f || cellsC * 2 < cellsD)
+                sb.AppendLine("         !! THEY DO NOT. A chamber-start den cuts "
+                            + (cellsC / cham.Count) + " cells against " + (cellsD / dead.Count)
+                            + ", and " + pctStuckC.ToString("0.0") + " per cent of them never "
+                            + "cut one at all, against " + pctStuckD.ToString("0.0")
+                            + ". The fallback seats the leg at the run's LAST centreline "
+                            + "cell, which for a chamber link is run.b -- the chamber "
+                            + "CENTRE -- and CanCutAt refuses FeatureType.Chamber. The leg "
+                            + "boxes in on its first dawn, and StartNextExploratoryLeg "
+                            + "re-seats the next one at the same unmoved head. Read the "
+                            + "ALL row as an average of a working den and an inert one.");
+            else
+                sb.AppendLine("         the two rows agree, so the fallback digs and the "
+                            + "ALL row means what it says.");
+        }
+
+        // NOT a band and NOT a regression test against the sim: asserting
+        // agreement would be asserting agreement with a model that omits
+        // shipped rules.
         sb.AppendLine("  remains here " + remainsPct.ToString("0.0")
                     + " per cent, against sim_den_digger.py section J's 14.4 at the same "
                     + "cap and budget. THE TWO ARE NOT EXPECTED TO AGREE and a gap here "
-                    + "is a fact about the SIM, not a fault in this report.");
-        sb.AppendLine("  Three divergences, all in the same direction: the sim walks "
+                    + "is a fact about the SIM, not a fault in this report: the sim walks "
                     + "THROUGH a chamber, a road, a site and claimed ground and merely "
                     + "notes them, where CanCutAt is BLOCKED by all four; it models no "
                     + "never-retrace set; and it tests a POINT where the leg tests its "
-                    + "2-wide BRUSH. A Python prototype of this walk put the last two at "
-                    + "about three points each. This is the closer model of "
-                    + "AdvanceDenDig, so read a disagreement that way.");
+                    + "2-wide BRUSH. Read the stuck column FIRST, though -- a den that "
+                    + "never dug cannot find anything, and that would be a fault in the "
+                    + "GAME rather than in either model.");
         sb.AppendLine("  CONSEQUENCE, recorded rather than chased here: canon 42 chose cap "
                     + "2400 over 1107 because 1107 held this beat to 7.3-8.0 per cent. "
                     + "That comparison was made on the sim. Re-measuring the cap against "
                     + "the shipped rules is OWED and is not this report's question.");
-
         sb.AppendLine("  CAVEATS, so the next reader does not mistake this for the game: "
                     + "roads and sites are the real builders; chambers, the cavity, the "
                     + "remains and the walk are mirrors; rivers are absent (they do not "
@@ -2591,6 +2725,16 @@ public class Commands : MonoBehaviour
 
     // -- the walk ------------------------------------------------------------
 
+    // Refusal kinds. SPLIT OUT because a single finds counter that collapses
+    // five reasons is exactly what canon 42 records DenDigStep.finds doing, and
+    // the first cut of this report repeated it: it printed a dig spending half
+    // its cap and could not say what stopped it.
+    private const int CutOk = 0, RefuseRetrace = 1, RefuseClamp = 2, RefuseReserve = 3,
+                      RefuseChamber = 4, RefuseSite = 5, RefuseRoad = 6, RefuseOutpost = 7;
+
+    private static readonly string[] RefusalNames =
+    { "cut", "retrace", "clamp", "reserve", "chamber", "site", "road", "outpost" };
+
     private class BreachRun
     {
         public bool metRoad;
@@ -2599,6 +2743,32 @@ public class Commands : MonoBehaviour
         public bool outpostMet;
         public int remainsTaken;
         public int cellsCut;
+
+        /// <summary>Did the first leg extend a DEAD END, or did
+        /// StartExploratoryLeg fall back to a chamber-linking run? The fallback
+        /// seats the leg at run.b, which for a chamber link is the chamber
+        /// CENTRE -- and CanCutAt refuses FeatureType.Chamber. Recorded as two
+        /// separate facts because the proxy and the thing itself can disagree:
+        /// a chamber clipped by a road or a site can leave its centre open.</summary>
+        public bool startWasDeadEnd;
+        public bool startInChamber;
+
+        public int boxedDawns;      // dawns that ended blocked in every direction
+        public int shortDawns;      // dawns that ended without spending their rock
+        public int workedDawns;     // dawns that ran at all
+        public int digStopDay;      // day the cap or the last remains stopped it, 0 = never
+        public readonly int[] refusals = new int[8];
+    }
+
+    /// <summary>One seed, kept whole so the readout can be sliced after the
+    /// fact. The first cut aggregated into scalars as it went and could not
+    /// answer "what do the stuck seeds look like" without a second run.</summary>
+    private class BreachSample
+    {
+        public BreachRun run;
+        public bool inReach, onBeat;
+        public RoadKind gateKind;
+        public int gateWalk, beatWidth, totalWalk;
     }
 
     /// <summary>AdvanceDenDig's walk and TickExploratoryDig's dawn, mirrored.
@@ -2626,6 +2796,8 @@ public class Commands : MonoBehaviour
         if (best == null) return run;
 
         var mouth = bestLine[bestLine.Count - 1];
+        run.startWasDeadEnd = best.chamberId < 0;
+        run.startInChamber = w.chamber.Contains(mouth);
         double heading = System.Math.Atan2(mouth.y - bestLine[bestLine.Count - 2].y,
                                            mouth.x - bestLine[bestLine.Count - 2].x);
 
@@ -2650,8 +2822,9 @@ public class Commands : MonoBehaviour
         {
             claimed += roadBreachClaimedPerDay;
             if (day <= den.GraceDays) continue;
-            if (takenRemains.Count >= w.remains.Count && w.remains.Count > 0) break;
-            if (cut.Count >= cap) break;
+            if (takenRemains.Count >= w.remains.Count && w.remains.Count > 0)
+            { run.digStopDay = day; break; }
+            if (cut.Count >= cap) { run.digStopDay = day; break; }
 
             int tier = DenController.TierForHoard(hoard);
             float expansion = den.ExpansionMultiplierForClaimed(claimed);
@@ -2682,16 +2855,17 @@ public class Commands : MonoBehaviour
                 var cell = new Vector3Int((int)System.Math.Round(nx), (int)System.Math.Round(ny), 0);
 
                 int kind = CanCutHere(w, cell, centre, clampR, width, onLeg);
-                if (kind != 0)
+                if (kind != CutOk)
                 {
-                    if (kind == 2 && !run.metRoad)
+                    run.refusals[kind]++;
+                    if (kind == RefuseRoad && !run.metRoad)
                     {
                         run.metRoad = true;
                         run.firstRoadCell = cell;
                         run.firstRoadDay = day;
                         run.firstRoadTier = tier;
                     }
-                    if (kind == 3) run.outpostMet = true;
+                    if (kind == RefuseOutpost) run.outpostMet = true;
                     // Turn HARD rather than nudging: a small correction against a
                     // wall walks along it, which reads as a tunnel tracing the
                     // player's frontier instead of prospecting away from it.
@@ -2719,6 +2893,9 @@ public class Commands : MonoBehaviour
             }
 
             run.cellsCut = cut.Count;
+            run.workedDawns++;
+            if (boxedIn) run.boxedDawns++;
+            if (spent < rock) run.shortDawns++;
 
             // A leg that has arrived somewhere starts a fresh one FROM WHERE IT
             // STANDS, so the retrace set resets to the new mouth alone.
@@ -2741,7 +2918,7 @@ public class Commands : MonoBehaviour
         BreachWorld w, Vector3Int cell, Vector3Int centre, float clampR,
         int width, HashSet<Vector3Int> onLeg)
     {
-        if (onLeg.Contains(cell)) return 1;           // never retrace
+        if (onLeg.Contains(cell)) return RefuseRetrace;
         int half = (width - 1) / 2;
         int extra = (width - 1) - 2 * half;
         for (int dx = -half; dx <= half + extra; dx++)
@@ -2749,14 +2926,14 @@ public class Commands : MonoBehaviour
             {
                 var p = new Vector3Int(cell.x + dx, cell.y + dy, 0);
                 float ddx = p.x - centre.x, ddy = p.y - centre.y;
-                if (ddx * ddx + ddy * ddy > clampR * clampR) return 1;
-                if (w.reserve.Contains(p)) return 1;   // the den's own unopened hole
-                if (w.chamber.Contains(p)) return 4;
-                if (w.outpost.Contains(p)) return 3;
-                if (w.site.Contains(p)) return 5;
-                if (w.road.Contains(p)) return 2;
+                if (ddx * ddx + ddy * ddy > clampR * clampR) return RefuseClamp;
+                if (w.reserve.Contains(p)) return RefuseReserve;
+                if (w.chamber.Contains(p)) return RefuseChamber;
+                if (w.outpost.Contains(p)) return RefuseOutpost;
+                if (w.site.Contains(p)) return RefuseSite;
+                if (w.road.Contains(p)) return RefuseRoad;
             }
-        return 0;
+        return CutOk;
     }
 
     /// <summary>CarveLegCell, mirrored: the NOVEL cells a brush opens. Anything

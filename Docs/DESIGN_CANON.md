@@ -9048,6 +9048,53 @@ falling back to a figure -- the ambiguous default this entry already bans once.
 `DungeonCore/DenController.cs` (the four accessors),
 `Tools/sim_den_digger.py` (the repair).
 
+**THE FIRST READING OF THE REPORT AND WHAT IT COST TO TRUST IT.** 300 seeds,
+floor index 2: contact 30.7 per cent, in-reach 30.7, gate beat 0.0, first
+contact d60, and the beat CLEARS the 15 per cent rule. Two of the other columns
+said the run was an average of two different dens, and the readout could not say
+so, so it was extended before the number was acted on.
+
+- **`in-reach` equal to `contact` is correct and not a copy-paste.** Every
+  carriageway cell sits within half a width of a walk cell, and after the site
+  pass every rail on this floor is in one component. There is nowhere on floor
+  index 2 for a breach to be out of reach. The distinction this gate was framed
+  around does not exist here, which is the trunk-not-network correction arriving
+  in the numbers.
+- **The gate squad does not walk the trunk.** Its rail was the outpost's own
+  LANE on 199 of 300 seeds, mean 19 walk cells against a beat window of 19 --
+  so `gateBeatHalfCells = 60` is inert. `SpawnOutpostPatrols` takes
+  `NearestWalkCell` across the WHOLE graph, and the outpost's lane or approach
+  spur is always nearer to its anchor than the trunk is. A patrol fault, not a
+  den one, and owed separately.
+- **The dig spent 1254 cells of a 2400 cap over 200 days**, where the available
+  rock at the shipped rates is five to six thousand and the sim has the cap
+  binding by d104. **A dig that stalls looks exactly like a dig that is slow** --
+  this entry already says so about the ledger, and the report had been built
+  without the counters that would tell them apart. THAT IS THE PROCESS FAULT
+  WORTH RECORDING: the standing rule is to add diagnostics before iterating on
+  guesses, and a measurement shipped without per-stage rejection reasons costs a
+  whole extra round trip to get them.
+
+**THE SUSPECT, STATED AS AN ASSERTION IN THE READOUT RATHER THAN AS A FIX.**
+`StartExploratoryLeg` prefers a dead end and otherwise falls back to the longest
+run, taking `mouth = parent[parent.Count - 1]` -- and for a chamber-linking run
+that last centreline cell is `run.b`, the chamber CENTRE, because
+`DenTunnelBuilder` drives runs to centres and not to edges. `CanCutAt` refuses
+`FeatureType.Chamber`, so every candidate's 2-wide brush lands on chamber cells,
+the leg reaches `blocked > 64` on its first dawn, and `StartNextExploratoryLeg`
+re-seats the next leg at the same unmoved head. Its own doc comment says the
+fallback exists "so a den whose every run found a chamber still digs".
+
+The arithmetic fits and is not proof: floor index 2 authors four runs against a
+measured mean of 0.71 dead ends, and a model of `Plan`'s eligibility puts 63 per
+cent of seeds at no dead end at all, against a report cutting 52 per cent of its
+cap. **The report now slices every column by start-leg kind and asserts the two
+rows agree**, so the readout accuses the code instead of leaving a reader to
+notice. If it fires, three things follow and all are larger than this gate: the
+30.7 per cent is measured with half the dens inert; the contested-discovery beat
+fires nearer 1.7 per cent than 14.4; and `exploratoryCellCap` barely binds, so
+section J's cap sweep tuned a knob that mostly does nothing.
+
 #### What the den arc still owes
 
 - ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
