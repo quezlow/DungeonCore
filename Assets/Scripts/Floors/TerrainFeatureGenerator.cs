@@ -3229,6 +3229,23 @@ public class TerrainFeatureGenerator : MonoBehaviour
         public float headingRadians;
         public int finds;
 
+        /// <summary>The leg put its brush against the dwarven carriageway this
+        /// dawn, and WHERE IT WAS STANDING when it did (canon 42's road breach).
+        ///
+        /// SEPARATE FROM finds, WHICH IS THE POINT. finds collapses five reasons
+        /// into one counter -- canon 42 records that as the fault Road Breach
+        /// Report's per-kind refusal line was built to undo, and a skirmish
+        /// triggered off it would fire on a chamber wall.
+        ///
+        /// THE CELL IS THE STANDING CELL, NOT THE REFUSED ONE. The refused cell
+        /// is the centreline position whose 2-wide brush touched carriageway, so
+        /// it was never cut and nothing can stand on it. The cell recorded here
+        /// is the last one the leg accepted: it is den tunnel, it is one cell
+        /// off the road at width 2, and it is therefore inside attackRange of a
+        /// guard on the carriageway.</summary>
+        public bool roadBreach;
+        public Vector3Int roadBreachAt;
+
         /// <summary>Remains cells broken into this dawn. Empty on almost every
         /// dawn -- this is the set-piece, not the routine.</summary>
         public readonly List<Vector3Int> remainsTaken = new List<Vector3Int>();
@@ -3368,6 +3385,20 @@ public class TerrainFeatureGenerator : MonoBehaviour
             if (!CanCutAt(cell, centre, clampR, width, onLeg, out findKey))
             {
                 if (findKey != null && step.finds < int.MaxValue) step.finds++;
+                // THE DAWN IS NOT ENDED HERE, DELIBERATELY. Ending it on the
+                // first road refusal would cost the dig the rest of its rock on
+                // every dawn a leg wandered near the carriageway -- road is 2.4
+                // per cent of all refusals, so it is a repeated event and not a
+                // single one -- and would silently reprice a cap that was tuned
+                // against a walk that turns away. The leg turns away exactly as
+                // before; the breach is REPORTED and TickExploratoryDig decides
+                // what it costs.
+                if (!step.roadBreach && findKey != null && findKey.StartsWith("road:"))
+                {
+                    step.roadBreach = true;
+                    step.roadBreachAt = new Vector3Int(
+                        Mathf.RoundToInt(x), Mathf.RoundToInt(y), 0);
+                }
                 // Turn hard rather than nudging: a small correction against a
                 // wall walks along it, which reads as a tunnel tracing the
                 // player's frontier instead of prospecting away from it.

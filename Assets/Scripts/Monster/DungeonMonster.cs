@@ -2287,6 +2287,21 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     public float CurrentHP => currentHP;
     public float MaxHP => maxHP;
 
+    /// <summary>The three numbers a duel is decided by, exposed READ-ONLY for
+    /// the headless readouts (canon 42's SpoilPerCell precedent, and for its
+    /// stated reason: the alternative is a report carrying its own copy of the
+    /// stat table, which is the drift this project has already paid for twice).
+    ///
+    /// READ OFF THE PREFAB, NOT A LIVE BODY. Road Breach Report resolves the
+    /// skirmish before any body exists, exactly as Print Faction Body Costs
+    /// prices a death before any dwarf is standing. MaxHP above already served
+    /// that way; these three had no accessor and the readout could not have been
+    /// written without inventing one, which is how a measurement quietly stops
+    /// measuring the game.</summary>
+    public float AttackDamage => attackDamage;
+    public float AttackCooldown => attackCooldown;
+    public float DetectionRange => detectionRange;
+
     /// <summary>Calm, unengaged and alive -- eligible for Arena sparring.</summary>
     public bool IsSparReady =>
         currentHP > 0f && target == null
@@ -2430,6 +2445,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private bool denWorkSiteSet;
 
     public bool HasDenWorkSite => denWorkSiteSet;
+
+    /// <summary>Where this body was sent. Read ONLY by Print Den Ledger, to test
+    /// whether the assignment is reachable -- a work site the pathfinder cannot
+    /// route to is a digger standing still, and that is indistinguishable from a
+    /// digger working until something asks the question.</summary>
+    public Vector3 DenWorkSite => denWorkSite;
 
     public void SetDenWorkSite(Vector3 world) { denWorkSite = world; denWorkSiteSet = true; }
 

@@ -50,11 +50,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4748993249541918515, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
       propertyPath: m_Name
-      value: DwarfGuardPrefab Variant
+      value: DwarfGuard Variant
       objectReference: {fileID: 0}
     - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
       propertyPath: maxHP
-      value: 100
+      value: 70
       objectReference: {fileID: 0}
     - target: {fileID: 6878477358403808343, guid: e083488e7fe47604d88a254661a31bdf, type: 3}
       propertyPath: moveSpeed

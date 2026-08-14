@@ -1138,7 +1138,7 @@ public class Commands : MonoBehaviour
         var sb = new System.Text.StringBuilder();
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         sb.AppendLine($"[Commands] Den ledger -- day {day}");
-        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  stolen   earned   rem  raids  tgt%  dug    left   tunnel      find  pop  out  dig  work  lost  state");
+        sb.AppendLine("floor  kind        tribe    tier  hoard    next tier  stolen   earned   rem  raids  tgt%  dug    left   tunnel      find  skirm  pop  out  dig  work  reach  lost  state");
 
         bool any = false;
         foreach (var den in DenController.Instance.AllDens)
@@ -1180,7 +1180,15 @@ public class Commands : MonoBehaviour
 
             // Bodies, and what they are doing. work is the count holding a work
             // site: zero until stage 2 sets one, and the line that will say so.
-            int pop = 0, work = 0;
+            // reach is the count of work-site holders that can ACTUALLY PATH to
+            // the face, and it is here because work alone cannot tell a digger
+            // at the rock from one standing in the cavity unable to leave it.
+            // DungeonPathfinder expands only mined cells and den tunnel becomes
+            // mined on REVEAL, so a digger sent up an unrevealed leg gets an
+            // empty path and does not move -- while MayForage also refuses it,
+            // so it does not rob instead. work far above reach is that, and it
+            // is invisible in every other column.
+            int pop = 0, work = 0, reach = 0;
             if (denFloor != null && denFloor.Entities != null)
             {
                 var bodies = denFloor.Entities.GetAll<DungeonMonster>();
@@ -1188,14 +1196,17 @@ public class Commands : MonoBehaviour
                 {
                     if (bodies[b] == null || bodies[b].DenFloorIndex != den.floorIndex) continue;
                     pop++;
-                    if (bodies[b].HasDenWorkSite) work++;
+                    if (!bodies[b].HasDenWorkSite) continue;
+                    work++;
+                    if (DungeonPathfinder.FindPath(denFloor, bodies[b].transform.position,
+                                                   bodies[b].DenWorkSite).Count > 0) reach++;
                 }
             }
 
             sb.AppendLine($"{den.floorIndex,-6} {(DenKind)den.kind,-11} {tribe,-8} {tier,-5} "
                         + $"{den.hoard,-8:F0} {(next > 0f ? next.ToString("F0") : "max"),-10} "
-                        + $"{den.stolenHoard,-8:F0} {den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} "
-                        + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {den.deathsNotByDungeon,-5} {state}");
+                        + $"{den.stolenHoard,-8:F0} {den.stolenTotal,-8:F0} {den.remainsTaken,-4} {den.raidsLaunched,-6} {DenController.Instance.TargetStealShare(den.floorIndex) * 100f,-5:F0} {den.cellsDug,-6} {left,-6} {tunnel,-11} {den.digFinds,-5} {den.skirmishes,-6} "
+                        + $"{pop,-4} {DenController.Instance.ScavengerBudget(den.floorIndex),-4} {DenController.Instance.DiggerBudget(den.floorIndex),-4} {work,-5} {reach,-6} {den.deathsNotByDungeon,-5} {state}");
 
             // THE HOARD INVARIANT, and the one line that catches stage 2b's
             // characteristic failure. An excavator's hoard is the geometry's
@@ -2173,6 +2184,23 @@ public class Commands : MonoBehaviour
             return;
         }
 
+        // THE PATROL CONTROLLER IS NOW REQUIRED, and refusing is the same ruling
+        // this method already makes about the three profiles. The beat radius,
+        // both squad sizes and the guard's own prefab are read off it; falling
+        // back to typed figures would be the ambiguous default this project
+        // bans, and it would fail in the direction that flatters the report.
+        var patrol = DwarvenPatrolController.Instance;
+        if (patrol == null || patrol.GuardDefinition == null
+            || patrol.GuardDefinition.prefab == null)
+        {
+            Debug.LogWarning("[Commands] Road breach report needs a DwarvenPatrolController "
+                           + "in the scene WITH its Guard Definition assigned: the beat "
+                           + "radius, the two squad sizes and the guard's stat block are "
+                           + "read off it rather than copied. Without it the engagement "
+                           + "columns would be measuring numbers typed in here.");
+            return;
+        }
+
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("[Commands] ROAD BREACH REPORT");
         bool anyFloor = false;
@@ -2184,7 +2212,7 @@ public class Commands : MonoBehaviour
             if (roadEntry == null || roadEntry.mode == RoadMode.None) continue;
             var siteEntry = siteReportProfile.GetEntry(entry.floorIndex);
             anyFloor = true;
-            ReportOneFloor(sb, den, entry, roadEntry, siteEntry);
+            ReportOneFloor(sb, den, entry, roadEntry, siteEntry, patrol);
         }
 
         if (!anyFloor)
@@ -2199,7 +2227,8 @@ public class Commands : MonoBehaviour
 
     private void ReportOneFloor(
         System.Text.StringBuilder sb, DenController den, DenTunnelFloorEntry entry,
-        RoadFloorEntry roadEntry, SiteFloorEntry siteEntry)
+        RoadFloorEntry roadEntry, SiteFloorEntry siteEntry,
+        DwarvenPatrolController patrol)
     {
         int radius = FloorRadiusFor(entry.floorIndex);
         var centre = new Vector3Int(0, 0, 0);
@@ -2228,6 +2257,7 @@ public class Commands : MonoBehaviour
             };
             if (sample.run.metRoad)
                 sample.inReach = RailReachable(world, sample.run.firstRoadCell, out sample.onBeat);
+            ResolveEngagements(sample, world, patrol, entry);
             samples.Add(sample);
         }
         sw.Stop();
@@ -2255,6 +2285,7 @@ public class Commands : MonoBehaviour
         AppendGroupRow(sb, "ALL", samples);
 
         AppendGateLine(sb, samples);
+        AppendEngagementLine(sb, samples, patrol, entry);
         AppendRefusalLine(sb, samples);
         AppendBreachVerdict(sb, samples);
     }
@@ -2682,7 +2713,18 @@ public class Commands : MonoBehaviour
     /// serialized fields on live controllers that a headless report cannot
     /// reach. Flagged here rather than hidden, because they are exactly the
     /// copy-of-an-authored-number shape this project has been bitten by.</summary>
-    private const int GateBeatHalfCells = 60;
+    /// <summary>The AUTHORED beat radius, read off the controller that walks it.
+    ///
+    /// THIS WAS A TRANSCRIBED CONST AND IT SHOULD NOT HAVE BEEN. Canon 44 praises
+    /// this report for invoking SeatPatrol and BeatSet rather than restating
+    /// them, so the seat and the bound cannot drift -- and then the RADIUS handed
+    /// to the bound was typed in from the inspector, which is a third number free
+    /// to disagree with both. Retuning gateBeatHalfCells would have moved the
+    /// squad and left the report measuring the old beat, reporting a coverage
+    /// figure for a beat nobody walks.</summary>
+    private static int GateBeatHalfCells
+        => DwarvenPatrolController.Instance != null
+            ? DwarvenPatrolController.Instance.GateBeatHalfCells : 60;
     private const int RemainsPerFloor = 2;
 
     /// <summary>Every rail the roaming squad can reach from the gate rail.
@@ -2725,6 +2767,146 @@ public class Commands : MonoBehaviour
     /// <summary>Is a breached road cell somewhere a patrol answers? The cell is
     /// carriageway, so it sits within half a width of a walk cell by
     /// construction; the question is WHICH rail owns that walk cell.</summary>
+    /// <summary>Every breach on this seed, turned into an engagement and an
+    /// outcome.
+    ///
+    /// THE ENGAGEMENT IS DERIVED, NEVER RESTATED. Both stat blocks are read off
+    /// the PREFABS the game instantiates -- the guard's through the patrol
+    /// controller's own Guard Definition, the kobold's through the den profile's
+    /// scavenger definition -- and the party size off DenController.DiggerBudget
+    /// at the tier the den had reached that dawn. Nothing about the encounter is
+    /// typed in here, so retuning any of it moves this readout with it. That is
+    /// the whole reason this column exists: canon 44 asserted that a lone guard
+    /// loses to four kobolds, sized the gate squad on it, and the assertion was
+    /// never checkable from either serialised field alone.
+    ///
+    /// WHICH SQUAD ARRIVES IS GEOMETRY. A breach whose nearest rail is inside
+    /// the gate beat is met by the gate squad; one on a reachable rail outside
+    /// it is met by the roaming road squad, which is unbounded and walks the
+    /// whole network. A breach with no reachable rail is met by nobody, and is
+    /// counted rather than dropped.
+    ///
+    /// ARRIVAL IS NOT MODELLED, AND THAT IS A FINDING RATHER THAN AN OMISSION.
+    /// A guard walks at patrolSpeed over a beat of about a hundred and twenty
+    /// cells, against a day-night cycle of DayDuration + NightDuration seconds
+    /// -- a full cycle carries him several times the length of his own beat. A
+    /// party stands from the dawn that spawned it to the next, so a guard whose
+    /// beat contains the breach reaches it with room to spare and a transit
+    /// model would only add a term that is never binding.</summary>
+    private static void ResolveEngagements(
+        BreachSample sample, BreachWorld w,
+        DwarvenPatrolController patrol, DenTunnelFloorEntry entry)
+    {
+        var guardPrefab = patrol != null && patrol.GuardDefinition != null
+            ? patrol.GuardDefinition.prefab : null;
+        var koboldPrefab = entry != null && entry.scavengerDefinition != null
+            ? entry.scavengerDefinition.prefab : null;
+        if (guardPrefab == null || koboldPrefab == null) return;
+
+        var run = sample.run;
+        for (int i = 0; i < run.breachCells.Count; i++)
+        {
+            sample.breaches++;
+
+            bool onBeat;
+            bool reachable = RailReachable(w, run.breachCells[i], out onBeat);
+            if (!reachable) { sample.breachesUnreachable++; continue; }
+
+            int guards = onBeat ? patrol.GateSquadSize : patrol.RoadSquadSize;
+            if (onBeat) sample.breachesOnBeat++; else sample.breachesOffBeat++;
+
+            // The party is DiggerBudget strong, which is what SendSkirmishParty
+            // raises. DiggerBudget reads a live den off its floor index, so the
+            // TABLE is reached through the tier the same way the dig rate is.
+            int party = DenController.DiggersAtTier(run.breachTiers[i]);
+            if (party <= 0) continue;
+
+            if (SkirmishResolver.TakesTheRoad(guardPrefab, koboldPrefab, guards, party))
+                sample.denWon++;
+            else
+                sample.guardWon++;
+        }
+    }
+
+    /// <summary>What the beat actually comes to, with the stage each breach was
+    /// lost at named rather than folded into one rate.</summary>
+    private static void AppendEngagementLine(
+        System.Text.StringBuilder sb, List<BreachSample> all,
+        DwarvenPatrolController patrol, DenTunnelFloorEntry entry)
+    {
+        long breaches = 0, unreachable = 0, offBeat = 0, onBeat = 0, denWon = 0, guardWon = 0;
+        int seedsWithBreach = 0, seedsWithEngagement = 0, seedsDenTookOne = 0;
+        foreach (var s in all)
+        {
+            breaches += s.breaches;
+            unreachable += s.breachesUnreachable;
+            offBeat += s.breachesOffBeat;
+            onBeat += s.breachesOnBeat;
+            denWon += s.denWon;
+            guardWon += s.guardWon;
+            if (s.breaches > 0) seedsWithBreach++;
+            if (s.denWon + s.guardWon > 0) seedsWithEngagement++;
+            if (s.denWon > 0) seedsDenTookOne++;
+        }
+
+        int n = all.Count;
+        sb.AppendLine("  ENGAGEMENTS: " + breaches + " breaches over " + n + " seeds ("
+                    + Pct(seedsWithBreach, n) + " of seeds saw one, "
+                    + (breaches / (double)Mathf.Max(1, n)).ToString("0.00")
+                    + " per seed); of those " + unreachable + " reached no rail, "
+                    + offBeat + " met the ROAD squad and " + onBeat
+                    + " met the GATE squad.");
+        long fights = denWon + guardWon;
+        if (fights == 0)
+        {
+            sb.AppendLine("         no breach produced an engagement. Either the dig never "
+                        + "reaches carriageway on this floor, or every breach lands off "
+                        + "the rail graph -- read the contact and reach columns above "
+                        + "before treating this as a fault in the beat.");
+            return;
+        }
+        sb.AppendLine("         outcome: the DEN takes " + Pct((int)denWon, (int)fights)
+                    + " and the ROAD holds " + Pct((int)guardWon, (int)fights)
+                    + ". " + Pct(seedsWithEngagement, n) + " of seeds fight at all and "
+                    + Pct(seedsDenTookOne, n) + " win at least one.");
+
+        // THE ASSERTION CANON 44 SIZED THE GATE SQUAD ON, checked against the
+        // prefabs rather than against itself. Both stat blocks are read live, so
+        // this fires the day either is retuned past the window.
+        var g = patrol.GuardDefinition.prefab;
+        var k = entry.scavengerDefinition.prefab;
+        bool losesToFour = SkirmishResolver.TakesTheRoad(g, k, 1, 4);
+        bool losesToThree = SkirmishResolver.TakesTheRoad(g, k, 1, 3);
+        sb.AppendLine("         gate check: 1 guard (" + g.MaxHP.ToString("0") + " hp, "
+                    + g.AttackDamage.ToString("0") + " dmg / " + g.AttackCooldown.ToString("0.0")
+                    + " s) against kobolds (" + k.MaxHP.ToString("0") + " hp, "
+                    + k.AttackDamage.ToString("0") + " dmg / " + k.AttackCooldown.ToString("0.0")
+                    + " s) -- loses to four: " + losesToFour
+                    + ", loses to three: " + losesToThree + ".");
+        // THE STRIKE ORDER IS AN ASSUMPTION AND IT IS NOW CHECKED. SkirmishResolver
+        // gives the kobolds the first blow because their prefab authors the longer
+        // detectionRange and ScanForHostiles acquires on range alone. Retune the
+        // guard's above the kobold's and that reverses -- silently, and in the
+        // direction that FLATTERS the road, because the resolver would go on
+        // modelling the pessimistic branch that no longer happens.
+        if (g.DetectionRange >= k.DetectionRange)
+            sb.AppendLine("         !! THE STRIKE ORDER HAS INVERTED. The guard now detects at "
+                        + g.DetectionRange.ToString("0.0") + " against the kobold's "
+                        + k.DetectionRange.ToString("0.0")
+                        + ", so the guard acquires first and every outcome above is "
+                        + "measured on the wrong branch. SkirmishResolver assumes the "
+                        + "kobolds open the fight.");
+        if (!losesToFour || losesToThree)
+            sb.AppendLine("         !! THE GATE ENCOUNTER IS OUTSIDE ITS WINDOW. Canon 44 "
+                        + "sizes the gate squad at ONE so a tier-5 den can take it and a "
+                        + "tier-4 den cannot: the lone guard must LOSE to four kobolds and "
+                        + "BEAT three. Measured at 16 damage on a 1.1 s cooldown against a "
+                        + "22 hp kobold, that window is a guard of about 65 to 75 hp. "
+                        + "Outside it the gate is either unbeatable at every tier the den "
+                        + "can field, or beatable a tier early -- and the two squad sizes "
+                        + "stop being an encounter design.");
+    }
+
     private static bool RailReachable(BreachWorld w, Vector3Int cell, out bool onGateBeat)
     {
         onGateBeat = false;
@@ -2788,6 +2970,16 @@ public class Commands : MonoBehaviour
         public Vector3Int firstRoadCell;
         public int firstRoadDay, firstRoadTier;
         public bool outpostMet;
+
+        /// <summary>ONE BREACH PER DAWN, matching the trigger rather than the
+        /// refusal. DenDigStep.roadBreach is a per-step bool, so a leg that
+        /// scrapes the carriageway forty times in one dawn sends ONE party; a
+        /// counter driven off refusals would have reported forty skirmishes for
+        /// every one the game stages. The tier is captured per breach because it
+        /// is what DiggerBudget reads, and the party size is the whole
+        /// engagement.</summary>
+        public readonly List<Vector3Int> breachCells = new List<Vector3Int>();
+        public readonly List<int> breachTiers = new List<int>();
         public int remainsTaken;
         public int cellsCut;
 
@@ -2817,6 +3009,16 @@ public class Commands : MonoBehaviour
         public RoadKind gateKind;
         public int gateWalk, beatCells, totalWalk;
         public int trunkWalk, beatTrunk;
+
+        /// <summary>What the breaches on this seed came to. Every breach sends a
+        /// party (SendSkirmishParty is unconditional), so the stages that can
+        /// drop one are GEOMETRIC -- no rail near enough for a guard to be on,
+        /// or a rail nobody's beat covers -- and each is counted separately
+        /// rather than folded into a single engagement rate. A rate that cannot
+        /// say which stage lost the breach is the readout canon 42 already
+        /// records paying a round trip for.</summary>
+        public int breaches, breachesUnreachable, breachesOffBeat, breachesOnBeat;
+        public int denWon, guardWon;
     }
 
     /// <summary>AdvanceDenDig's walk and TickExploratoryDig's dawn, mirrored.
@@ -2919,6 +3121,11 @@ public class Commands : MonoBehaviour
 
             int spent = 0, blocked = 0, guard = rock * 4 + 32;
             bool boxedIn = false, tookOne = false;
+            // AdvanceDenDig's own per-step flag, mirrored: the first refusal
+            // against carriageway in a dawn records where the leg was STANDING,
+            // and later ones that dawn change nothing.
+            bool breachedToday = false;
+            var breachAt = new Vector3Int(0, 0, 0);
 
             while (spent < rock && guard-- > 0)
             {
@@ -2939,6 +3146,16 @@ public class Commands : MonoBehaviour
                         run.firstRoadCell = cell;
                         run.firstRoadDay = day;
                         run.firstRoadTier = tier;
+                    }
+                    if (kind == RefuseRoad && !breachedToday)
+                    {
+                        breachedToday = true;
+                        // THE STANDING CELL, NOT THE REFUSED ONE -- the refused
+                        // cell was never cut and nothing can stand on it. See
+                        // DenDigStep.roadBreachAt for the same rule in the
+                        // generator.
+                        breachAt = new Vector3Int(
+                            (int)System.Math.Round(x), (int)System.Math.Round(y), 0);
                     }
                     if (kind == RefuseOutpost) run.outpostMet = true;
                     // Turn HARD rather than nudging: a small correction against a
@@ -2971,6 +3188,11 @@ public class Commands : MonoBehaviour
             run.workedDawns++;
             if (boxedIn) run.boxedDawns++;
             if (spent < rock) run.shortDawns++;
+            if (breachedToday)
+            {
+                run.breachCells.Add(breachAt);
+                run.breachTiers.Add(tier);
+            }
 
             // A leg that has arrived somewhere starts a fresh one FROM WHERE IT
             // STANDS, so the retrace set resets to the new mouth alone.

@@ -130,6 +130,14 @@ public class WispScript : ScriptableObject
                 text = "What they dug out of your stone has come back with the rest of it. Late, and by the only road that was ever open - through them." },
             new Line { id = "den_tunnel_done", once = true,
                 text = "The digging has stopped for good. They went as far as they had rock and patience for, and what they found on the way they have already taken." },
+            // The road breach (canon 42, stage 2c). ONCE, though a den may reach
+            // the carriageway on many dawns: the first time is the event -- two
+            // things that were never meant to meet, meeting under your floor --
+            // and the tenth is weather. Deliberately vague about who broke
+            // through and who was standing there, because the player is not
+            // watching and neither the wisp nor they will ever be told.
+            new Line { id = "den_road_breach", once = true,
+                text = "They have dug into the old road. Whatever the dwarves keep walking it has met whatever has been digging toward it, and neither of them came to you first. Nothing down there is on your side - it is only that some of it is now busy with the rest." },
 
             new Line { id = "den_diggings_done", once = true,
                 text = "The digging below has stopped. Either they have run out of rock worth breaking or you took it from under them - either way that hole grows no further, and neither does what they have put in it." },

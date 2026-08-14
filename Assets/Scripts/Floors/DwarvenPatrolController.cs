@@ -47,6 +47,21 @@ public class DwarvenPatrolController : MonoBehaviour
 {
     public static DwarvenPatrolController Instance { get; private set; }
 
+    /// <summary>What the road actually fields, exposed READ-ONLY so Road Breach
+    /// Report resolves a skirmish against the authored encounter rather than a
+    /// copy of it.
+    ///
+    /// THIS REPLACES A MIRROR THAT WAS ALREADY WRONG-SHAPED. Commands.cs held
+    /// `private const int GateBeatHalfCells = 60`, transcribed from the
+    /// inspector, so the report's beat and the squad's beat were two numbers
+    /// free to disagree -- in a report whose own canon entry praises it for
+    /// CALLING SeatPatrol and BeatSet rather than restating them. The seat and
+    /// the bound could not drift and the radius could. It can no longer.</summary>
+    public int GateSquadSize => gateSquadSize;
+    public int RoadSquadSize => roadSquadSize;
+    public int GateBeatHalfCells => gateBeatHalfCells;
+    public MonsterDefinition GuardDefinition => guardDefinition;
+
     [Header("Bodies")]
     [Tooltip("The dwarven guard. Its PREFAB carries the stats -- a DungeonMonster " +
              "with no LootTable component, which is what enforces canon 44's " +
@@ -751,10 +766,77 @@ public class DwarvenPatrolController : MonoBehaviour
         }
     }
 
+    // -- The road breach (canon 42 stage 2c) -----------------------------------
+
+    /// <summary>Which squad would meet a breach at this cell, as a body count.
+    ///
+    /// GEOMETRY DECIDES, NOT PROXIMITY. A breach whose nearest walk cell is
+    /// inside the gate squad's beat is met by the gate squad; anything else on a
+    /// floor the road squad walks is met by the road squad, which is unbounded
+    /// and roams the whole network. Zero means nobody is coming, which is a real
+    /// answer and not a failure -- a floor whose patrols are dormant, or a
+    /// breach on no rail at all.
+    ///
+    /// THE SAME TEST Road Breach Report USES, deliberately: the report asks
+    /// DeepRoadGraph for the nearest walk cell and tests the beat set, and so
+    /// does this. A runtime that decided the squad differently would make every
+    /// engagement figure in that readout a measurement of something else.</summary>
+    public int GuardsMeeting(FloorRoot floor, Vector3Int cell)
+    {
+        var p = PatrolMeeting(floor, cell);
+        if (p == null) return 0;
+        int alive = 0;
+        foreach (var b in p.bodies) if (b.monster != null) alive++;
+        return alive;
+    }
+
+    /// <summary>One guard falls to something the player did not do.
+    ///
+    /// ROUTED THROUGH TakeDamage WITH fromOutsider TRUE, rather than destroying
+    /// the body, and the distinction is the whole of it. fromOutsider leaves
+    /// dungeonDealtDamage false, so Die() bills no standing, unlocks no bestiary
+    /// line, pays no core XP and speaks no dwarf_slain_first -- which is
+    /// correct, because the player neither swung nor chose this. Everything
+    /// downstream still runs: OnDied reaches HandleBodyDied, the slot enters
+    /// dwarvenPatrolDead, and the road is short one guard until the next dawn
+    /// puts him back. Destroying the GameObject would have skipped all of it and
+    /// left a squad quietly one body light for ever.</summary>
+    public bool FellOneAt(FloorRoot floor, Vector3Int cell)
+    {
+        var p = PatrolMeeting(floor, cell);
+        if (p == null) return false;
+        foreach (var b in p.bodies)
+        {
+            if (b.monster == null) continue;
+            b.monster.TakeDamage(b.monster.MaxHP + 1f, true);
+            return true;
+        }
+        return false;
+    }
+
+    private Patrol PatrolMeeting(FloorRoot floor, Vector3Int cell)
+    {
+        if (floor == null) return null;
+        Patrol roaming = null;
+        foreach (var p in patrols)
+        {
+            if (p.floor != floor || p.graph == null) continue;
+            bool anyAlive = false;
+            foreach (var b in p.bodies) if (b.monster != null) { anyAlive = true; break; }
+            if (!anyAlive) continue;
+
+            if (!DeepRoadGraph.NearestWalkCell(p.graph, cell, out int rail, out int index))
+                continue;
+            if (p.bounded && p.beat != null
+                && p.beat.Contains(DeepRoadGraph.BeatKey(rail, index))) return p;
+            if (!p.bounded && roaming == null) roaming = p;
+        }
+        return roaming;
+    }
+
     // -- First sighting --------------------------------------------------------
 
-    private void FirstSightingLine(Patrol p, Vector3Int cell)
-    {
+    private void FirstSightingLine(Patrol p, Vector3Int cell)    {
         var wisp = WispCompanion.Instance;
         if (wisp == null || wisp.HasSpoken("patrol_first")) return;
         var features = p.floor?.FeatureGenerator;

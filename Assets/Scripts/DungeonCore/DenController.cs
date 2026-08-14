@@ -110,6 +110,19 @@ public class DenSaveEntry
     /// exists because a dig that has found nothing and a dig that is not
     /// running look identical in every other column.</summary>
     public int digFinds;
+
+    /// <summary>Parties this den has put on the dwarven road.
+    ///
+    /// THE BEAT'S OWN LIVENESS CHECK, and it is here rather than in a log for
+    /// the reason canon 42 gives about the ledger twice over: a beat that never
+    /// fires and a beat that fires rarely look identical, and Road Breach Report
+    /// measures a MIRROR of the dig where this counts the real one. If the
+    /// report says a breach lands on the beat on roughly an eighth of floors and
+    /// this stays at zero across a long run, the trigger is not wired -- which
+    /// is a fault no other column would show.
+    ///
+    /// Additive: a legacy save reads zero and needs no migration.</summary>
+    public int skirmishes;
 }
 
 [Serializable]
@@ -344,6 +357,13 @@ public class DenController : MonoBehaviour
 
     private void HandleDayStarted()
     {
+        // A SKIRMISH IS A NIGHT, AND IT ENDS BEFORE THE DEN IS COUNTED. Any
+        // party still standing at the road is withdrawn here, ahead of TopUpAll,
+        // so the roll it tops up is the den's real population rather than one
+        // inflated by last night's survivors -- see WithdrawSkirmishParties for
+        // why they are DESTROYED and not killed.
+        WithdrawSkirmishParties();
+
         // Losses are made good overnight and never during the day. See TopUpAll
         // for why the pace matters; the short version is that instant replacement
         // made a high-tier den impossible to finish.
@@ -699,7 +719,220 @@ public class DenController : MonoBehaviour
         if (step.remainsTaken.Count > 0 || step.boxedIn)
             features.StartNextExploratoryLeg(den.digHeadingDegrees * Mathf.Deg2Rad);
 
+        if (step.roadBreach) ResolveRoadBreach(den, floor, step.roadBreachAt);
+
         if (step.headKnown) AssignWorkSites(den.floorIndex, floor, step.head);
+    }
+
+    /// <summary>
+    /// The kobolds break onto the dwarven road (canon 42's road breach, canon
+    /// 44's fourth side).
+    ///
+    /// THE OUTCOME IS RESOLVED THE SAME WAY WHETHER OR NOT ANYONE IS WATCHING,
+    /// and only the STAGING differs. An unwatched breach is a ledger event --
+    /// SkirmishResolver decides it from the two prefabs and the consequences are
+    /// applied at once. A breach on ground the player has revealed spawns the
+    /// bodies and lets combat decide it, and the consequences arrive through the
+    /// ordinary death paths instead.
+    ///
+    /// FOG DOES NOT HIDE A FIGHT FROM THE PLAYER, IT HIDES IT FROM THE SCREEN.
+    /// EntityStatusBars records the measurement in its own comment: the bars had
+    /// to gain a fog gate because they kept drawing over bodies the fog had
+    /// already hidden, found in play when den scavengers became the first
+    /// entities to stand on unrevealed ground. So bodies spawned under fog are
+    /// not merely unobserved -- they cannot be drawn, and staging a battle that
+    /// cannot be drawn is work spent on nothing.
+    ///
+    /// BOTH SIDES OR NEITHER. Revealing the road alone would be worse than
+    /// staging nothing: the guard would be visible on the carriageway swinging
+    /// at kobolds still under fog. The gate is therefore the road segment the
+    /// leg touched AND the tunnel stretch the party stands in. A stretch is
+    /// segmentLength cells, so one is already a readable run of tunnel rather
+    /// than a single tile.
+    ///
+    /// IT ALSO REMOVES A FAULT RATHER THAN ONLY AN UGLINESS. Bodies on
+    /// unrevealed ground cannot path: DungeonPathfinder expands only cells
+    /// TileInfluenceManager calls mined, and both den tunnel and carriageway
+    /// become mined on REVEAL. A fight staged under fog would be two bodies
+    /// unable to close or chase. Gating on reveal means every body that is
+    /// spawned is standing on MarkNaturalFloor ground by construction.
+    /// </summary>
+    private void ResolveRoadBreach(DenSaveEntry den, FloorRoot floor, Vector3Int at)
+    {
+        var features = floor != null ? floor.FeatureGenerator : null;
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (features == null || influence == null) return;
+
+        var entry = features.DenProfileEntry;
+        if (entry == null || entry.scavengerDefinition == null
+            || entry.scavengerDefinition.prefab == null) return;
+
+        int party = DiggerBudget(den.floorIndex);
+        if (party <= 0) return;
+
+        var patrol = DwarvenPatrolController.Instance;
+        int guards = patrol != null ? patrol.GuardsMeeting(floor, at) : 0;
+
+        den.skirmishes++;
+        Vector3 world = influence.CellToWorld(at);
+
+        // SPOKEN LIKE THE REMAINS, AND FOR THE SAME REASON. This can happen on a
+        // floor the player has never walked, so an event with no voice is an
+        // event that did not happen as far as they are concerned. The alert pins
+        // the cell so a player who wants to go and look can click straight to
+        // it -- the camera roams the whole floor by Appendix C, so pointing at
+        // fog leaks nothing.
+        WispCompanion.Instance?.Speak("den_road_breach");
+        AlertsLog.Instance?.AddAlert(
+            "Something below has broken through to the deep road.",
+            world, floor.FloorIndex, AlertCategory.Discovery);
+
+        // Nobody is coming. The den keeps its leg and its people; a road with no
+        // guard on it is not a skirmish and must not be scored as one.
+        if (guards <= 0) return;
+
+        if (BreachIsWatchable(features, at))
+        {
+            StageSkirmish(den, floor, entry.scavengerDefinition, world, party);
+            return;
+        }
+
+        // Unwatched: the resolver decides and the consequences land now.
+        bool denTakesIt = SkirmishResolver.TakesTheRoad(
+            patrol.GuardDefinition != null ? patrol.GuardDefinition.prefab : null,
+            entry.scavengerDefinition.prefab, guards, party);
+        ApplyBreachOutcome(den, floor, at, denTakesIt);
+    }
+
+    /// <summary>Can this breach be drawn? The carriageway the leg touched and the
+    /// tunnel the party would stand in must BOTH be out of the fog.
+    ///
+    /// The road segment is found from the cells around the standing cell rather
+    /// than from the standing cell itself, which is den tunnel by construction --
+    /// CanCutAt refused because the 2-wide BRUSH reached carriageway, so the
+    /// road is a neighbour and never underfoot.</summary>
+    private static bool BreachIsWatchable(TerrainFeatureGenerator features, Vector3Int at)
+    {
+        if (!features.TryGetFeatureRef(at, out var here)
+            || here.type != FeatureType.DenTunnel) return false;
+        if (!features.IsDenTunnelSegmentRevealed(here.featureId)) return false;
+
+        for (int dx = -2; dx <= 2; dx++)
+            for (int dy = -2; dy <= 2; dy++)
+            {
+                var p = new Vector3Int(at.x + dx, at.y + dy, 0);
+                if (!features.TryGetFeatureRef(p, out var near)) continue;
+                if (near.type != FeatureType.Road) continue;
+                if (features.IsRoadSegmentRevealed(near.featureId)) return true;
+            }
+        return false;
+    }
+
+    /// <summary>Puts the party on the ground and lets combat decide it.
+    ///
+    /// NO HOSTILITY CODE SHIPS WITH THIS, WHICH IS THE MEASURE OF CANON 44.
+    /// These are ordinary InitialiseWild bodies, so Wild against Faction is war
+    /// always and ScanForHostiles finds the guard by itself. The kobold prefab
+    /// authors the longer detectionRange, so the den acquires first -- the
+    /// branch SkirmishResolver models, which keeps the staged fight and the
+    /// resolved one answering the same question.
+    ///
+    /// THEY ARE OVER THE POPULATION BUDGET UNTIL DAWN, ON PURPOSE. TopUp is a
+    /// floor and not a ceiling, so nothing trims them mid-fight and the dawn
+    /// withdraws whoever is left. Taking the party out of the standing roll
+    /// instead would empty the cavity of the bodies that make a den read as
+    /// inhabited, on a night the player is evidently near enough to watch.</summary>
+    private void StageSkirmish(DenSaveEntry den, FloorRoot floor,
+                               MonsterDefinition def, Vector3 world, int party)
+    {
+        var standing = SkirmishOn(den.floorIndex);
+        for (int i = 0; i < party; i++)
+        {
+            Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatter;
+            var body = SpawnDenBody(den, floor, def,
+                                    world + new Vector3(scatter.x, scatter.y, 0f));
+            if (body == null) continue;
+            standing.Add(body);
+            LiveOn(den.floorIndex).Add(body);
+        }
+    }
+
+    /// <summary>What a breach cost, applied identically however it was decided.
+    ///
+    /// THE DEN TAKES THE ROAD: one guard falls, through the patrol controller's
+    /// own entry point so the slot enters dwarvenPatrolDead and the road is
+    /// genuinely short a body until dawn. It is billed to nobody -- the player
+    /// did not swing.
+    ///
+    /// THE ROAD HOLDS: the den abandons the leg. Kobolds mauled at a carriageway
+    /// do not go on digging into it, and without this the same leg would breach
+    /// the same stretch every dawn and turn a set-piece into a metronome. The
+    /// leg is restarted from where it stands, which is StartNextExploratoryLeg's
+    /// existing behaviour on a remains find and needs no new machinery.</summary>
+    private void ApplyBreachOutcome(DenSaveEntry den, FloorRoot floor,
+                                    Vector3Int at, bool denTakesIt)
+    {
+        if (denTakesIt)
+        {
+            DwarvenPatrolController.Instance?.FellOneAt(floor, at);
+            return;
+        }
+        floor.FeatureGenerator?.StartNextExploratoryLeg(
+            den.digHeadingDegrees * Mathf.Deg2Rad + Mathf.PI);
+    }
+
+    /// <summary>Takes last night's party off the road, and reads what became of
+    /// it.
+    ///
+    /// DESPAWNING IS NOT DYING, on the caravan's own precedent and for the
+    /// identical reason: a body removed by the clock must not bill anyone. A
+    /// SURVIVOR is destroyed rather than killed, so NotifyScavengerDied never
+    /// runs, no den is marked contested and no bestiary line unlocks. A body
+    /// that DIED in the night is already null here and went through the ordinary
+    /// death path when it fell, which is where the den's accounting belongs.
+    ///
+    /// A PARTY WIPED IS THE ROAD HOLDING, and it takes the same consequence the
+    /// unwatched path applies: the den abandons the leg. Read from the list
+    /// rather than counted during the fight, because a count kept as bodies fell
+    /// would be a second record of the same fact, free to disagree with the one
+    /// the fight actually left behind.</summary>
+    private void WithdrawSkirmishParties()
+    {
+        foreach (var kv in skirmishParties)
+        {
+            var party = kv.Value;
+            if (party.Count == 0) continue;
+
+            bool anySurvived = false;
+            for (int i = party.Count - 1; i >= 0; i--)
+            {
+                var body = party[i];
+                party.RemoveAt(i);
+                if (body == null) continue;
+                anySurvived = true;
+                LiveOn(kv.Key).Remove(body);
+                Destroy(body.gameObject);
+            }
+
+            if (anySurvived) continue;
+            if (!dens.TryGetValue(kv.Key, out var den) || den.cleared) continue;
+            var floor = FindFloor(kv.Key);
+            floor?.FeatureGenerator?.StartNextExploratoryLeg(
+                den.digHeadingDegrees * Mathf.Deg2Rad + Mathf.PI);
+        }
+    }
+
+    private readonly Dictionary<int, List<DungeonMonster>> skirmishParties
+        = new Dictionary<int, List<DungeonMonster>>();
+
+    private List<DungeonMonster> SkirmishOn(int floorIndex)
+    {
+        if (!skirmishParties.TryGetValue(floorIndex, out var list))
+        {
+            list = new List<DungeonMonster>();
+            skirmishParties[floorIndex] = list;
+        }
+        return list;
     }
 
     private void StopDig(DenSaveEntry den)
@@ -806,7 +1039,7 @@ public class DenController : MonoBehaviour
         if (!dens.TryGetValue(floorIndex, out var den) || den.cleared) return 0;
         if ((DenKind)den.kind != DenKind.Excavator) return 0;
         if (InGrace(den)) return 0;
-        return DiggersByTier[TierOf(den) - 1];
+        return DiggersAtTier(TierOf(den));
     }
 
     private bool InGrace(DenSaveEntry den)
@@ -969,6 +1202,20 @@ public class DenController : MonoBehaviour
     public static float DigCellsPerDayFor(int tier)
         => tier >= 1 && tier <= DigCellsPerDay.Length ? DigCellsPerDay[tier - 1] : 0f;
 
+    /// <summary>Bodies an excavator has at the face at this tier, and therefore
+    /// the size of the party a road breach sends. The fourth accessor on this
+    /// precedent and the one with the sharpest case: the whole gate encounter is
+    /// a comparison between THIS table and the guard squad size, so a report
+    /// that carried its own copy would be checking one authored number against
+    /// its own transcription of another.
+    ///
+    /// TIER-KEYED rather than floor-keyed, because Road Breach Report resolves a
+    /// breach at the tier the den had reached on that DAWN, with no live den on
+    /// the floor it is measuring. DiggerBudget stays the live reader and
+    /// delegates, so the table lives once.</summary>
+    public static int DiggersAtTier(int tier)
+        => tier >= 1 && tier <= DiggersByTier.Length ? DiggersByTier[tier - 1] : 0;
+
 
     // ---- Population (canon 42, as amended) -------------------------------
 
@@ -1081,29 +1328,52 @@ public class DenController : MonoBehaviour
         Vector2 scatter = UnityEngine.Random.insideUnitCircle * spawnScatter;
         Vector3 pos = anchorWorld + new Vector3(scatter.x, scatter.y, 0f);
 
-        var def = entry.scavengerDefinition;
-        var monster = Instantiate(def.prefab, pos, Quaternion.identity);
-        monster.transform.SetParent(floor.transform, true);
+        var monster = SpawnDenBody(den, floor, entry.scavengerDefinition, pos);
+        if (monster != null) LiveOn(den.floorIndex).Add(monster);
+    }
 
-        // Wild first, so it inherits the hostility, regeneration and clearing
-        // behaviour that machinery already provides; then re-pointed at the den.
-        // Chamber id -1 marks it as belonging to no chamber, so nothing counts it
-        // toward a chamber's alive tally or its cleared state.
-        //
-        // THE CAVITY CELLS ARE THE THIRD ARGUMENT AND USED TO BE NULL, which is
-        // why residents read as goblins standing in a corridor rather than as a
-        // den full of them: PickWildWanderTarget returns spawnPosition on its
-        // first line when the pool is empty, so every body picked the spot it
-        // had spawned on, for ever. Handed the open cells, they use the whole
-        // hole. The list is a fresh copy from the generator each call, so an
-        // excavator's growth cannot mutate a body's pool underneath it -- a
-        // body picks up new ground at its next respawn, which is the dawn
-        // rhythm the rest of the den already runs on.
+    /// <summary>Raises one of the den's people, wherever it is wanted.
+    ///
+    /// ONE COPY OF THIS, deliberately. The skirmish party raises the same body
+    /// as the dawn does and the only difference is where it stands; two copies
+    /// of an InitialiseWild call are two copies free to disagree about what a
+    /// den body IS, and the argument below is exactly the kind that gets lost in
+    /// the second one.
+    ///
+    /// Wild first, so it inherits the hostility, regeneration and clearing
+    /// behaviour that machinery already provides; then re-pointed at the den.
+    /// Chamber id -1 marks it as belonging to no chamber, so nothing counts it
+    /// toward a chamber's alive tally or its cleared state.
+    ///
+    /// THE CAVITY CELLS ARE THE THIRD ARGUMENT AND USED TO BE NULL, which is
+    /// why residents read as goblins standing in a corridor rather than as a
+    /// den full of them: PickWildWanderTarget returns spawnPosition on its
+    /// first line when the pool is empty, so every body picked the spot it
+    /// had spawned on, for ever. Handed the open cells, they use the whole
+    /// hole. The list is a fresh copy from the generator each call, so an
+    /// excavator's growth cannot mutate a body's pool underneath it -- a
+    /// body picks up new ground at its next respawn, which is the dawn
+    /// rhythm the rest of the den already runs on.
+    ///
+    /// The ANCHOR stays the cavity even for a body raised at the road: it is
+    /// where the leash sends it home to, and a skirmisher that thought the road
+    /// was home would never leave it.</summary>
+    private DungeonMonster SpawnDenBody(DenSaveEntry den, FloorRoot floor,
+                                        MonsterDefinition def, Vector3 at)
+    {
+        if (def == null || def.prefab == null) return null;
+        if (floor == null || floor.FeatureGenerator == null) return null;
+        var anchorCell = floor.FeatureGenerator.DenAnchor;
+        var influence = floor.TileInfluence;
+        if (anchorCell == null || influence == null) return null;
+
+        var monster = Instantiate(def.prefab, at, Quaternion.identity);
+        monster.transform.SetParent(floor.transform, true);
         monster.InitialiseWild(-1, floor,
             floor.FeatureGenerator.DenCavityCells, def);
-        monster.InitialiseAsDenScavenger(den.floorIndex, anchorWorld);
-
-        LiveOn(den.floorIndex).Add(monster);
+        monster.InitialiseAsDenScavenger(
+            den.floorIndex, influence.CellToWorld(anchorCell.Value));
+        return monster;
     }
 
     /// <summary>How many bodies a den keeps. This is what the player SEES, and canon

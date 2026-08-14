@@ -9216,6 +9216,136 @@ that had a 56 per cent chance of never digging at all:
 **Key files:** `Floors/TerrainFeatureGenerator.cs` (`StartExploratoryLeg`,
 `TrySeatLeg`), `TESTING/Commands.cs` (the mirror and its start-leg slice).
 
+#### The road breach, staged only where it can be seen (stage 2c)
+
+Status: SHIPPED. Canon 42's owed dwarven skirmish, built on canon 44's mortal
+bodies. The dig meets the dwarven carriageway on 52.0 per cent of seeds and on
+the gate squad's beat on 12.3; this is what happens when it does.
+
+**NO CARVE EXCEPTION FOR `FeatureType.Road`, AND THE BLAST RADIUS WAS MEASURED
+BEFORE IT WAS DECLINED RATHER THAN AFTER.** The fork was framed as the expensive
+one. It is not expensive; it is INERT, which is a better reason to refuse it.
+Ownership would not move: `CarveLegCell` skips any cell already in `cellLookup`
+and road cells are in it, while `RebuildDenTunnelCells` already holds `roadCells`
+in its `taken` set -- so runtime and reload hand the carriageway back identically
+today. The rail graph would not move either: `DeepRoadGraph.Build` reads
+`featureData.roads` POLYLINES and never cells. And a crossing would buy no
+passage, because an unrevealed road is not in `minedTiles`: `MarkNaturalFloor`
+fires on road cells only inside `UnfogRoadSegment`. What it WOULD buy is a
+divergence -- a stretch falling wholly inside carriageway becomes an empty
+runtime segment and is absent after reload, since `RebuildDenTunnelCells` drops
+zero-cell segments. **A fork that changes nothing except a save difference is
+refused on the strength of the measurement, and the measurement is recorded so
+nobody pays for it twice.**
+
+**THE LEG DOES NOT STOP AT THE ROAD AND THE DAWN IS NOT ENDED.** Road is 2.4 per
+cent of all refusals, so contact is a repeated event rather than a single one;
+ending the dawn on it would have cost the dig the rest of its rock every time a
+leg wandered near the carriageway and silently repriced a cap tuned against a
+walk that turns away. `DenDigStep` reports the breach and `TickExploratoryDig`
+decides what it costs, which keeps the dig's economics exactly where stage 2a
+measured them.
+
+**THE BODIES ARE SPAWNED AT THE BREACH AND NOT SENT TO IT, AND FINDING OUT WHY
+IS THE MORE USEFUL RECORD: STAGE 2a's WORK SITES CANNOT BE REACHED.**
+`AssignWorkSites` sets a work site at the leg's head; the body walks to it
+through `StepTowards`, which pathfinds; `DungeonPathfinder` expands only cells
+`TileInfluenceManager` calls mined; den tunnel becomes mined in
+`RevealGrownCells`, on REVEAL. So a digger sent up an UNREVEALED leg gets an
+empty path and stands perfectly still -- while `MayForage` also refuses any
+work-site holder, so it does not rob instead. The obvious repair is banned in as
+many words by `CarveLegCell`: unrevealed ground is left unmarked as well as
+unlit, and walkable-but-invisible is the reserve's own banned state. **A digger
+that cannot reach the face looks exactly like a digger working**, which is this
+entry's own sentence about the ledger and the stalled dig arriving a third time.
+`Print Den Ledger` gained a `reach` column beside `work` so the two can never
+again be assumed equal.
+
+**FOG DOES NOT HIDE A FIGHT FROM THE PLAYER, IT HIDES IT FROM THE SCREEN, and
+that is what decided the staging.** `EntityStatusBars` records the measurement in
+its own comment: the bars had to gain a fog gate because they kept drawing over
+bodies the fog had already hidden, found in play when den scavengers became the
+first entities to stand on unrevealed ground. So a skirmish under fog is not
+merely unobserved -- it cannot be drawn.
+
+**THE OUTCOME IS RESOLVED THE SAME WAY EITHER WAY; ONLY THE STAGING DIFFERS.**
+An unwatched breach is a ledger event, decided by `SkirmishResolver` from the two
+prefabs, on the precedent of the den ledger itself -- no bodies, no per-frame
+work, nothing instantiated. A breach on revealed ground spawns the party and lets
+combat decide it. `SkirmishResolver` is a pure static that the runtime AND
+`Road Breach Report` both call, so the outcome the readout measures and the
+outcome the game applies cannot become two rules -- `SeatPatrol` and `BeatSet`'s
+arrangement, for `SeatPatrol` and `BeatSet`'s reason.
+
+**BOTH SIDES REVEALED OR NEITHER.** The gate is the tunnel stretch the party
+stands in AND a road segment inside the brush radius. Revealing only the road
+would be worse than staging nothing: the guard would be visible on the
+carriageway swinging at kobolds still under fog. A stretch is `segmentLength`
+cells -- 40 on this floor -- so one is already a readable run of tunnel and a
+second would gate on geometry unrelated to whether the bodies render.
+
+**IT ALSO REMOVES A FAULT RATHER THAN AN UGLINESS.** Bodies on unrevealed ground
+cannot path at all, so a fight staged under fog would have been two bodies unable
+to close or chase. Gating on reveal means every body spawned stands on
+`MarkNaturalFloor` ground by construction, and the pathing question never arises.
+
+**WHAT A BREACH COSTS, and it is the same bill however the fight was decided.**
+The den takes the road: one guard falls through
+`DwarvenPatrolController.FellOneAt`, routed through `TakeDamage` with
+`fromOutsider` TRUE so `dungeonDealtDamage` stays false -- no standing bill, no
+bestiary line, no core XP, no `dwarf_slain_first`, because the player neither
+swung nor chose it -- while `OnDied` still reaches `HandleBodyDied` and the slot
+enters `dwarvenPatrolDead`. Destroying the GameObject instead would have skipped
+every one of those and left the squad quietly a body light for ever. The road
+holds: the den ABANDONS THE LEG, restarted back the way it came. Without that,
+the same leg breaches the same stretch every dawn and a set-piece becomes a
+metronome.
+
+**A BEAT WITH NO CONSEQUENCE IS NOT WORTH STAGING EVEN WHERE IT CAN BE SEEN**,
+and the first cut of this had none: a guard replaced at dawn, kobolds replaced at
+dawn, and a counter. That was the real fault behind "can the player even see it",
+and visibility was only half of it.
+
+**THE READOUT MOVED WITH THE CODE.** `Road Breach Report` counts ONE breach per
+DAWN rather than per refusal -- matching the trigger, where a counter driven off
+refusals would report forty skirmishes for every one the game stages -- and
+resolves each against the tier the den had reached, printing the stage every lost
+breach was lost at: no rail in reach, the road squad, the gate squad. It asserts
+the gate window at both ends and asserts the STRIKE ORDER, which is the
+assumption underneath the whole model: the kobolds open the fight because their
+prefab authors the longer `detectionRange`, and retuning the guard's above it
+would invert that silently, in the direction that flatters the road.
+
+**ARRIVAL IS NOT MODELLED, AND THAT IS A FINDING.** A guard walks his beat at
+2.2 cells a second against a cycle of `DayDuration` plus `NightDuration` -- 240
+seconds as authored -- carrying him several times the length of a 124-cell beat,
+while a party stands from the dawn that spawned it to the next. A transit term
+would never bind, so there is none.
+
+**A MIRROR WAS REMOVED AS A FOLD-IN.** `Commands` held
+`private const int GateBeatHalfCells = 60`, transcribed from the inspector, in
+the report entry 44 praises for CALLING `SeatPatrol` and `BeatSet` rather than
+restating them: the seat and the bound could not drift and the radius could.
+`Road Breach Report` now reads it, both squad sizes and the guard's own prefab
+off `DwarvenPatrolController`, and REFUSES without one -- the same ruling it
+already makes about the three profiles, for the same reason.
+
+**Editor steps:** `Dwarf_Guard`'s prefab `maxHP` moves into the 65-75 band;
+`WispScript.asset` must be regenerated from its context menu for
+`den_road_breach`, and the failure mode is silent; the scene needs a
+`DwarvenPatrolController` with its Guard Definition assigned before
+`Road Breach Report` will run.
+
+**Key files:** `DungeonCore/SkirmishResolver.cs` (new),
+`DungeonCore/DenController.cs` (`ResolveRoadBreach`, `BreachIsWatchable`,
+`StageSkirmish`, `ApplyBreachOutcome`, `WithdrawSkirmishParties`,
+`SpawnDenBody`, `DiggersAtTier`), `Floors/TerrainFeatureGenerator.cs`
+(`DenDigStep.roadBreach`), `Floors/DwarvenPatrolController.cs`
+(`GuardsMeeting`, `FellOneAt`, and the four accessors),
+`Monster/DungeonMonster.cs` (the stat accessors and `DenWorkSite`),
+`TESTING/Commands.cs` (the engagement line, the `reach` column),
+`Wisp/WispScript.cs` (`den_road_breach`).
+
 #### What the den arc still owes
 
 - ~~**Kobold diggers.**~~ **SHIPPED as stage 2a -- see "The exploratory dig"
@@ -9243,7 +9373,7 @@ that had a 56 per cent chance of never digging at all:
     excavator.** See "Two sims, one den" below. The correct no-theft row is
     13/22/34/49 on a hoard of 1560, not 13/17/25/49 on 2073.
 
-- **Dwarven skirmishes are still OWED, and the gate in front of them is now DISCHARGED** -- see "The road breach, measured before it was built" above for the rule, the road geometry correction and the readout. `DwarfWalkerPuppet`'s class doc is
+- ~~**Dwarven skirmishes are still OWED, and the gate in front of them is now DISCHARGED**~~ **SHIPPED as stage 2c -- see "The road breach, staged only where it can be seen" below.** The gate section above remains the rule, the road geometry correction and the readout. `DwarfWalkerPuppet`'s class doc is
   explicit that it is deliberately not an entity -- never registered with
   `FloorEntityRegistry`, no HP, no `IMonsterTarget`, no collider -- and villagers,
   patrols and the caravan all ride it. Kobold-versus-dwarf combat means promoting
@@ -9559,11 +9689,19 @@ an `AdventurerDefinition`, and adventurers are SCALED where monsters are not.**
 it spawns; the monster multipliers are both 1.0. So the 100 HP / 16 damage read
 off the asset is what an in-play Guard is authored at and NOT what it fights at
 -- 75 / 10.4 before class and level scaling. A dwarven guard is a monster, so a
-prefab authored at 100 / 16 will genuinely be 100 / 16, which is what the whole
+prefab authored at 100 / 16 will genuinely be 100 / 16. ~~which is what the whole
 engagement curve assumes and is therefore correct to author. Recorded because
 the two figures are the same numbers meaning different things, and the next
 reader comparing a dwarf to a Guild escort will otherwise conclude they are
-equals. They are not: the dwarf is meaningfully harder, deliberately.
+equals. They are not: the dwarf is meaningfully harder, deliberately.~~
+
+**THE SCALING ARGUMENT IS RIGHT AND ITS CONCLUSION IS STRUCK.** 100 / 16 was
+NOT correct to author: it made the gate unbeatable, and the guard drops to the
+65-75 band above. The comparison in the struck text INVERTS at that band -- an
+in-play Guild escort is 75 HP / 10.4 damage, so a 70 HP dwarf is no longer the
+tougher body and stays harder on DAMAGE alone. He is still meaningfully harder,
+for a different reason than the one written here, and the next reader must not
+restore 100 on the strength of a sentence whose premise moved.
 
 ### Patrol bodies (SHIPPED: stage 1a-ii part 2)
 
@@ -9571,11 +9709,35 @@ The dwarves are mortal. `DwarvenPatrolController` spawns `DungeonMonster`
 bodies with `MonsterAllegiance.Faction` and attaches the demoted puppet to
 them; the caravan and the village still walk bare puppets and are part 3.
 
-**A PATROL IS A SQUAD, AND THE TWO SIZES ARE THE WHOLE ENCOUNTER DESIGN.**
+~~**A PATROL IS A SQUAD, AND THE TWO SIZES ARE THE WHOLE ENCOUNTER DESIGN.**
 The gatehouse beat is ONE guard, which is what makes it beatable: a lone body
 loses to four kobolds, and four is exactly `ThievesByTier[4]`, so the den can
-take the gate at tier 5 and cannot touch it before. The roaming road patrol is
-TWO, which beats four comfortably. So the den's choice is a real one -- the
+take the gate at tier 5 and cannot touch it before.~~ The roaming road patrol is
+TWO, which beats four comfortably.
+
+**THE SQUAD SIZES STAND; THE ARITHMETIC UNDER THEM WAS WRONG AND IS STRUCK.**
+Resolved against the shipped prefabs at stage 2c -- guard 100 HP / 16 damage /
+1.1 s, kobold 22 / 6 / 1.4, kobolds striking first because their prefab authors
+the longer `detectionRange` -- a lone guard BEAT four kobolds with 22 HP to
+spare and lost only at five. The den fields four at most (`DiggersByTier[4]` and
+`ThievesByTier[4]` are both 4), so **the gate was unbeatable at every tier the
+den can reach**, which is the exact opposite of the sentence that sized it.
+
+Two things went wrong and both are worth naming. The claim related `maxHP`,
+`attackDamage` and `attackCooldown` across two prefabs and a tier table in a
+third file -- **checkable from none of them alone**, which is the failure shape
+this entry already records `Print Faction Body Costs` catching for standing, now
+arriving a second time in the same arc. And it named `ThievesByTier` where the
+bodies at a dug face are DIGGERS; the two tables agree at tier 5 and differ at
+tier 1, so the wrong table happened to give the right number and hid the error.
+
+**THE FIX IS A TUNING, NOT A REDESIGN, AND THE WINDOW IS RECORDED RATHER THAN
+THE NUMBER.** The lone guard must LOSE to four and BEAT three, or the two squad
+sizes stop being an encounter design. Against a 22 HP kobold hitting for 6 on a
+1.4 s cooldown, that window is a guard of **about 65 to 75 HP**. Above it the
+tier-5 outcome flips on who strikes first, which is not a design; below it a
+tier-4 den takes the gate a tier early. `Road Breach Report` now asserts both
+ends every run off the live prefabs, so this cannot go quietly wrong again. So the den's choice is a real one -- the
 lone guard is the opening and the pair is the wall -- and neither number is
 arbitrary.
 

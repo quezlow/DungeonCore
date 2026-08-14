@@ -74,6 +74,12 @@ MonoBehaviour:
     once: 1
     text: The digging has stopped for good. They went as far as they had rock and
       patience for, and what they found on the way they have already taken.
+  - id: den_road_breach
+    once: 1
+    text: They have dug into the old road. Whatever the dwarves keep walking it has
+      met whatever has been digging toward it, and neither of them came to you first.
+      Nothing down there is on your side - it is only that some of it is now busy
+      with the rest.
   - id: den_diggings_done
     once: 1
     text: The digging below has stopped. Either they have run out of rock worth breaking
