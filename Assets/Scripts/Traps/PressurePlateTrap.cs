@@ -20,8 +20,9 @@ using UnityEngine.InputSystem;
 ///   cooldown governs the cadence.
 ///
 /// DAY 31 PART 3C — Wild monsters now trigger pressure plates (T5).
-///   Adventurer scan runs first; if no adventurer is in range, the wild-monster
-///   scan runs. Player monsters are excluded — only IsWild monsters trigger.
+///   Adventurer scan runs first; if no adventurer is in range, the outsider
+///   scan runs. The player's own are excluded; everything else -- wild, den,
+///   and faction bodies alike -- steps on the plate.
 ///
 /// PREFAB SETUP
 ///   PressurePlateTrap (this script + SpriteRenderer)
@@ -111,8 +112,8 @@ public class PressurePlateTrap : TrapBase
             return;
         }
 
-        // Wild monsters — same floor only.
-        var m = floor.Entities.Nearest<DungeonMonster>(myPos, triggerRadius, x => x.IsWild);
+        // Anything that is not the player's -- same floor only.
+        var m = floor.Entities.Nearest<DungeonMonster>(myPos, triggerRadius, x => !x.ServesDungeon);
         if (m != null)
         {
             FireLinkedTrapForMonster(m);

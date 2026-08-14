@@ -1247,8 +1247,39 @@ public class Commands : MonoBehaviour
     void PrintTribeMatrix()
     {
         var sb = new System.Text.StringBuilder();
+
+        // THE ALLEGIANCE MATRIX FIRST, because it is now the outer rule and the
+        // tribe matrix is one cell of it. Driven off the same AreHostile the
+        // combat layer calls, so a cell that reads peace here is a cell no
+        // monster will fight in. Tribes are held at None so this table shows the
+        // allegiance axis alone.
+        //
+        // STATE-DEPENDENT, DELIBERATELY: the Dungeon/Faction cell reads live
+        // standing, so running this after a robbery shows a different table than
+        // running it before. That is the readout doing its job.
+        sb.AppendLine("[Commands] Allegiance matrix -- off DungeonMonster.AreHostile (canon 44)");
+        var sides = (MonsterAllegiance[])System.Enum.GetValues(typeof(MonsterAllegiance));
+        sb.Append("  ".PadRight(14));
+        for (int c = 0; c < sides.Length; c++) sb.Append(sides[c].ToString().PadRight(9));
+        sb.AppendLine();
+        for (int r = 0; r < sides.Length; r++)
+        {
+            sb.Append(("  " + sides[r]).PadRight(14));
+            for (int c = 0; c < sides.Length; c++)
+                sb.Append((DungeonMonster.AreHostile(
+                               sides[r], (int)MonsterTribe.None, FactionId.Dwarves,
+                               sides[c], (int)MonsterTribe.None, FactionId.Dwarves)
+                           ? "FIGHT" : "peace").PadRight(9));
+            sb.AppendLine();
+        }
+        var fsys = FactionSystem.Instance;
+        sb.AppendLine("  Deep Holds tier now: "
+            + (fsys != null ? fsys.Tier(FactionId.Dwarves).ToString() : "no FactionSystem")
+            + "   at war: " + FactionSystem.AtWarWithDungeon(FactionId.Dwarves));
+        sb.AppendLine();
+
         sb.AppendLine("[Commands] Tribe matrix -- WILD against WILD, off DungeonMonster.AreHostile");
-        sb.AppendLine("  (the dungeon's own fight every wild body regardless: that is IsWild, not tribe)");
+        sb.AppendLine("  (the dungeon's own fight every wild body regardless: that is allegiance, not tribe)");
 
         var tribes = (MonsterTribe[])System.Enum.GetValues(typeof(MonsterTribe));
         sb.Append("  ".PadRight(14));
@@ -1258,7 +1289,9 @@ public class Commands : MonoBehaviour
         {
             sb.Append(("  " + tribes[r]).PadRight(14));
             for (int c = 0; c < tribes.Length; c++)
-                sb.Append((DungeonMonster.AreHostile(true, (int)tribes[r], true, (int)tribes[c])
+                sb.Append((DungeonMonster.AreHostile(
+                               MonsterAllegiance.Wild, (int)tribes[r], FactionId.Dwarves,
+                               MonsterAllegiance.Wild, (int)tribes[c], FactionId.Dwarves)
                            ? "FIGHT" : "peace").PadRight(9));
             sb.AppendLine();
         }
@@ -1290,21 +1323,27 @@ public class Commands : MonoBehaviour
         // Live bodies, so a matrix that says FIGHT can be checked against two
         // things that are genuinely on the same floor.
         sb.AppendLine();
-        sb.AppendLine("Live wild bodies by floor and tribe");
+        sb.AppendLine("Live NON-DUNGEON bodies by floor, allegiance and tribe");
         bool anyBody = false;
         if (FloorManager.Instance != null)
         {
             foreach (var f in FloorManager.Instance.AllFloors)
             {
                 if (f == null || f.Entities == null) continue;
-                var counts = new System.Collections.Generic.Dictionary<MonsterTribe, int>();
+                var counts = new System.Collections.Generic.Dictionary<string, int>();
                 var bodies = f.Entities.GetAll<DungeonMonster>();
                 for (int b = 0; b < bodies.Count; b++)
                 {
                     var m = bodies[b];
-                    if (m == null || !m.IsWild) continue;
-                    counts.TryGetValue(m.Tribe, out int n);
-                    counts[m.Tribe] = n + 1;
+                    // The player's own are the only ones skipped. A faction body
+                    // is not wild and the old filter dropped it, which would have
+                    // made the one thing this readout exists to check invisible.
+                    if (m == null || m.ServesDungeon) continue;
+                    string key = m.Allegiance == MonsterAllegiance.Faction
+                        ? m.Allegiance + "/" + m.Faction
+                        : m.Allegiance + "/" + m.Tribe;
+                    counts.TryGetValue(key, out int n);
+                    counts[key] = n + 1;
                     anyBody = true;
                 }
                 if (counts.Count == 0) continue;

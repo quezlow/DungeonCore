@@ -105,6 +105,8 @@ the supersession in one line.
 40. The Panel Button Row (and the Completed Availability Sweep)
 41. Spell Charges
 42. Dens and the Deep Occupants (Decision Record)
+43. Art Debt (the Audit and its Ledger)
+44. Monster Allegiance (the Fourth Side)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -2375,8 +2377,14 @@ index 2. The corrected plan is:
 | 3 | 4 | dwarven village + highway + a handful of sites (UNBUILT) |
 | 4 | 5 | bottom floor, most Buried Age sites |
 
-Floor index 3 currently has **no road entry and no site entry**, which is the
-correct way to hold the slot: a floor without an entry simply gets no features.
+~~Floor index 3 currently has **no road entry and no site entry**, which is the
+correct way to hold the slot: a floor without an entry simply gets no features.~~
+**STALE, struck rather than deleted.** The slot was filled and the sentence was
+not. `RoadNetworkProfile` carries a floor-3 entry (mode 2, `rimTrunkCount` 2,
+`junctionCount` 4) and `AncientSiteProfile`'s floor-3 entry sets
+`reserveVillage: 1` -- the village shipped there in The Living Holds part 3, and
+the two village patrols walk that floor's network. Anything reasoning about
+where dwarves are must read the profile assets, not this paragraph.
 
 The renumber itself was one constant (`DwarvenSpoil.MinFloorIndex`) and two data
 assets -- nothing else in the codebase is floor-keyed, because
@@ -9035,6 +9043,142 @@ project's history had scored as done.
 `Docs/ART_DEBT.md` is fully sorted, so a re-run with nothing changed rewrites
 the same bytes. A report that churns its own diff is a report nobody commits.
 
+
+## 44. Monster Allegiance (the Fourth Side)
+
+Status: PART SHIPPED -- the substrate. Verified: 2026-08-13. The dwarven
+skirmish arc's stage 1a-i. No body in the game answers `Faction` yet; stage 1a-ii
+is what makes dwarves mortal.
+
+**THE PROBLEM WAS NOT "DWARVES NEED A SIDE". It was that `IsWild` had been
+answering three different questions with one bit**, and the three answers agreed
+for every body the game could make:
+
+1. *The player does not command this.* -- veteran promotion, the mastery
+   multipliers, Knit, Boon, Rally, crowding, rating, the predator's prey test.
+2. *This is an enemy of the dungeon.* -- the hostility rule, trap firing, the
+   minimap dot, the spawner block radius, `fromOutsider` on every wound.
+3. *This behaves like cave life.* -- the wander leash, the Aggressive default,
+   `wildRegenMultiplier`.
+
+A dwarf answers **yes, no, no**. There is no assignment of one boolean that gets
+that right, which is why the first design -- appending `MonsterTribe.Dwarf` and
+special-casing the hostility rule -- was abandoned before any code was written:
+it would have fixed question 2 and left the other two silently wrong.
+
+**`MonsterAllegiance { Dungeon, Wild, Faction }`, DERIVED AND NEVER AUTHORED.**
+Computed from the same fields `IsWild` reads plus one flag set by
+`InitialiseAsFactionBody`, so there is no second source of truth to drift and
+nothing new serialises into a save. `IsWild` survives, meaning question 3 only --
+which is what its name always claimed. Questions 1 and 2 got names of their own:
+`ServesDungeon` and `HostileToDungeon`.
+
+**The rule is a 3x3 now, not a boolean with an exception.**
+
+|            | Dungeon | Wild | Faction |
+|---|---|---|---|
+| **Dungeon** | peace | **WAR** | truce unless that faction is at war |
+| **Wild** | | tribe decides | **WAR always** |
+| **Faction** | | | `FactionRelations.Between` |
+
+Dungeon-versus-Wild is untouched -- it is the oldest line in the combat layer.
+Wild-versus-Wild is untouched. Wild-versus-Faction is war **regardless of
+standing**: a kobold does not care what the dwarves think of the core. That same
+clause puts dwarves at war with tribe-`None` cave life, which is rare (chambers
+are not on roads) and correct when it happens.
+
+**The truce reads TIER, not standing, and reuses the band the road already
+uses.** `FactionSystem.AtWarWithDungeon` is `Tier(f) >= 1`, the same test
+`DwarvenCaravanController.TryDepart` gates departures on. So "the caravans
+stopped" and "the guards drew on us" are ONE break the player can name, not two
+thresholds discovered separately. The tier ratchets and never falls on its own,
+so the door stays open until entry 7's deliberate appeasement closes it -- chosen
+over reversible live standing precisely because a reversible test would have
+guards turning friendly again while the caravan stayed away.
+
+**`AreHostile` is no longer pure, deliberately.** The Dungeon/Faction cell reads
+live standing, so `Print Tribe Matrix` now shows whether the road is at peace
+*right now* rather than in principle. The read is one static field and one
+dictionary probe, reached only inside that one cell -- cheaper than the cached
+flag it replaces, and with no static needing a reset on a new game.
+
+**Traps and damage spells ask `!ServesDungeon`, not `HostileToDungeon`**, and the
+difference is the design. A trap fires on a dwarf at peace and the standing bill
+follows: the dungeon did that, whether or not the player meant it. Knit, Boon and
+Rally ask `ServesDungeon`, so nobody heals a guard by accident.
+
+**Adventurers gained a filter they never had.** `DungeonAdventurer` targeted any
+`DungeonMonster` with no test whatever -- and a delver hunts the nearest one
+ANYWHERE on its floor. Left alone, the first party to walk floor index 2 would
+have beelined for the patrol, killed it at no cost in standing (the dungeon dealt
+none of the damage), and contradicted a matrix that says the Guild and the Holds
+have no quarrel. `Engages` defers to `FactionRelations`, so a pilgrim brawls a
+patrol and a treasure hunter walks past one.
+
+**Ten copies of `IsWild ? wildDefinition : spawner?.Definition` collapsed into
+`DungeonMonster.Definition`.** Every one of them answered null for a faction body
+-- no spawner to fall back to -- and would have taken its voice, knockback,
+projectile, regen and name down with it. The two sources are mutually exclusive
+by construction, so asking which one is SET is strictly better than asking which
+side the body is on, and cannot go wrong again when a fifth kind of body arrives.
+
+**Two earlier rulings dissolved rather than shipping.** `MonsterTribe.Dwarf` was
+to be appended and is NOT: allegiance carries dwarf-versus-kobold, and an
+append-only enum value with no reader is dead weight. An authored
+bestiary-suppression flag was to be added and is NOT: `Die()` gates the unlock on
+`IsWild &&`, so a faction body earns no bestiary entry, no core XP and no
+`RecordWildMonsterSlain` by construction. **Floor index 4's nameless entities
+still owe that flag** -- they are genuinely wild, and canon 34's discipline about
+stating the exception still applies to them.
+
+**THE STANDING INVARIANT.** Every surviving `IsWild` reference is on a whitelist,
+checked by the delivery script against the applied tree. A future edit that
+reaches for `IsWild` to mean "not the player's" is the one way this entry comes
+undone, and the grep is what catches it. Sites kept because they genuinely mean
+question 3: the property itself, `wildRegenMultiplier`, `PickWanderTarget`, the
+`CrossTribeEngagements` counter, `Die()`'s three gates, and `CanRename` (already
+guarded by a null spawner).
+
+**TWO WHITELISTED SITES ARE NOT AUDITED, THEY ARE UNFINISHED, and the difference
+has to be written down or the whitelist launders them.** Both are inert while no
+body answers `Faction`, and both are wrong the moment one does:
+
+- `DetermineDesiredState` has no `Faction` branch, so a faction body falls
+  through `spawner == null` to `Wander` and walks the dungeon's own wander rules
+  -- which would drag a guard off his road, every frame, against an owner trying
+  to walk him along a rail. It wants a state that scans and otherwise HOLDS,
+  leaving movement to the owning controller: the den work-site override's shape,
+  for the den work-site reason.
+- `EffectiveAggression` has no `Faction` branch either, so a faction body with no
+  override falls to `MonsterAggressionSettings.Global` -- the PLAYER's
+  three-button stance control, steering dwarves. The stance belongs on
+  `InitialiseAsFactionBody` as a required argument rather than a default: guards
+  Normal, villagers Defensive.
+
+Neither is built here because both are one decision with the puppet demotion,
+and a state nothing can enter is the dead-member class this project has paid for
+before. They are stage 1a-ii's first two lines.
+
+**The standing path is also owed, and its numbers are already locked** so that
+1a-ii does not re-litigate them. `RegisterKill` takes an `AdventurerType`, so
+there is no path today for killing anything that is not an adventurer. Costs:
+**guard -10, villager -15, caravan member -25.** Villagers cost more than
+soldiers deliberately -- a guard walks a road knowing what walks it. Two guards
+is exactly `tier1Standing`, so taking a patrol trips the embargo in ONE act: a
+decision, not a nibble. The caravan member matches the robbery's own -25, so
+murdering the column is never cheaper than robbing it, which is what stops free
+murder routing around the toll economy's one priced choice. The bill keys on
+`dungeonDealtDamage` -- the discriminator the bestiary and the den ledger already
+share -- so a guard your skeleton softened and a kobold finished counts as yours,
+and one the kobolds took alone costs nothing.
+
+**Key files:** `Monster/MonsterAllegiance.cs` (new), `Monster/DungeonMonster.cs`,
+`Adventurer/FactionSystem.cs` (`AtWarWithDungeon`),
+`Adventurer/DungeonAdventurer.cs` (`Engages`), `Monster/MonsterSpawner.cs`,
+`DungeonCore/CrowdingController.cs`, `DungeonCore/DungeonRating.cs`,
+`Gameplay/SpellCaster.cs`, `Traps/PressurePlateTrap.cs`, `Traps/CrossbowTrap.cs`,
+`Traps/FireballTrap.cs`, `UI/Minimap.cs`, `TESTING/Commands.cs`
+(`Print Tribe Matrix`, now allegiance-first).
 
 ## A. Content Registries and Authoring Keys
 

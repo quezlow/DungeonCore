@@ -676,7 +676,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             && goal != AdventurerGoal.FreePrisoner
             && state != AdventurerState.Retreating
             && currentFloor?.Entities != null
-            && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, commonerPanicRange))
+            && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(
+                   transform.position, commonerPanicRange, EngagesPred))
         {
             StartRetreat();
         }
@@ -1468,7 +1469,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             // only harm turns them back. A Cowardly observer still bolts.
             if (goal == AdventurerGoal.ObserveRooms
                 && trait == BehaviourTrait.Cowardly && currentFloor?.Entities != null
-                && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(transform.position, EffectiveDetectionRange))
+                && currentFloor.Entities.AnyWithinRadius<DungeonMonster>(
+                       transform.position, EffectiveDetectionRange, EngagesPred))
                 StartRetreat();
             return;
         }
@@ -1481,9 +1483,11 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         DungeonMonster nearest = null;
         if (!string.IsNullOrEmpty(returnGrudge))
             nearest = currentFloor.Entities.Nearest<DungeonMonster>(
-                transform.position, EffectiveDetectionRange, m => m.TypeName == returnGrudge);
+                transform.position, EffectiveDetectionRange,
+                m => Engages(m) && m.TypeName == returnGrudge);
         if (nearest == null)
-            nearest = currentFloor.Entities.Nearest<DungeonMonster>(transform.position, EffectiveDetectionRange);
+            nearest = currentFloor.Entities.Nearest<DungeonMonster>(
+                transform.position, EffectiveDetectionRange, EngagesPred);
 
         if (nearest == null) return;
 
@@ -1655,7 +1659,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
         // Hunt the nearest monster anywhere on the floor; Combat does the chase + kill.
         DungeonMonster prey = currentFloor?.Entities != null
-            ? currentFloor.Entities.Nearest<DungeonMonster>(transform.position, huntRange)
+            ? currentFloor.Entities.Nearest<DungeonMonster>(transform.position, huntRange, EngagesPred)
             : null;
 
         if (prey != null)
@@ -2862,6 +2866,41 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
 
     // Type / goal reads
     public AdventurerType Type => type;
+
+    /// <summary>Whether this adventurer will pick a fight with that body.
+    ///
+    /// EVERYTHING EXCEPT A FACTION BODY, unchanged. A faction body is judged by
+    /// canon 7's matrix instead: the Deep Holds are Hostile to the Holy Order
+    /// and Neutral to everyone else, so a pilgrim brawls a dwarf patrol and a
+    /// treasure hunter walks past one.
+    ///
+    /// WITHOUT THIS TEST THE ROAD ECONOMY IS FREE TO DESTROY. A delver hunts the
+    /// nearest monster ANYWHERE on its floor, so the first party to walk floor
+    /// index 2 would beeline for the patrol, kill it at no cost in standing --
+    /// the dungeon dealt none of the damage -- and contradict a matrix that says
+    /// those two have no quarrel. It also stops a Commoner panicking at the
+    /// sight of a villager.</summary>
+    private bool Engages(DungeonMonster m)
+    {
+        if (m == null) return false;
+        if (m.Allegiance != MonsterAllegiance.Faction) return true;
+        return FactionRelations.AreHostile(AdventurerTypeInfo.FactionOf(type), m.Faction);
+    }
+
+    // Cached so a scan does not allocate a fresh closure per call -- the lesson
+    // ScanForHostiles has already paid for once.
+    private System.Predicate<DungeonMonster> _engagesPred;
+    private System.Predicate<DungeonMonster> EngagesPred
+    {
+        get
+        {
+            // Written long rather than as `??= Engages`: a method group through a
+            // null-coalescing assignment is a target-typed conversion, and this
+            // delivery had no compiler to prove it with.
+            if (_engagesPred == null) _engagesPred = Engages;
+            return _engagesPred;
+        }
+    }
     public PartyMember Member => partyMember;
     public AdventurerGoal Goal => goal;
     /// <summary>True only for goals that destroy the core on arrival (Mercenary / Hero / Suicidal).

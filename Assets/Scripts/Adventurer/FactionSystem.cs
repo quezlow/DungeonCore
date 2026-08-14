@@ -191,6 +191,25 @@ public class FactionSystem : MonoBehaviour
         _ => "Curious",
     };
 
+    /// <summary>True when this faction's own bodies draw on the dungeon on
+    /// sight, rather than keeping the peace.
+    ///
+    /// THE SAME BAND THE ROAD ALREADY USES. Caravans stop departing at Tier 1
+    /// (DwarvenCaravanController.TryDepart) and the truce ends at Tier 1, so
+    /// "the caravans stopped" and "the guards drew on us" are ONE legible break
+    /// rather than two thresholds a player has to discover separately.
+    ///
+    /// TIER, NOT STANDING, and the difference is not cosmetic: the tier ratchets
+    /// and never falls on its own, so this is a door that stays open until entry
+    /// 7's deliberate appeasement closes it. A reversible test would have guards
+    /// turning friendly again while the caravan stayed away, which is the
+    /// two-mystery-thresholds problem wearing the other hat.
+    ///
+    /// No singleton means no war. A scene without a FactionSystem is a test
+    /// scene, and nobody should be drawing in one.</summary>
+    public static bool AtWarWithDungeon(FactionId f)
+        => Instance != null && Instance.Tier(f) >= 1;
+
     private void EvaluateTier(Relation r)
     {
         int band = 0;

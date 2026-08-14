@@ -597,7 +597,11 @@ public class MonsterSpawner : MonoBehaviour
         Vector3 myPos = transform.position;
 
         if (myFloor.Entities.AnyWithinRadius<DungeonAdventurer>(myPos, r)) return true;
-        if (myFloor.Entities.AnyWithinRadius<DungeonMonster>(myPos, r, m => m.IsWild)) return true;
+        // A faction body blocks only while its faction is at war. A dwarf
+        // patrol pacing the road past a muster room is not a siege, and a
+        // spawner that never respawned because a neutral walked by every minute
+        // would read as a bug with no cause anywhere on screen.
+        if (myFloor.Entities.AnyWithinRadius<DungeonMonster>(myPos, r, m => m.HostileToDungeon)) return true;
         return false;
     }
 }

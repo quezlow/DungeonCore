@@ -81,7 +81,7 @@ public static class SpellCaster
             struck++;
         }
 
-        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.ServesDungeon);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];
@@ -104,7 +104,7 @@ public static class SpellCaster
         int healed = 0;
         // The dungeon's own only. A wild in the ring is very often the thing
         // your monsters are fighting.
-        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => x.ServesDungeon);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];
@@ -128,7 +128,7 @@ public static class SpellCaster
         float seconds = SpellBook.EffectiveDuration(def);
         if (seconds <= 0f) return false;
 
-        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => x.ServesDungeon);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];
@@ -219,7 +219,7 @@ public static class SpellCaster
         // rooms over is exactly the garrison this spell exists to call back, and
         // gathering by spawner would miss it while catching an empty muster room
         // whose occupant is elsewhere. Wilds are not yours to command.
-        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => !x.IsWild);
+        floor.Entities.WithinRadius(at, SpellBook.EffectiveRadius(def), monBuf, x => x.ServesDungeon);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];

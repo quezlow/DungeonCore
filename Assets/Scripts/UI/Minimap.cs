@@ -56,6 +56,11 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
     [SerializeField] private Color monsterDot = new Color(0.35f, 0.85f, 0.40f);
     [Tooltip("Wild and invading monsters are hostile, so they read red like adventurers.")]
     [SerializeField] private Color hostileMonsterDot = new Color(0.90f, 0.25f, 0.25f);
+    [Tooltip("Bodies belonging to a faction that is NOT currently at war -- " +
+             "dwarves while standing holds. A third colour because the other " +
+             "two are both lies about them: green says the player commands " +
+             "them, red says they are coming for the core.")]
+    [SerializeField] private Color neutralMonsterDot = new Color(0.55f, 0.60f, 0.85f);
     [SerializeField] private Color coreDot = new Color(1f, 0.82f, 0.25f);
     [SerializeField, Min(2f)] private float dotSize = 5f;
 
@@ -400,7 +405,9 @@ public class Minimap : MonoBehaviour, IPointerClickHandler
             for (int i = 0; i < monBuf.Count; i++)
                 if (monBuf[i] != null && SeenHere(monBuf[i].transform.position))
                     used = PlaceDot(used, monBuf[i].transform.position,
-                                    monBuf[i].IsWild ? hostileMonsterDot : monsterDot);
+                                    monBuf[i].ServesDungeon ? monsterDot
+                                    : monBuf[i].HostileToDungeon ? hostileMonsterDot
+                                    : neutralMonsterDot);
 
             var core = DungeonCore.Instance;
             if (core != null && OnThisFloor(core.transform.position.y))

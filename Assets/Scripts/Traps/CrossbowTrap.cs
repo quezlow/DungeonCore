@@ -36,7 +36,7 @@ public class CrossbowTrap : TrapBase
 
         var wild = floor.Entities.Nearest<DungeonMonster>(
             transform.position, Definition.sentryRange,
-            x => x.IsWild && ((IMonsterTarget)x).IsAlive
+            x => !x.ServesDungeon && ((IMonsterTarget)x).IsAlive
                  && DungeonProjectile.HasLineOfSight(floor, transform.position, x.transform.position));
         if (wild != null) Loose(floor, wild);
     }

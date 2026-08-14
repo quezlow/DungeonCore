@@ -44,7 +44,7 @@ public class FireballTrap : TrapBase
         }
 
         floor.Entities.WithinRadius(transform.position, Definition.burstRadius, monBuf,
-            x => x.IsWild);
+            x => !x.ServesDungeon);
         for (int i = 0; i < monBuf.Count; i++)
         {
             var m = monBuf[i];

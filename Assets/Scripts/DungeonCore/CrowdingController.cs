@@ -74,7 +74,7 @@ public class CrowdingController : MonoBehaviour
                 var sp = spawnerBuf[i];
                 if (sp == null || !sp.HasLiveMonster) continue;
                 var m = sp.SpawnedMonster;
-                if (m == null || m.IsWild) continue;
+                if (m == null || !m.ServesDungeon) continue;
 
                 var cell = infl.WorldToCell(m.transform.position);
                 if (!infl.IsTileMined(cell) || roomTiles.Contains(cell))

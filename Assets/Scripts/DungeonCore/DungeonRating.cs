@@ -62,7 +62,7 @@ public class DungeonRating : MonoBehaviour
             for (int i = 0; i < _buf.Count; i++)
             {
                 var m = _buf[i];
-                if (m == null || m.IsWild || !m.IsVeteran) continue;
+                if (m == null || !m.ServesDungeon || !m.IsVeteran) continue;
                 bonus += (m.Spawner != null ? m.Spawner.CapacityCost : 0) * veteranBonusFraction;
             }
         }

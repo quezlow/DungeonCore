@@ -335,6 +335,59 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // counted as prey by the great predator.
     public bool IsWild => wildChamberId >= 0 || isInvader || denFloorIndex >= 0;
 
+    // -- Allegiance (canon 44) ------------------------------------------
+    //
+    // Set by InitialiseAsFactionBody and written nowhere else. A faction body
+    // has no spawner and no wild chamber, so without this flag it would answer
+    // Dungeon: friendly to the core it is walking past, buffed by the player's
+    // research, counted toward crowding, and healed by Knit.
+    private bool isFactionBody;
+    private FactionId bodyFaction;
+
+    /// <summary>Which side this body is on. THE ORDER OF THE TESTS MATTERS: the
+    /// faction flag answers first, because a faction body sets none of the three
+    /// fields IsWild reads and would otherwise fall straight through to
+    /// Dungeon.</summary>
+    public MonsterAllegiance Allegiance
+        => isFactionBody ? MonsterAllegiance.Faction
+         : IsWild ? MonsterAllegiance.Wild
+         : MonsterAllegiance.Dungeon;
+
+    /// <summary>The faction this body belongs to. MEANINGLESS unless Allegiance
+    /// is Faction, and deliberately left at the enum's default rather than given
+    /// a sentinel -- FactionId has no None, and inventing one would put an
+    /// unreachable value in an enum that serialises into every save.</summary>
+    public FactionId Faction => bodyFaction;
+
+    /// <summary>THE PLAYER COMMANDS THIS. Everything the dungeon does FOR its
+    /// own -- veteran promotion, the mastery multipliers, Knit, Boon, Rally,
+    /// crowding, rating -- asks this rather than !IsWild, because a dwarf is not
+    /// wild and is not the player's either, and !IsWild quietly said it
+    /// was.</summary>
+    public bool ServesDungeon => Allegiance == MonsterAllegiance.Dungeon;
+
+    /// <summary>THIS BODY IS CURRENTLY AN ENEMY OF THE DUNGEON. Distinct from
+    /// !ServesDungeon, and the distinction is exactly what the truce buys: a
+    /// dwarf at peace is neither the player's nor an enemy. Wild is
+    /// unconditional. Traps and damage spells deliberately do NOT ask this --
+    /// they fire on anything that is not the player's, because striking a
+    /// neutral is a choice the player is allowed to make and pay for.</summary>
+    public bool HostileToDungeon
+        => Allegiance == MonsterAllegiance.Wild
+        || (Allegiance == MonsterAllegiance.Faction
+            && FactionSystem.AtWarWithDungeon(bodyFaction));
+
+    /// <summary>This body's definition, whichever way it was made. REPLACES TEN
+    /// COPIES of `IsWild ? wildDefinition : spawner?.Definition`, every one of
+    /// which answers null for a faction body -- there is no spawner to fall back
+    /// to -- and would have taken its voice, its knockback, its projectile, its
+    /// regen and its name down with it. The two sources are mutually exclusive
+    /// by construction, so asking which one is SET is strictly better than
+    /// asking which side the body is on, and cannot go wrong again when a fourth
+    /// kind of body arrives.</summary>
+    public MonsterDefinition Definition
+        => wildDefinition != null ? wildDefinition : spawner?.Definition;
+
     /// <summary>Specifically an INVADER -- a beast marching on the core -- and
     /// not merely wild. IsWild is true for wild-chamber dwellers too, and those
     /// wander their own chamber and threaten nothing, so anything that cares
@@ -374,7 +427,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         RegisterNovelty();
         PickWanderTarget();
 
-        var ndef = IsWild ? wildDefinition : spawner?.Definition;
+        var ndef = Definition;
         isNecromancer = ndef != null && ndef.isNecromancer;
 
         // A ranged attacker must sense at least as far as it can shoot -- the caster
@@ -419,6 +472,28 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentFloor = floor;
         wildDefinition = def;
         isInvader = true;
+    }
+
+    /// <summary>Sets this body up as a FACTION BODY: a mortal creature of a
+    /// named faction, commanded by nobody, whose hostility to the dungeon rides
+    /// that faction's escalation tier rather than its side.
+    ///
+    /// BUILT BEFORE ITS CALLER, on the precedent canon 42 set with
+    /// SetDenWorkSite and NotifyRemainsExcavated. The substrate ships first and
+    /// is proved by Print Tribe Matrix, because the sweep it belongs to touches
+    /// fifty-three sites and a behaviour-neutral delivery is the only one that
+    /// can be verified in isolation. The dwarven controllers call this next
+    /// stage.
+    ///
+    /// Call immediately after Instantiate, before Start runs -- the invader
+    /// contract, for the invader reason.</summary>
+    public void InitialiseAsFactionBody(FloorRoot floor, MonsterDefinition def,
+                                        FactionId faction)
+    {
+        currentFloor = floor;
+        wildDefinition = def;
+        bodyFaction = faction;
+        isFactionBody = true;
     }
 
     /// <summary>Marks an invader as the endgame climax beast: on breaching the core it is
@@ -556,7 +631,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         if (!veteran) return;
         if (isVeteran) return;
         if (IsBoss) return;
-        if (IsWild) return;
+        if (!ServesDungeon) return;
 
         isVeteran = true;
         maxHP *= veteranHpMultiplier;
@@ -617,7 +692,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // DAY 31 — Wild monsters now have a direct definition back-reference (wildDefinition);
         // player monsters use spawner.Definition. Old code returned 0 for all wild monsters
         // because spawner was null — that limitation is gone.
-        MonsterDefinition def = IsWild ? wildDefinition : spawner?.Definition;
+        MonsterDefinition def = Definition;
         if (def == null) { effectiveRegenPerSecond = 0f; effectiveRegenCooldown = 5f; return; }
 
         float baseRegen = def.passiveRegenPerSecond;
@@ -1006,16 +1081,16 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             invadePathIndex++;
     }
 
-    /// <summary>Nearest of the dungeon's OWN creatures on this floor. IsWild covers
-    /// both invaders and chamber wilds, so the beast never hunts itself, another
-    /// invader, or the neutral cave life. Unbounded range: it hunts the whole floor,
-    /// which is the point of it.</summary>
+    /// <summary>Nearest of the dungeon's OWN creatures on this floor, so the
+    /// beast never hunts itself, another invader, the neutral cave life, or a
+    /// body that belongs to a faction. Unbounded range: it hunts the whole
+    /// floor, which is the point of it.</summary>
     private DungeonMonster NearestPrey()
     {
         if (currentFloor?.Entities == null) return null;
         return currentFloor.Entities.Nearest<DungeonMonster>(
             transform.position, float.MaxValue,
-            m => m != null && m != this && !m.IsWild);
+            m => m != null && m != this && m.ServesDungeon);
     }
 
     /// <summary>Path toward prey. Combat is entered by ScanForHostiles once the
@@ -1150,7 +1225,10 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     private void CheckTrapStep()
     {
-        if (!IsWild) return;
+        // ANYTHING THAT IS NOT THE PLAYER'S, not merely anything hostile. A
+        // trap fires on a dwarf at peace and the standing bill follows, which
+        // is the point: the dungeon did that, whether or not it meant to.
+        if (ServesDungeon) return;
         if (currentFloor == null) return;
         var influence = currentFloor.TileInfluence;
         var trapReg = currentFloor.TrapRegistry;
@@ -1167,7 +1245,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         terrainSpeedMultiplier = 1f;
 
         // DAY 31 — Aquatic check now works for both player and wild monsters.
-        MonsterDefinition def = IsWild ? wildDefinition : spawner?.Definition;
+        MonsterDefinition def = Definition;
         if (def != null && def.isAquatic) return;
 
         if (currentFloor == null) return;
@@ -1180,7 +1258,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     }
 
     private float EffectiveMoveSpeed =>
-        moveSpeed * terrainSpeedMultiplier * slowMultiplier * (IsWild ? 1f : MonsterMastery.SpeedMultiplier)
+        moveSpeed * terrainSpeedMultiplier * slowMultiplier * (ServesDungeon ? MonsterMastery.SpeedMultiplier : 1f)
         * (boons != null ? boons.SpeedMultiplier : 1f);
 
     // -- Core-spell boons (canon 38) ------------------------------
@@ -1455,22 +1533,55 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// this overload directly, so the readout cannot drift from the behaviour --
     /// a matrix that restated the test would confirm itself and nothing else.
     ///
-    /// ORDER MATTERS. IsWild differing is tested FIRST and is unchanged: that is
-    /// the dungeon-versus-outsider line, it has consumers all over the project,
-    /// and nothing here may move it. Only when both sides are wild does the tribe
-    /// decide, and None is its own side rather than a wildcard -- so cave life
-    /// stays at peace with cave life while a den acquires enemies.</summary>
-    public static bool AreHostile(bool aWild, int aTribe, bool bWild, int bTribe)
+    /// A 3x3 OVER ALLEGIANCE, not a boolean with an exception bolted on. The old
+    /// rule tested "wildness differs" first and returned true, which is right
+    /// for every pair it could see and wrong the instant a body exists that the
+    /// player neither commands nor is at war with. Written as a matrix, the cell
+    /// that used to be missing is visible instead of hidden inside a negation:
+    ///
+    ///               Dungeon   Wild            Faction
+    ///   Dungeon     peace     WAR             truce, unless that faction is at war
+    ///   Wild        WAR       tribe decides   WAR always
+    ///   Faction     truce/war WAR always      FactionRelations.Between
+    ///
+    /// Dungeon versus Wild is UNCHANGED and unmoved. It is the dungeon-versus-
+    /// outsider line, it has consumers all over the project, and nothing here
+    /// touches it. Wild versus Wild is unchanged too: the tribe decides, and
+    /// None is its own side rather than a wildcard, so cave life stays at peace
+    /// with cave life while a den acquires enemies.
+    ///
+    /// WILD VERSUS FACTION IS WAR ALWAYS, and deliberately ignores standing -- a
+    /// kobold does not care what the dwarves think of the core. The same clause
+    /// puts a faction body at war with tribe-None cave life, which is rare
+    /// (chambers are not on roads) and right when it happens.
+    ///
+    /// NOT PURE ANY MORE, AND THAT IS THE POINT. The Dungeon-versus-Faction cell
+    /// reads live standing, so the matrix now shows whether the road is at peace
+    /// RIGHT NOW rather than in principle. The read is one static field and one
+    /// dictionary probe, reached only inside that cell, which no pair in the
+    /// game reaches at all until faction bodies exist -- cheaper than the cached
+    /// flag it replaces, and with no static needing a reset on a new game.</summary>
+    public static bool AreHostile(MonsterAllegiance aSide, int aTribe, FactionId aFaction,
+                                  MonsterAllegiance bSide, int bTribe, FactionId bFaction)
     {
-        if (aWild != bWild) return true;   // the dungeon's own against an outsider
-        if (!aWild) return false;          // two of the dungeon's own never fight
-        return aTribe != bTribe;           // both wild: the tribe decides
+        if (aSide == MonsterAllegiance.Faction && bSide == MonsterAllegiance.Faction)
+            return FactionRelations.AreHostile(aFaction, bFaction);
+
+        if (aSide == MonsterAllegiance.Faction)
+            return bSide == MonsterAllegiance.Wild || FactionSystem.AtWarWithDungeon(aFaction);
+        if (bSide == MonsterAllegiance.Faction)
+            return aSide == MonsterAllegiance.Wild || FactionSystem.AtWarWithDungeon(bFaction);
+
+        if (aSide != bSide) return true;                       // the dungeon's own against an outsider
+        if (aSide == MonsterAllegiance.Dungeon) return false;  // two of the dungeon's own never fight
+        return aTribe != bTribe;                               // both wild: the tribe decides
     }
 
     /// <summary>The live-body form. Nothing tests hostility any other way.</summary>
     public static bool AreHostile(DungeonMonster a, DungeonMonster b)
         => a != null && b != null && a != b
-        && AreHostile(a.IsWild, a.tribeId, b.IsWild, b.tribeId);
+        && AreHostile(a.Allegiance, a.tribeId, a.bodyFaction,
+                      b.Allegiance, b.tribeId, b.bodyFaction);
 
     /// <summary>This body's tribe, for the readouts.</summary>
     public MonsterTribe Tribe => (MonsterTribe)tribeId;
@@ -1619,7 +1730,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         Vector3 targetPos = target.Transform.position;
         float dist = Vector2.Distance(transform.position, targetPos);
-        var rdef = IsWild ? wildDefinition : spawner?.Definition;
+        var rdef = Definition;
         bool ranged = rdef != null && rdef.firesProjectile;
         // A ranged attacker also needs a clear line to the target: blocked within
         // range, it falls through to the chase path below and walks until the shot
@@ -1684,7 +1795,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         get
         {
-            var vdef = IsWild ? wildDefinition : spawner?.Definition;
+            var vdef = Definition;
             return vdef != null ? vdef.voice : MonsterVoice.Silent;
         }
     }
@@ -1728,12 +1839,12 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     private void FireProjectile()
     {
         if (target == null || !target.IsAlive) return;
-        var def = IsWild ? wildDefinition : spawner?.Definition;
+        var def = Definition;
         if (def == null || !def.firesProjectile) { DealAttackDamage(); return; }
 
         // Mutation research sharpens dungeon monsters only; the wild ruling holds.
         float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
-                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier)
+                  * (ServesDungeon ? MonsterMastery.DamageMultiplier : 1f)
                   * (boons != null ? boons.DamageMultiplier : 1f);
         animDriver?.OnAttack();
 
@@ -1742,7 +1853,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             damage = dmg,
             numberType = FloatingDamageNumber.DamageType.AdventurerHit,
             sourceName = TypeName,
-            fromOutsider = IsWild,
+            fromOutsider = !ServesDungeon,
             knockbackForce = def.knockbackForce,
             knockbackMinDamage = def.knockbackMinDamage,
             breaksFormation = def.breaksFormation,
@@ -1767,7 +1878,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
         // Mutation research sharpens dungeon monsters only; the wild ruling holds.
         float dmg = attackDamage * roomDamageMultiplier * globalDamageMultiplier * crowdDamageMultiplier
-                  * (IsWild ? 1f : MonsterMastery.DamageMultiplier)
+                  * (ServesDungeon ? MonsterMastery.DamageMultiplier : 1f)
                   * (boons != null ? boons.DamageMultiplier : 1f);
         Vector3 targetPos = target.Transform.position;
         DamageNumberSpawner.Spawn(dmg, targetPos, FloatingDamageNumber.DamageType.AdventurerHit);
@@ -1775,8 +1886,8 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         var advTarget = target as DungeonAdventurer;
         advTarget?.RecordDamagedBy(TypeName, dmg);
         // A WILD attacker is an outsider; a commanded one is the dungeon's arm.
-        target.TakeDamage(dmg, IsWild);
-        var kdef = IsWild ? wildDefinition : spawner?.Definition;
+        target.TakeDamage(dmg, !ServesDungeon);
+        var kdef = Definition;
         if (kdef != null && kdef.knockbackForce > 0f && dmg >= kdef.knockbackMinDamage)
             target.ApplyKnockback(transform.position, kdef.knockbackForce);
         if (kdef != null && kdef.breaksFormation && advTarget != null)
@@ -1806,7 +1917,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     {
         if (isVeteran) return;
         if (IsBoss) return;
-        if (IsWild) return;
+        if (!ServesDungeon) return;
         if (monsterXP < xpToVeteran) return;
 
         ApplyVeteranPromotion();
@@ -1851,7 +1962,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // Mutation tier II toughens the dungeon's own; wilds and invaders take
         // full wounds. Applied to incoming damage rather than maxHP so the
         // node is retroactive for monsters already alive when it completes.
-        if (!IsWild) amount *= MonsterMastery.DamageTakenMultiplier;
+        if (ServesDungeon) amount *= MonsterMastery.DamageTakenMultiplier;
         // Root the Stone. Applied to incoming damage rather than to maxHP for the
         // same reason the mutation line is: it must be retroactive for a monster
         // already wounded when the working lands.
@@ -1951,7 +2062,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// position this frame). Reads its params from the monster definition.</summary>
     private bool TickNecromancer()
     {
-        var def = IsWild ? wildDefinition : spawner?.Definition;
+        var def = Definition;
         if (def == null) return false;
 
         if (raiseCooldownRemaining > 0f) raiseCooldownRemaining -= Time.deltaTime;
@@ -2095,7 +2206,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// <summary>This monster's type name (its definition), for grudge matching. Null if unresolved.</summary>
     public string TypeName
     {
-        get { var d = IsWild ? wildDefinition : spawner?.Definition; return d != null ? d.monsterName : null; }
+        get { var d = Definition; return d != null ? d.monsterName : null; }
     }
 
     /// <summary>Records this monster felling a named Hero. Instance-only; a respawn starts untitled.</summary>
@@ -2118,7 +2229,7 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             string bossT = promotedTitle ?? bossDefinition?.GetBossTitle();
             if (bossT != null)
                 return !string.IsNullOrEmpty(custom) ? custom : bossT;
-            var def = IsWild ? wildDefinition : spawner?.Definition;
+            var def = Definition;
             string n = def != null ? def.monsterName : "Monster";
             string full = !string.IsNullOrEmpty(custom) ? custom : (isVeteran ? $"Veteran {n}" : n);
             return string.IsNullOrEmpty(killTitle) ? full : $"{full} — {killTitle}";
