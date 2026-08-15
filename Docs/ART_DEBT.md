@@ -41,8 +41,8 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - Definition icons | DenTunnelProfile.floors.hoardSprites: 0 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
 - Definition icons | DivineAudienceScript.deities.backdrop: 0 owed, 0 deferred, 6 by design, 0 unclassified, 0 filled.
 - Definition icons | FurnitureDefinition.icon: 5 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- Definition icons | MonsterDefinition.icon: 104 owed, 0 deferred, 0 by design, 0 unclassified, 8 filled.
-- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 112 deferred, 0 by design, 0 unclassified, 0 filled.
+- Definition icons | MonsterDefinition.icon: 107 owed, 0 deferred, 0 by design, 0 unclassified, 8 filled.
+- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 115 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | NPCDialogue.npcPortrait: 0 owed, 0 deferred, 0 by design, 0 unclassified, 22 filled.
 - Definition icons | PatternDefinition.icon: 21 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | SpellDefinition.icon: 11 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -55,7 +55,7 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - Definition icons | UnlockedTile.m_Sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | Items prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 9 filled.
 - In-game sprites | Loot prefab.SpriteRenderer.sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 4 owed, 26 deferred, 0 by design, 0 unclassified, 21 filled.
+- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 4 owed, 28 deferred, 0 by design, 0 unclassified, 22 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 17 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (BrassButton): 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (NPC_Goose): 0 owed, 1 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -78,6 +78,15 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - `Furniture_Shelf` FurnitureDefinition.icon
   `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Shelf.asset`
   Build submenu button and selection panel.
+- `Dwarf_Caravan` MonsterDefinition.icon
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Caravan.asset`
+  Spawner selection UI icon.
+- `Dwarf_Guard` MonsterDefinition.icon
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Guard.asset`
+  Spawner selection UI icon.
+- `Dwarf_Villager` MonsterDefinition.icon
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Villager.asset`
+  Spawner selection UI icon.
 - `MonsterDef_AbyssalAngler` MonsterDefinition.icon
   `Assets/ScriptableObjects/Monsters/Regular/MonsterDef_AbyssalAngler.asset`
   Spawner selection UI icon.
@@ -714,6 +723,15 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - `BossDef_HungryBear` BossVariantDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Wild/Boss/BossDef_HungryBear.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `Dwarf_Caravan` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Caravan.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `Dwarf_Guard` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Guard.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `Dwarf_Villager` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Villager.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
 - `MonsterDef_AbyssalAngler` MonsterDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Regular/MonsterDef_AbyssalAngler.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
@@ -1059,6 +1077,12 @@ chapter 0 -- fixed head, subject slot, fixed tail.
 - `CrateC` Items prefab.SpriteRenderer.sprite -- outside 1_50 (shared by 3 prefabs in Assets/Prefabs/Items)
   `Assets/Prefabs/Items/CrateC.prefab`
   Borrowed donor body -- canon's roster norm pending bespoke art.
+- `DwarfGuard Variant` Monsters prefab.SpriteRenderer.sprite -- down_stand_0 (shared by 2 prefabs in Assets/Prefabs/Monsters)
+  `Assets/Prefabs/Monsters/Dwarves/DwarfGuard Variant.prefab`
+  Borrowed donor body -- canon's roster norm pending bespoke art.
+- `DwarfVillager Variant` Monsters prefab.SpriteRenderer.sprite -- down_stand_0 (shared by 2 prefabs in Assets/Prefabs/Monsters)
+  `Assets/Prefabs/Monsters/Dwarves/DwarfVillager Variant.prefab`
+  Borrowed donor body -- canon's roster norm pending bespoke art.
 - `Monster` Monsters prefab.SpriteRenderer.sprite -- down_stand_0 (shared by 24 prefabs in Assets/Prefabs/Monsters)
   `Assets/Prefabs/Monsters/Monster.prefab`
   Borrowed donor body -- canon's roster norm pending bespoke art.
@@ -1250,7 +1274,7 @@ Real art assigned, not placeholder-named, not shared with a sibling prefab.
 - Definition icons | UnlockedTile.m_Sprite: 1
 - In-game sprites | Items prefab.SpriteRenderer.sprite: 9
 - In-game sprites | Loot prefab.SpriteRenderer.sprite: 2
-- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 21
+- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 22
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite: 17
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (BrassButton): 1
 - In-game sprites | Traps prefab.SpriteRenderer.sprite: 4

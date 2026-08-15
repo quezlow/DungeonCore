@@ -244,6 +244,18 @@ public static class BanterLines
         "Fall back!",
     };
 
+    /// <summary>Walking out with nothing. Deliberately grumbling rather than
+    /// furious: this fires once, on the opening beat, and its job is to make
+    /// the player ask why -- not to sound like a failure state.</summary>
+    public static readonly string[] EmptyHandedReactions =
+    {
+        "All that, and not a copper.",
+        "Not one coin. Not one.",
+        "We came all this way for nothing.",
+        "Whoever holds this place is a miser.",
+        "My pack's as light as when I came in.",
+    };
+
     public static readonly string[] CoreSightReactions =
     {
         "There it is...",
@@ -272,6 +284,19 @@ public static class BanterLines
             ? string.Format(Pick(DeathReactionsNamed), name)
             : Pick(DeathReactionsGeneric);
         speaker.Say(line, Reaction);
+    }
+
+    /// <summary>A departing party with nothing to show for it. Speaks through
+    /// a LIVE member: a corpse cannot complain, and the caller has already
+    /// established that somebody walked out.</summary>
+    public static void ReactEmptyHanded(AdventurerParty party)
+    {
+        if (party == null) return;
+        var live = party.LiveMembers;
+        if (live == null || live.Count == 0) return;
+        var speaker = live[Random.Range(0, live.Count)];
+        if (speaker == null) return;
+        speaker.Say(Pick(EmptyHandedReactions), Reaction);
     }
 
     /// <summary>An adventurer's hushed first sight of the core.</summary>

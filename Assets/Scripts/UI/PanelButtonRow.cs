@@ -42,6 +42,8 @@ public class PanelButtonRow : MonoBehaviour
         public string label;
         public Sprite icon;
         public string unlockKey;        // null or empty = always shown
+        // null = never dimmed. Returns true when the button is BRIGHT.
+        public System.Func<bool> isBright;
         public System.Action invoke;
         public GameObject root;
         public TMP_Text keyLabel;
@@ -58,6 +60,7 @@ public class PanelButtonRow : MonoBehaviour
     [SerializeField] private Sprite iconFactions;
     [SerializeField] private Sprite iconResearch;
     [SerializeField] private Sprite iconRecenter;
+    [SerializeField] private Sprite iconLootPolicy;
 
     [Header("Layout")]
     [Tooltip("Square size of each button, in pixels.")]
@@ -99,6 +102,7 @@ public class PanelButtonRow : MonoBehaviour
     {
         Keybinds.OnRebind -= RefreshKeyLabels;
         UnlockState.OnChanged -= HandleUnlockChanged;
+        if (DayNightCycle.Instance != null) DayNightCycle.Instance.OnDayStarted -= HandleDawn;
         if (AlertsLog.Instance != null)
             AlertsLog.Instance.OnUnreadChanged -= HandleUnreadChanged;
     }
@@ -109,7 +113,17 @@ public class PanelButtonRow : MonoBehaviour
         // up during scene load. AlertHudButton learned this the same way.
         if (AlertsLog.Instance != null) HandleUnreadChanged(AlertsLog.Instance.UnreadCount);
         ApplyGates();
+        // The loot policy button's dim state turns over with the DAY, not with
+        // an unlock. Without this the button would stay grey after its cooldown
+        // expired until some unrelated unlock happened to repaint the row.
+        if (DayNightCycle.Instance != null)
+        {
+            DayNightCycle.Instance.OnDayStarted -= HandleDawn;
+            DayNightCycle.Instance.OnDayStarted += HandleDawn;
+        }
     }
+
+    private void HandleDawn() => ApplyGates();
 
     // -- Contents -----------------------------------------------------
 
@@ -136,10 +150,20 @@ public class PanelButtonRow : MonoBehaviour
         // calls the camera's own public entry point rather than the keybind.
         Add(GameAction.RecenterCamera, "Core", iconRecenter, null,
             () => DungeonCameraController.Instance?.RecenterOnCore());
+        // Hidden until the opening beat fires, then permanently visible --
+        // DIMMED inside the weekly cooldown but still clickable, because the
+        // panel tells the player how long is left. Dim is not the same as
+        // locked: the rule against greying is about systems the player has
+        // never heard of, and by the time this appears they have used it.
+        Add(GameAction.ToggleLootPolicy, "Loot Policy", iconLootPolicy,
+            LootPolicyPrompt.UnlockKey,
+            () => LootPolicyPanel.Instance?.Toggle(),
+            () => LootPolicy.CanChange(DayNightCycle.Instance != null
+                                       ? DayNightCycle.Instance.CurrentDay : 1));
     }
 
     private void Add(GameAction action, string label, Sprite icon, string unlockKey,
-                     System.Action invoke)
+                     System.Action invoke, System.Func<bool> isBright = null)
     {
         entries.Add(new Entry
         {
@@ -147,7 +171,8 @@ public class PanelButtonRow : MonoBehaviour
             label = label,
             icon = icon,
             unlockKey = unlockKey,
-            invoke = invoke
+            invoke = invoke,
+            isBright = isBright
         });
     }
 
@@ -268,7 +293,14 @@ public class PanelButtonRow : MonoBehaviour
         for (int i = 0; i < entries.Count; i++)
         {
             var e = entries[i];
-            if (e.keyLabel != null) e.keyLabel.text = Keybinds.DisplayName(e.action);
+            if (e.keyLabel == null) continue;
+            // An action with no default binding and none set by the player has
+            // no key to teach. Printing DisplayName's placeholder under the
+            // button would read as a binding that failed to load rather than
+            // as one that was never wanted.
+            e.keyLabel.text = Keybinds.IsBound(e.action)
+                ? Keybinds.DisplayName(e.action)
+                : string.Empty;
         }
     }
 
@@ -285,6 +317,16 @@ public class PanelButtonRow : MonoBehaviour
             if (e.root == null) continue;
             bool shown = string.IsNullOrEmpty(e.unlockKey) || UnlockState.IsUnlocked(e.unlockKey);
             if (e.root.activeSelf != shown) e.root.SetActive(shown);
+            if (!shown) continue;
+            // DIM, NOT DISABLED. The button still opens its window; only the
+            // action inside is gated. Gate the action, never the opener.
+            var img = e.root.GetComponent<Image>();
+            if (img != null && e.isBright != null)
+            {
+                Color c = buttonColor;
+                if (!e.isBright()) c.a *= 0.4f;
+                img.color = c;
+            }
         }
     }
 

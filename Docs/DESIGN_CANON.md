@@ -10099,8 +10099,8 @@ and the bound), `TESTING/Commands.cs` (the gate line and its coverage),
 
 ## 45. The Loot Policy Dial (and the Appeal Ledger's Poverty Half)
 
-Status: PART SHIPPED -- stage A, the dial and the shaper. The panel that sets
-it is stage B. Verified: 2026-08-14.
+Status: SHIPPED -- stage A (the dial and the shaper) and stage B (the panel,
+the opening beat, the barks and the wisp lines). Verified: 2026-08-15.
 
 **THE PLAYER HAD NO LEVER ON DROP VOLUME, and that is the whole case for a
 dial in a project whose habit is to make intent expressed by BUILDING.** Entry
@@ -10188,9 +10188,10 @@ live window against their live threshold, and the civilian multiplier **split
 into its deterrence and poverty halves**. The split is the point: a product
 alone cannot say which shaper pulled it down, and the two want opposite repairs.
 
-**ONE MEMBER IS DECLARED AND NOT YET CALLED, and it is named here rather than
+~~**ONE MEMBER IS DECLARED AND NOT YET CALLED, and it is named here rather than
 left for the sweep to launder.** `LootPolicy.TrySet` has no caller in stage A --
-the panel in stage B is its only one. Built before its caller on the precedent
+the panel in stage B is its only one.~~ **CLEARED: stage B shipped and
+`LootPolicyPanel.Choose` is that caller.** Built before its caller on the precedent
 canon 44 records for `InitialiseAsFactionBody`, itself on canon 42's precedent
 with `SetDenWorkSite`: the substrate ships first and is proved by a readout,
 because a behaviour-neutral delivery is the only one verifiable in isolation.
@@ -10202,10 +10203,103 @@ slot-mate `Monster_HobgoblinSpearman` does -- 42 of 44 monster prefabs author
 two entries each. That body stays poor at every band until the entries are
 authored.
 
+### Stage B -- the panel and the opening beat
+
+**THE BEAT FIRES ON THE FIRST PARTY TO RESOLVE, NOT TO LEAVE, and that is the
+one decision in stage B that is not cosmetic.** A party that is wiped never
+reaches the exit, so a beat keyed on departure would never fire against a
+dungeon that kills well -- and the band would sit at Unset paying nothing for
+the whole run with no prompt and no way for the player to connect the silence
+to a setting. Resolution is the trigger; the OUTCOME chooses only the dressing.
+Somebody walked out: they grumble (`BanterLines.ReactEmptyHanded`, spoken by a
+LIVE member) and the wisp answers the grumble. Nobody did: there is no one to
+complain, so the complaint line would be a lie, and a second wisp line says so.
+Both open the notice.
+
+**PAUSE-LEGAL, and the panel restores the player's prior pause state rather
+than its own.** Canon 39: pause permits DECIDING and forbids ACTING, and
+setting a band reaches no entity and no cell -- it writes a policy ledger,
+the same class as committing research or a trade. The beat pauses of its own
+accord and `pausedByPanel` records whether the panel was the one that stopped
+time, so a player who was already paused stays paused on dismissal. This
+follows `InspectorArrivalPopup` line for line rather than inventing a second
+pause dance.
+
+**DIM IS NOT LOCKED, and canon 40 is honoured rather than bent.** That entry's
+rule -- locked buttons are HIDDEN, not greyed -- is about a system the player
+has never heard of, where a grey button is both a spoiler and a dead click.
+Both halves of that reasoning fail here: the button is hidden until the beat
+fires, and once it appears the player has used the system, so it is not a
+spoiler; and the dimmed button still OPENS, showing the live band and the days
+remaining, so it is not a dead click. **Gate the action, never the opener.**
+
+**The dim state turns over with the DAY, so the row re-evaluates at dawn.**
+Every other gate in the row moves on an unlock event; this one moves on a
+clock. Without the dawn subscription a cooled-down button would stay grey until
+some unrelated unlock happened to repaint the row -- a bug that would look like
+the cooldown never expiring.
+
+**`TrySet` is the authority on refusal, not the button's `interactable` flag.**
+A UI state can drift out of sync with the clock; a refusal returned from the
+model cannot. The panel calls `TrySet` and re-reads, rather than trusting that
+a bright button means a permitted change.
+
+**`GameAction.ToggleLootPolicy` is appended and deliberately absent from
+`Defaults`.** Bindings persist under the enum NAME rather than its ordinal, so
+appending disturbs nothing. `PanelButtonRow` now suppresses the key label
+entirely when `KeyFor` returns `Key.None`, because the placeholder under a
+button reads as a binding that failed to load rather than as one never wanted.
+
+**Unset is not offered in the panel.** It is a starting condition, not a policy
+a player would choose. Bands are listed richest-first so the list reads as a
+ladder rather than an alphabetised set.
+
+**Old saves load with the beat ALREADY SPENT**, matching stage A healing them
+to Average. An established dungeon must not be stopped on day forty to be told
+its loot level was never set when it now has one.
+
+**Diagnostics extended rather than added.** `Print Loot Policy` now reports
+whether the beat is ARMED or SPENT, whether the row button is visible, and
+**whether the panel exists in the scene at all** -- a beat that fires with
+nothing to open is the exact silent failure this project designs against, and
+it is invisible from every other readout. `Force Loot Policy Prompt` re-arms
+and fires the beat, because a one-shot spent in a run's first minutes is
+otherwise testable once per save.
+
+**THE PANEL IS SCENE-AUTHORED, NOT CODE-BUILT, and the first attempt got this
+wrong.** It was built in code citing canon 40's reasoning, but that reasoning is
+about the BUTTON ROW: eight hand-wired buttons are eight silent failure modes,
+so the row builds itself. A panel is the opposite case -- it has to sit beside
+the panels already built and match them, and a palette hardcoded in a
+`SerializeField` block cannot be designed against anything. It now follows the
+house shape exactly (`panel` / `TitleLabel` / `StatusLabel` /
+`ScrollView -> Content` / `CloseButton` wired to `OnCloseClicked`, plus a row
+prefab whose children are found BY NAME at any depth via the same `FindDeep`
+`FactionPanel` uses). Copy is `[TextArea]` serialized rather than literal, so
+wording is editable without a build.
+
+**EDITOR STEPS, all silent if skipped.** Build the panel and its row prefab to
+the shape in the class doc (`NameLabel`, `MultiplierLabel`, `SelectedMarker`).
+Right-click `WispScript.asset` and choose **Fill Canon Lines**, or the two new
+ids resolve to null and `Speak` returns without a word. Author loot entries on
+`Monster_HobgoblinSharpshooter.prefab`. Optionally assign `iconLootPolicy` on
+`PanelButtonRow`; unassigned it falls back to a text label, as the row already
+does for the other eight.
+
+**`Print Loot Policy` reporting whether the panel exists in the scene stopped
+being defensive and became load-bearing when the panel moved to the scene.** An
+unbuilt panel means the opening beat fires, spends its one-shot, unlocks the row
+button and opens nothing -- and that failure is invisible from every other
+readout in the game.
+
 **Key files:** `Gameplay/LootPolicy.cs` (new), `Monster/DungeonMonster.cs`
 (the death roll), `Chests/DungeonChest.cs`, `Gameplay/DungeonAppealLedger.cs`
 (the poverty term), `Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`,
-`TESTING/Commands.cs` (`Print Loot Policy`).
+`TESTING/Commands.cs` (`Print Loot Policy`). Stage B adds
+`UI/LootPolicyPanel.cs` and `Gameplay/LootPolicyPrompt.cs` (both new),
+`Adventurer/AdventurerParty.cs` (the resolved hook),
+`Adventurer/BanterLines.cs`, `Data/Keybinds.cs`, `UI/PanelButtonRow.cs` and
+`Wisp/WispScript.cs`.
 
 
 # APPENDIX

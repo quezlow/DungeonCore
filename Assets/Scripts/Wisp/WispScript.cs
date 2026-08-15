@@ -93,6 +93,18 @@ public class WispScript : ScriptableObject
             // Reactive one-shots.
             new Line { id = "first_party", once = true,
                 text = "There. The first of them, come to see what stirs. Let the dungeon introduce itself." },
+            // The loot policy beat (canon 45). Two lines because the first
+            // party can resolve by leaving OR by dying, and a complaint line
+            // over a party that never got out would be a lie.
+            new Line { id = "loot_policy_unset", once = true,
+                text = "They leave with nothing, and they are not quiet about it. That is my "
+                     + "doing - I never asked you how open-handed you meant to be. Decide now. "
+                     + "Give too little and they stop coming; give too much and other eyes start counting." },
+            new Line { id = "loot_policy_unset_nosurvivors", once = true,
+                text = "None of them walked out, so none of them can complain. They would have, "
+                     + "though - there was nothing down there to take. Tell me how generous you "
+                     + "intend to be, before the next lot live long enough to talk." },
+
             new Line { id = "first_blood", once = true,
                 text = "First blood. The dark keeps the receipt - a little stronger now, and a little more known." },
             new Line { id = "first_monster_lost", once = true,

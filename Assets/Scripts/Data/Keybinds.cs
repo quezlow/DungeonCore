@@ -17,7 +17,11 @@ public enum GameAction
     // Appended. Bindings persist under PREF_PREFIX + the enum NAME, not its
     // ordinal, so appending can never disturb a binding the player has set.
     RecenterCamera,
-    Cast
+    Cast,
+    // Bound to Key.None on purpose: the loot policy notice is opened from the
+    // panel row and wants no key of its own -- it is read once a week, not in
+    // a fight. It IS registered in Defaults (see below) and is NOT in All.
+    ToggleLootPolicy
 }
 
 /// <summary>
@@ -55,6 +59,12 @@ public static class Keybinds
         { GameAction.ToggleResearch,      Key.R },
         { GameAction.RecenterCamera,      Key.Home },
         { GameAction.Cast,                Key.Q },
+        // Key.None is a real entry, not an omission. KeyFor indexes Defaults
+        // directly, so an action absent from this dictionary throws rather
+        // than reading as unbound -- and PanelButtonRow calls DisplayName for
+        // every button it draws. Registered here and deliberately NOT in All,
+        // which is what keeps it off the rebind screen.
+        { GameAction.ToggleLootPolicy,    Key.None },
     };
 
     private static readonly Dictionary<GameAction, Key> Current = new();
@@ -139,6 +149,11 @@ public static class Keybinds
     }
 
     public static Key DefaultFor(GameAction action) => Defaults[action];
+
+    /// <summary>False for an action intentionally left without a key. Exists so
+    /// callers can ask without importing UnityEngine.InputSystem purely to name
+    /// Key.None -- PanelButtonRow is the first such caller.</summary>
+    public static bool IsBound(GameAction action) => KeyFor(action) != Key.None;
 
     public static void Rebind(GameAction action, Key key)
     {

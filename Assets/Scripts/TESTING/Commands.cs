@@ -1189,12 +1189,27 @@ public class Commands : MonoBehaviour
                     + $"(deterrence x{DungeonAppealLedger.DeterrenceMultiplier:0.00}, "
                     + $"poverty x{DungeonAppealLedger.PovertyMultiplier:0.00}), "
                     + $"delve +{DungeonAppealLedger.DelverAppealBonus:0.0}");
+        sb.AppendLine($"  opening beat: {(LootPolicyPrompt.HasFired ? "SPENT" : "ARMED -- waiting on the first party to RESOLVE, by any outcome")}");
+        sb.AppendLine($"  row button: {(UnlockState.IsUnlocked(LootPolicyPrompt.UnlockKey) ? "visible" : "hidden until the beat fires")}"
+                    + $"; panel {(LootPolicyPanel.Instance != null ? "present" : "ABSENT FROM THE SCENE -- the beat will fire with nothing to open")}");
         sb.AppendLine("  READ THE TWO HALVES SEPARATELY: deterrence falling is a dungeon "
                     + "that kills too many, poverty falling is one that pays too little, "
                     + "and they want opposite repairs. Poverty reads 1.00 when NOBODY "
                     + "survived the window -- no survivors means no word about the pay, "
                     + "which is the guard that stops the shaper spiralling.");
         Debug.Log(sb.ToString());
+    }
+
+    /// <summary>Re-arm and fire the opening beat without waiting for a party.
+    /// The beat is a one-shot that a normal run spends in its first minutes,
+    /// so without this it is testable exactly once per save.</summary>
+    [ContextMenu("Force Loot Policy Prompt")]
+    void ForceLootPolicyPrompt()
+    {
+        LootPolicyPrompt.ResetForNewGame();
+        LootPolicyPrompt.NotifyPartyResolved(null, false);
+        Debug.Log("[Commands] loot policy beat re-armed and fired (no-survivor dressing). "
+                + "The panel should be open and the row button visible.");
     }
 
     [ContextMenu("Print Den Ledger")]

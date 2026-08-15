@@ -114,6 +114,11 @@ public class DungeonSaveData
     // same default a new game gets.
     public LootPolicySaveData lootPolicy;
 
+    // Whether the opening loot-policy beat has been spent. Additive; a null
+    // block loads as ALREADY SPENT so an established dungeon is not
+    // interrupted to be told its loot level was never set.
+    public LootPolicyPromptSaveData lootPolicyPrompt;
+
     public WildMonsterEventSaveData wildMonsterEvent;
 
     public DenSaveData dens;                              // den hoards and tiers (canon 42; additive, null on old saves)

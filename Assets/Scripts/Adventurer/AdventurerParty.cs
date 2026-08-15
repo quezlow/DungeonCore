@@ -280,6 +280,19 @@ public class AdventurerParty
 
         RecordRaidSummary();
 
+        // The opening beat. Keyed on RESOLUTION rather than on departure: a
+        // party that is wiped never reaches the exit, and a beat keyed on
+        // leaving would never fire against a dungeon that kills well -- which
+        // would leave the loot policy Unset and paying nothing for the whole
+        // run, with no prompt. anyLeftAlive only chooses the dressing.
+        bool anyLeftAlive = false;
+        for (int i = 0; i < Members.Count; i++)
+        {
+            var m = Members[i];
+            if (m != null && (m.escaped || m.breached)) { anyLeftAlive = true; break; }
+        }
+        LootPolicyPrompt.NotifyPartyResolved(this, anyLeftAlive);
+
         if (tracked) TrackedPartyRegistry.Instance?.RecordResolvedParty(this);
         TrackedPartyRegistry.Instance?.DeregisterActive(this);
         DungeonSaveController.Instance?.RequestAutosave();
