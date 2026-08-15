@@ -1212,6 +1212,92 @@ public class Commands : MonoBehaviour
                 + "The panel should be open and the row button visible.");
     }
 
+    /// <summary>THE DEEP OCCUPANT READOUT, shipping with per-stage counters in
+    /// its FIRST version because this arc has two systems whose failure modes
+    /// look identical from the outside: an occupant that never spawns and an
+    /// occupant that spawns and never reaches anything both read as zero.
+    ///
+    /// It answers the substrate question -- are the three exclusions actually
+    /// holding -- WITHOUT needing a floor that spawns one, by testing the rules
+    /// rather than the bodies. Stages D and E extend it with the stake counters
+    /// (how often the village actually FELL, not merely how often it was
+    /// reachable).</summary>
+    [ContextMenu("Print Deep Occupants")]
+    void PrintDeepOccupants()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] DEEP OCCUPANTS -- substrate check (stage C)");
+
+        // THE FULL HOSTILITY GRID IS NOT REPRINTED HERE. Print Tribe Matrix
+        // enumerates MonsterTribe and computes every cell off the same
+        // AreHostile, so appending Deep put it in that table automatically --
+        // duplicating it here would be a second tool to keep in step with the
+        // first. What that grid CANNOT say is which cells are load-bearing, so
+        // this asserts the one invariant a well-meaning edit could break.
+        int deep = (int)MonsterTribe.Deep;
+        // FactionId is unread on a Wild/Wild row; Dwarves is passed as the
+        // filler because Print Tribe Matrix passes it, and there is no
+        // FactionId.None to pass instead.
+        bool vsSelf = DungeonMonster.AreHostile(
+            MonsterAllegiance.Wild, deep, FactionId.Dwarves,
+            MonsterAllegiance.Wild, deep, FactionId.Dwarves);
+        bool vsCaveLife = DungeonMonster.AreHostile(
+            MonsterAllegiance.Wild, deep, FactionId.Dwarves,
+            MonsterAllegiance.Wild, (int)MonsterTribe.None, FactionId.Dwarves);
+        sb.AppendLine($"  INVARIANT -- occupants at peace with each other: {!vsSelf}"
+                    + (vsSelf ? "   !! BROKEN. Occupants that infight clear their own "
+                              + "floor and undo saturation, which is the only thing "
+                              + "floor index 4 is for."
+                              : "   (correct)"));
+        sb.AppendLine($"  INVARIANT -- hostile to ordinary cave life: {vsCaveLife}"
+                    + (vsCaveLife ? "   (correct)"
+                                  : "   !! BROKEN. They are meant to be hostile to everything "
+                                  + "but their own kind."));
+        sb.AppendLine("  full grid: run Print Tribe Matrix -- it enumerates MonsterTribe, so "
+                    + "Deep is in it automatically.");
+        bool rulesOk = !vsSelf && vsCaveLife;
+
+        // -- live bodies, if any stage has populated a floor yet
+        int live = 0, wildOk = 0, badTribe = 0, wouldUnlock = 0, wouldPayXp = 0;
+        // Same overload this file already uses for the den ledger sweep.
+        var all = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
+        for (int i = 0; i < all.Length; i++)
+        {
+            var m = all[i];
+            if (m == null || !m.IsDeepOccupant) continue;
+            live++;
+            if (m.IsWild) wildOk++;
+            if (m.Tribe != MonsterTribe.Deep) badTribe++;
+            // These two can only be non-zero if someone reintroduced the
+            // reward paths, which is exactly what the counters are for.
+            if (m.Definition != null && m.Definition.wildCoreXpOnDeath > 0f) wouldPayXp++;
+            if (m.Definition != null && BestiaryState.Instance != null
+                && BestiaryState.Instance.IsDiscovered(m.Definition.monsterName)) wouldUnlock++;
+        }
+
+        if (live == 0)
+            sb.AppendLine("  live bodies: NONE. Expected at stage C -- nothing spawns one yet. "
+                        + "A zero here is the substrate being neutral, not a fault; it becomes "
+                        + "a fault only once stage D populates floor index 4.");
+        else
+        {
+            sb.AppendLine($"  live bodies: {live}  (IsWild {wildOk}/{live}, wrong tribe {badTribe})");
+            sb.AppendLine($"    definitions still authoring core XP: {wouldPayXp} "
+                        + "(harmless -- Die() excludes them -- but it means the asset disagrees "
+                        + "with the intent, and a future reader may 'fix' the wrong side)");
+            sb.AppendLine($"    already in the bestiary by another route: {wouldUnlock} "
+                        + "(non-zero means the same definition is ALSO spawning as ordinary "
+                        + "cave life somewhere, which is allowed but worth knowing)");
+        }
+
+        sb.AppendLine("  NOT YET BUILT, and named so a zero is not mistaken for a pass: "
+                    + "no floor spawns an occupant (stage D), the village cannot fall "
+                    + "(stage E -- DwarvenVillageController re-raises every dead villager "
+                    + "unconditionally at dawn), and the vault-heart saturation hook is "
+                    + "unwired.");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Den Ledger")]
     void PrintDenLedger()
     {

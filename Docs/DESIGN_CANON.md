@@ -10302,6 +10302,118 @@ readout in the game.
 `Wisp/WispScript.cs`.
 
 
+
+## 46. The Deep Occupants -- Substrate (canon 42's nameless things)
+
+Status: PART SHIPPED -- stage C, the body kind and its three exclusions.
+Nothing spawns one yet; stage D populates floor index 4 and stage E floor
+index 3. Verified: 2026-08-15.
+
+**WHICH FLOOR CARRIES WHAT, because conflating them frames the whole arc
+wrongly.** Floor index 4 is the DEAD NETWORK and the `DeadCoreVault`: a
+CONDITION, not a den, saturation making it expensive to HOLD rather than
+dangerous to ENTER, entered by a god core in a sandbox after the Diamond 3
+trial. Floor index 3 is the DWARVEN VILLAGE, and its stake is the hold falling
+-- **recoverable, not permanent**: patrols check the fallen hold, one reports it
+clear, settlers arrive after a delay and it re-establishes on the same authored
+plan. Entry 42: the recovery is what makes the loss acceptable. Confirmed in
+source, not only in canon -- `AncientSiteProfile` floor entry 3 carries
+`reserveVillage`, entry 4 carries `reserveDeadCore`.
+
+**"HOSTILE TO EVERYTHING" COST NO RULE CHANGE.** The wild-versus-wild cell of
+`AreHostile` is `aTribe != bTribe`, so one appended `MonsterTribe.Deep` puts
+them at war with tribe-`None` cave life, with both dens, and -- through the rows
+above that cell -- with the dungeon and with faction bodies. **They stay at
+peace with each other, and that is load-bearing rather than incidental:**
+occupants that infought would clear their own floor and undo the only thing
+they exist to be.
+
+**Canon 44 rejected `MonsterTribe.Dwarf` and this is not that.** That value
+would have had no reader, because allegiance already carried dwarf-versus-kobold
+entirely. This one is read by the tribe rule itself, which is the only rule that
+can express what entry 42 asks for. Recorded here so the two are not mistaken
+for one another.
+
+**THE FLAG IS DERIVED FROM THE SPAWN PATH, NOT AUTHORED.** Canon 44 anticipated
+an authored suppression flag on `MonsterDefinition`; the decision is unchanged
+and only the mechanism moved. An authored bool can be forgotten on a new asset
+and the failure is SILENT -- a body quietly handing out bestiary entries for a
+thing that is meant to have no name. A spawn path cannot be forgotten. The same
+argument settles the tribe: `InitialiseAsDeepOccupant` marks the body and
+`ResolveEffectiveRegen` resolves the tribe from the flag, so one definition can
+serve as ordinary cave life elsewhere and as an occupant here with no authored
+field that could disagree.
+
+**AN ORDERING TRAP, caught before delivery and recorded so it is not
+reintroduced.** `tribeId` is assigned in `ResolveEffectiveRegen`, which runs
+from `Start()`. The initialisers run immediately after `Instantiate`, BEFORE
+`Start`. A tribe written in `InitialiseAsDeepOccupant` would therefore be
+silently overwritten one frame later by the definition's own value. The
+resolution lives at the single assignment site instead, and both places carry a
+comment saying so.
+
+**`IsWild` STAYS TRUE, and the exclusions are named individually.** A deep
+occupant should behave like cave life in every respect that is not about
+REWARD: the wander leash, the `MonsterAggression.Aggressive` default,
+`wildRegenMultiplier` and the `MonsterState.Wander` branch all key on `IsWild`
+and are all correct here. Only two things must not be inherited, and both are
+excluded in `Die()` by name rather than by making the body something other than
+wild.
+
+**Exclusion one -- the bestiary, which is canon 44's owed flag discharged.**
+`Die()` gates `BestiaryState.Discover` on `IsWild && dungeonDealtDamage`, and a
+deep occupant is genuinely wild, so it would have unlocked like any beast.
+
+**Exclusion two -- core XP, a faucet nobody had named.** Appendix A already
+records that the bestiary gate "covers the unlock only" and that
+`wildCoreXpOnDeath` fires regardless, guarded solely by `denFloorIndex < 0`
+because "a den is a SOURCE and a source that pays XP per body is an endless
+faucet the player can stand in front of". **Floor index 4 is a source by
+definition and `denFloorIndex` is -1 on these, so that guard let them straight
+through.** Authoring `wildCoreXpOnDeath` to 0 on the definitions would also have
+worked and is REJECTED: a zero in the Inspector is indistinguishable from a
+field nobody filled in, which is the ambiguous-default trap this project has
+already paid for once.
+
+**`RunStats.RecordWildMonsterSlain` is KEPT.** It is a statistic, not farmable
+value, and Appendix A's reasoning -- that those lines record that something died
+here -- covers it unchanged.
+
+**The other two of entry 42's three rules already hold BY CONSTRUCTION**, and
+are recorded in `Die()` so nobody re-solves them.
+`EntityStatusBars.SetMonsterLabel` hides the overhead label for anything plain,
+and an occupant can be neither veteran (`ServesDungeon`-gated) nor renamed
+(`CanRename` needs a spawner); `MonsterInfoPanel` reads
+`SpawnerSelectionController.Primary.SpawnedMonster`, so a spawnerless body can
+never be selected; and no `LootTable` component means no drop. Only the unlock
+needed a line of code.
+
+**NO CHAMBER ID, deliberately.** A chamber-wild body is a one-time clear by
+construction (`MarkChamberCleared`) -- "dangerous to ENTER", the exact opposite
+of the "expensive to HOLD" entry 42 asks for. Giving occupants a chamber would
+have quietly inverted the design.
+
+**Diagnostics in the first version.** `Print Deep Occupants` proves the three
+exclusions WITHOUT a floor that spawns one, by asking `AreHostile` the five
+questions rather than asserting the answers -- including the vs-each-other cell,
+which must read False. It then names what is NOT yet built, so a zero is not
+mistaken for a pass: no floor spawns an occupant, the village cannot fall
+(`DwarvenVillageController.HandleDayStarted` re-raises every dead villager
+unconditionally at dawn), and the vault-heart saturation hook is unwired.
+
+**THE VILLAGE FALL'S BLOCKER IS NOT MORTALITY.** Stage 1a-ii part 3 made
+villagers killable and canon 44 records the siege as needing "no new
+substrate", which is true of BODIES and not of the fall. `HandleDayStarted`
+re-raises every dead slot the following dawn: kill all eight and all eight
+return tomorrow. There is no fall state, no threshold and no replacement
+suppression. That unconditional dawn is stage E's actual work.
+
+**Key files:** `Monster/MonsterTribe.cs` (one appended value),
+`Monster/DungeonMonster.cs` (`isDeepOccupant`, `IsWild`,
+`InitialiseAsDeepOccupant`, the tribe resolution and the two `Die()`
+exclusions), `TESTING/Commands.cs` (`Print Deep Occupants`).
+
+
 # APPENDIX
 
 ## A. Content Registries and Authoring Keys

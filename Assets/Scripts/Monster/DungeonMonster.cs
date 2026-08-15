@@ -333,7 +333,31 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     // neither a wild chamber nor the invader flag, so it would read as one of
     // the PLAYER's monsters -- friendly to the dungeon it is robbing, and
     // counted as prey by the great predator.
-    public bool IsWild => wildChamberId >= 0 || isInvader || denFloorIndex >= 0;
+    public bool IsWild => wildChamberId >= 0 || isInvader || denFloorIndex >= 0
+                       || isDeepOccupant;
+
+    /// <summary>A deep occupant: one of the things a sealed, failed core goes
+    /// on making (canon 42). Set by InitialiseAsDeepOccupant and written
+    /// nowhere else.
+    ///
+    /// IT DELIBERATELY MAKES IsWild TRUE. A deep occupant behaves like cave
+    /// life in every respect that is not about REWARD -- the wander leash, the
+    /// Aggressive default at MonsterAggression, wildRegenMultiplier and the
+    /// MonsterState.Wander branch all key on IsWild, and every one of them is
+    /// correct for these. What it must NOT inherit is the bestiary unlock and
+    /// the core XP, and those are excluded in Die() by name rather than by
+    /// making the body something other than wild.
+    ///
+    /// DERIVED FROM THE SPAWN PATH, NEVER AUTHORED. Canon 44 anticipated an
+    /// authored suppression flag on MonsterDefinition; the decision is
+    /// unchanged and only the mechanism moved. An authored bool can be
+    /// forgotten on a new asset and the failure is silent -- a body that
+    /// quietly hands out bestiary entries for a thing that is supposed to have
+    /// no name. A spawn path cannot be forgotten, because nothing reaches this
+    /// state without going through it.</summary>
+    private bool isDeepOccupant;
+
+    public bool IsDeepOccupant => isDeepOccupant;
 
     // -- Allegiance (canon 44) ------------------------------------------
     //
@@ -485,6 +509,34 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentFloor = floor;
         wildDefinition = def;
         isInvader = true;
+    }
+
+    /// <summary>Sets this body up as a DEEP OCCUPANT (canon 42): one of the
+    /// nameless things a sealed, failed core goes on making. Call immediately
+    /// after Instantiate, before the monster's Start runs, exactly as
+    /// InitialiseWild and InitialiseInvader are called.
+    ///
+    /// NO CHAMBER ID. These are not a chamber to be cleared -- floor index 4
+    /// is a CONDITION, expensive to HOLD rather than dangerous to ENTER, and a
+    /// chamber-wild body is a one-time clear by construction
+    /// (MarkChamberCleared). Giving them a chamber would have quietly made
+    /// them the opposite of what canon asks for.
+    ///
+    /// BUILT BEFORE ITS CALLER, on the precedent canon 42 set with
+    /// SetDenWorkSite and canon 44 with InitialiseAsFactionBody. Nothing
+    /// spawns one yet; stages D and E do. The substrate ships first because a
+    /// behaviour-neutral delivery is the only one provable in isolation, and
+    /// Print Deep Occupants is what proves it.</summary>
+    public void InitialiseAsDeepOccupant(FloorRoot floor, MonsterDefinition def)
+    {
+        currentFloor = floor;
+        wildDefinition = def;
+        isDeepOccupant = true;
+        // tribeId is NOT set here on purpose. ResolveEffectiveRegen assigns it
+        // from the definition during Start(), which runs AFTER this, so a value
+        // written here would be silently overwritten one frame later. The
+        // resolution happens there instead -- see the branch beside that
+        // assignment.
     }
 
     /// <summary>Sets this body up as a FACTION BODY: a mortal creature of a
@@ -738,7 +790,14 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         currentStamina = maxStamina;
 
         targetPriority = def.targetPriority;
-        tribeId = (int)def.tribe;
+        // A deep occupant's tribe comes from WHAT SPAWNED IT, not from its
+        // definition, so one definition can serve as ordinary cave life
+        // elsewhere and as an occupant here without an authored field that
+        // could disagree with the spawn path. This is the single assignment
+        // site for tribeId and it runs in Start(), which is why
+        // InitialiseAsDeepOccupant does not set it: anything written there
+        // would be overwritten here.
+        tribeId = isDeepOccupant ? (int)MonsterTribe.Deep : (int)def.tribe;
     }
 
     // ── Stamina ──────────────────────────────────────────
@@ -2083,7 +2142,20 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         // wounded it; the XP and the run statistic below deliberately are NOT,
         // because those record that something died here while the bestiary
         // records what this dungeon put down.
-        if (IsWild && wildDefinition != null && dungeonDealtDamage)
+        // THE OWED FLAG, canon 44. A deep occupant is genuinely wild and would
+        // otherwise unlock here like any beast. It must not: canon 42 holds
+        // three rules for these -- no bestiary unlock, no name in UI, no loot
+        // table -- and the absence IS the characterisation. Everything else in
+        // the game wants something; these do not.
+        //
+        // The other two rules already hold by construction and are recorded
+        // here so nobody re-solves them: EntityStatusBars.SetMonsterLabel hides
+        // the overhead label for anything plain, and an occupant can be neither
+        // veteran (ServesDungeon-gated) nor renamed (CanRename needs a
+        // spawner); MonsterInfoPanel reads SpawnerSelectionController, so a
+        // spawnerless body can never be selected; and no LootTable component
+        // means no drop. Only the unlock needed a line.
+        if (IsWild && !isDeepOccupant && wildDefinition != null && dungeonDealtDamage)
             BestiaryState.Instance?.Discover(wildDefinition.monsterName);
 
         if (IsWild)
@@ -2096,7 +2168,19 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
             // front of. It also accrued passively, because adventurers fighting
             // goblins trip the same line. A den's reward is its hoard, paid once,
             // when it is cleared.
-            if (denFloorIndex < 0
+            // A SECOND FAUCET THE DEN GUARD DOES NOT REACH. The comment above
+            // is exactly right and stops one word short: a den is a source, and
+            // so is floor index 4. Saturation means the dead core keeps
+            // producing, so an occupant paying core XP per body is an endless
+            // faucet by the same argument -- but denFloorIndex is -1 on these,
+            // so that guard lets them straight through.
+            //
+            // Authoring wildCoreXpOnDeath to 0 on the definitions would also
+            // have worked and is rejected: a zero in the Inspector is
+            // indistinguishable from a field nobody filled in, which is the
+            // ambiguous-default trap this project has already paid for once.
+            // The exclusion is stated in code where it can be read.
+            if (denFloorIndex < 0 && !isDeepOccupant
                 && wildDefinition != null && wildDefinition.wildCoreXpOnDeath > 0f)
                 DungeonCore.Instance?.AddXP(wildDefinition.wildCoreXpOnDeath);
         }
