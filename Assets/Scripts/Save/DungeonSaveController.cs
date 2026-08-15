@@ -217,6 +217,7 @@ public class DungeonSaveController : MonoBehaviour
         DeadCoreSaturation.Instance?.ResetForNewGame();  // fresh dungeon, unbroken heart, quiet deep
         DwarvenPatrolController.ResetForNewGame();       // fresh dungeon, every guard on his feet
         DwarvenVillageController.ResetForNewGame();      // fresh dungeon, every villager likewise
+        DwarvenReliefController.ResetForNewGame();       // fresh dungeon, no relief owed
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
         WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
         DivineAudienceLedger.ResetForNewGame();          // fresh dungeon, the gods attend again
@@ -417,6 +418,11 @@ public class DungeonSaveController : MonoBehaviour
 
         if (DeadCoreSaturation.Instance != null)
             currentSave.deadCoreSaturation = DeadCoreSaturation.Instance.GetSaveData();
+
+        if (DwarvenVillageController.Instance != null)
+            currentSave.dwarvenHold = DwarvenVillageController.Instance.GetHoldSaveData();
+        if (DwarvenReliefController.Instance != null)
+            currentSave.dwarvenRelief = DwarvenReliefController.Instance.GetSaveData();
 
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
@@ -939,6 +945,8 @@ public class DungeonSaveController : MonoBehaviour
             LootPolicy.RestoreFromSave(currentSave.lootPolicy);
             LootPolicyPrompt.RestoreFromSave(currentSave.lootPolicyPrompt);
             DeadCoreSaturation.Instance?.RestoreFromSave(currentSave.deadCoreSaturation);
+            DwarvenVillageController.Instance?.RestoreHoldFromSave(currentSave.dwarvenHold);
+            DwarvenReliefController.Instance?.RestoreFromSave(currentSave.dwarvenRelief);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             WorldEventDirector.Instance?.RestoreFromSave(currentSave.worldEvents);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);

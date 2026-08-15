@@ -15775,7 +15775,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 94787324}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9987779
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -17209,6 +17209,7 @@ GameObject:
   - component: {fileID: 512393927}
   - component: {fileID: 512393929}
   - component: {fileID: 512393928}
+  - component: {fileID: 512393930}
   m_Layer: 0
   m_Name: DwarfController
   m_TagString: Untagged
@@ -17273,6 +17274,10 @@ MonoBehaviour:
   pauseSecondsMax: 10
   villageStanceRadius: 40
   wanderHopCells: 6
+  fortifyAfterSieges: 3
+  abandonAfterLosses: 3
+  standingOnAidedResettle: 10
+  recoveryPerDawn: 1
   villageNames:
   - The Hearth of the Deep
   - The Last Hearth
@@ -17349,6 +17354,28 @@ MonoBehaviour:
   vignetteZoom: 7
   spielSeconds: 5
   graceSeconds: 4
+--- !u!114 &512393930
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512393924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bbec53f0df4cf947ae5fc3fa60218e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DwarvenReliefController
+  reliefDelayDays: 3
+  retryDelayDays: 4
+  settlerDelayDays: 2
+  gateLegDays: 0.75
+  transitDays: 1
+  villageLegDays: 1.5
+  reliefSquadSize: 2
+  settlerCount: 4
+  columnSpacing: 1.6
+  fleeMultiplier: 1.5
 --- !u!1 &516620640
 GameObject:
   m_ObjectHideFlags: 0
@@ -19786,7 +19813,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 671949539}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9985743
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -60937,7 +60964,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1676934657}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.9989516
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

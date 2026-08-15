@@ -339,6 +339,13 @@ public class DwarvenCaravanController : MonoBehaviour
                         && DwarvenVillageController.Instance.Established);
         if (!met) return;
 
+        // Stage E2 (canon 46): NOBODY IS AT THE MARKET. Departures pause
+        // while the hold lies fallen and stop for good once the Holds
+        // abandon it -- the abandonment's price: a permanently abandoned
+        // hold ends a robbable income source.
+        var hold = DwarvenVillageController.Instance;
+        if (hold != null && (hold.Fallen || hold.Abandoned)) return;
+
         if (!BuildRoutes()) return;
 
         cargo = Random.Range(cargoMin, cargoMax + 1);
@@ -357,63 +364,23 @@ public class DwarvenCaravanController : MonoBehaviour
         return n;
     }
 
-    /// <summary>Finds the two floors, builds both graphs, pairs the rim ends by
-    /// bearing, and lays the outbound cell runs. Deterministic for a given
-    /// world, so nothing about the route needs a save field.</summary>
+    /// <summary>Route derivation, now shared: DwarvenJourneyRoutes.Build is
+    /// the extracted body of this method (stage E2 -- the relief cycle walks
+    /// the same two floors and must not grow a drifting copy). Deterministic
+    /// for a given world, so nothing about the route needs a save field.</summary>
     private bool BuildRoutes()
     {
         gateFloor = villageFloor = null;
-        var fm = FloorManager.Instance;
-        if (fm == null) return false;
-        foreach (var floor in fm.AllFloors)
-        {
-            var features = floor?.FeatureGenerator;
-            if (features == null || !features.HasGenerated) continue;
-            if (features.GetOutpostSite() != null) gateFloor = floor;
-            if (features.GetVillageSite() != null) villageFloor = floor;
-        }
-        if (gateFloor == null || villageFloor == null) return false;
-
-        gateGraph = DeepRoadGraph.Build(gateFloor.FeatureGenerator.FeatureData.roads);
-        villageGraph = DeepRoadGraph.Build(villageFloor.FeatureGenerator.FeatureData.roads);
-
-        var gateRims = DeepRoadGraph.RimEnds(gateGraph);
-        var villageRims = DeepRoadGraph.RimEnds(villageGraph);
-        if (gateRims.Count == 0 || villageRims.Count == 0) return false;
-
-        // Bearing-matched pair: the wagon leaves and arrives on "the same" road.
-        float best = float.MaxValue;
-        DeepRoadGraph.RimEnd gateRim = gateRims[0], villageRim = villageRims[0];
-        foreach (var a in gateRims)
-            foreach (var b in villageRims)
-            {
-                float d = DeepRoadGraph.BearingDelta(a.bearingDegrees, b.bearingDegrees);
-                if (d < best) { best = d; gateRim = a; villageRim = b; }
-            }
-
-        var outpost = gateFloor.FeatureGenerator.GetOutpostSite();
-        var village = villageFloor.FeatureGenerator.GetVillageSite();
-        if (outpost == null || village == null) return false;
-
-        if (!DeepRoadGraph.NearestWalkCell(gateGraph, outpost.anchorCell.ToVector3Int(),
-                out int oRail, out int oIdx)) return false;
-        if (!DeepRoadGraph.NearestWalkCell(villageGraph, village.anchorCell.ToVector3Int(),
-                out int vRail, out int vIdx)) return false;
-
-        int gRimIdx = TerminusIndex(gateGraph, gateRim);
-        int vRimIdx = TerminusIndex(villageGraph, villageRim);
-        gateRimRail = gateRim.railIndex; gateRimIndex = gRimIdx;
-        villageRimRail = villageRim.railIndex; villageRimIndex = vRimIdx;
-
-        gateRouteOut = DeepRoadGraph.Route(gateGraph, oRail, oIdx, gateRim.railIndex, gRimIdx);
-        villageRouteOut = DeepRoadGraph.Route(villageGraph, villageRim.railIndex, vRimIdx, vRail, vIdx);
-        return gateRouteOut.Count > 1 && villageRouteOut.Count > 1;
-    }
-
-    private static int TerminusIndex(DeepRoadGraph.Graph g, DeepRoadGraph.RimEnd rim)
-    {
-        var rail = g.rails[rim.railIndex];
-        return rail.walk[0] == rim.walkTerminus ? 0 : rail.walk.Count - 1;
+        if (!DwarvenJourneyRoutes.Build(out var r)) return false;
+        gateFloor = r.gateFloor;
+        villageFloor = r.villageFloor;
+        gateGraph = r.gateGraph;
+        villageGraph = r.villageGraph;
+        gateRimRail = r.gateRimRail; gateRimIndex = r.gateRimIndex;
+        villageRimRail = r.villageRimRail; villageRimIndex = r.villageRimIndex;
+        gateRouteOut = r.gateRouteOut;
+        villageRouteOut = r.villageRouteOut;
+        return true;
     }
 
     // -- Legs ----------------------------------------------------------------

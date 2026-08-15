@@ -10319,9 +10319,10 @@ readout in the game.
 
 ## 46. The Deep Occupants -- Substrate (canon 42's nameless things)
 
-Status: PART SHIPPED -- stage C (the body kind and its three exclusions) and
-stage D (floor index 4 saturation and the vault-heart escalation). Stage E
-carries floor index 3. Verified: 2026-08-15.
+Status: SHIPPED -- stage C (the body kind and its three exclusions), stage D
+(floor index 4 saturation and the vault-heart escalation), stage E1b (the
+floor index 3 incursion, the aggregation and the fall) and stage E2 (the
+recovery: relief, settlers, fortify and abandon). Verified: 2026-08-15.
 
 **WHICH FLOOR CARRIES WHAT, because conflating them frames the whole arc
 wrongly.** Floor index 4 is the DEAD NETWORK and the `DeadCoreVault`: a
@@ -10460,8 +10461,10 @@ whole feature is inert.
 sweep to launder.** E2's settler caravan is its only one. Built before its
 caller on the same precedent as `InitialiseAsDeepOccupant` and
 `InitialiseAsFactionBody`, and public now so the fall has a visible inverse
-rather than reading to the next person as a one-way trapdoor. If E2 does not
-land, this is the member to delete.
+rather than reading to the next person as a one-way trapdoor. ~~If E2 does not
+land, this is the member to delete.~~ E2 landed and is the caller; the
+signature gained the arriving settler count -- `Reestablish(int arrivedCount)`
+-- because entry 42's reduced-count default needs to know how many walked in.
 
 **`TimesFallen` is recorded now although E2 is what reads it.** A counter added
 later would start from zero on an existing save and forgive every loss already
@@ -10505,6 +10508,137 @@ substrate", which is true of BODIES and not of the fall. `HandleDayStarted`
 re-raises every dead slot the following dawn: kill all eight and all eight
 return tomorrow. There is no fall state, no threshold and no replacement
 suppression. That unconditional dawn is stage E's actual work.
+
+### Stage E2 -- floor index 3: the recovery (relief, settlers, fortify, abandon)
+
+**THE CYCLE IS THREE SEQUENTIAL GATES, each a journey on the caravan's own
+model** -- a leg on the gatehouse floor, a calendar transit, a leg on the
+village floor, because no walker crosses floors and the caravan already proved
+the shape. A RELIEF PATROL (2 guards, the road-pair size: two guards beat four
+kobolds comfortably, so an interception means something real stood in the
+road) departs `reliefDelayDays` after the fall. The check is not abstract:
+**it fails if the patrol is attacked on the way** -- any member damaged or
+killed on either walked leg. Kobolds on the gate floor count exactly as the
+deep does; the rule stays flat, and keeping the whole road clear is the
+player's lever. If it arrives unopposed, SETTLERS (4, entry 42's
+reduced-count default) muster for `settlerDelayDays` and walk the same road;
+arrival calls `Reestablish(survivors)`. Settlers fail only by a TOTAL WIPE --
+a mauled column that arrives resettles at survivor count -- because a settler
+caravan that turned back at the first wound would make the relief check
+meaningless.
+
+**A LOSS IS THE FALL AND EACH FAILED ATTEMPT AFTER IT.** The recorded default
+("3 losses with no intervening recovery") could not count falls alone -- a
+fallen hold cannot fall again -- so the unit is: the fall is loss one, each
+intercepted relief and each wiped settler caravan is another, and a completed
+resettle resets the count to zero. At `abandonAfterLosses` the Holds ABANDON
+the hold: no more attempts, and **the trade caravan stops for good** --
+`DwarvenCaravanController.TryDepart` now refuses while the hold is `Fallen`
+(nobody at the market) and forever once `Abandoned`, which is the price that
+makes declining to defend a choice rather than a fail state.
+
+**THE SIEGE HAS AN END NOW, because both thresholds needed one.**
+`villageFound` used to latch forever; it resets when the drawn count reaches
+zero. Hold standing: a SURVIVED SIEGE, counted toward fortify. Hold fallen:
+the ruin is clear, which is what lets a relief pass. While the hold lies
+fallen the drawn bodies KEEP their lane leash and squat the ruin -- killing
+them is the lever made physical -- but no NEW find latches on a fallen,
+fortified or abandoned hold: there is nothing there to besiege.
+
+**THE PROBE MOVED OFF THE DAWN -- a mechanism amendment, decision unchanged.**
+The find-and-draw sampled body positions once per dawn, and occupant fights
+resolve in minutes: a siege could be fought and won between two dawns without
+ever latching, which would have starved the survived-siege counter that
+fortify reads. The probe now runs on a 2-second throttle in
+`DeadCoreSaturation.Update`, suppressed at the climax exactly as the dawn
+tick is. "One finds the hold and all are drawn" is unchanged; only the
+sampling moved.
+
+**FORTIFY lives on the village controller** -- `Fortified`, at
+`fortifyAfterSieges` survived sieges, and **a fall resets the progress**: a
+hold that fell was not on its way to not needing anyone. Fortified, the draw
+skips the hold for good; the road roamers remain as texture. The hold gains
+no combat authoring -- fortification is the aggregation ending, not a
+garrison, which keeps canon 44's no-standing-patrol-at-the-village ruling
+intact.
+
+**WHAT THE RECOVERY PAYS, and the translation it needed.** Entry 42's default
+-- the clearing paying as the kobold clearing does -- was recorded against a
+den the incursion no longer has, and occupants hold no hoard to return. The
+excavator clear's payment is +10 Dwarven standing
+(`DenController.dwarvenStandingOnClear`); the resettle pays the same figure
+(`standingOnAidedResettle`), **only when the player killed at least one drawn
+hostile since the fall**, attributed through `DungeonDealtDamage` on a death
+hook every incursion body now carries. An unaided recovery pays nothing: the
+Holds owe a bystander no thanks. Entry 42's "standing recovering on
+resettle" is discharged by the same grant.
+
+**RECOVERY PACING: walkers return at reduced count and RECOVER.** The dawn
+re-raise, uncapped, would have restored the full roster one dawn after the
+resettle and made the reduced count a one-dawn fiction. While `Recovering`,
+the dawn loop raises `recoveryPerDawn` (1) villager per dawn and clears the
+flag at full strength; outside recovery the loop is untouched.
+
+**THE FALL STATE IS PERSISTED NOW, correcting a stage E1b gap.** `Fallen`,
+`FallenOnDay` and `TimesFallen` were session-only: a load over a fallen hold
+re-derived the fall at the next dawn with a fresh `FallenOnDay` (resetting
+the relief timer) and `TimesFallen` restarting from zero -- the exact
+forgive-every-loss trap the counter was recorded to avoid.
+`DwarvenHoldSaveData` and `DwarvenReliefSaveData` carry the ledger and the
+cycle; both are additive and null-tolerant, so an old save loads with the
+hold standing and no journey in flight, which is what it believed anyway.
+
+**BODIES ARE STILL NOT PERSISTED, and two consequences are accepted rather
+than hidden.** A load mid-siege clears the squatters and `villageFound` with
+them (stage D's own no-save-format-for-bodies ruling, unchanged), so a
+save-and-load can open a road the player did not clear; and a relief
+member's wounds vanish on load, because his body respawns fresh. Both are
+the price of that ruling and are recorded here so nobody files them as
+faults.
+
+**THE ROUTE DERIVATION IS EXTRACTED, NOT COPIED.**
+`DwarvenJourneyRoutes.Build` is the verbatim body of the caravan's
+`BuildRoutes` (floors by site, both graphs, bearing-paired rims, outbound
+runs); the caravan now delegates to it, and its private `TerminusIndex`
+moved with the derivation rather than being left as an orphan. The relief
+journeys ride the caravan's whole model -- authored days, day-phase walking,
+calendar transits, the clock-is-the-save rule, flee collapsing to Idle on
+load. The retreat after an interception is the traversed stretch reversed at
+a frightened pace, a recorded simplification of the caravan's
+refuge-weighing: a relief patrol's refuge IS where it came from, on both
+legs.
+
+**THE CYCLE STANDS DOWN AT THE CLIMAX like the rest of the crisis.** The
+departure gate honours `SuppressMidGameThreats`; an in-flight journey
+completes harmlessly, because aborting it would strand bodies mid-road. A
+hold fallen when the climax fires therefore stays fallen: accepted, since
+the sandbox that follows has silenced the thing that felled it.
+
+**RELIEF IGNORES THE DWARVEN TIER, unlike the caravan, on purpose.** Wagons
+stop when the Holds are hostile because wagons are robbable; a relief patrol
+is the Holds' own business and marches regardless of what they think of the
+player.
+
+**Diagnostics in the first version, because the three gates fail identically
+from outside.** A hold that has not come back is a patrol that never set
+out, a patrol that never arrived, or settlers that never arrived. `Print
+Deep Occupants` counts each separately -- reliefs set out / INTERCEPTED /
+arrived, settler caravans set out / WIPED / arrived, resettles completed --
+beside the cycle's current stage, the next attempt day, survived sieges and
+losses against their thresholds (read from the live fields, never
+transcribed), `Recovering` and the player-helped flag. `Force Relief Now`
+skips the schedule through the real departure gates; `Advance Relief Phase`
+completes the current clock so all three gates are testable without real
+days.
+
+**Stage E2 files:** `Floors/DwarvenReliefController.cs` (new),
+`Floors/DwarvenJourneyRoutes.cs` (new), `Floors/DwarvenVillageController.cs`
+(the ledger, `Reestablish(int)`, recovery pacing, `DwarvenHoldSaveData`),
+`Floors/DwarvenCaravanController.cs` (routes extracted; the fallen/abandoned
+gate), `Gameplay/DeadCoreSaturation.cs` (the throttled probe, the siege end,
+the death hook), `Wisp/WispScript.cs` (three lines; REGENERATE THE ASSET --
+the silent-failure editor step), `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs`, `TESTING/Commands.cs`.
 
 ### Stage D -- floor index 4 saturation
 
@@ -10662,7 +10796,8 @@ exclusions), `TESTING/Commands.cs` (`Print Deep Occupants`). Stage D adds
 `Gameplay/DeadCoreSaturation.cs` (new),
 `Floors/TerrainFeatureGenerator.cs` (`GetVaultSite`),
 `Gameplay/HolyGroundLedger.cs` (the escalation call),
-`Save/DungeonSaveData.cs` and `Save/DungeonSaveController.cs`.
+`Save/DungeonSaveData.cs` and `Save/DungeonSaveController.cs`. Stage E2's
+files are listed at the end of its own section above.
 
 
 # APPENDIX

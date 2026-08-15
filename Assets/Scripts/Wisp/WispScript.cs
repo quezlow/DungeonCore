@@ -101,6 +101,20 @@ public class WispScript : ScriptableObject
                      + "took it, and the lanes are empty. They were not yours - but they were "
                      + "something, and now there is one less something between you and what "
                      + "made that silence." },
+            new Line { id = "village_resettled", once = false,
+                text = "Settlers on the deep road, and hearthsmoke where there was "
+                     + "silence. The Holds do not give up what they have named. "
+                     + "Remember that, when you are deciding what to let live down "
+                     + "there." },
+            new Line { id = "village_abandoned", once = true,
+                text = "Again and again the Holds reached for that hearth, and each "
+                     + "time the dark closed over their hands. They have stopped "
+                     + "reaching. The lanes stay empty now, and the wagons stay "
+                     + "home." },
+            new Line { id = "village_fortified", once = true,
+                text = "The hold has bled enough to learn. Walls where there were "
+                     + "doorways, watchers where there were children. Whatever rises "
+                     + "out of the deep now will find it already answered." },
 
             new Line { id = "loot_policy_unset", once = true,
                 text = "They leave with nothing, and they are not quiet about it. That is my "

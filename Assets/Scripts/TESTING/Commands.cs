@@ -1272,6 +1272,28 @@ public class Commands : MonoBehaviour
         Debug.Log("[Commands] Force Village Fall: " + v.ForceKillVillagers());
     }
 
+    /// <summary>Skip the schedule: the next relief departs now, through the
+    /// REAL departure gates -- a fallen hold, definitions, buildable
+    /// routes.</summary>
+    [ContextMenu("Force Relief Now")]
+    void ForceReliefNow()
+    {
+        var r = DwarvenReliefController.Instance;
+        if (r == null) { Debug.Log("[Commands] no DwarvenReliefController in the scene."); return; }
+        Debug.Log("[Commands] Force Relief Now: " + r.ForceReliefNow());
+    }
+
+    /// <summary>Complete the recovery cycle's current clock -- leg, transit
+    /// or muster -- so all three gates can be tested without real days.
+    /// Walking legs still need the DAY phase to tick over the line.</summary>
+    [ContextMenu("Advance Relief Phase")]
+    void AdvanceReliefPhase()
+    {
+        var r = DwarvenReliefController.Instance;
+        if (r == null) { Debug.Log("[Commands] no DwarvenReliefController in the scene."); return; }
+        Debug.Log("[Commands] Advance Relief Phase: " + r.ForceAdvancePhase());
+    }
+
     [ContextMenu("Print Deep Occupants")]
     void PrintDeepOccupants()
     {
@@ -1415,10 +1437,48 @@ public class Commands : MonoBehaviour
             }
         }
 
-        sb.AppendLine("  NOT YET BUILT (stage E2), named so a zero is not mistaken for a pass: "
-                    + "a fallen hold never recovers -- no relief patrol, no settler caravan, "
-                    + "no resettle -- and nothing yet ends the crisis short of the climax "
-                    + "stand-down.");
+        // -- stage E2: the recovery cycle
+        var relief = DwarvenReliefController.Instance;
+        if (relief == null)
+            sb.AppendLine("  RECOVERY: no DwarvenReliefController in the scene. A fallen "
+                        + "hold never comes back -- add the component to the persistent "
+                        + "manager object beside DwarvenVillageController.");
+        else
+        {
+            sb.AppendLine($"  RECOVERY cycle stage: {relief.StageName}"
+                        + (relief.Active ? ""
+                           : "   next attempt day: " + (relief.NextAttemptDay < 0
+                                 ? "(derives from the fall)"
+                                 : relief.NextAttemptDay.ToString())));
+            sb.AppendLine($"    relief patrols -- set out {relief.ReliefSetOut}, "
+                        + $"INTERCEPTED {relief.ReliefIntercepted}, "
+                        + $"arrived unopposed {relief.ReliefArrived}");
+            sb.AppendLine($"    settler caravans -- set out {relief.SettlersSetOut}, "
+                        + $"WIPED {relief.SettlersWiped}, arrived {relief.SettlersArrived}");
+            sb.AppendLine($"    resettles completed: {relief.ResettlesCompleted}");
+            sb.AppendLine("    THE THREE GATES FAIL IDENTICALLY FROM OUTSIDE. A hold that "
+                        + "has not come back is a patrol that never set out (schedule or "
+                        + "definitions), one that never arrived (intercepted -- clear the "
+                        + "road), or settlers that never arrived (wiped). The rows above "
+                        + "say which.");
+            var hold = DwarvenVillageController.Instance;
+            if (hold != null)
+            {
+                sb.AppendLine($"    survived sieges: {hold.SurvivedSieges} of "
+                            + $"{hold.FortifyAfterSieges} toward FORTIFIED"
+                            + (hold.Fortified
+                               ? "   -- FORTIFIED: the draw skips the hold for good"
+                               : ""));
+                sb.AppendLine($"    losses since last resettle: {hold.ConsecutiveLosses} of "
+                            + $"{hold.AbandonAfterLosses} toward ABANDONED"
+                            + (hold.Abandoned
+                               ? "   -- ABANDONED: no more attempts, and the trade caravan "
+                                 + "is stopped for good"
+                               : ""));
+                sb.AppendLine($"    recovering: {hold.Recovering}   "
+                            + $"player helped since the fall: {hold.PlayerHelpedSinceFall}");
+            }
+        }
         Debug.Log(sb.ToString());
     }
 

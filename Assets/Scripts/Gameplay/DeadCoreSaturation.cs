@@ -177,6 +177,26 @@ public class DeadCoreSaturation : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
+    private float probeAt;
+
+    /// <summary>The village probe runs THROTTLED IN UPDATE rather than at
+    /// dawn -- a mechanism amendment folded into stage E2. Occupant fights
+    /// resolve in minutes, and a dawn-only sample of body positions missed
+    /// nearly all of them: a body could enter the lanes, fight and die
+    /// between two dawns without the aggregation ever latching -- and the
+    /// survived-siege counter that fortify reads needs the latch. The
+    /// decision (one finds the hold and all are drawn) is unchanged; only
+    /// the sampling moved. Suppressed at the climax exactly as the dawn
+    /// tick is.</summary>
+    private void Update()
+    {
+        if (Time.time < probeAt) return;
+        probeAt = Time.time + 2f;
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return;
+        ProbeVillage();
+    }
+
     /// <summary>Breaking the vault heart escalates the floor, permanently.
     /// Called from HolyGroundLedger's existing isVault branch.
     ///
@@ -187,6 +207,32 @@ public class DeadCoreSaturation : MonoBehaviour
     public void NotifyVaultHeartBroken()
     {
         heartBroken = true;
+    }
+
+    /// <summary>The hold has resettled (stage E2). The next siege needs a
+    /// fresh find; without this the first probe after a resettle would
+    /// re-leash every roamer straight onto the new settlers.</summary>
+    public void NotifyVillageResettled()
+    {
+        villageFound = false;
+    }
+
+    /// <summary>Every body that joins the floor 3 incursion goes through
+    /// here, from BOTH spawn paths, so the death hook cannot be forgotten
+    /// on one of them. The hook is stage E2's attribution: a drawn hostile
+    /// dying TO THE DUNGEON while the hold lies fallen is what "the player
+    /// helped" means, and the aided-resettle standing rides it.</summary>
+    private void AddIncursionBody(DungeonMonster body)
+    {
+        incursion.Add(body);
+        body.OnDied += HandleIncursionDied;
+    }
+
+    private void HandleIncursionDied(DungeonMonster body)
+    {
+        if (body == null || !body.DungeonDealtDamage) return;
+        var village = DwarvenVillageController.Instance;
+        if (village != null && village.Fallen) village.NotifyPlayerHelped();
     }
 
     // -- the tick ------------------------------------------------------
@@ -368,7 +414,7 @@ public class DeadCoreSaturation : MonoBehaviour
         body.InitialiseAsDeepOccupant(floor, def, roam);
         ApplyEntryTint(body, entry);
 
-        if (floor.FloorIndex == IncursionFloorIndex) incursion.Add(body);
+        if (floor.FloorIndex == IncursionFloorIndex) AddIncursionBody(body);
         else live.Add(body);
 
         return $"raised {def.monsterName}"
@@ -435,7 +481,8 @@ public class DeadCoreSaturation : MonoBehaviour
         var features = floor.FeatureGenerator;
         if (influence == null || features == null) return;
 
-        CheckVillageReached(influence);
+        // The village probe moved to the throttled Update (stage E2); the
+        // dawn tick now only tops the incursion up.
 
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         if (day % Mathf.Max(1, incursionEveryDays) != 0) return;
@@ -525,7 +572,7 @@ public class DeadCoreSaturation : MonoBehaviour
         body.InitialiseAsDeepOccupant(floor, def, roam);
         ApplyEntryTint(body, entry);
 
-        incursion.Add(body);
+        AddIncursionBody(body);
         incursionSpawned++;
     }
 
@@ -542,22 +589,48 @@ public class DeadCoreSaturation : MonoBehaviour
         return roam;
     }
 
-    /// <summary>Has one of them found the hold? If so, draw the rest.
+    /// <summary>Has one of them found the hold? If so, draw the rest --
+    /// and when the last drawn body dies, resolve the siege.
     ///
     /// ONE FINDS IT AND ALL COME, which is the design and also the only version
     /// that reads as a siege: six bodies wandering in one at a time is six
     /// skirmishes the villagers win. The draw is a RE-LEASH, so the shipped
-    /// wander does the walking.</summary>
-    private void CheckVillageReached(TileInfluenceManager influence)
+    /// wander does the walking.
+    ///
+    /// THE SIEGE HAS AN END NOW (stage E2), because both of the hold's
+    /// thresholds needed one. villageFound used to latch forever; it resets
+    /// when the drawn count reaches zero. Hold standing: a SURVIVED siege,
+    /// counted toward fortify. Hold fallen: the ruin is clear, which is what
+    /// lets a relief patrol pass. While the hold lies FALLEN the drawn
+    /// bodies KEEP their lane leash and squat the ruin -- killing them is
+    /// the player's lever made physical -- but no NEW find latches on a
+    /// fallen, fortified or abandoned hold: there is nothing there to
+    /// besiege.</summary>
+    private void ProbeVillage()
     {
         var village = DwarvenVillageController.Instance;
-        if (village == null || !village.Established || incursion.Count == 0) return;
+        if (village == null || !village.Established) return;
+
+        PruneIncursion();
+
+        if (villageFound && incursion.Count == 0)
+        {
+            villageFound = false;
+            if (!village.Fallen) village.NotifySiegeSurvived();
+            return;
+        }
+        if (incursion.Count == 0) return;
+
+        var floor = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloor(IncursionFloorIndex) : null;
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (influence == null) return;
 
         var lanes = new List<Vector3Int>();
         foreach (var c in village.LaneCells) lanes.Add(c);
         if (lanes.Count == 0) return;
 
-        if (!villageFound)
+        if (!villageFound && !village.Fallen && !village.Fortified && !village.Abandoned)
         {
             var laneSet = new HashSet<Vector3Int>(lanes);
             for (int i = 0; i < incursion.Count; i++)

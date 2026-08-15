@@ -84,6 +84,26 @@ public class DwarvenVillageController : MonoBehaviour
     [Tooltip("Chebyshev radius, in cells, of one wander hop.")]
     [SerializeField, Min(1)] private int wanderHopCells = 6;
 
+    [Header("The recovery (stage E2)")]
+    [Tooltip("Survived sieges before the hold FORTIFIES and the deep stops "
+           + "besieging it. A siege is survived when every drawn hostile is "
+           + "dead and the hold still stands. A fall resets the progress.")]
+    [SerializeField, Min(1)] private int fortifyAfterSieges = 3;
+    [Tooltip("Losses before the Holds ABANDON the hold for good. The fall is "
+           + "loss one; each intercepted relief patrol and each wiped settler "
+           + "caravan is another; a completed resettle resets the count.")]
+    [SerializeField, Min(1)] private int abandonAfterLosses = 3;
+    [Tooltip("Dwarven standing paid when the hold resettles AND the player "
+           + "killed at least one drawn hostile since the fall -- the excavator "
+           + "clear's own thank-you figure. An unaided recovery pays nothing: "
+           + "the Holds owe a bystander no thanks.")]
+    [SerializeField, Min(0f)] private float standingOnAidedResettle = 10f;
+    [Tooltip("Villagers raised per dawn while the hold RECOVERS after a "
+           + "resettle. Entry 42: walkers return at reduced count and recover "
+           + "-- an overnight full roster would make the reduced count a "
+           + "one-dawn fiction.")]
+    [SerializeField, Min(1)] private int recoveryPerDawn = 1;
+
     [Header("Names")]
     [Tooltip("The settlement's name is rolled from this roster, seeded from the " +
              "floor seed and the site id -- deterministic, so it re-derives " +
@@ -155,6 +175,44 @@ public class DwarvenVillageController : MonoBehaviour
     /// already suffered.</summary>
     public int TimesFallen { get; private set; }
 
+    /// <summary>Sieges thrown back since the last fall (stage E2). At
+    /// fortifyAfterSieges the hold FORTIFIES and the draw skips it for
+    /// good. A fall resets the progress: a hold that fell was not on its
+    /// way to not needing anyone.</summary>
+    public int SurvivedSieges { get; private set; }
+
+    /// <summary>Losses since the last completed resettle (stage E2): the
+    /// fall is loss one, each failed recovery attempt is another. At
+    /// abandonAfterLosses the Holds write the hold off.</summary>
+    public int ConsecutiveLosses { get; private set; }
+
+    /// <summary>The hold no longer needs anyone: the deep stops besieging
+    /// it, permanently (stage E2).</summary>
+    public bool Fortified { get; private set; }
+
+    /// <summary>The Holds have written the hold off: no more relief, no
+    /// more settlers, and the trade caravan stops for good (stage E2).</summary>
+    public bool Abandoned { get; private set; }
+
+    /// <summary>A drawn hostile has died to the dungeon since the fall --
+    /// what "the player helped" MEANS; the aided-resettle standing rides
+    /// it (stage E2).</summary>
+    public bool PlayerHelpedSinceFall { get; private set; }
+
+    /// <summary>Mending after a resettle: the dawn re-raise is capped at
+    /// recoveryPerDawn until the roster is full (stage E2).</summary>
+    public bool Recovering { get; private set; }
+
+    /// <summary>Live thresholds for the readout -- never transcribed into
+    /// Commands, the gateBeatHalfCells lesson.</summary>
+    public int FortifyAfterSieges => fortifyAfterSieges;
+    public int AbandonAfterLosses => abandonAfterLosses;
+
+    /// <summary>For the relief cycle's settlers: the same body and the
+    /// same faces as the hold's own (stage E2).</summary>
+    public MonsterDefinition VillagerDefinition => villagerDefinition;
+    public IReadOnlyList<Sprite> VillagerSpriteDeck => villagerSprites;
+
     /// <summary>Lane cells, for the aggregation probe. The same set StanceTick
     /// already polls -- canon 44's "no new geometry" holds here too.</summary>
     public IEnumerable<Vector3Int> LaneCells => laneCells;
@@ -179,13 +237,51 @@ public class DwarvenVillageController : MonoBehaviour
              + "same check a real siege uses -- advance a day to see it.";
     }
 
-    /// <summary>Re-raise the hold. E2 calls this when the settlers arrive; it
-    /// is public now so the fall has a visible inverse rather than looking
-    /// like a one-way trapdoor to the next reader.</summary>
-    public void Reestablish()
+    /// <summary>Re-raise the hold: the settlers have arrived (stage E2).
+    /// The signature gained the arriving count because entry 42's default
+    /// is a REDUCED return -- however many walked in is however many rise
+    /// tonight, and the rest mend one dawn at a time while Recovering.
+    ///
+    /// THE STANDING IS PAID HERE AND ONLY WITH HELP: +standingOnAidedResettle
+    /// if the player killed at least one drawn hostile since the fall. An
+    /// unaided recovery pays nothing -- the Holds owe a bystander no
+    /// thanks -- which discharges entry 42's "standing recovering on
+    /// resettle" through the same grant the excavator clear uses.</summary>
+    public void Reestablish(int arrivedCount)
     {
+        if (!Fallen || Abandoned) return;
         Fallen = false;
         FallenOnDay = -1;
+        ConsecutiveLosses = 0;
+        Recovering = true;
+        bool helped = PlayerHelpedSinceFall;
+        PlayerHelpedSinceFall = false;
+
+        // The next siege needs a fresh find, or the dawn after the resettle
+        // would re-leash every roamer straight onto the new settlers.
+        DeadCoreSaturation.Instance?.NotifyVillageResettled();
+
+        var deck = new List<Sprite>();
+        if (villagerSprites != null)
+            foreach (var s in villagerSprites) if (s != null) deck.Add(s);
+        int raised = 0;
+        for (int i = 0; i < bodies.Count && raised < Mathf.Max(1, arrivedCount); i++)
+        {
+            if (bodies[i] != null || deathDays[i] < 0) continue;
+            deadVillagers.Remove(i);
+            RaiseVillager(i, deck);
+            wanderAt[i] = Time.time + Random.Range(pauseSecondsMin, pauseSecondsMax);
+            waiting[i] = true;
+            raised++;
+        }
+
+        if (helped && FactionSystem.Instance != null)
+            FactionSystem.Instance.AddStanding(FactionId.Dwarves, standingOnAidedResettle);
+
+        AlertsLog.Instance?.AddAlert(
+            "Settlers raise hearthfires in " + VillageName + " once more.",
+            HoldAlertPos(), VillageFloorIndex, AlertCategory.System);
+        WispCompanion.Instance?.Speak("village_resettled");
     }
 
     /// <summary>Floor index the village stands on, or -1.</summary>
@@ -428,6 +524,14 @@ public class DwarvenVillageController : MonoBehaviour
                 Fallen = true;
                 FallenOnDay = today;
                 TimesFallen++;
+                // Stage E2's ledger. The fall is LOSS ONE -- each failed
+                // recovery attempt after it is another -- and fortify
+                // progress dies with the hold: a hold that fell was not on
+                // its way to not needing anyone.
+                ConsecutiveLosses++;
+                SurvivedSieges = 0;
+                Recovering = false;
+                if (ConsecutiveLosses >= abandonAfterLosses) Abandon();
                 Debug.Log($"[Village] THE HOLD HAS FALLEN on day {today}. "
                         + $"Fall number {TimesFallen}. The dawn re-raise is suspended "
                         + "until it is re-established.");
@@ -439,14 +543,28 @@ public class DwarvenVillageController : MonoBehaviour
         // is inert -- see the Fallen doc comment.
         if (Fallen) return;
 
+        int raisedThisDawn = 0;
         for (int i = 0; i < bodies.Count; i++)
         {
             if (bodies[i] != null || deathDays[i] < 0) continue;
             if (deathDays[i] >= today) continue;   // fell today; tomorrow, not tonight
+            // While RECOVERING (stage E2) losses mend one per dawn rather
+            // than all at once: entry 42's walkers return at reduced count
+            // and RECOVER, and an uncapped dawn would restore the full
+            // roster overnight and make the reduced count a fiction.
+            if (Recovering && raisedThisDawn >= Mathf.Max(1, recoveryPerDawn)) break;
             deadVillagers.Remove(i);
             RaiseVillager(i, deck);
             wanderAt[i] = Time.time + Random.Range(pauseSecondsMin, pauseSecondsMax);
             waiting[i] = true;
+            raisedThisDawn++;
+        }
+        if (Recovering)
+        {
+            bool full = true;
+            for (int i = 0; i < bodies.Count; i++)
+                if (bodies[i] == null) { full = false; break; }
+            if (full) Recovering = false;
         }
     }
 
@@ -487,6 +605,110 @@ public class DwarvenVillageController : MonoBehaviour
 
     // -- Persistence -----------------------------------------------------------
 
+    // -- The recovery's ledger (stage E2) --------------------------------------
+
+    /// <summary>A drawn hostile died to the dungeon while the hold lay
+    /// fallen. Called by DeadCoreSaturation's death hook; this is what
+    /// "the player helped" MEANS, and the aided-resettle standing rides
+    /// it.</summary>
+    public void NotifyPlayerHelped()
+    {
+        if (Fallen) PlayerHelpedSinceFall = true;
+    }
+
+    /// <summary>Every drawn hostile is dead and the hold still stands.
+    /// Called by DeadCoreSaturation when a siege empties.</summary>
+    public void NotifySiegeSurvived()
+    {
+        if (!Established || Fallen || Fortified || Abandoned) return;
+        SurvivedSieges++;
+        AlertsLog.Instance?.AddAlert(
+            VillageName + " has thrown the besiegers back.",
+            HoldAlertPos(), VillageFloorIndex, AlertCategory.System);
+        if (SurvivedSieges < fortifyAfterSieges) return;
+        Fortified = true;
+        AlertsLog.Instance?.AddAlert(
+            VillageName + " has fortified. The deep will not besiege it again.",
+            HoldAlertPos(), VillageFloorIndex, AlertCategory.Discovery);
+        WispCompanion.Instance?.Speak("village_fortified");
+    }
+
+    /// <summary>A recovery attempt failed -- an intercepted relief patrol
+    /// or a wiped settler caravan. The fall books its own loss in
+    /// HandleDayStarted; this is only for the attempts after it.</summary>
+    public void RecordReliefLoss()
+    {
+        if (Abandoned) return;
+        ConsecutiveLosses++;
+        if (ConsecutiveLosses >= abandonAfterLosses) Abandon();
+    }
+
+    private void Abandon()
+    {
+        if (Abandoned) return;
+        Abandoned = true;
+        AlertsLog.Instance?.AddAlert(
+            "The Deep Holds have written " + VillageName + " off. No more "
+            + "patrols will come, and the wagons stay home.",
+            HoldAlertPos(), VillageFloorIndex, AlertCategory.Threat);
+        WispCompanion.Instance?.Speak("village_abandoned");
+    }
+
+    private Vector3 HoldAlertPos()
+    {
+        foreach (var v in villagers) if (v != null) return v.transform.position;
+        if (villageInfluence != null && homeCells.Count > 0)
+            return villageInfluence.CellToWorld(homeCells[0]);
+        return transform.position;
+    }
+
+    public DwarvenHoldSaveData GetHoldSaveData() => new DwarvenHoldSaveData
+    {
+        fallen = Fallen,
+        fallenOnDay = FallenOnDay,
+        timesFallen = TimesFallen,
+        survivedSieges = SurvivedSieges,
+        consecutiveLosses = ConsecutiveLosses,
+        fortified = Fortified,
+        abandoned = Abandoned,
+        playerHelpedSinceFall = PlayerHelpedSinceFall,
+        recovering = Recovering,
+    };
+
+    /// <summary>Null-tolerant: an old save loads with the hold standing
+    /// and every counter at zero, which is what it believed anyway.
+    /// WITHOUT this the whole fall state was session-only -- a load over
+    /// a fallen hold re-derived the fall at the next dawn with a fresh
+    /// FallenOnDay (resetting the relief timer) and TimesFallen restarting
+    /// from zero, the exact forgive-every-loss trap the counter was
+    /// recorded to avoid.</summary>
+    public void RestoreHoldFromSave(DwarvenHoldSaveData d)
+    {
+        if (d == null) { ResetHoldState(); return; }
+        Fallen = d.fallen;
+        FallenOnDay = d.fallenOnDay;
+        TimesFallen = d.timesFallen;
+        SurvivedSieges = d.survivedSieges;
+        ConsecutiveLosses = d.consecutiveLosses;
+        Fortified = d.fortified;
+        Abandoned = d.abandoned;
+        PlayerHelpedSinceFall = d.playerHelpedSinceFall;
+        Recovering = d.recovering;
+    }
+
+    public void ResetHoldState()
+    {
+        Fallen = false;
+        FallenOnDay = -1;
+        TimesFallen = 0;
+        SurvivedSieges = 0;
+        ConsecutiveLosses = 0;
+        Fortified = false;
+        Abandoned = false;
+        PlayerHelpedSinceFall = false;
+        Recovering = false;
+    }
+
     /// <summary>The dead, for the save: "slot:deathDay".</summary>
     public static List<string> DeadForSave()
     {
@@ -510,7 +732,13 @@ public class DwarvenVillageController : MonoBehaviour
         }
     }
 
-    public static void ResetForNewGame() => deadVillagers.Clear();
+    public static void ResetForNewGame()
+    {
+        deadVillagers.Clear();
+        // The hold ledger is instance state on a persistent scene component,
+        // so the DeadCoreSaturation pattern applies: reset through Instance.
+        Instance?.ResetHoldState();
+    }
 
     // -- The wander (The Living Holds) ---------------------------------------
 
@@ -665,4 +893,20 @@ public class DwarvenVillageController : MonoBehaviour
             return;
         }
     }
+}
+
+/// <summary>Stage E2's hold ledger, for the save. Additive; null on old
+/// saves.</summary>
+[System.Serializable]
+public class DwarvenHoldSaveData
+{
+    public bool fallen = false;
+    public int fallenOnDay = -1;
+    public int timesFallen = 0;
+    public int survivedSieges = 0;
+    public int consecutiveLosses = 0;
+    public bool fortified = false;
+    public bool abandoned = false;
+    public bool playerHelpedSinceFall = false;
+    public bool recovering = false;
 }

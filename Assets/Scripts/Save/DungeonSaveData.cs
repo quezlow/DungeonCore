@@ -124,6 +124,15 @@ public class DungeonSaveData
     // system never had the escalation either.
     public DeadCoreSaturationSaveData deadCoreSaturation;
 
+    // Stage E2: the hold's fall/recovery ledger and the relief cycle.
+    // Additive; null on old saves, which load with the hold standing and
+    // no journey in flight -- what those saves believed anyway. WITHOUT
+    // the hold ledger the fall state was session-only: a load over a
+    // fallen hold re-derived the fall with a fresh FallenOnDay and a
+    // TimesFallen restarting from zero.
+    public DwarvenHoldSaveData dwarvenHold;
+    public DwarvenReliefSaveData dwarvenRelief;
+
     public WildMonsterEventSaveData wildMonsterEvent;
 
     public DenSaveData dens;                              // den hoards and tiers (canon 42; additive, null on old saves)
