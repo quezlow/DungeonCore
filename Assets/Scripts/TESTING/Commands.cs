@@ -1313,6 +1313,13 @@ public class Commands : MonoBehaviour
                         + (floorExists ? "" : "   -- so 'no floor' below counts one per dawn since "
                                             + "the run began and means only that the player has not "
                                             + "dug this far. It is NOT a fault."));
+            sb.AppendLine($"    raised with NO ROAM POOL: {sat.SpawnedWithoutRoam}"
+                        + (sat.SpawnedWithoutRoam > 0
+                           ? "   !! those bodies CANNOT MOVE. PickWildWanderTarget bails to the "
+                             + "spawn position on an empty pool, so they stand where they rose "
+                             + "and fight only what walks into them. Reads as bad art or bad "
+                             + "wiring from outside; it is neither."
+                           : "   (all bodies can move)"));
             sb.AppendLine($"    refusals: no floor {sat.RefusedNoFloor}, no vault {sat.RefusedNoVault}, "
                         + $"no definitions {sat.RefusedNoDefinitions}, no spawn cell {sat.RefusedNoCell}, "
                         + $"below the quiet threshold {sat.RefusedQuiet}");

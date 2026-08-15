@@ -10461,6 +10461,56 @@ rather than characters with histories, and the dawn after a load re-raises
 whatever the claim warrants. Persisting them would mean a save format for
 something the tick recreates for free.
 
+**THE OCCUPANTS ARE DRIFTED DERIVATIONS OF SHIPPED CREATURES, and the two
+cheaper options were tried and rejected on measurement rather than taste.**
+
+Tinting an existing body was tried first and DOES NOT WORK.
+`SpriteRenderer.color` is a multiply, so it scales every channel and preserves
+internal contrast: a high-contrast sprite stays high-contrast and merely dims.
+A skeletal body remains fully legible at the Pattern Codex silhouette value of
+0.06. Darkening cannot make a silhouette, and `DamageFlash` already records the
+same finding in its header -- a true silhouette needs a material, not a colour.
+Inventing bodies from nothing was the other option and was declined for a
+better reason than cost: a core makes monsters, so a dead core with nobody left
+to shape it makes ALMOST monsters. **The near-recognition is the horror, and it
+can only live in the silhouette.**
+
+Six subjects, each a shipped creature pushed until it is recognisable but
+clearly wrong, under a DERIVED TAIL that swaps only the lighting and value
+language of contract 1a -- the creature tail asks for bright light, strong value
+contrast and no pure black, which is exactly what keeps a darkened body legible.
+Four drift rules govern a seventh if one is ever wanted, and the load-bearing
+one is STRIP EVERYTHING IMPLYING INTENT OR CRAFT: no club, no sceptre, no
+regalia. Entry 42 says everything else in the game wants something and these do
+not, so an empty-handed tyrant is more wrong than a differently-armed one.
+
+Prompts, drift rules and per-body tick-boxes live in chapter 2d of the Art
+Authoring guide; this entry records the ruling only. **One body is validated
+before the batch** (1b and 1c's rule), because whether the derived tail holds
+against the subject at CFG 1 is unknown until something is generated.
+
+**OCCUPANTS NEED AN EXPLICIT ROAM LEASH OR THEY DO NOT MOVE AT ALL -- a defect
+in the first stage D delivery, corrected here.** `PickWildWanderTarget` bails to
+`spawnPosition` the moment `wildChamberCells` is empty, and
+`InitialiseAsDeepOccupant` set none. Every occupant was therefore a statue that
+fought only what walked into it. The leash is now a REQUIRED PARAMETER rather
+than something a caller may forget, because from outside the fault is
+indistinguishable from bad art, bad wiring or a bad spawn cell -- it costs a
+test cycle spent in the wrong place, which is why `Print Deep Occupants` now
+counts bodies raised without one.
+
+Reusing the chamber-cell leash without a chamber id is safe:
+those cells feed the wander pool and the den cavity tests, and both cavity
+readers gate on `denFloorIndex >= 0` first, which is -1 here. No chamber id also
+means `MarkChamberCleared` never fires, so occupants keep their
+not-a-one-time-clear semantics.
+
+**ROAM CELLS ARE NOT SPAWN CELLS.** A spawn cell must be UNCLAIMED -- they come
+out of ground the player has not taken. A roam cell may be claimed, because
+walking INTO held ground is the whole of "expensive to hold". Leash them to
+unclaimed ground and they would politely avoid the player's territory, which is
+the design inverted.
+
 **`occupantDefinitions` EMPTY MEANS NOT YET AUTHORED, never "any".** The
 ambiguous-default rule: an empty list in the Inspector is indistinguishable
 from one nobody filled in, so the readout states it in words rather than

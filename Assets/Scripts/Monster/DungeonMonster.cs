@@ -527,11 +527,30 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     /// spawns one yet; stages D and E do. The substrate ships first because a
     /// behaviour-neutral delivery is the only one provable in isolation, and
     /// Print Deep Occupants is what proves it.</summary>
-    public void InitialiseAsDeepOccupant(FloorRoot floor, MonsterDefinition def)
+    ///
+    /// ROAM CELLS ARE NOT OPTIONAL IN PRACTICE, and the first version shipped
+    /// without them by mistake. PickWildWanderTarget bails to spawnPosition the
+    /// moment wildChamberCells is empty, so an occupant with no leash NEVER
+    /// MOVES -- it stands where it spawned and fights only what walks into it.
+    /// From outside that is indistinguishable from bad art, bad wiring or a bad
+    /// spawn cell, which is why the leash is a parameter rather than something
+    /// a caller may forget.
+    ///
+    /// Reusing the chamber-cell leash is safe WITHOUT a chamber id: those cells
+    /// feed the wander pool and the den cavity tests, and both cavity readers
+    /// gate on denFloorIndex >= 0 first, which is -1 here. No chamber id also
+    /// means MarkChamberCleared never fires, so these keep their
+    /// not-a-one-time-clear semantics.
+    public void InitialiseAsDeepOccupant(FloorRoot floor, MonsterDefinition def,
+                                         List<Vector3Int> roamCells)
     {
         currentFloor = floor;
         wildDefinition = def;
         isDeepOccupant = true;
+        wildChamberCells = roamCells != null
+            ? new List<Vector3Int>(roamCells)
+            : new List<Vector3Int>();
+        wildCellSet = new HashSet<Vector3Int>(wildChamberCells);
         // tribeId is NOT set here on purpose. ResolveEffectiveRegen assigns it
         // from the definition during Start(), which runs AFTER this, so a value
         // written here would be silently overwritten one frame later. The

@@ -53,6 +53,12 @@ public class DeadCoreSaturation : MonoBehaviour
            + "player who has merely walked through is not holding anything.")]
     [SerializeField, Min(0)] private int quietBelowClaimedCells = 40;
 
+    [Tooltip("Half-width, in cells, of the ground an occupant will roam around "
+           + "where it rose. Without a roam pool the body stands still forever "
+           + "-- PickWildWanderTarget bails to its spawn position when the pool "
+           + "is empty.")]
+    [SerializeField, Min(1)] private int roamRadiusCells = 12;
+
     [Header("Escalation (breaking the vault heart)")]
     [Tooltip("Population cap and pressure both multiply by this once the heart "
            + "is broken. Entry 20 grants 60 research and a full level for that "
@@ -75,6 +81,10 @@ public class DeadCoreSaturation : MonoBehaviour
     private int lastSpawned;
     private int totalSpawned;
     private int refusedNoFloor, refusedNoVault, refusedNoDefs, refusedNoCell, refusedQuiet;
+    // Counted rather than refused: a body with no roam pool still spawns and
+    // still fights, it simply never moves. Silent statues are exactly the
+    // failure this counter exists to make loud.
+    private int refusedNoRoam;
 
     public bool HeartBroken => heartBroken;
     public int LiveCount { get { Prune(); return live.Count; } }
@@ -86,6 +96,7 @@ public class DeadCoreSaturation : MonoBehaviour
     public int RefusedNoDefinitions => refusedNoDefs;
     public int RefusedNoCell => refusedNoCell;
     public int RefusedQuiet => refusedQuiet;
+    public int SpawnedWithoutRoam => refusedNoRoam;
     public bool HasDefinitions => occupantDefinitions != null && occupantDefinitions.Count > 0;
 
     private void Awake()
@@ -170,11 +181,42 @@ public class DeadCoreSaturation : MonoBehaviour
         Vector3Int cell;
         if (!TryPickSpawnCell(floor, influence, vault, out cell)) { refusedNoCell++; return false; }
 
+        var roam = CollectRoamCells(floor, influence, cell);
+        if (roam.Count == 0) refusedNoRoam++;
+
         var body = Instantiate(def.prefab, influence.CellToWorld(cell), Quaternion.identity);
         body.transform.SetParent(floor.transform, true);
-        body.InitialiseAsDeepOccupant(floor, def);
+        body.InitialiseAsDeepOccupant(floor, def, roam);
         live.Add(body);
         return true;
+    }
+
+    /// <summary>Ground this body may walk, gathered around where it rose.
+    ///
+    /// ROAM CELLS ARE NOT SPAWN CELLS, and the difference is the floor 4
+    /// condition working rather than a detail. A SPAWN cell must be unclaimed:
+    /// they come out of ground the player has not taken. A ROAM cell may be
+    /// claimed, because walking INTO held ground is the whole of "expensive to
+    /// hold" -- leash them to unclaimed ground only and they would politely
+    /// avoid the player's territory, which is the opposite of the design.
+    ///
+    /// A square band rather than a disc: cheap, and the pathfinder filters what
+    /// is actually reachable when the wander picks from this pool anyway.</summary>
+    private List<Vector3Int> CollectRoamCells(FloorRoot floor, TileInfluenceManager influence,
+                                              Vector3Int origin)
+    {
+        var cells = new List<Vector3Int>();
+        for (int dy = -roamRadiusCells; dy <= roamRadiusCells; dy++)
+        {
+            for (int dx = -roamRadiusCells; dx <= roamRadiusCells; dx++)
+            {
+                var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
+                if (!floor.IsRevealed(c)) continue;
+                if (!DungeonPathfinder.IsWalkable(floor, influence.CellToWorld(c))) continue;
+                cells.Add(c);
+            }
+        }
+        return cells;
     }
 
     /// <summary>A revealed, walkable, UNCLAIMED cell near the vault.
@@ -245,6 +287,7 @@ public class DeadCoreSaturation : MonoBehaviour
         totalSpawned = 0;
         lastClaimed = lastTarget = lastSpawned = 0;
         refusedNoFloor = refusedNoVault = refusedNoDefs = refusedNoCell = refusedQuiet = 0;
+        refusedNoRoam = 0;
         live.Clear();
     }
 }
