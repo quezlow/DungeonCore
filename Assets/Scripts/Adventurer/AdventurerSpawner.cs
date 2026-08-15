@@ -1242,7 +1242,7 @@ public class AdventurerSpawner : MonoBehaviour
     /// <summary>Dispatch a Mercenary Company reprisal: a band of sellswords fronted
     /// by a Tank, untinted (economic, not ideological - no forced affinity, no ordained
     /// hero). Fired by MercenaryContract when too much treasure has left the dungeon.</summary>
-    public void DispatchMercenaryAssault(int mercCount)
+    public void DispatchMercenaryAssault(int mercCount, int memberLevel = 1)
     {
         if (DungeonEntrance.Instance == null) return;
         Vector3 spawnPos = DungeonEntrance.Instance.SpawnPosition;
@@ -1266,6 +1266,13 @@ public class AdventurerSpawner : MonoBehaviour
         }
 
         SetupOrganize(party, AdventurerType.Mercenary, total, spawnPos);
+
+        // Merc scaling (canon 8): assault members ran at LEVEL 1 FOREVER --
+        // the ApplyGradeLevel path matched teams use was never applied to a
+        // dispatch. Applied after SetupOrganize, the matched-team ordering.
+        if (memberLevel > 1)
+            foreach (var m in party.LiveMembers) m.ApplyGradeLevel(memberLevel);
+
         RunStats.Instance?.RecordPartySpawned(total);
         PartyBannerManager.Instance?.ShowBanner(party);
     }

@@ -33,8 +33,9 @@ public class MercenaryContract : MonoBehaviour
     [Header("Ultimatum + counters")]
     [Tooltip("Dawns the player has to choke the outflow (or bribe) before steel arrives.")]
     [SerializeField] private int ultimatumDays = 3;
-    [Tooltip("Gold to buy off a pending assault outright during the ultimatum.")]
-    [SerializeField] private int bribeCost = 250;
+    // The flat bribeCost field is GONE: the bribe is computed from the
+    // level-scaled threshold below, or a level 26 player buys off every
+    // assault with pocket change.
     [Tooltip("Dawns of quiet after any stand-down (cut outflow or bribe) before they threaten again.")]
     [SerializeField] private int quietDaysAfterCancel = 7;
     [Tooltip("Dawns of cooldown after an assault before the contract can re-arm.")]
@@ -44,10 +45,35 @@ public class MercenaryContract : MonoBehaviour
     [Tooltip("Sellswords in the first assault. Each later assault adds more.")]
     [SerializeField] private int baseMercs = 3;
     [SerializeField] private int mercsPerEscalation = 2;
-    [Tooltip("Threshold drops by this much per assault weathered - twitchier merchants.")]
-    [SerializeField] private int thresholdTightenPerEscalation = 40;
-    [Tooltip("Threshold never tightens below this floor.")]
-    [SerializeField] private int minThreshold = 60;
+    // RENAMED FIELDS TAKE FRESH DEFAULTS ON PURPOSE: FormerlySerializedAs
+    // would have poured the old serialized INTS (40, 60, 250) into these
+    // fraction floats. Inspector overrides on the old names are dropped.
+    [Tooltip("FRACTION of the level-scaled base cut per assault weathered - "
+           + "twitchier merchants. Was a flat 40 off 200; the fraction (0.2) "
+           + "reproduces the level 1 numbers exactly and stays meaningful once "
+           + "the base grows with level.")]
+    [SerializeField, Range(0f, 1f)] private float tightenFractionPerEscalation = 0.2f;
+    [Tooltip("The threshold never tightens below this fraction of the "
+           + "level-scaled base. Was a flat 60 = 0.3 x 200.")]
+    [SerializeField, Range(0f, 1f)] private float minThresholdFraction = 0.3f;
+
+    [Header("Level scaling (the contract grows with the dungeon)")]
+    [Tooltip("Gold added to the threshold base per dungeon level above 1. A "
+           + "fixed 200-gold window was trivially tripped as the dungeon grew, "
+           + "and the Generous dial is a flat 2x on top of the growth.")]
+    [SerializeField, Min(0)] private int thresholdPerLevel = 25;
+    [Tooltip("One extra sellsword per this many dungeon levels, on top of the "
+           + "escalation growth.")]
+    [SerializeField, Min(1)] private int levelsPerExtraMerc = 6;
+    [Tooltip("Assault member level as a fraction of dungeon level (min 1). "
+           + "Deliberately under the dungeon's own weight so the COUNT does "
+           + "the escalating. They spawned at level 1 forever before this: the "
+           + "ApplyGradeLevel path matched teams use was never run on an "
+           + "assault.")]
+    [SerializeField, Range(0f, 1.5f)] private float mercLevelFraction = 0.75f;
+    [Tooltip("Bribe = this fraction x the current threshold. Was a flat 250; "
+           + "1.25 x 200 = 250, so level 1 is unchanged.")]
+    [SerializeField, Min(0f)] private float bribeFraction = 1.25f;
 
     private ContractState state = ContractState.Dormant;
     private int cooldown;      // dawns of quiet before a new ultimatum can issue
@@ -62,10 +88,43 @@ public class MercenaryContract : MonoBehaviour
     public bool IsUltimatum => state == ContractState.Ultimatum;
     public int CountdownRemaining => countdown;
     public int LootOutThisWindow => WindowSum;
-    public int CurrentThreshold =>
-        Mathf.Max(minThreshold, baseThreshold - timesFired * Mathf.Max(0, thresholdTightenPerEscalation));
+    /// <summary>The level-scaled base, tightened by assaults weathered. The
+    /// fraction form reproduces the pre-scaling level 1 run exactly:
+    /// 200 / 160 / 120 / 80 / 60.</summary>
+    public int CurrentThreshold
+    {
+        get
+        {
+            float levelBase = LevelScaledBase;
+            float tightened = levelBase
+                * (1f - Mathf.Clamp01(tightenFractionPerEscalation) * timesFired);
+            return Mathf.Max(1, Mathf.RoundToInt(
+                Mathf.Max(Mathf.Clamp01(minThresholdFraction) * levelBase, tightened)));
+        }
+    }
+
+    /// <summary>Threshold base at the current dungeon level, before the
+    /// tightening -- printed beside the tightened figure so the readout can
+    /// say which lever moved a number.</summary>
+    public int LevelScaledBaseThreshold => Mathf.RoundToInt(LevelScaledBase);
+
+    private float LevelScaledBase =>
+        baseThreshold + thresholdPerLevel * Mathf.Max(0, DungeonLevelNow - 1);
+
+    /// <summary>Sellswords the NEXT assault would field: escalation growth
+    /// plus level growth.</summary>
+    public int AssaultBandSize =>
+        baseMercs + timesFired * Mathf.Max(0, mercsPerEscalation)
+        + Mathf.Max(0, DungeonLevelNow - 1) / Mathf.Max(1, levelsPerExtraMerc);
+
+    /// <summary>Member level of the next assault (min 1).</summary>
+    public int MercMemberLevel =>
+        Mathf.Max(1, Mathf.RoundToInt(DungeonLevelNow * mercLevelFraction));
+
+    private static int DungeonLevelNow =>
+        DungeonCore.Instance != null ? DungeonCore.Instance.DungeonLevel : 1;
     public bool CanBribe => state == ContractState.Ultimatum;
-    public int BribeCost => bribeCost;
+    public int BribeCost => Mathf.Max(1, Mathf.RoundToInt(bribeFraction * CurrentThreshold));
     public bool ClimaxFlagRaised => climaxFlagRaised;
     public int TimesManifested => timesFired;
     public int LastManifestDay => lastManifestDay;
@@ -161,8 +220,10 @@ public class MercenaryContract : MonoBehaviour
     {
         DungeonSaveController.Instance?.RequestAutosave();
 
-        int band = baseMercs + timesFired * Mathf.Max(0, mercsPerEscalation);
-        AdventurerSpawner.Instance?.DispatchMercenaryAssault(band);
+        // Band and member level both read the dungeon's level (canon 8): a
+        // fixed-size level-1 band was toothless exactly when the outflow
+        // that summoned it was largest.
+        AdventurerSpawner.Instance?.DispatchMercenaryAssault(AssaultBandSize, MercMemberLevel);
         FactionSystem.Instance?.RaiseTier(FactionId.MercenaryCompany);
 
         climaxFlagRaised = true;   // the endgame remembers a mercenary war was waged here
@@ -184,7 +245,7 @@ public class MercenaryContract : MonoBehaviour
     public bool TryBribe()
     {
         if (state != ContractState.Ultimatum) return false;
-        if (DungeonCore.Instance == null || !DungeonCore.Instance.TrySpendGold(bribeCost)) return false;
+        if (DungeonCore.Instance == null || !DungeonCore.Instance.TrySpendGold(BribeCost)) return false;
         StandDown(cancelledByBribe: true);
         return true;
     }

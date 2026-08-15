@@ -495,6 +495,30 @@ otherwise the assault marches (Tank-fronted, untinted -- economic, not
 ideological). Each reprisal weathered grows the band and shortens their
 patience. Hunts the generous dungeon -- the Holy Order's mirror.
 
+**The contract scales with dungeon level now (2026-08-15), on both sides of
+the ledger,** because a fixed 200-gold window became trivially tripped as
+the dungeon grew -- made urgent by the Generous dial's flat 2x on drops.
+The threshold's level base is `baseThreshold + thresholdPerLevel x
+(level - 1)` (200 + 25 per level, ~825 at 26). Escalation now cuts a
+FRACTION of that base per assault weathered (`tightenFractionPerEscalation`
+0.2, floor `minThresholdFraction` 0.3 of base) rather than a flat 40 off
+200, which reproduces the level 1 run exactly (200/160/120/80/60) and keeps
+the twitchiness meaningful at scale. The assault answers in kind: the band
+gains a sellsword per `levelsPerExtraMerc` (6) dungeon levels on top of the
+escalation growth, and its members now LEVEL AT ALL -- they spawned at
+level 1 forever, a gap found in source: `DispatchMercenaryAssault` never
+ran the `ApplyGradeLevel` path matched teams use. Members level at
+`mercLevelFraction` (0.75) of dungeon level, deliberately under the
+dungeon's own weight so the count does the escalating. The bribe is
+COMPUTED now -- `bribeFraction` (1.25) x the current threshold -- because a
+flat 250 was pocket change at 26; ~250 at level 1, unchanged. The renamed
+fields (`tightenFractionPerEscalation`, `minThresholdFraction`,
+`bribeFraction`) take FRESH DEFAULTS on load, deliberately:
+`FormerlySerializedAs` would have poured the old serialized INTS (40, 60,
+250) into fraction floats. Inspector overrides on the old names are
+dropped; check the component once. No new save data -- everything derives
+from `timesFired` and `DungeonCore.DungeonLevel`, both already persisted.
+
 **Noble retaliation** (`NobleRetaliation`): a Noble slain, or driven out in
 flight rather than leaving freely, marks its house; the Guild tier ratchets;
 after a delay an escalated Destroyer party arrives under the house banner,
@@ -10135,7 +10159,9 @@ that threshold unaided; composed with Generous it would clear it twice over and
 one boss room would BE the outflow economy at every setting above Average. **A
 boss's hoard is its rank; an ordinary drop is the player's policy.** Chests take
 the band unconditionally -- a chest is never promoted, so there is nothing to be
-exclusive with.
+exclusive with. (The 200 is the LEVEL 1 figure; the threshold now scales with
+dungeon level -- entry 8. The exclusivity ruling predates the scaling and
+stands on the level 1 arithmetic.)
 
 **THE POVERTY HALF GOES THROUGH THE CIVILIAN MULTIPLIER, NOT THE DELVER
 BONUS**, and this too is a mechanism corrected against a locked decision. The

@@ -1178,9 +1178,16 @@ public class Commands : MonoBehaviour
         // what it feeds rather than in isolation.
         var merc = MercenaryContract.Instance;
         if (merc != null)
+        {
             sb.AppendLine($"  outflow: {merc.LootOutThisWindow} gold in the merchants' window "
-                        + $"against a threshold of {merc.CurrentThreshold}"
+                        + $"against a threshold of {merc.CurrentThreshold} "
+                        + $"(level base {merc.LevelScaledBaseThreshold}, "
+                        + $"{merc.TimesManifested} assault(s) weathered)"
                         + (merc.IsUltimatum ? $"  -- ULTIMATUM, {merc.CountdownRemaining} dawn(s) left" : ""));
+            sb.AppendLine($"    next assault: {merc.AssaultBandSize} sellsword(s) at level "
+                        + $"{merc.MercMemberLevel}   bribe: {merc.BribeCost} gold "
+                        + "(all level-derived; nothing here is a transcribed constant)");
+        }
         else
             sb.AppendLine("  outflow: no MercenaryContract in the scene, so a generous band "
                         + "carries no consequence at all -- half the dilemma is missing.");
