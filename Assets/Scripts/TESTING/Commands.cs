@@ -1330,10 +1330,45 @@ public class Commands : MonoBehaviour
                         + "geometry fault rather than a tuning one.");
         }
 
-        sb.AppendLine("  NOT YET BUILT, and named so a zero is not mistaken for a pass: "
-                    + "the village cannot fall (stage E -- DwarvenVillageController "
-                    + "re-raises every dead villager unconditionally at dawn), so floor "
-                    + "index 3 has no stake wired at all.");
+        if (sat != null)
+        {
+            sb.AppendLine($"  INCURSION on floor index {DeadCoreSaturation.IncursionFloorIndex}: "
+                        + $"live {sat.IncursionLive}, raised in total {sat.IncursionSpawned}");
+            sb.AppendLine($"    raised ON-SCREEN as a fallback: {sat.IncursionOnScreenFallbacks}"
+                        + (sat.IncursionOnScreenFallbacks > 0
+                           ? "   -- they were seen arriving that many times; raise offScreenDistance"
+                           : "   (never seen arriving)"));
+            sb.AppendLine($"    raised with a roam pool of ONE cell: {sat.IncursionNoCell}"
+                        + (sat.IncursionNoCell > 0
+                           ? "   !! effectively statues -- the road roam radius found no "
+                             + "neighbouring revealed cells, so they can barely move. Raise "
+                             + "incursionRoamRadius or check the segment is properly revealed."
+                           : ""));
+            sb.AppendLine($"    drawn to the hold: {sat.VillageFound}");
+
+            var vil = DwarvenVillageController.Instance;
+            if (vil == null)
+                sb.AppendLine("    village: no DwarvenVillageController in the scene.");
+            else
+            {
+                // THE STAKE, SPLIT IN TWO. "They reached it" and "they won" are
+                // different questions, and one number answers neither. A high
+                // reached count with zero falls is a hold that keeps winning --
+                // which is a tuning result, not a broken feature.
+                sb.AppendLine($"    village established {vil.Established}, FALLEN {vil.Fallen}"
+                            + (vil.Fallen ? $" since day {vil.FallenOnDay}" : ""));
+                sb.AppendLine($"    times hostiles REACHED the lanes: {sat.VillageReachedTimes}   "
+                            + $"times the hold ACTUALLY FELL: {vil.TimesFallen}");
+                sb.AppendLine("    reached-but-never-fell is the villagers winning, not a fault. "
+                            + "Fell-without-being-reached is impossible and would mean the "
+                            + "lane probe is wrong.");
+            }
+        }
+
+        sb.AppendLine("  NOT YET BUILT (stage E2), named so a zero is not mistaken for a pass: "
+                    + "a fallen hold never recovers -- no relief patrol, no settler caravan, "
+                    + "no resettle -- and nothing yet ends the crisis short of the climax "
+                    + "stand-down.");
         Debug.Log(sb.ToString());
     }
 

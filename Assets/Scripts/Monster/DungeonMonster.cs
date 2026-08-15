@@ -359,6 +359,26 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
 
     public bool IsDeepOccupant => isDeepOccupant;
 
+    /// <summary>Move a deep occupant's roam leash. This is how AGGREGATION
+    /// works: when one of them reaches the village, every occupant on that
+    /// floor is re-leashed to the village lanes and simply wanders there.
+    ///
+    /// RE-LEASHING RATHER THAN A NEW PURSUIT STATE is deliberate. The wander
+    /// already paths, already filters for reachability and already handles a
+    /// pool with unreachable members; a bespoke "drawn to the village" state
+    /// would duplicate all of it and drift from it. The leash IS the intent.
+    ///
+    /// Occupants only. A den body or a chamber wild would lose the leash its
+    /// own system depends on, so this refuses rather than trusting callers.</summary>
+    public void SetDeepRoamCells(List<Vector3Int> cells)
+    {
+        if (!isDeepOccupant) return;
+        wildChamberCells = cells != null
+            ? new List<Vector3Int>(cells)
+            : new List<Vector3Int>();
+        wildCellSet = new HashSet<Vector3Int>(wildChamberCells);
+    }
+
     // -- Allegiance (canon 44) ------------------------------------------
     //
     // Set by InitialiseAsFactionBody and written nowhere else. A faction body

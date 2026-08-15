@@ -96,6 +96,12 @@ public class WispScript : ScriptableObject
             // The loot policy beat (canon 45). Two lines because the first
             // party can resolve by leaving OR by dying, and a complaint line
             // over a party that never got out would be a lie.
+            new Line { id = "village_fallen", once = true,
+                text = "The little hold below has gone quiet. Whatever came up out of the deep "
+                     + "took it, and the lanes are empty. They were not yours - but they were "
+                     + "something, and now there is one less something between you and what "
+                     + "made that silence." },
+
             new Line { id = "loot_policy_unset", once = true,
                 text = "They leave with nothing, and they are not quiet about it. That is my "
                      + "doing - I never asked you how open-handed you meant to be. Decide now. "

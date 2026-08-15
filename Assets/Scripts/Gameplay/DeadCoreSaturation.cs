@@ -59,6 +59,31 @@ public class DeadCoreSaturation : MonoBehaviour
            + "is empty.")]
     [SerializeField, Min(1)] private int roamRadiusCells = 12;
 
+    // ---- FLOOR INDEX 3: THE INCURSION -------------------------------
+    // A SECOND NAMED BLOCK rather than a list of per-floor entries. Canon
+    // defines exactly two deep floors and their rules genuinely differ -- floor
+    // 4 answers to claimed ground around a vault, floor 3 to a road network and
+    // a village. A generic list would be generality with no second user, and
+    // half its fields inert per entry, which is the shape this project has
+    // already been bitten by.
+    [Header("Floor index 3 -- the incursion")]
+    [Tooltip("Days between top-ups of the roaming incursion.")]
+    [SerializeField, Min(1)] private int incursionEveryDays = 4;
+
+    [Tooltip("Most hostiles roaming floor index 3 at once. Sized against the "
+           + "eight villagers: enough that a hold which meets them can "
+           + "plausibly lose, few enough that it can plausibly win.")]
+    [SerializeField, Min(0)] private int incursionMax = 6;
+
+    [Tooltip("World units from the camera below which a spawn is considered "
+           + "ON-SCREEN and refused. They must never be seen arriving.")]
+    [SerializeField, Min(1f)] private float offScreenDistance = 26f;
+
+    [Tooltip("Half-width in cells of road an occupant roams once it has risen.")]
+    [SerializeField, Min(1)] private int incursionRoamRadius = 20;
+
+    public const int IncursionFloorIndex = 3;
+
     [Header("Escalation (breaking the vault heart)")]
     [Tooltip("Population cap and pressure both multiply by this once the heart "
            + "is broken. Entry 20 grants 60 research and a full level for that "
@@ -99,6 +124,22 @@ public class DeadCoreSaturation : MonoBehaviour
     public int SpawnedWithoutRoam => refusedNoRoam;
     public bool HasDefinitions => occupantDefinitions != null && occupantDefinitions.Count > 0;
 
+    private readonly List<DungeonMonster> incursion = new List<DungeonMonster>();
+    private bool villageFound;
+    private int incursionSpawned, incursionOnScreenFallbacks, incursionNoCell;
+    private int villageReachedTimes;
+
+    public int IncursionLive { get { PruneIncursion(); return incursion.Count; } }
+    public int IncursionSpawned => incursionSpawned;
+    public int IncursionOnScreenFallbacks => incursionOnScreenFallbacks;
+    public int IncursionNoCell => incursionNoCell;
+    public bool VillageFound => villageFound;
+    /// <summary>How many times hostiles have REACHED the village lanes. Held
+    /// apart from how many times the hold actually FELL, because "they got
+    /// there" and "they won" are different questions and a single number
+    /// answers neither.</summary>
+    public int VillageReachedTimes => villageReachedTimes;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(this); return; }
@@ -134,6 +175,16 @@ public class DeadCoreSaturation : MonoBehaviour
 
     private void HandleDayStarted()
     {
+        // THE CLIMAX STANDS EVERYTHING DOWN, exactly as it does for the
+        // mercenaries, the nobles, the Holy Order and the wild events. Canon 9:
+        // surviving it silences the recurring threats for good. Without this the
+        // player would be defending a hold that is not even theirs, forever,
+        // which is the failure mode this gate exists to prevent.
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return;
+
+        TickIncursion();
+
         Prune();
         lastSpawned = 0;
 
@@ -265,6 +316,168 @@ public class DeadCoreSaturation : MonoBehaviour
             if (live[i] == null) live.RemoveAt(i);
     }
 
+    private void PruneIncursion()
+    {
+        for (int i = incursion.Count - 1; i >= 0; i--)
+            if (incursion[i] == null) incursion.RemoveAt(i);
+    }
+
+    // ---- floor index 3 ------------------------------------------------
+
+    /// <summary>Top the roaming incursion up, then check whether any of them
+    /// has found the village.</summary>
+    private void TickIncursion()
+    {
+        PruneIncursion();
+
+        var floor = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloor(IncursionFloorIndex) : null;
+        if (floor == null) return;
+        var influence = floor.TileInfluence;
+        var features = floor.FeatureGenerator;
+        if (influence == null || features == null) return;
+
+        CheckVillageReached(influence);
+
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        if (day % Mathf.Max(1, incursionEveryDays) != 0) return;
+        if (incursion.Count >= incursionMax) return;
+        if (!HasDefinitions) { refusedNoDefs++; return; }
+
+        var roadCells = CollectRevealedRoadCells(floor, influence, features);
+        if (roadCells.Count == 0) return;   // nothing revealed yet: nothing to walk
+
+        SpawnIncursionOne(floor, influence, roadCells);
+    }
+
+    /// <summary>Revealed road centreline cells on this floor.
+    ///
+    /// REVEALED, and this is a correction to the first design rather than a
+    /// detail. Spawning on an UNREVEALED segment was the intent, and it cannot
+    /// work: CaveWallClassifier records that UnfogRoadSegment calls
+    /// MarkNaturalFloor per segment, "so the next stretch stayed un-mined and
+    /// therefore SOLID". A body raised there could not stand, walk or path. The
+    /// intent -- that the player never watches them arrive -- is kept by
+    /// choosing an OFF-SCREEN cell instead, and on-screen fallbacks are counted
+    /// so the rate is visible rather than assumed.</summary>
+    private List<Vector3Int> CollectRevealedRoadCells(FloorRoot floor,
+                                                      TileInfluenceManager influence,
+                                                      TerrainFeatureGenerator features)
+    {
+        var cells = new List<Vector3Int>();
+        var data = features.FeatureData;
+        if (data == null || data.roads == null) return cells;
+
+        foreach (var road in data.roads)
+        {
+            if (road == null || road.polyline == null) continue;
+            int segLen = Mathf.Max(1, road.segmentLength);
+            for (int i = 0; i < road.polyline.Count; i++)
+            {
+                if (!features.IsRoadSegmentRevealed(i / segLen)) continue;
+                var c = road.polyline[i].ToVector3Int();
+                if (!floor.IsRevealed(c)) continue;
+                if (!DungeonPathfinder.IsWalkable(floor, influence.CellToWorld(c))) continue;
+                cells.Add(c);
+            }
+        }
+        return cells;
+    }
+
+    private void SpawnIncursionOne(FloorRoot floor, TileInfluenceManager influence,
+                                   List<Vector3Int> roadCells)
+    {
+        var def = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
+        if (def == null || def.prefab == null) { refusedNoDefs++; return; }
+
+        var cam = Camera.main;
+        Vector3Int chosen = default;
+        bool found = false;
+        float bestDist = -1f;
+
+        // Prefer the FURTHEST off-screen cell rather than the first: on a floor
+        // the player is actively working, "off-screen" can mean just past the
+        // edge, and a body appearing one pan away is a body they watched arrive.
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            var c = roadCells[Random.Range(0, roadCells.Count)];
+            float d = cam != null
+                ? Vector3.Distance(cam.transform.position, influence.CellToWorld(c))
+                : float.MaxValue;
+            if (d < offScreenDistance) continue;
+            if (d > bestDist) { bestDist = d; chosen = c; found = true; }
+        }
+
+        if (!found)
+        {
+            // Every sample was on-screen. Raise one anyway rather than stalling
+            // the incursion forever on a player who happens to be parked on the
+            // road -- but COUNT it, because a high number here means they are
+            // routinely seen arriving and the distance wants raising.
+            chosen = roadCells[Random.Range(0, roadCells.Count)];
+            incursionOnScreenFallbacks++;
+        }
+
+        var body = Instantiate(def.prefab, influence.CellToWorld(chosen), Quaternion.identity);
+        body.transform.SetParent(floor.transform, true);
+
+        var roam = CollectRoadRoam(roadCells, chosen);
+        if (roam.Count == 0) { roam.Add(chosen); incursionNoCell++; }
+        body.InitialiseAsDeepOccupant(floor, def, roam);
+
+        incursion.Add(body);
+        incursionSpawned++;
+    }
+
+    private List<Vector3Int> CollectRoadRoam(List<Vector3Int> roadCells, Vector3Int origin)
+    {
+        var roam = new List<Vector3Int>();
+        int r = Mathf.Max(1, incursionRoamRadius);
+        for (int i = 0; i < roadCells.Count; i++)
+        {
+            var c = roadCells[i];
+            if (Mathf.Abs(c.x - origin.x) <= r && Mathf.Abs(c.y - origin.y) <= r)
+                roam.Add(c);
+        }
+        return roam;
+    }
+
+    /// <summary>Has one of them found the hold? If so, draw the rest.
+    ///
+    /// ONE FINDS IT AND ALL COME, which is the design and also the only version
+    /// that reads as a siege: six bodies wandering in one at a time is six
+    /// skirmishes the villagers win. The draw is a RE-LEASH, so the shipped
+    /// wander does the walking.</summary>
+    private void CheckVillageReached(TileInfluenceManager influence)
+    {
+        var village = DwarvenVillageController.Instance;
+        if (village == null || !village.Established || incursion.Count == 0) return;
+
+        var lanes = new List<Vector3Int>();
+        foreach (var c in village.LaneCells) lanes.Add(c);
+        if (lanes.Count == 0) return;
+
+        if (!villageFound)
+        {
+            var laneSet = new HashSet<Vector3Int>(lanes);
+            for (int i = 0; i < incursion.Count; i++)
+            {
+                var b = incursion[i];
+                if (b == null) continue;
+                if (!laneSet.Contains(influence.WorldToCell(b.transform.position))) continue;
+                villageFound = true;
+                villageReachedTimes++;
+                Debug.Log("[DeepIncursion] one of them has found the hold; the rest are "
+                        + "drawn to it.");
+                break;
+            }
+        }
+
+        if (!villageFound) return;
+        for (int i = 0; i < incursion.Count; i++)
+            incursion[i]?.SetDeepRoamCells(lanes);
+    }
+
     // -- Save / Load ---------------------------------------------------
 
     public DeadCoreSaturationSaveData GetSaveData()
@@ -288,6 +501,10 @@ public class DeadCoreSaturation : MonoBehaviour
         lastClaimed = lastTarget = lastSpawned = 0;
         refusedNoFloor = refusedNoVault = refusedNoDefs = refusedNoCell = refusedQuiet = 0;
         refusedNoRoam = 0;
+        incursion.Clear();
+        villageFound = false;
+        incursionSpawned = incursionOnScreenFallbacks = incursionNoCell = 0;
+        villageReachedTimes = 0;
         live.Clear();
     }
 }

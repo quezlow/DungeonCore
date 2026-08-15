@@ -134,6 +134,40 @@ public class DwarvenVillageController : MonoBehaviour
     /// <summary>True once the village has been found.</summary>
     public bool Established { get; private set; }
 
+    /// <summary>The hold has FALLEN: every villager dead at a dawn, and the
+    /// dawn re-raise suspended until something re-establishes it.
+    ///
+    /// THIS IS THE WHOLE OF WHAT WAS MISSING. Villagers became mortal in stage
+    /// 1a-ii part 3 and canon recorded the siege as needing "no new
+    /// substrate", which was true of BODIES and not of the fall:
+    /// HandleDayStarted re-raised every dead slot the following dawn, so
+    /// killing all eight simply cost the attacker a day. There was no fall
+    /// state, no threshold and no suppression.</summary>
+    public bool Fallen { get; private set; }
+
+    /// <summary>Day the hold fell, or -1. E2's relief patrol counts from
+    /// here.</summary>
+    public int FallenOnDay { get; private set; } = -1;
+
+    /// <summary>How many times this hold has fallen across the run. Recorded
+    /// now because E2's abandonment threshold counts it, and a counter added
+    /// later would start from zero on an existing save and forgive every loss
+    /// already suffered.</summary>
+    public int TimesFallen { get; private set; }
+
+    /// <summary>Lane cells, for the aggregation probe. The same set StanceTick
+    /// already polls -- canon 44's "no new geometry" holds here too.</summary>
+    public IEnumerable<Vector3Int> LaneCells => laneCells;
+
+    /// <summary>Re-raise the hold. E2 calls this when the settlers arrive; it
+    /// is public now so the fall has a visible inverse rather than looking
+    /// like a one-way trapdoor to the next reader.</summary>
+    public void Reestablish()
+    {
+        Fallen = false;
+        FallenOnDay = -1;
+    }
+
     /// <summary>Floor index the village stands on, or -1.</summary>
     public int VillageFloorIndex { get; private set; } = -1;
 
@@ -361,6 +395,30 @@ public class DwarvenVillageController : MonoBehaviour
         var deck = new List<Sprite>();
         if (villagerSprites != null)
             foreach (var s in villagerSprites) if (s != null) deck.Add(s);
+        // THE FALL IS TESTED BEFORE THE RE-RAISE, or it could never happen:
+        // the loop below would restore the eighth corpse and the hold would
+        // never be empty at a dawn.
+        if (!Fallen && Established && bodies.Count > 0)
+        {
+            bool anyAlive = false;
+            for (int i = 0; i < bodies.Count; i++)
+                if (bodies[i] != null) { anyAlive = true; break; }
+            if (!anyAlive)
+            {
+                Fallen = true;
+                FallenOnDay = today;
+                TimesFallen++;
+                Debug.Log($"[Village] THE HOLD HAS FALLEN on day {today}. "
+                        + $"Fall number {TimesFallen}. The dawn re-raise is suspended "
+                        + "until it is re-established.");
+                WispCompanion.Instance?.Speak("village_fallen");
+            }
+        }
+
+        // FALLEN HOLDS DO NOT RAISE THEIR DEAD. Without this the whole feature
+        // is inert -- see the Fallen doc comment.
+        if (Fallen) return;
+
         for (int i = 0; i < bodies.Count; i++)
         {
             if (bodies[i] != null || deathDays[i] < 0) continue;

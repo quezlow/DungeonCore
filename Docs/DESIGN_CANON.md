@@ -10401,6 +10401,76 @@ mistaken for a pass: no floor spawns an occupant, the village cannot fall
 (`DwarvenVillageController.HandleDayStarted` re-raises every dead villager
 unconditionally at dawn), and the vault-heart saturation hook is unwired.
 
+### Stage E1b -- floor index 3: the incursion, the aggregation, the fall
+
+**WHAT BESIEGES THE VILLAGE IS THE DEEP, NOT A DEN, and that reverses this
+entry's own earlier assumption.** ~~Clearing the den after failing therefore
+still means something~~ -- that sentence assumed a den on floor index 3 and
+gated the recovery on clearing it. **There is no floor index 3 den**: the den
+ledger registers floors 1 and 2 only, and `DenTunnelProfile` defines entries for
+those two alone. The deep occupants press up instead, which is the fiction
+entry 42 already carries (the dwarves refuse to go BELOW; the thing below comes
+up) and which pairs the two arcs mechanically rather than by scheduling. The
+consequence is that **the recovery can no longer be gated on clearing a source**
+-- floor index 4 has no clear by canon -- so E2 gates it on the relief patrol
+reaching the hold unopposed instead.
+
+**THE PLAYER'S LEVER IS KILLING THE ROAMERS.** With no den to clear, that is
+what "clearing still means something" attaches to, and it is what keeps this a
+stake the player can act on rather than theatre they watch.
+
+**SPAWNING IS ON A REVEALED ROAD CELL, CHOSEN OFF-SCREEN.** Raising them on an
+UNREVEALED segment was the intent and is impossible: `CaveWallClassifier`
+records that `UnfogRoadSegment` calls `MarkNaturalFloor` per segment, "so the
+next stretch stayed un-mined and therefore SOLID". A body raised there could
+neither stand, walk nor path -- the statue fault again, one stage after it was
+fixed. The intent that the player never watches them arrive is kept by distance
+from the camera, the FURTHEST sampled off-screen cell is preferred over the
+first, and on-screen fallbacks are COUNTED so the rate is visible rather than
+assumed.
+
+**ONE FINDS THE HOLD AND ALL ARE DRAWN, implemented as a RE-LEASH.** The wander
+already paths, already filters for reachability and already tolerates a pool
+with unreachable members; a bespoke pursuit state would duplicate all of it and
+drift from it. `SetDeepRoamCells` refuses any body that is not an occupant, so a
+den body or chamber wild cannot lose the leash its own system depends on. The
+probe is the village's existing `laneCells` -- canon 44's "no new geometry"
+holds here too.
+
+**THE FALL IS TESTED BEFORE THE RE-RAISE, or it could never happen.** The dawn
+loop would restore the eighth corpse and the hold would never be empty at a
+dawn. `Fallen` then suspends the re-raise entirely; without that suspension the
+whole feature is inert.
+
+**`Reestablish` IS DECLARED WITH NO CALLER, named here rather than left for a
+sweep to launder.** E2's settler caravan is its only one. Built before its
+caller on the same precedent as `InitialiseAsDeepOccupant` and
+`InitialiseAsFactionBody`, and public now so the fall has a visible inverse
+rather than reading to the next person as a one-way trapdoor. If E2 does not
+land, this is the member to delete.
+
+**`TimesFallen` is recorded now although E2 is what reads it.** A counter added
+later would start from zero on an existing save and forgive every loss already
+suffered.
+
+**THE CRISIS STANDS DOWN AT THE CLIMAX like every other recurring threat.**
+`EndgameClimax.SuppressMidGameThreats` is already honoured by
+`MercenaryContract`, `NobleRetaliation`, `HolyOrderStrike`, `WildMonsterEvent`
+and `WorldEventDirector`; the incursion joins them. This is the guaranteed
+terminus that stops the player defending a hold that is not even theirs forever.
+The player-actionable ends -- the hold FORTIFYING after 3 survived sieges, or
+being ABANDONED after 3 losses with no intervening recovery -- are E2, and the
+abandonment is what makes declining to defend a choice with a price rather than
+a fail state. **That price is real because `DwarvenCaravanController` runs
+gatehouse-to-village**, so a permanently abandoned hold ends a robbable income
+source.
+
+**Diagnostics split the stake in two:** how often hostiles REACHED the lanes
+against how often the hold ACTUALLY FELL. Reached-but-never-fell is the
+villagers winning -- a tuning result, not a fault -- and fell-without-being-
+reached is impossible and would mean the lane probe is wrong. One number would
+have answered neither question.
+
 **THE VILLAGE FALL'S BLOCKER IS NOT MORTALITY.** Stage 1a-ii part 3 made
 villagers killable and canon 44 records the siege as needing "no new
 substrate", which is true of BODIES and not of the fall. `HandleDayStarted`
