@@ -119,6 +119,11 @@ public class DungeonSaveData
     // interrupted to be told its loot level was never set.
     public LootPolicyPromptSaveData lootPolicyPrompt;
 
+    // Floor index 4's saturation. Additive; null on old saves, which load with
+    // the vault heart unbroken -- correct, because a save that never had the
+    // system never had the escalation either.
+    public DeadCoreSaturationSaveData deadCoreSaturation;
+
     public WildMonsterEventSaveData wildMonsterEvent;
 
     public DenSaveData dens;                              // den hoards and tiers (canon 42; additive, null on old saves)

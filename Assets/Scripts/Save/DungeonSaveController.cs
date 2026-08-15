@@ -214,6 +214,7 @@ public class DungeonSaveController : MonoBehaviour
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
         LootPolicy.ResetForNewGame();                    // fresh dungeon pays nothing until the player says otherwise
         LootPolicyPrompt.ResetForNewGame();              // ...and re-arms the beat that tells them so
+        DeadCoreSaturation.Instance?.ResetForNewGame();  // fresh dungeon, unbroken heart, quiet deep
         DwarvenPatrolController.ResetForNewGame();       // fresh dungeon, every guard on his feet
         DwarvenVillageController.ResetForNewGame();      // fresh dungeon, every villager likewise
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
@@ -413,6 +414,9 @@ public class DungeonSaveController : MonoBehaviour
         // there is no instance to test and nothing that can be absent.
         currentSave.lootPolicy = LootPolicy.GetSaveData();
         currentSave.lootPolicyPrompt = LootPolicyPrompt.GetSaveData();
+
+        if (DeadCoreSaturation.Instance != null)
+            currentSave.deadCoreSaturation = DeadCoreSaturation.Instance.GetSaveData();
 
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
@@ -934,6 +938,7 @@ public class DungeonSaveController : MonoBehaviour
             DungeonAppealLedger.Instance?.RestoreFromSave(currentSave.appealLedger);
             LootPolicy.RestoreFromSave(currentSave.lootPolicy);
             LootPolicyPrompt.RestoreFromSave(currentSave.lootPolicyPrompt);
+            DeadCoreSaturation.Instance?.RestoreFromSave(currentSave.deadCoreSaturation);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             WorldEventDirector.Instance?.RestoreFromSave(currentSave.worldEvents);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);

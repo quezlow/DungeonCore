@@ -10305,9 +10305,9 @@ readout in the game.
 
 ## 46. The Deep Occupants -- Substrate (canon 42's nameless things)
 
-Status: PART SHIPPED -- stage C, the body kind and its three exclusions.
-Nothing spawns one yet; stage D populates floor index 4 and stage E floor
-index 3. Verified: 2026-08-15.
+Status: PART SHIPPED -- stage C (the body kind and its three exclusions) and
+stage D (floor index 4 saturation and the vault-heart escalation). Stage E
+carries floor index 3. Verified: 2026-08-15.
 
 **WHICH FLOOR CARRIES WHAT, because conflating them frames the whole arc
 wrongly.** Floor index 4 is the DEAD NETWORK and the `DeadCoreVault`: a
@@ -10408,10 +10408,87 @@ re-raises every dead slot the following dawn: kill all eight and all eight
 return tomorrow. There is no fall state, no threshold and no replacement
 suppression. That unconditional dawn is stage E's actual work.
 
+### Stage D -- floor index 4 saturation
+
+**PRESSURE READS `ClaimedTileCount`, NEVER `OwnedTileCount`, and this is the
+single number the whole condition turns on.** Canon 42 requires the dead network
+be "expensive to HOLD rather than dangerous to ENTER". `MarkNaturalFloor` mines
+every chamber, road and site interior on REVEAL, so `OwnedTileCount`
+(`minedTiles`) climbs merely by walking around. Keying on it would have made
+ENTERING expensive -- exactly the thing canon rules out. `ClaimedTileCount`
+moves only when the player deliberately takes ground, so the bill lands on
+holding. Do not "simplify" these two into one another.
+
+**The vault is the SOURCE, and no vault means no saturation.** If floor index 4
+somehow generated without one, the condition has no cause and the controller
+refuses rather than inventing a threat -- counted as `no vault` in the readout.
+`GetVaultSite()` finds it by ARCHETYPE, matching the shipped
+`GetOutpostSite` / `GetVillageSite` pattern; there is no `reservedForVault`
+flag and none is needed, since the archetype is already what
+`HolyGroundLedger` tests to decide the vault is not a seal.
+
+**Occupants rise on REVEALED, WALKABLE, UNCLAIMED cells in rings around the
+vault.** Unclaimed is the point: they come out of the parts of the network the
+player has not taken, so advancing the claim feels like pushing against
+something. Walkability is asked of `DungeonPathfinder.IsWalkable` rather than
+re-derived -- a body standing where nothing can path is a body that never
+reaches anything, and that failure is indistinguishable from one that spawned
+and lost interest. The search is a bounded ring sweep rather than a floor scan:
+floor index 4 runs to radius 600 and a per-dawn sweep of that disc would cost
+more than the feature is worth.
+
+**A quiet threshold, so walking through is free.** Below
+`quietBelowClaimedCells` the floor stays silent entirely. A player who has
+merely passed through is not holding anything, and charging them would be the
+"dangerous to enter" reading again by the back door.
+
+**`maxSpawnsPerDawn` exists so a large claim cannot materialise an army in one
+night.** The target is a population, not a debt to be paid immediately.
+
+**BREAKING THE VAULT HEART IS THE ESCALATION, and it lands at the END of the
+`isVault` branch on purpose.** `brokenSeals` has already refused a repeat by
+that point, so the escalation cannot be re-triggered by re-mining the cell or
+by reloading onto it. Entry 20 grants 60 research and a full level of XP for
+that break against -25 alignment and nothing else; this gives the largest
+reward in the game its first teeth, as entry 42 asks.
+
+**The escalation is saved even though the ledger already prevents a repeat.** A
+flag that only holds because ANOTHER system remembered is a flag that breaks the
+day that system is refactored.
+
+**Bodies are NOT persisted, deliberately.** They are a condition of the floor
+rather than characters with histories, and the dawn after a load re-raises
+whatever the claim warrants. Persisting them would mean a save format for
+something the tick recreates for free.
+
+**`occupantDefinitions` EMPTY MEANS NOT YET AUTHORED, never "any".** The
+ambiguous-default rule: an empty list in the Inspector is indistinguishable
+from one nobody filled in, so the readout states it in words rather than
+letting a silent zero stand. **This is the one authoring debt stage D leaves.**
+
+**No boss down there.** Entry 9's climax fires at Diamond 3 and surviving it
+silences the recurring threats, so floor index 4 is entered by a god core in a
+sandbox. The game already had its boss.
+
+**Diagnostics: five per-stage refusal counters, in the first version.** `no
+floor`, `no vault`, `no definitions`, `no spawn cell`, `below the quiet
+threshold`. A live count of zero is produced by all five and by a correctly
+quiet floor, and they want completely different repairs -- `below the quiet
+threshold` is the design working, while `no spawn cell` means the ring search
+found nothing revealed, walkable and unclaimed, which is a geometry fault.
+The readout says which -- and it prints whether floor index 4 EXISTS beside
+them, because on a dungeon that never digs that far `no floor` accrues one per
+dawn for the whole run and would otherwise read as a fault rather than as the
+player simply not having gone down.
+
 **Key files:** `Monster/MonsterTribe.cs` (one appended value),
 `Monster/DungeonMonster.cs` (`isDeepOccupant`, `IsWild`,
 `InitialiseAsDeepOccupant`, the tribe resolution and the two `Die()`
-exclusions), `TESTING/Commands.cs` (`Print Deep Occupants`).
+exclusions), `TESTING/Commands.cs` (`Print Deep Occupants`). Stage D adds
+`Gameplay/DeadCoreSaturation.cs` (new),
+`Floors/TerrainFeatureGenerator.cs` (`GetVaultSite`),
+`Gameplay/HolyGroundLedger.cs` (the escalation call),
+`Save/DungeonSaveData.cs` and `Save/DungeonSaveController.cs`.
 
 
 # APPENDIX

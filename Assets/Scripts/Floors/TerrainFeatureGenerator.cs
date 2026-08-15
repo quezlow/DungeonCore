@@ -819,6 +819,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
         return null;
     }
 
+    /// <summary>This floor's dead core vault, or null. Entry 20 guarantees one
+    /// per dungeon on floor index 4, so the first match is the answer -- the
+    /// same single-per-floor reasoning GetOutpostSite and GetVillageSite use.
+    ///
+    /// Found by ARCHETYPE rather than by a reservedForVault flag, because the
+    /// vault has no such flag and does not need one: the archetype is already
+    /// the thing HolyGroundLedger tests to decide the vault is not a seal.</summary>
+    public SiteData GetVaultSite()
+    {
+        if (featureData?.sites == null) return null;
+        foreach (var s in featureData.sites)
+            if (s != null && s.archetype == SiteArchetype.DeadCoreVault) return s;
+        return null;
+    }
+
     public SiteData GetSiteById(int siteId)
     {
         if (featureData == null || featureData.sites == null) return null;

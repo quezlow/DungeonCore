@@ -1290,11 +1290,43 @@ public class Commands : MonoBehaviour
                         + "cave life somewhere, which is allowed but worth knowing)");
         }
 
+        // -- stage D: is the floor's stake actually REACHED, or only reachable
+        var sat = DeadCoreSaturation.Instance;
+        if (sat == null)
+            sb.AppendLine("  SATURATION: no DeadCoreSaturation in the scene. Floor index 4 "
+                        + "pushes back on nothing -- add the component to the object that "
+                        + "holds DenController.");
+        else
+        {
+            sb.AppendLine($"  SATURATION on floor index {DeadCoreSaturation.SaturatedFloorIndex}: "
+                        + $"live {sat.LiveCount}, target {sat.LastTarget}, "
+                        + $"raised in total {sat.TotalSpawned}");
+            sb.AppendLine($"    claimed cells there: {sat.LastClaimed}   "
+                        + $"vault heart broken: {sat.HeartBroken}");
+            sb.AppendLine($"    definitions authored: {(sat.HasDefinitions ? "yes" : "NO -- an empty list means NOT YET AUTHORED, not 'any'. Nothing will ever spawn.")}");
+            // PER-STAGE REFUSALS. A target of zero and a target that could not
+            // be met read identically from the live count alone, and they want
+            // completely different repairs.
+            bool floorExists = FloorManager.Instance != null
+                && FloorManager.Instance.GetFloor(DeadCoreSaturation.SaturatedFloorIndex) != null;
+            sb.AppendLine($"    floor index {DeadCoreSaturation.SaturatedFloorIndex} exists: {floorExists}"
+                        + (floorExists ? "" : "   -- so 'no floor' below counts one per dawn since "
+                                            + "the run began and means only that the player has not "
+                                            + "dug this far. It is NOT a fault."));
+            sb.AppendLine($"    refusals: no floor {sat.RefusedNoFloor}, no vault {sat.RefusedNoVault}, "
+                        + $"no definitions {sat.RefusedNoDefinitions}, no spawn cell {sat.RefusedNoCell}, "
+                        + $"below the quiet threshold {sat.RefusedQuiet}");
+            sb.AppendLine("    READ THE REFUSALS BEFORE THE COUNT: 'below the quiet threshold' "
+                        + "is the floor working as designed on a player who has only walked "
+                        + "through; 'no spawn cell' means the ring search around the vault "
+                        + "found nothing revealed, walkable and unclaimed, which is a "
+                        + "geometry fault rather than a tuning one.");
+        }
+
         sb.AppendLine("  NOT YET BUILT, and named so a zero is not mistaken for a pass: "
-                    + "no floor spawns an occupant (stage D), the village cannot fall "
-                    + "(stage E -- DwarvenVillageController re-raises every dead villager "
-                    + "unconditionally at dawn), and the vault-heart saturation hook is "
-                    + "unwired.");
+                    + "the village cannot fall (stage E -- DwarvenVillageController "
+                    + "re-raises every dead villager unconditionally at dawn), so floor "
+                    + "index 3 has no stake wired at all.");
         Debug.Log(sb.ToString());
     }
 

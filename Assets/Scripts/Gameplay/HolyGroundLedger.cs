@@ -199,6 +199,16 @@ public static class HolyGroundLedger
                 // re-checking against the next, so the surplus is banked.
                 core.AddXP(core.XPToNextLevel);
             }
+
+            // THE TEETH. Canon 42: breaking the vault heart escalates floor
+            // index 4 saturation. Until now this branch was the largest reward
+            // in the game against a price of -25 alignment and nothing else.
+            //
+            // It lands HERE rather than anywhere earlier in the method because
+            // brokenSeals has already refused a repeat by this point, so the
+            // escalation cannot be re-triggered by re-mining the cell or by
+            // reloading onto it.
+            DeadCoreSaturation.Instance?.NotifyVaultHeartBroken();
         }
 
         DeedsController.Instance?.NotifyMoment(CoreMemory.FirstDesecration);
