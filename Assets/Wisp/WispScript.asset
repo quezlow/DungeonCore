@@ -31,6 +31,11 @@ MonoBehaviour:
     once: 1
     text: There. The first of them, come to see what stirs. Let the dungeon introduce
       itself.
+  - id: village_fallen
+    once: 1
+    text: The little hold below has gone quiet. Whatever came up out of the deep
+      took it, and the lanes are empty. They were not yours - but they were something,
+      and now there is one less something between you and what made that silence.
   - id: loot_policy_unset
     once: 1
     text: They leave with nothing, and they are not quiet about it. That is my doing
