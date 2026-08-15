@@ -108,6 +108,12 @@ public class DungeonSaveData
 
     public AppealLedgerSaveData appealLedger;
 
+    // The player's loot generosity band and its cooldown clock. Additive and
+    // NULL ON OLD SAVES, which LootPolicy.RestoreFromSave heals to Average
+    // rather than to Unset -- see the comment there for why that is not the
+    // same default a new game gets.
+    public LootPolicySaveData lootPolicy;
+
     public WildMonsterEventSaveData wildMonsterEvent;
 
     public DenSaveData dens;                              // den hoards and tiers (canon 42; additive, null on old saves)

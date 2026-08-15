@@ -2126,7 +2126,24 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         {
             var promoTemplate = DungeonBuildController.Instance != null
                 ? DungeonBuildController.Instance.Promotion : null;
-            float lootMult = promoTemplate != null ? promoTemplate.LootMult(promotedRank) : 1f;
+            float rankMult = promoTemplate != null ? promoTemplate.LootMult(promotedRank) : 1f;
+            // THE DIAL AND THE RANK ARE EXCLUSIVE, NEVER COMPOSED, and the
+            // arithmetic is why. Applying the player's band "before" the rank
+            // multiplier was the first ruling and is the SAME NUMBER -- both
+            // are plain multipliers and multiplication does not care about
+            // order -- so it prevented nothing. Making them mutually exclusive
+            // is the only shape that does.
+            //
+            // Measured rather than asserted: the mercenary ultimatum issues at
+            // 200 gold over a three-day window and a promoted body already pays
+            // twelve times its base, so a mid-tier boss clears that threshold on
+            // its own before any dial exists. Composed with Generous it would
+            // clear it twice over, and one boss room would BE the outflow
+            // economy at every setting above Average.
+            //
+            // A boss's hoard is its RANK. An ordinary drop is the player's
+            // POLICY. Do not fold these back together.
+            float lootMult = rankMult > 1f ? rankMult : LootPolicy.Multiplier;
             lootTable.Roll(transform.position, lootMult);
         }
 

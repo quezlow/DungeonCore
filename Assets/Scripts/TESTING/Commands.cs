@@ -1130,6 +1130,73 @@ public class Commands : MonoBehaviour
     /// earning slowly: the stolen/dug column separates them at a glance, and the
     /// share it implies is the number to check against
     /// Tools/sim_den_growth.py when a den feels wrong in play.</summary>
+    /// <summary>THE DIAL'S READOUT, and it exists in this first version because
+    /// a band that reads low and a band that reads low FOR A REASON want
+    /// different repairs. It prints the live band beside every other band's
+    /// multiplier, the rank multipliers it is exclusive with, and the two
+    /// thresholds the outflow economy is bounded by -- all read off the live
+    /// systems rather than restated, on the Print Faction Body Costs precedent
+    /// that a tuning claim relating two independently serialised fields cannot
+    /// be checked by reading either one.</summary>
+    [ContextMenu("Print Loot Policy")]
+    void PrintLootPolicy()
+    {
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"[Commands] LOOT POLICY -- day {day}");
+        sb.AppendLine($"  band: {LootPolicy.DisplayName(LootPolicy.Level)} "
+                    + $"(x{LootPolicy.Multiplier:0.00})");
+        sb.AppendLine(LootPolicy.HasBeenSet
+            ? $"  set on day {LootPolicy.LastChangedDay}; "
+              + (LootPolicy.CanChange(day)
+                 ? "may change NOW"
+                 : $"may change in {LootPolicy.DaysUntilChangeAllowed(day)} day(s)")
+            : "  NEVER SET -- every drop and every chest pays nothing. This is the "
+              + "opening beat armed, not a fault, until the first party resolves.");
+
+        sb.AppendLine("  bands:");
+        foreach (LootGenerosity b in System.Enum.GetValues(typeof(LootGenerosity)))
+            sb.AppendLine($"    {LootPolicy.DisplayName(b),-14} x{LootPolicy.MultiplierFor(b):0.00}"
+                        + (b == LootPolicy.Level ? "   <-- live" : ""));
+
+        // The rank multipliers are read off the live template, not typed. If
+        // this row ever prints 1.00 for a boss the promotion template is
+        // unassigned, and every boss in the game is quietly paying ordinary
+        // loot -- which looks exactly like a boss nobody has killed yet.
+        var promo = DungeonBuildController.Instance != null
+            ? DungeonBuildController.Instance.Promotion : null;
+        if (promo == null)
+            sb.AppendLine("  !! no PromotionTemplate on DungeonBuildController -- the rank "
+                        + "multipliers below cannot be read, and promoted bodies are "
+                        + "rolling ordinary loot.");
+        else
+            sb.AppendLine($"  ranks (EXCLUSIVE with the band, never composed): "
+                        + $"sub-boss x{promo.LootMult(PromotionRank.SubBoss):0.0}, "
+                        + $"boss x{promo.LootMult(PromotionRank.Boss):0.0}");
+
+        // The two ends of the outflow economy, so the band can be read against
+        // what it feeds rather than in isolation.
+        var merc = MercenaryContract.Instance;
+        if (merc != null)
+            sb.AppendLine($"  outflow: {merc.LootOutThisWindow} gold in the merchants' window "
+                        + $"against a threshold of {merc.CurrentThreshold}"
+                        + (merc.IsUltimatum ? $"  -- ULTIMATUM, {merc.CountdownRemaining} dawn(s) left" : ""));
+        else
+            sb.AppendLine("  outflow: no MercenaryContract in the scene, so a generous band "
+                        + "carries no consequence at all -- half the dilemma is missing.");
+
+        sb.AppendLine($"  appeal: civilians x{DungeonAppealLedger.CivilianMultiplier:0.00} "
+                    + $"(deterrence x{DungeonAppealLedger.DeterrenceMultiplier:0.00}, "
+                    + $"poverty x{DungeonAppealLedger.PovertyMultiplier:0.00}), "
+                    + $"delve +{DungeonAppealLedger.DelverAppealBonus:0.0}");
+        sb.AppendLine("  READ THE TWO HALVES SEPARATELY: deterrence falling is a dungeon "
+                    + "that kills too many, poverty falling is one that pays too little, "
+                    + "and they want opposite repairs. Poverty reads 1.00 when NOBODY "
+                    + "survived the window -- no survivors means no word about the pay, "
+                    + "which is the guard that stops the shaper spiralling.");
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Print Den Ledger")]
     void PrintDenLedger()
     {

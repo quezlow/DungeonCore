@@ -79,7 +79,10 @@ public class DungeonChest : MonoBehaviour
 
         if (openedSprite != null) spriteRenderer.sprite = openedSprite;
  
-        lootTable?.Roll(transform.position);
+        // A chest pays the player's POLICY. There is no rank to be exclusive
+        // with here -- a chest is never promoted -- so unlike the monster drop
+        // this site takes the band unconditionally.
+        lootTable?.Roll(transform.position, LootPolicy.Multiplier);
  
         if (IsTrapChest && adv != null)
         {

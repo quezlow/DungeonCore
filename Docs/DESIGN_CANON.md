@@ -1419,9 +1419,12 @@ the dungeon. The Goblin Scout, the one wild humanoid, carries a little.
 
 **Rejected:** books or materials on monsters (adventurer-drop only); generous
 base drops (drops are a liability, not a reward); per-type native drop flavour
-(prefab sharing forbids it and parity argues against it); a global
+(prefab sharing forbids it and parity argues against it); ~~a global
 Stingy-to-Generous player dial -- see the adventurer satisfaction layer, which is
-designed but unbuilt and is where that tension belongs.
+designed but unbuilt and is where that tension belongs.~~ **THE DIAL IS BUILT --
+see entry 45.** This sentence rejected it HERE and pointed at the satisfaction
+layer as where it belonged; that layer now exists and the dial is in it. The
+rejection is honoured rather than reversed.
 
 ## 16. Crypt and Deliberate Nemesis Raise
 
@@ -10092,6 +10095,118 @@ and the bound), `TESTING/Commands.cs` (the gate line and its coverage),
 `Gameplay/SpellCaster.cs`, `Traps/PressurePlateTrap.cs`, `Traps/CrossbowTrap.cs`,
 `Traps/FireballTrap.cs`, `UI/Minimap.cs`, `TESTING/Commands.cs`
 (`Print Tribe Matrix`, now allegiance-first).
+
+
+## 45. The Loot Policy Dial (and the Appeal Ledger's Poverty Half)
+
+Status: PART SHIPPED -- stage A, the dial and the shaper. The panel that sets
+it is stage B. Verified: 2026-08-14.
+
+**THE PLAYER HAD NO LEVER ON DROP VOLUME, and that is the whole case for a
+dial in a project whose habit is to make intent expressed by BUILDING.** Entry
+15B authors loot on the prefab, records that 112 definitions resolve to 49
+prefabs with slot-mates inheriting identical tables, and rejects per-type
+flavour outright. Rooms and attractors change WHO arrives; chest tiers change
+WHICH chest is picked. Neither changes how much anyone gets. The earlier
+recommendation -- that generosity be expressed by building -- was answering
+"who comes" against a question about "how much", and is withdrawn.
+
+**Entry 15B's own rejection points here.** It refuses the dial as part of
+Monster Drops and says the tension belongs in the satisfaction layer. This is
+that layer, so the dial arrives without reversing anything.
+
+**`LootGenerosity`: Unset, Poor, BelowAverage, Average, AboveAverage,
+Generous** at 0 / 0.5 / 0.75 / 1.0 / 1.4 / 2.0. Append-only; it serialises as
+an int.
+
+**UNSET IS A REAL ZERO.** The opening beat has the first party leave
+empty-handed and the wisp admit the level was never set. That line is only
+honest if nothing dropped, so Unset pays nothing rather than behaving as a
+hidden Average. A band that quietly paid 1x would make the wisp a liar.
+
+**THE DIAL AND THE PROMOTION RANK ARE EXCLUSIVE, NEVER COMPOSED, and the first
+ruling was arithmetically empty.** "Apply the dial to the base roll, before the
+rank multiplier" was locked and is struck: both are plain multipliers, so
+`base x dial x rank` is the same number in either order and the ordering
+prevented nothing. Making them mutually exclusive is the only shape that
+delivers the decision. Measured: the mercenary ultimatum issues at **200 gold
+over three days** and `bossLootMultiplier` is **12**, so a mid-tier boss clears
+that threshold unaided; composed with Generous it would clear it twice over and
+one boss room would BE the outflow economy at every setting above Average. **A
+boss's hoard is its rank; an ordinary drop is the player's policy.** Chests take
+the band unconditionally -- a chest is never promoted, so there is nothing to be
+exclusive with.
+
+**THE POVERTY HALF GOES THROUGH THE CIVILIAN MULTIPLIER, NOT THE DELVER
+BONUS**, and this too is a mechanism corrected against a locked decision. The
+decision -- poor exits thin the traffic and raise the Destroyer share -- is
+unchanged. Putting the penalty on `DelverAppealBonus` would have thinned the
+Delver lane alone, and against `baseDelver 6`, `basePilgrim 1.5` and
+`baseDestroyer 0.5` that raises the PILGRIM share more than the Destroyer
+share. Routing poverty through `civilianMultiplier` thins Delver, Pilgrim and
+GiftGiver together with Destroyer untouched, so the Destroyer share rises by the
+existing relative-weight arithmetic. **No Destroyer weighting code was written**,
+which is what keeps entry 18's ruling that "notoriety owns escalation" intact
+rather than reopened.
+
+**TWO DENOMINATORS, SO ONE DEATH IS NEVER BILLED TWICE.** Deterrence is
+`slain / resolved`. Poverty is `gold / SURVIVORS`, survivors being
+`fled + breached` off the same `RaidRecord` the ledger already ingests. A
+dungeon that kills everyone has no survivors, is charged deterrence alone, and
+is not additionally charged for paying nothing to corpses.
+
+**THE NO-SURVIVOR GUARD IS THE LOAD-BEARING LINE.** A window with no survivors
+reads poverty NEUTRAL, not destitute. Without it the shaper spirals: a quiet or
+lethal stretch reads as poverty, poverty thins the civilian lanes, thinner lanes
+carry less gold out, and the dungeon talks itself into an empty world it cannot
+climb out of. The two shapers MULTIPLY rather than sum -- a sum could drive a
+lane negative where a product cannot.
+
+**`neutralGoldPerSurvivor` 20, `maxPoverty` 0.5**, sized against the mercenary
+threshold rather than guessed: neutral sits far below 200 over three days, so
+there is a band the player can operate in where adventurers are content and the
+coin-lords are not yet angry. That gap is the playable space.
+
+**Old saves heal to AVERAGE, new games start UNSET**, and the two must not be
+the same default. An existing dungeon has dropped at 1x for its whole run;
+loading it into Unset would stop every drop in the game with no warning and no
+way for the player to connect the two. A null block also marks the policy as
+already chosen, so an old save does not get the opening beat replayed at it on
+day forty.
+
+**`LootPolicy` is a static, not a scene singleton.** There is no per-scene state
+and nothing to place, and a MonoBehaviour would add an Inspector reference whose
+absence fails silently -- canon 40's reason for building the panel row in code.
+The cost is an explicit `ResetForNewGame`, which `InitializeNewGame` calls
+beside the other statics.
+
+**Diagnostics ship with it, in the first version.** `Print Loot Policy` prints
+the live band against every other band, the rank multipliers it is exclusive
+with (read off the live `PromotionTemplate`, so an unassigned template is
+visible rather than silently paying ordinary loot to bosses), the merchants'
+live window against their live threshold, and the civilian multiplier **split
+into its deterrence and poverty halves**. The split is the point: a product
+alone cannot say which shaper pulled it down, and the two want opposite repairs.
+
+**ONE MEMBER IS DECLARED AND NOT YET CALLED, and it is named here rather than
+left for the sweep to launder.** `LootPolicy.TrySet` has no caller in stage A --
+the panel in stage B is its only one. Built before its caller on the precedent
+canon 44 records for `InitialiseAsFactionBody`, itself on canon 42's precedent
+with `SetDenWorkSite`: the substrate ships first and is proved by a readout,
+because a behaviour-neutral delivery is the only one verifiable in isolation.
+If stage B does not land, this is the member to delete.
+
+**An authoring gap found while measuring, not a code fault.**
+`Monster_HobgoblinSharpshooter.prefab` carries no loot entries where its
+slot-mate `Monster_HobgoblinSpearman` does -- 42 of 44 monster prefabs author
+two entries each. That body stays poor at every band until the entries are
+authored.
+
+**Key files:** `Gameplay/LootPolicy.cs` (new), `Monster/DungeonMonster.cs`
+(the death roll), `Chests/DungeonChest.cs`, `Gameplay/DungeonAppealLedger.cs`
+(the poverty term), `Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs`,
+`TESTING/Commands.cs` (`Print Loot Policy`).
+
 
 # APPENDIX
 

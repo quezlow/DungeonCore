@@ -212,6 +212,7 @@ public class DungeonSaveController : MonoBehaviour
         WanderingMerchantController.ResetForNewGame();   // fresh dungeon, fresh schedule
         DwarvenCaravanController.ResetForNewGame();      // fresh dungeon, fresh roads
         DwarvenClaimLedger.ResetForNewGame();            // fresh dungeon, one free warning again
+        LootPolicy.ResetForNewGame();                    // fresh dungeon pays nothing until the player says otherwise
         DwarvenPatrolController.ResetForNewGame();       // fresh dungeon, every guard on his feet
         DwarvenVillageController.ResetForNewGame();      // fresh dungeon, every villager likewise
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
@@ -406,6 +407,10 @@ public class DungeonSaveController : MonoBehaviour
 
         if (DungeonAppealLedger.Instance != null)
             currentSave.appealLedger = DungeonAppealLedger.Instance.GetSaveData();
+
+        // Unconditional: LootPolicy is a static with no scene presence, so
+        // there is no instance to test and nothing that can be absent.
+        currentSave.lootPolicy = LootPolicy.GetSaveData();
 
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
@@ -925,6 +930,7 @@ public class DungeonSaveController : MonoBehaviour
             HolyOrderStrike.Instance?.RestoreFromSave(currentSave.holyOrderStrike);
             MercenaryContract.Instance?.RestoreFromSave(currentSave.mercenaryContract);
             DungeonAppealLedger.Instance?.RestoreFromSave(currentSave.appealLedger);
+            LootPolicy.RestoreFromSave(currentSave.lootPolicy);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             WorldEventDirector.Instance?.RestoreFromSave(currentSave.worldEvents);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);
