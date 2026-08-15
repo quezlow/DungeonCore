@@ -31,6 +31,16 @@ MonoBehaviour:
     once: 1
     text: There. The first of them, come to see what stirs. Let the dungeon introduce
       itself.
+  - id: loot_policy_unset
+    once: 1
+    text: They leave with nothing, and they are not quiet about it. That is my doing
+      - I never asked you how open-handed you meant to be. Decide now. Give too little
+      and they stop coming; give too much and other eyes start counting.
+  - id: loot_policy_unset_nosurvivors
+    once: 1
+    text: None of them walked out, so none of them can complain. They would have,
+      though - there was nothing down there to take. Tell me how generous you intend
+      to be, before the next lot live long enough to talk.
   - id: first_blood
     once: 1
     text: First blood. The dark keeps the receipt - a little stronger now, and a
