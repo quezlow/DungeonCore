@@ -10197,11 +10197,25 @@ with `SetDenWorkSite`: the substrate ships first and is proved by a readout,
 because a behaviour-neutral delivery is the only one verifiable in isolation.
 If stage B does not land, this is the member to delete.
 
-**An authoring gap found while measuring, not a code fault.**
+~~**An authoring gap found while measuring, not a code fault.**
 `Monster_HobgoblinSharpshooter.prefab` carries no loot entries where its
 slot-mate `Monster_HobgoblinSpearman` does -- 42 of 44 monster prefabs author
 two entries each. That body stays poor at every band until the entries are
-authored.
+authored.~~
+
+**THAT CLAIM WAS FALSE AND THERE IS NO GAP.** All 43 non-base monster prefabs
+carry authored loot; `Monster_HobgoblinSharpshooter` holds
+`entries.Array.data[0].goldValue 5` and `[1].goldValue 8`. **The fault was the
+measurement, not the assets.** The sweep looked only for
+`entries.Array.size` overrides, which a variant writes when it CHANGES the array
+length -- so every variant whose base prefab already held two entries, and which
+therefore overrides only the VALUES, read as unauthored. The correct test is
+`entries.Array.size` **or** any `entries.Array.data[n].goldValue` override.
+
+Recorded rather than deleted because the shape of the error is worth keeping: a
+prefab-variant sweep that tests one override key and reports absence as fact
+will be wrong about inheritance every time, and it produced a confident,
+specific, entirely fictional authoring debt.
 
 ### Stage B -- the panel and the opening beat
 
@@ -10464,6 +10478,20 @@ abandonment is what makes declining to defend a choice with a price rather than
 a fail state. **That price is real because `DwarvenCaravanController` runs
 gatehouse-to-village**, so a permanently abandoned hold ends a robbable income
 source.
+
+**TEST SCAFFOLDING SHOULD HAVE SHIPPED WITH STAGE D and did not.** The readouts
+could say how many occupants existed; nothing let anyone LOOK at one, and
+reaching a natural spawn meant satisfying the real gates and waiting for a dawn
+-- 40+ claimed cells and a vault on floor 4, a revealed road network and a day
+divisible by the cadence on floor 3. `Force Occupant Spawn`, `Force Village
+Siege` and `Force Village Fall` close that. The forced spawn lands ON-SCREEN,
+the exact inverse of the production rule, because a test spawn honouring the
+off-screen rule is one nobody can watch. None of the three bypasses the
+definition check: an empty `occupantDefinitions` is a real fault and the most
+likely one to be present. `Force Village Fall` kills the villagers but does NOT
+set `Fallen` -- the hold falls at the next dawn through the same check a real
+massacre uses, because a test that skipped that check would prove nothing about
+the thing being tested.
 
 **Diagnostics split the stake in two:** how often hostiles REACHED the lanes
 against how often the hold ACTUALLY FELL. Reached-but-never-fell is the

@@ -316,6 +316,80 @@ public class DeadCoreSaturation : MonoBehaviour
             if (live[i] == null) live.RemoveAt(i);
     }
 
+    // ---- TEST SCAFFOLDING ---------------------------------------------
+    // Called only from Commands. These bypass the CADENCE and the THRESHOLDS,
+    // which is the point, but never the definition check -- an empty
+    // occupantDefinitions is a real fault and the most likely one to be
+    // present, so it is reported rather than hidden.
+
+    /// <summary>Raise one occupant at a given cell on a given floor and return
+    /// a human-readable account of what happened. Joins the floor's own live
+    /// list so the readouts and the caps see it like any other body.</summary>
+    public string ForceSpawnAt(FloorRoot floor, Vector3Int cell)
+    {
+        if (floor == null) return "no floor";
+        var influence = floor.TileInfluence;
+        if (influence == null) return "floor has no TileInfluence";
+        if (!HasDefinitions)
+            return "occupantDefinitions is EMPTY -- author at least one MonsterDefinition "
+                 + "on DeadCoreSaturation before expecting a body";
+
+        var def = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
+        if (def == null || def.prefab == null)
+            return "an entry in occupantDefinitions is null or has no prefab";
+
+        var roam = CollectRoamCells(floor, influence, cell);
+        bool stuck = roam.Count == 0;
+        if (stuck) roam.Add(cell);
+
+        var body = Instantiate(def.prefab, influence.CellToWorld(cell), Quaternion.identity);
+        body.transform.SetParent(floor.transform, true);
+        body.InitialiseAsDeepOccupant(floor, def, roam);
+
+        if (floor.FloorIndex == IncursionFloorIndex) incursion.Add(body);
+        else live.Add(body);
+
+        return $"raised {def.monsterName} at {cell} on floor index {floor.FloorIndex}, "
+             + $"roam pool {roam.Count} cell(s)"
+             + (stuck ? "  !! POOL OF ONE -- it will not move. The surrounding ground is "
+                      + "not revealed and walkable." : "");
+    }
+
+    /// <summary>Fill the floor 3 incursion to its cap on the village's own
+    /// doorstep and trip the aggregation at once, so the siege can be watched
+    /// rather than waited for.</summary>
+    public string ForceVillageSiege()
+    {
+        var floor = FloorManager.Instance != null
+            ? FloorManager.Instance.GetFloor(IncursionFloorIndex) : null;
+        if (floor == null) return $"floor index {IncursionFloorIndex} does not exist";
+        var village = DwarvenVillageController.Instance;
+        if (village == null || !village.Established)
+            return "no established village to besiege";
+
+        var lanes = new List<Vector3Int>();
+        foreach (var c in village.LaneCells) lanes.Add(c);
+        if (lanes.Count == 0) return "the village reports no lane cells";
+
+        PruneIncursion();
+        int want = Mathf.Max(0, incursionMax - incursion.Count);
+        var report = new System.Text.StringBuilder();
+        for (int i = 0; i < want; i++)
+        {
+            var cell = lanes[Random.Range(0, lanes.Count)];
+            report.AppendLine("    " + ForceSpawnAt(floor, cell));
+        }
+
+        // Trip the draw directly rather than waiting for the dawn probe.
+        villageFound = true;
+        villageReachedTimes++;
+        for (int i = 0; i < incursion.Count; i++)
+            incursion[i]?.SetDeepRoamCells(lanes);
+
+        return $"raised {want} in the lanes and tripped the aggregation; "
+             + $"{incursion.Count} now drawn to the hold.\n" + report.ToString().TrimEnd();
+    }
+
     private void PruneIncursion()
     {
         for (int i = incursion.Count - 1; i >= 0; i--)

@@ -159,6 +159,26 @@ public class DwarvenVillageController : MonoBehaviour
     /// already polls -- canon 44's "no new geometry" holds here too.</summary>
     public IEnumerable<Vector3Int> LaneCells => laneCells;
 
+    /// <summary>TEST SCAFFOLDING. Kill every living villager so the fall can be
+    /// observed without staging a real siege. The hold does not fall on this
+    /// call -- it falls at the NEXT DAWN, through exactly the same path a real
+    /// massacre takes, because a test that skipped the dawn check would prove
+    /// nothing about the thing it is meant to be testing.</summary>
+    public string ForceKillVillagers()
+    {
+        if (!Established) return "no established village";
+        int killed = 0;
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            var b = bodies[i];
+            if (b == null) continue;
+            b.TakeDamage(999999f);
+            killed++;
+        }
+        return $"killed {killed} villager(s). The hold falls at the NEXT DAWN, through the "
+             + "same check a real siege uses -- advance a day to see it.";
+    }
+
     /// <summary>Re-raise the hold. E2 calls this when the settlers arrive; it
     /// is public now so the fall has a visible inverse rather than looking
     /// like a one-way trapdoor to the next reader.</summary>

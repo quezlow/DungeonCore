@@ -1222,6 +1222,56 @@ public class Commands : MonoBehaviour
     /// rather than the bodies. Stages D and E extend it with the stake counters
     /// (how often the village actually FELL, not merely how often it was
     /// reachable).</summary>
+    /// <summary>Raise one occupant where the camera is looking.
+    ///
+    /// ON-SCREEN ON PURPOSE, which is the exact inverse of the production rule.
+    /// A test spawn that honoured the off-screen rule would be a test spawn
+    /// nobody could watch, and the first question about a new occupant is
+    /// always whether it looks right.</summary>
+    [ContextMenu("Force Occupant Spawn")]
+    void ForceOccupantSpawn()
+    {
+        var sat = DeadCoreSaturation.Instance;
+        if (sat == null)
+        {
+            Debug.Log("[Commands] no DeadCoreSaturation in the scene.");
+            return;
+        }
+        var floor = FloorManager.Instance != null ? FloorManager.Instance.ActiveFloor : null;
+        if (floor == null || floor.TileInfluence == null)
+        {
+            Debug.Log("[Commands] no active floor.");
+            return;
+        }
+        var cam = Camera.main;
+        if (cam == null)
+        {
+            Debug.Log("[Commands] no Camera.main to spawn in front of.");
+            return;
+        }
+        var cell = floor.TileInfluence.WorldToCell(cam.transform.position);
+        Debug.Log("[Commands] Force Occupant Spawn: " + sat.ForceSpawnAt(floor, cell));
+    }
+
+    /// <summary>Fill the floor 3 incursion at the village and trip the draw.</summary>
+    [ContextMenu("Force Village Siege")]
+    void ForceVillageSiege()
+    {
+        var sat = DeadCoreSaturation.Instance;
+        if (sat == null) { Debug.Log("[Commands] no DeadCoreSaturation in the scene."); return; }
+        Debug.Log("[Commands] Force Village Siege: " + sat.ForceVillageSiege());
+    }
+
+    /// <summary>Kill every villager. The hold falls at the NEXT DAWN, through
+    /// the same path a real siege takes.</summary>
+    [ContextMenu("Force Village Fall")]
+    void ForceVillageFall()
+    {
+        var v = DwarvenVillageController.Instance;
+        if (v == null) { Debug.Log("[Commands] no DwarvenVillageController in the scene."); return; }
+        Debug.Log("[Commands] Force Village Fall: " + v.ForceKillVillagers());
+    }
+
     [ContextMenu("Print Deep Occupants")]
     void PrintDeepOccupants()
     {
