@@ -10609,6 +10609,32 @@ walking INTO held ground is the whole of "expensive to hold". Leash them to
 unclaimed ground and they would politely avoid the player's territory, which is
 the design inverted.
 
+**THE OCCUPANT TINT IS PER-MONSTER AND DEFAULTS OFF.** `occupantDefinitions`
+holds `DeepOccupantEntry` rather than bare definitions, each with its own
+`applyTint` bool and colour, because the derived-tail art does not land in a
+uniform band: measured in game, the Behemoth derivation reads too bright beside
+the Lava Drake, which sits close to the floor value on purpose. A single global
+tint would have to pick one of them to be wrong.
+
+**A BOOL RATHER THAN "WHITE MEANS NO TINT".** A white tint in the Inspector is
+indistinguishable from a field nobody filled in -- the ambiguous default this
+project has already paid for. It defaults OFF because **the authored art is the
+intended look**: the guide's derived tail already darkens these at generation
+time, so a runtime tint is the exception for a body that came out bright, not
+the rule.
+
+**The tint is a MULTIPLY and cannot make a silhouette**, which is the same
+finding that sent the art down the derived-donor route in the first place -- it
+darkens while preserving internal contrast. It is a shade adjustment, not a
+second attempt at the effect the art already delivers.
+
+**Nothing else writes an occupant's sprite colour**, verified rather than
+assumed: `ApplyStatMultipliers` and the veteran tint are both reached only
+through promotion paths gated on `ServesDungeon`, which a wild body never
+answers; the selection highlight owns its own GameObject and renderer; and the
+crowd shade stores the current colour and restores it behind a `ColoursClose`
+guard.
+
 **`occupantDefinitions` EMPTY MEANS NOT YET AUTHORED, never "any".** The
 ambiguous-default rule: an empty list in the Inspector is indistinguishable
 from one nobody filled in, so the readout states it in words rather than

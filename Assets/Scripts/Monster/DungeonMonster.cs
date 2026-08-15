@@ -370,6 +370,25 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
     ///
     /// Occupants only. A den body or a chamber wild would lose the leash its
     /// own system depends on, so this refuses rather than trusting callers.</summary>
+    /// <summary>Tint a deep occupant's body. Occupants only, for the same
+    /// reason SetDeepRoamCells refuses others: a promoted body's tint carries
+    /// meaning (boss, sub-boss, veteran) and must not be overwritten by this.
+    ///
+    /// SAFE AGAINST EVERY OTHER WRITER, checked rather than assumed.
+    /// ApplyStatMultipliers and the veteran tint both write sr.color but are
+    /// reached only through promotion paths that ask ServesDungeon, which a
+    /// wild body never answers. The selection highlight owns a separate
+    /// GameObject and renderer. The crowd shade stores the CURRENT colour and
+    /// restores it behind a ColoursClose guard, so it neither wipes this nor
+    /// fights it. The renderer is fetched on demand rather than cached in
+    /// Awake, so there is no initialisation-order hazard.</summary>
+    public void SetDeepOccupantTint(Color tint)
+    {
+        if (!isDeepOccupant) return;
+        var body = GetComponentInChildren<SpriteRenderer>();
+        if (body != null) body.color = tint;
+    }
+
     public void SetDeepRoamCells(List<Vector3Int> cells)
     {
         if (!isDeepOccupant) return;

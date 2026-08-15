@@ -94,7 +94,7 @@ public class DeadCoreSaturation : MonoBehaviour
     [Tooltip("What the dead core is making. AUTHORED, and an empty list means "
            + "NOT YET AUTHORED rather than 'any' -- the readout says so plainly "
            + "instead of silently spawning nothing.")]
-    [SerializeField] private List<MonsterDefinition> occupantDefinitions = new();
+    [SerializeField] private List<DeepOccupantEntry> occupantDefinitions = new();
 
     private bool heartBroken;
     private readonly List<DungeonMonster> live = new();
@@ -123,6 +123,24 @@ public class DeadCoreSaturation : MonoBehaviour
     public int RefusedQuiet => refusedQuiet;
     public int SpawnedWithoutRoam => refusedNoRoam;
     public bool HasDefinitions => occupantDefinitions != null && occupantDefinitions.Count > 0;
+
+    /// <summary>Pick an entry, or null when the list is empty or the chosen
+    /// slot is unusable. One place to change if the pick ever stops being
+    /// uniform.</summary>
+    private DeepOccupantEntry PickEntry()
+    {
+        if (!HasDefinitions) return null;
+        var e = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
+        return (e == null || e.definition == null || e.definition.prefab == null) ? null : e;
+    }
+
+    /// <summary>Apply an entry's tint, if it asked for one. Kept beside the two
+    /// spawn paths rather than inside them so they cannot drift apart.</summary>
+    private static void ApplyEntryTint(DungeonMonster body, DeepOccupantEntry entry)
+    {
+        if (body == null || entry == null || !entry.applyTint) return;
+        body.SetDeepOccupantTint(entry.tint);
+    }
 
     private readonly List<DungeonMonster> incursion = new List<DungeonMonster>();
     private bool villageFound;
@@ -226,8 +244,9 @@ public class DeadCoreSaturation : MonoBehaviour
 
     private bool SpawnOne(FloorRoot floor, TileInfluenceManager influence, SiteData vault)
     {
-        var def = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
-        if (def == null || def.prefab == null) { refusedNoDefs++; return false; }
+        var entry = PickEntry();
+        if (entry == null) { refusedNoDefs++; return false; }
+        var def = entry.definition;
 
         Vector3Int cell;
         if (!TryPickSpawnCell(floor, influence, vault, out cell)) { refusedNoCell++; return false; }
@@ -238,6 +257,7 @@ public class DeadCoreSaturation : MonoBehaviour
         var body = Instantiate(def.prefab, influence.CellToWorld(cell), Quaternion.identity);
         body.transform.SetParent(floor.transform, true);
         body.InitialiseAsDeepOccupant(floor, def, roam);
+        ApplyEntryTint(body, entry);
         live.Add(body);
         return true;
     }
@@ -334,9 +354,10 @@ public class DeadCoreSaturation : MonoBehaviour
             return "occupantDefinitions is EMPTY -- author at least one MonsterDefinition "
                  + "on DeadCoreSaturation before expecting a body";
 
-        var def = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
-        if (def == null || def.prefab == null)
-            return "an entry in occupantDefinitions is null or has no prefab";
+        var entry = PickEntry();
+        if (entry == null)
+            return "an entry in occupantDefinitions is null, or has no definition or prefab";
+        var def = entry.definition;
 
         var roam = CollectRoamCells(floor, influence, cell);
         bool stuck = roam.Count == 0;
@@ -345,11 +366,14 @@ public class DeadCoreSaturation : MonoBehaviour
         var body = Instantiate(def.prefab, influence.CellToWorld(cell), Quaternion.identity);
         body.transform.SetParent(floor.transform, true);
         body.InitialiseAsDeepOccupant(floor, def, roam);
+        ApplyEntryTint(body, entry);
 
         if (floor.FloorIndex == IncursionFloorIndex) incursion.Add(body);
         else live.Add(body);
 
-        return $"raised {def.monsterName} at {cell} on floor index {floor.FloorIndex}, "
+        return $"raised {def.monsterName}"
+             + (entry.applyTint ? $" (tinted {entry.tint})" : " (untinted)")
+             + $" at {cell} on floor index {floor.FloorIndex}, "
              + $"roam pool {roam.Count} cell(s)"
              + (stuck ? "  !! POOL OF ONE -- it will not move. The surrounding ground is "
                       + "not revealed and walkable." : "");
@@ -461,8 +485,9 @@ public class DeadCoreSaturation : MonoBehaviour
     private void SpawnIncursionOne(FloorRoot floor, TileInfluenceManager influence,
                                    List<Vector3Int> roadCells)
     {
-        var def = occupantDefinitions[Random.Range(0, occupantDefinitions.Count)];
-        if (def == null || def.prefab == null) { refusedNoDefs++; return; }
+        var entry = PickEntry();
+        if (entry == null) { refusedNoDefs++; return; }
+        var def = entry.definition;
 
         var cam = Camera.main;
         Vector3Int chosen = default;
@@ -498,6 +523,7 @@ public class DeadCoreSaturation : MonoBehaviour
         var roam = CollectRoadRoam(roadCells, chosen);
         if (roam.Count == 0) { roam.Add(chosen); incursionNoCell++; }
         body.InitialiseAsDeepOccupant(floor, def, roam);
+        ApplyEntryTint(body, entry);
 
         incursion.Add(body);
         incursionSpawned++;
@@ -581,6 +607,32 @@ public class DeadCoreSaturation : MonoBehaviour
         villageReachedTimes = 0;
         live.Clear();
     }
+}
+
+/// <summary>One authored deep occupant body, and whether it wants darkening.
+///
+/// A BOOL RATHER THAN "WHITE MEANS NO TINT". A white tint in the Inspector is
+/// indistinguishable from a field nobody filled in, which is the ambiguous
+/// default this project has already been bitten by. applyTint defaults OFF
+/// because the AUTHORED ART IS THE INTENDED LOOK -- the derived tail in the art
+/// guide already darkens these at generation time, so a runtime tint is the
+/// exception for a body that came out brighter than its fellows, not the rule.
+/// </summary>
+[System.Serializable]
+public class DeepOccupantEntry
+{
+    public MonsterDefinition definition;
+
+    [Tooltip("Off means ship the sprite exactly as authored. On applies the "
+           + "tint below, for a body that reads too bright beside the others.")]
+    public bool applyTint;
+
+    [Tooltip("Multiplied into the sprite. Note this is a MULTIPLY, so it can "
+           + "only darken and cannot brighten, and it preserves the sprite's "
+           + "internal contrast rather than flattening it -- it will not turn a "
+           + "legible body into a silhouette. Around 0.75 grey takes a body "
+           + "down a shade without flattening it.")]
+    public Color tint = new Color(0.75f, 0.75f, 0.8f, 1f);
 }
 
 [System.Serializable]
