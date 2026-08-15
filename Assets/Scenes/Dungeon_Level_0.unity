@@ -6389,6 +6389,7 @@ GameObject:
   m_Component:
   - component: {fileID: 197198922}
   - component: {fileID: 197198923}
+  - component: {fileID: 197198924}
   m_Layer: 0
   m_Name: DenController
   m_TagString: Untagged
@@ -6434,6 +6435,29 @@ MonoBehaviour:
   spawnScatter: 1.5
   haulDropPrefab: {fileID: 2510184261249386949, guid: 8dd25799e128f934e83875d915b29aa8, type: 3}
   haulContentPrefab: {fileID: 8920263145647880238, guid: 4ef25061bcae0274dbb3a97ee0b48a83, type: 3}
+--- !u!114 &197198924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 197198921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4408f2842cf80644a76be8a0a96a5a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeadCoreSaturation
+  claimedCellsPerOccupant: 60
+  populationCap: 12
+  maxSpawnsPerDawn: 3
+  quietBelowClaimedCells: 40
+  roamRadiusCells: 12
+  incursionEveryDays: 4
+  incursionMax: 6
+  offScreenDistance: 26
+  incursionRoamRadius: 20
+  escalationMultiplier: 2
+  occupantDefinitions: []
 --- !u!1 &198049947
 GameObject:
   m_ObjectHideFlags: 0
