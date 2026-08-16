@@ -8665,14 +8665,23 @@ clear of the roughly 3000-cell site scale entry 19 warned about".
 
 `exploratoryCellCap` is 2400 on floor index 2 -- about twice the generated
 network, so **the den at most triples its own diggings**. A cap of 1107 was
-measured and rejected: it holds the contested-discovery beat to **7.3-8.0 per
-cent** of dungeons, and a set-piece firing on under one run in twelve is content
-nobody meets -- entry 19's own argument about the placement band, pointed
-inward.
+measured and rejected: ~~it holds the contested-discovery beat to **7.3-8.0 per
+cent** of dungeons~~ **it holds the beat to about 6 per cent (re-measured
+against the shipped rules at the shipped sense radius; the struck band was the
+retired model's -- see "The cap re-measured" below; the rejection stands and
+the number does not)**, and a set-piece firing on under one run in twelve is
+content nobody meets -- entry 19's own argument about the placement band,
+pointed inward.
 
 **The cap is the CONTENT knob and the budget is only the PACING knob**, which is
 measured rather than asserted and is the useful half of the sweep. Section J of
 `Tools/sim_den_digger.py`, typical dungeon:
+
+**TABLE PRESERVED AS MEASURED ON THE RETIRED MODEL** -- it walked through what
+the leg refuses, kept no retrace set and tested a point where the leg tests a
+brush. The shipped-rules table lives in "The cap re-measured" below; the ruling
+this table carried (content with the cap, pacing with the budget) survived
+re-measurement intact:
 
 | cap | rate | finds by d150 | remains ever | first find | dig stops | cells |
 |---|---|---|---|---|---|---|
@@ -8686,7 +8695,8 @@ against 14.0) while the first find moves eleven days and the end moves
 twenty-five. Read the `none` row across and the rate matters again, because with
 no cap the rate IS the total. **Tune content with the cap, pacing with the
 budget, and do not read a rate change as a content change.** Shipped at **x3**:
-first find about day 64, digging over about day 104.
+~~first find about day 64, digging over about day 104.~~ **digging over about
+day 106 (re-measured; the first-find column retired with the model).**
 
 **The budget is ADDITIVE and pays nothing**, which is ruling 5 unchanged: reserve
 cells pay the ledger, tunnel cells do not. A share was measured and is a trap --
@@ -9197,7 +9207,8 @@ than three times the rule. And contested discovery reads **4.7 per cent** --
 which is now a clean figure rather than a confounded one, and it is BELOW the
 7.3-8.0 per cent this entry rejected cap 1107 for delivering. The shipped
 configuration is under the bar this entry set for rejection. That is the whole
-of the case for re-measuring the cap against the shipped rules, and it is owed.
+of the case for re-measuring the cap against the shipped rules, ~~and it is
+owed~~ **and it is PAID -- see "The cap re-measured" below.**
 
 **THE REPAIR IS TWO CHANGES AND BOTH ARE LOAD-BEARING.** The seat WALKS BACK off
 whatever swallowed the run's end -- to the last cell the lookup still calls
@@ -9232,16 +9243,93 @@ that had a 56 per cent chance of never digging at all:
   `Tools/sim_den_digger.py` reports and this entry quotes. Some of that gap is
   the sim (which walks THROUGH a chamber, a road, a site and claimed ground
   where `CanCutAt` is blocked by all four, models no never-retrace set, and
-  tests a point where the leg tests a brush). Some of it was this fault. **The
-  split between the two is not yet known and is owed.**
+  tests a point where the leg tests a brush). Some of it was this fault. ~~**The
+  split between the two is not yet known and is owed.**~~ **Split, measured:
+  repairing the sim's rules alone moves its figure from 14.4 to 6.5 at the same
+  cap and sense, so the model owned most of the gap; the fault owned the
+  confounded 1.7-against-4.7 half. See "The cap re-measured" below.**
 - `exploratoryCellCap` barely bound on the seeds that mattered, so section J's
   cap sweep -- the measurement that chose 2400 over 1107, on the argument that
   1107 held the beat to 7.3-8.0 per cent -- was tuning a knob against a model
-  that does not match the shipped rules. **Re-measure the cap after this repair,
-  before quoting any of those figures again.**
+  that does not match the shipped rules. ~~**Re-measure the cap after this
+  repair, before quoting any of those figures again.**~~ **DONE -- "The cap
+  re-measured" below records the sweep, the kept cap and the sense ruling.**
 
 **Key files:** `Floors/TerrainFeatureGenerator.cs` (`StartExploratoryLeg`,
 `TrySeatLeg`), `TESTING/Commands.cs` (the mirror and its start-leg slice).
+
+#### The cap re-measured (stage 2a, the owed second measurement)
+
+Status: MEASURED, and the number KEPT. The instrument is the repaired
+`Tools/sim_den_digger.py` -- sections G, I and J replaced with a port of Road
+Breach Report's own mirror walk (seat rule, brush test, never-retrace, hard
+turn, sense-and-drive, one breach per dawn resolved through a ported
+`SkirmishResolver`) -- validated against the report's published 300-seed row
+before any sweep was trusted: contact 53.4 against 52.0, first contact d58
+against d57, stop d106 against d106, cells 2398 against 2384, stuck 0.0
+against 0.0, chamber-refusal share 1.4 against 1.4. The sim runs HOT on the
+remains column (6.5 against the report's 4.7 at the old sense) because it
+models no real sites and a straight trunk; the report stays the real-geometry
+figure and the sim is the sweep. Per-stage refusal counters and the
+cells-against-cap column print in the sim's first version, per the standing
+rule.
+
+**THE CURVE, shipped rules, 1000 seeds, budget x3, sense 30 (shipped -- the
+ruling below):**
+
+| cap | remains ever | road contact | first contact | dig stops | cap binds |
+|---|---|---|---|---|---|
+| 1107 | 5.8% | 33.7% | d40 | d72 | 98.8% |
+| 1600 | 6.8% | 41.1% | d45 | d86 | 98.4% |
+| **2400** | **9.0%** | **53.2%** | **d58** | **d106** | **97.8%** |
+| 3200 | 10.6% | 60.8% | d65 | d124 | 97.1% |
+| none | 17.0% | 80.6% | d84 | d129 | -- |
+
+At the old sense 15 the same sweep reads 3.8 / -- / 6.5 / -- / -- down the cap
+column, which is the whole finding: the old band (7.3-8.0 at 1107, 14.0-14.7
+at 2400) was inflated roughly two and a half times by a model that walked
+through what the leg refuses. The cells-cut distribution collapses onto the
+cap on 97-99 per cent of seeds at every finite value -- **the cap binding
+everywhere is the content knob doing its whole job, not a fault**; the old
+calibration's artifact was that half the dens never reached it at all.
+
+**WHAT SURVIVED RE-MEASUREMENT AND WHAT DID NOT.** The knob separation
+survived intact: at any fixed cap, x2 against x3 moves the remains column by
+under half a point (9.2 against 9.0 at the shipped cap) while moving first
+contact and the stop day by ten to twenty-six days (d132 against d106) --
+tune content with the cap, pacing with the budget, exactly as ruled. The
+skirmish gate's margin survived: even cap 1107 keeps road contact at 34 per
+cent against the road beat's 15 per cent bin rule. The ABSOLUTE band did not
+survive: at the then-shipped sense 15 the shipped cap delivered the beat on
+4.7 per cent of seeds (report, real geometry) -- BELOW the one-run-in-twelve
+bar this entry rejected 1107 for.
+
+**THE CAP IS KEPT AT 2400, and its number now stands on the scale argument
+alone**: about twice the generated network, the den at most triples its own
+diggings, and the dig ends about day 106. Buying the beat back with rock
+needs a cap of roughly 3300-3600 -- past entry 19's 3000-cell scale warning,
+with the dig running to day 124 and beyond -- for a beat a cheaper lever
+restores.
+
+**THE CHEAPER LEVER: `exploratorySenseRadius` 15 -> 30.** Only remains are
+sensed at range, so the radius is a pure beat-rate knob: measured
+15/20/25/30/40 -> 6.5/7.7/8.4/9.0/10.8 on the sim, with the stop day, the
+cells column and road contact unmoved throughout -- zero new rock, no pacing
+change, no save-shape consequence. Kobolds smell bones further than they
+see. **THE HONEST BRACKET, stated rather than hidden:** the sim runs one to
+three points hot, so the report at sense 30 is expected to read roughly 6-8
+per cent -- about double the 4.7 it shipped at, and NEAR the
+one-run-in-twelve bar rather than provably above it on real geometry. The
+report's re-run is the arbiter; if it reads under about 6, the same dial has
+another notch (sense 40 reads 10.8 on the sim) and taking it is a tuning,
+not a re-opened fork. A third remains cell was measured too (it lifts the
+beat further still) and declined: it touches `BuriedRemainsController`, and
+the Ossuary already grants that cell where one is placed.
+
+**Key files:** `Tools/sim_den_digger.py` (sections G and J, the shipped-rules
+walk and its sweep), `Floors/DenTunnelProfile.cs` and its asset (the sense
+radius and the corrected tooltips), `TESTING/Commands.cs` (the report's
+reference prose, which quoted the retired model).
 
 #### The road breach, staged only where it can be seen (stage 2c)
 

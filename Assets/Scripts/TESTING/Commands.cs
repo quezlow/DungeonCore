@@ -2508,7 +2508,7 @@ public class Commands : MonoBehaviour
     [SerializeField, Min(0)] private int roadBreachClaimedAtStart = 450;
     [SerializeField, Min(0)] private int roadBreachClaimedPerDay = 12;
 
-    [Tooltip("Dawns walked per seed. The dig stops around day 104 at the shipped " +
+    [Tooltip("Dawns walked per seed. The dig stops around day 106 at the shipped " +
              "cap and budget, so 200 is comfortably past the end of it.")]
     [SerializeField, Min(10)] private int roadBreachDays = 200;
 
@@ -2540,13 +2540,15 @@ public class Commands : MonoBehaviour
     /// here -- canon 42 measured claimed ground as worth under half a per cent
     /// of the total either way.
     ///
-    /// IT CHECKS ITSELF. The same walk re-measures the contested-discovery beat,
-    /// which Tools/sim_den_digger.py section J puts at 14.0 per cent at the
-    /// shipped cap and budget. The two models differ -- the sim tests a point
-    /// against POI discs where this tests a brush against real cells -- so exact
-    /// agreement is not expected and a BAND is. A remains figure outside 9-20
-    /// means one of the two has drifted, and this one is the closer model of
-    /// the shipped rule.
+    /// IT CHECKS ITSELF. The same walk re-measures the contested-discovery
+    /// beat, which Tools/sim_den_digger.py section J now puts at about 9 per
+    /// cent at the shipped cap, budget and sense -- the sim was repaired to
+    /// the shipped rules (brush, never-retrace, block-on-find, the seat
+    /// rule) when the cap was re-measured. The sim runs slightly HOT (no
+    /// real sites, a straight trunk), so this report reading one to three
+    /// points under it is the expected shape; a remains figure outside
+    /// roughly 5-12 means one of the two has drifted, and this one is the
+    /// closer model of the shipped rule.
     /// </summary>
     [ContextMenu("Road Breach Report")]
     void RoadBreachReport()
@@ -2881,23 +2883,25 @@ public class Commands : MonoBehaviour
                             + "ALL row means what it says.");
         }
 
-        // NOT a band and NOT a regression test against the sim: asserting
-        // agreement would be asserting agreement with a model that omits
-        // shipped rules.
+        // A ROUGH band now, not exact agreement: the sim was repaired to
+        // the shipped rules when the cap was re-measured, but it still
+        // models no real sites and a straight trunk, so it runs a little
+        // hot and this report is the real-geometry figure.
         sb.AppendLine("  remains here " + remainsPct.ToString("0.0")
-                    + " per cent, against sim_den_digger.py section J's 14.4 at the same "
-                    + "cap and budget. THE TWO ARE NOT EXPECTED TO AGREE and a gap here "
-                    + "is a fact about the SIM, not a fault in this report: the sim walks "
-                    + "THROUGH a chamber, a road, a site and claimed ground and merely "
-                    + "notes them, where CanCutAt is BLOCKED by all four; it models no "
-                    + "never-retrace set; and it tests a POINT where the leg tests its "
-                    + "2-wide BRUSH. Read the stuck column FIRST, though -- a den that "
-                    + "never dug cannot find anything, and that would be a fault in the "
-                    + "GAME rather than in either model.");
-        sb.AppendLine("  CONSEQUENCE, recorded rather than chased here: canon 42 chose cap "
-                    + "2400 over 1107 because 1107 held this beat to 7.3-8.0 per cent. "
-                    + "That comparison was made on the sim. Re-measuring the cap against "
-                    + "the shipped rules is OWED and is not this report's question.");
+                    + " per cent, against sim_den_digger.py section J's roughly 9 at "
+                    + "the same cap, budget and sense. The sim now models the shipped "
+                    + "rules (brush, never-retrace, block-on-find, the seat rule) and "
+                    + "runs a little HOT -- no real sites, a straight trunk -- so this "
+                    + "report reading one to three points under it is the expected "
+                    + "shape; outside roughly 5-12 one of the two has drifted. Read the "
+                    + "stuck column FIRST, though -- a den that never dug cannot find "
+                    + "anything, and that would be a fault in the GAME rather than in "
+                    + "either model.");
+        sb.AppendLine("  The cap was re-measured against the shipped rules and KEPT at "
+                    + "2400 on the scale argument alone; the beat was restored by "
+                    + "raising exploratorySenseRadius 15 -> 30 rather than by rock. "
+                    + "Canon 42's 'The cap re-measured' records the sweep; the old "
+                    + "7.3-8.0 rejection band was the retired model's.");
         sb.AppendLine("  CAVEATS, so the next reader does not mistake this for the game: "
                     + "roads and sites are the real builders; chambers, the cavity, the "
                     + "remains and the walk are mirrors; rivers are absent (they do not "

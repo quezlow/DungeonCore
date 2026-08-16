@@ -42,6 +42,13 @@ MODELLING NOTES, each a deliberate simplification with its reason:
     authors. A wobbling centreline is longer than a straight one, so every
     travel figure here is a FLOOR on the true cost.
 
+REPAIRED A SECOND TIME: sections G, I and J -- the exploratory walk -- were
+replaced with a port of Road Breach Report's mirror (the shipped rules: brush
+test, never-retrace, block-on-find, the seat rule), after the report measured
+the shipped walk at 4.7 per cent on the remains beat against this file's 14.4
+and canon 42 recorded the cap sweep as tuned against a model that does not
+match the shipped rules. Sections A-F never touched the walk and stand.
+
 Usage:  python3 sim_den_digger.py [seeds]
 """
 
@@ -60,7 +67,11 @@ from sim_den_tunnels import (
     BAND_OUTER,
     DEN_FLOORS,
     EXCLUSION_FROM_CENTRE,
+    STARTER_ROOM_RADIUS,
+    TRUNK_WIDTH,
     place_chambers,
+    plan_trunk,
+    segment_point_distance,
 )
 from sim_den_cavity import (
     CHAMBER_SEAT_CLEARANCE,
@@ -352,377 +363,825 @@ def pct(values, p):
     return s[min(len(s) - 1, int(p * len(s)))]
 
 
-def explore(seed, radius, detect, drift_deg, runs, cap_cells,
-            clamp_fraction=0.85):
-    """A PERSISTENT random walk, not a pure one, and the distinction is the
-    whole model. A pure random walk barely leaves its origin -- expected
-    displacement grows as sqrt(n), so a thousand cells of digging would end
-    thirty cells from the den and the tunnel would read as a scribble rather
-    than as a prospecting run. BuildTunnel already wobbles a bearing rather
-    than re-rolling one, so persistence is the shipped idiom as well as the
-    legible one.
-
-    Each run holds a heading and perturbs it by a small angle per cell. A run
-    that reaches the endpoint clamp turns rather than stopping: the rim is
-    bedrock and a dig that walked into it would stall invisibly.
-
-    Returns (cells_cut_at_first_find, found), where found is False if the cap
-    was reached without any target passing within `detect`."""
-    rng = random.Random(seed ^ 0x51E2C0DE)
-    inner, outer = band_bounds(radius)
-    centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
-                             radius)[0]
-    anchor, _i, _o, _r = pick_anchor(
-        random.Random(seed * 7919 + EXCAVATOR_FLOOR), radius, centres,
-        CHAMBER_SEAT_CLEARANCE)
-    if anchor is None:
-        return None, False
-
-    targets = buried_sites(seed * 7919 + EXCAVATOR_FLOOR, radius)
-    if not targets:
-        return None, False
-
-    clamp = radius * clamp_fraction
-    drift = math.radians(drift_deg)
-    heads = []
-    for r in range(runs):
-        theta = rng.uniform(0.0, 2.0 * math.pi)
-        heads.append([float(anchor[0]), float(anchor[1]), theta])
-
-    cut = 0
-    while cut < cap_cells:
-        for h in heads:
-            h[2] += rng.uniform(-drift, drift)
-            nx = h[0] + math.cos(h[2])
-            ny = h[1] + math.sin(h[2])
-            # Turn at the clamp rather than stalling in the rim.
-            if math.hypot(nx, ny) > clamp:
-                h[2] += math.pi * rng.uniform(0.5, 1.5)
-                continue
-            h[0], h[1] = nx, ny
-            cut += 1
-            for t in targets:
-                if math.hypot(t[0] - h[0], t[1] - h[1]) <= detect:
-                    return cut, True
-    return cut, False
-
-
-def report_exploration(seeds, radius):
-    print("G. EXPLORATORY DIGGING -- does a wandering tunnel find anything?")
-    print("   Cells cut before a target comes within the sense radius. The cap")
-    print("   is 1200 cells: at the recommended crawlway budget that is already")
-    print("   far past the day-49 mark, so 'not found' means not found in play.")
-    print()
-    print("   runs  sense  found%   cells to find (median / p75)")
-    for runs in (1, 2, 3):
-        for detect in (8, 15, 25, 40):
-            found, cells = 0, []
-            for s in range(seeds):
-                cut, ok = explore(s, radius, detect, drift_deg=12,
-                                  runs=runs, cap_cells=1200)
-                if ok:
-                    found += 1
-                    cells.append(cut)
-            print("   %-5d %-6d %6.1f%%  %s"
-                  % (runs, detect, 100.0 * found / seeds,
-                     ("%.0f / %.0f" % (pct(cells, 0.5), pct(cells, 0.75)))
-                     if cells else "-"))
-    print()
-    print("   Cells are TOTAL across all runs, so a den pushing three tunnels")
-    print("   pays three times as much rock for the same wall-clock day. The")
-    print("   budget is what converts this column into days, not the run count.")
-    print()
-
-
-
-# ---- the confirmed model: exploratory digging against a POI set ---------
-
-# DenTunnelProfile.asset floor 2 authors 3->2; the crawlway recommendation is
-# 2->1. Mean width is what converts centreline cells into rock cut, and rock
-# cut is what the budget buys.
-# CORRECTED FROM 2->1 TO A UNIFORM 2, AND EVERY REACH FIGURE ABOVE MOVED WITH
-# IT. A 1-wide tip is NOT 4-CONNECTED and nothing could walk the far end of it:
-# DenTunnelBuilder.Centreline is Bresenham and takes diagonal steps, and
-# RoadNetworkBuilder.Dilate at width 1 emits the cell alone, so two consecutive
-# diagonal cells share no edge. Canon already rests the generated network's
-# breach guarantee on exactly this -- "a 2-wide tip stays 4-connected across a
-# diagonal step" -- so 2 is a floor rather than a preference.
+# ---- the shipped-rules walk (sections G and J, replaced) -----------------
 #
-# Uniform is also what makes a GROWING leg safe: the shared rasteriser lerps the
-# taper across the run's CURRENT length, so a tapered leg would rewiden its own
-# older cells every time it grew.
+# WHY THE OLD SECTIONS WERE RETIRED. Sections G, I and J walked THROUGH a
+# chamber, a road, a site and claimed ground and merely noted them, modelled
+# no never-retrace set, and tested a point where the leg tests its 2-wide
+# brush. Road Breach Report measured the shipped walk at 4.7 per cent on the
+# remains beat against this file's 14.4, and canon 42 records the consequence:
+# the cap sweep that chose 2400 over 1107 was tuning a knob against a model
+# that does not match the shipped rules. What follows is a port of the
+# report's own mirror walk (TESTING/Commands.cs, WalkTheDig) -- seat rule,
+# brush test, never-retrace set, hard turn, sense-and-drive on remains, one
+# breach per dawn resolved through a ported SkirmishResolver -- validated
+# against the report's published 300-seed row before the sweep was trusted
+# (1000 seeds here): contact 53.4 against 52.0, first contact d58 against d57,
+# stop d106 against d106, cells 2398 against 2384, stuck 0.0 against 0.0,
+# chamber-refusal share 1.4 against 1.4. It runs slightly HOT on the remains column (no real sites,
+# a straight trunk), so the report stays the real-geometry figure and this is
+# the sweep.
 #
-# Cost: the same rock buys 25 per cent fewer centreline cells, so the reach
-# figures printed here are the honest ones and anything quoted from the 1.5
-# model was optimistic.
-CRAWLWAY_MOUTH, CRAWLWAY_TIP = 2, 2
-CRAWLWAY_MEAN_WIDTH = (CRAWLWAY_MOUTH + CRAWLWAY_TIP) / 2.0
+# DECLARED APPROXIMATIONS, each replacing a real builder the report calls:
+#   * the TRUNK is a straight Bresenham chord dilated at width 5 (the real
+#     one meanders);
+#   * the OUTPOST is one 15x15 square on an in-band chord cell, its chord
+#     cells removed from road (a LANE paints nothing); no other sites;
+#   * the gate BEAT is +/- gateBeatHalfCells arc cells along the chord.
+# Everything else is a port: chamber placement and CA, DenTunnelBuilder.Plan,
+# the wobble rasterise, the cavity carve, the remains sampler, the seat rule,
+# the walk, the resolver, the dawn arithmetic.
 
-# TileInfluenceManager.ClaimStarterArea opens at the stair landing, which
-# EnsureFloorExists passes as the floor's centre cell, and influence grows
-# outward from there. Modelled as a centred disc of equal area -- the real
-# shape is corridors and rooms, so this is an APPROXIMATION and a generous one
-# for a compact dungeon, mean for a sprawling one.
-def claimed_radius(claimed_cells):
-    return math.sqrt(max(1, claimed_cells) / math.pi)
+_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Assets')
 
-
-# RunChamberCA's median yield is 49 cells (measured in sim_den_cavity.py), so a
-# chamber presents roughly this radius to a passing dig.
-CHAMBER_EFFECTIVE_RADIUS = math.sqrt(49 / math.pi)
+_REF_NAMES = ["cut", "retrace", "clamp", "reserve", "chamber", "site",
+              "road", "outpost"]
+(_CUT, _R_RETRACE, _R_CLAMP, _R_RESERVE, _R_CHAMBER, _R_SITE, _R_ROAD,
+ _R_OUTPOST) = range(8)
 
 
-def poi_hit(x, y, targets):
-    """First POI within its own sense envelope, or None. Returns the kind so the
-    COMPOSITION of finds can be reported -- which is the real question, because
-    what a den finds first is the story that floor tells."""
-    for kind, tx, ty, reach in targets:
-        if math.hypot(tx - x, ty - y) <= reach:
-            return kind
-    return None
-
-
-def build_targets(seed, radius, detect, claimed_cells):
-    """The confirmed POI list, minus the two this file cannot honestly place.
-
-    ROAD and SITES are NOT modelled. RoadNetworkBuilder's carriageway and the
-    Buried Age site placer are not imported here, and inventing their geometry
-    would put a guessed number beside measured ones. Both are LARGE targets --
-    a trunk road is a line clean across the floor -- so every found-rate below
-    is a FLOOR on the true figure, never a ceiling. Recorded rather than
-    quietly omitted.
-
-    ONLY REMAINS ARE SENSED AT RANGE, and this file now MIRRORS the shipped rule
-    rather than leading it. TerrainFeatureGenerator.CanCutAt meets a chamber, a
-    road, a site or the player's frontier ON CONTACT -- a nearest-search over
-    every road and site cell on the floor, once per walked cell, would cost more
-    than the behaviour is worth, and remains are the one kind the dig is
-    actually FOR. The consequence is that a leg ranges slightly further between
-    turns than a range-sensing one would.
-    """
-    out = []
-    for t in buried_sites(seed * 7919 + EXCAVATOR_FLOOR, radius):
-        out.append(("remains", t[0], t[1], detect))
-    centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
-                             radius)[0]
-    for c in centres:
-        out.append(("chamber", c[0], c[1], CHAMBER_EFFECTIVE_RADIUS))
-    out.append(("claimed", 0.0, 0.0, claimed_radius(claimed_cells)))
+def _read_floor2_entry():
+    """The authored floor-2 exploratory numbers, read off the ASSET rather
+    than transcribed -- this file was unrunnable for a release because it kept
+    a copy of a table it also imported, and the header records that. Falls
+    back to the shipped values so a Tools/ folder on its own still runs."""
+    fallback = dict(exploratoryCellCap=2400, exploratoryBudget=3.0,
+                    exploratoryWidth=2, exploratorySenseRadius=30,
+                    exploratoryDriftDegrees=12.0, cavityBox=24,
+                    cavityMinCells=350, cavityMaxCells=400,
+                    cavityTier1Cells=150, runCount=4, endpointClamp=0.85,
+                    maxRunFraction=0.90, minRunCells=12, deadEndMin=30,
+                    deadEndMax=80, width=3, tipWidth=2, bandInner=0.15,
+                    bandOuter=0.65, landingKeepClear=10)
+    path = os.path.join(_SRC, 'ScriptableObjects', 'Floors',
+                        'DenTunnelProfile.asset')
+    if not os.path.exists(path):
+        return fallback
+    text = open(path, encoding='utf-8').read()
+    at = text.find('floorIndex: 2')
+    if at < 0:
+        return fallback
+    block = text[at:]
+    nxt = block.find('- floorIndex:', 1)
+    if nxt > 0:
+        block = block[:nxt]
+    out = dict(fallback)
+    for key in fallback:
+        m = re.search(r'\b%s:\s*([-\d.]+)' % key, block)
+        if m:
+            v = m.group(1)
+            out[key] = float(v) if '.' in v else int(v)
     return out
 
 
-def explore_poi(seed, radius, detect, drift_deg, days, profile,
-                extra_rate, clamp_fraction=0.85):
-    """A den's whole prospecting career, dawn by dawn.
+def _read_stat_overrides(rel, fallback):
+    """A prefab variant's (maxHP, attackDamage, attackCooldown), read off its
+    m_Modifications when the file is present."""
+    path = os.path.join(_SRC, rel)
+    if not os.path.exists(path):
+        return fallback
+    text = open(path, encoding='utf-8').read()
+    out = list(fallback)
+    for i, key in enumerate(('maxHP', 'attackDamage', 'attackCooldown')):
+        m = re.search(r'propertyPath: %s\s*\n\s*value:\s*([-\d.]+)' % key, text)
+        if m:
+            out[i] = float(m.group(1))
+    return tuple(out)
 
-    STOPS AND PICKS A NEW BEARING on a find (the confirmed rule), so a run is a
-    sequence of legs rather than one walk. The new bearing is re-rolled from the
-    point of the find, not from the den -- a kobold that has just broken into
-    something carries on from where it stands, and sending it home to start
-    again would read as the tunnel being deleted."""
-    rng = random.Random(seed ^ 0x51E2C0DE)
-    centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
-                             radius)[0]
-    anchor, _i, _o, _r = pick_anchor(
-        random.Random(seed * 7919 + EXCAVATOR_FLOOR), radius, centres,
-        CHAMBER_SEAT_CLEARANCE)
-    if anchor is None:
+
+def _read_patrol_numbers():
+    """(gateSquadSize, roadSquadSize, gateBeatHalfCells), read off the
+    controller's serialised defaults. The scene could retune them; the report
+    reads the live instance and stays authoritative for the beat columns."""
+    path = os.path.join(_SRC, 'Scripts', 'Floors', 'DwarvenPatrolController.cs')
+    out = [1, 2, 60]
+    if not os.path.exists(path):
+        return out
+    text = open(path, encoding='utf-8').read()
+    for i, key in enumerate(('gateSquadSize', 'roadSquadSize',
+                             'gateBeatHalfCells')):
+        m = re.search(r'private int %s = (\d+)' % key, text)
+        if m:
+            out[i] = int(m.group(1))
+    return out
+
+
+# DwarfGuard Variant.prefab and Kobold Variant.prefab, with the values at the
+# time of writing as fallbacks. The kobolds strike first in the resolver
+# because their prefab authors the longer detectionRange.
+_GUARD = _read_stat_overrides(
+    os.path.join('Prefabs', 'Monsters', 'Dwarves', 'DwarfGuard Variant.prefab'),
+    (70.0, 16.0, 1.1))
+_KOBOLD = _read_stat_overrides(
+    os.path.join('Prefabs', 'Monsters', 'Wild', 'Kobold Variant.prefab'),
+    (22.0, 6.0, 1.4))
+_GATE_SQUAD, _ROAD_SQUAD, _BEAT_HALF = _read_patrol_numbers()
+_DIGGERS_AT_TIER = [1, 1, 2, 3, 4]     # DenController.DiggersByTier
+_CLAIM0, _CLAIM_PER_DAY = 450, 12      # Road Breach Report's typical profile
+_WALK_DAYS = 200
+_OUTPOST_SIDE = 15
+_WOBBLE_STEP, _WOBBLE_AMP = 16, 3.0    # the Rasterise call the report makes
+
+
+def _takes_the_road(guards, kobolds):
+    """SkirmishResolver.TakesTheRoad, ported: instantaneous damage on the
+    cooldown, focus fire, kobolds strike first, stalemate is the road
+    holding."""
+    gmax, ghit, gcd = _GUARD
+    kmax, khit, kcd = _KOBOLD
+    ghp = [gmax] * guards
+    khp = [kmax] * kobolds
+    gnx = [gcd * 0.5] * guards
+    knx = [0.0] * kobolds
+
+    def alive(hp):
+        for i, v in enumerate(hp):
+            if v > 0:
+                return i
+        return -1
+
+    t = 0.0
+    while t < 600.0:
+        if alive(ghp) < 0:
+            return True
+        if alive(khp) < 0:
+            return False
+        for i in range(guards):
+            if ghp[i] <= 0 or t < gnx[i]:
+                continue
+            h = alive(khp)
+            if h < 0:
+                return False
+            khp[h] -= ghit
+            gnx[i] = t + gcd
+        for i in range(kobolds):
+            if khp[i] <= 0 or t < knx[i]:
+                continue
+            h = alive(ghp)
+            if h < 0:
+                return True
+            ghp[h] -= khit
+            knx[i] = t + kcd
+        t += 0.02
+    return False
+
+
+_SKIRMISH = None
+
+
+def _skirmish(guards, kobolds):
+    global _SKIRMISH
+    if _SKIRMISH is None:
+        _SKIRMISH = {(g, k): _takes_the_road(g, k)
+                     for g in (_GATE_SQUAD, _ROAD_SQUAD) for k in range(1, 5)}
+    return _SKIRMISH[(guards, min(4, max(1, kobolds)))]
+
+
+def _bres(a, b):
+    x0, y0 = a
+    x1, y1 = b
+    dx, dy = abs(x1 - x0), abs(y1 - y0)
+    sx, sy = (1 if x0 < x1 else -1), (1 if y0 < y1 else -1)
+    err = dx - dy
+    out = []
+    while True:
+        out.append((x0, y0))
+        if x0 == x1 and y0 == y1:
+            return out
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x0 += sx
+        if e2 < dx:
+            err += dx
+            y0 += sy
+
+
+def _dilate(cells, width, clamp_r):
+    half = (width - 1) // 2
+    extra = (width - 1) - 2 * half
+    c2 = clamp_r * clamp_r
+    out = set()
+    for (cx, cy) in cells:
+        for dx in range(-half, half + extra + 1):
+            for dy in range(-half, half + extra + 1):
+                px, py = cx + dx, cy + dy
+                if px * px + py * py > c2:
+                    continue
+                out.add((px, py))
+    return out
+
+
+def _ca_blob(rng, centre, size):
+    """RunChamberCA's shape, ported from the report's CaBlob: 0.45 fill,
+    walled border, four smoothing passes at the n >= 5 rule, flood from the
+    box centre."""
+    walls = [[(x == 0 or y == 0 or x == size - 1 or y == size - 1)
+              or rng.random() < 0.45 for y in range(size)] for x in range(size)]
+    for _ in range(4):
+        nxt = [[False] * size for _ in range(size)]
+        for x in range(size):
+            for y in range(size):
+                n = 0
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        if dx == 0 and dy == 0:
+                            continue
+                        px, py = x + dx, y + dy
+                        if (px < 0 or py < 0 or px >= size or py >= size
+                                or walls[px][py]):
+                            n += 1
+                nxt[x][y] = n >= 5
+        walls = nxt
+    half = size // 2
+    if walls[half][half]:
         return []
-
-    name, claimed, per_day = profile
-    lim = radius * clamp_fraction
-    drift = math.radians(drift_deg)
-    x, y = float(anchor[0]), float(anchor[1])
-    theta = rng.uniform(0.0, 2.0 * math.pi)
-    carry = 0.0
-    hoard = 0.0
-    open_cells = EXCAVATOR_TIER1_CELLS
-    finds = []
-    hit_already = set()
-
-    for day in range(1, days + 1):
-        claimed += per_day
-        if day <= GRACE_DAYS:
+    seen = [[False] * size for _ in range(size)]
+    out = []
+    stack = [(half, half)]
+    while stack:
+        x, y = stack.pop()
+        if x < 0 or y < 0 or x >= size or y >= size or seen[x][y] or walls[x][y]:
             continue
-        tier = tier_for(hoard)
-        # The reserve keeps digging and keeps paying; the tunnel is an ADDITIVE
-        # budget on top, and pays nothing. That is fork 1 as ruled, and it is
-        # what keeps 'tier 5 is the completed hole' true.
-        reserve_budget = DIG_CELLS_PER_DAY_BY_TIER[tier - 1] \
-            * expansion_multiplier(claimed)
-        opened = min(int(reserve_budget), EXCAVATOR_MAX_CELLS - open_cells)
-        open_cells += max(0, opened)
-        hoard += max(0, opened) * SPOIL_PER_CELL
+        seen[x][y] = True
+        out.append((centre[0] + x - half, centre[1] + y - half))
+        stack.extend(((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)))
+    return out
 
-        carry += reserve_budget * extra_rate / CRAWLWAY_MEAN_WIDTH
-        steps = int(carry)
-        carry -= steps
 
-        targets = build_targets(seed, radius, detect, claimed)
-        for _ in range(steps):
-            theta += rng.uniform(-drift, drift)
-            nx, ny = x + math.cos(theta), y + math.sin(theta)
-            if math.hypot(nx, ny) > lim:
-                theta += math.pi * rng.uniform(0.5, 1.5)
+def _normalise_angle(a):
+    while a > math.pi:
+        a -= 2.0 * math.pi
+    while a < -math.pi:
+        a += 2.0 * math.pi
+    return a
+
+
+def _pick_free_bearing(rng, runs, den):
+    min_sep = math.radians(40.0)
+    best = rng.random() * 2.0 * math.pi
+    best_worst = -1.0
+    for _ in range(24):
+        cand = rng.random() * 2.0 * math.pi
+        worst = math.pi
+        for (_a, b, _cid) in runs:
+            ang = math.atan2(b[1] - den[1], b[0] - den[0])
+            off = abs(_normalise_angle(cand - ang))
+            worst = min(worst, off)
+        if worst >= min_sep:
+            return cand
+        if worst > best_worst:
+            best_worst, best = worst, cand
+    return best
+
+
+def _plan_den(rng, radius, centres, landing, cfg):
+    """DenTunnelBuilder.Plan, ported: anchor uniform in band clear of the
+    landing and of chamber seats, eligible chambers nearest first, dead ends
+    fill on spread bearings with the shrink-rather-than-surrender retry."""
+    inner = max(8 + 2, int(round(radius * cfg['bandInner'])))
+    outer = int(round(radius * cfg['bandOuter']))
+    keep = STARTER_ROOM_RADIUS + cfg['landingKeepClear']
+    den = None
+    for _ in range(96):
+        dx = rng.randint(-outer, outer)
+        dy = rng.randint(-outer, outer)
+        d2 = dx * dx + dy * dy
+        if d2 < inner * inner or d2 > outer * outer:
+            continue
+        if math.hypot(dx - landing[0], dy - landing[1]) < keep:
+            continue
+        if any(math.hypot(dx - cx, dy - cy) < CHAMBER_SEAT_CLEARANCE
+               for cx, cy in centres):
+            continue
+        den = (dx, dy)
+        break
+    if den is None:
+        return None
+    clamp_r = radius * cfg['endpointClamp']
+    max_run = radius * cfg['maxRunFraction']
+    eligible = []
+    for i, c in enumerate(centres):
+        if math.hypot(c[0], c[1]) > clamp_r:
+            continue
+        d = math.hypot(c[0] - den[0], c[1] - den[1])
+        if d < cfg['minRunCells'] or d > max_run:
+            continue
+        if segment_point_distance(den, c, landing) < keep:
+            continue
+        eligible.append(i)
+    eligible.sort(key=lambda i: math.hypot(centres[i][0] - den[0],
+                                           centres[i][1] - den[1]))
+    runs = [(den, centres[i], i) for i in eligible[:cfg['runCount']]]
+    for _ in range(cfg['runCount'] - len(runs)):
+        placed = False
+        for _attempt in range(16):
+            if placed:
+                break
+            bearing = _pick_free_bearing(rng, runs, den)
+            ln = min(rng.randint(cfg['deadEndMin'], cfg['deadEndMax']),
+                     int(round(max_run)))
+            for shrink in range(3):
+                if placed:
+                    break
+                try_len = max(cfg['minRunCells'], ln >> shrink)
+                stop = (den[0] + int(round(try_len * math.cos(bearing))),
+                        den[1] + int(round(try_len * math.sin(bearing))))
+                if math.hypot(stop[0], stop[1]) > clamp_r:
+                    continue
+                if segment_point_distance(den, stop, landing) < keep:
+                    continue
+                runs.append((den, stop, -1))
+                placed = True
+    return den, runs
+
+
+def _wobble(rng, a, b):
+    line = [a]
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy)
+    if ln < _WOBBLE_STEP * 2:
+        line.append(b)
+        return line
+    px, py = -dy / ln, dx / ln
+    knots = max(1, int(round(ln / _WOBBLE_STEP)))
+    for k in range(1, knots):
+        t = k / float(knots)
+        taper = math.sin(t * math.pi)
+        off = (rng.random() * 2.0 - 1.0) * _WOBBLE_AMP * taper
+        line.append((int(round(a[0] + dx * t + px * off)),
+                     int(round(a[1] + dy * t + py * off))))
+    line.append(b)
+    return line
+
+
+def _centreline(poly):
+    seen = set()
+    out = []
+    for i in range(len(poly) - 1):
+        for p in _bres(poly[i], poly[i + 1]):
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+    return out
+
+
+def _taper_cells(line, mouth_w, tip_w, clamp_r):
+    cells = set()
+    n = len(line)
+    for i, c in enumerate(line):
+        t = i / float(n - 1) if n > 1 else 0.0
+        w = max(tip_w, int(round(mouth_w + (tip_w - mouth_w) * t)))
+        cells |= _dilate([c], w, clamp_r)
+    return cells
+
+
+def _carve_cavity(rng, den, cfg):
+    raw = None
+    for _ in range(8):
+        r = _ca_blob(rng, den, max(8, cfg['cavityBox']))
+        if r:
+            raw = r
+            break
+    if raw is None:
+        return None
+    s = set(raw)
+    safety = 0
+    while len(s) < cfg['cavityMinCells'] and safety < 4000:
+        safety += 1
+        cand = []
+        for (x, y) in s:
+            for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if p not in s:
+                    cand.append(p)
+        if not cand:
+            break
+        s.add(cand[rng.randrange(len(cand))])
+    while len(s) > cfg['cavityMaxCells']:
+        far, mx = den, -1
+        for c in s:
+            if c == den:
                 continue
-            x, y = nx, ny
-            kind = poi_hit(x, y, targets)
-            # A chamber already broken into is not a new find; remains are
-            # consumed once. Without this a den re-reports the same cave for ever.
-            key = (kind, round(x / 8.0), round(y / 8.0))
-            if kind and key not in hit_already:
-                hit_already.add(key)
-                finds.append((day, kind))
-                theta = rng.uniform(0.0, 2.0 * math.pi)
-    return finds
+            sq = (c[0] - den[0]) ** 2 + (c[1] - den[1]) ** 2
+            if sq > mx:
+                mx, far = sq, c
+        if far == den:
+            break
+        s.discard(far)
+    s.add(den)
+    t1 = max(1, min(cfg['cavityTier1Cells'], len(s)))
+    open_c = {den}
+    queue = [den]
+    qi = 0
+    while qi < len(queue) and len(open_c) < t1:
+        x, y = queue[qi]
+        qi += 1
+        for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if len(open_c) >= t1:
+                break
+            if p in s and p not in open_c:
+                open_c.add(p)
+                queue.append(p)
+    return s, open_c
 
 
-def report_poi(seeds, radius):
-    print("I. THE CONFIRMED MODEL -- exploratory digging, full POI set")
-    print("   uniform %d-wide crawlway, additive budget, stop-and-new-bearing."
-          % CRAWLWAY_MOUTH)
-    print("   ROAD and SITES are not modelled, so every figure is a FLOOR.")
-    print()
-    for extra_rate in (1.0, 2.0):
-        for detect in (8, 15):
-            print("   budget x%.0f, sense %d" % (extra_rate, detect))
-            print("     profile     any find%%  first find (day)  finds by d150"
-                  "   remains ever%")
-            for profile in PROFILES:
-                anyf, firsts, counts, rem = 0, [], [], 0
-                for s in range(seeds):
-                    finds = explore_poi(s, radius, detect, 12, 150,
-                                        profile, extra_rate)
-                    if finds:
-                        anyf += 1
-                        firsts.append(finds[0][0])
-                    counts.append(len(finds))
-                    if any(k == "remains" for _d, k in finds):
-                        rem += 1
-                print("     %-11s %8.1f%%  %-17s %-15.1f %.1f%%"
-                      % (profile[0], 100.0 * anyf / seeds,
-                         ("%.0f (p75 %.0f)" % (pct(firsts, 0.5),
-                                               pct(firsts, 0.75)))
-                         if firsts else "-",
-                         statistics.mean(counts), 100.0 * rem / seeds))
-            print()
+def _build_shipped_world(seed, radius, cfg):
+    """One seed's floor, in the report's order: trunk, outpost, chambers,
+    landing, den plan, rasterised runs, cavity, remains."""
+    rng = random.Random(seed * 7919 + EXCAVATOR_FLOOR)
+    chord = plan_trunk(rng, radius)
+    if chord is None:
+        return None
+    line = _bres(*chord)
+    road = _dilate(line, TRUNK_WIDTH, radius)
 
-    print("   COMPOSITION of finds, typical dungeon, budget x2 sense 15:")
-    tally = {}
-    for s in range(seeds):
-        for _d, kind in explore_poi(s, radius, 15, 12, 150, PROFILES[1], 2.0):
-            tally[kind] = tally.get(kind, 0) + 1
-    total = float(sum(tally.values())) or 1.0
-    for kind in sorted(tally, key=lambda k: -tally[k]):
-        print("     %-10s %5.1f%%" % (kind, 100.0 * tally[kind] / total))
-    print()
+    inband = [i for i, c in enumerate(line)
+              if radius * cfg['bandInner'] <= math.hypot(c[0], c[1])
+              <= radius * cfg['bandOuter']]
+    if not inband:
+        return None
+    oi = inband[rng.randrange(len(inband))]
+    ox, oy = line[oi]
+    half = _OUTPOST_SIDE // 2
+    outpost = set((ox + dx, oy + dy) for dx in range(-half, half + 1)
+                  for dy in range(-half, half + 1))
+    road -= outpost
 
+    centres = place_chambers(rng, radius)[0]
+    chamber = set()
+    for cc in centres:
+        for c in _ca_blob(rng, cc, rng.randint(8, 14)):
+            if c not in road and c not in outpost:
+                chamber.add(c)
 
-def report_cap(seeds, radius):
-    """WHY THE DIG NEEDS A CAP, AND WHAT A CAP COSTS.
+    inner = int(round(radius * cfg['bandInner']))
+    landing = (0, 0)
+    for _ in range(64):
+        lx = rng.randint(-inner, inner)
+        ly = rng.randint(-inner, inner)
+        if lx * lx + ly * ly <= inner * inner:
+            landing = (lx, ly)
+            break
 
-    Two containments already exist and BOTH WERE ALREADY MODELLED here: the leg
-    turns at endpointClamp, and claimed ground stops it. Neither BOUNDS the dig,
-    they only aim it -- making claimed ground a hard wall changes the total by
-    under half a per cent, because a typical dungeon's claim is under three per
-    cent of the diggable disc. Uncapped, a typical den cuts 2,894 cells by day
-    150 and 7,430 by day 300 against a GENERATED network of 1107.
+    plan = _plan_den(rng, radius, centres, landing, cfg)
+    if plan is None:
+        return None
+    den, runs = plan
+    ras_clamp = radius - 10
+    tunnels = []
+    owned_tunnel = set()
+    for (ra, rb, cid) in runs:
+        tl = _centreline(_wobble(rng, ra, rb))
+        if len(tl) < 2:
+            continue
+        tunnels.append((tl, cid))
+        owned_tunnel |= _taper_cells(tl, cfg['width'], cfg['tipWidth'],
+                                     ras_clamp)
+    if not tunnels:
+        return None
 
-    The sweep also separates the two knobs, which is the useful part: at a fixed
-    cap the BUDGET barely moves how much is found, and the CAP barely moves how
-    fast. Tune content with one and pacing with the other.
-    """
-    print("J. THE CAP  (typical dungeon, uniform %d-wide section, sense 15)"
-          % CRAWLWAY_MOUTH)
-    print("   cap     rate  finds/d150  remains ever%  1st find  dig stops  cells")
-    for cap in (1107, 1600, 2400, 0):
-        for rate in (2.0, 3.0):
-            f150, rem, cells, first, stops = [], 0, [], [], []
-            for s in range(seeds):
-                finds, cut, stopped = career_capped(s, radius, PROFILES[1], rate, cap)
-                f150.append(sum(1 for d, _k in finds if d <= 150))
-                if any(k == "remains" for _d, k in finds):
-                    rem += 1
-                cells.append(cut)
-                if finds:
-                    first.append(finds[0][0])
-                if stopped:
-                    stops.append(stopped)
-            print("   %-7s x%-4.0f %-11.1f %-14.1f %-9s %-10s %.0f"
-                  % (cap if cap else "none", rate,
-                     statistics.mean(f150), 100.0 * rem / seeds,
-                     ("d%.0f" % pct(first, 0.5)) if first else "-",
-                     ("d%.0f" % statistics.mean(stops)) if stops else "never",
-                     statistics.mean(cells)))
-    print()
-    print("   SHIPPED: cap 2400 (about twice the generated network, so the den at")
-    print("   most triples its own diggings) at budget x3. A cap of 1107 was")
-    print("   measured and rejected -- it holds the contested-discovery beat to")
-    print("   under one dungeon in ten, and a set-piece nobody meets is not one.")
-    print()
+    carve = _carve_cavity(rng, den, cfg)
+    if carve is None:
+        return None
+    reserve_all, open_c = carve
+
+    remains = buried_sites(seed * 7919 + EXCAVATOR_FLOOR, radius)
+    return dict(road=road, outpost=outpost, chamber=chamber,
+                reserve=reserve_all - open_c,
+                owned=road | outpost | chamber | open_c | owned_tunnel,
+                remains=[tuple(r) for r in remains],
+                tunnels=tunnels, chord=line, outpost_s=oi)
 
 
-def career_capped(seed, radius, profile, rate, cap, detect=15, drift_deg=12,
-                  days=200, clamp_fraction=0.85):
-    """explore_poi, plus a cap on NOVEL cells and a brush that counts them.
+def _can_cut(w, cell, clamp2, width, on_leg):
+    if cell in on_leg:
+        return _R_RETRACE
+    half = (width - 1) // 2
+    extra = (width - 1) - 2 * half
+    for dx in range(-half, half + extra + 1):
+        for dy in range(-half, half + extra + 1):
+            p = (cell[0] + dx, cell[1] + dy)
+            if p[0] * p[0] + p[1] * p[1] > clamp2:
+                return _R_CLAMP
+            if p in w['reserve']:
+                return _R_RESERVE
+            if p in w['chamber']:
+                return _R_CHAMBER
+            if p in w['outpost']:
+                return _R_OUTPOST
+            if p in w['road']:
+                return _R_ROAD
+    return _CUT
 
-    Cells are counted rather than predicted because the brush overlaps itself as
-    the leg advances, so what a step yields depends on the turn it just took.
-    """
+
+def _seat_leg(w, line, clamp2, width):
+    """TrySeatLeg, ported: walk back past every cell another feature owns,
+    then a brush width more, then eight bearings from straight on outwards."""
+    empty = set()
+    i = len(line) - 1
+    while i > 0 and (line[i] in w['chamber'] or line[i] in w['outpost']
+                     or line[i] in w['road']):
+        i -= 1
+    i = max(0, i - width)
+    while i >= 0:
+        at = line[i]
+        prev = line[max(0, i - 1)]
+        along = 0.0 if at == prev else math.atan2(at[1] - prev[1],
+                                                  at[0] - prev[0])
+        for k in range(8):
+            b = along + math.pi * 0.25 * k
+            step = (at[0] + int(round(math.cos(b))),
+                    at[1] + int(round(math.sin(b))))
+            if step == at:
+                continue
+            if _can_cut(w, step, clamp2, width, empty) != _CUT:
+                continue
+            return i, b
+        i -= 1
+    return None
+
+
+def _on_beat(w, cell):
+    best, bi = None, -1
+    for i, c in enumerate(w['chord']):
+        d = (c[0] - cell[0]) ** 2 + (c[1] - cell[1]) ** 2
+        if best is None or d < best:
+            best, bi = d, i
+    return abs(bi - w['outpost_s']) <= _BEAT_HALF
+
+
+def _shipped_walk(seed, w, radius, cap, budget, sense, cfg, days=_WALK_DAYS):
+    """WalkTheDig, ported dawn for dawn. Returns a dict of counters -- every
+    refusal split by kind, because a dig that spends half its cap and cannot
+    say why is the shape this project has paid for before."""
     rng = random.Random(seed ^ 0x51E2C0DE)
-    centres = place_chambers(random.Random(seed * 7919 + EXCAVATOR_FLOOR),
-                             radius)[0]
-    anchor, _i, _o, _r = pick_anchor(
-        random.Random(seed * 7919 + EXCAVATOR_FLOOR), radius, centres,
-        CHAMBER_SEAT_CLEARANCE)
-    if anchor is None:
-        return [], 0, None
+    r = dict(met_road=False, first_road=0, remains=0, cells=0, stop=0,
+             dead_end=False, boxed=0, short=0, worked=0,
+             refusals=[0] * 8, breaches=0, den_won=0, guard_won=0,
+             abandoned=0)
 
-    name, claimed, per_day = profile
-    lim = radius * clamp_fraction
-    drift = math.radians(drift_deg)
-    x, y = float(anchor[0]), float(anchor[1])
-    theta = rng.uniform(0.0, 2.0 * math.pi)
-    carry, hoard = 0.0, 0.0
-    open_cells = EXCAVATOR_TIER1_CELLS
-    cut, finds, hit_already = set(), [], set()
-    stopped_on = None
+    clamp_r = radius * cfg['endpointClamp']
+    clamp2 = clamp_r * clamp_r
+    width = max(2, cfg['exploratoryWidth'])
+    drift = math.radians(cfg['exploratoryDriftDegrees'])
+
+    ranked = sorted(w['tunnels'],
+                    key=lambda t: len(t[0]) + (100000 if t[1] < 0 else 0),
+                    reverse=True)
+    seat = None
+    for (line, cid) in ranked:
+        s = _seat_leg(w, line, clamp2, width)
+        if s is not None:
+            seat = (line[s[0]], s[1], cid)
+            break
+    if seat is None:
+        return r
+    mouth, heading, cid = seat
+    r['dead_end'] = cid < 0
+
+    on_leg = {mouth}
+    cut = set()
+    x, y = float(mouth[0]), float(mouth[1])
+    claimed, hoard = float(_CLAIM0), 0.0
+    open_c, carry = float(cfg['cavityTier1Cells']), 0.0
+    taken = set()
+    driving, drive_to = False, (0, 0)
 
     for day in range(1, days + 1):
-        claimed += per_day
+        claimed += _CLAIM_PER_DAY
         if day <= GRACE_DAYS:
             continue
+        if w['remains'] and len(taken) >= len(w['remains']):
+            r['stop'] = day
+            break
         if cap and len(cut) >= cap:
-            if stopped_on is None:
-                stopped_on = day
-            continue
+            r['stop'] = day
+            break
+
         tier = tier_for(hoard)
         reserve_budget = DIG_CELLS_PER_DAY_BY_TIER[tier - 1] \
             * expansion_multiplier(claimed)
-        opened = min(int(reserve_budget), EXCAVATOR_MAX_CELLS - open_cells)
-        open_cells += max(0, opened)
-        hoard += max(0, opened) * SPOIL_PER_CELL
+        opened = min(reserve_budget, cfg['cavityMaxCells'] - open_c)
+        if opened > 0:
+            open_c += opened
+            hoard += opened * SPOIL_PER_CELL
 
-        carry += reserve_budget * rate / CRAWLWAY_MEAN_WIDTH
-        steps = int(carry)
-        carry -= steps
-        targets = build_targets(seed, radius, detect, claimed)
-        for _ in range(steps):
-            theta += rng.uniform(-drift, drift)
-            nx, ny = x + math.cos(theta), y + math.sin(theta)
-            if math.hypot(nx, ny) > lim:
-                theta += math.pi * rng.uniform(0.5, 1.5)
+        carry += reserve_budget * budget
+        rock = int(carry)
+        carry -= rock
+        if cap:
+            rock = min(rock, cap - len(cut))
+        if rock <= 0:
+            continue
+
+        spent, blocked, guard = 0, 0, rock * 4 + 32
+        boxed, took_one = False, False
+        breached_today = False
+        breach_at = (0, 0)
+
+        while spent < rock and guard > 0:
+            guard -= 1
+            if driving:
+                heading = math.atan2(drive_to[1] - y, drive_to[0] - x)
+            else:
+                heading += (rng.random() * 2.0 - 1.0) * drift
+            nx, ny = x + math.cos(heading), y + math.sin(heading)
+            cell = (int(round(nx)), int(round(ny)))
+
+            kind = _can_cut(w, cell, clamp2, width, on_leg)
+            if kind != _CUT:
+                r['refusals'][kind] += 1
+                if kind == _R_ROAD and not r['met_road']:
+                    r['met_road'] = True
+                    r['first_road'] = day
+                if kind == _R_ROAD and not breached_today:
+                    breached_today = True
+                    breach_at = (int(round(x)), int(round(y)))
+                heading += math.pi * (0.5 + rng.random())
+                driving = False
+                blocked += 1
+                if blocked > 64:
+                    boxed = True
+                    break
                 continue
+            blocked = 0
+
             x, y = nx, ny
-            cx, cy = int(round(x)), int(round(y))
-            cut.update(((cx, cy), (cx + 1, cy), (cx, cy + 1), (cx + 1, cy + 1)))
-            kind = poi_hit(x, y, targets)
-            key = (kind, round(x / 8.0), round(y / 8.0))
-            if kind and key not in hit_already:
-                hit_already.add(key)
-                finds.append((day, kind))
-                theta = rng.uniform(0.0, 2.0 * math.pi)
-    return finds, len(cut), stopped_on
+            on_leg.add(cell)
+            half = (width - 1) // 2
+            extra = (width - 1) - 2 * half
+            for dx in range(-half, half + extra + 1):
+                for dy in range(-half, half + extra + 1):
+                    p = (cell[0] + dx, cell[1] + dy)
+                    if p[0] * p[0] + p[1] * p[1] > clamp2:
+                        continue
+                    if p in w['owned'] or p in cut:
+                        continue
+                    cut.add(p)
+                    spent += 1
+
+            if driving and cell == drive_to:
+                driving = False
+                if cell not in taken:
+                    taken.add(cell)
+                    r['remains'] += 1
+                    took_one = True
+                heading = rng.random() * 2.0 * math.pi
+            elif not driving:
+                best, tgt = None, None
+                for rem in w['remains']:
+                    if rem in taken:
+                        continue
+                    d = ((rem[0] - cell[0]) ** 2 + (rem[1] - cell[1]) ** 2)
+                    if d > sense * sense:
+                        continue
+                    if best is None or d < best:
+                        best, tgt = d, rem
+                if tgt is not None:
+                    driving, drive_to = True, tgt
+
+        r['worked'] += 1
+        if boxed:
+            r['boxed'] += 1
+        if spent < rock:
+            r['short'] += 1
+
+        abandon = False
+        if breached_today:
+            r['breaches'] += 1
+            guards = _GATE_SQUAD if _on_beat(w, breach_at) else _ROAD_SQUAD
+            party = _DIGGERS_AT_TIER[tier - 1]
+            if party > 0:
+                if _skirmish(guards, party):
+                    r['den_won'] += 1
+                else:
+                    r['guard_won'] += 1
+                    abandon = True
+
+        if took_one or boxed or abandon:
+            on_leg = {(int(round(x)), int(round(y)))}
+        if abandon:
+            heading += math.pi
+            r['abandoned'] += 1
+
+    r['cells'] = len(cut)
+    return r
+
+
+def _walk_row(label, runs, cap):
+    n = len(runs)
+    if n == 0:
+        return "   %-12s none" % label
+    stuck = sum(1 for r in runs if r['cells'] == 0)
+    contact = sum(1 for r in runs if r['met_road'])
+    remains = sum(1 for r in runs if r['remains'] > 0)
+    cells = statistics.mean(r['cells'] for r in runs)
+    firsts = sorted(r['first_road'] for r in runs if r['met_road'])
+    stops = sorted(r['stop'] for r in runs if r['stop'] > 0)
+    bound = sum(1 for r in runs if cap and r['cells'] >= cap)
+    return ("   %-12s %5d %6.1f%% %7.1f%% %8.1f%% %6.0f  %-4s %-5s %6.1f%%"
+            % (label, n, 100.0 * stuck / n, 100.0 * contact / n,
+               100.0 * remains / n, cells,
+               ("d%d" % firsts[len(firsts) // 2]) if firsts else "-",
+               ("d%d" % stops[len(stops) // 2]) if stops else "-",
+               100.0 * bound / n))
+
+
+def _walk_seeds(seeds, radius, cfg):
+    worlds = []
+    for s in range(seeds):
+        w = _build_shipped_world(s, radius, cfg)
+        if w is not None:
+            worlds.append((s, w))
+    return worlds
+
+
+def report_shipped_walk(seeds, radius):
+    """G. THE SHIPPED-RULES WALK -- validation before anything is swept."""
+    cfg = _read_floor2_entry()
+    cap = cfg['exploratoryCellCap']
+    budget = float(cfg['exploratoryBudget'])
+    sense = cfg['exploratorySenseRadius']
+    worlds = _walk_seeds(seeds, radius, cfg)
+    runs = [_shipped_walk(s, w, radius, cap, budget, sense, cfg)
+            for (s, w) in worlds]
+    print("G. THE SHIPPED-RULES WALK  (%d/%d seeds usable; authored cap %d, "
+          "budget x%.0f, sense %d)" % (len(worlds), seeds, cap, budget, sense))
+    print("   Road Breach Report's mirror, ported. Validated at cap 2400 x3 "
+          "sense 15 over")
+    print("   1000 seeds against the report's published 300-seed row: contact "
+          "53.4/52.0,")
+    print("   first d58/d57, stop d106/d106, cells 2398/2384, stuck 0.0/0.0, "
+          "remains 6.5/4.7.")
+    print("   The remains column runs HOT (no real sites, a straight trunk): "
+          "treat the")
+    print("   report as the real-geometry figure and this file as the sweep.")
+    print()
+    print("   start        seeds  stuck  contact  remains  cells  1st  stop  "
+          " capbound")
+    dead = [r for r in runs if r['dead_end']]
+    cham = [r for r in runs if not r['dead_end']]
+    print(_walk_row("dead end", dead, cap))
+    print(_walk_row("chamber ctr", cham, cap))
+    print(_walk_row("ALL", runs, cap))
+    tot = [0] * 8
+    worked = boxed = short = 0
+    for r in runs:
+        for i in range(1, 8):
+            tot[i] += r['refusals'][i]
+        worked += r['worked']
+        boxed += r['boxed']
+        short += r['short']
+    ssum = sum(tot[1:]) or 1
+    print("   refusals: " + " ".join(
+        "%s %.1f%%" % (_REF_NAMES[i], 100.0 * tot[i] / ssum)
+        for i in range(1, 8)))
+    print("   dawns worked %d per seed, %.1f%% short, %.1f%% boxed; breaches "
+          "%d, den won %d,"
+          % (worked // max(1, len(runs)), 100.0 * short / max(1, worked),
+             100.0 * boxed / max(1, worked),
+             sum(r['breaches'] for r in runs),
+             sum(r['den_won'] for r in runs)))
+    print("   road held %d, legs abandoned %d."
+          % (sum(r['guard_won'] for r in runs),
+             sum(r['abandoned'] for r in runs)))
+    print()
+
+
+def report_cap_remeasured(seeds, radius):
+    """J. THE CAP, RE-MEASURED against the shipped rules. Canon 42's 'The cap
+    re-measured' records the ruling this printed: 2400 KEPT on the scale
+    argument, the beat restored by sense 15 -> 30 rather than by rock."""
+    cfg = _read_floor2_entry()
+    sense = cfg['exploratorySenseRadius']
+    worlds = _walk_seeds(seeds, radius, cfg)
+    print("J. THE CAP, RE-MEASURED  (shipped rules, sense %d, %d seeds per "
+          "cell)" % (sense, len(worlds)))
+    print("   cap     rate  remains%  contact%  1st    stop   cells  "
+          "capbound%")
+    for cap in (1107, 1600, 2400, 3200, 0):
+        for budget in (2.0, 3.0):
+            runs = [_shipped_walk(s, w, radius, cap, budget, sense, cfg)
+                    for (s, w) in worlds]
+            n = len(runs)
+            rem = 100.0 * sum(1 for r in runs if r['remains'] > 0) / n
+            con = 100.0 * sum(1 for r in runs if r['met_road']) / n
+            firsts = sorted(r['first_road'] for r in runs if r['met_road'])
+            stops = sorted(r['stop'] for r in runs if r['stop'] > 0)
+            cells = statistics.mean(r['cells'] for r in runs)
+            bound = 100.0 * sum(1 for r in runs if cap and r['cells'] >= cap) / n
+            print("   %-7s x%-4.0f %8.1f %9.1f  %-5s %-6s %5.0f %9.1f"
+                  % (cap if cap else "none", budget, rem, con,
+                     ("d%d" % firsts[len(firsts) // 2]) if firsts else "-",
+                     ("d%d" % stops[len(stops) // 2]) if stops else "-",
+                     cells, bound))
+    print()
+    print("   The budget stays the PACING knob and the cap the CONTENT knob --")
+    print("   x2 against x3 moves the remains column by under half a point at")
+    print("   any fixed cap while moving first contact and the stop day by ten")
+    print("   to twenty-six days. The 7.3-8.0 and 14.0-14.7 figures the old")
+    print("   section J printed were the retired model's; do not quote them.")
+    print()
 
 
 def main():
@@ -811,9 +1270,8 @@ def main():
     print("   diverted. Row 'share 1.00' in D is that trap, measured.")
     print()
 
-    report_exploration(min(seeds, 600), radius)
-    report_poi(min(seeds, 400), radius)
-    report_cap(min(seeds, 250), radius)
+    report_shipped_walk(min(seeds, 300), radius)
+    report_cap_remeasured(min(seeds, 300), radius)
 
     print("E. THE SHARED-BUDGET QUESTION (fork 1)")
     print("   Reserve headroom is %d cells; the median tunnel is %.0f. A shared"
