@@ -11020,7 +11020,21 @@ skipped-existing, outside-disc, cumulative reveal-paint ms); and
 its FAIL verdict -- a revealed cell with no floor tile (the miss class) and
 the plain disc tile under solid fog on a lazy floor (the leak class; paving
 under fog is legitimate and exempt, as are feather cells by their alpha) --
-plus a per-floor counters line. Declared-but-uncalled members: none; every
+plus a per-floor counters line.
+
+Landed measurement (post-push, same command): floor 5 creation
+3100 -> 1026 ms (terrain 2855 -> 848, now fog-only), floor 4 1340 -> 467,
+all floors 5438 -> 1887 ms. The single-layer fog pass runs at roughly
+thirty per cent of the old combined loop, not the estimated half -- one
+fill and one blit beat half of the interleaved double pass. The first full
+validator run after landing also exposed a pre-existing blind spot: floor
+0's rim facade -- revealed by design and capped by the wall FAMILY drape,
+not the claimed/mined-adjacent rule the audit models -- reported its entire
+band (3085 cells) as revealed-but-unpainted. The audit now exempts
+`IsRimFacade`/`IsRimNub` cells, restoring PASS-on-every-floor as the
+acceptance bar.
+
+Declared-but-uncalled members: none; every
 added accessor is consumed by the bootstrap log or the validator in this
 same delivery.
 

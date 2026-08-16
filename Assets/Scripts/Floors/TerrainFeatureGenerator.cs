@@ -4575,8 +4575,17 @@ public class TerrainFeatureGenerator : MonoBehaviour
 
                 if (revealed && solid && !painted)
                 {
-                    revealedUnpainted.Add(cell);
-                    unpaintedBy[FeatureIndex(GetFeatureAt(cell))]++;
+                    // Rim facade cells are revealed by design and take the wall
+                    // FAMILY drape rather than the claimed/mined-adjacent cap
+                    // rule this audit models -- ArmRimFacade unfogs the band and
+                    // the nubs deliberately. Without the exemption floor 0
+                    // reports its entire rim (measured: 3085 cells) as a
+                    // disagreement.
+                    if (!terrain.IsRimFacade(cell) && !terrain.IsRimNub(cell))
+                    {
+                        revealedUnpainted.Add(cell);
+                        unpaintedBy[FeatureIndex(GetFeatureAt(cell))]++;
+                    }
                 }
                 if (!revealed && painted)
                 {
