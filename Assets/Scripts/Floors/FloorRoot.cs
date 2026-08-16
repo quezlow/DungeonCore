@@ -182,9 +182,16 @@ public class FloorRoot : MonoBehaviour
         {
             tInfluence = sw.ElapsedMilliseconds;
             sw.Stop();
+            // Canon 47 -- the terrain bucket is split so the deferred floor
+            // half stays visible against the HEAD measurement (2855 ms of
+            // 3047 ms at radius 600) without re-instrumenting anything.
+            string paintSplit = terrain == null ? "" :
+                terrain.LazyFloorPaint
+                    ? $" (fog {terrain.LastFogPaintMs} ms, floor deferred)"
+                    : $" (fog {terrain.LastFogPaintMs} ms, floor {terrain.LastFloorPaintMs} ms)";
             Debug.Log($"[FloorRoot] Bootstrap floor {floorIndex + 1} " +
                       $"(radius {(terrain != null ? terrain.CurrentRadius : -1)}): " +
-                      $"terrain {tTerrain} ms, features {tFeatures} ms, " +
+                      $"terrain {tTerrain} ms{paintSplit}, features {tFeatures} ms, " +
                       $"typemap {tTypeMap} ms, influence {tInfluence} ms, " +
                       $"total {tTerrain + tFeatures + tTypeMap + tInfluence} ms.");
         }

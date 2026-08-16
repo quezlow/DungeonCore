@@ -711,6 +711,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
             col.a = t * t;
             fog.SetTileFlags(c, TileFlags.None);
             fog.SetColor(c, col);
+
+            // Canon 47: this band is the one place a cell shows through fog
+            // WITHOUT being revealed, so the deferred floor tile must land
+            // here too or the feather thins onto bare void. Solid-alpha cells
+            // skip -- nothing shows through them, and painting there would
+            // read as a leak in Validate Reveal Consistency.
+            if (col.a < 1f && terrain != null) terrain.EnsureFloorPainted(c);
         }
 
         fadedFogCells.Clear();
@@ -1932,8 +1939,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
     /// overpaint it later. The per-cell pick is a spatial hash, not an RNG: no
     /// seed to disagree about, no draw order, stable across reloads.
     ///
-    /// NOTE for the lazy floor-paint backlog item: if disc painting ever moves
-    /// into RevealTile, this pass must move with it or paving is overpainted.</summary>
+    /// CANON 47 RESOLUTION of the old lazy floor-paint note: disc painting
+    /// DID move into RevealTile, and this pass did NOT move with it.
+    /// RevealTile's floor paint skips any cell already holding a floor-layer
+    /// tile, so paving laid here survives whichever side runs first, on fresh
+    /// generation and load alike.</summary>
     // Road cells that carry site paving instead of the road tile. Built by
     // PaintSitePaving, consulted by PaintRoadSegment -- roads paint lazily per
     // revealed segment, so a segment revealed AFTER the paving pass would
@@ -4525,6 +4535,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
         var roadUnpainted = new List<Vector3Int>();
         var roadOverPaving = new List<Vector3Int>();
         var hardJoins = new List<Vector3Int>();
+        // Canon 47 -- the deferred-floor audits. Only meaningful where the
+        // floor disc is lazy; floor 0 stays eager and is skipped whole.
+        var revealedNoFloor = new List<Vector3Int>();
+        var plainFloorUnderFog = new List<Vector3Int>();
+        bool lazyFloor = terrain.LazyFloorPaint;
+        var floorMap = terrain.FloorTilemap;
+        var plainFloorTile = terrain.FloorTile;
         // Owner on each side of a join, counted. A square cut across the
         // carriageway can come from a segment seam OR from a site's paved band
         // ending at its footprint, and the coordinates alone cannot tell them
@@ -4565,6 +4582,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 {
                     paintedFogged.Add(cell);
                     foggedBy[FeatureIndex(cause)]++;
+                }
+
+                if (lazyFloor && floorMap != null)
+                {
+                    var floorHere = floorMap.GetTile(cell);
+                    if (revealed && floorHere == null)
+                        revealedNoFloor.Add(cell);
+                    // Site paving under fog is legitimate (it lands eagerly at
+                    // ApplyRuinsOverrides); only the PLAIN disc tile under
+                    // fully solid fog means the reveal hook leaked. Feather
+                    // cells carry alpha below 1 by construction and are
+                    // exempt.
+                    if (!revealed && floorHere == plainFloorTile
+                        && fog != null && fog.GetColor(cell).a >= 0.999f)
+                        plainFloorUnderFog.Add(cell);
                 }
 
                 if (GetFeatureAt(cell) == FeatureType.Road)
@@ -4619,8 +4651,21 @@ public class TerrainFeatureGenerator : MonoBehaviour
             sb.Append("          ").Append(kv.Value.ToString().PadLeft(4))
               .Append("  ").AppendLine(kv.Key);
 
+        Line(sb, "revealed cell with NO floor tile (deferred paint missed it)",
+             revealedNoFloor, sampleLimit);
+        Line(sb, "plain floor tile under SOLID fog (deferred paint leaked)",
+             plainFloorUnderFog, sampleLimit);
+        sb.Append("          lazy floor paint: ")
+          .Append(lazyFloor ? "ON" : "off (eager floor)")
+          .Append("   painted-on-reveal ").Append(terrain.FloorCellsPaintedOnReveal)
+          .Append(", skipped-existing ").Append(terrain.RevealPaintSkippedExisting)
+          .Append(", outside-disc ").Append(terrain.RevealPaintOutsideDisc)
+          .Append(", reveal-paint total ").Append(terrain.RevealPaintMs)
+          .AppendLine(" ms");
+
         int bad = revealedUnpainted.Count + paintedFogged.Count
-                + roadUnpainted.Count + roadOverPaving.Count;
+                + roadUnpainted.Count + roadOverPaving.Count
+                + revealedNoFloor.Count + plainFloorUnderFog.Count;
         sb.AppendLine(bad == 0
             ? "  PASS -- paint, reveal and framing agree on every cell."
             : "  FAIL -- " + bad + " disagreeing cell(s).");

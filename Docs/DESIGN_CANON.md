@@ -107,6 +107,9 @@ the supersession in one line.
 42. Dens and the Deep Occupants (Decision Record)
 43. Art Debt (the Audit and its Ledger)
 44. Monster Allegiance (the Fourth Side)
+45. The Loot Policy Dial (and the Appeal Ledger's Poverty Half)
+46. The Deep Occupants -- Substrate (canon 42's nameless things)
+47. Lazy Floor Paint (Deferred Disc Painting)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -2057,8 +2060,11 @@ decision consulted twice, so paving and masonry can never disagree; the
 shipped four tiles, (15,37) and (16,37)-(16,39), currently serve both
 families -- one per cell by a spatial hash (no RNG, stable across reloads).
 The paint rides `ApplyRuinsOverrides`, which both the fresh-generation path
-and the load path call after the disc paint; if the lazy floor-paint
-backlog item ever lands, the paving pass must move with it. The carriageway
+and the load path call after the disc paint; ~~if the lazy floor-paint
+backlog item ever lands, the paving pass must move with it.~~ **RESOLVED
+OTHERWISE by entry 47 -- the paving pass stays exactly here; lazy reveal
+paint skips any cell that already holds a floor-layer tile, so paving can
+never be overpainted whichever side runs first.** The carriageway
 is paved too: the road cells a site yields at placement -- carved AND
 wall-band overlap, so doorway crossings pave with the room -- are recorded
 (`SiteData.pavedRoadCells`, appended field, empty in old saves), painted on
@@ -10939,6 +10945,91 @@ exclusions), `TESTING/Commands.cs` (`Print Deep Occupants`). Stage D adds
 `Gameplay/HolyGroundLedger.cs` (the escalation call),
 `Save/DungeonSaveData.cs` and `Save/DungeonSaveController.cs`. Stage E2's
 files are listed at the end of its own section above.
+
+---
+
+## 47. Lazy Floor Paint (Deferred Disc Painting)
+
+Status: SHIPPED. Verified: <date of landing>.
+
+Floors no longer pay the floor half of the disc paint at creation. Measured
+at HEAD with `FloorRoot.LogBootstrapTimings` before the change: the terrain
+bucket -- `DungeonTerrain.GenerateAt`, radius resolve plus the two banded
+`SetTilesBlock` passes -- was 2855 ms of floor 5's 3047 ms bootstrap at
+radius 600 and 1220 of 1288 at radius 400, roughly area-proportional and
+about 94 per cent of a deep floor's creation, NOT the 99.5 per cent the
+backlog note remembered. The two passes are symmetric, so deferring the
+floor pass removes roughly half of a deep floor's creation cost; the fog
+pass cannot defer, below.
+
+**The rule, one sentence:** the fog disc still paints in full at
+`GenerateAt`; the floor tile is laid per cell inside `RevealTile`, the
+moment fog lifts, and nowhere else.
+
+**Why fog stays eager.** Fog-tile absence IS the revealed flag --
+`FloorRoot.IsRevealed` reads it, and ReachabilityDirector, the minimap and
+`DeadCoreSaturation` (the canon 42/46 staging) read THAT. An unpainted fog
+disc would report every cell revealed and give away rivers and chambers
+wholesale. Fog is also the substrate the road fog feather and the floor-0
+rim gloom tint per cell. Re-founding IsRevealed on a revealed set was
+considered for the remaining half and rejected as reveal-semantics surgery.
+
+**Why reveal, not proximity or chunks.** Walkability is born in
+`TileInfluenceManager`'s claimed/mined sets and read by
+`DungeonPathfinder.IsWalkable`; no tilemap is consulted, so pixels were
+already decoupled from movement. Every reveal path -- claims, the starter
+blob and its border, mining halos, feature reveals, and the load restore
+sweeps (silent `ClaimTile`, the mined sweep, `UnfogAllRevealedFeatures`) --
+funnels through `RevealTile`, so one hook covers fresh and load alike; and
+rivers and roads had already established paint-on-reveal as the house
+pattern, load-path repaint sweeps included. Camera-proximity painting would
+paint under fog, invisibly.
+
+**Floor 0 is the one eager floor.** Its rim facade unfogs cells around
+`RevealTile` (direct `fogTilemap.SetTile`), and
+`SurfaceZoneGenerator.PaintRimGround` deliberately CLEARS rim floor tiles;
+a reveal-hook repaint there would undo that. Bronze radius keeps the kept
+cost in the tens of milliseconds. This also stays clear of entry 24's
+rejection of staged tile painting, which stands untouched: that rejection
+is about the SURFACE bands, where the confiner ceiling is the only thing
+between the camera and the void (Appendix C). The dungeon disc differs
+precisely because fog covers everything unrevealed on every floor and the
+camera bound is radius-derived, not paint-derived.
+
+**Paving cannot be overpainted.** The old rider in entry 19's paving note
+said the paving pass must move with lazy paint; it is amended in place. The
+resolution is a skip, not a move: `EnsureFloorPainted` lays the plain tile
+only where the floor layer holds NOTHING, while site paving lands
+unconditionally at `ApplyRuinsOverrides` on both paths -- so the two sides
+agree whichever runs first, fresh or load.
+
+**The feather band.** `ApplyRoadFogFade` is the one place a cell shows
+through fog WITHOUT being revealed; it now calls `EnsureFloorPainted` for
+every cell it thins below solid alpha, so the gauze thins onto ground, not
+void. Solid-alpha cells are skipped -- painting there would be a leak.
+
+**Eviction: never.** Paint-once-forever, mirroring the FOG IS ONE-WAY
+ruling in `DungeonTerrain`'s header. Revealed-only floor paint also bounds
+the floor tilemap's memory below the old full-disc allocation.
+
+**Diagnostics (v1, same delivery).** The bootstrap log line splits the
+terrain bucket into fog/floor halves (`floor deferred` on lazy floors);
+`DungeonTerrain` carries per-floor counters (painted-on-reveal,
+skipped-existing, outside-disc, cumulative reveal-paint ms); and
+`Commands -> Validate Reveal Consistency` gains two audits that WEIGH INTO
+its FAIL verdict -- a revealed cell with no floor tile (the miss class) and
+the plain disc tile under solid fog on a lazy floor (the leak class; paving
+under fog is legitimate and exempt, as are feather cells by their alpha) --
+plus a per-floor counters line. Declared-but-uncalled members: none; every
+added accessor is consumed by the bootstrap log or the validator in this
+same delivery.
+
+**Key files:** `DungeonCore/DungeonTerrain.cs` (the lazy flag,
+`PaintDiscLayer`, `EnsureFloorPainted`, counters), `Floors/FloorRoot.cs`
+(the split log line), `Floors/TerrainFeatureGenerator.cs` (the feather
+call, the amended paving note, the validator audits). Entry 19's paving
+note carries the in-place amendment; the guide is
+`Docs/DCR_Guide_Lazy_Floor_Paint.html`.
 
 
 # APPENDIX

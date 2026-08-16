@@ -50,6 +50,24 @@ public class DungeonTerrain : MonoBehaviour
     private int currentRadius;
     private Vector3Int coreCell;
     private bool initialised = false;
+
+    // -- Lazy floor paint (canon 47) --------------------------------------
+    // Floors other than 0 no longer paint the floor disc at creation: the
+    // fog disc still paints in full (fog-tile ABSENCE is the revealed datum
+    // FloorRoot.IsRevealed and the staging systems read, so fog cannot be
+    // deferred), and the floor tile is laid per cell by RevealTile the
+    // moment fog lifts. Measured at HEAD before the change: the combined
+    // disc paint was 2855 ms of floor 5's 3047 ms bootstrap at radius 600,
+    // and the two block passes are symmetric, so this removes roughly half.
+    // Floor 0 stays fully eager -- its rim facade unfogs around RevealTile
+    // and SurfaceZoneGenerator deliberately clears rim floor tiles.
+    private bool lazyFloorPaint;
+    private int floorCellsPaintedOnReveal;
+    private int revealPaintSkippedExisting;
+    private int revealPaintOutsideDisc;
+    private long revealPaintTicks;
+    private long lastFogPaintMs = -1;
+    private long lastFloorPaintMs = -1;
     private FloorRoot myFloor;
     private Tile runtimeFogTile;
     private Dictionary<Vector3Int, int> rimLayers;   // facade cell -> depth from the edge, 0 = outermost
@@ -118,6 +136,13 @@ public class DungeonTerrain : MonoBehaviour
         EnsureFogTile();
         coreCell = centre;
         currentRadius = RadiusForThisFloor();
+
+        // Canon 47: only floor 0 pays the floor half of the disc paint here.
+        // The load path shares this decision for free -- RecreateFloorFromSave
+        // reaches this same call, and the restore sweeps re-reveal every
+        // revealed cell through RevealTile, which repaints exactly that set.
+        lazyFloorPaint = myFloor != null && myFloor.FloorIndex != 0;
+
         PaintTerrain(coreCell, currentRadius);
 
         // The rim facade used to be armed here. It cannot be: it clamps itself to
@@ -174,15 +199,44 @@ public class DungeonTerrain : MonoBehaviour
     /// overhead 2.26 million times.
     ///
     /// SetTilesBlock hands the tilemap a whole rectangle at once. Cells outside
-    /// the disc are left null in the array, which is safe here because
-    /// PaintTerrain runs exactly once per floor, from GenerateAt, behind the
-    /// 'initialised' guard, and therefore only ever writes to empty tilemaps.
+    /// the disc are left null in the array, which is safe here because each
+    /// layer's disc is written exactly once, from GenerateAt, behind the
+    /// 'initialised' guard, and therefore only ever lands on an empty tilemap.
+    ///
+    /// CANON 47 -- the two layers are written by one single-layer helper,
+    /// timed apart, and the FLOOR pass is skipped entirely on lazy floors:
+    /// measured at HEAD the combined pass was 2855 ms of floor 5's 3047 ms
+    /// bootstrap (radius 600), and the floor half of that is what RevealTile
+    /// now pays per cell as fog lifts. Fog still paints in full every time --
+    /// fog-tile absence IS the revealed flag (FloorRoot.IsRevealed), so a
+    /// missing fog disc would read as a fully revealed floor.
     /// </summary>
     private void PaintTerrain(Vector3Int centre, int radius)
     {
         if (floorTilemap == null || fogTilemap == null) return;
         if (radius < 0) return;
 
+        bool timing = FloorRoot.LogBootstrapTimings;
+        var sw = timing ? System.Diagnostics.Stopwatch.StartNew() : null;
+
+        PaintDiscLayer(fogTilemap, fogTile, centre, radius);
+        if (sw != null) { lastFogPaintMs = sw.ElapsedMilliseconds; sw.Restart(); }
+
+        if (!lazyFloorPaint)
+            PaintDiscLayer(floorTilemap, floorTile, centre, radius);
+        if (sw != null)
+        {
+            lastFloorPaintMs = lazyFloorPaint ? 0 : sw.ElapsedMilliseconds;
+            sw.Stop();
+        }
+    }
+
+    /// <summary>One layer of the banded disc write. Kept single-layer so the
+    /// lazy path can skip the floor pass without threading nulls through a
+    /// combined fill loop, and so the bootstrap log can time the halves
+    /// apart.</summary>
+    private void PaintDiscLayer(Tilemap map, TileBase tile, Vector3Int centre, int radius)
+    {
         long radiusSq = (long)radius * radius;
 
         for (int bandStart = -radius; bandStart <= radius; bandStart += PaintBandRows)
@@ -197,8 +251,7 @@ public class DungeonTerrain : MonoBehaviour
             int halfWidth = IntSqrt(radiusSq - (long)nearestDy * nearestDy);
             int width = halfWidth * 2 + 1;
 
-            var floorBlock = new TileBase[width * height];
-            var fogBlock = new TileBase[width * height];
+            var block = new TileBase[width * height];
 
             for (int row = 0; row < height; row++)
             {
@@ -209,17 +262,13 @@ public class DungeonTerrain : MonoBehaviour
                 int span = IntSqrt(spanSq);
                 int rowBase = row * width;
                 for (int i = halfWidth - span; i <= halfWidth + span; i++)
-                {
-                    floorBlock[rowBase + i] = floorTile;
-                    fogBlock[rowBase + i] = fogTile;
-                }
+                    block[rowBase + i] = tile;
             }
 
             var bounds = new BoundsInt(
                 centre.x - halfWidth, centre.y + bandStart, 0, width, height, 1);
 
-            floorTilemap.SetTilesBlock(bounds, floorBlock);
-            fogTilemap.SetTilesBlock(bounds, fogBlock);
+            map.SetTilesBlock(bounds, block);
         }
     }
 
@@ -238,7 +287,62 @@ public class DungeonTerrain : MonoBehaviour
         return root;
     }
 
-    public void RevealTile(Vector3Int pos) => fogTilemap.SetTile(pos, null);
+    public void RevealTile(Vector3Int pos)
+    {
+        fogTilemap.SetTile(pos, null);
+        EnsureFloorPainted(pos);
+    }
+
+    /// <summary>Canon 47: lays the plain floor tile under a cell the moment it
+    /// becomes visible. Every reveal path funnels through RevealTile, so this
+    /// covers claims, mining halos, feature reveals, and the load-path restore
+    /// sweeps for free; ApplyRoadFogFade calls it directly for the feather band
+    /// it half-fades WITHOUT revealing. The HasTile skip is the paving rule:
+    /// site paving lands unconditionally at ApplyRuinsOverrides on both paths,
+    /// and a cell that already holds any floor-layer tile is never overwritten,
+    /// so the two sides cannot disagree whichever runs first. No-op on eager
+    /// floors (floor 0) and outside the disc, mirroring how fog behaves
+    /// there.</summary>
+    public void EnsureFloorPainted(Vector3Int pos)
+    {
+        if (!lazyFloorPaint || floorTilemap == null || floorTile == null) return;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!IsWithinRadius(pos, currentRadius))
+        {
+            revealPaintOutsideDisc++;
+        }
+        else if (floorTilemap.HasTile(pos))
+        {
+            revealPaintSkippedExisting++;
+        }
+        else
+        {
+            floorTilemap.SetTile(pos, floorTile);
+            floorCellsPaintedOnReveal++;
+        }
+        revealPaintTicks += System.Diagnostics.Stopwatch.GetTimestamp() - t0;
+    }
+
+    /// <summary>True on floors whose floor disc defers to reveal (canon 47).</summary>
+    public bool LazyFloorPaint => lazyFloorPaint;
+
+    /// <summary>The plain disc tile, exposed so Validate Reveal Consistency
+    /// can tell a deferred-paint leak from legitimate site paving under
+    /// fog.</summary>
+    public TileBase FloorTile => floorTile;
+
+    public int FloorCellsPaintedOnReveal => floorCellsPaintedOnReveal;
+    public int RevealPaintSkippedExisting => revealPaintSkippedExisting;
+    public int RevealPaintOutsideDisc => revealPaintOutsideDisc;
+
+    /// <summary>Cumulative milliseconds spent laying floor tiles on reveal.</summary>
+    public long RevealPaintMs
+        => revealPaintTicks * 1000 / System.Diagnostics.Stopwatch.Frequency;
+
+    /// <summary>Per-half timings of the last disc paint; -1 until a bootstrap
+    /// has run with FloorRoot.LogBootstrapTimings on.</summary>
+    public long LastFogPaintMs => lastFogPaintMs;
+    public long LastFloorPaintMs => lastFloorPaintMs;
 
     public bool IsWithinBounds(Vector3Int pos) => IsWithinRadius(pos, currentRadius);
     public Vector3Int CoreCell => coreCell;
