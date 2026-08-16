@@ -398,6 +398,25 @@ public class DungeonMonster : MonoBehaviour, IMonsterTarget
         wildCellSet = new HashSet<Vector3Int>(wildChamberCells);
     }
 
+    /// <summary>The drift tier (canon 46, fork C): raised AFTER the vault
+    /// heart broke, carrying the deeper tint and the size bump.</summary>
+    public bool IsDeepDriftTier => isDriftTier;
+    private bool isDriftTier;
+
+    /// <summary>Mark this occupant drift-tier and apply the size bump.
+    /// Occupants only, for SetDeepOccupantTint's own reason. The tint is
+    /// composed by the spawner (entry tint x drift tint) and arrives
+    /// through SetDeepOccupantTint; the scale is a plain localScale write
+    /// -- ApplyStatMultipliers was considered and refused: it is private,
+    /// heals, and is promotion-gated behind ServesDungeon paths a wild
+    /// body never answers.</summary>
+    public void SetDeepDriftTier(float scaleMult)
+    {
+        if (!isDeepOccupant || isDriftTier) return;
+        isDriftTier = true;
+        transform.localScale *= Mathf.Max(0.1f, scaleMult);
+    }
+
     // -- Allegiance (canon 44) ------------------------------------------
     //
     // Set by InitialiseAsFactionBody and written nowhere else. A faction body

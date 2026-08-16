@@ -90,6 +90,17 @@ public class DeadCoreSaturation : MonoBehaviour
            + "break against -25 alignment and nothing else; this is its teeth.")]
     [SerializeField, Min(1f)] private float escalationMultiplier = 2f;
 
+    [Header("The drift (post-break spawns, floor index 4 only)")]
+    [Tooltip("Multiplied INTO the authored entry tint (white when applyTint "
+           + "is off) on bodies raised after the heart breaks -- composes, "
+           + "never replaces, so per-monster authoring survives. Darker with "
+           + "a violet cast by default.")]
+    [SerializeField] private Color driftTint = new Color(0.62f, 0.60f, 0.72f, 1f);
+    [Tooltip("Size bump on post-break bodies. Visual only: the break already "
+           + "escalates COUNT, and the floor stays expensive to hold rather "
+           + "than dangerous to enter.")]
+    [SerializeField, Min(0.1f)] private float driftScale = 1.12f;
+
     [Header("Bodies")]
     [Tooltip("What the dead core is making. AUTHORED, and an empty list means "
            + "NOT YET AUTHORED rather than 'any' -- the readout says so plainly "
@@ -97,6 +108,7 @@ public class DeadCoreSaturation : MonoBehaviour
     [SerializeField] private List<DeepOccupantEntry> occupantDefinitions = new();
 
     private bool heartBroken;
+    private int driftedSpawned;
     private readonly List<DungeonMonster> live = new();
 
     // Diagnostics. Every one of these exists because "no occupants appeared"
@@ -112,6 +124,9 @@ public class DeadCoreSaturation : MonoBehaviour
     private int refusedNoRoam;
 
     public bool HeartBroken => heartBroken;
+    public int DriftedSpawned => driftedSpawned;
+    public Color DriftTint => driftTint;
+    public float DriftScale => driftScale;
     public int LiveCount { get { Prune(); return live.Count; } }
     public int LastClaimed => lastClaimed;
     public int LastTarget => lastTarget;
@@ -140,6 +155,22 @@ public class DeadCoreSaturation : MonoBehaviour
     {
         if (body == null || entry == null || !entry.applyTint) return;
         body.SetDeepOccupantTint(entry.tint);
+    }
+
+    /// <summary>The drift tier (canon 46, fork C): a body raised AFTER the
+    /// break carries the deeper tint and the size bump. Composes with the
+    /// entry tint by multiplication (white when applyTint is off). Floor
+    /// gating is at the call sites -- floor index 4 only, matching the
+    /// escalation multiplier's own scope; the incursion is untouched. Only
+    /// SPAWNS drift: live bodies keep their look, and the floor darkens as
+    /// the population turns over.</summary>
+    private void ApplyDrift(DungeonMonster body, DeepOccupantEntry entry)
+    {
+        if (!heartBroken || body == null) return;
+        Color baseTint = entry != null && entry.applyTint ? entry.tint : Color.white;
+        body.SetDeepOccupantTint(baseTint * driftTint);
+        body.SetDeepDriftTier(driftScale);
+        driftedSpawned++;
     }
 
     private readonly List<DungeonMonster> incursion = new List<DungeonMonster>();
@@ -304,6 +335,7 @@ public class DeadCoreSaturation : MonoBehaviour
         body.transform.SetParent(floor.transform, true);
         body.InitialiseAsDeepOccupant(floor, def, roam);
         ApplyEntryTint(body, entry);
+        ApplyDrift(body, entry);
         live.Add(body);
         return true;
     }
@@ -413,6 +445,7 @@ public class DeadCoreSaturation : MonoBehaviour
         body.transform.SetParent(floor.transform, true);
         body.InitialiseAsDeepOccupant(floor, def, roam);
         ApplyEntryTint(body, entry);
+        if (floor.FloorIndex == SaturatedFloorIndex) ApplyDrift(body, entry);
 
         if (floor.FloorIndex == IncursionFloorIndex) AddIncursionBody(body);
         else live.Add(body);
@@ -654,12 +687,18 @@ public class DeadCoreSaturation : MonoBehaviour
     // -- Save / Load ---------------------------------------------------
 
     public DeadCoreSaturationSaveData GetSaveData()
-        => new DeadCoreSaturationSaveData { heartBroken = heartBroken, totalSpawned = totalSpawned };
+        => new DeadCoreSaturationSaveData
+        {
+            heartBroken = heartBroken,
+            totalSpawned = totalSpawned,
+            driftedSpawned = driftedSpawned,
+        };
 
     public void RestoreFromSave(DeadCoreSaturationSaveData data)
     {
         heartBroken = data != null && data.heartBroken;
         totalSpawned = data != null ? data.totalSpawned : 0;
+        driftedSpawned = data != null ? data.driftedSpawned : 0;
         live.Clear();
     }
 
@@ -671,6 +710,7 @@ public class DeadCoreSaturation : MonoBehaviour
     {
         heartBroken = false;
         totalSpawned = 0;
+        driftedSpawned = 0;
         lastClaimed = lastTarget = lastSpawned = 0;
         refusedNoFloor = refusedNoVault = refusedNoDefs = refusedNoCell = refusedQuiet = 0;
         refusedNoRoam = 0;
@@ -713,4 +753,5 @@ public class DeadCoreSaturationSaveData
 {
     public bool heartBroken;
     public int totalSpawned;
+    public int driftedSpawned = 0;   // fork C; additive, 0 on old saves
 }

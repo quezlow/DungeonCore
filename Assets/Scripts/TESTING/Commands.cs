@@ -1337,7 +1337,7 @@ public class Commands : MonoBehaviour
         bool rulesOk = !vsSelf && vsCaveLife;
 
         // -- live bodies, if any stage has populated a floor yet
-        int live = 0, wildOk = 0, badTribe = 0, wouldUnlock = 0, wouldPayXp = 0;
+        int live = 0, wildOk = 0, badTribe = 0, wouldUnlock = 0, wouldPayXp = 0, drifted = 0;
         // Same overload this file already uses for the den ledger sweep.
         var all = FindObjectsByType<DungeonMonster>(FindObjectsInactive.Exclude);
         for (int i = 0; i < all.Length; i++)
@@ -1346,6 +1346,7 @@ public class Commands : MonoBehaviour
             if (m == null || !m.IsDeepOccupant) continue;
             live++;
             if (m.IsWild) wildOk++;
+            if (m.IsDeepDriftTier) drifted++;
             if (m.Tribe != MonsterTribe.Deep) badTribe++;
             // These two can only be non-zero if someone reintroduced the
             // reward paths, which is exactly what the counters are for.
@@ -1361,6 +1362,9 @@ public class Commands : MonoBehaviour
         else
         {
             sb.AppendLine($"  live bodies: {live}  (IsWild {wildOk}/{live}, wrong tribe {badTribe})");
+            sb.AppendLine($"    drift tier (post-break): {drifted}/{live} live"
+                        + (drifted == 0 ? "   (zero is correct until the vault heart breaks "
+                                        + "AND the population has turned over)" : ""));
             sb.AppendLine($"    definitions still authoring core XP: {wouldPayXp} "
                         + "(harmless -- Die() excludes them -- but it means the asset disagrees "
                         + "with the intent, and a future reader may 'fix' the wrong side)");
@@ -1382,6 +1386,9 @@ public class Commands : MonoBehaviour
                         + $"raised in total {sat.TotalSpawned}");
             sb.AppendLine($"    claimed cells there: {sat.LastClaimed}   "
                         + $"vault heart broken: {sat.HeartBroken}");
+            sb.AppendLine($"    drifted raised since the break: {sat.DriftedSpawned}   "
+                        + $"drift tint {sat.DriftTint}, scale x{sat.DriftScale:0.00} "
+                        + "(live fields, not transcribed)");
             sb.AppendLine($"    definitions authored: {(sat.HasDefinitions ? "yes" : "NO -- an empty list means NOT YET AUTHORED, not 'any'. Nothing will ever spawn.")}");
             // PER-STAGE REFUSALS. A target of zero and a target that could not
             // be met read identically from the live count alone, and they want

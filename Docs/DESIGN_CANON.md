@@ -10815,6 +10815,33 @@ them, because on a dungeon that never digs that far `no floor` accrues one per
 dawn for the whole run and would otherwise read as a fault rather than as the
 player simply not having gone down.
 
+**THE DRIFT TIER (fork C, decided in design review and shipped 2026-08-15):
+the break is visible per-body now.** Breaking the vault heart escalated only
+the NUMBERS (`populationCap` and the by-claim target x
+`escalationMultiplier`), so a post-break floor looked identical
+body-for-body to a pre-break one. Occupants raised AFTER the break carry a
+deeper, violet-cast tint and a size bump -- floor index 4 only, matching the
+multiplier's own scope; the incursion is untouched. VISUAL ONLY, no stat
+multipliers: the break already escalates count, and the floor stays
+expensive to HOLD rather than dangerous to ENTER. Only post-break SPAWNS
+drift -- live bodies keep their look, and the floor darkens as the
+population turns over, which is the drift made literal. The drift tint
+COMPOSES with the authored entry tint by multiplication (white when
+`applyTint` is off), so per-monster authoring survives; defaults `driftTint`
+(0.62, 0.60, 0.72) and `driftScale` 1.12, serialized on `DeadCoreSaturation`.
+The scale is a plain `localScale` write at spawn -- `ApplyStatMultipliers`
+was considered and refused: it is private, heals, and is promotion-gated
+behind `ServesDungeon` paths a wild body never answers, which is the same
+reason `SetDeepOccupantTint` exists. Tracking: per-body `IsDeepDriftTier`
+(occupant-only setter, the `SetDeepOccupantTint` refusal pattern) and a
+saved `driftedSpawned` counter; `Print Deep Occupants` prints live drifted
+against live, the total since the break, and both settings read from the
+live fields. No wisp line -- the heart-break beat already announces the
+escalation; the drift is its visual arrival. Bodies are not persisted
+(stage D's ruling), so a load sheds drifted bodies with the rest and the
+next dawn re-raises them drifted: consistent, no new save shape beyond the
+counter.
+
 **Key files:** `Monster/MonsterTribe.cs` (one appended value),
 `Monster/DungeonMonster.cs` (`isDeepOccupant`, `IsWild`,
 `InitialiseAsDeepOccupant`, the tribe resolution and the two `Die()`
