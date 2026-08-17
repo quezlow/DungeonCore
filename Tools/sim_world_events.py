@@ -22,12 +22,23 @@ import sys
 DAILY_FIRE_CHANCE = 0.25
 GLOBAL_COOLDOWN_DAYS = 3
 
+# Canon 51: the deep pilgrimage occupies the road for roughly this many days
+# per journey (gate leg + transit + deep leg, with night camps). The C# gate
+# is state == Idle rather than a day count; this constant is the sim's
+# honest approximation of that occupancy.
+PILGRIMAGE_JOURNEY_DAYS = 5
+
 EVENTS = {
     # id: (minDay, minNotoriety, minRating, cooldownDays, weight,
     #      durationDays, kind, magnitude, hostile)
     "we_murrain":       (15, 0, 0, 10, 1.0, 3, "RespawnRate",   0.5, False),
     "we_pilgrim_surge": (10, 0, 0,  8, 1.0, 2, "CivilianWeight", 1.5, False),
     "we_tremor":        ( 6, 0, 0,  6, 1.5, 0, "GrantGold",      0.0, False),
+    # Canon 51: the deep pilgrimage. Instant kind - the effect hands the
+    # journey to DwarvenPilgrimageController; the director's cooldowns own
+    # the cadence and the controller's CanBegin (modelled below as the
+    # occupancy counter plus the can_begin flag) gates eligibility.
+    "we_deep_pilgrimage": (12, 0, 0,  9, 1.0, 0, "BeginPilgrimage", 0.0, False),
 }
 
 MINDAY, MINNOTO, MINRATING, CD, WEIGHT, DURATION, KIND, MAG, HOSTILE = range(9)
@@ -36,11 +47,17 @@ MINDAY, MINNOTO, MINRATING, CD, WEIGHT, DURATION, KIND, MAG, HOSTILE = range(9)
 class Director:
     """Mirror of the C# dawn state machine."""
 
-    def __init__(self, rng, notoriety=0.0, rating=0.0, suppress=False):
+    def __init__(self, rng, notoriety=0.0, rating=0.0, suppress=False,
+                 pilg_can_begin=True):
         self.rng = rng
         self.notoriety = notoriety
         self.rating = rating
         self.suppress = suppress
+        # Canon 51: the controller-side departure gate, as the sim sees it.
+        # pilg_active mirrors "a journey is in flight"; pilg_can_begin folds
+        # every other CanBegin refusal (hold fallen, no destination, climax).
+        self.pilg_active = 0
+        self.pilg_can_begin = pilg_can_begin
         self.global_cd = 0
         self.last_fired = {}     # id -> day
         self.times_fired = {}    # id -> count
@@ -75,10 +92,18 @@ class Director:
         last = self.last_fired.get(eid)
         if last is not None and day - last < e[CD]:
             return False
+        if e[KIND] == "BeginPilgrimage":
+            # Mirrors WorldEventDirector.Eligible consulting
+            # DwarvenPilgrimageController.CanBegin: no journey in flight and
+            # the controller's own gates open.
+            if self.pilg_active > 0 or not self.pilg_can_begin:
+                return False
         return True
 
     def dawn(self, day):
-        # 1. tick active effects
+        # 1. tick active effects (and the pilgrimage occupancy beside them)
+        if self.pilg_active > 0:
+            self.pilg_active -= 1
         for eid in list(self.active):
             self.active[eid] -= 1
             if self.active[eid] <= 0:
@@ -103,6 +128,8 @@ class Director:
 
     def fire(self, eid, day):
         e = EVENTS[eid]
+        if e[KIND] == "BeginPilgrimage":
+            self.pilg_active = PILGRIMAGE_JOURNEY_DAYS
         if e[DURATION] > 0:
             self.active[eid] = e[DURATION]
         self.last_fired[eid] = day
@@ -113,13 +140,14 @@ class Director:
     # -- save/load round trip: state only, no dawn refire --
     def save(self):
         return (self.global_cd, dict(self.last_fired),
-                dict(self.times_fired), dict(self.active))
+                dict(self.times_fired), dict(self.active), self.pilg_active)
 
     @classmethod
     def load(cls, rng, blob, notoriety=0.0, rating=0.0):
         d = cls(rng, notoriety, rating)
         d.global_cd, d.last_fired, d.times_fired, d.active = (
             blob[0], dict(blob[1]), dict(blob[2]), dict(blob[3]))
+        d.pilg_active = blob[4] if len(blob) > 4 else 0
         return d
 
 
@@ -135,8 +163,10 @@ def check(name, ok, detail=""):
         FAILURES.append(name)
 
 
-def run(seed, days=200, notoriety=0.0, rating=0.0, suppress=False):
-    d = Director(random.Random(seed), notoriety, rating, suppress)
+def run(seed, days=200, notoriety=0.0, rating=0.0, suppress=False,
+        pilg_can_begin=True):
+    d = Director(random.Random(seed), notoriety, rating, suppress,
+                 pilg_can_begin)
     mult_trace = []
     for day in range(1, days + 1):
         d.dawn(day)
@@ -286,6 +316,58 @@ def main():
     d = Director(rng)
     d.fire("we_murrain", 40)
     check("active effect not re-eligible", not d.eligible("we_murrain", 41))
+
+    # 15. a pilgrimage in flight blocks the next one from firing (canon 51:
+    #     the CanBegin consult in Eligible, which the timed-effect active
+    #     list cannot cover because a journey is not a timed effect)
+    rng = random.Random(17)
+    d = Director(rng)
+    d.fire("we_deep_pilgrimage", 40)
+    blocked = not d.eligible("we_deep_pilgrimage", 41)
+    d2 = Director(random.Random(17))
+    d2.fire("we_deep_pilgrimage", 40)
+    for day in range(41, 41 + PILGRIMAGE_JOURNEY_DAYS):
+        d2.dawn(day)   # burns occupancy (and the cooldown holds regardless)
+    freed = d2.pilg_active == 0
+    check("pilgrimage occupancy blocks refire, then frees", blocked and freed,
+          f"blocked={blocked} freed={freed}")
+
+    # 16. pilgrimage fires respect occupancy across long runs: no two
+    #     pilgrimage fires closer than the journey length
+    bad = []
+    for seed in range(60):
+        d, _ = run(seed, days=300)
+        marks = [day for day, eid in d.log if eid == "we_deep_pilgrimage"]
+        for a, b in zip(marks, marks[1:]):
+            if b - a < PILGRIMAGE_JOURNEY_DAYS:
+                bad.append((seed, a, b))
+        if not any(marks) and seed == 0:
+            pass
+    fired_somewhere = any(
+        any(eid == "we_deep_pilgrimage" for _, eid in run(s, days=300)[0].log)
+        for s in range(10))
+    check("pilgrimage fires spaced by at least the journey", not bad and fired_somewhere,
+          f"bad={bad[:3]} fired_somewhere={fired_somewhere}")
+
+    # 17. CanBegin false silences the pilgrimage and nothing else
+    d_no, _ = run(21, days=300, pilg_can_begin=False)
+    pilg_fired = any(eid == "we_deep_pilgrimage" for _, eid in d_no.log)
+    others_fired = any(eid != "we_deep_pilgrimage" for _, eid in d_no.log)
+    check("CanBegin false silences pilgrimage only",
+          (not pilg_fired) and others_fired,
+          f"pilg={pilg_fired} others={others_fired}")
+
+    # 18. save/load mid-journey keeps the occupancy (a loaded save must not
+    #     free the road early)
+    rng = random.Random(23)
+    d = Director(rng)
+    d.fire("we_deep_pilgrimage", 50)
+    d.dawn(51)
+    blob = d.save()
+    d3 = Director.load(random.Random(23), blob)
+    check("save/load keeps pilgrimage occupancy",
+          d3.pilg_active == PILGRIMAGE_JOURNEY_DAYS - 1,
+          f"active={d3.pilg_active}")
 
     print()
     if FAILURES:

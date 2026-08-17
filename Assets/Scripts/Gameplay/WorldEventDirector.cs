@@ -146,6 +146,14 @@ public class WorldEventDirector : MonoBehaviour
         if (activeIds.Contains(def.Id)) return false;
         if (lastFiredDay.TryGetValue(def.Id, out int last)
             && day - last < Mathf.Max(1, def.cooldownDays)) return false;
+        if (def.effectKind == WorldEventEffectKind.BeginPilgrimage
+            && !DwarvenPilgrimageController.CanBegin)
+        {
+            // A journey is not a timed effect, so the active list cannot
+            // police the overlap; the controller's departure gate does
+            // (canon 51). Print Road Journeys prints the refusal in words.
+            return false;
+        }
         return true;
     }
 
@@ -162,6 +170,11 @@ public class WorldEventDirector : MonoBehaviour
             case WorldEventEffectKind.GrantGold:
                 DungeonCore.Instance?.AddGold(
                     UnityEngine.Random.Range(def.goldMin, def.goldMax + 1));
+                break;
+            case WorldEventEffectKind.BeginPilgrimage:
+                // Eligible consulted CanBegin at dawn; the controller
+                // re-checks and counts a rare late failure as a fizzle.
+                DwarvenPilgrimageController.Instance?.BeginFromEvent();
                 break;
             case WorldEventEffectKind.None:
             default:

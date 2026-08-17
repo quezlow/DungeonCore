@@ -66,6 +66,20 @@ public static class WorldEventContentGenerator
             kind = WorldEventEffectKind.GrantGold,
             magnitude = 1f, goldMin = 40, goldMax = 80,
         },
+        // The deep pilgrimage (canon 51): the effect hands a journey to
+        // DwarvenPilgrimageController; the director's cooldowns own the
+        // cadence. msg stays EMPTY on purpose -- the controller logs its
+        // own departure and arrival alerts, the funeral's precedent, and
+        // an asset alert would double-fire beside them.
+        new Spec
+        {
+            id = "we_deep_pilgrimage",
+            msg = "",
+            cat = AlertCategory.Discovery, sev = AlertSeverity.Info,
+            minDay = 12, cooldown = 9, weight = 1f,
+            kind = WorldEventEffectKind.BeginPilgrimage,
+            magnitude = 1f,
+        },
     };
 
     [MenuItem("Dungeon Core/Generate World Events")]

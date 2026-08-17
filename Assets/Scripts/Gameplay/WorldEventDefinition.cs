@@ -16,6 +16,7 @@ public enum WorldEventEffectKind
     RespawnRate = 1,     // dungeon monster respawn speed multiplier (timed)
     CivilianWeight = 2,  // civilian intent lane multiplier (timed)
     GrantGold = 3,       // one-shot gold grant to the core
+    BeginPilgrimage = 4, // hands a journey to DwarvenPilgrimageController (instant; canon 51)
 }
 
 /// <summary>

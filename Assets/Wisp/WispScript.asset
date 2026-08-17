@@ -209,6 +209,23 @@ MonoBehaviour:
     once: 1
     text: You let it pass, and marked it. So did they. Small entries balance ledgers
       too.
+  - id: pilgrim_first
+    once: 1
+    text: Pilgrims, little core. The old faith says divinity sleeps below - and you
+      are what it says their prayers are for. They walk toward you and do not know
+      it.
+  - id: pilgrim_robbed
+    once: 1
+    text: Offerings meant for the deep, taken before they got there. Their ledgers
+      will call it theft. The old faith may call it something worse.
+  - id: pilgrim_wiped
+    once: 0
+    text: The faithful, ended on the road to their own god. Whatever walks that stone
+      next will walk it quieter.
+  - id: pilgrim_blessed
+    once: 1
+    text: You marked them kindly, and they felt it - a warmth off the stone. The
+      Holds will hear. The faith will remember longer.
   - id: holy_first_touch
     once: 1
     text: Careful. This stone is dressed, and it is cold in a way stone is not. A

@@ -4091,7 +4091,9 @@ public class Commands : MonoBehaviour
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("[Commands] Road journeys. Day -1 means: caravan \"due the first "
-                    + "eligible day\", relief \"nothing owed\", funeral \"nothing scheduled\".");
+                    + "eligible day\", relief \"nothing owed\", funeral \"nothing scheduled\". "
+                    + "The pilgrimage keeps no day of its own - its cadence lives under "
+                    + "Print World Events.");
 
         var caravan = DwarvenCaravanController.Instance;
         if (caravan == null)
@@ -4141,6 +4143,33 @@ public class Commands : MonoBehaviour
               .Append('\n');
         }
 
+        var pilg = DwarvenPilgrimageController.Instance;
+        if (pilg == null)
+            sb.AppendLine("  PILGRIMAGE: no DwarvenPilgrimageController in the scene. "
+                        + "we_deep_pilgrimage fires into nothing - add the component "
+                        + "beside DwarvenFuneralController on the persistent manager.");
+        else
+        {
+            sb.Append("  PILGRIMAGE stage: ").Append(pilg.StageName)
+              .Append("   departure gate: ");
+            if (DwarvenPilgrimageController.CanBeginWhy(out string pilgWhy))
+                sb.Append("OPEN");
+            else
+                sb.Append("refused - ").Append(pilgWhy);
+            sb.Append('\n');
+            if (pilg.Active)
+                sb.Append("    offerings ").Append(pilg.Cargo)
+                  .Append("g, verb ").Append(pilg.VerbUsed ? "SPENT" : "unspent")
+                  .Append(", bound for floor index ").Append(pilg.DestFloorIndex)
+                  .Append('\n');
+            sb.Append("    lifetime: marched ").Append(pilg.PilgrimagesMarched)
+              .Append(", robbed ").Append(pilg.PilgrimagesRobbed)
+              .Append(", wiped ").Append(pilg.PilgrimagesWiped)
+              .Append(", blessed ").Append(pilg.PilgrimagesBlessed)
+              .Append(", fizzled ").Append(pilg.PilgrimagesFizzled)
+              .Append('\n');
+        }
+
         Debug.Log(sb.ToString());
     }
 
@@ -4169,6 +4198,33 @@ public class Commands : MonoBehaviour
             return;
         }
         Debug.Log("[Commands] Advance Funeral Phase: " + f.ForceAdvancePhase());
+    }
+
+    /// <summary>Canon 51's test hook: departs through the REAL gates
+    /// (CanBegin and the real staging), skipping only the director's roll.
+    /// A refusal is returned in words.</summary>
+    [ContextMenu("Force Pilgrimage Now")]
+    void ForcePilgrimageNow()
+    {
+        var p = DwarvenPilgrimageController.Instance;
+        if (p == null)
+        {
+            Debug.Log("[Commands] No DwarvenPilgrimageController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Force Pilgrimage Now: " + p.ForcePilgrimageNow());
+    }
+
+    [ContextMenu("Advance Pilgrimage Phase")]
+    void AdvancePilgrimagePhase()
+    {
+        var p = DwarvenPilgrimageController.Instance;
+        if (p == null)
+        {
+            Debug.Log("[Commands] No DwarvenPilgrimageController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Advance Pilgrimage Phase: " + p.ForceAdvancePhase());
     }
 
     [ContextMenu("Test Caravan Route Report")]

@@ -266,6 +266,20 @@ public class WispScript : ScriptableObject
             new Line { id = "funeral_respects", once = true,
                 text = "You let it pass, and marked it. So did they. Small entries balance ledgers too." },
 
+            // Canon 51: the deep pilgrimage. Canon 20 is the joke the
+            // first line does not quite tell: the old faith prays to what
+            // the player is. The wiped line repeats, the caravan_wiped
+            // precedent -- a silence on the second wipe would read as the
+            // faith forgetting its own.
+            new Line { id = "pilgrim_first", once = true,
+                text = "Pilgrims, little core. The old faith says divinity sleeps below - and you are what it says their prayers are for. They walk toward you and do not know it." },
+            new Line { id = "pilgrim_robbed", once = true,
+                text = "Offerings meant for the deep, taken before they got there. Their ledgers will call it theft. The old faith may call it something worse." },
+            new Line { id = "pilgrim_wiped", once = false,
+                text = "The faithful, ended on the road to their own god. Whatever walks that stone next will walk it quieter." },
+            new Line { id = "pilgrim_blessed", once = true,
+                text = "You marked them kindly, and they felt it - a warmth off the stone. The Holds will hear. The faith will remember longer." },
+
             // The warning ladder (canon 19). Rung 2 speaks while the push is
             // still only LEANING on dwarven ground -- before the first cell is
             // taken -- which is the one moment the choice is still free.

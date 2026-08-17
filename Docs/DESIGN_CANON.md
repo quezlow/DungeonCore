@@ -11348,6 +11348,163 @@ the column (the caravan's spacing ruling, inherited).
 reset), `TESTING/Commands.cs` (readout and two test hooks).
 
 
+## 51. The Deep Pilgrimage (D2 Road Traffic, Stage 2)
+
+Status: SHIPPED. The second of D2's three (entry 49): funeral, then
+pilgrims, then refugees. Refugees remain their own session, tied to the
+entry-46 fall and abandonment path. Canon 20 is the premise: the old deep
+faith holds that divinity resides below and that some dead are reborn as
+dungeon cores -- the pilgrims walk toward what the player is, and do not
+know it.
+
+**ROLLED, NOT TRIGGERED -- canon 50's framework rider, honoured.** The
+funeral bypassed `WorldEventDirector` because a reactive beat cannot wait
+on a dawn roll; the pilgrimage is the opposite -- weather, not reaction --
+so it enters the world as `we_deep_pilgrimage`, a `WorldEventDefinition`
+on the new append-only kind `BeginPilgrimage = 4`. The division of labour
+is the honest one: the director's gates, weights and cooldowns own WHEN
+(minDay 12, cooldown 9, weight 1, under the usual 3-day global cooldown),
+and `DwarvenPilgrimageController` owns the road. Two seams carry it:
+`Eligible` consults the controller's static `CanBegin` for this kind -- a
+journey is not a timed effect, so the active-effects list cannot police
+the overlap -- and `Fire` calls `BeginFromEvent`. The event asset's
+`alertMessage` is EMPTY on purpose: the controller logs its own departure
+and arrival alerts on the funeral's precedent, and an asset alert would
+double-fire beside them. `Tools/sim_world_events.py` models the journey
+as a five-day occupancy plus a can-begin flag; checks 15-18 prove
+occupancy blocks a refire then frees, fires stay spaced over long runs,
+CanBegin-false silences the pilgrimage and nothing else, and a save keeps
+the occupancy.
+
+**THE DESTINATION IS PICKED, PINNED AND SAVED.** Deepest generated floor
+carrying roads and a qualifying Buried Age site -- archetype at or below
+`TollHouse`, not the outpost's or the village's reservation -- preferring
+HollowSanctum, then Ossuary, then the lowest site id, deterministically,
+so a forced test and a real fire agree. Church seals and the vault are
+excluded: canon 21's line -- the ruins are the deep faith's own, the seals
+are the Church's locks on it. The gate floor itself is never the
+destination -- pilgrims go DOWN, or the pick would settle for the guard
+post beside the outpost -- so the road opens only once a deeper
+road-bearing floor exists: floor index 3's sites in practice, then floor
+index 4's. The pick is pinned at departure (`destFloorIndex`,
+`destSiteId` in the save) so a floor dug mid-journey cannot shift the
+re-derivation under a walking column; `DwarvenJourneyRoutes.BuildToSite`
+re-derives the rest, sharing the rim pairing with the caravan's builder
+through the newly factored `BearingMatchedPair` (extracted from Build,
+not copied -- the file's own charter).
+
+**ONE WAY, the funeral's shape:** outpost to gate-floor rim (0.75d),
+unseen transit (1.5d -- two or more floors down, longer than the
+caravan's crossing), rim to the site's nearest road walk cell (1.5d),
+despawn -- they remain to keep the vigil. Arrival is not dying (the
+caravan's ruling): no standing, no wisp. A round trip was considered and
+declined: it doubles the interception window only to add a robbed-return
+trap -- empty pockets, full standing bill.
+
+**THE COLUMN: four pilgrims, no trailing prop.** Mortal faction bodies
+(canon 44), stance Defensive, role `CaravanMember` deliberately -- -25 a
+body keeps murdering the column always dearer than robbing it. The
+definition falls back to the villager's (pilgrims are civilians); the
+sprite deck falls back to the caravan's, with one owed sprite -- the
+hooded pilgrim walker -- registered in the Art Authoring guide's road
+props section, an Inspector deck slot invisible to Audit Art Debt; that
+section is its whole ledger. Dead slots survive the transit and a dead
+man's gap is not closed up (the caravan's spacing ruling).
+
+**ONE VERB PER PILGRIMAGE: Rob, Tax, Let pass, or Bless.**
+`PilgrimActionPanel` mirrors the funeral's: manual click only after first
+sighting, closing settles nothing, `PauseGate` refuses with the panel
+kept open so a refusal never burns the verb.
+
+- *Rob*: offerings 30-80g, standing -30 -- between the wagon's -25 and
+  the bier's -35: civilians on a holy errand, but no desecration -- and
+  the survivors hurry the REMAINING road, day and night, detection off.
+  No flee router, the funeral's reason: the destination is the refuge.
+- *Tax*: held stretch under the lead, 20 per cent of the ORIGINAL
+  offerings min 1, NO standing -- the toll economy's measured ruling,
+  kept a third time; the coldness of tolling the faithful is the alert
+  copy's job, not the ledger's.
+- *Let pass*: spends the verb.
+- *Bless*: standing +2, the road's second positive verb, UNGATED --
+  unlike Pay Respects there is no implication to gate on; one verb per
+  party already blocks rob-then-bless, and the director's cadence bounds
+  the faucet exactly as the funeral cooldown bounds the gesture.
+
+**GATES: no dwarven-tier gate, argued on the pilgrims' own merits**
+rather than inherited from the burial: wagons stop under embargo because
+wagons are business; a pilgrimage is faith, and the faithful walking into
+a hostile power's shadow IS the beat -- which also leaves Bless as the
+one trickle path back from hostile standing. `CanBegin` (printed in
+words by the readout) requires: no journey in flight, the climax not
+suppressing (departures stand down with the rest of the road), a living
+hold (Established, not Fallen, not Abandoned -- abandonment ends the
+road, entry 49), a definition, and a destination. A fire whose route
+then fails to build is a FIZZLE: the director's cooldowns are already
+armed, nothing is put back (there is no pending concept -- the next roll
+is the retry), and the saved counter is the proof it stayed rare. A wipe
+(every pilgrim dead) re-queues nothing; player wipes bill per body
+through canon 44's path, and a kobold wipe costs the road nothing but
+the cadence.
+
+**Sighting and the toll reuse the caravan's machinery without the
+vignette:** first revealed-segment crossing per save fires one Discovery
+alert, `pilgrim_first` and `FactionIntel.NotifyEncounter`; one System
+alert per held segment per journey while the verb is unspent; canon 19's
+anti-spam decision keeps the camera vignette with the trade wagon.
+
+**THE CLOCK IS THE SAVE** (`DwarvenPilgrimageSaveData`, additive, null on
+old saves = a road no pilgrim has walked): append-only state ints, walked
+and phase seconds, cargo, verbUsed, robbed, the destination pin, sighted,
+dead slots, and the five counters (marched / robbed / wiped / blessed /
+fizzled). Routes re-derive from the pin; legs re-stage lazily on load,
+the funeral's guard; reset rides `InitializeNewGame` beside the
+funeral's.
+
+**Diagnostics shipped in the first version:** a log line per departure,
+completion, wipe and fizzle; the five saved counters; a PILGRIMAGE block
+in `Print Road Journeys` that prints the live departure-gate refusal IN
+WORDS (a gate that cannot say why it refused costs a full test round);
+`Force Pilgrimage Now` (through the REAL gates, skipping only the
+director's roll -- it tests the road, not the weather) and `Advance
+Pilgrimage Phase`. The weather side lives under `Print World Events` as
+before.
+
+**Scene setup is four manual steps, all silent if skipped** (the
+wisp-asset lesson): the `DwarvenPilgrimageController` component beside
+`DwarvenFuneralController` on the persistent manager; the
+`PilgrimActionPanel` duplicated from the funeral panel with the Bless
+button in Pay Respects' place; `WispScript.asset` regenerated via Fill
+Canon Lines (four new ids: `pilgrim_first`, `pilgrim_robbed`,
+`pilgrim_wiped` -- repeating, the caravan_wiped precedent -- and
+`pilgrim_blessed`); and Dungeon Core -> Generate World Events rerun to
+author `we_deep_pilgrimage`. `Print Road Journeys` names a missing
+component in words.
+
+**Rejected:** a second relief-pattern controller triggered off anything
+(canon 50's rider forbids it, and nothing here is reactive); a
+dwarven-tier embargo gate (above -- faith, not business); a round trip
+(above); offerings left at the site for the player to claim (canon 37's
+rejected free-loot chest wearing robes -- Rob and Tax stay the only
+access to the gold); a pilgrimage to the dead core vault (evocative --
+mourning a dead god -- but it collides with the vault's Church fiction
+and entry 34's arc; revisit only with a design that resolves both); a
+retry path for fizzles (a counter and the next roll are enough until the
+counter says otherwise).
+
+**Key files:** `Floors/DwarvenPilgrimageController.cs` (new),
+`UI/PilgrimActionPanel.cs` (new); edits in
+`Gameplay/WorldEventDefinition.cs` (kind 4),
+`Gameplay/WorldEventDirector.cs` (the Eligible consult and the Fire
+case), `Editor/WorldEventContentGenerator.cs` (one spec row),
+`Floors/DwarvenJourneyRoutes.cs` (`BuildToSite`, `BearingMatchedPair`),
+`Wisp/WispScript.cs` (four lines), `Save/DungeonSaveData.cs`,
+`Save/DungeonSaveController.cs` (save / restore / reset),
+`UI/PauseMenuController.cs` (ESC chain), `TESTING/Commands.cs` (readout
+and two test hooks), `Tools/sim_world_events.py` (the occupancy model
+and checks 15-18), `Docs/DCR_Guide_Art_Authoring.html` (road props
+item).
+
+
 # APPENDIX
 
 ## A. Content Registries and Authoring Keys

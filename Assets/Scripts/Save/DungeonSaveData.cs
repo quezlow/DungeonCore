@@ -135,6 +135,9 @@ public class DungeonSaveData
     // Canon 50: the funeral procession. Additive; null on old saves, which
     // load with no procession pending -- a road nobody has died on.
     public DwarvenFuneralSaveData dwarvenFuneral;
+    // Canon 51: the deep pilgrimage. Additive; null on old saves, which
+    // load with no pilgrimage on the road -- a road no pilgrim has walked.
+    public DwarvenPilgrimageSaveData dwarvenPilgrimage;
 
     public WildMonsterEventSaveData wildMonsterEvent;
 
