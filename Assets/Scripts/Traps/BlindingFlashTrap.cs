@@ -33,7 +33,7 @@ public class BlindingFlashTrap : TrapBase
             {
                 DamageNumberSpawner.Spawn(dmg, a.transform.position,
                     FloatingDamageNumber.DamageType.AdventurerHit);
-                a.TakeDamage(dmg);
+                a.TakeTrapDamage(dmg);
             }
         }
     }

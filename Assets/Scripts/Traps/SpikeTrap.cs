@@ -17,7 +17,7 @@ public class SpikeTrap : TrapBase
         float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
-        adv.TakeDamage(dmg);
+        adv.TakeTrapDamage(dmg);
     }
 
     protected override void ApplyEffect(DungeonMonster m)

@@ -381,6 +381,12 @@ public class LiveMemberSaveData
     public int lootValue;
     public int xp;
     public string grudgeMonster;
+    // Escapee intel (canon 48). On the roster half because a resolved-dead
+    // member persists through AddResolvedMember, and a mid-raid save/load
+    // would otherwise launder the cause of death. Additive: legacy saves
+    // read false, which is an honest "not a trap story".
+    public bool diedToTraps;
+    public bool captured;
 
     // Live dynamic state — only when isLive.
     public bool isLive;
@@ -400,4 +406,9 @@ public class LiveMemberSaveData
     public int tributeValue;
     public string returnGrudge;
     public float grudgeDamage;
+    // The cause tallies behind diedToTraps, persisted for the same reason
+    // grudgeDamage is: the verdict is computed at death from totals that
+    // must survive a reload. Additive: legacy saves read zero.
+    public float trapDamageTaken;
+    public float monsterDamageTaken;
 }

@@ -110,6 +110,8 @@ the supersession in one line.
 45. The Loot Policy Dial (and the Appeal Ledger's Poverty Half)
 46. The Deep Occupants -- Substrate (canon 42's nameless things)
 47. Lazy Floor Paint (Deferred Disc Painting)
+48. Escapee Intel (Trap-Wise Returns)
+49. The Backlog Closed (Section D Dispositions)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -8100,7 +8102,8 @@ destroyed one fails by being absent rather than by being wrong.
   entry, by decision. Section E is shipped as entry 34, section D item 1 is
   largely shipped as the `DeadCoreVault`, and world events, chest tiers, core
   spells, the pause audit and the button row have all shipped since it was
-  written. Anyone reading it should read canon first.
+  written. Anyone reading it should read canon first. The document has
+  since been CLOSED AND RETIRED -- entry 49 records every disposition.
 
 ### Update the Canon
 
@@ -11044,6 +11047,157 @@ same delivery.
 call, the amended paving note, the validator audits). Entry 19's paving
 note carries the in-place amendment; the guide is
 `Docs/DCR_Guide_Lazy_Floor_Paint.html`.
+
+
+---
+
+## 48. Escapee Intel (Trap-Wise Returns)
+
+Status: SHIPPED. Verified: pending smoke test.
+
+Backlog section D item 7, built as an extension of the shipped grudge
+pipeline rather than a system of its own. A survivor already carries ONE
+fact home (`grudgeMonster` -> `TrackedMember` -> `returnGrudge`); this adds
+a second fact at the PARTY level: whether the architecture or the garrison
+did the killing.
+
+**Traps were invisible to the damage ledger.** Every contact trap dealt
+bare `TakeDamage(dmg)` -- the Melee default the TakeDamage comment itself
+files under "environmental sources" -- and the crossbow's bolt shipped
+`sourceName = ""`, so the grudge record skipped it too. Two per-body
+tallies close that: `trapDamageTaken` and `monsterDamageTaken` (the latter
+fed from `RecordDamagedBy`, so the monster side is the sum the grudge
+argmax already walks). The eight contact traps now call `TakeTrapDamage`
+-- record, then wound, in that order because a killing blow runs `Die()`
+from inside `TakeDamage`. The crossbow records through a `fromTrap`
+payload flag and keeps its Ranged kind, so the shield wall still mitigates
+bolts; both ledgers record the listed damage pre-mitigation, matching the
+grudge precedent.
+
+**The rule.** At death, `diedToTraps` = trap total beats monster total. At
+resolution, `TrackedParty.trapWise` = trap deaths are at least half the
+ACTUAL deaths, minimum one. Captures and core-breaches sit outside the
+ratio -- a member taken alive is not a trap story -- which needed one new
+flag (`PartyMember.captured`, set in `TryCapture`) because a capture and a
+death were indistinguishable on the record.
+
+**The seat.** `SpawnReturningParty` gives the FIRST fallen-replacement
+slot to a Rogue when the record is trap-wise: survivors return as their
+exact selves per the entry-4 promise, so the seat only ever takes a fresh
+slot, and it is skipped when a surviving member already is one. The goal
+test mirrors `ResolveCombatClass` (BreachCore / SeekDeath / LootAndLeave),
+so a pinned pilgrim party can never be handed a sword. `ClassDefFor(Rogue)`
+returning null -- no Rogue definition listed on the spawner -- falls back
+to an ordinary roll, and the alert stays quiet rather than lying. The
+rogue's teeth are already shipped: `canDetectTraps` -> `ScanForTraps` plus
+`TryBeginDisarm`.
+
+**Decay is by construction, not by timer.** `TakeReturningParty` destroys
+the record and the return's own resolution writes a fresh one, so the
+intel recomputes from the NEW visit's deaths. Retire the trap corridor and
+the next record carries nothing -- rotating pressure, exactly the shape
+the backlog asked for, at zero standing state.
+
+**Persistence, all additive.** `trapWise` on `TrackedParty`; `diedToTraps`
+and `captured` on the roster half of `LiveMemberSaveData` (a resolved-dead
+member persists through `AddResolvedMember`, so a mid-raid save/load would
+otherwise launder the cause); the two tallies on the live half beside
+`grudgeDamage`, for the same reason that field is there. Legacy saves read
+false and zero everywhere; no migration.
+
+**Diagnostics in the first version.** A resolution log line with the
+survivors / deaths / trap-deaths split and the trap-wise verdict; `Print
+Tracked Parties` in Commands -- pending records with label, member count,
+survivors, return day, grudge and the trap-wise flag; the registry had a
+force command but no readout. The return alert speaks a trap-wise variant
+ONLY when the rogue was actually seated.
+
+**Key files:** `Adventurer/DungeonAdventurer.cs` (tallies, TakeTrapDamage,
+RecordTrapDamage, the Die attribution, TryCapture's captured flag, live
+capture/restore), `Adventurer/AdventurerParty.cs` (PartyMember flags, save
+round-trip), `Save/DungeonSaveData.cs` (LiveMemberSaveData fields),
+`DungeonCore/TrackedPartyRegistry.cs` (trapWise, the roll-up, the log
+line), `Adventurer/AdventurerSpawner.cs` (the seat, the alert),
+`Monster/DungeonProjectile.cs` (fromTrap), `Traps/CrossbowTrap.cs`, the
+eight contact traps, `TESTING/Commands.cs`.
+
+**Rejected:** any single trap death flipping the intel (one unlucky
+pitfall in a party the garrison wiped is noise, not a lesson -- unless it
+was the only death); rerolling the whole returning party around the intel
+(survivors-return-as-themselves is the entry-4 promise); a wisp line at
+the moment intel is recorded (the return alert IS the beat, and speaking
+it two days early spends it); bumping `used` for the forced class (the
+survivor path never bumps it for forcedClass either, and diverging only
+for trap-wise parties would skew variety on exactly those returns).
+
+---
+
+## 49. The Backlog Closed (Section D Dispositions)
+
+Status: DECIDED 2026-08-16. `DCR_Backlog.html` is RETIRED -- closed by a
+final revision; canon is the only live tracker. This entry supersedes
+entry 42's stale-backlog bullet and is the record a later session should
+trust.
+
+**Sections A, B, C, E and F were already shipped or ruled**, most of it
+after the document was written: A's three items by entries 31 / 19 / 19A;
+every B item including both Ideas (the caravan by entry 44 stage 1, the
+shop decoupling by `IShopVendor`, days-authored travel and carve
+precedence by entry 19); every C item (both dens, contested discovery,
+tier-off-geometry, tribe hostility, the goblin line, one-den-per-floor) by
+entry 42; E whole by entry 34; F's spells / button row / pause audit /
+chest tiers / rim facade / world events by entries 38 / 40 / 39 / 24 / 37.
+The document's floor facts predate the correction: the gatehouse sits on
+floor index 2.
+
+**Section D, item by item:**
+
+- **D1 (a dead core on a deep floor): CLOSED as shipped** -- the
+  `DeadCoreVault` (entry 20), the heart grant, the saturation escalation
+  (entry 46 stage D) and the wisp's recognition (entry 34 rider). The one
+  unshipped rider is recorded here for the NG+ arc rather than re-opened:
+  the dwarves' OPENING standing in a new game plus could read what the
+  last core did to them.
+- **D2 (road traffic beyond the merchant): GREENLIT, own session.** Its
+  written rationale is corrected rather than carried: it was to fill the
+  role of a world-events framework that "never got built" -- entry 37 has
+  since shipped exactly that framework, whose own Hold note asked whether
+  road traffic absorbs the role. The answer inverts: traffic RIDES the
+  framework and the caravan's journey machinery (clock-is-the-save, legs
+  and transit, verbs at a vignette, mortal faction bodies, the
+  held-stretch toll). Build order locked: funeral procession first
+  (cheapest, event-triggered off patrol deaths, no new destination logic),
+  then pilgrims to a deep site, then refugees tied to the entry-46 fall
+  and abandonment path -- which today ends a robbable income source with
+  no witnessed beat.
+- **D3 (submission as an alternative to conquest): BINNED.** "Gains the
+  population" has no mechanical meaning -- the muster needs spawners and
+  rooms, so live wilds cannot switch sides -- and entry 44's 3x3 puts
+  Wild-versus-Dungeon at WAR with no truce cell, the oldest line in the
+  combat layer. Do not propose again without a new case that answers both.
+- **D4 (something that tunnels upward at the core): BINNED.** It collides
+  with two load-bearing promises -- the occupants WANT NOTHING (entry
+  42's lore lock; a core-seeker from below contradicts their
+  characterisation) and kobolds STOP AT CLAIM ("claiming is a defence" is
+  taught) -- and the pressure budget is full: waves, four threats, world
+  events, two dens, the incursion, saturation. Revisitable only if
+  late-game pressure reads thin once entry 46 beds in.
+- **D5 (adventurers who don't leave): BINNED.** Arc-sized -- adventurer
+  bodies outliving party resolution is a new lifecycle, AI mode and save
+  layer. Two connective notes kept with the bin: cleared wild chambers
+  are the natural settle real estate, and `MemberEscaped` -> surface camp
+  growth is the shipped precedent it would invert.
+- **D6 (whatever the dwarves won't go below): CLOSED as answered** by
+  entry 42's lore lock and entry 46's substrate. The cataclysm's cause
+  stays deliberately unstated -- that openness is canon, not an omission.
+- **D7 (escapee intel): SHIPPED as entry 48.**
+
+**What survives the closure:** the Phase 9 polish trio (hover build cost
+preview, per-trap fire counter, placement preview ghost), the Specials /
+one-shot consumables HOLD (the trader schema's typed slot stands), and
+Section G's large arcs (trap sprites, the Avatar, quest frameworks,
+difficulty / permadeath / save pass / audio / NG+ / balance) plus D1's
+NG+ standing rider above.
 
 
 # APPENDIX

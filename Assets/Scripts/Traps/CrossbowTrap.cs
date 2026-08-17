@@ -51,6 +51,7 @@ public class CrossbowTrap : TrapBase
                 damage = ScaledDamage,
                 numberType = FloatingDamageNumber.DamageType.AdventurerHit,
                 sourceName = "",
+                fromTrap = true,
             });
     }
 

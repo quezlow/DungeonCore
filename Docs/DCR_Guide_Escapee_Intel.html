@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCR &mdash; Escapee Intel (Trap-Wise Returns)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0d0d1a; --accent:#e94560; --gold:#c8902a; --panel:#141428; --text:#d8d4c8; --dim:#8a8578; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.55; margin:0; padding-bottom:80px; }
+.progress-wrap { position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid #2a2a44; padding:10px 24px; display:flex; align-items:center; gap:16px; }
+.progress-bar { flex:1; height:8px; background:#22223a; border-radius:4px; overflow:hidden; }
+.progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .3s; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--dim); white-space:nowrap; }
+.reset-btn { font-family:'JetBrains Mono',monospace; font-size:12px; background:none; border:1px solid var(--dim); color:var(--dim); padding:4px 10px; border-radius:4px; cursor:pointer; }
+.reset-btn:hover { border-color:var(--accent); color:var(--accent); }
+header { padding:40px 24px 12px; max-width:900px; margin:0 auto; }
+h1 { font-family:Cinzel,serif; color:var(--gold); font-size:30px; margin:0 0 6px; }
+.subtitle { color:var(--dim); font-style:italic; margin:0; }
+main { max-width:900px; margin:0 auto; padding:0 24px; }
+details.chapter { background:var(--panel); border:1px solid #2a2a44; border-radius:8px; margin:18px 0; }
+details.chapter > summary { font-family:Cinzel,serif; color:var(--accent); font-size:20px; padding:14px 18px; cursor:pointer; list-style:none; }
+details.chapter > summary::-webkit-details-marker { display:none; }
+details.chapter > summary::before { content:"\25B8\00a0"; color:var(--gold); }
+details.chapter[open] > summary::before { content:"\25BE\00a0"; }
+.chapter-body { padding:0 22px 18px; }
+code, pre { font-family:'JetBrains Mono',monospace; font-size:14.5px; background:#0a0a14; border:1px solid #26263e; border-radius:4px; }
+code { padding:1px 5px; color:var(--gold); }
+pre { padding:12px 14px; overflow-x:auto; color:#c9d4e0; }
+.step { display:flex; gap:10px; align-items:flex-start; margin:10px 0; }
+.step input[type=checkbox] { margin-top:6px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+.step label { cursor:pointer; }
+.callout { border-left:3px solid var(--gold); background:#131324; padding:10px 14px; margin:14px 0; }
+.callout.warn { border-left-color:var(--accent); }
+table { border-collapse:collapse; margin:12px 0; width:100%; }
+th, td { border:1px solid #2a2a44; padding:7px 10px; text-align:left; font-size:16px; }
+th { font-family:Cinzel,serif; color:var(--gold); font-weight:500; }
+strong { color:var(--gold); font-weight:600; }
+em { color:#e0dccd; }
+a { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <span class="progress-label" id="progress-label">0 / 0</span>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <button class="reset-btn" id="reset-btn" type="button">Reset checkmarks</button>
+</div>
+<header>
+  <h1>Escapee Intel &mdash; Trap-Wise Returns</h1>
+  <p class="subtitle">Canon 48 &mdash; the survivors carry home one more fact, and it costs you a rogue.</p>
+</header>
+<main>
+
+<details class="chapter" open>
+<summary>1. What shipped, and why it is small</summary>
+<div class="chapter-body">
+<p>Backlog D7, delivered as an extension of the grudge pipeline rather than a system of its own. A survivor already carries one fact home &mdash; <code>grudgeMonster</code> rides <code>TrackedMember</code> and returns as <code>returnGrudge</code>, biasing target choice. This adds a second fact at the <strong>party</strong> level: whether the architecture or the garrison did the killing. When traps account for at least half of a tracked party's actual deaths, the record is marked <code>trapWise</code>, and the return seats a <strong>Rogue</strong> in one of the fresh slots &mdash; the class whose <code>canDetectTraps</code> flags and disarms are already shipped teeth.</p>
+<p><strong>Decay costs nothing.</strong> <code>TakeReturningParty</code> destroys the record and the return's own resolution writes a fresh one, so the intel recomputes from the <em>new</em> visit's deaths. Retire the trap corridor and the next record carries nothing. Rotating pressure, zero standing state, no timer.</p>
+<p><strong>Survivors are untouched.</strong> They return as their exact selves per the entry-4 promise; the seat only ever takes a replacement slot, and it is skipped when a surviving member already is a Rogue.</p>
+<div class="callout">Adjacent open item worth knowing about: the Phase 9 polish trio includes a <strong>per-trap fire counter</strong>. Once that ships, the two read together &mdash; the counter shows which corridor taught them. Nothing here depends on it.</div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>2. How it works &mdash; the pipeline</summary>
+<div class="chapter-body">
+<p><strong>Tallies.</strong> Traps were invisible to the damage ledger: every contact trap dealt bare <code>TakeDamage(dmg)</code> (the Melee default the code itself files under &ldquo;environmental sources&rdquo;), and the crossbow's bolt shipped <code>sourceName = ""</code>. Two per-body totals close that: <code>trapDamageTaken</code> and <code>monsterDamageTaken</code> (fed from <code>RecordDamagedBy</code>, so the monster side is the sum the grudge argmax already walks). The eight contact traps now call <code>TakeTrapDamage</code> &mdash; record, then wound, in that order because a killing blow runs <code>Die()</code> from inside <code>TakeDamage</code>. The crossbow records through a <code>fromTrap</code> payload flag and keeps its Ranged kind, so the shield wall still mitigates bolts. Both ledgers record listed damage pre-mitigation, matching the grudge precedent.</p>
+<p><strong>Verdict.</strong> At death, <code>diedToTraps</code> = trap total beats monster total. At resolution, <code>TrackedParty.trapWise</code> = trap deaths are at least half the <em>actual</em> deaths, minimum one. Captures and core-breaches sit outside the ratio &mdash; a member taken alive is not a trap story &mdash; which needed one new flag, <code>PartyMember.captured</code>, set in <code>TryCapture</code>, because a capture and a death were indistinguishable on the record.</p>
+<p><strong>The seat.</strong> In <code>SpawnReturningParty</code>, the first fallen-replacement whose type is a combatant (the same goal test as <code>ResolveCombatClass</code>: BreachCore / SeekDeath / LootAndLeave) spawns with <code>forcedClass = ClassDefFor(CombatClass.Rogue)</code>. A pinned pilgrim party can never be handed a sword. If no Rogue definition is listed on the spawner, the seat falls back to an ordinary roll and the alert stays quiet rather than lying.</p>
+<p><strong>Persistence, all additive.</strong> <code>trapWise</code> on <code>TrackedParty</code>; <code>diedToTraps</code> + <code>captured</code> on the roster half of <code>LiveMemberSaveData</code> (a resolved-dead member persists through <code>AddResolvedMember</code>, so a mid-raid save/load would otherwise launder the cause); the two tallies on the live half beside <code>grudgeDamage</code>. Legacy saves read false and zero; no migration.</p>
+<table>
+<tr><th>Signal</th><th>Where it shows</th></tr>
+<tr><td>Resolution verdict</td><td>Console: <code>[TrackedParty] &hellip; resolved -- N escaped, M fell (K to traps); they will return wise to the traps. Returns day D.</code></td></tr>
+<tr><td>Pending intel</td><td>Commands &rarr; <strong>Print Tracked Parties</strong>: label, members, survivors, return day, grudge, <code>TRAP-WISE</code></td></tr>
+<tr><td>The beat itself</td><td>Return alert: <em>&ldquo;&hellip; returns, wise to your traps, and they have brought one who knows them.&rdquo;</em> &mdash; spoken only when the rogue was actually seated</td></tr>
+</table>
+</div>
+</details>
+
+<details class="chapter">
+<summary>3. Verify &mdash; smoke steps</summary>
+<div class="chapter-body">
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s1"><label for="dcr-intel-v1-s1">Pull, recompile. Console clean &mdash; no new warnings from the seventeen touched files.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s2"><label for="dcr-intel-v1-s2">Build a short trap corridor (two or three damage traps &mdash; Spike, Pitfall, Earth Spikes all count; the crossbow counts too) on the entrance approach. Optional: Commands &rarr; <strong>Test Cycle Global Monster Aggression</strong> to Passive, so the traps do the killing unassisted.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s3"><label for="dcr-intel-v1-s3">Let a Hero-led party in (a named Hero makes it tracked). Kill at least half its fallen with traps; let at least one member walk out alive.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s4"><label for="dcr-intel-v1-s4">On resolution, the console prints the survivors / deaths / trap-deaths split and <em>&ldquo;they will return wise to the traps&rdquo;</em>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s5"><label for="dcr-intel-v1-s5">Commands &rarr; <strong>Print Tracked Parties</strong>: the pending record shows <code>TRAP-WISE</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s6"><label for="dcr-intel-v1-s6">Commands &rarr; <strong>Test Force Pending Returns Due Now</strong>, then wait for the next party spawn. The alert reads the trap-wise line, and one fresh member wears the Rogue class &mdash; watch it flag or kneel at a trap.</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s7"><label for="dcr-intel-v1-s7">Mid-raid persistence: after a trap kill but before the party resolves, save and reload, then resolve. The verdict survives the reload (the tallies persisted).</label></div>
+<div class="step"><input type="checkbox" id="dcr-intel-v1-s8"><label for="dcr-intel-v1-s8">Decay: sell or move the corridor, let the trap-wise return resolve against monsters instead. <strong>Print Tracked Parties</strong> shows the fresh record <em>without</em> <code>TRAP-WISE</code>.</label></div>
+<div class="callout warn">A capture is not a trap death. If the corridor feeds a Capture Trap and a prison cell, taken-alive members sit outside the ratio on both sides &mdash; expected, not a fault.</div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>4. Update the Canon</summary>
+<div class="chapter-body">
+<p>The canon edit <strong>rides the delivery script</strong> &mdash; nothing here is manual. <code>deliver_escapee_intel.py</code> writes:</p>
+<p><strong>Entry 48 &mdash; Escapee Intel (Trap-Wise Returns).</strong> Status SHIPPED, verified pending smoke test. Records the tallies, the half-the-deaths rule with captures and breaches outside the ratio, the seat and its pilgrim guard, decay-by-construction, the additive save fields, the three diagnostics, key files, and the four rejected shapes (single-death trigger, whole-party reroll, early wisp line, bumping <code>used</code> for the forced class).</p>
+<p><strong>Entry 49 &mdash; The Backlog Closed (Section D Dispositions).</strong> Retires <code>DCR_Backlog.html</code>; records every section-D disposition (D1/D6 closed as shipped, D2 greenlit with the funeral &rarr; pilgrims &rarr; refugees order, D3/D4/D5 binned with reasons, D7 shipped as entry 48), names the survivors (Phase 9 trio, Specials hold, Section G, the NG+ standing rider), and supersedes entry 42's stale-backlog bullet &mdash; which gains a two-line rider pointing here.</p>
+<p>Table of contents gains both lines. The closing revision of <code>DCR_Backlog.html</code> is a separate artifact for project knowledge, not a repo file.</p>
+</div>
+</details>
+
+</main>
+<script>
+(function () {
+  var PREFIX = "dcr-intel-v1-";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var fill = document.getElementById("progress-fill");
+  var label = document.getElementById("progress-label");
+  function update() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    label.textContent = done + " / " + boxes.length;
+    fill.style.width = boxes.length ? (100 * done / boxes.length) + "%" : "0%";
+  }
+  boxes.forEach(function (b) {
+    try { b.checked = localStorage.getItem(b.id) === "1"; } catch (e) {}
+    b.addEventListener("change", function () {
+      try { localStorage.setItem(b.id, b.checked ? "1" : "0"); } catch (e) {}
+      update();
+    });
+  });
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>

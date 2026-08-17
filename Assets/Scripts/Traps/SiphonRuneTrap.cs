@@ -17,7 +17,7 @@ public class SiphonRuneTrap : TrapBase
             FloatingDamageNumber.DamageType.AdventurerHit);
         if (DungeonCore.Instance != null)
             DungeonCore.Instance.AddMana(Definition.manaGain);
-        adv.TakeDamage(dmg);
+        adv.TakeTrapDamage(dmg);
     }
 
     protected override void ApplyEffect(DungeonMonster m)

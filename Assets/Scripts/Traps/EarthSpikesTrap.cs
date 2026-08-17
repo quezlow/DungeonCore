@@ -16,7 +16,7 @@ public class EarthSpikesTrap : TrapBase
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         ((IMonsterTarget)adv).ApplyKnockback(transform.position, Definition.knockbackForce);
-        adv.TakeDamage(dmg);
+        adv.TakeTrapDamage(dmg);
     }
 
     protected override void ApplyEffect(DungeonMonster m)

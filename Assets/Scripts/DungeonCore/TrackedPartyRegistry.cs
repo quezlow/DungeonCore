@@ -87,6 +87,8 @@ public class TrackedPartyRegistry : MonoBehaviour
 
         var record = new TrackedParty();
         int survivors = 0;
+        int deaths = 0;      // actual deaths: not escaped, not breached, not taken alive
+        int trapDeaths = 0;  // of those, the ones traps did the killing on
         foreach (var m in party.Members)
         {
             record.members.Add(new TrackedMember
@@ -100,15 +102,33 @@ public class TrackedPartyRegistry : MonoBehaviour
                 grudgeMonster = m.grudgeMonster,
             });
             if (m.escaped) survivors++;
+            else if (!m.breached && !m.captured)
+            {
+                deaths++;
+                if (m.diedToTraps) trapDeaths++;
+            }
         }
 
         if (survivors == 0) return;   // total wipe — the nemesis is gone
+
+        // Escapee intel (canon 48): the survivors carry home ONE party-level
+        // fact. Traps did the killing when they account for at least half
+        // the actual deaths -- captures and core-breaches sit outside the
+        // ratio, because a member taken alive or one that reached the core
+        // is not a trap story. One unlucky pitfall in a party the garrison
+        // wiped stays noise, which is why a single trap death is not enough
+        // on its own unless it was the only death.
+        record.trapWise = trapDeaths >= 1 && trapDeaths * 2 >= deaths;
 
         record.bannerColorIndex = party.bannerColorIndex;
 
         int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
         record.returnDay = day + Mathf.Max(0, returnDelayDays);
         pending.Add(record);
+        Debug.Log($"[TrackedParty] {LabelFor(record)} resolved -- {survivors} escaped, "
+                + $"{deaths} fell ({trapDeaths} to traps)"
+                + (record.trapWise ? "; they will return wise to the traps" : "")
+                + $". Returns day {record.returnDay}.");
     }
 
     /// <summary>Pull a party whose return day has arrived, or null. Removes it from the pending list.</summary>
@@ -161,6 +181,12 @@ public class TrackedParty
 {
     public int returnDay;
     public int bannerColorIndex = -1;
+    /// <summary>Escapee intel (canon 48): traps accounted for at least half
+    /// of this party's actual deaths, so the return seats a Rogue in a
+    /// fresh slot. Recomputed at every resolution -- the record is destroyed
+    /// on return -- so the intel decays by construction. Additive: legacy
+    /// saves read false.</summary>
+    public bool trapWise;
     public List<TrackedMember> members = new();
 }
 

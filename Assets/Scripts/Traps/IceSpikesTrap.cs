@@ -16,7 +16,7 @@ public class IceSpikesTrap : TrapBase
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
         adv.ApplySlow(Definition.slowMultiplier, ScaledDuration(Definition.slowDuration));
-        adv.TakeDamage(dmg);
+        adv.TakeTrapDamage(dmg);
     }
 
     protected override void ApplyEffect(DungeonMonster m)

@@ -34,6 +34,11 @@ public class DungeonProjectile : MonoBehaviour
         public float knockbackMinDamage;
         public bool breaksFormation;
         public float breakSeconds;
+        /// <summary>True when a built trap loosed this bolt. Rides the
+        /// payload for the same reason fromOutsider does: by impact the trap
+        /// may be gone. Feeds the trap-damage tally (canon 48) -- the grudge
+        /// ledger stays monster-only, so sourceName is left empty.</summary>
+        public bool fromTrap;
         /// <summary>Invoked after damage lands, hit or kill alike (e.g. taunt peel).</summary>
         public System.Action<IMonsterTarget> onHit;
         /// <summary>Invoked only when the impact killed the target (credit, XP, titles).</summary>
@@ -136,6 +141,8 @@ public class DungeonProjectile : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(payload.sourceName))
                 adv.RecordDamagedBy(payload.sourceName, payload.damage);
+            if (payload.fromTrap)
+                adv.RecordTrapDamage(payload.damage);
             adv.TakeDamage(payload.damage, DamageKind.Ranged, payload.fromOutsider);
             if (payload.breaksFormation && hitObj != null)
                 adv.BreakFormation(payload.breakSeconds);

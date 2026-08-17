@@ -300,6 +300,14 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     private string grudgeMonster;      // running arg-max of damageByType this raid
     private float grudgeDamage;        // damage total behind the current grudge
     private string returnGrudge;       // grudge from a prior visit — biases target choice
+    // Cause tallies for the escapee-intel ledger (canon 48). Trap damage was
+    // invisible before this: every trap rode the bare Melee default. The two
+    // totals answer one question at death -- did the architecture or the
+    // garrison do the killing -- and both persist mid-raid beside
+    // grudgeDamage, because a save/load between the wound and the death
+    // would otherwise launder the cause.
+    private float trapDamageTaken;
+    private float monsterDamageTaken;
     // Inspector parties observe; they never START a monster fight, but a hit
     // provokes them (handled in TakeDamage).
     private bool passiveUnlessProvoked;
@@ -2165,6 +2173,7 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     public void RecordDamagedBy(string monsterType, float amount)
     {
         if (string.IsNullOrEmpty(monsterType) || amount <= 0f) return;
+        monsterDamageTaken += amount;   // the cause tally's monster side (canon 48)
         damageByType.TryGetValue(monsterType, out float total);
         total += amount;
         damageByType[monsterType] = total;
@@ -2174,6 +2183,26 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
             grudgeMonster = monsterType;
             if (partyMember != null) partyMember.grudgeMonster = grudgeMonster;
         }
+    }
+
+    /// <summary>Trap damage rides through here so the cause tally sees it;
+    /// the amount is recorded before the wound lands because a killing blow
+    /// runs Die() from inside TakeDamage. Contact traps call this in place
+    /// of TakeDamage; the crossbow's bolt records through RecordTrapDamage
+    /// and keeps its Ranged kind so the shield wall still applies.</summary>
+    public bool TakeTrapDamage(float amount)
+    {
+        RecordTrapDamage(amount);
+        return TakeDamage(amount);
+    }
+
+    /// <summary>Accumulates the trap side of the cause tally (canon 48).
+    /// Pre-mitigation, exactly as the grudge ledger records a bolt's listed
+    /// damage.</summary>
+    public void RecordTrapDamage(float amount)
+    {
+        if (amount <= 0f) return;
+        trapDamageTaken += amount;
     }
 
     /// <summary>True for a named Hero — the only kill that earns a monster a title.</summary>
@@ -2203,6 +2232,10 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         // reports a kill. XP still lands: the core overcame them either way.
         DungeonCore.Instance?.AddXP(xpOnDeath);
         DropCarriedTribute("dropped the offering when they were taken");
+        // A capture is not a death: the escapee-intel ratio (canon 48) must
+        // keep taken-alive members out of both sides, and without this flag
+        // a capture and a death are indistinguishable on the record.
+        if (partyMember != null) partyMember.captured = true;
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
         UnregisterFromFloor(currentFloor);
         DropCarriedLoot();
@@ -2215,6 +2248,13 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
     {
         OnAnyAdventurerSlain?.Invoke();
         DropCarriedTribute("fell with the offering");
+        // Cause attribution for the escapee-intel ledger (canon 48): traps
+        // did the killing when their cumulative damage beats every monster's
+        // put together. Computed before the member resolves, because the
+        // roll-up (TrackedPartyRegistry.RecordResolvedParty) reads the flag
+        // off the record this call writes.
+        if (partyMember != null)
+            partyMember.diedToTraps = trapDamageTaken > monsterDamageTaken;
         party?.OnMemberResolved(partyMember, false, false, CarriedLootValue);
         UnregisterFromFloor(currentFloor);
 
@@ -2957,6 +2997,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         rec.returnGrudge = returnGrudge;
         rec.grudgeMonster = grudgeMonster;
         rec.grudgeDamage = grudgeDamage;
+        rec.trapDamageTaken = trapDamageTaken;
+        rec.monsterDamageTaken = monsterDamageTaken;
     }
 
     /// <summary>Queues restored state; applied at the end of Start so it overrides the
@@ -2975,6 +3017,8 @@ public class DungeonAdventurer : MonoBehaviour, IMonsterTarget
         returnGrudge = rec.returnGrudge;
         grudgeMonster = rec.grudgeMonster;
         grudgeDamage = rec.grudgeDamage;
+        trapDamageTaken = rec.trapDamageTaken;
+        monsterDamageTaken = rec.monsterDamageTaken;
         if (partyMember != null) partyMember.grudgeMonster = grudgeMonster;
         worshipCompleted = rec.worshipCompleted;
         worshipTimer = rec.worshipTimer;

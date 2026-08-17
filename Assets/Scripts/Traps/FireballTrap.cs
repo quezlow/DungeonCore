@@ -40,7 +40,7 @@ public class FireballTrap : TrapBase
             // Burn first: a killing blast must not touch a destroyed component.
             a.ApplyBurn(Definition.burnDps * TrapMastery.DamageMultiplier,
                 ScaledDuration(Definition.burnSeconds));
-            a.TakeDamage(dmg);
+            a.TakeTrapDamage(dmg);
         }
 
         floor.Entities.WithinRadius(transform.position, Definition.burstRadius, monBuf,

@@ -572,6 +572,34 @@ public class Commands : MonoBehaviour
         Debug.Log($"[Commands] {n} pending part(ies) marked due today (day {day}) — next party spawn deploys one.");
     }
 
+    [ContextMenu("Print Tracked Parties")]
+    void PrintTrackedParties()
+    {
+        var reg = TrackedPartyRegistry.Instance;
+        if (reg == null) { Debug.Log("[Commands] No TrackedPartyRegistry in scene."); return; }
+        int day = DayNightCycle.Instance != null ? DayNightCycle.Instance.CurrentDay : 1;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"[Commands] Tracked parties -- day {day}. "
+                    + $"Active: {reg.ActiveParties.Count}. Pending: {reg.PendingParties.Count}.");
+        foreach (var p in reg.PendingParties)
+        {
+            int survivors = 0;
+            string grudge = "";
+            foreach (var m in p.members)
+                if (m.survived)
+                {
+                    survivors++;
+                    if (grudge.Length == 0 && !string.IsNullOrEmpty(m.grudgeMonster))
+                        grudge = m.grudgeMonster;
+                }
+            sb.AppendLine($"  {TrackedPartyRegistry.LabelFor(p)}: {p.members.Count} member(s), "
+                        + $"{survivors} survivor(s), returns day {p.returnDay}"
+                        + (grudge.Length > 0 ? $", grudge {grudge}" : "")
+                        + (p.trapWise ? ", TRAP-WISE (a rogue takes a fresh slot)" : ""));
+        }
+        Debug.Log(sb.ToString());
+    }
+
     [ContextMenu("Test Grant Pending Survivors 400 XP")]
     void TestGrantPendingSurvivorXp()
     {

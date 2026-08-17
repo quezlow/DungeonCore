@@ -1508,6 +1508,24 @@ public class AdventurerSpawner : MonoBehaviour
         TrackedPartyRegistry.Instance?.RegisterActive(party);
         var used = new Dictionary<CombatClass, int>();
 
+        // Escapee intel (canon 48): a party that bled to traps returns with
+        // a Rogue in one of the fresh slots. Survivors stay their exact
+        // selves -- the seat only ever takes a replacement -- and it is
+        // skipped when a surviving member already is one. ClassDefFor
+        // returns null when no Rogue definition is listed on this spawner;
+        // the seat then falls back to an ordinary roll and the alert stays
+        // quiet rather than lying.
+        CombatClassDefinition rogueSeat = null;
+        if (record.trapWise)
+        {
+            bool survivorRogue = false;
+            foreach (var m in record.members)
+                if (m.survived && (CombatClass)m.combatClass == CombatClass.Rogue)
+                { survivorRogue = true; break; }
+            if (!survivorRogue) rogueSeat = ClassDefFor(CombatClass.Rogue);
+        }
+        bool rogueSeated = false;
+
         foreach (var m in record.members)
         {
             var type = (AdventurerType)m.type;
@@ -1518,7 +1536,28 @@ public class AdventurerSpawner : MonoBehaviour
                 SpawnMember(def, RollTrait(), spawnPos, party, used,
                             ClassDefFor((CombatClass)m.combatClass), m.name, m.xp, m.grudgeMonster);
             else
-                SpawnMember(def, RollTrait(), spawnPos, party, used);
+            {
+                // The first combatant replacement takes the rogue seat. The
+                // goal test mirrors ResolveCombatClass: forcing a combat
+                // class onto a worshipper would hand a pilgrim a sword.
+                var goal = AdventurerTypeInfo.GoalOf(type);
+                bool combatant = goal == AdventurerGoal.BreachCore
+                              || goal == AdventurerGoal.SeekDeath
+                              || goal == AdventurerGoal.LootAndLeave;
+                if (rogueSeat != null && !rogueSeated && combatant)
+                {
+                    // used is deliberately not bumped for the forced class:
+                    // the survivor branch above never bumps it for its
+                    // forcedClass either, and diverging only for trap-wise
+                    // parties would skew variety on exactly those returns.
+                    SpawnMember(def, RollTrait(), spawnPos, party, used, forcedClass: rogueSeat);
+                    rogueSeated = true;
+                }
+                else
+                {
+                    SpawnMember(def, RollTrait(), spawnPos, party, used);
+                }
+            }
         }
 
         SetupOrganize(party, primary, party.Members.Count, spawnPos);
@@ -1532,7 +1571,11 @@ public class AdventurerSpawner : MonoBehaviour
             if (m.survived && !string.IsNullOrEmpty(m.grudgeMonster)) { grudge = m.grudgeMonster; break; }
 
         string who = !string.IsNullOrEmpty(leadName) ? leadName : "A familiar party";
-        string line = string.IsNullOrEmpty(grudge)
+        // The trap-wise variant outranks the grudge: one line per return,
+        // and the seat is the newer, rarer fact.
+        string line = rogueSeated
+            ? $"{who} returns, wise to your traps, and they have brought one who knows them."
+            : string.IsNullOrEmpty(grudge)
             ? $"{who} returns to the dungeon."
             : $"{who} returns — and remembers the {grudge} that drew their blood.";
         AlertsLog.Instance?.AddAlert(line, spawnPos, -1, AlertCategory.Threat);

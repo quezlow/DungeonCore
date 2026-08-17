@@ -201,6 +201,8 @@ public class AdventurerParty
                 lootValue = m.lootValue,
                 xp = m.xp,
                 grudgeMonster = m.grudgeMonster,
+                diedToTraps = m.diedToTraps,
+                captured = m.captured,
             };
             if (!m.resolved)
             {
@@ -249,6 +251,8 @@ public class AdventurerParty
             escaped = rec.escaped,
             breached = rec.breached,
             lootValue = rec.lootValue,
+            diedToTraps = rec.diedToTraps,
+            captured = rec.captured,
         };
         Members.Add(m);
         resolvedCount++;
@@ -388,4 +392,6 @@ public class PartyMember
     public int lootValue;
     public bool resolved;
     public string grudgeMonster;   // worst offender this raid; carried home by survivors
+    public bool diedToTraps;       // trap damage beat monster damage at death (canon 48)
+    public bool captured;          // taken alive to a cell -- outside the death ratio
 }

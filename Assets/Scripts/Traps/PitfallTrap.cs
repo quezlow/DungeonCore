@@ -16,7 +16,7 @@ public class PitfallTrap : TrapBase
         float dmg = ScaledDamage;
         DamageNumberSpawner.Spawn(dmg, adv.transform.position,
             FloatingDamageNumber.DamageType.AdventurerHit);
-        adv.TakeDamage(dmg);
+        adv.TakeTrapDamage(dmg);
 
         adv.ApplySlow(Definition.slowMultiplier, ScaledDuration(Definition.slowDuration));
     }
