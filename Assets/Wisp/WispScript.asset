@@ -226,6 +226,22 @@ MonoBehaviour:
     once: 1
     text: You marked them kindly, and they felt it - a warmth off the stone. The
       Holds will hear. The faith will remember longer.
+  - id: refugee_first
+    once: 1
+    text: They are walking up, little core. Not to trade, not to pray - away. Whatever
+      is behind them, you built it.
+  - id: refugee_robbed
+    once: 1
+    text: They had almost nothing, and now they have nothing. That was the cheapest
+      coin you will ever take, and the dearest.
+  - id: refugee_wiped
+    once: 0
+    text: None of them reached the gatehouse. No word goes up, no grave goes down.
+      Only the road knows.
+  - id: refugee_last
+    once: 1
+    text: That was the last of them. The hold is stone and dust now, and the wagons
+      will not come again. Listen - the road is quiet.
   - id: holy_first_touch
     once: 1
     text: Careful. This stone is dressed, and it is cold in a way stone is not. A

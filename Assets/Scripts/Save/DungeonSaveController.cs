@@ -220,6 +220,7 @@ public class DungeonSaveController : MonoBehaviour
         DwarvenReliefController.ResetForNewGame();       // fresh dungeon, no relief owed
         DwarvenFuneralController.ResetForNewGame();      // fresh dungeon, no dead to carry
         DwarvenPilgrimageController.ResetForNewGame();   // fresh dungeon, no vigil owed
+        DwarvenRefugeeController.ResetForNewGame();      // fresh dungeon, nobody fleeing
         HolyGroundLedger.ResetForNewGame();              // fresh dungeon, every seal intact again
         WorldEventDirector.ResetForNewGame();            // fresh dungeon, fresh weather
         DivineAudienceLedger.ResetForNewGame();          // fresh dungeon, the gods attend again
@@ -429,6 +430,8 @@ public class DungeonSaveController : MonoBehaviour
             currentSave.dwarvenFuneral = DwarvenFuneralController.Instance.GetSaveData();
         if (DwarvenPilgrimageController.Instance != null)
             currentSave.dwarvenPilgrimage = DwarvenPilgrimageController.Instance.GetSaveData();
+        if (DwarvenRefugeeController.Instance != null)
+            currentSave.dwarvenRefugees = DwarvenRefugeeController.Instance.GetSaveData();
 
         if (WildMonsterEvent.Instance != null)
             currentSave.wildMonsterEvent = WildMonsterEvent.Instance.GetSaveData();
@@ -955,6 +958,7 @@ public class DungeonSaveController : MonoBehaviour
             DwarvenReliefController.Instance?.RestoreFromSave(currentSave.dwarvenRelief);
             DwarvenFuneralController.Instance?.RestoreFromSave(currentSave.dwarvenFuneral);
             DwarvenPilgrimageController.Instance?.RestoreFromSave(currentSave.dwarvenPilgrimage);
+            DwarvenRefugeeController.Instance?.RestoreFromSave(currentSave.dwarvenRefugees);
             NobleRetaliation.Instance?.RestoreFromSave(currentSave.nobleRetaliation);
             WorldEventDirector.Instance?.RestoreFromSave(currentSave.worldEvents);
             EndgameClimax.Instance?.RestoreFromSave(currentSave.endgameClimax);

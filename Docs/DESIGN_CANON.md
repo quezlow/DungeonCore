@@ -11505,6 +11505,138 @@ and checks 15-18), `Docs/DCR_Guide_Art_Authoring.html` (road props
 item).
 
 
+## 52. The Refugee Exodus (D2 Road Traffic, Stage 3)
+
+Status: SHIPPED. The last of D2's three (entry 49): funeral, pilgrims,
+refugees. **D2 is closed with this entry.** Entry 49 asked specifically
+for the entry-46 fall and abandonment path to gain a witnessed beat,
+because until now abandonment ended a robbable income source with nothing
+on screen to mark it: the wagons simply stopped coming.
+
+**TRIGGERED, NOT ROLLED -- entry 50's framework division, third and final
+outing.** The exodus is pure reaction, so it never enters
+`WorldEventDirector`'s dawn pool: it polls at dawn beside the relief cycle
+(entry 46 stage E2, the shipped precedent for a triggered journey) and
+departs `refugeeDelayDays` (1) after the fall, so the fall lands first and
+the exodus reads as its consequence rather than part of it. A cheap idle
+poll in `Update` covers a missed dawn subscription -- the relief cycle's
+own guard, same gate either way. No sim was written and none was owed:
+nothing here is probabilistic or geometric. The trigger is a comparison of
+two integers and the route is an existing list reversed.
+
+**ONE EXODUS PER FALL, LATCHED ON `TimesFallen` -- not on hold state.** A
+state-only gate was the trap: the hold stays `Fallen` and, once written
+off, `Abandoned` FOREVER, so a gate reading only those flags would march a
+fresh column every dawn until the end of the save. The latch stores the
+fall number already fled (`lastFledFallNumber`, -1 = never), so each of
+the up-to-three falls gets exactly one exodus. Unlike the relief patrol's
+gate this deliberately does NOT exclude an `Abandoned` hold: the flight
+from a written-off hold is the beat the feature exists for, and it carries
+its own copy -- `lastOfThem`, set from `village.Abandoned` at departure,
+retitles the panel ("The Last of the Hold"), changes both alerts, and
+fires `refugee_last` at the top of the road.
+
+**FIRING ON EVERY FALL RATHER THAN ONLY ON ABANDONMENT was the session's
+one real fork.** Abandonment is irreversible and happens once per save, so
+an abandonment-only beat is a single procession the player may never
+witness -- the worst cost-per-viewing in the road's whole run. A fall is
+repeatable up to three times, and survivors fleeing now with settlers
+walking in later is coherent with stage E2's cycle rather than in tension
+with it. Entry 49 asked for "the fall and abandonment path"; this covers
+both with one mechanism and two flavours.
+
+**WHO THEY ARE, since the fall's own condition is that every drawn
+villager is dead: the hold's NON-COMBATANTS, who were never modelled as
+bodies.** The eight villagers are the ones who work and fight in the
+lanes; a hold holds more than the people standing in them. This is
+recorded explicitly because a later reader would otherwise take the fall's
+condition for a contradiction and "fix" it. The definition falls back to
+the villager's for the same reason -- these are civilians.
+
+**UPWARD, ON THE CARAVAN'S RETURN HALF, WITH NO NEW GEOMETRY AT ALL.**
+`DwarvenJourneyRoutes.Build` gives the outbound pair and the caravan's own
+`Reversed()` turns them around: village to village-floor rim (1.5d), the
+unseen climb (1.5d), gate-floor rim to the outpost (0.75d), despawn. This
+is the only journey in the game that runs upward and it cost nothing to
+make one. Leaving the map is not dying (the caravan's ruling): no standing
+billed, no wisp at the top except the abandonment line.
+
+**TWO VERBS ONLY: Rob or Let pass.** The panel has two buttons rather than
+four with two greyed out, because both absentees fail for reasons that
+would not improve by being visible. **No toll:** they have paid everything
+already and there is no market left to toll for, so the held-segment alert
+says they have nothing you need rather than advertising a button that does
+not exist. **No Shelter / take them in:** it lands squarely on entry 49's
+binned D3 -- gaining a population has no mechanical meaning, the muster
+needs spawners and rooms -- and a button that quietly does nothing is
+worse than no button. Considered and declined again here rather than left
+implicit, since the exodus is the most tempting place in the game to put
+it; revisit only with a design that answers what a sheltered dwarf
+becomes.
+
+**Rob takes the least gold in the game (15-40g) and costs the most
+standing on the ladder: 25 wagon, 30 pilgrim, 35 bier, 40 here.** Cheapest
+loot, dearest price -- the asymmetry IS the beat, so neither number moves
+without the other. Survivors hurry the remaining road, day and night,
+detection off; no flee router, the funeral's reason -- off the map is
+already the refuge.
+
+**A WIPE RE-QUEUES NOTHING AND THE LATCH STANDS:** this fall's survivors
+are accounted for, they simply never got out. Standing is billed body by
+body through entry 44's path, so a player who does this pays per murder on
+top of the road's silence. **No loss is recorded against the hold** -- the
+recovery ledger counts intercepted relief patrols and wiped settler
+caravans (stage E2), and refugees are neither; they are leaving, not
+arriving. A STAGING FAULT, by contrast, unwinds the latch: unlike the
+pilgrimage, where the director's next roll is the retry, this journey has
+no other trigger, and a swallowed fall would lose the beat for good.
+
+**THE CLOCK IS THE SAVE** (`DwarvenRefugeeSaveData`, additive, null on old
+saves): append-only state ints, walked and phase seconds, carried,
+verbUsed, robbed, lastOfThem, the fall latch, sighted, dead slots and the
+four counters. Routes re-derive; legs re-stage lazily on load. **A save
+whose hold has already fallen and stayed fallen will march one exodus
+shortly after loading, and that is correct rather than a migration bug:**
+those survivors never left, because the feature did not exist to walk them
+out.
+
+**Diagnostics shipped in the first version:** a log line per departure,
+completion and wipe; four saved counters (fled / robbed / wiped / passed);
+a REFUGEE block in `Print Road Journeys` printing the live departure-gate
+refusal IN WORDS plus the due day and the fall latch; `Force Exodus Now`
+and `Advance Refugee Phase`. `Force Exodus Now` waives ONE production gate
+-- the delay day -- and says so in its own summary; it refuses on a
+standing hold and points at `Force Village Fall`, which still books the
+fall through the real dawn check.
+
+**Scene setup is three manual steps, all silent if skipped** (the
+wisp-asset lesson): the `DwarvenRefugeeController` component beside
+`DwarvenPilgrimageController` on the persistent manager; a
+`RefugeeActionPanel` duplicated from the pilgrim panel with the toll and
+blessing buttons DELETED; and `WispScript.asset` regenerated via Fill
+Canon Lines (four new ids: `refugee_first`, `refugee_robbed`,
+`refugee_wiped` -- repeating, the caravan_wiped precedent -- and
+`refugee_last`). `Print Road Journeys` names a missing component in words.
+
+**Rejected:** an armed escort (it turns Rob into a fight and changes the
+road's grammar from civilians-you-decide-about to a spawn lane); a Tax
+verb and a Shelter verb (above); a trailing handcart prop (the cart is
+drawn INTO the refugee sprite, so there is no second art slot to owe); a
+Deed for letting them pass unrobbed (adjacent and cheap, deliberately
+fenced out of this session rather than folded in -- Deeds are shipped and
+this is a candidate whenever the Deeds list is next opened); recording a
+recovery loss for a wiped exodus (above).
+
+**Key files:** `Floors/DwarvenRefugeeController.cs` (new),
+`UI/RefugeeActionPanel.cs` (new); edits in `Wisp/WispScript.cs` (four
+lines), `Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs` (save /
+restore / reset), `UI/PauseMenuController.cs` (ESC chain),
+`TESTING/Commands.cs` (readout and two test hooks),
+`Docs/DCR_Guide_Art_Authoring.html` (road props item). No world-event,
+route or village-controller changes were needed: the trigger reads
+`TimesFallen` and `FallenOnDay`, which stage E2 already recorded.
+
+
 # APPENDIX
 
 ## A. Content Registries and Authoring Keys

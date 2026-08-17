@@ -4093,7 +4093,8 @@ public class Commands : MonoBehaviour
         sb.AppendLine("[Commands] Road journeys. Day -1 means: caravan \"due the first "
                     + "eligible day\", relief \"nothing owed\", funeral \"nothing scheduled\". "
                     + "The pilgrimage keeps no day of its own - its cadence lives under "
-                    + "Print World Events.");
+                    + "Print World Events. The exodus prints the day this fall's "
+                    + "survivors are due out, or -1 when none are owed.");
 
         var caravan = DwarvenCaravanController.Instance;
         if (caravan == null)
@@ -4170,6 +4171,34 @@ public class Commands : MonoBehaviour
               .Append('\n');
         }
 
+        var refu = DwarvenRefugeeController.Instance;
+        if (refu == null)
+            sb.AppendLine("  REFUGEES: no DwarvenRefugeeController in the scene. "
+                        + "A fallen hold walks nobody out - add the component "
+                        + "beside DwarvenPilgrimageController on the persistent manager.");
+        else
+        {
+            sb.Append("  REFUGEES stage: ").Append(refu.StageName)
+              .Append("   due day: ").Append(refu.DueDay)
+              .Append("   fled through fall: ").Append(refu.LastFledFallNumber)
+              .Append("\n    departure gate: ");
+            if (refu.CanDepartWhy(out string refuWhy))
+                sb.Append("OPEN");
+            else
+                sb.Append("refused - ").Append(refuWhy);
+            sb.Append('\n');
+            if (refu.Active)
+                sb.Append("    carrying ").Append(refu.Carried)
+                  .Append("g, verb ").Append(refu.VerbUsed ? "SPENT" : "unspent")
+                  .Append(refu.LastOfThem ? ", THE LAST OF THEM" : "")
+                  .Append('\n');
+            sb.Append("    lifetime: fled ").Append(refu.ExodusesFled)
+              .Append(", robbed ").Append(refu.ExodusesRobbed)
+              .Append(", wiped ").Append(refu.ExodusesWiped)
+              .Append(", got out ").Append(refu.ExodusesPassed)
+              .Append('\n');
+        }
+
         Debug.Log(sb.ToString());
     }
 
@@ -4225,6 +4254,35 @@ public class Commands : MonoBehaviour
             return;
         }
         Debug.Log("[Commands] Advance Pilgrimage Phase: " + p.ForceAdvancePhase());
+    }
+
+    /// <summary>Canon 52's test hook. Departs through the real gates with
+    /// ONE waived: the delay day, because waiting a day after a forced fall
+    /// to watch the column proves nothing the delay does not. Refuses on a
+    /// standing hold and points at Force Village Fall, which still books
+    /// the fall through the real dawn check.</summary>
+    [ContextMenu("Force Exodus Now")]
+    void ForceExodusNow()
+    {
+        var r = DwarvenRefugeeController.Instance;
+        if (r == null)
+        {
+            Debug.Log("[Commands] No DwarvenRefugeeController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Force Exodus Now: " + r.ForceExodusNow());
+    }
+
+    [ContextMenu("Advance Refugee Phase")]
+    void AdvanceRefugeePhase()
+    {
+        var r = DwarvenRefugeeController.Instance;
+        if (r == null)
+        {
+            Debug.Log("[Commands] No DwarvenRefugeeController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Advance Refugee Phase: " + r.ForceAdvancePhase());
     }
 
     [ContextMenu("Test Caravan Route Report")]

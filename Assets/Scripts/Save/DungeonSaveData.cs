@@ -138,6 +138,10 @@ public class DungeonSaveData
     // Canon 51: the deep pilgrimage. Additive; null on old saves, which
     // load with no pilgrimage on the road -- a road no pilgrim has walked.
     public DwarvenPilgrimageSaveData dwarvenPilgrimage;
+    // Canon 52: the refugee exodus. Additive; null on old saves. A save
+    // whose hold already lies fallen marches one exodus after loading,
+    // which is correct -- those survivors never left.
+    public DwarvenRefugeeSaveData dwarvenRefugees;
 
     public WildMonsterEventSaveData wildMonsterEvent;
 

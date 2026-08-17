@@ -280,6 +280,19 @@ public class WispScript : ScriptableObject
             new Line { id = "pilgrim_blessed", once = true,
                 text = "You marked them kindly, and they felt it - a warmth off the stone. The Holds will hear. The faith will remember longer." },
 
+            // Canon 52: the refugee exodus. The wiped line repeats, the
+            // caravan_wiped precedent. refugee_last speaks only for the
+            // flight off an ABANDONED hold -- the road going quiet for
+            // good, which is the price entry 46 promised.
+            new Line { id = "refugee_first", once = true,
+                text = "They are walking up, little core. Not to trade, not to pray - away. Whatever is behind them, you built it." },
+            new Line { id = "refugee_robbed", once = true,
+                text = "They had almost nothing, and now they have nothing. That was the cheapest coin you will ever take, and the dearest." },
+            new Line { id = "refugee_wiped", once = false,
+                text = "None of them reached the gatehouse. No word goes up, no grave goes down. Only the road knows." },
+            new Line { id = "refugee_last", once = true,
+                text = "That was the last of them. The hold is stone and dust now, and the wagons will not come again. Listen - the road is quiet." },
+
             // The warning ladder (canon 19). Rung 2 speaks while the push is
             // still only LEANING on dwarven ground -- before the first cell is
             // taken -- which is the one moment the choice is still free.
