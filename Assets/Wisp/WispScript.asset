@@ -193,6 +193,22 @@ MonoBehaviour:
     once: 1
     text: One of theirs, dead on our stone. They will not have seen who swung - only
       where he fell. Their ledgers are long and they do not forget an entry.
+  - id: funeral_first
+    once: 1
+    text: They carry their dead down, not up. Down is where the fathers lie. Watch
+      the road - grief walks slowly, and it does not look aside.
+  - id: funeral_robbed
+    once: 1
+    text: Grave goods, taken off a bier. There are entries their ledgers keep apart
+      from the rest, and you have just written one.
+  - id: funeral_wiped
+    once: 0
+    text: The bearers and the borne, together on the stone. Nobody will carry the
+      story home - the silence will carry it.
+  - id: funeral_respects
+    once: 1
+    text: You let it pass, and marked it. So did they. Small entries balance ledgers
+      too.
   - id: holy_first_touch
     once: 1
     text: Careful. This stone is dressed, and it is cold in a way stone is not. A
