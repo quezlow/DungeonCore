@@ -253,6 +253,19 @@ public class WispScript : ScriptableObject
             new Line { id = "dwarf_slain_first", once = true,
                 text = "One of theirs, dead on our stone. They will not have seen who swung - only where he fell. Their ledgers are long and they do not forget an entry." },
 
+            // Canon 50: the funeral procession. The robbed line is the deep
+            // entry, the respects line the roster's first credit -- and the
+            // wiped line repeats, the caravan_wiped precedent: a silence on
+            // the second wipe would read as the road forgetting its dead.
+            new Line { id = "funeral_first", once = true,
+                text = "They carry their dead down, not up. Down is where the fathers lie. Watch the road - grief walks slowly, and it does not look aside." },
+            new Line { id = "funeral_robbed", once = true,
+                text = "Grave goods, taken off a bier. There are entries their ledgers keep apart from the rest, and you have just written one." },
+            new Line { id = "funeral_wiped", once = false,
+                text = "The bearers and the borne, together on the stone. Nobody will carry the story home - the silence will carry it." },
+            new Line { id = "funeral_respects", once = true,
+                text = "You let it pass, and marked it. So did they. Small entries balance ledgers too." },
+
             // The warning ladder (canon 19). Rung 2 speaks while the push is
             // still only LEANING on dwarven ground -- before the first cell is
             // taken -- which is the one moment the choice is still free.

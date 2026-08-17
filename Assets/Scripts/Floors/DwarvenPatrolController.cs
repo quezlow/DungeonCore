@@ -444,6 +444,13 @@ public class DwarvenPatrolController : MonoBehaviour
         // never chose, and a bill nobody can trace is a bug in the player's
         // model of the game rather than a consequence.
         bool ours = b.monster != null && b.monster.DungeonDealtDamage;
+
+        // Canon 50: the Holds bury their dead whoever swung, so the funeral
+        // hears EVERY fall -- the wisp line below still speaks only for the
+        // dungeon's own hand, and the ours flag rides along so Pay Respects
+        // can be gated to funerals the dungeon did not cause.
+        DwarvenFuneralController.Instance?.NotifyGuardFell(today, ours);
+
         b.monster = null;
         b.puppet = null;
         if (ours) WispCompanion.Instance?.Speak("dwarf_slain_first");

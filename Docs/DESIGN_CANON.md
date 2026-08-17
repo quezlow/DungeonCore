@@ -112,6 +112,7 @@ the supersession in one line.
 47. Lazy Floor Paint (Deferred Disc Painting)
 48. Escapee Intel (Trap-Wise Returns)
 49. The Backlog Closed (Section D Dispositions)
+50. The Funeral Procession (D2 Road Traffic, Stage 1)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -11198,6 +11199,153 @@ one-shot consumables HOLD (the trader schema's typed slot stands), and
 Section G's large arcs (trap sprites, the Avatar, quest frameworks,
 difficulty / permadeath / save pass / audio / NG+ / balance) plus D1's
 NG+ standing rider above.
+
+
+## 50. The Funeral Procession (D2 Road Traffic, Stage 1)
+
+Status: SHIPPED. The first of D2's three (canon 49): funeral, then pilgrims,
+then refugees. This entry records the funeral as built; pilgrims and refugees
+remain their own sessions.
+
+**TRIGGERED, NOT ROLLED -- the framework decision, made once.** Canon 49's
+rationale calls the funeral "event-triggered off patrol deaths", and the
+relief cycle (canon 46, stage E2) is the shipped precedent for a triggered
+journey. The procession therefore never enters `WorldEventDirector`'s dawn
+pool: the director's daily roll and global cooldown are right for weather and
+wrong for a reactive beat -- a funeral that arrives a week late, or never,
+for a death the player watched is a broken promise.
+`DwarvenPatrolController.HandleBodyDied` calls
+`DwarvenFuneralController.Instance?.NotifyGuardFell(day, dungeonDealt)` for
+EVERY guard death -- any killer, any floor -- and the controller schedules
+itself: departure `funeralDelayDays` (2) after the first pending death,
+further deaths folding into the same procession, `cooldownDays` (4) after a
+resolution before the next may march (the cooldown is enforced at the
+departure gate, never re-clamped into the schedule -- one source of truth).
+THE PILGRIMS ARE THE ARC'S FRAMEWORK RIDER, not this: stage 2 should reach
+for `WorldEventDefinition` and a new effect kind, and must not cite this
+entry as licence to bypass the director again.
+
+**THE ROUTE IS THE CARAVAN'S OUTBOUND HALF AND NOTHING NEW.** One-way:
+outpost to gate-floor rim (`gateLegDays` 0.75), unseen transit (`transitDays`
+1), rim to the hold (`villageLegDays` 1.5), despawn at arrival -- reaching
+the hold is not dying, the caravan's own ruling, so no standing is billed and
+no wisp speaks. `DwarvenJourneyRoutes.Build` is the whole of the destination
+logic, which is what canon 49 priced the funeral cheapest on. The fiction
+carries the one-way shape: deeper is earlier, and the dead go DOWN to where
+the fathers lie. A guard who fell on the village floor is still mourned from
+the gate -- the rites party bears his effects -- because carrying a corpse
+from its fall cell would need a saved death position that `dwarvenPatrolDead`
+deliberately does not hold.
+
+**THE COLUMN: three bearers and the bier.** Bearers are mortal faction
+bodies (canon 44), stance Defensive, role `CaravanMember` DELIBERATELY: they
+walk the road with goods, and -25 a body keeps murdering the column always
+dearer than desecrating it. The bearer definition falls back to the
+village's villager definition (bearers are civilians); the sprite deck falls
+back to the caravan's, the patrols' one-deck rule; the prefab's own renderer
+backstops both, so only a missing DEFINITION can dark the system (dormant,
+one warning). The bier is the cart's twin -- `DwarfWalkerPuppet.Create`, no
+body, no bob, trailing last -- and unset it marches the bearers with one
+warning rather than going dormant. Bearer deaths queue no funerals: the
+trigger is patrol deaths only, canon 49's lock, which is also what
+forecloses a funeral queueing funerals. Dead slots survive the transit; a
+dead man's gap is not closed up (the caravan's spacing ruling).
+
+**ONE VERB PER PROCESSION, plus the roster's first positive one.**
+`FuneralActionPanel` mirrors `CaravanActionPanel`: manual click only (after
+first sighting), closing settles nothing, `PauseGate` refuses with the panel
+open so a refusal never burns the verb, closed beside the caravan's at the
+head of the ESC chain.
+
+- *Rob* ("Desecrate"): grave goods 40-100g, standing -35 -- deeper than the
+  wagon's -25; desecration is its own ledger entry -- and the survivors
+  hurry the REMAINING road at hurry pace, day and night, all detection off.
+  There is no flee router here on purpose: the destination IS the refuge, so
+  a robbed procession finishes its journey frightened, on the normal route
+  -- which is also why a mid-robbed save restores cleanly with no
+  collapse-to-Idle rule.
+- *Tax*: held stretch under the lead, 20 per cent of the ORIGINAL goods min
+  1, and NO standing -- the toll economy's measured ruling holds unchanged.
+  A funeral surcharge was considered and refused: charging standing per
+  crossing is the exact fault the trade wagon already paid to remove, and
+  the coldness of tolling a bier is the alert copy's job, not the ledger's.
+- *Let pass*: spends the verb.
+- *Pay Respects*: standing +2, live ONLY when no death the procession
+  carries was the dungeon's (`DungeonDealtDamage`, the discriminator the
+  standing bill and bestiary already share) -- so mourning can never
+  discount the murder that caused it, and the cooldown bounds the gain to a
+  gesture rather than a faucet. The gate is checked BEFORE the verb is
+  marked spent, and the panel DISABLES the button with a labelled refusal
+  rather than hiding it: a hidden option reads as a bug, a refused one reads
+  as a judgement, and the judgement is the beat.
+
+**GATES: no tier gate, on the relief cycle's reasoning.** Wagons stop under
+embargo because wagons are robbable business; a burial is the Holds' own
+affair and marches past it -- they bury their dead in front of the power
+that made them. Departures stand down at the climax
+(`SuppressMidGameThreats`) and wait while the hold lies fallen; once
+ABANDONED the pending dead wait for ever, recorded here as accepted -- the
+abandonment's price already ends the road. A wipe (every bearer dead) loses
+the carried dead with the bearers: nothing re-queues, the procession WAS the
+burial, and the next guard death schedules the next. A kobold wipe costs the
+road only the cooldown; a player wipe bills per body through canon 44's
+path. A staging ABORT is not a story event: the pending dead are put back,
+no counter moves, and the next dawn retries.
+
+**Sighting and the toll reuse the caravan's machinery without the
+vignette.** First revealed-segment crossing per save: one Discovery alert,
+`funeral_first`, `FactionIntel.NotifyEncounter`. Held crossings while the
+verb is unspent: one System alert per segment per journey. The toll vignette
+never plays here -- it is the trade wagon's tutorial, and canon 19's
+anti-spam decision keeps it there. Departures and arrivals log quiet System
+alerts on the relief's precedent, sighted or not.
+
+**THE CLOCK IS THE SAVE** (`DwarvenFuneralSaveData`, additive, null on old
+saves = a road nobody has died on): append-only state ints, walked and phase
+seconds, cargo, verbUsed, robbed, journeyOurs, pending count and
+implication, schedule days, sighted, dead slots, and the four counters.
+Routes re-derive deterministically; legs re-stage lazily on load; reset
+rides `InitializeNewGame` beside the relief's.
+
+**Diagnostics shipped in the first version:** a log line per queue,
+departure and resolution; saved counters (marched / robbed / wiped /
+respects paid); `Print Road Journeys` in Commands -- caravan, relief and
+funeral schedules on live accessors, for which the caravan gained
+`StageName` (consumed there, the declared-but-uncalled rule); `Force Funeral
+Now` (departs through the REAL gates, synthesising a non-implicated death
+when none pends so Pay Respects is testable) and `Advance Funeral Phase`, on
+the relief's scaffolding pattern.
+
+**Scene setup is three manual steps, all silent if skipped** (the wisp-asset
+lesson): the `DwarvenFuneralController` component beside
+`DwarvenReliefController` on the persistent manager; the
+`FuneralActionPanel` duplicated from the caravan panel with a fourth button;
+`WispScript.asset` regenerated via Fill Canon Lines (four new ids:
+`funeral_first`, `funeral_robbed`, `funeral_wiped` -- repeating, the
+caravan_wiped precedent -- and `funeral_respects`). `Print Road Journeys`
+names the missing component in words.
+
+**Art:** one owed sprite, the bier -- `Docs/DCR_Guide_Art_Authoring.html`
+chapter 3d (road props), an Inspector-wired scene slot invisible to Audit
+Art Debt; that guide section is its whole ledger. Content Authoring is
+superseded for sprites by its own Rev 14 and takes nothing here. Bearer art
+is a pointer to the caravan deck, not a slot.
+
+**Rejected:** routing the funeral through the world-events dawn roll
+(above); a funeral toll standing surcharge (above); triggering off villager
+or caravan-member deaths (canon 49's lock -- and a funeral marching into
+the siege that caused it would be nonsense); carrying the body from the
+fall cell (needs a saved position the death ledger deliberately lacks); a
+flee router (the destination is the refuge); closing a dead bearer's gap in
+the column (the caravan's spacing ruling, inherited).
+
+**Key files:** `Floors/DwarvenFuneralController.cs` (new),
+`UI/FuneralActionPanel.cs` (new); one-line-scale edits in
+`Floors/DwarvenPatrolController.cs` (the death hook's single call),
+`Floors/DwarvenCaravanController.cs` (`StageName`),
+`UI/PauseMenuController.cs` (ESC chain), `Wisp/WispScript.cs` (four lines),
+`Save/DungeonSaveData.cs`, `Save/DungeonSaveController.cs` (save / restore /
+reset), `TESTING/Commands.cs` (readout and two test hooks).
 
 
 # APPENDIX

@@ -132,6 +132,9 @@ public class DungeonSaveData
     // TimesFallen restarting from zero.
     public DwarvenHoldSaveData dwarvenHold;
     public DwarvenReliefSaveData dwarvenRelief;
+    // Canon 50: the funeral procession. Additive; null on old saves, which
+    // load with no procession pending -- a road nobody has died on.
+    public DwarvenFuneralSaveData dwarvenFuneral;
 
     public WildMonsterEventSaveData wildMonsterEvent;
 

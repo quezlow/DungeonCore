@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCR Guide - The Funeral Procession (Canon 50)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0d0d1a; --panel:#141428; --panel2:#1a1a33; --accent:#e94560; --gold:#c8902a; --text:#d8d4c8; --dim:#8a8578; --line:#2a2a4a; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:17px; line-height:1.65; padding-bottom:80px; }
+.progress-wrap { position:sticky; top:0; z-index:50; background:var(--bg); border-bottom:1px solid var(--line); padding:10px 20px; }
+.progress-bar { height:6px; background:var(--panel2); border-radius:3px; overflow:hidden; }
+#progressFill { height:100%; width:0%; background:linear-gradient(90deg,var(--gold),var(--accent)); transition:width .3s; }
+#progressText { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); margin-top:5px; }
+header { text-align:center; padding:44px 20px 24px; }
+header h1 { font-family:'Cinzel',serif; font-size:2em; color:var(--gold); letter-spacing:2px; }
+header .sub { color:var(--dim); font-style:italic; margin-top:8px; }
+.container { max-width:880px; margin:0 auto; padding:0 20px; }
+.meta-note { background:var(--panel); border-left:3px solid var(--gold); padding:14px 18px; margin:18px 0; font-size:.95em; }
+details { background:var(--panel); border:1px solid var(--line); border-radius:6px; margin:14px 0; }
+summary { font-family:'Cinzel',serif; font-size:1.15em; color:var(--accent); padding:14px 18px; cursor:pointer; user-select:none; }
+summary:hover { color:var(--gold); }
+.body { padding:4px 22px 20px; border-top:1px solid var(--line); }
+.body p { margin:12px 0; }
+.why { background:var(--panel2); border-left:3px solid var(--accent); padding:12px 16px; margin:14px 0; font-size:.95em; }
+.step { margin:12px 0; padding:10px 12px; background:var(--panel2); border-radius:4px; display:flex; gap:10px; align-items:flex-start; }
+.step input[type=checkbox] { margin-top:5px; accent-color:var(--accent); flex-shrink:0; }
+.step label { cursor:pointer; }
+code { font-family:'JetBrains Mono',monospace; font-size:.82em; background:#0a0a14; color:var(--gold); padding:1px 5px; border-radius:3px; }
+pre { font-family:'JetBrains Mono',monospace; font-size:.8em; background:#0a0a14; color:var(--text); padding:14px; border-radius:5px; overflow-x:auto; margin:12px 0; border:1px solid var(--line); white-space:pre-wrap; }
+.warn { color:var(--accent); font-weight:600; }
+b { color:#efe9d8; }
+#resetBtn { position:fixed; bottom:18px; right:18px; background:var(--panel2); color:var(--dim); border:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:11px; padding:8px 12px; border-radius:5px; cursor:pointer; }
+#resetBtn:hover { color:var(--accent); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="progress-wrap"><div class="progress-bar"><div id="progressFill"></div></div><div id="progressText"></div></div>
+<header>
+  <h1>The Funeral Procession</h1>
+  <div class="sub">Canon 50 &middot; D2 Road Traffic, Stage 1 &middot; they carry their dead down, not up</div>
+</header>
+<div class="container">
+
+<div class="meta-note">The delivery script has already applied every code edit and the canon entry.
+This guide is the manual half: three scene steps, the wisp regeneration, the tests, and the bier's
+art pointer. Precedence as always: <b>canon &gt; live code &gt; roadmap</b>. Prefix <code>dcr-funeral-v1-</code>.</div>
+
+<details open>
+<summary>0. What shipped, in one screen</summary>
+<div class="body">
+<p>When a road guard dies -- <b>any killer, any floor</b> -- the Deep Holds send a funeral two days
+later: three bearers and a bier, walking the caravan's outbound route one way, outpost to hold,
+carrying grave goods worth 40-100g. Deaths in the same window fold into one procession; a resolved
+journey holds the road quiet four days.</p>
+<p>It is the caravan's toll machinery with one new verb. Click the sighted column and choose once:
+<b>Desecrate</b> (take the goods, standing -35, the survivors hurry on day and night),
+<b>Tax</b> (held stretch only, 20% min 1, <b>no standing</b> -- the toll economy's rule holds),
+<b>Let pass</b>, or <b>Pay Respects</b> (standing +2, live <b>only when no carried death was the
+dungeon's</b> -- mourning can never discount a murder).</p>
+<div class="why"><b>No tier gate.</b> The procession marches under an embargo -- burying the dead is
+the Holds' own affair, and the beat is that they do it in front of the power that made them. It does
+stand down at the climax, and waits while the hold lies fallen.</div>
+<p>Everything is triggered, not rolled: this rides the relief cycle's pattern, never
+<code>WorldEventDirector</code>. The pilgrims (stage 2) are the framework rider.</p>
+</div>
+</details>
+
+<details open>
+<summary>1. Scene setup -- three steps, all silent if skipped</summary>
+<div class="body">
+<div class="why">All three fail without an error at the point of failure -- the wisp-asset lesson.
+<code>Print Road Journeys</code> names a missing controller in words; a missing panel just means the
+click does nothing; missing wisp lines just do not speak.</div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c1s1"><label for="dcr-funeral-v1-c1s1">
+<b>Add the controller.</b> On the persistent manager GameObject -- the one carrying
+<code>DwarvenReliefController</code> -- add <code>DwarvenFuneralController</code>. Defaults are the
+locked fork values; nothing needs typing. Two optional Inspector slots:
+<code>mournerDefinition</code> (empty falls back to the village's villager definition) and
+<code>bierSprite</code> (empty marches the column without a bier, one warning; chapter 3 below).</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c1s2"><label for="dcr-funeral-v1-c1s2">
+<b>Build the panel by duplication.</b> In the UI canvas, duplicate the caravan panel GameObject
+(the one carrying <code>CaravanActionPanel</code>), rename the copy <code>FuneralActionPanel</code>,
+then on the copy: remove the <code>CaravanActionPanel</code> component and add
+<code>FuneralActionPanel</code>. Duplicate one of the three verb buttons for the fourth slot and
+place it between Tax and Let pass.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c1s3"><label for="dcr-funeral-v1-c1s3">
+<b>Wire the copy's slots.</b> Same shape as the caravan panel plus two:
+<code>panelRoot</code>, <code>titleLabel</code>, <code>cargoLabel</code>, <code>closeButton</code>,
+<code>robButton</code>/<code>robLabel</code>, <code>taxButton</code>/<code>taxLabel</code>,
+<span class="warn">new</span> <code>respectsButton</code>/<code>respectsLabel</code>, and
+<code>letPassButton</code>. Labels are set in code at open time, so placeholder text in the scene is
+fine. The Respects button <b>disables with a labelled refusal</b> when the dungeon is implicated --
+do not hide it; the refusal is the beat.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c1s4"><label for="dcr-funeral-v1-c1s4">
+<b>Regenerate the wisp asset.</b> Run <code>Dungeon Core &rarr; Fill Canon Lines</code> so
+<code>WispScript.asset</code> picks up the four new ids (<code>funeral_first</code>,
+<code>funeral_robbed</code>, <code>funeral_wiped</code>, <code>funeral_respects</code>).
+<span class="warn">The saved asset overrides code defaults; skip this and the wisp stays silent on
+every funeral beat with no error anywhere.</span></label></div>
+</div>
+</details>
+
+<details>
+<summary>2. Testing -- one sitting, no real days</summary>
+<div class="body">
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c2s1"><label for="dcr-funeral-v1-c2s1">
+<b>Baseline readout.</b> <code>Print Road Journeys</code> on the Commands object. Expect three lines
+-- caravan, relief, funeral -- with the funeral at <code>Idle</code>, 0 pending, due day -1. If it
+prints the missing-component sentence instead, step 1.1 was skipped.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c2s2"><label for="dcr-funeral-v1-c2s2">
+<b>Force one.</b> <code>Force Funeral Now</code>. It departs through the REAL gates (established,
+un-fallen hold; buildable routes) and synthesises a <i>non-implicated</i> death when none pends, so
+this same run also tests Pay Respects. A refusal names its reason.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c2s3"><label for="dcr-funeral-v1-c2s3">
+<b>Watch the gate leg, then skip.</b> The column walks the outpost road; <code>Advance Funeral
+Phase</code> finishes the current clock (legs still need the DAY phase to tick over -- the relief's
+own rule). Sighting fires the Discovery alert and <code>funeral_first</code> the first time the lead
+crosses a stretch you have revealed.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c2s4"><label for="dcr-funeral-v1-c2s4">
+<b>Exercise the verbs across runs.</b> One procession, one verb: click the column. Check Tax only
+lights on your held stone; check Pay Respects lights on the forced (non-implicated) funeral, then
+kill a guard yourself, let the real funeral march, and check the button now refuses with its label.
+Rob once and watch the survivors keep walking through the night.</label></div>
+
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c2s5"><label for="dcr-funeral-v1-c2s5">
+<b>Save mid-journey and reload.</b> Position re-derives from the walked clock; a robbed column
+restores robbed and hurrying. Then <code>Print Road Journeys</code> again -- the lifetime counters
+(marched / robbed / wiped / respects) must have survived the round trip.</label></div>
+</div>
+</details>
+
+<details>
+<summary>3. Art -- one owed sprite, ledgered elsewhere</summary>
+<div class="body">
+<p>The bier is the only new art. Its prompt, target size and checkbox live in
+<b><code>Docs/DCR_Guide_Art_Authoring.html</code>, chapter 3d (Road props)</b> -- added by this
+delivery as Rev 4. It is an Inspector slot on a scene component, so <b>Audit Art Debt will never
+list it</b>; that guide section is its whole ledger.</p>
+<div class="why"><b>Correction recorded:</b> the session brief routed new sprites to
+<code>DCR_Guide_Content_Authoring.html</code>, but that guide's own Rev 14 (2026-08-15) superseded
+its sprite chapters -- all art prompts now live in the Art Authoring guide. The bier follows the
+document's own rule.</div>
+<p>The bearers take no prompt: mourner override deck if you ever author one, else the caravan walker
+deck, else the prefab's own body -- a pointer, not a slot.</p>
+</div>
+</details>
+
+<details>
+<summary>4. Shelved features with a case here</summary>
+<div class="body">
+<p><b>The emissary journey</b> (flagged, not built): when the dwarven tier first breaks, one dwarf
+walking the road to deliver the ultimatum in person would turn the embargo from a menu state into a
+witnessed beat -- and it is almost entirely this session's machinery: a triggered one-way journey
+with a verb panel. Candidate for after the refugees; it needs its own fork on what clicking him
+offers.</p>
+<p>The binned register stays binned: no Hand-of-Evil, no trap synergies, no carry weight, no floor-4
+road truncation. Canon 2c's road carve exception stays RULED BY DECLINE.</p>
+</div>
+</details>
+
+<details>
+<summary>5. Update the Canon</summary>
+<div class="body">
+<p><b>Already applied by the delivery script</b> -- recorded here because a feature is not complete
+until the edit is included, and the edit must ride the script:</p>
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c5s1"><label for="dcr-funeral-v1-c5s1">
+<code>Docs/DESIGN_CANON.md</code> gains TOC line <b>50. The Funeral Procession (D2 Road Traffic,
+Stage 1)</b> and the full entry 50 before the Appendix: the triggered-not-rolled ruling and its
+pilgrims carve-out, the one-way route rationale, the column and role costs, all four verbs with
+their numbers (-35 / +2 / toll-no-standing), the no-tier-gate ruling, wipe and abort semantics, the
+save shape, the diagnostics, the three scene steps, the art pointer, and the Rejected list. Verify
+it renders after pushing; nothing further to type.</label></div>
+<div class="step"><input type="checkbox" id="dcr-funeral-v1-c5s2"><label for="dcr-funeral-v1-c5s2">
+<code>Docs/DCR_Guide_Art_Authoring.html</code> gains Rev 4 and chapter 3d (the bier). Ticked state
+survives -- checkbox ids elsewhere are unchanged.</label></div>
+</div>
+</details>
+
+</div>
+<button id="resetBtn">reset checkmarks</button>
+<script>
+(function () {
+  var PREFIX = "dcr-funeral-v1-";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var fill = document.getElementById('progressFill');
+  var text = document.getElementById('progressText');
+  var reset = document.getElementById('resetBtn');
+
+  function refresh() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var pct = boxes.length ? Math.round(100 * done / boxes.length) : 0;
+    fill.style.width = pct + '%';
+    text.textContent = done + ' / ' + boxes.length + ' steps complete';
+  }
+
+  boxes.forEach(function (b) {
+    try {
+      if (localStorage.getItem(b.id) === '1') b.checked = true;
+    } catch (e) {}
+    b.addEventListener('change', function () {
+      try { localStorage.setItem(b.id, b.checked ? '1' : '0'); } catch (e) {}
+      refresh();
+    });
+  });
+
+  reset.addEventListener('click', function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    refresh();
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

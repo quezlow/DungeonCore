@@ -4083,6 +4083,94 @@ public class Commands : MonoBehaviour
         Debug.Log(sb.ToString());
     }
 
+    /// <summary>Canon 50's schedule readout: caravan, relief and funeral in
+    /// one line each, off LIVE accessors -- the Commands convention that a
+    /// readout calls the field rather than restating a tuned number.</summary>
+    [ContextMenu("Print Road Journeys")]
+    void PrintRoadJourneys()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] Road journeys. Day -1 means: caravan \"due the first "
+                    + "eligible day\", relief \"nothing owed\", funeral \"nothing scheduled\".");
+
+        var caravan = DwarvenCaravanController.Instance;
+        if (caravan == null)
+            sb.AppendLine("  CARAVAN: no DwarvenCaravanController in the scene.");
+        else
+        {
+            sb.Append("  CARAVAN stage: ").Append(caravan.StageName)
+              .Append("   next departure day: ")
+              .Append(DwarvenCaravanController.NextDepartureDayForSave);
+            if (caravan.Active)
+                sb.Append("   cargo ").Append(caravan.Cargo)
+                  .Append("g, verb ").Append(caravan.VerbUsed ? "SPENT" : "unspent");
+            sb.Append('\n');
+        }
+
+        var relief = DwarvenReliefController.Instance;
+        if (relief == null)
+            sb.AppendLine("  RELIEF: no DwarvenReliefController in the scene.");
+        else
+            sb.Append("  RELIEF stage: ").Append(relief.StageName)
+              .Append("   next attempt day: ").Append(relief.NextAttemptDay)
+              .Append("   (full recovery ledger under Print Deep Occupants)\n");
+
+        var funeral = DwarvenFuneralController.Instance;
+        if (funeral == null)
+            sb.AppendLine("  FUNERAL: no DwarvenFuneralController in the scene. Guard "
+                        + "deaths queue NO procession - add the component beside "
+                        + "DwarvenReliefController on the persistent manager.");
+        else
+        {
+            sb.Append("  FUNERAL stage: ").Append(funeral.StageName)
+              .Append("   pending deaths: ").Append(funeral.PendingDeaths)
+              .Append("   due day: ").Append(funeral.NextFuneralDay)
+              .Append("   cooldown clears day: ").Append(funeral.NextEligibleDay)
+              .Append('\n');
+            if (funeral.Active)
+                sb.Append("    grave goods ").Append(funeral.Cargo)
+                  .Append("g, verb ").Append(funeral.VerbUsed ? "SPENT" : "unspent")
+                  .Append(", respects ")
+                  .Append(funeral.RespectsAvailable
+                          ? "available" : "BARRED - the dungeon is implicated")
+                  .Append('\n');
+            sb.Append("    lifetime: marched ").Append(funeral.FuneralsMarched)
+              .Append(", robbed ").Append(funeral.FuneralsRobbed)
+              .Append(", wiped ").Append(funeral.FuneralsWiped)
+              .Append(", respects paid ").Append(funeral.RespectsPaid)
+              .Append('\n');
+        }
+
+        Debug.Log(sb.ToString());
+    }
+
+    /// <summary>Canon 50's test hook: departs through the REAL gates,
+    /// synthesising a non-implicated death when none pends so Pay Respects
+    /// is testable from the same command.</summary>
+    [ContextMenu("Force Funeral Now")]
+    void ForceFuneralNow()
+    {
+        var f = DwarvenFuneralController.Instance;
+        if (f == null)
+        {
+            Debug.Log("[Commands] No DwarvenFuneralController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Force Funeral Now: " + f.ForceFuneralNow());
+    }
+
+    [ContextMenu("Advance Funeral Phase")]
+    void AdvanceFuneralPhase()
+    {
+        var f = DwarvenFuneralController.Instance;
+        if (f == null)
+        {
+            Debug.Log("[Commands] No DwarvenFuneralController in the scene.");
+            return;
+        }
+        Debug.Log("[Commands] Advance Funeral Phase: " + f.ForceAdvancePhase());
+    }
+
     [ContextMenu("Test Caravan Route Report")]
     void TestCaravanRouteReport()
     {

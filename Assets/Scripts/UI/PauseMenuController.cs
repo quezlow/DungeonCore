@@ -129,6 +129,7 @@ public class PauseMenuController : MonoBehaviour
         if (DivineAudienceUI.IsPlaying) { DivineAudienceUI.Instance?.Skip(); return; }
 
         if (IsMenuOpen) Resume();
+        else if (FuneralActionPanel.Instance != null && FuneralActionPanel.Instance.IsOpen) FuneralActionPanel.Instance.Close();
         else if (CaravanActionPanel.Instance != null && CaravanActionPanel.Instance.IsOpen) CaravanActionPanel.Instance.Close();
         else if (MerchantShopUI.Instance != null && MerchantShopUI.Instance.IsOpen) MerchantShopUI.Instance.Close();
         else if (CryptRaiseUI.Instance != null && CryptRaiseUI.Instance.IsOpen) CryptRaiseUI.Instance.Close();

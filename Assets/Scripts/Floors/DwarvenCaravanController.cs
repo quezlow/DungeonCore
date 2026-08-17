@@ -210,6 +210,10 @@ public class DwarvenCaravanController : MonoBehaviour
     /// <summary>True while the wagon exists somewhere on a floor.</summary>
     public bool Active => state != JourneyState.Idle;
 
+    /// <summary>The journey stage, for Print Road Journeys (canon 50) --
+    /// the readout calls the enum rather than restating it.</summary>
+    public string StageName => state.ToString();
+
     /// <summary>Patrols read this when their own sprite list is empty, so one
     /// assigned list dresses every dwarf on the roads.</summary>
     public IReadOnlyList<Sprite> WalkerSpriteFallback => walkerSprites;
