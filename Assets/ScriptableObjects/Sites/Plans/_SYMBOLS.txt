@@ -72,6 +72,32 @@ GLYPHS
       and a quarter-turned sprite reads wrong. Wire the piece on
       AncientSiteProfile.siteDecor's piecePrefab; no art is wired yet.
 
+  t   TORCH. Floor plus a marker: a sconce or brazier the site was lit by.
+      Rides the same placement transform as 'o', so torches rotate and
+      mirror with the plan.
+
+      A SEPARATE GLYPH, not an overload of 'o'. A plan may want both -- an
+      ossuary with its bone piles AND its sconces -- and the two spawn
+      different prefabs with different lifecycles: decor is inert dressing,
+      a torch listens for a claim.
+
+      TWO THINGS YOU DO NOT CHOOSE. The COLOUR comes from the archetype:
+      cold blue on the Church seals and the vault, warm on every Buried Age
+      site, warm gold on the living dwarven holds. That split is canon 21's
+      line between the deep-faith's own ruins and the Church that sealed
+      them, so do not try to work around it in a plan. The LIT STATE comes
+      from the same place: everything spawns DORMANT and lights when the
+      player claims that cell, except the dwarven village and the gatehouse,
+      which start lit because somebody lives there.
+
+      A drawn torch is therefore a reward for taking the place. It latches
+      on EVER-claimed, so a breach recede never snuffs one.
+
+      Wire the prefab on AncientSiteProfile.torchPrefab; no art is wired
+      yet, and until it is, Commands / Log Point Lights reports the torch
+      cells a floor declares against the zero it spawned and names the
+      empty slot.
+
   ' ' SPACE -- not part of the site at all. LOAD-BEARING, not a fallthrough:
       BrokenAqueduct_TheDrySpan is two separate reaches with a void between
       them where the middle span fell. Do not tighten this into an error.
@@ -165,6 +191,15 @@ clear above it is buried. Everything below follows from this one fact.
 
 A WALL RECESS IS THREE DEEP. Two leaves a pinched run that seals under the
 drape.
+
+LIGHT HAS NO OCCLUSION, so a torch AGAINST A WALL is right and one stranded
+mid-floor is nearly useless. The lit patch is a plain disc a few cells across
+that brightens whatever it covers, walls included -- which is correct, because
+stone beside a flame IS lit. What it will not do is pick out a room's shape
+from the middle of the floor. Put them where a torch actually was: flanking a
+door, along a nave, at the corners of a hall, either side of the heart. And do
+not carpet the place -- the discs overlap fast, and a dozen in one hall is
+twelve objects buying one visual.
 
 HEART CLEARANCE IS MEASURED AROUND THE HEART'S SOLID COMPONENT, not the heart
 cell. Measuring from the cell failed six of eight plans, because a plinth-set

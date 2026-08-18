@@ -12056,7 +12056,10 @@ diagnostics), `Assets/Scripts/Floors/AncientSiteProfile.cs` and
 `Assets/Scripts/Floors/RoadNetworkProfile.cs` (prefabs and colours),
 `Assets/Scripts/DungeonCore/DungeonPointLight.cs` (`ConfigureSpawned`),
 `Assets/Editor/SitePlanPreviewWindow.cs` (the `t` swatch),
-`Assets/Scripts/TESTING/Commands.cs`.
+`Assets/Scripts/TESTING/Commands.cs`,
+`Assets/ScriptableObjects/Sites/Plans/_SYMBOLS.txt` (the authors' quick
+reference -- never parsed, and therefore easy to leave behind; anything that
+changes the glyph vocabulary moves it too).
 
 **Editor work, which is Brad's and never a blocker.** A torch prefab and a
 road-lamp prefab, each carrying `DungeonPointLight` with the shader slot
