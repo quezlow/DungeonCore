@@ -11642,7 +11642,8 @@ route or village-controller changes were needed: the trigger reads
 
 ## 53. Point Lights (Stage 1 -- the Engine and the Brazier)
 
-Status: SHIPPED (stage 1 of two), pending smoke test. Verified: 2026-08-17.
+Status: SHIPPED and VERIFIED (stage 1 of two), smoke test passed including
+the occlusion check. Verified: 2026-08-18.
 
 **Light in DCR is darkness removed, and the shader already said so.**
 `DCR/AdditiveSprite` blends `OneMinusDstColor One` -- a screen blend, so a
@@ -11742,13 +11743,31 @@ scale the art child.
 serialized slot for the same reason, and this one falls back to `Shader.Find`
 only so the editor is forgiving.
 
-**STAGE 2 IS FENCED, and the fence is the point.** Road lamps, dormant site
-torches lit by a claim, dwarven hold lights, and the holy blue are all
-DECIDED but not built: engine first, one light seen in the dark, then the
-hundreds. This is the art guide's validate-one-before-batching rule applied
-to a system rather than to a sprite, and it is bought cheaply -- the
-occlusion question above cannot be answered from source at all, only by
-looking. Stage 2's decisions, recorded so they are not re-argued:
+**THE OCCLUSION QUESTION IS ANSWERED, AND THE ANSWER IS CLEAN.** It was the
+one thing about this system that could not be settled from source -- a halo
+with no occlusion brightens the wall cap beside it and the opaque void behind
+that, so a radius wider than the rock is thick would glow through into the
+space on the far side. Tested by looking, with a lamp set hard against a wall
+with real rock behind it, and at the shipped radius it does not leak: the rock
+beside the flame catches light, which is correct, and nothing appears on the
+other side.
+
+**So the baked per-light shadow masks recorded above are PARKED, not owed.**
+That upgrade was conditional on this going the other way. A later session
+finding a lamp with no occlusion must not read that as work outstanding and
+build it; the mitigation is radius discipline, it was measured, and it holds.
+Reopen only if a lamp is ever seen to bleed -- and then suspect the radius
+before the architecture.
+
+**STAGE 2 IS UNBLOCKED, and the fence did its job.** Road lamps, dormant site
+torches lit by a claim, dwarven hold lights, and the holy blue were all
+DECIDED at the outset and deliberately not built: engine first, one light seen
+in the dark, then the hundreds. That is the art guide's
+validate-one-before-batching rule applied to a system rather than to a sprite,
+and it earned its keep -- stage 1 took three amendments to reach a lamp that
+lights anything, every one of which would have had to be chased across several
+hundred road lamps instead of five braziers. Stage 2's decisions stand as
+confirmed; they are a build order now, not open questions:
 
 - Road lamps on the centreline every eight cells, `Trunk` and `Spur` only,
   spawned on segment reveal (the `SpawnSiteDecor` pattern). `Lane` is inside
