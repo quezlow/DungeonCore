@@ -4498,6 +4498,41 @@ public class Commands : MonoBehaviour
                 + " r" + shadow.CursorLightRadiusCells.ToString("0.#")
                 + "  -- a placed lamp belongs strictly between the moss and the cursor.");
 
+        // Per light: the SERIALIZED peak against what the renderer is actually
+        // showing this frame. Equal means the value took and the number itself
+        // is wrong; unequal means something is stopping the refresh. Those two
+        // point at completely different places, and a readout that prints only
+        // the field cannot tell them apart -- which is how a speculative
+        // visibility gate hid behind "the intensity slider does nothing".
+        //
+        // timeScale rides along because the flicker is a function of time: a
+        // frozen clock and a broken wobble look identical on screen.
+        sb.AppendLine("  timeScale " + Time.timeScale.ToString("0.##")
+            + " (flicker runs on UNSCALED time, so it should wobble at 0 too)");
+
+        int shown = 0;
+        foreach (var L in all)
+        {
+            if (L == null) continue;
+            if (shown++ >= 12)
+            {
+                sb.AppendLine("  ... and " + (all.Count - 12) + " more.");
+                break;
+            }
+            string live = L.TryGetLivePeak(out float lp)
+                ? lp.ToString("0.###")
+                : "NO RENDERER";
+            sb.AppendLine("  " + L.name + " [" + L.Source + "]"
+                + " field peak " + L.Intensity.ToString("0.###")
+                + " -> live " + live
+                + ", radius " + L.RadiusCells.ToString("0.##")
+                + ", rgb " + L.Colour.r.ToString("0.##") + "/"
+                + L.Colour.g.ToString("0.##") + "/" + L.Colour.b.ToString("0.##")
+                + (L.RendererEnabled ? "" : ", RENDERER DISABLED")
+                + (L.RendererVisible ? "" : ", off camera")
+                + (L.IsLit ? "" : ", dormant"));
+        }
+
         Debug.Log(sb.ToString());
     }
 }

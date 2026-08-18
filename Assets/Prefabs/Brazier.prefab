@@ -169,6 +169,6 @@ MonoBehaviour:
   colour: {r: 1, g: 0.78, b: 0.45, a: 1}
   source: 0
   lit: 1
-  flickerAmount: 0.08
+  flickerAmount: 0.053
   flickerHz: 1.7
   lightShader: {fileID: 0}

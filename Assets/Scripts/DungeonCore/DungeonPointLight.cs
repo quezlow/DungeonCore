@@ -54,7 +54,10 @@ public class DungeonPointLight : MonoBehaviour
              "this is how much darkness the light can remove, not a final value.")]
     [SerializeField, Range(0f, 1f)] private float intensity = 0.20f;
 
-    [Tooltip("Light colour. Warm amber for flame, cold blue-white for holy.")]
+    [Tooltip("Light colour. Warm amber for flame, cold blue-white for holy. " +
+             "THE ALPHA IS NOT A DIMMER -- it is overwritten with the peak, " +
+             "because that is what the shader reads as intensity, and OnValidate " +
+             "forces it back to 1. Dim the lamp with Intensity.")]
     [SerializeField] private Color colour = new Color(1f, 0.78f, 0.45f, 1f);
 
     [Tooltip("What placed this light. Diagnostics only.")]
@@ -99,6 +102,23 @@ public class DungeonPointLight : MonoBehaviour
     public Color Colour => colour;
     public LightSource Source => source;
     public bool IsLit => lit;
+
+    // -- What the RENDERER holds, as against what the fields say ------
+    // The difference between those two is the whole diagnosis when a lamp
+    // ignores a setting: equal means the value took and the number is simply
+    // wrong, unequal means something is stopping the refresh. A readout that
+    // prints only the serialized field cannot tell those apart, and they point
+    // at completely different places.
+    public bool TryGetLivePeak(out float peak)
+    {
+        peak = 0f;
+        if (render == null) return false;
+        peak = render.color.a;
+        return true;
+    }
+
+    public bool RendererEnabled => render != null && render.enabled;
+    public bool RendererVisible => render != null && render.isVisible;
 
     /// <summary>Light or snuff this lamp. The dormant torches of a Buried Age
     /// site will call this when their cell is claimed, and a road lamp when the
@@ -148,15 +168,46 @@ public class DungeonPointLight : MonoBehaviour
     {
         if (!lit || flickerAmount <= 0f || flickerHz <= 0f || render == null) return;
 
-        // Gate on visibility. The wobble is trivial per light, but a deep floor
-        // may carry hundreds once roads and sites light up, and a light off
-        // screen has nothing to wobble for. isVisible is a cheap native read.
-        if (!render.isVisible) return;
+        // NO VISIBILITY GATE. There was one -- if (!render.isVisible) return --
+        // added on the guess that a deep floor would eventually carry hundreds
+        // of these. It sat in front of the ONLY per-frame refresh, so anything
+        // it blocked killed the flicker AND froze the light at whatever value
+        // it had when it was enabled, which reads exactly like a dead
+        // component: no wobble, and an intensity slider that does nothing.
+        // Both symptoms, one speculative line, before any count existed to
+        // justify it. If Log Point Lights ever shows a count that warrants a
+        // gate, gate on something that cannot strand a value -- and measure
+        // first.
 
-        float t = Time.time * flickerHz + phase;
+        // UNSCALED. Pause is Time.timeScale = 0 (TimeScaleController), and this
+        // is an active-pause game: the player builds while paused, so scaled
+        // time stopped the flicker for exactly the moment they are looking at a
+        // lamp they have just placed. ScreenFader runs on unscaledDeltaTime for
+        // the same reason and the spell radius ghost is deliberately not hidden
+        // by pause. A flame also has no business running at double rate on the
+        // 2x speed setting.
+        float t = Time.unscaledTime * flickerHz + phase;
         // Two waves at a deliberately awkward ratio: one alone is a metronome.
         float w = Mathf.Sin(t) * 0.6f + Mathf.Sin(t * 2.37f + 1.1f) * 0.4f;
         SetRendererColour(intensity * (1f + flickerAmount * w));
+    }
+
+    // Inspector edits reach the renderer HERE, not by waiting for Update. They
+    // used to arrive only through the flicker path, so a lamp with flicker off
+    // -- or with the old visibility gate closed -- ignored every value typed at
+    // it until it was disabled and re-enabled. A refresh on validate cannot be
+    // stranded by any future change to Update.
+    private void OnValidate()
+    {
+        // The colour's ALPHA is not a dimmer and never was: SetRendererColour
+        // overwrites it with the peak, because that is what the shader reads as
+        // intensity. Dragging it looked like it should work, which is worse
+        // than a field that is obviously absent. Forced back to 1 so the
+        // Inspector shows the lever refusing rather than silently ignoring.
+        // intensity is the ONE gain; two would be two places for one number.
+        if (colour.a != 1f) colour = new Color(colour.r, colour.g, colour.b, 1f);
+
+        if (Application.isPlaying) Apply();
     }
 
     private void Apply()

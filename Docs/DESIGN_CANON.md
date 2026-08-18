@@ -11788,6 +11788,49 @@ appear in `Docs/ART_DEBT.md` under `FurnitureDefinition.icon` and the
 furniture prefab renderer once the asset exists -- that file is GENERATED,
 so it is not edited here; rerun `Dungeon Core / Audit Art Debt`.
 
+**AMENDED after first play (2026-08-18): three faults, two of them mine,
+and none of them the thing they looked like.** Reported as no flicker at any
+setting and a light too bright that neither the intensity field nor the
+colour's alpha would bring down.
+
+- **The visibility gate was the cause of both.**
+  `if (!render.isVisible) return;` in `Update` was a speculative optimisation
+  for a light count stage 1 does not have, and it sat in front of the only
+  per-frame refresh in the component. Anything it blocked killed the wobble
+  AND froze the light at whatever value it held when it was enabled -- which
+  presents as a dead flicker and an intensity slider that does nothing, from
+  one line. REMOVED, and not to be re-added without a count from
+  `Log Point Lights` that warrants it. This is the optimise-before-measuring
+  rule broken in the same delivery that quoted it, and it is recorded here
+  rather than quietly patched.
+- **`Time.time` is frozen while paused**, because pause is
+  `Time.timeScale = 0` (`TimeScaleController`), and DCR is an ACTIVE-PAUSE
+  game -- the player builds while paused, so the flicker stopped for exactly
+  the moment they are looking at a lamp they have just placed. Moved to
+  `Time.unscaledTime`, which is the project's settled answer for a visual that
+  must not stop: `ScreenFader` animates on `unscaledDeltaTime` for this
+  reason, and the spell radius ghost is deliberately not hidden by pause. A
+  flame also has no business running at double rate on the 2x speed setting.
+- **The colour's alpha was a dead lever, silently.** `SetRendererColour`
+  overwrites it with the peak, because that is what the shader reads as
+  intensity. `OnValidate` now forces it back to 1, so the Inspector shows the
+  lever REFUSING rather than quietly ignoring -- the ambiguous-default rule.
+  `intensity` is the one gain; two would be two places for one number.
+- **`OnValidate` was missing entirely**, so an Inspector edit reached the
+  renderer only through the `Update` path the gate had closed. It now
+  refreshes on validate, which cannot be stranded by any future change to
+  `Update`.
+
+**Tuning is an Inspector job, not a code-default job.** Unity serialises field
+values on first save, so changing a C# default does NOT move a prefab that
+already exists. `flickerAmount` ships at a deliberately subtle level; a flame
+that reads as a flame wants more. The brightness question is now MEASURABLE
+rather than argued: `Log Point Lights` prints each lamp's serialized peak
+against the peak the renderer is actually showing, plus `Time.timeScale`.
+Equal figures mean the value took and the number is simply wrong -- lower it.
+Unequal figures mean something is still stopping the refresh, which is a
+different fault in a different place.
+
 **Key files.** `Assets/Scripts/DungeonCore/DungeonPointLight.cs` (new),
 `Assets/Shaders/AdditiveSprite.shader` (unchanged, reused),
 `Assets/Scripts/Room/FurnitureDefinition.cs`,
