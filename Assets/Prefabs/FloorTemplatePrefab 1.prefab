@@ -2199,7 +2199,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonShadow
   shadowTilemap: {fileID: 9002404537936008998}
-  claimedLight: 0.9
+  claimedLight: 0.8
   unclaimedLight: 0.2
   breachFadeTiles: 8
   frontierFadeTiles: 6
@@ -2207,7 +2207,7 @@ MonoBehaviour:
   cursorRadius: 4
   cursorLightShader: {fileID: 4800000, guid: 2d00eae832db8e543824ca50eaf9d1f1, type: 3}
   cursorLightRadius: 4.5
-  cursorLightIntensity: 0
+  cursorLightIntensity: 0.05
   cursorLightColor: {r: 1, g: 1, b: 1, a: 1}
   mossRadius: 3
   mossBoost: 0.05

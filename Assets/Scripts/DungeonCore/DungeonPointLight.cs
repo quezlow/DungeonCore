@@ -50,9 +50,29 @@ public class DungeonPointLight : MonoBehaviour
              "thickness of the rock beside it -- the disc has no occlusion.")]
     [SerializeField, Min(0f)] private float radiusCells = 4f;
 
-    [Tooltip("Peak brightness at the centre. The shader is a screen blend, so " +
-             "this is how much darkness the light can remove, not a final value.")]
+    [Tooltip("HALO peak -- the soft additive glow, and the thing that flickers. " +
+             "This is NOT the illumination any more: the light map below does " +
+             "that. A screen blend can only ADD the lamp's own colour on top of " +
+             "ground the shadow is still darkening, which reads as coloured fog " +
+             "rather than as light. Keep this low and let Floor Light Target do " +
+             "the work.")]
     [SerializeField, Range(0f, 1f)] private float intensity = 0.20f;
+
+    [Header("Floor light (the illumination)")]
+    [Tooltip("Light LEVEL this lamp lifts nearby floor toward, in DungeonShadow's " +
+             "own currency -- compare it against that component's Claimed Light " +
+             "and Unclaimed Light, and read the live figures with Commands / Log " +
+             "Point Lights. This is the dial that makes a room readable, because " +
+             "it lowers the darkening overlay instead of painting over it. Never " +
+             "darkens: a cell already brighter than this is left alone. 0 " +
+             "disables, which turns the lamp back into halo only.")]
+    [SerializeField, Range(0f, 1f)] private float floorLightTarget = 0.65f;
+
+    [Tooltip("How much of the lamp's colour washes into the darkening overlay " +
+             "around the edge of the lit patch. The moss glow's cast is the " +
+             "reference. Keep it low: at the centre the overlay is nearly gone " +
+             "anyway, so this mostly colours the falloff ring.")]
+    [SerializeField, Range(0f, 1f)] private float floorLightTint = 0.15f;
 
     [Tooltip("Light colour. Warm amber for flame, cold blue-white for holy. " +
              "THE ALPHA IS NOT A DIMMER -- it is overwritten with the peak, " +
@@ -120,6 +140,27 @@ public class DungeonPointLight : MonoBehaviour
     public bool RendererEnabled => render != null && render.enabled;
     public bool RendererVisible => render != null && render.isVisible;
 
+    public float FloorLightTarget => floorLightTarget;
+    public float FloorLightTint => floorLightTint;
+
+    // -- Poll coupling to DungeonShadow -------------------------------
+    // The shadow bakes this lamp into its light map, so it has to know when a
+    // lamp appears, moves, lights or goes out. It POLLS this counter each
+    // LateUpdate, exactly as it already follows CaveWallRenderer.RebuildTick.
+    // An event would need the lamp to find a shadow that may not exist yet and
+    // a subscription that can be silently lost -- the failure the execution
+    // order contract exists about. A counter cannot be lost.
+    public static int ChangeVersion { get; private set; }
+    public static void BumpChangeVersion() { ChangeVersion++; }
+
+    // Resolved LAZILY, never cached at OnEnable. A furniture piece is
+    // instantiated and only then parented to the floor, so at OnEnable a lamp
+    // genuinely does not yet know which floor it is standing on -- which is
+    // also why Start bumps the version a second time.
+    private FloorRoot ownerFloor;
+    public FloorRoot OwnerFloor
+        => ownerFloor != null ? ownerFloor : (ownerFloor = GetComponentInParent<FloorRoot>());
+
     /// <summary>Light or snuff this lamp. The dormant torches of a Buried Age
     /// site will call this when their cell is claimed, and a road lamp when the
     /// player takes the stretch. Cheap enough to call every poll.</summary>
@@ -128,6 +169,7 @@ public class DungeonPointLight : MonoBehaviour
         if (lit == value) return;
         lit = value;
         Apply();
+        BumpChangeVersion();
     }
 
     /// <summary>Retune at runtime -- the holy blue, the dwarven gold. Callers
@@ -156,12 +198,23 @@ public class DungeonPointLight : MonoBehaviour
         phase = (h & 0xFFFF) / 65535f * Mathf.PI * 2f;
 
         Apply();
+        BumpChangeVersion();
     }
+
+    // A second bump, and not a redundant one. HandleFurniturePlacement
+    // instantiates the piece and parents it to the floor afterwards, so the
+    // OnEnable above fires while OwnerFloor is still null and the shadow's
+    // rebuild that frame cannot attribute the lamp to any floor. Unity
+    // guarantees every Awake and OnEnable completes before any Start, by which
+    // time the parenting has happened.
+    private void Start() => BumpChangeVersion();
 
     private void OnDisable()
     {
         live.Remove(this);
         if (render != null) render.enabled = false;
+        ownerFloor = null;
+        BumpChangeVersion();
     }
 
     private void Update()
@@ -207,7 +260,7 @@ public class DungeonPointLight : MonoBehaviour
         // intensity is the ONE gain; two would be two places for one number.
         if (colour.a != 1f) colour = new Color(colour.r, colour.g, colour.b, 1f);
 
-        if (Application.isPlaying) Apply();
+        if (Application.isPlaying) { Apply(); BumpChangeVersion(); }
     }
 
     private void Apply()

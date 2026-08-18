@@ -11821,6 +11821,60 @@ colour's alpha would bring down.
   refreshes on validate, which cannot be stranded by any future change to
   `Update`.
 
+**AMENDED AGAIN (2026-08-18): the sprite-only decision was wrong, and the
+readout is what proved it.** Reported as a brazier that gives off no light,
+only a yellow overlay. The log said why in one line:
+`cursor 0 r4.5`. **The cursor's additive SPRITE is switched off in the live
+scene.** Everything the player calls "the mouse light" is the OTHER cursor
+pass -- the per-cell one, which lerps `baseLight` toward 1.0 inside
+`cursorRadius` and therefore genuinely un-darkens the floor art.
+
+Stage 1 declined the light map and built the lamp on the sprite alone, and it
+made that call by reading the CODE DEFAULT for `cursorLightIntensity` (0.45)
+rather than the value the scene holds. Unity serialises on first save, so a
+default in source is not a value in a scene, and this project has a standing
+convention against exactly that substitution. The same log shows the rest of
+the ladder had moved too: claimed is **0.7** and unclaimed **0.2**, not the
+0.90 / 0.50 in the source defaults.
+
+**Why sprite-only could never have worked, stated so it is not retried.** The
+screen blend ADDS the lamp's colour over ground the shadow tilemap is still
+darkening at alpha 0.8. It cannot undo that darkening, so the art underneath
+never returns: what the player gets is fog the colour of firelight. Lowering
+the overlay is the only thing that brings floor detail back, and that means
+the light map.
+
+**A lamp now does both jobs, split the way the cursor already splits them.**
+`floorLightTarget` lerps nearby cells toward a light LEVEL -- directly
+comparable against claimed 0.7 and unclaimed 0.2 -- and `intensity` keeps its
+old job as the soft halo over void and the carrier for the flicker. The halo
+wants to come DOWN now it is no longer being asked to be the whole light.
+The map pass never darkens: a cell already brighter than the target keeps what
+it had, so a lamp on claimed ground is a no-op rather than a hole. It runs
+BEFORE the cap pass, so wall caps beside a lamp inherit the lit value exactly
+as a cavern rim inherits its floor's.
+
+**Only the sprite flickers.** Modulating the light map per frame would force a
+full rebuild per frame. The steady half is baked, the living half is drawn.
+
+**The coupling is a POLL, not an event.** `DungeonShadow` compares
+`DungeonPointLight.ChangeVersion` each `LateUpdate`, exactly as it already
+follows `CaveWallRenderer.RebuildTick`. An event would need a lamp to find a
+shadow that may not exist yet through a subscription that can be silently
+lost, which is the failure Appendix D exists about. `Start` bumps the version
+as well as `OnEnable`, because `HandleFurniturePlacement` instantiates a piece
+and parents it to the floor AFTERWARDS -- at `OnEnable` a lamp does not yet
+know which floor it is standing on, and `OwnerFloor` is resolved lazily for
+the same reason.
+
+**The readout now separates the two remaining failures by name.**
+`Log Point Lights` prints the bake: lamps found on the active floor and cells
+actually lifted. Zero lamps means they are parented somewhere other than the
+floor, or their target is 0. Lamps but zero cells means they are standing
+where the light map has no entries. It also prints the cursor's per-cell
+radius beside the sprite's, so the readout can never again say the cursor
+light is off while the player is looking straight at it.
+
 **Tuning is an Inspector job, not a code-default job.** Unity serialises field
 values on first save, so changing a C# default does NOT move a prefab that
 already exists. `flickerAmount` ships at a deliberately subtle level; a flame

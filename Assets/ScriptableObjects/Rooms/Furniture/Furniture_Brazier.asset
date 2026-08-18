@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b805a35a68b972044abe7da4d0478692, type: 3}
   m_Name: Furniture_Brazier
   m_EditorClassIdentifier: Assembly-CSharp::FurnitureDefinition
-  furnitureName: Furniture
-  prefab: {fileID: 0}
+  furnitureName: Brazier
+  prefab: {fileID: 4704242168619302786, guid: fe253cb9670ece74d960e70c71a7b3dc, type: 3}
   manaCost: 5
-  blocksPathfinding: 1
-  icon: {fileID: 0}
-  description: 
+  blocksPathfinding: 0
+  icon: {fileID: 7509860518518112746, guid: 4d807477b801dcb4e9f0b6d776af081a, type: 3}
+  description: A light

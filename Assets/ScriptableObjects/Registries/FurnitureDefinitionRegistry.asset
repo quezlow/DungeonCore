@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: FurnitureDefinitionRegistry
   m_EditorClassIdentifier: Assembly-CSharp::FurnitureDefinitionRegistry
   definitions:
+  - {fileID: 11400000, guid: 7478e85ce17709b49ae9382e6acb5a35, type: 2}
   - {fileID: 11400000, guid: 515e85a564daab24b801fe91331cbba3, type: 2}
   - {fileID: 11400000, guid: 8cb0676de190c8542943021a598606cc, type: 2}
   - {fileID: 11400000, guid: 333b4d5a10af40142ad5baa647cabade, type: 2}

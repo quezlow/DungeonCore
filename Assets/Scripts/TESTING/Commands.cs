@@ -4494,9 +4494,21 @@ public class Commands : MonoBehaviour
                 + ", void floor " + shadow.VoidLightFloorLevel.ToString("0.##")
                 + " | moss +" + shadow.MossBoostLevel.ToString("0.###")
                 + " r" + shadow.MossRadiusCells
-                + " | cursor " + shadow.CursorLightPeak.ToString("0.##")
+                + " | cursor sprite " + shadow.CursorLightPeak.ToString("0.##")
                 + " r" + shadow.CursorLightRadiusCells.ToString("0.#")
-                + "  -- a placed lamp belongs strictly between the moss and the cursor.");
+                + ", cursor CELLS r" + shadow.CursorCellRadius + " (lerps to 1.0)");
+
+        if (shadow != null)
+            sb.AppendLine("  light map bake: " + shadow.PointLampsApplied
+                + " lamp(s) on the active floor lifted "
+                + shadow.PointLampCellsLifted + " cell(s)."
+                + (shadow.PointLampsApplied == 0
+                    ? "  ZERO LAMPS: they are not parented to this floor, or their "
+                      + "Floor Light Target is 0."
+                    : shadow.PointLampCellsLifted == 0
+                        ? "  ZERO CELLS: the lamps are standing where the light map "
+                          + "has no entries, or every cell is already brighter."
+                        : ""));
 
         // Per light: the SERIALIZED peak against what the renderer is actually
         // showing this frame. Equal means the value took and the number itself
@@ -4526,6 +4538,7 @@ public class Commands : MonoBehaviour
                 + " field peak " + L.Intensity.ToString("0.###")
                 + " -> live " + live
                 + ", radius " + L.RadiusCells.ToString("0.##")
+                + ", floor target " + L.FloorLightTarget.ToString("0.##")
                 + ", rgb " + L.Colour.r.ToString("0.##") + "/"
                 + L.Colour.g.ToString("0.##") + "/" + L.Colour.b.ToString("0.##")
                 + (L.RendererEnabled ? "" : ", RENDERER DISABLED")

@@ -170,6 +170,13 @@ public class DungeonShadow : MonoBehaviour
     private Color voidHueTerm = Color.black;
     private readonly HashSet<Vector3Int> cursorCells = new();
     private int lastWallTick = -1;
+    private int lastLightVersion = -1;
+
+    // Per-rebuild diagnostics for the point-light pass. A lamp that lights
+    // nothing is either not on this floor, or standing somewhere the light map
+    // has no cells, and those point at different places.
+    private int pointLightsApplied;
+    private int pointLightCellsLifted;
     private bool subscribed;
     private bool dirty;
 
@@ -262,6 +269,14 @@ public class DungeonShadow : MonoBehaviour
         // The tick plus DefaultExecutionOrder puts cap and shade in one frame.
         int wallTick = wallRenderer != null ? wallRenderer.RebuildTick : 0;
         if (wallRenderer != null && wallTick != lastWallTick) { dirty = true; lastWallTick = wallTick; }
+
+        // Point lights are baked into the light map, so a lamp appearing,
+        // moving, lighting or going out has to dirty the bake. Polled rather
+        // than subscribed, on the pattern immediately above: a lamp would
+        // otherwise have to find a shadow that may not exist yet, through a
+        // subscription that can be silently lost.
+        int lightVersion = DungeonPointLight.ChangeVersion;
+        if (lightVersion != lastLightVersion) { dirty = true; lastLightVersion = lightVersion; }
 
         // No frame gate. Deferring a rebuild leaves a newly claimed cell showing
         // raw terrain art until the caps and void shading arrive, which reads as
@@ -408,6 +423,21 @@ public class DungeonShadow : MonoBehaviour
             foreach (Vector3Int c in wallRenderer.GreenMossWalls) ApplyMossGlow(c, greenGlow);
             foreach (Vector3Int c in wallRenderer.GoldMossWalls) ApplyMossGlow(c, goldGlow);
         }
+
+        // 2b) POINT LIGHTS (canon 53). Braziers, and in time torches and road
+        //     lamps. These belong in the light map and not only in their own
+        //     additive sprite: a screen blend can ADD the lamp's colour on top
+        //     of ground this component is still darkening, but it cannot undo
+        //     the darkening, so a sprite-only lamp reads as coloured fog rather
+        //     than as illumination. Lowering the overlay is what brings the
+        //     floor art back, and it is what the cursor's per-cell pass has
+        //     always done.
+        //
+        //     BEFORE the cap pass on purpose, so wall caps beside a lamp
+        //     inherit the lit value the same way a cavern rim inherits its
+        //     floor's. Steady only -- the flicker lives on the sprite, because
+        //     modulating the map per frame would force a full rebuild per frame.
+        ApplyPointLights();
 
         // 3) wall caps (solid cells touching open floor) inherit the brightest adjacent open
         //    cell, so a cavern rim darkens with it. Snapshot keys first — we add walls as we go.
@@ -595,6 +625,21 @@ public class DungeonShadow : MonoBehaviour
     public float CursorLightPeak => cursorLightIntensity;
     public float CursorLightRadiusCells => cursorLightRadius;
 
+    /// <summary>The cursor's PER-CELL radius, which is a different thing from
+    /// the sprite's and is the one that actually un-darkens the floor -- it
+    /// lerps toward full light. Exposed because the sprite's peak can be zero
+    /// in a live scene, in which case this pass IS "the mouse light", and a
+    /// readout that printed only the sprite said the cursor light was off while
+    /// the player was looking straight at it.</summary>
+    public int CursorCellRadius => cursorRadius;
+
+    /// <summary>Lamps found on this floor, and cells they actually lifted, in
+    /// the last bake. Zero lamps with lamps placed means they are parented
+    /// elsewhere; lamps but zero cells means they are standing where the light
+    /// map has nothing -- different faults, different places.</summary>
+    public int PointLampsApplied => pointLightsApplied;
+    public int PointLampCellsLifted => pointLightCellsLifted;
+
     private Color ShadeFor(Vector3Int cell, float light)
         => voidOpaqueFill && voidCells.Contains(cell)
             ? VoidColorFor(light)
@@ -747,6 +792,66 @@ public class DungeonShadow : MonoBehaviour
                 baseLight[t] = Mathf.Min(MaxLight, baseLight[t] + mossBoost * f);
                 Color tint = baseTint[t];
                 float k = mossTintStrength * f;
+                baseTint[t] = new Color(
+                    Mathf.Min(1f, tint.r + glow.r * k),
+                    Mathf.Min(1f, tint.g + glow.g * k),
+                    Mathf.Min(1f, tint.b + glow.b * k), 1f);
+            }
+    }
+
+    // Every registered lamp standing on THIS floor lifts the cells around it
+    // toward its own target level. Never darkens: a cell already brighter than
+    // the target keeps what it had, so a lamp on claimed ground is a no-op
+    // rather than a hole. Cost is one disc per lamp, the same shape the moss
+    // glow has always paid; the counters below are what says whether that is
+    // still true once roads and sites carry hundreds.
+    private void ApplyPointLights()
+    {
+        pointLightsApplied = 0;
+        pointLightCellsLifted = 0;
+
+        var all = DungeonPointLight.All;
+        if (all == null || all.Count == 0 || influence == null) return;
+
+        for (int i = 0; i < all.Count; i++)
+        {
+            var lamp = all[i];
+            if (lamp == null || !lamp.IsLit) continue;
+            if (lamp.FloorLightTarget <= 0f || lamp.RadiusCells <= 0f) continue;
+            if (lamp.OwnerFloor != floor) continue;
+
+            pointLightsApplied++;
+            ApplyPointLight(influence.WorldToCell(lamp.transform.position),
+                            lamp.FloorLightTarget, lamp.RadiusCells,
+                            lamp.Colour, lamp.FloorLightTint);
+        }
+    }
+
+    // Smoothstep falloff, deliberately the same curve the cursor pass uses, so
+    // a placed lamp and the carried light read as the same kind of thing.
+    private void ApplyPointLight(Vector3Int source, float target, float radius,
+                                 Color glow, float tintStrength)
+    {
+        int r = Mathf.CeilToInt(radius);
+        for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                float d = Mathf.Sqrt(dx * dx + dy * dy);
+                if (d > radius) continue;
+
+                Vector3Int t = new Vector3Int(source.x + dx, source.y + dy, source.z);
+                if (!baseLight.TryGetValue(t, out float current)) continue;
+
+                float u = Mathf.Clamp01(1f - d / radius);
+                float f = u * u * (3f - 2f * u);
+                float lit = Mathf.Min(MaxLight, Mathf.Lerp(current, target, f));
+                if (lit <= current) continue;
+
+                baseLight[t] = lit;
+                pointLightCellsLifted++;
+
+                Color tint = baseTint[t];
+                float k = tintStrength * f;
                 baseTint[t] = new Color(
                     Mathf.Min(1f, tint.r + glow.r * k),
                     Mathf.Min(1f, tint.g + glow.g * k),
