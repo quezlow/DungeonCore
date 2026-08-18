@@ -176,6 +176,31 @@ public class RoadNetworkProfile : ScriptableObject
         },
     };
 
+    // -- Road lamps (canon 54) -----------------------------------------------
+    // Network-wide rather than per floor. A dwarven lamp is a dwarven lamp
+    // wherever the road runs, and a per-floor spacing would be four numbers to
+    // keep in agreement for no gain anybody could see.
+
+    [Header("Lamps")]
+    [Tooltip("Spawned along the centreline of every revealed Trunk and Spur " +
+             "segment. Carries a DungeonPointLight; its radius, target and " +
+             "halo are the prefab's own, and only the colour and lit state are " +
+             "set at spawn. Null leaves the whole feature inert.")]
+    [SerializeField] private GameObject lampPrefab;
+
+    [Tooltip("Cells of CENTRELINE between lamps. Counted from the road's own " +
+             "start, not from each segment's, so the spacing does not jitter " +
+             "at a segment join. 0 disables lamps entirely.")]
+    [SerializeField, Min(0)] private int lampSpacingCells = 8;
+
+    [Tooltip("Dwarven lamplight. Warm, and deliberately the same family as the " +
+             "hold torches: the roads and the holds are one civilisation.")]
+    [SerializeField] private Color lampColour = new Color(1f, 0.82f, 0.45f, 1f);
+
+    public GameObject LampPrefab => lampPrefab;
+    public int LampSpacingCells => lampSpacingCells;
+    public Color LampColour => lampColour;
+
     public IReadOnlyList<RoadFloorEntry> Floors => floors;
 
     /// <summary>The entry for a floor, or null if that floor carries no roads.</summary>

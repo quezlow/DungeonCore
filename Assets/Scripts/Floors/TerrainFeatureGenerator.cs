@@ -333,6 +333,14 @@ public class TerrainFeatureGenerator : MonoBehaviour
         public int segmentId;
         public int roadId;
         public readonly List<Vector3Int> cells = new();
+
+        /// <summary>Where this stretch's lamps stand (canon 54). Centreline
+        /// cells at the profile's stride, filtered to cells this segment
+        /// actually kept -- a river or the core can take the very cell the
+        /// stride landed on, and a lamp inside a river is a lamp underwater.
+        /// Computed in RebuildRoadCells, which both generation and load run,
+        /// so the two can never disagree about where the lamps are.</summary>
+        public readonly List<Vector3Int> lampCells = new();
     }
 
     private readonly List<RoadSegmentRuntime> roadSegments = new();
@@ -445,6 +453,11 @@ public class TerrainFeatureGenerator : MonoBehaviour
         // re-applied here, once the sites are actually back.
         ApplyRuinsOverrides();
         SpawnDecorForRevealedSites();
+
+        // Lamps ride the same load sweep as site decor and for the same
+        // reason: a save holds already-revealed stretches whose reveal call
+        // happened in a previous session, so nothing would ever spawn them.
+        SpawnLampsForRevealedRoads();
 
         Debug.Log(
             $"[TerrainFeatureGenerator] Floor {floor?.FloorIndex} loaded: " +
@@ -743,6 +756,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
         RevealVersion++;
         PaintRoadSegment(segmentId);
         UnfogRoadSegment(segmentId);
+        SpawnRoadLamps(segmentId);
     }
 
     /// <summary>Every carriageway cell of one reveal segment, or null for an
@@ -912,6 +926,238 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 var go = Instantiate(piece, pos, Quaternion.identity, floor.transform);
                 go.name = "SiteDecorPiece_" + site.planName.Replace(' ', '_');
             }
+        }
+
+        SpawnSiteTorches(site);
+    }
+
+    // -- Site torches (canon 54) -------------------------------------------
+
+    /// <summary>A torch waiting for its cell to be claimed. Removed from the
+    /// list the instant it latches, so the poll shrinks to nothing on a floor
+    /// the player has taken rather than walking every torch forever.</summary>
+    private struct DormantTorch
+    {
+        public DungeonPointLight lamp;
+        public Vector3Int cell;
+    }
+
+    private readonly List<DormantTorch> dormantTorches = new List<DormantTorch>();
+
+    // Diagnostics. Cumulative for the spawn counts, live for the rest.
+    private int torchesSpawned;
+    private int torchesLitOnSpawn;
+    private int torchesSkippedNoPrefab;
+
+    /// <summary>Spawns a revealed site's torches, once, alongside its decor.
+    ///
+    /// COLOUR AND LIT STATE COME FROM THE ARCHETYPE, not from the plan and not
+    /// from a prefab per family. Canon 21 draws the line the colours encode:
+    /// the Buried Age ruins are the deep-faith's own and welcoming, so they
+    /// burn warm; the Church seals laid over them are hostile, so they burn
+    /// cold blue. The living dwarven holds burn warm gold AND START LIT,
+    /// because somebody lives there -- a dark window on an inhabited hold
+    /// would be a lie the player can see from across the floor.
+    ///
+    /// Everything else is dormant: it lights when the player claims its cell,
+    /// which makes a drawn torch a reward for taking the place rather than
+    /// decoration that was always on.</summary>
+    private void SpawnSiteTorches(SiteData site)
+    {
+        if (site == null || site.torchCells == null || site.torchCells.Count == 0) return;
+        if (siteProfile == null || floor == null) return;
+
+        var prefab = siteProfile.TorchPrefab;
+        if (prefab == null) { torchesSkippedNoPrefab += site.torchCells.Count; return; }
+
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+
+        bool dwarven = site.reservedForVillage || site.reservedForOutpost;
+        bool holy = IsHolySite(site);
+        Color tint = holy ? siteProfile.HolyTorchColour
+                   : dwarven ? siteProfile.DwarvenTorchColour
+                   : siteProfile.AncientTorchColour;
+
+        var influence = floor.TileInfluence;
+
+        foreach (var sv in site.torchCells)
+        {
+            Vector3Int cell = sv.ToVector3Int();
+            Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(cell);
+            var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
+            go.name = "SiteTorch_" + site.id;
+
+            var lamp = go.GetComponent<DungeonPointLight>();
+            if (lamp == null) { torchesSkippedNoPrefab++; continue; }
+
+            // EVER-claimed, not currently claimed. A breach recede strips
+            // ownership and must not snuff a torch the player already lit --
+            // the same rule the void light is keyed on, and for the same
+            // reason: the light going out reads as the site un-taking itself.
+            bool alreadyOurs = influence != null && influence.WasEverClaimed(cell);
+            bool startLit = dwarven || alreadyOurs;
+
+            lamp.ConfigureSpawned(
+                dwarven ? DungeonPointLight.LightSource.DwarvenHold
+                        : DungeonPointLight.LightSource.SiteTorch,
+                tint, startLit);
+
+            torchesSpawned++;
+            if (startLit) torchesLitOnSpawn++;
+            else dormantTorches.Add(new DormantTorch { lamp = lamp, cell = cell });
+        }
+    }
+
+    // -- Road lamps (canon 54) ---------------------------------------------
+
+    private readonly Dictionary<int, List<DungeonPointLight>> roadLamps
+        = new Dictionary<int, List<DungeonPointLight>>();
+
+    private int lampsSpawned;
+    private int lampsSkippedNoPrefab;
+
+    /// <summary>Spawns one revealed stretch's lamps, once. Spawned ON REVEAL,
+    /// which is what keeps this honest about layout: an unrevealed stretch has
+    /// no lamps at all, so nothing glows through the fog to show the player
+    /// where the road goes next. The lamp cells were fixed in RebuildRoadCells,
+    /// which generation and load both run.</summary>
+    private void SpawnRoadLamps(int segmentId)
+    {
+        if (roadProfile == null || floor == null) return;
+        if (roadLamps.ContainsKey(segmentId)) return;
+
+        var segment = GetRoadSegment(segmentId);
+        if (segment == null || segment.lampCells.Count == 0) return;
+
+        var prefab = roadProfile.LampPrefab;
+        if (prefab == null) { lampsSkippedNoPrefab += segment.lampCells.Count; return; }
+
+        var terrain = floor.Terrain;
+        if (terrain == null || terrain.FloorTilemap == null) return;
+
+        var list = new List<DungeonPointLight>();
+        foreach (var cell in segment.lampCells)
+        {
+            Vector3 pos = terrain.FloorTilemap.GetCellCenterWorld(cell);
+            var go = Instantiate(prefab, pos, Quaternion.identity, floor.transform);
+            go.name = "RoadLamp_" + segmentId;
+
+            var lamp = go.GetComponent<DungeonPointLight>();
+            if (lamp == null) { lampsSkippedNoPrefab++; continue; }
+
+            lamp.ConfigureSpawned(DungeonPointLight.LightSource.RoadLamp,
+                                  roadProfile.LampColour, true);
+            list.Add(lamp);
+            lampsSpawned++;
+        }
+        roadLamps[segmentId] = list;
+    }
+
+    private void SpawnLampsForRevealedRoads()
+    {
+        if (featureData == null || featureData.revealedRoadSegmentIds == null) return;
+        foreach (int id in featureData.revealedRoadSegmentIds) SpawnRoadLamps(id);
+    }
+
+    // -- The 1 Hz poll -----------------------------------------------------
+    // Both light polls live here rather than on the lamps, and that is a wiring
+    // decision as much as a cost one. A per-lamp component would be fine for
+    // cost; what it would NOT be is free of setup, and this class already owns
+    // reveal, the segment table and IsRoadSegmentHeld. Putting the poll on a
+    // new floor component would mean wiring it onto the shared template prefab
+    // AND the hand-placed Floor1Root, which is exactly the shape of step that
+    // gets done on one and forgotten on the other.
+
+    private float lightPollTimer;
+    private const float LightPollSeconds = 1f;
+
+    private int segmentsDark;
+
+    private void Update()
+    {
+        lightPollTimer += Time.deltaTime;
+        if (lightPollTimer < LightPollSeconds) return;
+        lightPollTimer = 0f;
+
+        PollDormantTorches();
+        PollHeldRoadLamps();
+    }
+
+    /// <summary>Latch a dormant torch when its own cell has ever been claimed.
+    /// Walked backwards so a latched torch can be swapped off the end without
+    /// disturbing the walk, and it leaves the list for good -- the poll on a
+    /// fully taken floor costs nothing.</summary>
+    private void PollDormantTorches()
+    {
+        if (dormantTorches.Count == 0) return;
+        var influence = floor != null ? floor.TileInfluence : null;
+        if (influence == null) return;
+
+        for (int i = dormantTorches.Count - 1; i >= 0; i--)
+        {
+            var d = dormantTorches[i];
+            if (d.lamp == null)
+            {
+                dormantTorches.RemoveAt(i);
+                continue;
+            }
+            if (!influence.WasEverClaimed(d.cell)) continue;
+
+            d.lamp.SetLit(true);
+            dormantTorches.RemoveAt(i);
+        }
+    }
+
+    /// <summary>A stretch the player HOLDS goes dark (canon 53). Lit means
+    /// theirs, so the toll gains a consequence you can see from the far side of
+    /// the floor: take the road and the dwarves stop maintaining it.
+    ///
+    /// Two-way on purpose. IsRoadSegmentHeld tests CURRENT claim, so a breach
+    /// recede hands the stretch back and the lamps come up again -- which is
+    /// the opposite of the torch rule and correct for the opposite reason. A
+    /// torch you lit is a thing you did; a road you hold is a thing you are
+    /// doing, and stopping doing it should show.</summary>
+    private void PollHeldRoadLamps()
+    {
+        segmentsDark = 0;
+        if (roadLamps.Count == 0) return;
+
+        foreach (var kv in roadLamps)
+        {
+            bool held = IsRoadSegmentHeld(kv.Key);
+            if (held) segmentsDark++;
+            var list = kv.Value;
+            for (int i = 0; i < list.Count; i++)
+                if (list[i] != null) list[i].SetLit(!held);
+        }
+    }
+
+    /// <summary>Light diagnostics for this floor, for Commands. Spawn counts
+    /// are cumulative; dormant and dark counts are live. A prefab-missing count
+    /// is reported separately from a zero spawn, because "nothing was drawn"
+    /// and "nothing was assigned" are different faults in different files.</summary>
+    public int TorchesSpawned => torchesSpawned;
+    public int TorchesDormant => dormantTorches.Count;
+    public int TorchesLitOnSpawn => torchesLitOnSpawn;
+    public int TorchesSkippedNoPrefab => torchesSkippedNoPrefab;
+    public int RoadLampsSpawned => lampsSpawned;
+    public int RoadLampsSkippedNoPrefab => lampsSkippedNoPrefab;
+    public int RoadSegmentsWithLamps => roadLamps.Count;
+    public int RoadSegmentsDarkened => segmentsDark;
+
+    /// <summary>Torch cells this floor's sites declare in total, revealed or
+    /// not. Zero with plans that draw 't' means the plans have not been
+    /// re-parsed, or the sites predate the glyph.</summary>
+    public int SiteTorchCellsAuthored
+    {
+        get
+        {
+            if (featureData == null || featureData.sites == null) return 0;
+            int n = 0;
+            foreach (var s in featureData.sites)
+                if (s != null && s.torchCells != null) n += s.torchCells.Count;
+            return n;
         }
     }
 
@@ -1440,6 +1686,13 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 : Vector3Int.zero;
             int step = Mathf.Max(4, road.segmentLength);
 
+            // Read from the PROFILE, not from RoadData. Lamp spacing is
+            // presentation, not geometry: re-rasterising a saved road with a
+            // new stride moves lamps, which is harmless, whereas the canon-19
+            // rule about capturing geometry at generation exists because moving
+            // CELLS under a save moves claims and reveals. Nothing here does.
+            int lampStride = roadProfile != null ? roadProfile.LampSpacingCells : 0;
+
             for (int i = 0; i < line.Count; i += step)
             {
                 int count = Mathf.Min(step, line.Count - i);
@@ -1485,6 +1738,22 @@ public class TerrainFeatureGenerator : MonoBehaviour
                     if (!roadCells.Add(c)) continue;   // one owner per cell
                     seg.cells.Add(c);
                 }
+                // LAMP ANCHORS, on the ABSOLUTE index along the road rather
+                // than an index within the chunk. Counting from each segment's
+                // own start would restart the stride at every join, so a join
+                // would show two lamps a cell apart or a fourteen-cell gap --
+                // and the joins are frayed, so it would not even be consistent.
+                if (lampStride > 0)
+                {
+                    var kept = new HashSet<Vector3Int>(seg.cells);
+                    for (int k = 0; k < count; k++)
+                    {
+                        if ((i + k) % lampStride != 0) continue;
+                        var lc = line[i + k];
+                        if (kept.Contains(lc)) seg.lampCells.Add(lc);
+                    }
+                }
+
                 if (seg.cells.Count > 0) roadSegments.Add(seg);
             }
         }
@@ -1688,6 +1957,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
             plan.cells.RemoveAll(c => reservedCoreCells.Contains(c));
             plan.ruinsCells.RemoveAll(c => reservedCoreCells.Contains(c));
             plan.decorCells.RemoveAll(c => reservedCoreCells.Contains(c));
+            plan.torchCells.RemoveAll(c => reservedCoreCells.Contains(c));
 
             // THE HEART MUST SURVIVE THE SUBTRACTION, and until this guard it
             // did not have to. The heart lives in the wall band, so a
@@ -1740,6 +2010,7 @@ public class TerrainFeatureGenerator : MonoBehaviour
                 ruinsCells = ToSerializable(plan.ruinsCells),
                 pavedRoadCells = pavedRoad,
                 decorCells = ToSerializable(plan.decorCells),
+                torchCells = ToSerializable(plan.torchCells),
                 reservedForOutpost = plan.reservedForOutpost,
                 reservedForVillage = plan.reservedForVillage,
             };

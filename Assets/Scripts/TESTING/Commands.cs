@@ -4554,6 +4554,43 @@ public class Commands : MonoBehaviour
         sb.AppendLine("  timeScale " + Time.timeScale.ToString("0.##")
             + " (flicker runs on UNSCALED time, so it should wobble at 0 too)");
 
+        // Per floor: what the world-light spawners actually did. Kept apart
+        // from the bake block above because they answer a different question --
+        // that one asks whether a lamp LIGHTS anything, this one asks whether a
+        // lamp EXISTS. A missing prefab and a plan with no 't' cells both end
+        // in zero lights and are fixed in completely different files, so they
+        // are counted separately rather than inferred from a total.
+        var fmSpawn = FloorManager.Instance;
+        if (fmSpawn != null)
+        {
+            sb.AppendLine("  world lights, per floor:");
+            for (int fi = 0; fi <= fmSpawn.MaxFloorIndexCreated; fi++)
+            {
+                var fr = fmSpawn.GetFloor(fi);
+                var fg = fr != null ? fr.FeatureGenerator : null;
+                if (fg == null) continue;
+
+                sb.AppendLine("    floor " + (fi + 1)
+                    + ": torches " + fg.TorchesSpawned + " spawned ("
+                    + fg.TorchesLitOnSpawn + " lit on spawn, "
+                    + fg.TorchesDormant + " still dormant)"
+                    + " | road lamps " + fg.RoadLampsSpawned + " across "
+                    + fg.RoadSegmentsWithLamps + " revealed stretch(es), "
+                    + fg.RoadSegmentsDarkened + " darkened by your hold"
+                    + " | sites declare " + fg.SiteTorchCellsAuthored + " torch cell(s)");
+
+                if (fg.TorchesSkippedNoPrefab > 0)
+                    sb.AppendLine("      " + fg.TorchesSkippedNoPrefab
+                        + " torch cell(s) had NO PREFAB -- assign AncientSiteProfile.torchPrefab.");
+                if (fg.RoadLampsSkippedNoPrefab > 0)
+                    sb.AppendLine("      " + fg.RoadLampsSkippedNoPrefab
+                        + " lamp cell(s) had NO PREFAB -- assign RoadNetworkProfile.lampPrefab.");
+                if (fg.SiteTorchCellsAuthored == 0 && fg.TorchesSpawned == 0)
+                    sb.AppendLine("      no site on this floor draws a 't' cell. Expected until "
+                        + "the plans are authored; the glyph ships ahead of the drawings.");
+            }
+        }
+
         int shown = 0;
         foreach (var L in all)
         {

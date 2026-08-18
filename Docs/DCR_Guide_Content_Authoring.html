@@ -1164,6 +1164,32 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
     </div>
   </details>
 
+  <details>
+    <summary>43. Torches in a site plan (the 't' glyph)</summary>
+    <div class="body">
+      <div class="why">Canon 54 requires this chapter. A torch is drawn in the plan,
+      not placed in a scene, so it rotates and mirrors with everything else. The trap
+      is that the glyph ships ahead of the drawings: until a plan actually draws a
+      <code>t</code>, the whole feature reads as broken when it is merely unused.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s1"><label for="dcr-authoring-v1-c43s1"><b><code>t</code> is open ground plus a marker</b>, exactly like <code>o</code>. It carves, it walks, it paves &mdash; it is ordinary floor with a torch standing on it. Use <code>o</code> for inert dressing and <code>t</code> for light; a plan may draw both, which is why they are separate glyphs.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s2"><label for="dcr-authoring-v1-c43s2"><b>Put them where a torch would have been.</b> Flanking a door, along a nave, at the corners of a hall, either side of the heart. <b>Against a wall reads best</b>, because the light has no occlusion &mdash; a torch beside stone lights the stone, which is right, while one stranded mid-floor lights nothing in particular.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s3"><label for="dcr-authoring-v1-c43s3"><b>Do not carpet the place.</b> The radius is 3&ndash;4 cells and the lit patches overlap fast. Four to eight in a large hall is plenty; a dozen turns a ruin into a ballroom and puts a dozen GameObjects on the floor for one visual.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s4"><label for="dcr-authoring-v1-c43s4"><b>You do not choose the colour &mdash; the archetype does.</b> Church seals and the vault burn <b>cold blue</b>; every Buried Age site burns <b>warm</b>; the dwarven village and gatehouse burn <b>warm gold and start already lit</b>. That split is canon 21's line between the deep-faith's own ruins and the Church that sealed them, so do not try to work around it in a plan.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s5"><label for="dcr-authoring-v1-c43s5"><b>They spawn DORMANT and light on a claim.</b> A torch you draw is a reward for taking the place, not decoration that was always on. The latch is on <em>ever</em>-claimed, so a breach recede never snuffs one. The two dwarven holds are the exception and start lit, because somebody lives there.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s6"><label for="dcr-authoring-v1-c43s6"><b>Check the drawing before you play it.</b> <code>Dungeon Core &rarr; Site Plan Preview</code> now paints <code>t</code> in its own warm swatch &mdash; rotate and mirror the plan there and make sure no torch has landed somewhere silly. <code>Validate Site Plans</code> is unchanged; a torch cannot seal a passage, being ordinary floor.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s7"><label for="dcr-authoring-v1-c43s7"><b>Then confirm in game with <code>Log Point Lights</code>.</b> The per-floor world-light block reports how many torch cells the floor's sites <em>declare</em> against how many actually spawned. Declared but not spawned means the prefab slot is empty; zero declared means the plans on that floor draw no <code>t</code> yet, which is expected rather than broken.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c43s8"><label for="dcr-authoring-v1-c43s8"><b>Existing saves keep their old sites.</b> Floor features persist rather than regenerate, so a site placed before you drew the glyph has no torch cells and never will. Test on a fresh run, or on a floor that has not generated yet.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

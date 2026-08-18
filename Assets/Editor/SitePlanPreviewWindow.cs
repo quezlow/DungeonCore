@@ -113,6 +113,11 @@ public class SitePlanPreviewWindow : EditorWindow
     private static readonly Color ColStairOk = new Color(0.95f, 0.45f, 0.12f);
     private static readonly Color ColStairBlocked = new Color(0.45f, 0.22f, 0.06f);
 
+    // Torch 't' (canon 54). Warm, so it reads as flame against the decor
+    // swatch beside it -- the two glyphs sit on the same kind of ground and
+    // are easy to confuse in a dense plan.
+    static readonly Color ColTorch = new Color(1f, 0.72f, 0.30f, 1f);
+
     // Keep-clear '-' and decor 'o', the last two glyphs. Same bright/dark
     // pair rule. Lavender and chartreuse because every other hue family is
     // spoken for: greens are floor, gold is door, blue is lane, teal is
@@ -198,6 +203,7 @@ public class SitePlanPreviewWindow : EditorWindow
         var stairCells = new List<Vector2Int>();
         var keepClearCells = new List<Vector2Int>();
         var decorCells = new List<Vector2Int>();
+        var torchCells = new List<Vector2Int>();
         int doorRuns = 0, doorRunsNoNormal = 0;
         bool rotatable = true;
         AuthoredSitePlan seatPlan = null;
@@ -215,6 +221,7 @@ public class SitePlanPreviewWindow : EditorWindow
             stairCells.AddRange(p.stairs);
             keepClearCells.AddRange(p.keepClear);
             decorCells.AddRange(p.decor);
+            torchCells.AddRange(p.torch);
             rotatable = p.allowRotation;
 
             // Read from the UNTRANSFORMED plan on purpose. A run's outward
@@ -242,6 +249,7 @@ public class SitePlanPreviewWindow : EditorWindow
         Transform(stairCells, rotation, mirror);
         Transform(keepClearCells, rotation, mirror);
         Transform(decorCells, rotation, mirror);
+        Transform(torchCells, rotation, mirror);
 
         var floorSet = new HashSet<Vector2Int>(floorCells);
         var wallSet = new HashSet<Vector2Int>(wallCells);
@@ -252,6 +260,7 @@ public class SitePlanPreviewWindow : EditorWindow
         var stairSet = new HashSet<Vector2Int>(stairCells);
         var keepClearSet = new HashSet<Vector2Int>(keepClearCells);
         var decorSet = new HashSet<Vector2Int>(decorCells);
+        var torchSet = new HashSet<Vector2Int>(torchCells);
 
         int walkable = 0, blocked = 0, drawn = 0, dead = 0;
         int laneBlocked = 0, doorBlocked = 0, heartDead = 0;
@@ -357,7 +366,7 @@ public class SitePlanPreviewWindow : EditorWindow
         DrawLegend();
         EditorGUILayout.Space();
         DrawGrid(floorSet, wallSet, doorSet, laneSet, heartSet, platformSet, stairSet,
-                 keepClearSet, decorSet);
+                 keepClearSet, decorSet, torchSet);
 
         EditorGUILayout.EndScrollView();
     }
@@ -711,6 +720,7 @@ public class SitePlanPreviewWindow : EditorWindow
         Swatch(ColKeepOk, "keep-clear '-'");
         Swatch(ColKeepBlocked, "keep-clear, blocked");
         Swatch(ColDecorOk, "decor 'o'");
+        Swatch(ColTorch, "torch 't'");
         Swatch(ColDecorBlocked, "decor, blocked");
         EditorGUILayout.EndHorizontal();
 
@@ -741,7 +751,8 @@ public class SitePlanPreviewWindow : EditorWindow
                           HashSet<Vector2Int> doorSet, HashSet<Vector2Int> laneSet,
                           HashSet<Vector2Int> heartSet, HashSet<Vector2Int> platformSet,
                           HashSet<Vector2Int> stairSet,
-                          HashSet<Vector2Int> keepClearSet, HashSet<Vector2Int> decorSet)
+                          HashSet<Vector2Int> keepClearSet, HashSet<Vector2Int> decorSet,
+                          HashSet<Vector2Int> torchSet)
     {
         if (floorSet.Count == 0 && wallSet.Count == 0) return;
 
@@ -791,6 +802,7 @@ public class SitePlanPreviewWindow : EditorWindow
                     else if (laneSet.Contains(c)) col = ok ? ColLaneOk : ColLaneBlocked;
                     else if (stairSet.Contains(c)) col = ok ? ColStairOk : ColStairBlocked;
                     else if (platformSet.Contains(c)) col = ok ? ColPlatOk : ColPlatBlocked;
+                    else if (torchSet.Contains(c)) col = ColTorch;
                     else if (decorSet.Contains(c)) col = ok ? ColDecorOk : ColDecorBlocked;
                     else if (keepClearSet.Contains(c)) col = ok ? ColKeepOk : ColKeepBlocked;
                     else col = ok ? ColFloorOk : ColFloorBlocked;

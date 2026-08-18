@@ -181,6 +181,15 @@ public class AuthoredSitePlan
     /// cell's world position with an UNROTATED transform, because props are
     /// authored front-view and a quarter-turned sprite reads wrong.</summary>
     public readonly List<Vector2Int> decor = new List<Vector2Int>();
+
+    /// <summary>Torch cells, from 't' (canon 54): where this plan's dormant
+    /// torches stand. Floor plus a marker, exactly as 'o' is, and emitted
+    /// through the same placement transform so the positions rotate with the
+    /// plan. A SECOND channel rather than an overload of 'o' because a plan may
+    /// want both -- an ossuary with its bone piles AND its sconces -- and
+    /// because the two spawn different prefabs with different lifecycles: decor
+    /// is inert dressing, a torch listens for a claim.</summary>
+    public readonly List<Vector2Int> torch = new List<Vector2Int>();
 }
 
 /// <summary>One straight run of '+' cells: where it is, how long, and which way
@@ -239,6 +248,16 @@ public struct DoorRun
 ///     'o'  DECOR -- open ground, plus a marker: where this plan's
 ///          decor piece stands. Marked in the plan so it rotates
 ///          WITH the plan, which the anchor-prefab hook could not.
+///     't'  TORCH -- open ground, plus a marker: a sconce or brazier
+///          the site was lit by. Spawns DORMANT and lights when the
+///          player claims that cell, so a plan drawing these is
+///          drawing a reward for taking the place. Colour is chosen
+///          from the ARCHETYPE, not the plan: cold blue on a Church
+///          seal, warm on everything else. Put them where a torch
+///          would actually have been -- flanking a door, along a
+///          nave, at the corners of a hall -- and remember the light
+///          has no occlusion, so one against a wall is right and one
+///          in the middle of a floor lights nothing in particular.
 ///     anything else (including space) is not part of the site at all.
 ///          This is LOAD-BEARING, not a fallthrough:
 ///          BrokenAqueduct_TheDrySpan is two separate reaches with a
@@ -474,6 +493,7 @@ public static class AncientSitePlanLibrary
         var lane = new List<Vector2Int>();
         var keepClear = new List<Vector2Int>();
         var decor = new List<Vector2Int>();
+        var torch = new List<Vector2Int>();
         for (int r = 0; r < rows.Count; r++)
         {
             string row = rows[r];
@@ -519,6 +539,12 @@ public static class AncientSitePlanLibrary
                     var oc = new Vector2Int(c, -r);
                     floor.Add(oc);
                     decor.Add(oc);
+                }
+                else if (row[c] == 't')
+                {
+                    var tc = new Vector2Int(c, -r);
+                    floor.Add(tc);
+                    torch.Add(tc);
                 }
                 else if (row[c] == 'X')
                 {
@@ -574,6 +600,7 @@ public static class AncientSitePlanLibrary
         foreach (var p in lane) plan.lane.Add(p - offset);
         foreach (var p in keepClear) plan.keepClear.Add(p - offset);
         foreach (var p in decor) plan.decor.Add(p - offset);
+        foreach (var p in torch) plan.torch.Add(p - offset);
 
         foreach (var p in floor)
         {

@@ -172,6 +172,21 @@ public class DungeonPointLight : MonoBehaviour
         BumpChangeVersion();
     }
 
+    /// <summary>Everything a SPAWNER needs to differentiate one shared prefab
+    /// (canon 54): what kind of light this is for the readout, what colour it
+    /// burns, and whether it starts alight. Radius, target, halo and flicker
+    /// stay on the prefab -- a spawner overriding those would put the tuning in
+    /// code, where nobody can see it, and stage 1's whole argument is that the
+    /// tuning belongs in the Inspector.</summary>
+    public void ConfigureSpawned(LightSource kind, Color tint, bool startLit)
+    {
+        source = kind;
+        colour = new Color(tint.r, tint.g, tint.b, 1f);
+        lit = startLit;
+        Apply();
+        BumpChangeVersion();
+    }
+
     /// <summary>Retune at runtime -- the holy blue, the dwarven gold. Callers
     /// that spawn one shared prefab and then differentiate it use this rather
     /// than carrying a prefab per colour.</summary>

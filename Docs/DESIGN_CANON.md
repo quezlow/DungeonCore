@@ -116,6 +116,7 @@ the supersession in one line.
 51. The Deep Pilgrimage (D2 Road Traffic, Stage 2)
 52. The Refugee Exodus (D2 Road Traffic, Stage 3)
 53. Point Lights (Stage 1 -- the Engine and the Brazier)
+54. Point Lights (Stage 2 -- Roads, Torches and the Holy Blue)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -11941,6 +11942,128 @@ prefab carrying `FurniturePiece` + `DungeonPointLight` with the shader slot
 assigned and the root at scale 1; a `Furniture_Brazier` definition
 (`blocksPathfinding` false, mana in the 5-10 band the existing pieces sit in);
 the definition added to `FurnitureDefinitionRegistry`.
+
+## 54. Point Lights (Stage 2 -- Roads, Torches and the Holy Blue)
+
+Status: SHIPPED, pending smoke test. Verified: 2026-08-18. Entry 53 is the
+engine and stands unchanged; this is that engine scattered across the world.
+Every decision here was locked in 53's fence and is implemented as written --
+nothing was re-asked and nothing was quietly amended.
+
+**ROAD LAMPS ARE SPAWNED ON SEGMENT REVEAL, and the reveal contract is what
+makes that honest.** An unrevealed stretch carries no lamps at all, so nothing
+glows through the fog to hand the player the network's shape -- the same
+argument that made road reveal per segment in the first place (entry 19).
+Lamp cells are fixed in `RebuildRoadCells`, which generation and load both
+run, so the two can never disagree about where the lamps stand. `Lane` roads
+paint nothing and `continue` before any of this, so they are excluded BY
+CONSTRUCTION rather than by a test that could rot.
+
+**The stride is counted from the ROAD's start, not the segment's.** Restarting
+it per chunk would put two lamps a cell apart at one join and a double gap at
+the next, and the joins are frayed, so it would not even be consistently
+wrong. Lamp cells are filtered to cells the segment actually kept: a river or
+the core can take the very cell the stride landed on, and a lamp inside a
+river is a lamp underwater.
+
+**Spacing is read from the PROFILE, not captured onto `RoadData`.** Entry 19's
+rule about capturing geometry at generation exists because moving CELLS under
+a save moves claims and reveals. Lamp spacing moves no cells; a retuned stride
+just relights an existing road, which is harmless and desirable.
+
+**A STRETCH YOU HOLD GOES DARK, and it is two-way on purpose.**
+`IsRoadSegmentHeld` tests CURRENT claim, so a breach recede hands the stretch
+back and the lamps come up again. That is the exact opposite of the torch rule
+below and correct for the opposite reason: a torch you lit is a thing you did,
+while a road you hold is a thing you are doing, and stopping doing it should
+show. Lit means theirs, and the toll gains a consequence visible from across
+the floor.
+
+**SITE TORCHES TAKE THE GLYPH `t`** -- open ground plus a marker, exactly as
+`o` is, emitted through the same placement transform into an appended
+`SiteData.torchCells`. A second channel rather than an overload of `o`,
+because a plan may want both (an ossuary with its bone piles AND its sconces)
+and because the two spawn different prefabs with different lifecycles: decor
+is inert dressing, a torch listens for a claim. The field is appended, so old
+saves load it empty and light nothing -- which is exactly true of a site built
+before torches existed. No migration.
+
+**Dormant torches latch on `WasEverClaimed` of their own cell.** NOT
+`IsTileClaimed`: a breach recede would snuff them, and a site un-lighting
+itself reads as the place taking itself back. This is the same keying, for the
+same reason, as the void light's -- recorded in entry 12A and now used twice.
+A latched torch leaves the poll list for good, so the poll on a floor the
+player has taken costs nothing.
+
+**Colour is chosen from the ARCHETYPE, and the choice is lore.** Entry 21
+draws the line: the Buried Age ruins are the deep-faith's own and welcoming,
+so they burn WARM; the Church seals laid over them are hostile, so they burn
+COLD BLUE (`IsHolyArchetype` -- the four seals and the vault). The living
+dwarven holds burn warm gold AND START LIT, because somebody lives there and a
+dark window on an inhabited hold is a lie the player can see from across the
+floor. One prefab serves all three; only the colour and the lit state are set
+at spawn.
+
+**Radius, target, halo and flicker are NEVER set by a spawner.**
+`ConfigureSpawned` takes kind, colour and lit state and nothing else. A
+spawner overriding the tuning would put it in code, where nobody can see it,
+and entry 53's whole argument is that the tuning belongs in the Inspector
+where it can be read live.
+
+**BOTH POLLS LIVE IN `TerrainFeatureGenerator`, and that is a WIRING decision
+before it is a cost one.** That class already owns reveal, the segment table
+and `IsRoadSegmentHeld`. A new per-floor component would have to be wired onto
+the shared floor template prefab AND the hand-placed `Floor1Root` -- exactly
+the shape of step that gets done on one and forgotten on the other, silently,
+which Appendix D is a whole entry about. One accumulator at 1 Hz walks two
+small lists. Per-lamp components were considered and rejected on the same
+ground: cost was never the objection, setup was.
+
+**Diagnostics ship with the first version, with the counts split by CAUSE.**
+`Log Point Lights` gains a per-floor world-light block: torches spawned, lit
+on spawn and still dormant; road lamps spawned, stretches carrying them, and
+stretches darkened by the player's hold; and the total torch cells the floor's
+sites declare at all. A missing prefab is counted SEPARATELY from a zero
+spawn, because "nothing was drawn" and "nothing was assigned" are different
+faults in different files, and stage 1 lost a full round trip to a readout
+that could not tell two causes apart.
+
+**This ships INERT and says so.** Until the two prefabs are assigned and the
+plans draw `t`, every count reads zero and the readout names which of the two
+is missing. That is deliberate: a placeholder prefab would score FILLED in the
+art audit, and `ART_DEBT.md` is the one document whose whole job is to be an
+honest work queue.
+
+**No culling, still, and still on purpose.** Entry 53 rejected pooling in
+stage 1 pending a measurement. This is the delivery that produces the number:
+a revealed trunk on a deep floor can carry a lamp every eight centreline
+cells. `Log Point Lights` reports the count, and an optimisation waits on that
+count rather than on an intuition -- which is the rule stage 1 broke with a
+speculative visibility gate that then caused two bugs.
+
+**Rejected, with reasons.** A prefab per colour family (three assets to keep
+in agreement for one field). Lamp spacing on `RoadData` (a save-shape change
+for presentation). Lamps on the carriageway EDGE rather than the centreline
+(not what the fence decided, and the light has no occlusion so the offset
+would buy nothing but a different sprite position). Per-lamp poll components
+(setup, not cost). Lighting a Buried Age site blue (inverts entry 21).
+
+**Key files.** `Assets/Scripts/Floors/AncientSitePlanLibrary.cs` (the glyph),
+`Assets/Scripts/Floors/AncientSiteBuilder.cs` (emit),
+`Assets/Scripts/Floors/FloorFeatureSaveData.cs` (`torchCells`),
+`Assets/Scripts/Floors/TerrainFeatureGenerator.cs` (spawn, poll,
+diagnostics), `Assets/Scripts/Floors/AncientSiteProfile.cs` and
+`Assets/Scripts/Floors/RoadNetworkProfile.cs` (prefabs and colours),
+`Assets/Scripts/DungeonCore/DungeonPointLight.cs` (`ConfigureSpawned`),
+`Assets/Editor/SitePlanPreviewWindow.cs` (the `t` swatch),
+`Assets/Scripts/TESTING/Commands.cs`.
+
+**Editor work, which is Brad's and never a blocker.** A torch prefab and a
+road-lamp prefab, each carrying `DungeonPointLight` with the shader slot
+assigned and the root at scale 1; both assigned on their profiles; then `t`
+glyphs drawn into whichever plans want them, starting with the dwarven village
+and the gatehouse, which are the two that light from the start and therefore
+the two where the work shows immediately.
 
 # APPENDIX
 

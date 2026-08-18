@@ -99,6 +99,13 @@ public class AncientSitePlan
     /// were built.</summary>
     public List<Vector3Int> decorCells = new List<Vector3Int>();
 
+    /// <summary>Torch cells in WORLD space, from the plan's 't' glyphs, through
+    /// the SAME transform as the masonry. Persisted onto SiteData for the same
+    /// reason decorCells are: the save keeps no rotation or mirror, so world
+    /// cells written at placement are the only way a load can put the torches
+    /// back on the walls they were built into.</summary>
+    public List<Vector3Int> torchCells = new List<Vector3Int>();
+
     /// <summary>Keep-clear cells in WORLD space, from the plan's '-' glyphs,
     /// emitted through the same transform as everything else. TRANSIENT --
     /// never copied to SiteData -- because their one consumer is the pair
@@ -732,6 +739,7 @@ public static class AncientSiteBuilder
             EmitTransformed(site.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(site.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(site.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(site.torch, placeAt, rot, mirror, centre, clampSq, placed.torchCells);
             EmitTransformed(site.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
@@ -882,6 +890,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.torch, placeAt, rot, mirror, centre, clampSq, placed.torchCells);
             EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan.authored, placeAt, rot, mirror, placed);
 
@@ -992,6 +1001,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.torch, placeAt, rot, mirror, centre, clampSq, placed.torchCells);
             EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
@@ -1106,6 +1116,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, placeAt, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, placeAt, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, placeAt, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.torch, placeAt, rot, mirror, centre, clampSq, placed.torchCells);
             EmitTransformed(shape.keepClear, placeAt, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(plan, placeAt, rot, mirror, placed);
 
@@ -1311,6 +1322,7 @@ public static class AncientSiteBuilder
         foreach (var c in authored.lane) p.lane.Add(c);
         foreach (var c in authored.door) p.door.Add(c);
         foreach (var c in authored.decor) p.decor.Add(c);
+        foreach (var c in authored.torch) p.torch.Add(c);
         foreach (var c in authored.keepClear) p.keepClear.Add(c);
 
         // EVERY run with a usable outward normal, not merely the first. Which
@@ -2223,6 +2235,7 @@ public static class AncientSiteBuilder
             EmitTransformed(shape.floor, seat, rot, mirror, centre, clampSq, placed.cells);
             EmitTransformed(shape.wall, seat, rot, mirror, centre, clampSq, placed.ruinsCells);
             EmitTransformed(shape.decor, seat, rot, mirror, centre, clampSq, placed.decorCells);
+            EmitTransformed(shape.torch, seat, rot, mirror, centre, clampSq, placed.torchCells);
             EmitTransformed(shape.keepClear, seat, rot, mirror, centre, clampSq, placed.keepClearCells);
             EmitDoorRuns(partner.authored, seat, rot, mirror, placed);
             if (shape.heart.Count > 0)
@@ -2298,6 +2311,11 @@ public static class AncientSiteBuilder
         /// <summary>Decor cells, from 'o'. Carried so placement can emit them
         /// in world space; empty for every procedural recipe.</summary>
         public readonly HashSet<Vector2Int> decor = new HashSet<Vector2Int>();
+
+        /// <summary>Torch cells, from 't'. Same contract as decor, and empty
+        /// for every procedural recipe -- a generated ruin has nobody to have
+        /// hung a sconce.</summary>
+        public readonly HashSet<Vector2Int> torch = new HashSet<Vector2Int>();
 
         /// <summary>Keep-clear cells, from '-'. First consumer: a pair
         /// partner's footprint may not cover another site's keep-clear

@@ -236,6 +236,15 @@ public class SiteData
     /// spawn no pieces.</summary>
     public List<SerializableVector3Int> decorCells = new();
 
+    /// <summary>Torch cells from the plan's 't' glyphs, in world space, written
+    /// at placement (canon 54). Saved rather than re-derived on the decorCells
+    /// precedent and for the identical reason: SiteData keeps no rotation or
+    /// mirror, so the plan asset alone cannot say where a rotated plan's cells
+    /// landed. Appended field -- old saves load it empty and simply light
+    /// nothing, which is exactly true of a site built before torches
+    /// existed.</summary>
+    public List<SerializableVector3Int> torchCells = new();
+
     /// <summary>The dwarven outpost. DwarvenOutpostController finds its site by
     /// this flag; placement guarantees at most one per floor.</summary>
     public bool reservedForOutpost;

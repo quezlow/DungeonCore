@@ -383,6 +383,40 @@ public class AncientSiteProfile : ScriptableObject
 
     [SerializeField] private List<SiteDecorEntry> siteDecor = new List<SiteDecorEntry>();
 
+    // -- Torches (canon 54) --------------------------------------------------
+    // ONE prefab for every site in the game, unlike decor, which is per plan.
+    // A torch is the same object everywhere; what differs is its COLOUR, and
+    // that is chosen from the archetype at spawn rather than by carrying a
+    // prefab per family. Left null the whole feature is inert and says so in
+    // the readout -- a placeholder here would score FILLED in the art audit,
+    // which is the one document whose job is to be an honest work queue.
+
+    [Header("Torches")]
+    [Tooltip("Spawned at every 't' cell of every revealed site. Carries a " +
+             "DungeonPointLight; its radius, target and halo are the prefab's " +
+             "own, and only the colour and the lit state are set at spawn.")]
+    [SerializeField] private GameObject torchPrefab;
+
+    [Tooltip("Buried Age sites -- the deep-faith's own, and welcoming (canon " +
+             "21). Warm.")]
+    [SerializeField] private Color ancientTorchColour = new Color(1f, 0.72f, 0.38f, 1f);
+
+    [Tooltip("Church seals and the vault. COLD BLUE, and the split is lore, " +
+             "not taste: canon 21 puts the Buried Age ruins on one side of the " +
+             "line and the seals laid over them on the other. Blue is the " +
+             "Church.")]
+    [SerializeField] private Color holyTorchColour = new Color(0.62f, 0.80f, 1f, 1f);
+
+    [Tooltip("The living dwarven holds -- village and gatehouse. Warm gold, " +
+             "and lit FROM THE START rather than dormant, because somebody " +
+             "lives there.")]
+    [SerializeField] private Color dwarvenTorchColour = new Color(1f, 0.82f, 0.45f, 1f);
+
+    public GameObject TorchPrefab => torchPrefab;
+    public Color AncientTorchColour => ancientTorchColour;
+    public Color HolyTorchColour => holyTorchColour;
+    public Color DwarvenTorchColour => dwarvenTorchColour;
+
     public IReadOnlyList<SiteDecorEntry> SiteDecor => siteDecor;
 
     public GameObject GetDecorPrefab(string planName)
