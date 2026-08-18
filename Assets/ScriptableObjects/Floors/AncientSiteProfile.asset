@@ -147,3 +147,7 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 0800cfd807e827f46bf2233e297d8ca5, type: 3}
   - {fileID: 4900000, guid: b91c0279a5010b447bae2881a919aa74, type: 3}
   siteDecor: []
+  torchPrefab: {fileID: 9033950468820352497, guid: f4661dccb7dbe9644a419bc07858ceb4, type: 3}
+  ancientTorchColour: {r: 1, g: 0.72, b: 0.38, a: 1}
+  holyTorchColour: {r: 0.62, g: 0.8, b: 1, a: 1}
+  dwarvenTorchColour: {r: 1, g: 0.82, b: 0.45, a: 1}

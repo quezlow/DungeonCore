@@ -70,3 +70,6 @@ MonoBehaviour:
     trunkBearingSpread: 30
     minJunctionAngleDegrees: 25
     minRoadSeparation: 20
+  lampPrefab: {fileID: 9033950468820352497, guid: 6a313248e8c24a641898a209a7b2c352, type: 3}
+  lampSpacingCells: 8
+  lampColour: {r: 1, g: 0.82, b: 0.45, a: 1}
