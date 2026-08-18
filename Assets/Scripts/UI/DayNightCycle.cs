@@ -142,6 +142,35 @@ public class DayNightCycle : MonoBehaviour
         }
     }
 
+    /// <summary>DEV/TEST HOOK. Runs the calendar forward whole dawns without
+    /// waiting the wall clock. Drives the REAL SwitchPhase so every subscriber
+    /// fires in the real order -- nightfall first (the faction panel's displayed
+    /// standing refreshes on OnNightStarted), then dawn. Poking each threat
+    /// system's dawn handler directly would have skipped that ordering, and the
+    /// ordering is exactly where a dawn bug hides.
+    ///
+    /// Measured motive: a dawn costs dayDuration + nightDuration seconds of wall
+    /// clock, and TimeScaleController caps at 5x, so the mercenary reprisal's
+    /// four-dawn minimum could not be reached in under three minutes of waiting.
+    ///
+    /// Deliberately NOT gated on the pause. Skipping days with the world frozen
+    /// is the SAFEST way to use this, because nothing walks while the dawns land
+    /// and every dispatched party musters into a still dungeon. Returns the day
+    /// landed on.</summary>
+    public int AdvanceToDawn(int dawns)
+    {
+        int n = Mathf.Max(1, dawns);
+        for (int i = 0; i < n; i++)
+        {
+            // Reset the phase timer each dawn or the leftover seconds carry
+            // into the next phase and trip a second SwitchPhase in Update.
+            timer = 0f;
+            if (CurrentPhase == Phase.Day) SwitchPhase();   // -> Night
+            SwitchPhase();                                 // -> Day, CurrentDay++
+        }
+        return CurrentDay;
+    }
+
     private void StartTransition(Color target)
     {
         fromColour  = overlayImage != null ? overlayImage.color : overlayDay;

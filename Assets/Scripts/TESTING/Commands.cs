@@ -751,7 +751,6 @@ public class Commands : MonoBehaviour
     [SerializeField] private MonsterDefinition testInvaderDef;
 
     [ContextMenu("Test Spawn Invader")]
-    [ContextMenu("Test Spawn Invader")]
     void TestSpawnInvader()
     {
         if (testInvaderDef == null || testInvaderDef.prefab == null) { Debug.Log("[Commands] Assign Test Invader Def (a MonsterDefinition with a prefab) first."); return; }
@@ -4614,6 +4613,235 @@ public class Commands : MonoBehaviour
                 + (L.RendererVisible ? "" : ", off camera")
                 + (L.IsLit ? "" : ", dormant"));
         }
+
+        Debug.Log(sb.ToString());
+    }
+
+    // -- Late-game test hooks (canon 55) ---------------------------
+    //
+    // Six late-game systems are dawn-driven. A dawn costs the full day plus
+    // night duration of wall clock and TimeScaleController caps at 5x, so the
+    // mercenary reprisal's four-dawn minimum was minutes of waiting and the
+    // endgame climax could not be fired at all. These hooks buy the dawns and
+    // the dispatches; Print Threat Board is what tells you the state was
+    // actually right before you spent a test cycle on it.
+
+    [Header("Late-Game Test Hooks")]
+    [Tooltip("Dawns that Skip To Dawn advances. Each one fires nightfall then "
+           + "dawn on every subscriber, in the real order.")]
+    [SerializeField, Min(1)] private int skipDawnCount = 1;
+    [Tooltip("Name the forced noble reprisal rides for when no grievance is "
+           + "standing. The house is the last word, so 'Lord Test Vareth' "
+           + "reads as House Vareth.")]
+    [SerializeField] private string forcedNobleName = "Lord Test Vareth";
+
+    /// <summary>Run the calendar forward without waiting. Pause the game first
+    /// if you want the dawns to land into a still dungeon -- dispatched parties
+    /// will muster and hold rather than walking in on top of each other.</summary>
+    [ContextMenu("Skip To Dawn")]
+    void SkipToDawn()
+    {
+        var dn = DayNightCycle.Instance;
+        if (dn == null) { Debug.Log("[Commands] No DayNightCycle in scene."); return; }
+        int before = dn.CurrentDay;
+        int after = dn.AdvanceToDawn(skipDawnCount);
+        Debug.Log("[Commands] Skip To Dawn: day " + before + " -> " + after
+                + " (" + (after - before) + " dawn(s) fired). "
+                + "Run Print Threat Board to see what moved.");
+    }
+
+    [ContextMenu("Force Mercenary Ultimatum")]
+    void ForceMercenaryUltimatum()
+    {
+        var m = MercenaryContract.Instance;
+        if (m == null) { Debug.Log("[Commands] No MercenaryContract in scene."); return; }
+        Debug.Log("[Commands] Force Mercenary Ultimatum: " + m.ForceUltimatum());
+    }
+
+    [ContextMenu("Force Mercenary Assault")]
+    void ForceMercenaryAssault()
+    {
+        var m = MercenaryContract.Instance;
+        if (m == null) { Debug.Log("[Commands] No MercenaryContract in scene."); return; }
+        Debug.Log("[Commands] Force Mercenary Assault: " + m.ForceAssault());
+    }
+
+    [ContextMenu("Force Noble Retaliation")]
+    void ForceNobleRetaliation()
+    {
+        var n = NobleRetaliation.Instance;
+        if (n == null) { Debug.Log("[Commands] No NobleRetaliation in scene."); return; }
+        Debug.Log("[Commands] Force Noble Retaliation: " + n.ForceRetaliation(forcedNobleName));
+    }
+
+    [ContextMenu("Force Wild Predator")]
+    void ForceWildPredator()
+    {
+        var w = WildMonsterEvent.Instance;
+        if (w == null) { Debug.Log("[Commands] No WildMonsterEvent in scene."); return; }
+        Debug.Log("[Commands] Force Wild Predator: " + w.ForcePredator());
+    }
+
+    /// <summary>Arms without firing. Worth doing on its own once: arming is what
+    /// suppresses the mid-game threats, not firing, so this is the beat that
+    /// ends threat testing for the run.</summary>
+    [ContextMenu("Force Climax Arm")]
+    void ForceClimaxArm()
+    {
+        var c = EndgameClimax.Instance;
+        if (c == null) { Debug.Log("[Commands] No EndgameClimax in scene."); return; }
+        Debug.Log("[Commands] Force Climax Arm: " + c.ForceArm());
+    }
+
+    [ContextMenu("Force Climax (History Picks)")]
+    void ForceClimaxHistory()
+    {
+        var c = EndgameClimax.Instance;
+        if (c == null) { Debug.Log("[Commands] No EndgameClimax in scene."); return; }
+        Debug.Log("[Commands] Force Climax (History Picks): " + c.ForceFire());
+    }
+
+    [ContextMenu("Force Climax: Grand Crusade")]
+    void ForceClimaxCrusade() => ForceClimaxFace(EndgameClimax.ClimaxThreat.HolyOrder);
+
+    [ContextMenu("Force Climax: Iron Host")]
+    void ForceClimaxIronHost() => ForceClimaxFace(EndgameClimax.ClimaxThreat.Mercenary);
+
+    [ContextMenu("Force Climax: King's Host")]
+    void ForceClimaxRoyalHost() => ForceClimaxFace(EndgameClimax.ClimaxThreat.KingsArmy);
+
+    [ContextMenu("Force Climax: Empowered Beast")]
+    void ForceClimaxBeast() => ForceClimaxFace(EndgameClimax.ClimaxThreat.WildBeast);
+
+    private void ForceClimaxFace(EndgameClimax.ClimaxThreat face)
+    {
+        var c = EndgameClimax.Instance;
+        if (c == null) { Debug.Log("[Commands] No EndgameClimax in scene."); return; }
+        Debug.Log("[Commands] Force Climax " + face + ": " + c.ForceFace(face));
+    }
+
+    /// <summary>Every late-game gate, read live, in one place. Built before the
+    /// force hooks were trusted rather than after: a forced dispatch that does
+    /// nothing has at least six candidate causes (suppression, cooldown,
+    /// unassigned definition, missing instance, wrong floor, unmet threshold),
+    /// and guessing between them is exactly the round trip this is meant to
+    /// spend Claude's time on instead of the test cycle's.
+    ///
+    /// Every tuned figure is READ FROM ITS OWN COMPONENT, never transcribed --
+    /// a threshold that lives in two places drifts, and a readout that has
+    /// drifted is worse than no readout.</summary>
+    [ContextMenu("Print Threat Board")]
+    void PrintThreatBoard()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] THREAT BOARD");
+
+        // -- The clocks --------------------------------------------
+        var dn = DayNightCycle.Instance;
+        var core = DungeonCore.Instance;
+        var align = AlignmentSystem.Instance;
+        var rating = DungeonRating.Instance;
+
+        if (dn == null) sb.AppendLine("  CLOCK: no DayNightCycle -- every dawn gate below is dead.");
+        else sb.AppendLine("  CLOCK: day " + dn.CurrentDay + ", " + dn.CurrentPhase
+                         + ", timeScale " + Time.timeScale.ToString("0.##")
+                         + ", dawn costs " + (dn.DayDuration + dn.NightDuration).ToString("0")
+                         + "s at 1x.");
+
+        if (core == null) sb.AppendLine("  CORE: no DungeonCore.");
+        else sb.AppendLine("  CORE: level " + core.DungeonLevel + " (" + core.LevelDisplayName
+                         + "), XP " + core.CurrentXP.ToString("0") + "/"
+                         + core.XPToNextLevel.ToString("0")
+                         + (core.LevelUpAvailable ? ", LEVEL UP AVAILABLE" : "")
+                         + ", notoriety " + core.Notoriety.ToString("0.#")
+                         + ", capacity " + core.UsedCapacity + "/" + core.MaxCapacity + ".");
+
+        sb.AppendLine("  ALIGNMENT: " + (align != null ? align.Alignment.ToString("0.#") : "no AlignmentSystem"));
+        if (rating == null) sb.AppendLine("  RATING: no DungeonRating.");
+        else sb.AppendLine("  RATING: " + rating.CurrentRating.ToString("0.#")
+                         + " = capacity " + rating.CapacityInvested().ToString("0.#")
+                         + " + veterans " + rating.VeteranBonus().ToString("0.#")
+                         + " + day floor " + rating.DayFloor().ToString("0.#") + ".");
+
+        // -- The climax, FIRST, because its suppression explains any
+        // -- otherwise inexplicable silence in the four blocks below.
+        var cx = EndgameClimax.Instance;
+        sb.AppendLine();
+        if (cx == null)
+        {
+            sb.AppendLine("  CLIMAX: no EndgameClimax in scene.");
+        }
+        else
+        {
+            sb.AppendLine("  CLIMAX: gate level " + cx.ClimaxLevel
+                        + ", armed " + cx.Armed + ", active " + cx.ClimaxActive
+                        + ", ascended " + cx.Ascended + ".");
+            sb.AppendLine("    face if fired now: " + cx.PredictedFace
+                        + (cx.ClimaxActive ? " (active face " + cx.ActiveThreat + ")" : ""));
+            if (cx.SuppressMidGameThreats)
+                sb.AppendLine("    *** MID-GAME THREATS SUPPRESSED. Every force below "
+                            + "will refuse. This is canon 9, not a bug -- arming ends "
+                            + "threat testing for the run. Use another save slot. ***");
+        }
+
+        // -- The quartet -------------------------------------------
+        sb.AppendLine();
+        var ho = HolyOrderStrike.Instance;
+        if (ho == null) sb.AppendLine("  HOLY ORDER: no instance.");
+        else sb.AppendLine("  HOLY ORDER: cooldown " + ho.CooldownRemaining
+                         + ", fired " + ho.TimesManifested + " (last day " + ho.LastManifestDay
+                         + "), conditions met " + ho.ConditionsMetNow
+                         + " [needs notoriety >= " + ho.NotorietyThreshold.ToString("0.#")
+                         + " AND alignment <= " + ho.AlignmentThreshold.ToString("0.#") + "].");
+
+        var mc = MercenaryContract.Instance;
+        if (mc == null) sb.AppendLine("  MERCENARY: no instance.");
+        else
+        {
+            sb.AppendLine("  MERCENARY: " + (mc.IsUltimatum ? "ULTIMATUM, " + mc.CountdownRemaining
+                            + " dawn(s) left" : "dormant, cooldown " + mc.CooldownRemaining)
+                        + ", fired " + mc.TimesManifested + " (last day " + mc.LastManifestDay + ").");
+            sb.AppendLine("    window " + mc.LootOutThisWindow + " over " + mc.WindowDays
+                        + " day(s) vs threshold " + mc.CurrentThreshold
+                        + " (level base " + mc.LevelScaledBaseThreshold + ").");
+            sb.AppendLine("    next assault: " + mc.AssaultBandSize + " sellsword(s) at level "
+                        + mc.MercMemberLevel + "; bribe " + mc.BribeCost + ".");
+        }
+
+        var nr = NobleRetaliation.Instance;
+        if (nr == null) sb.AppendLine("  NOBLES: no instance.");
+        else
+        {
+            sb.AppendLine("  NOBLES: slain this run " + nr.NoblesSlainThisRun
+                        + ", dispatched " + nr.TimesManifested
+                        + " (last day " + nr.LastManifestDay + ").");
+            int today = dn != null ? dn.CurrentDay : 0;
+            sb.AppendLine("    pending " + nr.VengeancePending
+                        + (nr.VengeancePending
+                            ? ": House " + nr.PendingHouse + " rides day " + nr.PendingDueDay
+                              + " (" + Mathf.Max(0, nr.PendingDueDay - today) + " dawn(s) off)"
+                            : " [delay is " + nr.DelayDays + " dawn(s) after a fall]") + ".");
+        }
+
+        var wm = WildMonsterEvent.Instance;
+        if (wm == null) sb.AppendLine("  WILD: no instance.");
+        else
+        {
+            float r = rating != null ? rating.CurrentRating : 0f;
+            sb.AppendLine("  WILD: predator loose " + wm.PredatorActive
+                        + ", cooldown " + wm.CooldownRemaining
+                        + ", escalation " + wm.EscalationLevel
+                        + ", emerged " + wm.TimesManifested
+                        + " (last day " + wm.LastManifestDay + ").");
+            sb.AppendLine("    rating " + r.ToString("0.#") + " vs threshold "
+                        + wm.RatingThreshold.ToString("0.#")
+                        + (r >= wm.RatingThreshold ? " -- GATE OPEN" : " -- gate shut")
+                        + "; climax beast active " + wm.ClimaxBeastActive + ".");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("  World events roll separately -- run Print World Events for their "
+                    + "own gates, cooldowns and minDay figures.");
 
         Debug.Log(sb.ToString());
     }

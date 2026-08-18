@@ -73,6 +73,41 @@ public class WildMonsterEvent : MonoBehaviour
 
     private FloorRoot HuntFloor => FloorManager.Instance != null ? FloorManager.Instance.GetFloor(0) : null;
 
+    // -- Test-hook reads (Print Threat Board).
+    public int CooldownRemaining => cooldown;
+    public float RatingThreshold => ratingThreshold;
+    public int EscalationLevel => escalationLevel;
+
+    /// <summary>DEV/TEST HOOK. Bring the mid-game predator up now, skipping the
+    /// rating gate and the cooldown. The real SpawnPredator silently returns on
+    /// four separate missing dependencies, so each is named here instead: an
+    /// unassigned predatorDef and an absent entrance look identical from the
+    /// outside, and that ambiguity costs a full test cycle to resolve.</summary>
+    public string ForcePredator()
+    {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return "refused: the climax is armed, active or past -- mid-game threats "
+                 + "stand down for the rest of this run (canon 9).";
+        if (livePredator != null)
+            return "refused: a predator is already loose (one beast at a time).";
+        if (HuntFloor == null)
+            return "refused: no floor 0 -- FloorManager has not built the hunt floor.";
+        if (predatorDef == null)
+            return "refused: predatorDef is unassigned on this component.";
+        if (predatorDef.prefab == null)
+            return "refused: predatorDef '" + predatorDef.name + "' carries no prefab.";
+        if (DungeonEntrance.Instance == null)
+            return "refused: no DungeonEntrance in the scene to emerge from.";
+
+        SpawnPredator();
+        if (livePredator == null)
+            return "spawn returned without a beast -- dependencies passed, so look at "
+                 + "SpawnPredatorAt and the prefab itself.";
+        return "predator loose at the entrance, escalation level " + escalationLevel
+             + ". Emergences this run " + timesEmerged + ".";
+    }
+
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }

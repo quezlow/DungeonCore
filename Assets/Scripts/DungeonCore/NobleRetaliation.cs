@@ -49,6 +49,39 @@ public class NobleRetaliation : MonoBehaviour
     private static Vector3 EntrancePos =>
         DungeonEntrance.Instance != null ? DungeonEntrance.Instance.SpawnPosition : Vector3.zero;
 
+    // -- Test-hook reads (Print Threat Board).
+    public int NoblesSlainThisRun => noblesSlainThisRun;
+    public string PendingHouse => pendingHouse;
+    public int PendingDueDay => pendingDueDay;
+    public int DelayDays => Mathf.Max(1, delayDays);
+
+    /// <summary>DEV/TEST HOOK. Ride the reprisal now, skipping the delay dawns.
+    /// With no grievance standing, one is REGISTERED FIRST rather than faked
+    /// past: registering runs the real house-naming, the real Guild tier
+    /// ratchet and the real escalation count, so the forced party is the party
+    /// a real fall would have produced. Refusals come back in words.</summary>
+    public string ForceRetaliation(string nobleName)
+    {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return "refused: the climax is armed, active or past -- mid-game threats "
+                 + "stand down for the rest of this run (canon 9).";
+
+        bool synthesised = false;
+        if (!hasPending)
+        {
+            RegisterNobleFall(string.IsNullOrWhiteSpace(nobleName) ? "Lord Test Vareth" : nobleName);
+            synthesised = true;
+        }
+        string house = pendingHouse;
+        int level = Mathf.Clamp(noblesSlainThisRun, 1, Mathf.Max(1, maxLevel));
+        Dispatch();
+        return "House " + house + " rides at level " + level
+             + (synthesised ? " (grievance registered by the hook -- none was standing)" : "")
+             + ". Nobles slain this run " + noblesSlainThisRun
+             + "; reprisals dispatched " + timesDispatched + ".";
+    }
+
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }

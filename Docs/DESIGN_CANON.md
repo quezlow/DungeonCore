@@ -117,6 +117,7 @@ the supersession in one line.
 52. The Refugee Exodus (D2 Road Traffic, Stage 3)
 53. Point Lights (Stage 1 -- the Engine and the Brazier)
 54. Point Lights (Stage 2 -- Roads, Torches and the Holy Blue)
+55. Late-Game Test Hooks (the Dawn Skip and the Threat Board)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -12328,3 +12329,96 @@ depend on the event for correctness. `Minimap` re-hooks whenever its cached
 floor differs from `FloorManager.ActiveFloor`, so the subscription is an
 optimisation and a missed event costs one frame instead of a session
 (Appendix C).
+
+---
+
+## 55. Late-Game Test Hooks (the Dawn Skip and the Threat Board)
+
+Status: SHIPPED, pending smoke test. Verified: 2026-08-18. Test
+infrastructure, not a feature -- no player-facing surface, no save data, no new
+serialized game state.
+
+**Numbered 55, not 54.** This entry was drafted as 54 and Point Lights Stage 2
+took that number while it was being built. The contents anchor went stale
+(count 0) and the delivery refused to write rather than duplicate a heading --
+recorded because the refusal working is the reason there is no duplicate 54 in
+this file.
+
+**The measured problem.** Six late-game systems are dawn-driven and three of
+them had no force path at all. A dawn costs `dayDuration + nightDuration`
+seconds of wall clock and `TimeScaleController` caps at 5x, so the mercenary
+reprisal's four-dawn minimum (one to issue the ultimatum, `ultimatumDays` to
+run the countdown) could not be reached in under about three minutes of
+waiting, and reaching a world event's `minDay` of 15 was minutes more.
+`EndgameClimax` carried no `ContextMenu` at all and could not be fired.
+
+**The dawn skip drives the real phase switch.** `DayNightCycle.AdvanceToDawn(n)`
+calls the existing private `SwitchPhase` twice per dawn, so every subscriber
+fires in the real order -- `OnNightStarted` first (the faction panel's
+displayed standing refreshes there), then `OnDayStarted`. Poking each threat
+system's dawn handler directly was considered and REJECTED: the ordering
+between nightfall and dawn is exactly where a dawn bug hides, and a hook that
+skips it tests a sequence the game never runs. The phase timer is reset each
+dawn or leftover seconds carry forward and trip a second switch in `Update`.
+Not gated on the pause, deliberately -- skipping days into a frozen dungeon is
+the safest way to use it.
+
+**The climax fires by name now.** `Fire()` took an optional
+`ClimaxThreat forced` defaulting to `None`, which leaves the dawn path
+byte-identical in behaviour; the test hooks pass a face and bypass
+`DetermineDominant`. Without this, testing the Iron Host meant provoking a real
+mercenary war first, because the face is chosen from manifest counts. Both
+paths ship: `ForceFace` for cheap coverage of all four faces, `ForceFire` for
+the history selection itself, which is the only thing that exercises
+`DetermineDominant`. `ForceArm` exists on its own because **arming, not firing,
+is what suppresses the mid-game threats** -- that ordering has framed a test
+plan wrongly before.
+
+**Every hook returns its refusal in words**, following canon 51's pattern. A
+hook that returns void teaches nothing when nothing happens.
+`WildMonsterEvent.ForcePredator` names each of the four dependencies
+`SpawnPredator` silently returns on, because an unassigned `predatorDef` and an
+absent `DungeonEntrance` look identical from outside and telling them apart
+otherwise costs a full test cycle. **Entry 54 reached the same rule
+independently on the same day** -- it counts torch cells and missing prefabs
+separately rather than inferring either from a total, for exactly the reason
+given here: two causes that share one symptom live in different files. Two
+arrivals at one principle is the point at which it stops being a preference.
+
+**Print Threat Board is the point of the entry.** One readout carrying the
+clock, the core's level and notoriety, alignment, the rating and its three
+components, the climax's arm/active/ascend state with the face it would pick
+right now, and all four threats' cooldowns, counters and live gate comparisons.
+It shipped WITH the hooks rather than after them: a forced dispatch that does
+nothing has at least six candidate causes, and the suppression line is printed
+first because it explains any otherwise inexplicable silence in the four blocks
+below it. Every tuned figure is read from an accessor on its own component --
+`notorietyThreshold`, `ratingThreshold`, `ultimatumDays` and the rest gained
+read-only properties for this. **Nothing is transcribed into the readout**: a
+threshold that lives in two places drifts, and a drifted readout is worse than
+none.
+
+**Suppression is the standing trap.** `EndgameClimax.SuppressMidGameThreats`
+goes true the moment the trial ARMS, and every threat force refuses while it
+holds. This is canon 9 behaving correctly. Threat testing and climax testing
+therefore belong in different save slots, and the board says so in words when
+the flag is up.
+
+**Also folded in:** the duplicate `[ContextMenu("Test Spawn Invader")]` on
+`Commands.TestSpawnInvader` (it listed twice in the menu).
+
+**Key files:** `UI/DayNightCycle.cs` (`AdvanceToDawn`),
+`DungeonCore/EndgameClimax.cs` (`Fire(ClimaxThreat)`, `ForceArm`, `ForceFire`,
+`ForceFace`), `DungeonCore/MercenaryContract.cs` (`ForceUltimatum`,
+`ForceAssault`), `DungeonCore/NobleRetaliation.cs` (`ForceRetaliation`),
+`DungeonCore/WildMonsterEvent.cs` (`ForcePredator`),
+`DungeonCore/HolyOrderStrike.cs` (accessors only -- it already had `Fire()`),
+`TESTING/Commands.cs` (`Skip To Dawn`, six force commands,
+`Print Threat Board`).
+
+**Rejected this pass:** a debug time scale above 5x (`TimeScaleController`'s
+hitstop restores `Time.timeScale = selectedScale` after every kill, so a raw
+override survives until the first monster dies and then silently snaps back --
+the dawn skip is the honest fix); poking dawn handlers directly (loses the
+night-then-dawn ordering); a force path for `HolyOrderStrike` (it already has
+a public `Fire()` and a command).

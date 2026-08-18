@@ -131,6 +131,46 @@ public class MercenaryContract : MonoBehaviour
     public float ProfileMatchScore =>
         CurrentThreshold > 0 ? Mathf.Clamp01((float)WindowSum / CurrentThreshold) : 0f;
 
+    // -- Test-hook reads (Print Threat Board). See the HolyOrderStrike note on
+    // why the tuned figures are accessors rather than transcriptions.
+    public int CooldownRemaining => cooldown;
+    public int WindowDays => Mathf.Max(1, windowDays);
+    public int UltimatumDays => Mathf.Max(1, ultimatumDays);
+    public bool IsDormant => state == ContractState.Dormant;
+
+    /// <summary>DEV/TEST HOOK. Issue the ultimatum now, skipping the loot-out
+    /// window entirely. Use this to test the choke/bribe counterplay and the
+    /// countdown; use ForceAssault to skip straight to the steel. Refusals come
+    /// back in words, following canon 51's test-hook pattern -- a hook that
+    /// returns void teaches nothing when nothing happens.</summary>
+    public string ForceUltimatum()
+    {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return "refused: the climax is armed, active or past -- mid-game threats "
+                 + "stand down for the rest of this run (canon 9).";
+        if (state == ContractState.Ultimatum)
+            return "already in ultimatum, " + countdown + " dawn(s) to run.";
+        IssueUltimatum();
+        return "ultimatum issued: " + countdown + " dawn(s) until the assault, threshold "
+             + CurrentThreshold + ", window " + WindowSum + ", bribe " + BribeCost + ".";
+    }
+
+    /// <summary>DEV/TEST HOOK. March the assault now, skipping the window, the
+    /// ultimatum and the countdown. Escalation and cooldown are applied exactly
+    /// as the real dispatch applies them, so a second call behaves like a second
+    /// real reprisal rather than a repeat of the first.</summary>
+    public string ForceAssault()
+    {
+        if (EndgameClimax.Instance != null && EndgameClimax.Instance.SuppressMidGameThreats)
+            return "refused: the climax is armed, active or past -- mid-game threats "
+                 + "stand down for the rest of this run (canon 9).";
+        int band = AssaultBandSize;
+        int lvl = MercMemberLevel;
+        DispatchAssault();
+        return "assault marched: " + band + " sellsword(s) at level " + lvl
+             + ". Reprisals weathered now " + timesFired + "; cooldown " + cooldown + " dawn(s).";
+    }
+
     private int WindowSum
     {
         get { int s = 0; foreach (var b in window) s += b; return s; }

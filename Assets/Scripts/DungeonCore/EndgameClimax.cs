@@ -58,6 +58,60 @@ public class EndgameClimax : MonoBehaviour
     public bool ClimaxActive => active;
     public ClimaxThreat ActiveThreat => threat;
 
+    // -- Test-hook reads (Print Threat Board).
+    public bool Armed => armed;
+    public int ClimaxLevel => climaxLevel;
+
+    /// <summary>Which face would fire if the trial fired this instant. Reads the
+    /// same DetermineDominant the real fire reads, so the readout cannot drift
+    /// from the selection it is describing.</summary>
+    public ClimaxThreat PredictedFace => DetermineDominant();
+
+    /// <summary>DEV/TEST HOOK. Arm the trial now, skipping the level gate. The
+    /// announcement and the autosave both run, and the mid-game threats stand
+    /// down from this moment -- which is the point: arming, not firing, is what
+    /// silences them, and that ordering has surprised the test plan before.</summary>
+    public string ForceArm()
+    {
+        if (ascended) return "refused: already ascended -- the trial is over for this run.";
+        if (active) return "refused: the trial is already loose (" + threat + ").";
+        if (armed) return "already armed -- it fires at the next dawn.";
+        armed = true;
+        DungeonSaveController.Instance?.RequestAutosave();
+        Announce("You have grown vast, little core, and the world has taken note. Its answer gathers beyond your walls.", AlertSeverity.Warning);
+        return "armed. Fires at the next dawn as " + DetermineDominant()
+             + ". Mid-game threats are suppressed from now on.";
+    }
+
+    /// <summary>DEV/TEST HOOK. Fire the trial now with the face the run's own
+    /// history picks -- this is the path that actually exercises
+    /// DetermineDominant, which ForceFace deliberately bypasses.</summary>
+    public string ForceFire()
+    {
+        if (ascended) return "refused: already ascended -- the trial is over for this run.";
+        if (active) return "refused: the trial is already loose (" + threat + ").";
+        armed = true;
+        Fire();
+        return "trial fired by history: " + threat + ".";
+    }
+
+    /// <summary>DEV/TEST HOOK. Fire a NAMED face, bypassing DetermineDominant.
+    /// Without this, testing the Iron Host meant provoking a real mercenary war
+    /// first, because the face is chosen from manifest counts. Passing None is
+    /// refused rather than quietly falling through to the beast -- a silent
+    /// fallback here would read as the enum working when it was not.</summary>
+    public string ForceFace(ClimaxThreat face)
+    {
+        if (ascended) return "refused: already ascended -- the trial is over for this run.";
+        if (active) return "refused: the trial is already loose (" + threat + ").";
+        if (face == ClimaxThreat.None) return "refused: None is not a face. Name one of "
+             + "HolyOrder, Mercenary, KingsArmy, WildBeast.";
+        armed = true;
+        Fire(face);
+        return "trial fired: " + threat + " (history would have picked "
+             + DetermineDominant() + ").";
+    }
+
     private static Vector3 EntrancePos =>
         DungeonEntrance.Instance != null ? DungeonEntrance.Instance.SpawnPosition : Vector3.zero;
 
@@ -105,11 +159,14 @@ public class EndgameClimax : MonoBehaviour
         }
     }
 
-    private void Fire()
+    /// <summary>The dawn path passes nothing and the run's history picks the
+    /// face. The test hooks pass a face to bypass that selection; None keeps the
+    /// original behaviour exactly, so the dawn path is unchanged.</summary>
+    private void Fire(ClimaxThreat forced = ClimaxThreat.None)
     {
         armed = false;
         active = true;
-        threat = DetermineDominant();
+        threat = forced != ClimaxThreat.None ? forced : DetermineDominant();
 
         switch (threat)
         {

@@ -29,6 +29,14 @@ public class HolyOrderStrike : MonoBehaviour
         }
     }
 
+    // -- Test-hook reads (Print Threat Board). Thresholds are exposed rather
+    // than transcribed into the readout: a tuned number that lives in two
+    // places drifts, and the readout is the thing meant to be trusted.
+    public int CooldownRemaining => cooldown;
+    public float NotorietyThreshold => notorietyThreshold;
+    public float AlignmentThreshold => alignmentThreshold;
+    public bool ConditionsMetNow => ConditionMet();
+
     [Header("Trigger (fires when BOTH hold at dawn)")]
     [Tooltip("Notoriety at or above which the Order takes notice.")]
     [SerializeField] private float notorietyThreshold = 60f;
