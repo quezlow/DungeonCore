@@ -4421,4 +4421,83 @@ public class Commands : MonoBehaviour
             + roadClaimed + "/" + roadCells + " carriageway cells claimed ("
             + (StandingCostOf(roadClaimed)).ToString("0.0") + " standing if billed).");
     }
+
+    /// <summary>Every live point light (canon 53), by floor and by source, with
+    /// the ladder it is tuned against read LIVE off DungeonShadow rather than
+    /// transcribed. A lamp that looks wrong is either the wrong strength, the
+    /// wrong colour, or not there at all, and those three point at completely
+    /// different places -- so print all three rather than inviting a guess.</summary>
+    [ContextMenu("Log Point Lights")]
+    void LogPointLights()
+    {
+        var all = DungeonPointLight.All;
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] POINT LIGHTS: " + all.Count + " registered.");
+
+        if (all.Count == 0)
+            sb.AppendLine("  NONE. A brazier placed but not listed here means the "
+                        + "component is missing from the furniture prefab -- the "
+                        + "piece will still place, and light nothing.");
+
+        // Per source: count, lit/unlit, and the live spread of radius and peak.
+        // A single mean would hide a prefab that shipped at the wrong radius
+        // among a hundred that did not.
+        var names = System.Enum.GetNames(typeof(DungeonPointLight.LightSource));
+        var values = (DungeonPointLight.LightSource[])
+            System.Enum.GetValues(typeof(DungeonPointLight.LightSource));
+        for (int s = 0; s < values.Length; s++)
+        {
+            int n = 0, litCount = 0;
+            float rLo = float.MaxValue, rHi = 0f, iLo = float.MaxValue, iHi = 0f;
+            foreach (var L in all)
+            {
+                if (L == null || L.Source != values[s]) continue;
+                n++;
+                if (L.IsLit) litCount++;
+                if (L.RadiusCells < rLo) rLo = L.RadiusCells;
+                if (L.RadiusCells > rHi) rHi = L.RadiusCells;
+                if (L.Intensity < iLo) iLo = L.Intensity;
+                if (L.Intensity > iHi) iHi = L.Intensity;
+            }
+            if (n == 0) continue;
+            sb.AppendLine("  " + names[s] + ": " + n + " (" + litCount + " lit, "
+                + (n - litCount) + " dormant), radius " + rLo.ToString("0.##")
+                + ".." + rHi.ToString("0.##") + ", peak " + iLo.ToString("0.###")
+                + ".." + iHi.ToString("0.###"));
+        }
+
+        // Per floor. A light parented outside a FloorRoot reports as -1, which
+        // is a real fault worth seeing: it will render on every floor at once.
+        var byFloor = new Dictionary<int, int>();
+        foreach (var L in all)
+        {
+            if (L == null) continue;
+            var root = L.GetComponentInParent<FloorRoot>();
+            int idx = root != null ? root.FloorIndex : -1;
+            byFloor.TryGetValue(idx, out int c);
+            byFloor[idx] = c + 1;
+        }
+        foreach (var kv in byFloor)
+            sb.AppendLine(kv.Key < 0
+                ? "  UNPARENTED: " + kv.Value + " light(s) outside any FloorRoot -- "
+                  + "these draw on every floor. Parent them to the floor."
+                : "  floor " + (kv.Key + 1) + ": " + kv.Value);
+
+        // The ladder, live. Nothing below is a number this method knows; it is
+        // all read from the shadow on the active floor.
+        var shadow = FindAnyObjectByType<DungeonShadow>();
+        if (shadow == null)
+            sb.AppendLine("  (no DungeonShadow found -- ladder readout skipped)");
+        else
+            sb.AppendLine("  ladder now: claimed " + shadow.ClaimedLightLevel.ToString("0.##")
+                + ", unclaimed " + shadow.UnclaimedLightLevel.ToString("0.##")
+                + ", void floor " + shadow.VoidLightFloorLevel.ToString("0.##")
+                + " | moss +" + shadow.MossBoostLevel.ToString("0.###")
+                + " r" + shadow.MossRadiusCells
+                + " | cursor " + shadow.CursorLightPeak.ToString("0.##")
+                + " r" + shadow.CursorLightRadiusCells.ToString("0.#")
+                + "  -- a placed lamp belongs strictly between the moss and the cursor.");
+
+        Debug.Log(sb.ToString());
+    }
 }

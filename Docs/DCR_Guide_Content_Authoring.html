@@ -1135,6 +1135,35 @@ summary h1,summary h2,summary h3{min-width:0;overflow-wrap:anywhere;}
     </div>
   </details>
 
+  <details>
+    <summary>42. Lights &mdash; adding a lamp to anything</summary>
+    <div class="body">
+      <div class="why">Canon 53 requires this chapter. Every light in the game is one
+      component and one shader, so a new lamp &mdash; a brazier, a wall sconce, a lit
+      window on a dwarven hold &mdash; is a prefab job, not a code job. The trap is
+      that the shader is a SCREEN blend, so the number you type is not the brightness
+      you get, and tuning it as if it were will send you round in circles.</div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s1"><label for="dcr-authoring-v1-c42s1"><b>Read the ladder before you type a number.</b> <code>Commands &rarr; Log Point Lights</code> prints <code>DungeonShadow</code>'s live levels &mdash; claimed, unclaimed, void floor, the moss boost, the cursor peak &mdash; beside every registered light. A placed lamp belongs <b>strictly between the moss and the cursor</b>. Do not copy figures out of a comment or out of canon; both are deliberately silent on the values for this reason.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s2"><label for="dcr-authoring-v1-c42s2"><b>Intensity is darkness REMOVED, not brightness added.</b> <code>DCR/AdditiveSprite</code> blends <code>OneMinusDstColor One</code>, so contribution is <code>src * (1 - dst)</code>. The same lamp blazes over the void and nearly vanishes over claimed floor. <b>Tune it in the dark, in an unclaimed cavern</b> &mdash; if it looks right on claimed ground it is far too strong everywhere else.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s3"><label for="dcr-authoring-v1-c42s3"><b>Radius is in CELLS, and small is correct.</b> The disc has no occlusion: it lights the wall cap beside it and the void behind that. Rock beside a flame being lit is right; rock on the far side of the wall is not. Keep the radius <b>under the thickness of the rock beside it</b> &mdash; 3 to 4 is the working band.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s4"><label for="dcr-authoring-v1-c42s4"><b>Assign the shader slot on the prefab.</b> <code>lightShader</code> &rarr; <code>Assets/Shaders/AdditiveSprite.shader</code>. It falls back to <code>Shader.Find</code> so the editor is forgiving, but a build can strip a shader nothing references, and then the lamp is simply invisible in the build and fine in the editor &mdash; the worst shape of bug this project has. The cursor light carries the same slot for the same reason.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s5"><label for="dcr-authoring-v1-c42s5"><b>Keep the prefab ROOT at scale 1.</b> The light sprite is a child, so it inherits the root's scale and a root at 0.5 silently halves the radius. Scale the art child instead. The component warns once in the console if you forget, so heed it rather than compensating with a bigger radius.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s6"><label for="dcr-authoring-v1-c42s6"><b>A light-bearing furniture piece needs nothing else.</b> Put <code>DungeonPointLight</code> on the same prefab as <code>FurniturePiece</code>, leave <code>blocksPathfinding</code> false on the definition, add the definition to <code>FurnitureDefinitionRegistry</code>. Placement, mana, half-refund on removal, save and restore-by-name are all already there. The selection panel grows a <i>Sheds Light</i> stat line by itself, and the placement ghost shows the radius in the lamp's own colour &mdash; both read the prefab, so neither can drift.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s7"><label for="dcr-authoring-v1-c42s7"><b>Colour carries meaning, so do not pick it by taste.</b> Warm amber is flame &mdash; the player's braziers and the dwarven holds. Cold blue-white is reserved for the Church seals (canon 21: the Buried Age ruins are the deep-faith's own and welcoming; the seals are the hostile ones). If you want a Buried Age site lit, light it <b>warm</b>.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s8"><label for="dcr-authoring-v1-c42s8"><b>Flicker: leave the defaults unless the thing is not a flame.</b> The phase comes from the lamp's own position, so a row of them never pulses in unison and never jumps phase across a reload. Set <code>flickerAmount</code> to 0 for anything that should read as steady &mdash; a crystal, a rune, a lit window.</label></div>
+
+      <div class="step"><input type="checkbox" id="dcr-authoring-v1-c42s9"><label for="dcr-authoring-v1-c42s9"><b>Then go and look, at play zoom, on unclaimed ground.</b> <code>Log Point Lights</code> answers &ldquo;is it there and how strong&rdquo;; it cannot answer &ldquo;does it read&rdquo;. A lamp registered, lit and correct in the readout that you cannot find on screen is telling you the intensity is too low for the ground it stands on.</label></div>
+    </div>
+  </details>
+
   
 </div>
 

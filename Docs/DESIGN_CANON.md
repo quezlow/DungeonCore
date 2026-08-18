@@ -113,6 +113,9 @@ the supersession in one line.
 48. Escapee Intel (Trap-Wise Returns)
 49. The Backlog Closed (Section D Dispositions)
 50. The Funeral Procession (D2 Road Traffic, Stage 1)
+51. The Deep Pilgrimage (D2 Road Traffic, Stage 2)
+52. The Refugee Exodus (D2 Road Traffic, Stage 3)
+53. Point Lights (Stage 1 -- the Engine and the Brazier)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -11636,6 +11639,167 @@ restore / reset), `UI/PauseMenuController.cs` (ESC chain),
 route or village-controller changes were needed: the trigger reads
 `TimesFallen` and `FallenOnDay`, which stage E2 already recorded.
 
+
+## 53. Point Lights (Stage 1 -- the Engine and the Brazier)
+
+Status: SHIPPED (stage 1 of two), pending smoke test. Verified: 2026-08-17.
+
+**Light in DCR is darkness removed, and the shader already said so.**
+`DCR/AdditiveSprite` blends `OneMinusDstColor One` -- a screen blend, so a
+light's contribution is `src * (1 - dst)`: full strength over the void fill,
+vanishing over ground already at `claimedLight`, bounded at 1 so it can never
+clip to white. That property is the whole balancing model. The same lamp
+blazes in an unclaimed cavern and barely reads in a lit corridor, with no
+per-context tuning and no way for the player to wash a floor out by spending
+mana. Every light in this entry rides that one shader.
+
+**Point lights are SPRITES, not entries in the light map, and that is a
+decision rather than an economy.** `DungeonShadow` paints one flat colour per
+cell, so a point light strong enough to see draws as concentric 32px blocks.
+The cursor light already hit this and already solved it -- its own comment
+records that `SetColor` cannot taper smoothly over void and that the additive
+sprite exists to carry the gradient. Nothing reads `baseLight` for gameplay
+(the only consumer in the repo is the rim-facade readout in `Commands`), so
+entering the map would buy no mechanics while adding a disc walk to a rebuild
+that fires on every claim. `DungeonPointLight` keeps a static registry, which
+is where a gameplay hook attaches if light is ever given teeth.
+
+**The ladder, in `DungeonShadow`'s currency.** Moss sits at `mossBoost` over
+`mossRadius`, in the light map, ambient. The carried cursor light sits at
+`cursorLightIntensity` over `cursorLightRadius`, brightest thing in the game.
+A placed lamp belongs strictly between them. THE NUMBERS ARE NOT RECORDED
+HERE ON PURPOSE: `DungeonShadow` now exposes `ClaimedLightLevel`,
+`UnclaimedLightLevel`, `VoidLightFloorLevel`, `MossBoostLevel`,
+`MossRadiusCells`, `CursorLightPeak` and `CursorLightRadiusCells`, and
+`Commands / Log Point Lights` prints them live beside every registered light.
+A transcribed ladder is a second copy to go stale against the Inspector, and
+the readout convention exists for exactly this.
+
+**THE DISC HAS NO OCCLUSION, and the radius is the mitigation.** A light
+brightens the wall cap beside it and the opaque void behind that, so a radius
+wider than the rock is thick glows through to the far side. Rock beside a
+torch being lit is correct; rock on the other side of a wall is not. At
+radius 4 that needs a wall under four cells thick, which the generated masses
+rarely are. Per-light baked shadow masks are the recorded upgrade path and
+are NOT to be built before something is seen to read wrong -- the cursor
+light has shipped with the same limitation for as long as it has existed and
+nobody has ever filed it.
+
+**Sorting.** The sprite sits on `Shadow` at order 4: above the void fill (0),
+below the fog (10), below the cursor light (5). Fog therefore still occludes
+a light on unrevealed ground, which is what lets stage 2 spawn lamps on
+reveal without leaking layout. The cursor keeps the higher order because a
+screen blend is not quite order-independent and the carried light should win
+where the two overlap. Appendix B is unchanged; nothing was restacked.
+
+**Flicker is phased off POSITION.** A row of lamps built in one frame and
+phased off `Time` or `Random` pulses in unison and reads as one flashing
+object rather than as separate flames. A position hash is also stable across
+a reload, so a lamp does not jump phase on load. Two waves at an awkward
+ratio, because one alone is a metronome. The wobble is gated on
+`SpriteRenderer.isVisible`.
+
+**The player's light is FURNITURE, and that is why this stage is small.**
+`FurnitureDefinition` + `FurniturePiece` already places on any mined cell (not
+room-gated), costs mana, refunds half on removal, and persists by NAME through
+`FurnitureDefinitionRegistry` -- so the brazier needs no new build mode, no
+new UI, no new save shape and no save migration. `RoomValidator` matches room
+requirements by exact definition reference, so a brazier is inert to room
+validation and cannot accidentally satisfy or pollute a room. `blocksPathfinding`
+stays false; the definition's own docstring already named candles as that case.
+
+**The radius lives on the PREFAB, never on the definition.**
+`FurnitureDefinition.LightOnPrefab` reads the component off the prefab it
+already references. A copy on the definition would be a second place for the
+radius to live, and the first thing to go wrong would be a placement ghost
+previewing a circle the lamp that lands does not match.
+
+**The placement preview ghost is pulled forward from the Phase 9 trio, scoped
+to the radius.** A brazier is the one placeable whose entire value is an area
+the player cannot see until after the mana is spent. It REUSES `spellGhostSR`
+and `GenerateDiscSprite` rather than building a second renderer: the two modes
+are mutually exclusive, the spell pass runs first and disables the ghost
+whenever `CastSpell` is not current, and both land in the same frame.
+`UpdateFurnitureGhost` therefore returns WITHOUT touching the renderer when its
+own mode is not current -- disabling it on the way past would fight the spell
+pass every frame of a cast. The ghost is tinted with the lamp's own colour when
+placement is legal, and runs the same test `HandleFurniturePlacement` will
+apply, so it can never show green on a cell the click then refuses. The
+blocking check is skipped for non-blocking pieces rather than run and ignored:
+asking `RoomValidator` per hover frame for a piece that can never fail it is a
+walk of the dungeon for nothing. The trio's other two items (hover cost
+preview, per-trap fire counter) are untouched; the cost preview had already
+shipped.
+
+**A scaled prefab root silently scales the light.** The sprite is a child, so
+it inherits the root's scale and a prefab authored at 0.5 halves every radius
+on it -- a lamp that looks weak for a reason nothing on the component can
+explain. `EnsureRenderer` warns once. Keep light-bearing roots at scale 1 and
+scale the art child.
+
+**Assign the shader slot on the prefab.** `Shader.Find` alone can leave
+`DCR/AdditiveSprite` stripped from a build. The cursor light carries the same
+serialized slot for the same reason, and this one falls back to `Shader.Find`
+only so the editor is forgiving.
+
+**STAGE 2 IS FENCED, and the fence is the point.** Road lamps, dormant site
+torches lit by a claim, dwarven hold lights, and the holy blue are all
+DECIDED but not built: engine first, one light seen in the dark, then the
+hundreds. This is the art guide's validate-one-before-batching rule applied
+to a system rather than to a sprite, and it is bought cheaply -- the
+occlusion question above cannot be answered from source at all, only by
+looking. Stage 2's decisions, recorded so they are not re-argued:
+
+- Road lamps on the centreline every eight cells, `Trunk` and `Spur` only,
+  spawned on segment reveal (the `SpawnSiteDecor` pattern). `Lane` is inside
+  a hold and the hold lights it.
+- A road stretch the PLAYER holds goes dark. Lit means theirs, and the toll
+  gains a visible consequence.
+- Site torches take a new plan glyph `t` -- open ground plus a marker, like
+  `o` -- emitted through the placement transform into a new appended
+  `SiteData.torchCells`. `o` is already spoken for by the decor piece and a
+  plan may want both.
+- Dormant torches light on `WasEverClaimed` of their own cell, polled, and
+  latch. NOT `IsTileClaimed`: a breach recede would snuff them, which is the
+  same trap already recorded against the void light's ever-claimed keying.
+- Holy blue-white on `IsHolyArchetype` only -- the Church seals and the
+  vault. Entry 21 draws the line: the Buried Age ruins are the deep-faith's
+  own and welcoming, so if they are lit at all they are lit warm. Cold blue
+  is the Church.
+- The player's own brazier stays fixed warm rather than following
+  `InfluenceRingRenderer.CurrentTypeColor`. Core-hued flame is attractive and
+  would fight the fixed dwarven gold everywhere the two meet.
+
+**Rejected, with reasons.** Entering the light map (block-quantised, no
+mechanical payoff, cost on every claim). A per-light `Update` with no
+visibility gate (fine at a hundred, not obviously fine at four hundred, and
+the gate is free). A radius copied onto the definition (a second source of
+truth for the one number the ghost exists to show). Building a second ghost
+renderer for furniture (the spell ghost is idle in every mode that is not a
+cast). Pooling or culling the lights in stage 1 -- spawn-on-reveal caps the
+count and `Log Point Lights` will say whether it needs doing, which is the
+measurement this project asks for before an optimisation.
+
+**Art.** `Assets/Art/animated/torch.png` exists, is referenced by no script,
+and is not usable as shipped: twelve auto-sliced frames of 10-13 by 15-20
+pixels, `alignment: 0`, `spritePixelsToUnits: 16` against the project's 32.
+Treat it as reference, not as a sheet. The brazier body is owed art and will
+appear in `Docs/ART_DEBT.md` under `FurnitureDefinition.icon` and the
+furniture prefab renderer once the asset exists -- that file is GENERATED,
+so it is not edited here; rerun `Dungeon Core / Audit Art Debt`.
+
+**Key files.** `Assets/Scripts/DungeonCore/DungeonPointLight.cs` (new),
+`Assets/Shaders/AdditiveSprite.shader` (unchanged, reused),
+`Assets/Scripts/Room/FurnitureDefinition.cs`,
+`Assets/Scripts/DungeonCore/DungeonBuildController.cs`,
+`Assets/Scripts/DungeonCore/DungeonShadow.cs` (accessors only),
+`Assets/Scripts/TESTING/Commands.cs`.
+
+**Editor work, which is Brad's and never a blocker.** A `Brazier` furniture
+prefab carrying `FurniturePiece` + `DungeonPointLight` with the shader slot
+assigned and the root at scale 1; a `Furniture_Brazier` definition
+(`blocksPathfinding` false, mana in the 5-10 band the existing pieces sit in);
+the definition added to `FurnitureDefinitionRegistry`.
 
 # APPENDIX
 

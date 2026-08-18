@@ -582,6 +582,19 @@ public class DungeonShadow : MonoBehaviour
     /// alpha overlay on its own art. For diagnostics.</summary>
     public bool IsVoidCell(Vector3Int cell) => voidCells.Contains(cell);
 
+    // -- The ladder, exposed (canon 53) -------------------------------
+    // DungeonPointLight is tuned against these and nothing else. Transcribing
+    // them into that file's comments would create a second copy to go stale, so
+    // Commands / Log Point Lights reads them live from here instead. Read-only
+    // by design: tuning still happens in the Inspector.
+    public float ClaimedLightLevel => claimedLight;
+    public float UnclaimedLightLevel => unclaimedLight;
+    public float VoidLightFloorLevel => voidLightFloor;
+    public float MossBoostLevel => mossBoost;
+    public int MossRadiusCells => mossRadius;
+    public float CursorLightPeak => cursorLightIntensity;
+    public float CursorLightRadiusCells => cursorLightRadius;
+
     private Color ShadeFor(Vector3Int cell, float light)
         => voidOpaqueFill && voidCells.Contains(cell)
             ? VoidColorFor(light)

@@ -40,9 +40,9 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 - Definition icons | ChestDefinition.icon: 0 owed, 0 deferred, 0 by design, 0 unclassified, 4 filled.
 - Definition icons | DenTunnelProfile.floors.hoardSprites: 0 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
 - Definition icons | DivineAudienceScript.deities.backdrop: 0 owed, 0 deferred, 6 by design, 0 unclassified, 0 filled.
-- Definition icons | FurnitureDefinition.icon: 5 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- Definition icons | MonsterDefinition.icon: 107 owed, 0 deferred, 0 by design, 0 unclassified, 8 filled.
-- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 115 deferred, 0 by design, 0 unclassified, 0 filled.
+- Definition icons | FurnitureDefinition.icon: 6 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
+- Definition icons | MonsterDefinition.icon: 107 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
+- Definition icons | MonsterDefinition.projectileSprite: 0 owed, 117 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | NPCDialogue.npcPortrait: 0 owed, 0 deferred, 0 by design, 0 unclassified, 22 filled.
 - Definition icons | PatternDefinition.icon: 21 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | SpellDefinition.icon: 11 owed, 0 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -55,7 +55,7 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 - Definition icons | UnlockedTile.m_Sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | Items prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 9 filled.
 - In-game sprites | Loot prefab.SpriteRenderer.sprite: 0 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
-- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 4 owed, 28 deferred, 0 by design, 0 unclassified, 22 filled.
+- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 4 owed, 28 deferred, 0 by design, 0 unclassified, 24 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite: 0 owed, 3 deferred, 0 by design, 0 unclassified, 17 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (BrassButton): 0 owed, 0 deferred, 0 by design, 0 unclassified, 1 filled.
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (NPC_Goose): 0 owed, 1 deferred, 0 by design, 0 unclassified, 0 filled.
@@ -65,6 +65,9 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 
 - `Furniture_Alter` FurnitureDefinition.icon
   `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Alter.asset`
+  Build submenu button and selection panel.
+- `Furniture_Brazier` FurnitureDefinition.icon
+  `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Brazier.asset`
   Build submenu button and selection panel.
 - `Furniture_Desk` FurnitureDefinition.icon
   `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Desk.asset`
@@ -732,6 +735,12 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 - `Dwarf_Villager` MonsterDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Dwarves/Dwarf_Villager.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `OccupantDef_Behemoth` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Occupants/OccupantDef_Behemoth.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
+- `OccupantDef_LavaDrake` MonsterDefinition.projectileSprite
+  `Assets/ScriptableObjects/Monsters/Occupants/OccupantDef_LavaDrake.asset`
+  Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
 - `MonsterDef_AbyssalAngler` MonsterDefinition.projectileSprite
   `Assets/ScriptableObjects/Monsters/Regular/MonsterDef_AbyssalAngler.asset`
   Ranged v1 ships a runtime soft-glow bolt tinted per definition. When bespoke art lands, projectileTint MUST go back to white -- the tint multiplies the sprite.
@@ -1265,7 +1274,7 @@ Real art assigned, not placeholder-named, not shared with a sibling prefab.
 - Definition icons | ChestDefinition.icon: 4
 - Definition icons | DenTunnelProfile.floors.hoardSprites: 10
 - Definition icons | FurnitureDefinition.icon: 2
-- Definition icons | MonsterDefinition.icon: 8
+- Definition icons | MonsterDefinition.icon: 10
 - Definition icons | NPCDialogue.npcPortrait: 22
 - Definition icons | StairsDefinition.icon: 1
 - Definition icons | StairsDefinition.upVariantSprite: 1
@@ -1274,7 +1283,7 @@ Real art assigned, not placeholder-named, not shared with a sibling prefab.
 - Definition icons | UnlockedTile.m_Sprite: 1
 - In-game sprites | Items prefab.SpriteRenderer.sprite: 9
 - In-game sprites | Loot prefab.SpriteRenderer.sprite: 2
-- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 22
+- In-game sprites | Monsters prefab.SpriteRenderer.sprite: 24
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite: 17
 - In-game sprites | NPCs prefab.SpriteRenderer.sprite (BrassButton): 1
 - In-game sprites | Traps prefab.SpriteRenderer.sprite: 4

@@ -190,6 +190,7 @@ public class DungeonBuildController : MonoBehaviour
         UpdateBuildWallGhost();
         UpdateDigQueueOverlay();
         UpdateSpellGhost();
+        UpdateFurnitureGhost();
         UpdateCostPreview();
         if (!PauseController.IsGamePaused) ProcessDigQueue();
 
@@ -884,6 +885,60 @@ public class DungeonBuildController : MonoBehaviour
         // show the area it now covers or every cast is aimed at a lie.
         float ghostR = SpellBook.EffectiveRadius(def);
         spellGhostGO.transform.localScale = new Vector3(ghostR * 2f, ghostR * 2f, 1f);
+        spellGhostSR.color = tint;
+        spellGhostSR.enabled = true;
+    }
+
+    /// <summary>The same radius ghost, borrowed for a light-bearing piece of
+    /// furniture (canon 53). A brazier is the one placeable whose whole value is
+    /// a radius the player cannot see until after the mana is spent, which is
+    /// why the polish trio's placement preview earns its slot here rather than
+    /// waiting for its own pass.
+    ///
+    /// Shares spellGhostSR with UpdateSpellGhost rather than building a second
+    /// renderer: the two modes are mutually exclusive, the spell pass runs first
+    /// and disables the ghost whenever CastSpell is not current, and both land
+    /// in the same frame so nothing flickers. This method therefore returns
+    /// WITHOUT touching the renderer when its own mode is not current -- if it
+    /// disabled the ghost on the way past, it would fight the spell pass every
+    /// frame of a cast.
+    ///
+    /// The radius comes off the PREFAB through FurnitureDefinition.LightOnPrefab.
+    /// A copy on the definition would be a second place for it to live and a
+    /// ghost that eventually lies about the lamp it is previewing.</summary>
+    private void UpdateFurnitureGhost()
+    {
+        if (spellGhostSR == null || CurrentMode != BuildMode.PlaceFurniture) return;
+
+        var def = selectedFurniture;
+        var lamp = def != null ? def.LightOnPrefab : null;
+        var inf = ActiveInfluence;
+        if (lamp == null || lamp.RadiusCells <= 0f || inf == null
+            || !HoverCell(out Vector3Int hover))
+        {
+            spellGhostSR.enabled = false;
+            return;
+        }
+
+        // Exactly the placement test HandleFurniturePlacement will apply, so the
+        // ghost cannot show green on a cell the click then refuses. The blocking
+        // check is included only for pieces that block: a brazier does not, and
+        // asking RoomValidator on every hover frame for a piece that can never
+        // fail it would be a walk of the dungeon per frame for nothing.
+        var core = DungeonCore.Instance;
+        bool ok = inf.IsTileMined(hover)
+                  && core != null && core.CurrentMana >= def.manaCost
+                  && (!def.blocksPathfinding || !RoomValidator.WouldBlockDungeon(hover));
+
+        // The lamp's OWN colour when the placement is legal, so the preview
+        // reads as the light it is about to make rather than as a generic
+        // selection circle. Red is the shared refusal colour.
+        Color tint = ok ? lamp.Colour : new Color(0.90f, 0.25f, 0.25f);
+        tint.a = 0.42f;
+
+        spellGhostGO.transform.position = inf.CellToWorld(hover);
+        float r = lamp.RadiusCells;
+        spellGhostGO.transform.localScale = new Vector3(r * 2f, r * 2f, 1f);
         spellGhostSR.color = tint;
         spellGhostSR.enabled = true;
     }
