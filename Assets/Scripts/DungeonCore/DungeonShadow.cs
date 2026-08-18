@@ -172,11 +172,18 @@ public class DungeonShadow : MonoBehaviour
     private int lastWallTick = -1;
     private int lastLightVersion = -1;
 
-    // Per-rebuild diagnostics for the point-light pass. A lamp that lights
-    // nothing is either not on this floor, or standing somewhere the light map
-    // has no cells, and those point at different places.
+    // Per-rebuild diagnostics for the point-light pass, WITH PER-STAGE
+    // REJECTION COUNTERS. The first version shipped the totals alone, and a
+    // zero total then reads as a list of suspects rather than an answer -- it
+    // cost a round trip on a fault that turned out not to be in this pass at
+    // all. Every lamp lands in exactly one bucket, so the buckets sum to the
+    // registry count and a zero says which test rejected it.
     private int pointLightsApplied;
     private int pointLightCellsLifted;
+    private int pointLampsOtherFloor;
+    private int pointLampsUnlit;
+    private int pointLampsNoTarget;
+    private int pointLampsNoRadius;
     private bool subscribed;
     private bool dirty;
 
@@ -633,12 +640,25 @@ public class DungeonShadow : MonoBehaviour
     /// the player was looking straight at it.</summary>
     public int CursorCellRadius => cursorRadius;
 
-    /// <summary>Lamps found on this floor, and cells they actually lifted, in
-    /// the last bake. Zero lamps with lamps placed means they are parented
-    /// elsewhere; lamps but zero cells means they are standing where the light
-    /// map has nothing -- different faults, different places.</summary>
+    /// <summary>Lamps this floor's bake accepted, and cells they lifted. Read
+    /// the rejection counters beside it before concluding anything: an accepted
+    /// count of zero is only interesting once the buckets say why.</summary>
     public int PointLampsApplied => pointLightsApplied;
     public int PointLampCellsLifted => pointLightCellsLifted;
+
+    /// <summary>Why lamps were rejected by THIS floor's bake. Every registered
+    /// lamp lands in exactly one bucket, accepted included, so the totals sum
+    /// to the registry count -- if they do not, the pass never ran.</summary>
+    public int PointLampsOtherFloor => pointLampsOtherFloor;
+    public int PointLampsUnlit => pointLampsUnlit;
+    public int PointLampsNoTarget => pointLampsNoTarget;
+    public int PointLampsNoRadius => pointLampsNoRadius;
+
+    /// <summary>Which floor this shadow belongs to. There is ONE PER FLOOR, so
+    /// any readout that reaches for a shadow has to say which one it got --
+    /// FindAnyObjectByType returns an arbitrary instance, and a correct zero
+    /// from the wrong floor is indistinguishable from a fault.</summary>
+    public int ShadowFloorIndex => floor != null ? floor.FloorIndex : -1;
 
     private Color ShadeFor(Vector3Int cell, float light)
         => voidOpaqueFill && voidCells.Contains(cell)
@@ -809,6 +829,10 @@ public class DungeonShadow : MonoBehaviour
     {
         pointLightsApplied = 0;
         pointLightCellsLifted = 0;
+        pointLampsOtherFloor = 0;
+        pointLampsUnlit = 0;
+        pointLampsNoTarget = 0;
+        pointLampsNoRadius = 0;
 
         var all = DungeonPointLight.All;
         if (all == null || all.Count == 0 || influence == null) return;
@@ -816,9 +840,16 @@ public class DungeonShadow : MonoBehaviour
         for (int i = 0; i < all.Count; i++)
         {
             var lamp = all[i];
-            if (lamp == null || !lamp.IsLit) continue;
-            if (lamp.FloorLightTarget <= 0f || lamp.RadiusCells <= 0f) continue;
-            if (lamp.OwnerFloor != floor) continue;
+            if (lamp == null) continue;
+
+            // FLOOR FIRST, and the order is the point rather than taste. Every
+            // shadow in the game walks this same registry, so a lamp on another
+            // floor would otherwise be counted as unlit or targetless by four
+            // different floors at once and the buckets would stop summing.
+            if (lamp.OwnerFloor != floor) { pointLampsOtherFloor++; continue; }
+            if (!lamp.IsLit) { pointLampsUnlit++; continue; }
+            if (lamp.FloorLightTarget <= 0f) { pointLampsNoTarget++; continue; }
+            if (lamp.RadiusCells <= 0f) { pointLampsNoRadius++; continue; }
 
             pointLightsApplied++;
             ApplyPointLight(influence.WorldToCell(lamp.transform.position),

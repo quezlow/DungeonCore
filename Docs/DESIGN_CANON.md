@@ -11833,9 +11833,34 @@ Stage 1 declined the light map and built the lamp on the sprite alone, and it
 made that call by reading the CODE DEFAULT for `cursorLightIntensity` (0.45)
 rather than the value the scene holds. Unity serialises on first save, so a
 default in source is not a value in a scene, and this project has a standing
-convention against exactly that substitution. The same log shows the rest of
-the ladder had moved too: claimed is **0.7** and unclaimed **0.2**, not the
-0.90 / 0.50 in the source defaults.
+convention against exactly that substitution. The same log showed the rest of
+the ladder had moved off its source defaults as well, and worse, had DRIFTED
+between the hand-placed scene floor and the floor template prefab -- two
+different claimed levels for the same game. That drift has since been
+reconciled; the live figures are what `Log Point Lights` prints and are
+deliberately not repeated here.
+
+**AMENDED A THIRD TIME (2026-08-18): the readout was reading the wrong
+floor.** A log showed four lamps on floor 3, each carrying a floor target, and
+directly beneath it a bake reporting zero lamps and accusing them of being
+unparented or targetless. Both could not be true. `Log Point Lights` resolved
+the shadow with `FindAnyObjectByType<DungeonShadow>()` -- and there is ONE PER
+FLOOR, so that call returned an arbitrary instance and printed some other
+floor's entirely correct zero as though it belonged to the active floor. A
+diagnostic that invents a fault is worse than no diagnostic. It now resolves
+through `FloorManager.ActiveFloor`, names the floor it read, and prints the
+bake for EVERY floor that has a shadow.
+
+**PER-STAGE REJECTION COUNTERS, which should have been in the first version of
+the pass.** `ApplyPointLights` now sorts every registered lamp into exactly one
+bucket -- accepted, other floor, unlit, no target, no radius -- so the buckets
+sum to the registry count and a zero says which test rejected it instead of
+listing suspects. The floor test runs FIRST and that ordering is load-bearing:
+every floor's shadow walks the same static registry, so a lamp belonging to one
+floor would otherwise be tallied as unlit or targetless by all the others and
+the buckets would stop summing. A total of zero across all buckets means the
+bake never ran, which is a different fault again -- the light-version poll not
+reaching that floor -- and the readout says so in those words.
 
 **Why sprite-only could never have worked, stated so it is not retried.** The
 screen blend ADDS the lamp's colour over ground the shadow tilemap is still

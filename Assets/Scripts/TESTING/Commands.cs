@@ -4483,13 +4483,22 @@ public class Commands : MonoBehaviour
                   + "these draw on every floor. Parent them to the floor."
                 : "  floor " + (kv.Key + 1) + ": " + kv.Value);
 
-        // The ladder, live. Nothing below is a number this method knows; it is
-        // all read from the shadow on the active floor.
-        var shadow = FindAnyObjectByType<DungeonShadow>();
+        // The ladder, live, off the ACTIVE floor's shadow -- resolved through
+        // FloorManager and NOT through FindAnyObjectByType. There is one shadow
+        // per floor, so that call returns an arbitrary instance: it read some
+        // other floor's bake and printed its entirely correct zero as though it
+        // belonged to the floor the player was standing on, which is a readout
+        // accusing the code of a fault the readout invented. Anything that
+        // reaches for a shadow says which floor it got.
+        var fmLights = FloorManager.Instance;
+        var activeFloor = fmLights != null ? fmLights.ActiveFloor : null;
+        var shadow = activeFloor != null ? activeFloor.GetComponentInChildren<DungeonShadow>(true) : null;
+
         if (shadow == null)
-            sb.AppendLine("  (no DungeonShadow found -- ladder readout skipped)");
+            sb.AppendLine("  (no DungeonShadow on the active floor -- ladder readout skipped)");
         else
-            sb.AppendLine("  ladder now: claimed " + shadow.ClaimedLightLevel.ToString("0.##")
+            sb.AppendLine("  ladder on floor " + (shadow.ShadowFloorIndex + 1)
+                + " (ACTIVE): claimed " + shadow.ClaimedLightLevel.ToString("0.##")
                 + ", unclaimed " + shadow.UnclaimedLightLevel.ToString("0.##")
                 + ", void floor " + shadow.VoidLightFloorLevel.ToString("0.##")
                 + " | moss +" + shadow.MossBoostLevel.ToString("0.###")
@@ -4498,17 +4507,40 @@ public class Commands : MonoBehaviour
                 + " r" + shadow.CursorLightRadiusCells.ToString("0.#")
                 + ", cursor CELLS r" + shadow.CursorCellRadius + " (lerps to 1.0)");
 
-        if (shadow != null)
-            sb.AppendLine("  light map bake: " + shadow.PointLampsApplied
-                + " lamp(s) on the active floor lifted "
-                + shadow.PointLampCellsLifted + " cell(s)."
-                + (shadow.PointLampsApplied == 0
-                    ? "  ZERO LAMPS: they are not parented to this floor, or their "
-                      + "Floor Light Target is 0."
-                    : shadow.PointLampCellsLifted == 0
-                        ? "  ZERO CELLS: the lamps are standing where the light map "
-                          + "has no entries, or every cell is already brighter."
-                        : ""));
+        // The bake, for EVERY floor that has one. Printing only the active
+        // floor's is what made the last log unreadable: the lamps were on one
+        // floor and the number came from another, with nothing on the line to
+        // say so. The rejection buckets sum to the registry count.
+        if (fmLights != null)
+        {
+            sb.AppendLine("  light map bake, per floor "
+                + "(accepted / cells lifted | rejected: other floor, unlit, no target, no radius):");
+            for (int fi = 0; fi <= fmLights.MaxFloorIndexCreated; fi++)
+            {
+                var fr = fmLights.GetFloor(fi);
+                var sh = fr != null ? fr.GetComponentInChildren<DungeonShadow>(true) : null;
+                if (sh == null) continue;
+
+                int rejected = sh.PointLampsOtherFloor + sh.PointLampsUnlit
+                             + sh.PointLampsNoTarget + sh.PointLampsNoRadius;
+                sb.AppendLine("    floor " + (fi + 1)
+                    + (fr == activeFloor ? " (ACTIVE)" : "")
+                    + ": " + sh.PointLampsApplied + " accepted / "
+                    + sh.PointLampCellsLifted + " cells | "
+                    + sh.PointLampsOtherFloor + ", " + sh.PointLampsUnlit + ", "
+                    + sh.PointLampsNoTarget + ", " + sh.PointLampsNoRadius
+                    + "   (buckets total " + (sh.PointLampsApplied + rejected)
+                    + " of " + all.Count + " registered)");
+
+                if (sh.PointLampsApplied + rejected == 0)
+                    sb.AppendLine("      NOTHING COUNTED: this floor's bake has not run since "
+                        + "the lamps appeared. The light-version poll is not reaching it.");
+                else if (sh.PointLampsApplied > 0 && sh.PointLampCellsLifted == 0)
+                    sb.AppendLine("      ACCEPTED BUT LIFTED NOTHING: the lamps stand where the "
+                        + "light map has no entries, or every cell in reach is already brighter "
+                        + "than their target.");
+            }
+        }
 
         // Per light: the SERIALIZED peak against what the renderer is actually
         // showing this frame. Equal means the value took and the number itself
