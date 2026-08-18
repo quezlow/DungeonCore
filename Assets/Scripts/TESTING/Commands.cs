@@ -4845,4 +4845,132 @@ public class Commands : MonoBehaviour
 
         Debug.Log(sb.ToString());
     }
+
+    // -- Smoke-test snapshots (canon 56) ---------------------------
+    //
+    // The smoke test spans sessions and several of its chapters need the SAME
+    // state more than once -- four climax faces from one level 25 build, three
+    // mercenary outcomes from one ultimatum. Replaying to reach each is the
+    // expensive part; a snapshot makes re-entry a file copy.
+
+    [Header("Smoke Test Snapshots")]
+    [Tooltip("Label the snapshot is filed under. Folder-safe characters only; "
+           + "anything else folds to an underscore.")]
+    [SerializeField] private string snapshotLabel = "F1_post_prologue";
+    [Tooltip("ON acts on the slot the game is actually running. OFF acts on the "
+           + "explicit id below. An explicit toggle rather than a magic 0, "
+           + "because 'use the active one' and 'not filled in yet' are "
+           + "indistinguishable in the inspector otherwise.")]
+    [SerializeField] private bool snapshotUseActiveSlot = true;
+    [Tooltip("Slot the snapshot commands act on when the toggle above is OFF. "
+           + "The guide parks its five fixtures in 6-10.")]
+    [SerializeField, Range(SlotPaths.MIN_SLOT_ID, SlotPaths.MAX_SLOT_ID)]
+    private int snapshotSlotId = 6;
+
+    /// <summary>In play mode SaveSlotManager knows the answer. With play mode
+    /// stopped nothing has woken, so fall back to the same question the title
+    /// screen asks rather than duplicating its PlayerPrefs key here -- a key
+    /// string in two places is a key string that drifts.</summary>
+    private int ResolveSnapshotSlot()
+    {
+        if (!snapshotUseActiveSlot) return snapshotSlotId;
+        var mgr = SaveSlotManager.Instance;
+        if (mgr != null && mgr.ActiveSlotId >= SlotPaths.MIN_SLOT_ID) return mgr.ActiveSlotId;
+        return SlotPaths.FindMostRecentSlotId();
+    }
+
+    /// <summary>Park the current state under a label so it can be re-entered.
+    /// In play mode the game is SAVED FIRST: without that, the snapshot captures
+    /// whatever the last autosave happened to leave on disk rather than what is
+    /// on screen, and the two can be many minutes apart.</summary>
+    [ContextMenu("Snapshot Slot")]
+    void SnapshotSlot()
+    {
+        int slot = ResolveSnapshotSlot();
+        if (slot < SlotPaths.MIN_SLOT_ID)
+        {
+            Debug.Log("[Commands] Snapshot Slot: refused -- no slot resolved. Turn "
+                    + "off Snapshot Use Active Slot and name one.");
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            var sc = DungeonSaveController.Instance;
+            if (sc == null)
+            {
+                Debug.Log("[Commands] Snapshot Slot: refused -- playing, but there is "
+                        + "no DungeonSaveController to flush the live state.");
+                return;
+            }
+            sc.SaveGame();
+        }
+        else
+        {
+            Debug.Log("[Commands] Snapshot Slot: play mode is stopped, so this captures "
+                    + "what is ON DISK, not a live state.");
+        }
+
+        Debug.Log("[Commands] Snapshot Slot: " + SlotPaths.CaptureSnapshot(slot, snapshotLabel));
+    }
+
+    /// <summary>Copy a snapshot back over the slot. REFUSES WHILE PLAYING, and
+    /// that gate is the design rather than caution: a queued autosave debounce
+    /// would fire during the scene fade and write the state being replaced
+    /// straight back over the restored file. Stopping play makes the race
+    /// impossible instead of unlikely, and the reload you then do by pressing
+    /// Play is the real load path, which the test wants exercised anyway.</summary>
+    [ContextMenu("Restore Slot")]
+    void RestoreSlot()
+    {
+        if (Application.isPlaying)
+        {
+            Debug.Log("[Commands] Restore Slot: refused -- stop play mode first. A "
+                    + "queued autosave would overwrite the restored file before the "
+                    + "scene finished reloading.");
+            return;
+        }
+
+        int slot = ResolveSnapshotSlot();
+        if (slot < SlotPaths.MIN_SLOT_ID)
+        {
+            Debug.Log("[Commands] Restore Slot: refused -- no slot resolved. Turn off "
+                    + "Snapshot Use Active Slot and name one.");
+            return;
+        }
+
+        Debug.Log("[Commands] Restore Slot: " + SlotPaths.RestoreSnapshot(slot, snapshotLabel)
+                + " Press Play to enter it.");
+    }
+
+    /// <summary>What is parked, and what each one holds. Prints the level and day
+    /// from each snapshot's own meta.json rather than from the label, because a
+    /// label is a promise and the meta is the state.</summary>
+    [ContextMenu("List Snapshots")]
+    void ListSnapshots()
+    {
+        var labels = SlotPaths.SnapshotLabels();
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("[Commands] SNAPSHOTS -- " + labels.Length + " at " + SlotPaths.SnapshotsRoot);
+
+        if (labels.Length == 0)
+            sb.AppendLine("  none yet. Set Snapshot Label and run Snapshot Slot.");
+
+        foreach (var name in labels)
+        {
+            var meta = SlotPaths.ReadSnapshotMetadata(name);
+            sb.AppendLine(meta != null
+                ? "  " + name + ": " + meta.dungeonName + ", level " + meta.dungeonLevel
+                  + ", day " + meta.currentDay + ", save v" + meta.saveVersion
+                : "  " + name + ": no meta.json -- restorable, but its contents are "
+                  + "unknown until loaded");
+        }
+
+        int active = ResolveSnapshotSlot();
+        sb.AppendLine("  commands act on slot " + (active >= SlotPaths.MIN_SLOT_ID
+            ? active.ToString() + (snapshotUseActiveSlot ? " (active)" : " (explicit)")
+            : "NONE RESOLVED"));
+
+        Debug.Log(sb.ToString());
+    }
 }

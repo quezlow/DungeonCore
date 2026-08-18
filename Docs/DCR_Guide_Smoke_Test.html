@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCR &mdash; Comprehensive Smoke Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Text:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0d0d1a; --accent:#e94560; --gold:#c8902a; --panel:#141428; --text:#d8d4c8; --dim:#8a8578; }
+* { box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Crimson Text',serif; font-size:18px; line-height:1.55; margin:0; padding-bottom:80px; }
+.progress-wrap { position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid #2a2a44; padding:10px 24px; display:flex; align-items:center; gap:16px; }
+.progress-bar { flex:1; height:8px; background:#22223a; border-radius:4px; overflow:hidden; }
+.progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--gold)); transition:width .3s; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--dim); white-space:nowrap; }
+.reset-btn { font-family:'JetBrains Mono',monospace; font-size:12px; background:none; border:1px solid var(--dim); color:var(--dim); padding:4px 10px; border-radius:4px; cursor:pointer; }
+.reset-btn:hover { border-color:var(--accent); color:var(--accent); }
+header { padding:40px 24px 12px; max-width:900px; margin:0 auto; }
+h1 { font-family:Cinzel,serif; color:var(--gold); font-size:30px; margin:0 0 6px; }
+.subtitle { color:var(--dim); font-style:italic; margin:0; }
+main { max-width:900px; margin:0 auto; padding:0 24px; }
+details.chapter { background:var(--panel); border:1px solid #2a2a44; border-radius:8px; margin:18px 0; }
+details.chapter > summary { font-family:Cinzel,serif; color:var(--accent); font-size:20px; padding:14px 18px; cursor:pointer; list-style:none; }
+details.chapter > summary::-webkit-details-marker { display:none; }
+details.chapter > summary::before { content:"\25B8\00a0"; color:var(--gold); }
+details.chapter[open] > summary::before { content:"\25BE\00a0"; }
+.chapter-body { padding:0 22px 18px; }
+code, pre { font-family:'JetBrains Mono',monospace; font-size:14.5px; background:#0a0a14; border:1px solid #26263e; border-radius:4px; }
+code { padding:1px 5px; color:var(--gold); }
+pre { padding:12px 14px; overflow-x:auto; color:#c9d4e0; }
+.step { display:flex; gap:10px; align-items:flex-start; margin:10px 0; }
+.step input[type=checkbox] { margin-top:6px; accent-color:var(--accent); width:16px; height:16px; flex-shrink:0; }
+.step label { cursor:pointer; }
+.callout { border-left:3px solid var(--gold); background:#131324; padding:10px 14px; margin:14px 0; }
+.callout.warn { border-left-color:var(--accent); }
+table { border-collapse:collapse; margin:12px 0; width:100%; }
+th, td { border:1px solid #2a2a44; padding:7px 10px; text-align:left; font-size:16px; }
+th { font-family:Cinzel,serif; color:var(--gold); font-weight:500; }
+strong { color:var(--gold); font-weight:600; }
+em { color:#e0dccd; }
+a { color:var(--accent); }
+.eye { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); border:1px solid var(--dim); border-radius:3px; padding:0 5px; margin-right:6px; }
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <span class="progress-label" id="progress-label">0 / 0</span>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <button class="reset-btn" id="reset-btn" type="button">Reset checkmarks</button>
+</div>
+<header>
+  <h1>Comprehensive Smoke Test</h1>
+  <p class="subtitle">289 commits since <code>06f1b350</code> (22 Jul). Thirty-eight canon entries and a dozen loose items, none of them tested in a whole run.</p>
+</header>
+<main>
+
+<details class="chapter" open>
+<summary>0. How to use this, and what it does not cover</summary>
+<div class="chapter-body">
+<p>Ordered by <strong>session flow</strong>, not canon number &mdash; prologue, then the opening, then outward and downward, then the late game. Testing in canon order would bounce between floors and game phases on every item and pay the setup cost each time.</p>
+<p>Each chapter <strong>opens with the readouts</strong> and only then asks you to look at anything. That ordering is the point: a readout that proves the state is right before you judge the behaviour costs seconds, and judging behaviour on a state you assumed costs a session.</p>
+<p>Steps marked <span class="eye">EYE</span> have <strong>no diagnostic at all</strong> and can only be judged by looking. About twenty of the fifty areas are in that bucket, and that is where your time will actually go. Each one carries a one-line <em>correct looks like</em> drawn from canon rather than from taste.</p>
+<div class="callout"><strong>When something fails, run the named diagnostic before writing it up.</strong> Every step that has one names it. "It doesn't work" plus a readout costs one round trip; "it doesn't work" alone costs two, and the second one is spent discovering which of six causes it was.</div>
+<p><strong>Fenced out. Do not log these as bugs:</strong></p>
+<table>
+<tr><th>Area</th><th>Why it is out of scope</th></tr>
+<tr><td>Canon 19 Buried Age</td><td>PART SHIPPED. Anything still marked DESIGN in that entry is not built.</td></tr>
+<tr><td>Canon 42 dens, the "Open" list</td><td>No sites on floor index 1 by decision. Floor 1 links no chamber on 5.8% of seeds &mdash; accepted; a den of dead ends is legitimate content. What renders the hoard is undecided.</td></tr>
+<tr><td>Canon 44 allegiance</td><td>PART SHIPPED &mdash; substrate plus stages 1a and 2c.</td></tr>
+<tr><td>Kobold-versus-dwarf combat</td><td>Explicitly its own unbuilt arc. A dig reaching the road stages the <em>breach</em>, not a fight.</td></tr>
+<tr><td>Missing art</td><td>Run <code>Audit Art Debt</code> once in chapter 1 and treat its output as the allowlist. 232+ known-missing sprites.</td></tr>
+</table>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-a1"><label for="dcr-smoke-v1-a1">Read the fence table above before starting, so the first placeholder sprite does not cost a write-up.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>1. Pre-flight &mdash; validators, generators, wiring</summary>
+<div class="chapter-body">
+<p>A stale generated asset reads exactly like a system bug. Everything here is cheap and runs with play mode stopped.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p1"><label for="dcr-smoke-v1-p1">Pull to <code>origin/main</code>, let Unity recompile, confirm <strong>zero compile errors and zero warnings you do not already recognise</strong>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p2"><label for="dcr-smoke-v1-p2">Select the <code>Commands</code> component once so its serialized fields are written. New this cycle: <code>skipDawnCount</code> (1), <code>forcedNobleName</code>, <code>snapshotLabel</code>, <code>snapshotUseActiveSlot</code>, <code>snapshotSlotId</code>. <strong>An unset int reads 0</strong>, and a skip that clamps to one dawn when you asked for five is a confusing first result.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p3"><label for="dcr-smoke-v1-p3">Confirm the <code>Commands</code> asset slots are assigned: <code>trapRegistry</code>, <code>spikeTrapName</code>, <code>denTunnelProfile</code>, <code>roadReportProfile</code>, <code>siteReportProfile</code>, <code>testInvaderDef</code>. Several headless reports silently measure a <em>different</em> layout when their profile slot is empty.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p4"><label for="dcr-smoke-v1-p4">Run all four validators: <code>Dungeon Core / Validate Site Plans</code>, <code>Dungeon Core / Validate Wall Families</code>, <code>Validate Execution Order Contract</code>, <code>Validate Spell Picker Wiring</code>. All four clean before anything else.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p5"><label for="dcr-smoke-v1-p5">Regenerate content: <code>Generate Pattern Content</code>, <code>Generate Spell Content</code>, <code>Generate Tech Content</code>, <code>Generate Trap Content</code>, <code>Generate Tutorial Content</code>, <code>Generate Wisp Quests</code>, <code>Generate World Events</code>, <code>Generate Trader Stock</code>, <code>Generate Dwarven Stock</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p6"><label for="dcr-smoke-v1-p6"><code>Ranged Combat / Generate Archer Monsters</code> and <code>Ranged Combat / Stamp Ranged Casters</code>. Canon 30 is entirely untested and these two are its content half.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p7"><label for="dcr-smoke-v1-p7"><code>Dungeon Core / Audit Art Debt</code>. <strong>Save this output.</strong> It is the allowlist for the rest of the test &mdash; anything it names is owed art, not a bug.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p8"><label for="dcr-smoke-v1-p8">Regenerate <code>WispScript.asset</code> from its context menu. <code>WispScript.cs</code> is source of truth and the regeneration <strong>fails silently if skipped</strong> &mdash; every wisp line added this cycle depends on it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-p9"><label for="dcr-smoke-v1-p9">Enter play mode and run <code>Print Pause Audit</code>. Keep this as the baseline; chapter 8 compares against it.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>2. Fixtures &mdash; build five states once, re-enter them freely</summary>
+<div class="chapter-body">
+<p>Five fixtures in <strong>slots 6&ndash;10</strong>, so your real runs keep 1&ndash;5. Snapshots are byte copies of a slot folder parked under a label at <code>Saves/snapshots/&lt;label&gt;/</code>, so re-entering a state is a copy back rather than a replay.</p>
+<table>
+<tr><th>Snapshot in play mode</th><th>Restore with play mode STOPPED</th></tr>
+<tr><td><code>Snapshot Slot</code> flushes the game with a real save first, then copies.</td><td><code>Restore Slot</code> <strong>refuses while the application is playing</strong> &mdash; a pending autosave would clobber the restored file mid-fade. Refusing by construction beats winning a race.</td></tr>
+</table>
+<div class="callout"><strong>Restore auto-snapshots first.</strong> Before overwriting, the current slot is captured to <code>_prerestore</code>. Restoring on top of a state you meant to keep is recoverable exactly once, so do not lean on it.</div>
+<p>Set <code>snapshotLabel</code>, then run <code>Snapshot Slot</code>. Suggested labels:</p>
+<table>
+<tr><th>Label</th><th>Slot</th><th>State</th><th>Used by</th></tr>
+<tr><td><code>F1_post_prologue</code></td><td>6</td><td>Day 1, floor 0 fresh, affinity chosen, nothing built</td><td>ch. 3&ndash;4</td></tr>
+<tr><td><code>F2_midgame</code></td><td>7</td><td>~day 12, Silver, floors 0&ndash;2, entrance breached, rooms and traps down, some notoriety</td><td>ch. 5&ndash;9</td></tr>
+<tr><td><code>F3_deep</code></td><td>8</td><td>All five floors generated, both dens seeded, dwarven village standing, roads part revealed</td><td>ch. 10&ndash;12</td></tr>
+<tr><td><code>F4_late</code></td><td>9</td><td>Level 24, <strong>nothing provoked</strong> &mdash; all four <code>TimesManifested</code> at zero</td><td>ch. 13</td></tr>
+<tr><td><code>F5_endgame</code></td><td>10</td><td>Level 25, climax not yet armed</td><td>ch. 14</td></tr>
+</table>
+<div class="callout warn"><strong>F4 and F5 must be different slots and this is not tidiness.</strong> <code>EndgameClimax.SuppressMidGameThreats</code> goes true the moment the trial <em>arms</em>, not when it fires, and every threat force then refuses. One slot for both would end chapter 13 the first time you touched chapter 14.</div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f1"><label for="dcr-smoke-v1-f1">Build and snapshot <code>F1_post_prologue</code> in slot 6.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f2"><label for="dcr-smoke-v1-f2">Build and snapshot <code>F2_midgame</code> in slot 7. <code>Skip To Dawn</code> with the game paused does the calendar cheaply; <code>Test Add Lots of XP</code> does the level.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f3"><label for="dcr-smoke-v1-f3">Build and snapshot <code>F3_deep</code> in slot 8. <code>Test Generate All Floors</code> builds the depth in one go &mdash; note its warning that core relocation is left pending on the deepest floor, and place a core or reload before you judge anything else.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f4"><label for="dcr-smoke-v1-f4">Build and snapshot <code>F4_late</code> in slot 9. Confirm with <code>Print Threat Board</code> that all four threats read <strong>fired 0</strong> before you snapshot, or chapter 13's escalation checks start from the wrong baseline.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f5"><label for="dcr-smoke-v1-f5">Build and snapshot <code>F5_endgame</code> in slot 10. Level 25, and <code>Print Threat Board</code> shows <strong>armed false</strong>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-f6"><label for="dcr-smoke-v1-f6">Run <code>List Snapshots</code>. All five listed with their level and day. Then stop play, <code>Restore Slot</code> one of them, press play, and confirm you land back in it. <strong>Prove the harness before you trust it.</strong></label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>3. The prologue &mdash; canon 32 and 34</summary>
+<div class="chapter-body">
+<div class="callout warn"><strong><code>skipPrologue</code> is currently <code>1</code> in the TitleScreen scene.</strong> New Game jumps straight to the type pick. Set <code>TitleScreenController.skipPrologue</code> to <code>0</code> to test this chapter at all, and remember to put it back &mdash; every later chapter is faster with it on.</div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g1"><label for="dcr-smoke-v1-g1">Scene chain runs clean: TitleScreen &rarr; TutorialTown &rarr; TutorialForest &rarr; Ceremony &rarr; Dungeon_Level_0.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g2"><label for="dcr-smoke-v1-g2"><strong>The repaired flag wiring is the point of this chapter.</strong> Live a life spent <em>entirely on water</em> &mdash; draw the well, fill the jug, free the net, nothing else. The read-back must name <strong>Water</strong>. Before the <code>Trim()</code> fix in <code>Persistence.SetFlag</code>, four flagIDs carried a trailing space and a full water life lost to a single stray forge deed.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g3"><label for="dcr-smoke-v1-g3">Check <code>FouledNet</code> and <code>CressJug</code> specifically &mdash; both were wired to <code>flag_smash_crates</code> rather than their own flags. Interacting with them must not move Dark.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g4"><label for="dcr-smoke-v1-g4">Score normalisation: a two-flag affinity fully earned should beat a three-flag affinity partly earned. Each scores the fraction of its own flags.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g5"><label for="dcr-smoke-v1-g5">Kneel at the old stone. It adds to <strong>whichever affinity already leads</strong> &mdash; devotion sharpens identity, it never stages a coup. It must not flip a result.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g6"><label for="dcr-smoke-v1-g6">Earn nothing at all. The empty-handed read-back has its own voice and frames it as a kind of freedom, not a failure.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g7"><label for="dcr-smoke-v1-g7"><span class="eye">EYE</span> Four ceremony beats assemble the facsimile HUD one piece at a time: <strong>move</strong> (pan), <strong>breathe</strong> (zoom), <strong>reach</strong> (sense), <strong>pulse</strong> (hold for ambient mana). <em>Correct looks like:</em> pan and zoom respond from the first frame &mdash; the cage is soft, prompts choreograph discovery and never disable input.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g8"><label for="dcr-smoke-v1-g8">All six affinities stay selectable regardless of the read-back. Deeds add emphasis and dim the roads not taken; they do not gate.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g9"><label for="dcr-smoke-v1-g9"><strong>The dark-became-fire guard.</strong> Pick an affinity that does <em>not</em> match your read-back, and confirm the dungeon you land in is the one you picked. The prologue path arrives with no pending record and the controller must build one rather than dropping the choice.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g10"><label for="dcr-smoke-v1-g10">Once in the dungeon, <code>Print Wisp Lore Page</code>. The life above persists (canon 34) &mdash; the flags recorded in the prologue are no longer discarded at the handoff.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g11"><label for="dcr-smoke-v1-g11">Confirm <code>Saves/slot_N/prologue.json</code> is <strong>gone</strong> once the dungeon exists on disk. A slot must never hold both.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-g12"><label for="dcr-smoke-v1-g12">Restore <code>skipPrologue</code> to <code>1</code>.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>4. Floor 0 &mdash; the opening, staging and the paint</summary>
+<div class="chapter-body">
+<p>From <code>F1_post_prologue</code>. Readouts first: <code>Test Print Wave Stage</code>, <code>Test Print Dungeon Rating</code>, <code>Print Wisp Lore Page</code>.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o1"><label for="dcr-smoke-v1-o1">Guided opening (canon 13A) runs its beats without blocking input, and does not re-fire on reload.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o2"><label for="dcr-smoke-v1-o2"><strong>The grace day.</strong> The day the seeded entrance is discovered, nothing arrives &mdash; word spreads overnight and the first wave comes with the next dawn. <code>Skip To Dawn</code> to confirm the handoff rather than waiting it out.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o3"><label for="dcr-smoke-v1-o3">Stage sequence: wildlife, then commoners, then adventurers. <code>Test Print Wave Stage</code> at each step, and each handoff is announced <strong>once</strong> in the wisp's voice. <code>Test Spawn Commoner Party</code> forces the middle stage.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o4"><label for="dcr-smoke-v1-o4"><span class="eye">EYE</span> The muster window. <em>Correct looks like:</em> a party gathers at the mouth for roughly 2&ndash;4 seconds and advances together; formations hold slots, formation-less parties mill loosely on carved ground. Combat breaks the muster; restored mid-raid members skip it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o5"><label for="dcr-smoke-v1-o5"><span class="eye">EYE</span> First Blood vignette and the death-sequence slab pan both fire. <em>Correct looks like:</em> the camera glides on unscaled time and hands control back cleanly.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o6"><label for="dcr-smoke-v1-o6"><strong>Canon 47, lazy floor paint.</strong> Set <code>FloorRoot.LogBootstrapTimings</code> and run <code>Test Generate All Floors</code>. Floor 5 creation should land near <strong>1000 ms, not 3100</strong>. The per-stage breakdown points at a culprit instead of inviting a guess.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o7"><label for="dcr-smoke-v1-o7">Same run: watch for a <code>RADIUS MISMATCH</code> error. Table radius and painted radius are logged separately on purpose &mdash; chambers and rivers have fixed counts, so a floor generated at the wrong size never <em>looks</em> wrong.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o8"><label for="dcr-smoke-v1-o8">Fog is eager, floor tile is laid in <code>RevealTile</code>, floor 0 is eager. <span class="eye">EYE</span> <em>Correct looks like:</em> no visible pop-in of ground as you reveal, and no revealed cell left unpainted.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o9"><label for="dcr-smoke-v1-o9"><code>Validate Reveal Consistency</code> after a <strong>generate</strong>. Clean.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-o10"><label for="dcr-smoke-v1-o10">Influence field, push and breach recede (canon 12A) behave: pushing claims, a breach recedes, and the ring renders where the claim is.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>5. Combat and tactics &mdash; the biggest eyeball block</summary>
+<div class="chapter-body">
+<p>From <code>F2_midgame</code>. Almost nothing here has a readout. Canon 30, 33 and 10A all landed after the baseline and none has been tested in a run.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c1"><label for="dcr-smoke-v1-c1"><code>Test Print Bestiary</code> and <code>Print Bestiary Sources</code>. The level-gated roster spans Bronze 2 to Diamond 3; confirm nothing above your tier is offered and every source attributes correctly.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c2"><label for="dcr-smoke-v1-c2"><code>Test Print Adventurer Affinities</code>, then <code>Test Spawn Adventurer Party</code> and <code>Test Dispatch Hero Party</code>. Affinity reskins render on the right bodies.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c3"><label for="dcr-smoke-v1-c3"><span class="eye">EYE</span> <strong>Canon 30, ranged combat.</strong> <em>Correct looks like:</em> projectiles travel and are blocked by line of sight rather than passing through walls; damage kinds apply distinctly. Use the stamped ranged casters and archer monsters from pre-flight &mdash; if none exist, the generators did not run.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c4"><label for="dcr-smoke-v1-c4"><span class="eye">EYE</span> <strong>Canon 33, target priority.</strong> <em>Correct looks like:</em> monsters no longer swing at whoever is closest &mdash; each type prefers its class target. Put a healer behind a tank and watch what gets hit.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c5"><label for="dcr-smoke-v1-c5"><span class="eye">EYE</span> <strong>Canon 10A, formations.</strong> March-holding, shield wall, formation break, breakers. <em>Correct looks like:</em> slots are held on the march, the wall forms on contact, and a break is visible as a break rather than as a party losing pathing.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c6"><label for="dcr-smoke-v1-c6">Canon 15A monster muster: spawn rooms, posts and floor gates. Monsters garrison where posted and respect the floor gate.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c7"><label for="dcr-smoke-v1-c7"><span class="eye">EYE</span> <strong>Canon 28, boss promotion.</strong> Rank-on-spawner and waiting halls. <em>Correct looks like:</em> a promoted spawner's monster carries its rolled epithet and rank, and the waiting hall reads as a hall rather than a queue. Both persist &mdash; <code>promotionRank</code> and <code>bossEpithet</code> are new save fields, so re-check after chapter 16.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c8"><label for="dcr-smoke-v1-c8">Reachability: the severed-halls watch and the mine-mode wash. Sever a hall and confirm the watch notices.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c9"><label for="dcr-smoke-v1-c9"><span class="eye">EYE</span> Claim-edge rendering &mdash; <strong>three passes that must stay in step</strong>. <em>Correct looks like:</em> no seam or lag between the three at a claim boundary.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c10"><label for="dcr-smoke-v1-c10"><span class="eye">EYE</span> Canon 12 ambient necromancy and corpses, extended by the Crypt build. <em>Correct looks like:</em> corpses persist, are raisable, and the Crypt's deliberate nemesis raise (canon 16) names the right adventurer.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c11"><label for="dcr-smoke-v1-c11"><strong>Canon 35, mutations &mdash; flagged BUILT, pending smoke test.</strong> <code>Test Toggle Mutation Tier 1</code> then <code>Tier 2</code>. The toggles prove the unlock; you still have to confirm the <em>effect</em> lands on a monster by eye.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c12"><label for="dcr-smoke-v1-c12"><code>Test Cycle Global Monster Aggression</code> through every value. Each setting changes engagement behaviour and none of them wedges.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c13"><label for="dcr-smoke-v1-c13"><code>Test Spawn Invader</code> and <code>Test Discover Invader Type</code>. An invader routes for the core; discovery reaches the bestiary.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-c14"><label for="dcr-smoke-v1-c14">Crowding: <code>CrowdingController</code> landed after the baseline. Pack a corridor and confirm bodies resolve rather than stacking.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>6. Rooms, economy and the loot dial</summary>
+<div class="chapter-body">
+<p>Readouts first: <code>Print Loot Policy</code>, <code>Print Appeal Ledger</code>, <code>Print Chest Tier Stats</code>.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r1"><label for="dcr-smoke-v1-r1">Canon 1 rooms and canon 14 material patterns: build one of each room type, confirm patterns apply and the census updates.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r2"><label for="dcr-smoke-v1-r2">Canon 15 room effects v2 and attractor rooms. An attractor visibly pulls intent.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r3"><label for="dcr-smoke-v1-r3">Canon 15B monster drops: <strong>sparse base, honeypot bosses</strong>. Ordinary monsters drop rarely; a boss is worth opening up.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r4"><label for="dcr-smoke-v1-r4"><strong>Canon 45, the loot policy dial.</strong> <code>Force Loot Policy Prompt</code> to get the opening beat, then set each dial position and re-run <code>Print Loot Policy</code>. Generous is a <strong>flat 2x on drops</strong> &mdash; keep that in mind for chapter 13, because it is what made the mercenary threshold trivially trippable before it scaled.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r5"><label for="dcr-smoke-v1-r5"><code>Print Appeal Ledger</code> at each dial position. The poverty half of the ledger responds.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r6"><label for="dcr-smoke-v1-r6">Chest tiers: <code>Print Chest Tier Stats</code>, then open chests across two tiers and confirm the hook fires.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r7"><label for="dcr-smoke-v1-r7">Canon 11 tribute and GiftGivers: accept tribute, confirm alignment moves <strong>&minus;3</strong> (tribute darkens) via <code>Test Print Alignment</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r8"><label for="dcr-smoke-v1-r8"><code>LootAbsorbGate</code> and the absorb hold: loot the core absorbs is distinct from loot walking out. Confirm both paths and note which one the appeal ledger reads.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r9"><label for="dcr-smoke-v1-r9">Treasury cap: gold clamps at the census cap on the way in, and gold already held is <strong>never confiscated</strong> when the cap shrinks. The clamp announces once, not every tick.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r10"><label for="dcr-smoke-v1-r10">Canon 31 trapworks: <code>Test Build No-Gap Trap Wall</code>, then <code>Test Clear Traps On Core Floor</code>. Type exclusivity holds &mdash; the type-lock rule refuses a second element.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-r11"><label for="dcr-smoke-v1-r11">Adventurer statuses from traps are <strong>transient</strong> by the canon 30 precedent &mdash; they must not persist across a save.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>7. Prison, captives and the factions</summary>
+<div class="chapter-body">
+<p>Readouts first: <code>Test Print Faction Standings</code>, <code>Print Tracked Parties</code>, <code>Test Print Dungeon Rating</code>.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n1"><label for="dcr-smoke-v1-n1">Canon 8B: capture by subdue-on-defeat, cell verbs, and starvation. <code>prisoners</code> is a new save list &mdash; re-check after chapter 16.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n2"><label for="dcr-smoke-v1-n2">Canon 8C: capture traps and trap-pin rescue. The second capture route works and a pinned adventurer can be rescued by its party.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n3"><label for="dcr-smoke-v1-n3">Canon 8D: hold a captive, then wait for the faction reaction &mdash; rescue party and ransom-bearer. <code>prisonReactionDay</code> schedules it, so <code>Skip To Dawn</code> rather than waiting.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n4"><label for="dcr-smoke-v1-n4"><span class="eye">EYE</span> Prisoner panel and the prison tech node. <em>Correct looks like:</em> the panel lists held captives by name with their verbs live, and the tech node gates the room.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n5"><label for="dcr-smoke-v1-n5">Canon 7: <code>Test Anger Adventurers Guild (-25)</code>, then <code>Test Print Faction Standings</code>. <strong>Live and displayed values differ</strong> &mdash; displayed refreshes at nightfall. Confirm the gap, then <code>Skip To Dawn</code> and confirm it closes.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n6"><label for="dcr-smoke-v1-n6">Escalation tiers ratchet <strong>up only</strong> and never decay on their own.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n7"><label for="dcr-smoke-v1-n7">Faction intel: encounter flags set on first member entry, and the two Observation research nodes reveal profile, tactics and roster <strong>in the existing Faction panel</strong> &mdash; there is no separate intel window by decision.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n8"><label for="dcr-smoke-v1-n8">Canon 5: <code>Test Assess Now</code>, then <code>Test Dispatch Inspector</code>. The Inspector and its escort are <strong>passive</strong> &mdash; they observe without starting a fight, though any blow provokes the whole party.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n9"><label for="dcr-smoke-v1-n9"><strong>Escort typing, a previous smoke-test fix.</strong> Inspector, Noble and Scholar escorts are <em>Delver</em>-typed &mdash; a party that came to assess, study or gawk must not bring guards carrying <code>BreachCore</code>. Watch where the escort goes.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n10"><label for="dcr-smoke-v1-n10">Kill the Inspector. The Guild sends a Hero kill-team, and the <strong>badge stays "Unassessed"</strong> until that team departs while the backend rank is already set.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n11"><label for="dcr-smoke-v1-n11">Canon 4 nemesis returns: <code>Test Grant Pending Survivors 400 XP</code>, <code>Test Force Pending Returns Due Now</code>, then spawn a party. <code>Print Tracked Parties</code> shows the returning party with its grudge.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-n12"><label for="dcr-smoke-v1-n12"><strong>Canon 48, escapee intel &mdash; pending smoke test.</strong> Let a survivor escape a trapped route, then check <code>Print Tracked Parties</code> for <code>TRAP-WISE</code>. A rogue takes a fresh slot on that party's return.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>8. Spells, charges, pause and the UI</summary>
+<div class="chapter-body">
+<p>Readouts first: <code>Print Spell State</code>, <code>Print Spell Charges</code>, <code>Print Pause Audit</code>.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s1"><label for="dcr-smoke-v1-s1"><code>Test Toggle Sorcery Trunk (First Spark)</code>, then <code>Test Toggle All Neutral Spells</code>, then <code>Print Spell State</code>. Canon 38's roster is live and picker wiring already validated in pre-flight.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s2"><label for="dcr-smoke-v1-s2">Affinity workings: <code>Test Grant Affinity Working (Silver tier)</code>, then the Gold and Diamond deepen commands. Canon 19A narrowed this &mdash; <strong>the working is granted at the audience</strong>, so cross-check against chapter 9.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s3"><label for="dcr-smoke-v1-s3">Canon 41 charges: <code>Grant Spell Charges</code>, cast until empty, <code>Print Spell Charges</code>, <code>Clear Spell Charges</code>. <code>spellChargeIds</code> and <code>spellChargeCounts</code> are new save lists &mdash; re-check after chapter 16.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s4"><label for="dcr-smoke-v1-s4"><strong>Canon 39, the pause rule.</strong> <code>Print Pause Audit</code> and compare against the pre-flight baseline. Anything newly unavailable under pause that should be available is the regression this audit exists to catch.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s5"><label for="dcr-smoke-v1-s5">Speed controls: pause, 1x, 2x, 5x by button and by keybind. <strong>Hitstop restores the selected speed</strong>, so kill something at 5x and confirm it returns to 5x and not to 1x.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s6"><label for="dcr-smoke-v1-s6">A speed key during a divine audience must do <strong>nothing</strong> &mdash; it would unpause the beat under the overlay and let the world run behind a black screen.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s7"><label for="dcr-smoke-v1-s7"><span class="eye">EYE</span> Canon 40 panel button row. <em>Correct looks like:</em> every button present, correctly iconed, and correctly greyed when unavailable.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s8"><label for="dcr-smoke-v1-s8"><span class="eye">EYE</span> Monster selection panel, merchant panel, prisoner panel. <em>Correct looks like:</em> mana and capacity read correctly on selection, and each panel closes without leaving state behind.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s9"><label for="dcr-smoke-v1-s9"><span class="eye">EYE</span> Minimap, free cam, recenter, floor selector ordering. All four moved after the baseline. <em>Correct looks like:</em> the minimap re-hooks when the active floor changes &mdash; a missed event costs one frame, not a session.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s10"><label for="dcr-smoke-v1-s10">Camera bounds hold on every floor including the largest (Appendix C). No escaping the disc.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-s11"><label for="dcr-smoke-v1-s11">Canon 29 wisp quests and the pressed rule: an urging appears, completes and hands in. <code>wispQuestsActive</code>, <code>wispQuestsHandedIn</code> and <code>wispQuestsInitialised</code> are new save fields.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>9. Progression, ceremony and the record</summary>
+<div class="chapter-body">
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x1"><label for="dcr-smoke-v1-x1">Canon 13 research tree: unlock along one lane, confirm prereqs gate and <code>KeyUnlocked</code> visibility behaves. <code>Test Toggle Oracle Chamber Unlock</code>, <code>Test Toggle Adventurer Stats Unlock</code>, and the three scout tiers.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x2"><label for="dcr-smoke-v1-x2">XP ladder: <code>Test Add So Much XP</code>, then confirm the level-up button and that <strong>one press is one level</strong>. Tier boundaries grant a stair credit.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x3"><label for="dcr-smoke-v1-x3"><strong>Canon 19A, divine audiences.</strong> <code>Print Divine Audience Script</code> then <code>Play Divine Audience</code>. Then trigger a real tier boundary and confirm the audience fires <strong>last</strong> &mdash; after the level, the stair credit and every listener have settled.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x4"><label for="dcr-smoke-v1-x4">The audience holds the clock behind an opaque overlay and runs on <strong>unscaled</strong> time. <code>audiencesHeld</code> persists by tier name, so an audience must never replay.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x5"><label for="dcr-smoke-v1-x5">Canon 22 deeds: earn one, confirm it appears in the journal tab.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x6"><label for="dcr-smoke-v1-x6">Canon 23 trophy hall: place a trophy, confirm the effect and the <strong>uncapped upward notoriety trickle</strong> &mdash; that is the player's opted-in trade-off, not a bug.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-x7"><label for="dcr-smoke-v1-x7">Canon 34 memory echoes: eight echoes, the town's descendants, and the resting place. <code>restArmed</code>, <code>restAnnounced</code>, <code>restFound</code> and <code>descendantsDispatched</code> all persist &mdash; descend, then confirm the wisp mentions the resting place <strong>once</strong>.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>10. The surface world</summary>
+<div class="chapter-body">
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w1"><label for="dcr-smoke-v1-w1"><span class="eye">EYE</span> Canon 24 radial forest bands and the rim facade. <em>Correct looks like:</em> bands read as concentric, the frontier fades rather than cutting, and trees are not in rivers. <code>Log Rim Facade</code> is the readout.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w2"><label for="dcr-smoke-v1-w2"><span class="eye">EYE</span> Rim ramp, rim falloff, inner light, mouth grass. All four were fix passes after the baseline. <em>Correct looks like:</em> the mouth reads as a mouth, with no hard seam at the rim.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w3"><label for="dcr-smoke-v1-w3">Canon 25 camp growth and identity: a camp grows, takes an identity, and its effect applies. <strong>Cultist camps dampen notoriety decay</strong> &mdash; confirm with <code>Print Threat Board</code> before and after.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w4"><label for="dcr-smoke-v1-w4">Canon 26 the surface war: it resolves without stalling, and <code>SkirmishResolver</code> reports an outcome.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w5"><label for="dcr-smoke-v1-w5"><span class="eye">EYE</span> Surface life: road-approach walkers, camp millers, night watch. <em>Correct looks like:</em> cosmetic only &mdash; they must never enter the dungeon or register as entities.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w6"><label for="dcr-smoke-v1-w6"><strong>Canon 28A wandering merchant.</strong> <code>merchantNextVisitDay</code> schedules it; <code>Skip To Dawn</code> until it arrives. Trader stock came from pre-flight &mdash; an empty shop means the generator did not run.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-w7"><label for="dcr-smoke-v1-w7"><code>Print Sightseer Draw</code>. The draw weights respond to the dungeon's profile.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>11. Deep floors &mdash; sites, roads, walls and lights</summary>
+<div class="chapter-body">
+<p>From <code>F3_deep</code>. This block is the best-instrumented in the game; lean on the readouts hard.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d1"><label for="dcr-smoke-v1-d1">Run the full readout sweep: <code>Test Road Report (headless)</code>, <code>Log Site Placement</code>, <code>Log Holy Ground State</code>, <code>Test Print Feature Stats (all floors)</code>, <code>Log Point Lights</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d2"><label for="dcr-smoke-v1-d2"><strong>Scale sanity.</strong> Compare site cell counts against a cave chamber. A site once reached <strong>15&ndash;30x</strong> a chamber's cell count and nothing caught it until it was on screen.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d3"><label for="dcr-smoke-v1-d3">Placement band: every site inside <strong>15&ndash;65 per cent</strong> of floor radius. Content outside the band is content nobody meets.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d4"><label for="dcr-smoke-v1-d4"><span class="eye">EYE</span> Roads: lanes, chords, gates, the signed spur, the free end. <em>Correct looks like:</em> every lane carries a road, junctions are filleted, and joins are frayed rather than butt-ended. <strong>No truncation machinery exists any more</strong> &mdash; a road running to the disc edge is correct.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d5"><label for="dcr-smoke-v1-d5">Site relations: excludes, near, and pairs all honoured. <code>Validate Site Plans</code> already passed, so a violation here is a generator fault, not an authoring one.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d6"><label for="dcr-smoke-v1-d6"><span class="eye">EYE</span> Doors and the door rule, rebuilt on declaration. <em>Correct looks like:</em> the door anchor is shared and feeds a whole line; a doorless site is exempt from nothing.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d7"><label for="dcr-smoke-v1-d7"><strong>Canon 20 holy ground.</strong> <code>Log Holy Ground State</code>, then break a seal. First break is Warning, <strong>every later one is Critical</strong>. <code>holyBrokenSeals</code>, <code>holyFirstBreakDone</code> and <code>holyTouchMurmured</code> all persist &mdash; a seal must never pay out twice.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d8"><label for="dcr-smoke-v1-d8">Holy sub-quota holds, and no heart lands under a carriageway or in a river &mdash; both were bugs, both are now guarded.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d9"><label for="dcr-smoke-v1-d9"><strong>Canon 36 built walls &mdash; flagged BUILT, pending smoke test.</strong> Build a wall, seal a way, confirm wall stacking is fixed and cross-floor severance behaves. This entry has never been tested.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d10"><label for="dcr-smoke-v1-d10"><span class="eye">EYE</span> Granite holdings overlay and the road claiming ladder. <em>Correct looks like:</em> the wall family changes with the holding, and the ladder warns once per rung &mdash; <code>dwarvenClaimWarned</code> and <code>dwarvenPressureWarned</code> each spend a single warning.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d11"><label for="dcr-smoke-v1-d11"><strong>Canon 54 point lights stage 2 &mdash; pending smoke test.</strong> <code>Log Point Lights</code>. Road lamps spawn on segment reveal and <strong>go dark on a stretch you hold, both ways</strong>. Site torches spawn dormant and latch lit on ever-claimed &mdash; a recede must <em>not</em> put one out.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d12"><label for="dcr-smoke-v1-d12">Seals burn <strong>cold blue</strong>, ruins warm, dwarven holds lit from the start. If every count reads zero, the two prefabs are unassigned and the readout says which.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d13"><label for="dcr-smoke-v1-d13">Canon 53 stage 1 regression: braziers still place, still preview their radius, still light the floor.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-d14"><label for="dcr-smoke-v1-d14"><code>Test Reveal All Features (active floor)</code> on the deepest floor, then <code>Validate Reveal Consistency</code>. Clean.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>12. Dens and the deep occupants</summary>
+<div class="chapter-body">
+<p>Eight readouts serve this arc. Run them all before judging anything.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k1"><label for="dcr-smoke-v1-k1">Sweep: <code>Print Den Report</code>, <code>Print Den Ledger</code>, <code>Print Den Dig</code>, <code>Den Cavity Report</code>, <code>Den Tunnel Report (headless)</code>, <code>Den Tunnel Breach Check</code>, <code>Road Breach Report</code>, <code>Print Tribe Matrix</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k2"><label for="dcr-smoke-v1-k2">Floor allocation, guaranteed not rolled: <strong>goblin hole on floor index 1, kobold den on index 2</strong>. One den per floor, every seed.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k3"><label for="dcr-smoke-v1-k3"><span class="eye">EYE</span> The tunnel substrate. <em>Correct looks like:</em> the den reads as <em>somewhere</em> rather than as a spawn point, and the floor has a shape before you touch it. Generated tunnels link chambers; on index 2 they reach the road and the sites.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k4"><label for="dcr-smoke-v1-k4">Den populations persist as bodies. Kill some, reload, confirm the count is the count you left.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k5"><label for="dcr-smoke-v1-k5">The visible hoard and the tier ladder. <code>Print Den Ledger</code> tiers should read <strong>13/22/34/49</strong> &mdash; identical at every theft share <em>by construction</em>, because <code>stolenHoard</code> cannot reach tier. A tier that moves with theft is a real defect.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k6"><label for="dcr-smoke-v1-k6"><strong>The exploratory dig.</strong> <code>Print Den Dig</code> over several days. Diggers <strong>wander and find what they pass</strong> &mdash; they do not beeline at known remains. A dig visibly heading somewhere over days is the intended beat.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k7"><label for="dcr-smoke-v1-k7">Kobold theft: hoard grows, <code>stolenHoard</code> accrues separately, and clearing the den pays out both.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k8"><label for="dcr-smoke-v1-k8">You cannot be paid twice for a kobold-opened remains. Enforced by geometry, not by a flag &mdash; try to break it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k9"><label for="dcr-smoke-v1-k9"><code>Print Tribe Matrix</code>, then <code>Reset Cross-Tribe Counter</code>. Deep is hostile to <strong>everything</strong> except itself &mdash; occupants that infought would clear their own floor and undo the only thing they exist to be.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k10"><label for="dcr-smoke-v1-k10"><code>Road Breach Report</code>, then drive a dig to the trunk road. The breach is staged <strong>only where it can be seen</strong>. No kobold-versus-dwarf fight &mdash; that is fenced out.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k11"><label for="dcr-smoke-v1-k11"><strong>Canon 46 deep occupants.</strong> <code>Print Deep Occupants</code>, then <code>Force Occupant Spawn</code>. Floor index 4 is a <em>condition</em>, not a den &mdash; saturation makes it expensive to <strong>hold</strong>, not dangerous to enter.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k12"><label for="dcr-smoke-v1-k12">Floor index 3 incursion and fall: <code>Force Village Siege</code>, then <code>Force Village Fall</code>. The hold falls at the <strong>next dawn</strong>, through the same path a real siege takes &mdash; so <code>Skip To Dawn</code>, do not force further.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k13"><label for="dcr-smoke-v1-k13">The recovery, which is what makes the loss acceptable: <code>Force Relief Now</code>, then <code>Advance Relief Phase</code> through leg, transit and muster. Settlers arrive and the hold <strong>re-establishes on the same authored plan</strong>. Walking legs still need the DAY phase to tick.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-k14"><label for="dcr-smoke-v1-k14">The vault-heart escalation on index 4, and the <code>DeadCoreVault</code> itself.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>13. The dwarven arc and road traffic</summary>
+<div class="chapter-body">
+<p>Readouts first: <code>Print Road Journeys</code>, <code>Print Faction Body Costs</code>, <code>Test Caravan Route Report</code>.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v1"><label for="dcr-smoke-v1-v1">Canon 44: dwarves are <strong>mortal bodies</strong> now &mdash; patrols, villagers and caravan members are all <code>DungeonMonster</code>. Kill one of each and confirm <code>Print Faction Body Costs</code> accounts for it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v2"><label for="dcr-smoke-v1-v2">The dead persist: <code>dwarvenVillagerDead</code>, <code>dwarvenPatrolDead</code> and <code>caravanDeadSlots</code> are all new save lists. Kill, reload, confirm the empty slots stay empty.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v3"><label for="dcr-smoke-v1-v3"><span class="eye">EYE</span> The gate squad's beat and the patrol's halt-and-look. <em>Correct looks like:</em> <code>watchRadius</code> behaviour only &mdash; <strong>there is no withdrawal any more</strong>, and a patrol that can fight has no reason to retreat.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v4"><label for="dcr-smoke-v1-v4">The vendor and the spoil economy: sell spoil, confirm <code>dwarvenSpoilUnsold</code> accrues and <code>dwarvenSpoilLifetime</code> only grows.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v5"><label for="dcr-smoke-v1-v5">The caravan: <code>Test Caravan Route Report</code>, then let a journey run. Rob, Tax and Let Pass &mdash; <strong>one verb per journey</strong>, and <code>caravanVerbUsed</code> makes it stick. The toll camera beat plays once, ever.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v6"><label for="dcr-smoke-v1-v6"><strong>Canon 50, the funeral.</strong> <code>Force Funeral Now</code>, then <code>Advance Funeral Phase</code>. Three mourners and a bier; Rob, Tax, Let Pass and <strong>Pay Respects</strong>. Per-death trigger with delay and cooldown &mdash; kill a dwarf and confirm the procession follows rather than firing instantly.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v7"><label for="dcr-smoke-v1-v7"><strong>Canon 51, the pilgrimage.</strong> <code>Force Pilgrimage Now</code> &mdash; it departs through the <em>real</em> gates and skips only the director's roll, so a <strong>refusal comes back in words</strong>. Then <code>Advance Pilgrimage Phase</code>. Completing a pilgrimage moves alignment <strong>+6</strong>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v8"><label for="dcr-smoke-v1-v8">The pilgrimage is also a world event (<code>minDay</code> 12). Confirm <code>Print World Events</code> lists it and that the director's <code>CanBegin</code> gate refuses an overlap &mdash; <code>Print Road Journeys</code> prints the refusal in words.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v9"><label for="dcr-smoke-v1-v9"><strong>Canon 52, the exodus.</strong> After a fall (chapter 12), <code>Force Exodus Now</code> waives <em>only</em> the delay day and refuses on a standing hold. Then <code>Advance Refugee Phase</code>. The column is the witnessed beat abandonment previously lacked.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-v10"><label for="dcr-smoke-v1-v10">All three journeys survive a save and reload mid-walk. Journey state is persisted, not re-derived.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>14. Late game &mdash; the threat quartet and the world's weather</summary>
+<div class="chapter-body">
+<p>From <code>F4_late</code>. <strong>Open with <code>Print Threat Board</code> every single time in this chapter.</strong> A forced dispatch that does nothing has at least six candidate causes and the board rules out five of them for free.</p>
+<div class="callout warn"><strong>Do not arm the climax in this slot.</strong> Arming suppresses all four threats plus hostile world events for the rest of the run. Chapter 15 lives in slot 10.</div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t1"><label for="dcr-smoke-v1-t1"><code>Print Threat Board</code>. Every instance present &mdash; a "no instance" line is scene wiring, not a hook. All four <strong>fired 0</strong>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t2"><label for="dcr-smoke-v1-t2"><strong>Prove the dawn skip first, since everything below rides it.</strong> Pause the game, <code>Skip To Dawn</code> with <code>skipDawnCount</code> 1. The log shows nightfall <em>then</em> dawn, in that order, and the day advances by exactly one.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t3"><label for="dcr-smoke-v1-t3">Set <code>skipDawnCount</code> to 5 and skip again. Day advances by five and no system double-fires.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t4"><label for="dcr-smoke-v1-t4"><strong>Holy Order.</strong> <code>Test Add Notoriety</code> and <code>Test Shift Alignment Dark (-15)</code> until the board reads <em>conditions met true</em>, then <code>Skip To Dawn</code> and let it fire naturally. <strong>Test the gate, not just the dispatch.</strong></label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t5"><label for="dcr-smoke-v1-t5"><code>Test Dispatch Holy Order Strike</code> a second time. Guards grow per strike weathered, and the cooldown re-arms.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t6"><label for="dcr-smoke-v1-t6"><strong>Mercenary, the full counterplay.</strong> <code>Force Mercenary Ultimatum</code>, then choke the outflow below the threshold and <code>Skip To Dawn</code> &mdash; they stand down. Board shows the quiet cooldown.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t7"><label for="dcr-smoke-v1-t7">Again, but pay: <code>Force Mercenary Ultimatum</code> then bribe. <strong>A bribe buys the same quiet as cutting the outflow</strong>, so it cannot be spammed.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t8"><label for="dcr-smoke-v1-t8">Again, and let it land: ultimatum, then <code>Skip To Dawn</code> through the countdown. Then <code>Force Mercenary Assault</code> for a second reprisal and confirm on the board that <strong>the band grew and the threshold tightened</strong> &mdash; a fraction of the level base, not a flat 40.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t9"><label for="dcr-smoke-v1-t9">Mercenary members must <strong>level at all</strong> &mdash; they spawned at level 1 forever before this. Board's <em>next assault</em> line gives the expected level; check a body against it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t10"><label for="dcr-smoke-v1-t10"><strong>Nobles.</strong> Kill a Noble, board shows a pending grievance with a due day, then <code>Skip To Dawn</code> to it. Kill a second Noble while one is pending &mdash; they <strong>coalesce into one reprisal</strong> and the freshest house leads.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t11"><label for="dcr-smoke-v1-t11"><code>Force Noble Retaliation</code> with no grievance standing. It <strong>registers a real one first</strong> and says so, so the forced party is the party a real fall would have produced.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t12"><label for="dcr-smoke-v1-t12">A Noble <em>driven out in flight</em> also marks its house &mdash; not only a slain one.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t13"><label for="dcr-smoke-v1-t13"><strong>Wild predator.</strong> <code>Force Wild Predator</code>. If it refuses, the refusal <strong>names which of five dependencies is missing</strong> &mdash; fix that rather than guessing.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t14"><label for="dcr-smoke-v1-t14">Let the predator sate itself and leave un-wounded, then <code>Skip To Dawn</code> past the cooldown and bring it again &mdash; <strong>escalation level should have risen</strong>. Then wound one below the fraction and confirm it leaves and does not return.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t15"><label for="dcr-smoke-v1-t15">Also test the natural gate: build capacity until the board's rating clears the threshold, then <code>Skip To Dawn</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t16"><label for="dcr-smoke-v1-t16"><strong>Canon 8A notoriety shaping.</strong> Kill near the soft cap and confirm the gain is <strong>shaped down, not flat</strong>. Then lie low and watch it recede &mdash; it is a heat gauge, not an accumulating legend.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t17"><label for="dcr-smoke-v1-t17">Tier gates: a sub-mid-Silver dungeon must <strong>never roll an ambient Hero</strong> on kill count alone. But every scripted Hero dispatch ignores the gate &mdash; confirm a slain Inspector still summons its kill-team at low tier.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t18"><label for="dcr-smoke-v1-t18"><strong>Canon 37 world events.</strong> <code>Print World Events</code>, then <code>Skip To Dawn</code> repeatedly past <code>minDay</code> 6, 10, 12 and 15. At a 25% daily roll with a 3-dawn global cooldown, expect <strong>4&ndash;5 events per 30 eligible days</strong> &mdash; materially off that is a tuning defect.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t19"><label for="dcr-smoke-v1-t19">Each of the four fires and its effect lands: tremor, pilgrim surge, murrain, deep pilgrimage. Duration ticks down and the multipliers return to 1.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-t20"><label for="dcr-smoke-v1-t20">Save and reload mid-event. A loaded mid-effect state <strong>re-arms its multipliers</strong> rather than losing them.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>15. The endgame climax &mdash; slot 10 only</summary>
+<div class="chapter-body">
+<p>From <code>F5_endgame</code>. Snapshot before <em>each</em> face so you can test all four from one build.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e1"><label for="dcr-smoke-v1-e1"><strong>The natural path first.</strong> Reach level 25 and <code>Skip To Dawn</code>. The trial <strong>arms</strong> with a Warning-severity line, and fires at the <em>next</em> dawn. Two dawns, not one.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e2"><label for="dcr-smoke-v1-e2">Immediately after arming, <code>Print Threat Board</code>. The <strong>suppression warning must appear</strong>. Then try any threat force and confirm it refuses in words. This is canon 9 working, and it is the single easiest thing to mistake for a bug.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e3"><label for="dcr-smoke-v1-e3">Restore, then <code>Force Climax (History Picks)</code>. This is the only path that exercises <code>DetermineDominant</code> &mdash; the board's <em>face if fired now</em> line should match what actually arrives.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e4"><label for="dcr-smoke-v1-e4">Restore, then <code>Force Climax: Grand Crusade</code>. A named ordained Paladin leading Paladins and Clerics.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e5"><label for="dcr-smoke-v1-e5">Restore, then <code>Force Climax: Iron Host</code>. Tank-heavy sellsword army, <strong>untinted</strong> &mdash; economic, not ideological.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e6"><label for="dcr-smoke-v1-e6">Restore, then <code>Force Climax: King's Host</code>. Several named Heroes plus royal guard.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e7"><label for="dcr-smoke-v1-e7">Restore, then <code>Force Climax: Empowered Beast</code>. Each breach flings it back to the entrance with a screen flash; <strong>only killing it ends the climax</strong>. Let it breach twice to confirm.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e8"><label for="dcr-smoke-v1-e8">Reload mid-beast-climax with the field empty. The next dawn <strong>re-spawns a beast</strong> &mdash; the trial must never be left un-manned.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e9"><label for="dcr-smoke-v1-e9">The climax host is <strong>excluded from nemesis returns</strong>. Check <code>Print Tracked Parties</code> after wiping one.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e10"><label for="dcr-smoke-v1-e10">Survive a trial. Ascension to <strong>God 1</strong> lights up &mdash; before this, Diamond 3 refuses the level-up. The God-tier divine audience is its ceremony.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e11"><label for="dcr-smoke-v1-e11">After ascending, the recurring threats are <strong>silenced for good</strong>. Board shows ascended true and every force refuses.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-e12"><label for="dcr-smoke-v1-e12">God-core sandbox: floor index 4 is enterable as the dead network, and the <code>DeadCoreVault</code> is what is down there.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>16. Save and load &mdash; the highest-value chapter</summary>
+<div class="chapter-body">
+<p><strong>Roughly forty new persisted fields landed since the baseline and <code>CURRENT_VERSION</code> is still 3.</strong> That is a load-bearing claim &mdash; every one of them is additive and defaults cleanly on an older save &mdash; and it has never been checked once.</p>
+<div class="callout warn"><strong>Canon's own lesson applies here.</strong> The <code>ReassertOpenGround</code> fault was invisible on fresh generation because the site pass "measured this clean by hand because it never reloaded". Ground came back revealed but not open, and dug ground came back under fog with wall caps beneath. <code>Validate Reveal Consistency</code> is the standing check &mdash; <strong>run it after a LOAD, not after a generate</strong>.</div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l1"><label for="dcr-smoke-v1-l1">Round-trip each of the five fixtures: load, save, reload. No errors, no lost floors, <code>Print</code> readouts identical either side.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l2"><label for="dcr-smoke-v1-l2"><code>Validate Reveal Consistency</code> <strong>after each load</strong>. This is the check that catches the ordering fault above, and only after a load.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l3"><label for="dcr-smoke-v1-l3"><code>Validate Execution Order Contract</code> after a load too (Appendix D).</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l4"><label for="dcr-smoke-v1-l4"><strong>The synthetic legacy save.</strong> No pre-baseline save survives, so build one. Copy a current <code>save.json</code>, and in the copy <strong>delete the additive keys</strong> added since the baseline &mdash; <code>prologueFlags</code>, <code>descendantsDispatched</code>, the four <code>rest*</code> fields, <code>merchantNextVisitDay</code>, <code>prisonReactionDay</code>, the two <code>dwarvenSpoil*</code>, all eight <code>caravan*</code>, the two dwarven warning flags, the three <code>holy*</code>, <code>dwarvenAlertedOwners</code>, the three dead-lists, the three <code>wispQuests*</code>, <code>audiencesHeld</code>, both <code>spellCharge*</code>, <code>prisoners</code>, <code>buriedConsumed</code>, <code>buriedSensed</code> &mdash; and set <code>"saveVersion": 1</code>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l5"><label for="dcr-smoke-v1-l5">Load it. <strong>It must load, not refuse.</strong> The version guard only refuses saves <em>newer</em> than the build; <code>JsonUtility</code> leaves absent fields at their C# defaults; and <code>SaveMigrationRegistry.MigrateToCurrent</code> runs. Every stripped field should read as its default rather than throwing.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l6"><label for="dcr-smoke-v1-l6">Also try <code>"saveVersion": 0</code>. Treated as an <strong>implicit v1</strong>.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l7"><label for="dcr-smoke-v1-l7">Then play from that loaded legacy save, save again, and confirm the file comes back stamped <strong>v3</strong> with the fields present. Migration one-way, no half state.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l8"><label for="dcr-smoke-v1-l8">Slot independence: all ten slots hold distinct dungeons. Switching does not leak statics &mdash; <strong>one core at a time</strong>, and the world-event multipliers must not outlive an instance into another scene.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l9"><label for="dcr-smoke-v1-l9">Atomic write: the <code>.tmp</code> and <code>.bak</code> dance leaves no stale temp file. Kill the process mid-save if you can bear to, and confirm the slot still loads.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l10"><label for="dcr-smoke-v1-l10">Raid-start autosave fires on Holy Order strike, mercenary assault, noble reprisal, predator emergence and both climax beats.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l11"><label for="dcr-smoke-v1-l11">Enum values that serialise into saves are <strong>append-only</strong>. Spot-check <code>caravanState</code>, <code>promotionRank</code> and <code>SceneNames.GameScene</code> &mdash; the retired <code>Forest</code> entry is a deliberate tombstone and deleting a middle value silently re-targets every door after it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l12"><label for="dcr-smoke-v1-l12">Floor features <strong>persist rather than regenerate</strong>. A site placed before you authored a glyph will never gain it &mdash; confirm that is what you see, and do not log it.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-l13"><label for="dcr-smoke-v1-l13">The load path calls <code>UnfogSite</code> directly and bypasses events (the poll pattern). Confirm sites come back unfogged after a load.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>17. Defect log</summary>
+<div class="chapter-body">
+<p>One line per defect, and <strong>paste the readout</strong>. Format that survives a handoff:</p>
+<pre>CHAPTER / STEP   what you did
+EXPECTED         one line, from the guide
+OBSERVED         one line, what happened
+READOUT          the output of the named diagnostic
+FIXTURE          which snapshot label, so it can be re-entered</pre>
+<div class="callout"><strong>The fixture label is the part people drop and the part that matters.</strong> A defect that can be re-entered by restoring a snapshot costs one round trip to fix. One that has to be reproduced by playing forward costs a session, and sometimes cannot be reproduced at all.</div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-y1"><label for="dcr-smoke-v1-y1">Snapshot the state of any defect you find, with a label naming it, <strong>before</strong> you carry on. Snapshots are cheap; reproductions are not.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-y2"><label for="dcr-smoke-v1-y2">For anything that "doesn't work", add diagnostics before iterating on a guess. Several defects in this project were mis-attributed first and cost rounds.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-y3"><label for="dcr-smoke-v1-y3">Sweep the console for warnings you did not chase. A silent warning is the cheapest defect in the game to fix and the easiest to walk past.</label></div>
+</div>
+</details>
+
+<details class="chapter">
+<summary>18. Update the Canon</summary>
+<div class="chapter-body">
+<p>The canon edit <strong>rides the delivery script</strong>. <code>deliver_smoke_test_harness.py</code> writes:</p>
+<p><strong>Entry 56 &mdash; The Smoke Test Harness (Slot Snapshots and the Test Guide).</strong> Records the snapshot mechanism and why it lives in <code>SlotPaths</code>; the edit-mode-only restore gate and the autosave race it closes by construction rather than by timing; the automatic <code>_prerestore</code> capture; the named-file copy in place of a recursive folder delete; the explicit <code>snapshotUseActiveSlot</code> toggle and the ambiguous-default rule it follows; the label sanitiser and why an empty label resolves to a name rather than to the snapshots root; this guide's scope of 289 commits and thirty-eight entries; the five fixtures and the reason F4 and F5 cannot share a slot; the synthetic legacy save method and the three source facts that make it valid; and the rejected shapes.</p>
+<p><strong>Table of contents</strong> gains entry 56.</p>
+<p><strong>Entries 35, 36, 48, 54 and 55</strong> keep their <em>pending smoke test</em> status lines. They are cleared by <em>passing</em> this test, not by shipping it, and a status line that moves on delivery is exactly the drift canon exists to prevent. Come back and clear them when the run is done.</p>
+<p><strong>Two entries carry a different defect and it is worth fixing in the same edit.</strong> <strong>15B</strong> (monster drops) and <strong>47</strong> (lazy floor paint) both read <code>Verified: &lt;date of landing&gt;</code> &mdash; an unfilled placeholder, not a pending status. Both are post-baseline work and both are tested here; they just were not flagged the way a reader would expect. <strong>27</strong>, <strong>27A</strong> and <strong>33</strong> carry the softer <em>landing date unrecorded</em> form, which is at least honest.</p>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-z1"><label for="dcr-smoke-v1-z1">After the run: report results, and the five <em>pending smoke test</em> status lines get a single canon edit that either clears them or records what failed.</label></div>
+<div class="step"><input type="checkbox" id="dcr-smoke-v1-z2"><label for="dcr-smoke-v1-z2">Same edit fills the two <code>&lt;date of landing&gt;</code> placeholders on 15B and 47 with real dates from the log.</label></div>
+</div>
+</details>
+
+</main>
+<script>
+(function () {
+  var PREFIX = "dcr-smoke-v1-";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var fill = document.getElementById("progress-fill");
+  var label = document.getElementById("progress-label");
+  function update() {
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    label.textContent = done + " / " + boxes.length;
+    fill.style.width = boxes.length ? (100 * done / boxes.length) + "%" : "0%";
+  }
+  boxes.forEach(function (b) {
+    try { b.checked = localStorage.getItem(b.id) === "1"; } catch (e) {}
+    b.addEventListener("change", function () {
+      try { localStorage.setItem(b.id, b.checked ? "1" : "0"); } catch (e) {}
+      update();
+    });
+  });
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    boxes.forEach(function (b) {
+      b.checked = false;
+      try { localStorage.removeItem(b.id); } catch (e) {}
+    });
+    update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>

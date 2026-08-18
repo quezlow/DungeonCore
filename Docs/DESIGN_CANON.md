@@ -118,6 +118,7 @@ the supersession in one line.
 53. Point Lights (Stage 1 -- the Engine and the Brazier)
 54. Point Lights (Stage 2 -- Roads, Torches and the Holy Blue)
 55. Late-Game Test Hooks (the Dawn Skip and the Threat Board)
+56. The Smoke Test Harness (Slot Snapshots and the Test Guide)
 
 **Appendix** (at the end of the file)
 A. Content Registries and Authoring Keys
@@ -12422,3 +12423,115 @@ override survives until the first monster dies and then silently snaps back --
 the dawn skip is the honest fix); poking dawn handlers directly (loses the
 night-then-dawn ordering); a force path for `HolyOrderStrike` (it already has
 a public `Fire()` and a command).
+
+---
+
+## 56. The Smoke Test Harness (Slot Snapshots and the Test Guide)
+
+Status: SHIPPED. Verified: 2026-08-18. Test infrastructure, not a feature --
+no player-facing surface, no new serialized game state, no change to the save
+shape.
+
+**The measured problem.** 289 commits landed between `06f1b350` (22 Jul, the
+last smoke test) and this entry. Thirty-eight canon entries plus roughly a
+dozen items with no entry of their own have never been exercised in a whole
+run, and five entries -- 35, 36, 48, 54 and 55 -- say `pending smoke test`
+in their own status lines. A test of that size spans sessions, and several of
+its chapters need the SAME state more than once: four climax faces from one
+level 25 build, three mercenary outcomes from one ultimatum, five fixtures
+re-entered as defects are found. Replaying to reach each was the expensive
+part.
+
+**A snapshot is a byte copy of a slot's files under a label**, at
+`Saves/snapshots/<label>/`. Four named files -- `save.json`, its `.bak`,
+`meta.json`, `prologue.json`. **`save.json.tmp` is deliberately excluded:** it
+is a half-written save caught mid atomic swap, and copying one into a snapshot
+would preserve the single state the atomic write exists to make unreachable.
+
+**It lives in `SlotPaths`, and that is a drift argument before a tidiness one.**
+That file already owns every save path, the slot enumeration and the delete. A
+second module resolving save paths is how two modules come to disagree about
+where a save lives.
+
+**RESTORE REFUSES WHILE THE APPLICATION IS PLAYING, and the gate is the design
+rather than caution.** `RequestAutosave` debounces and then writes; a restore
+performed in play mode would have the replaced state written straight back over
+the restored file during the scene fade. Stopping play makes that race
+impossible instead of unlikely -- and the reload the tester then performs by
+pressing Play is the real load path, which the test wants exercised anyway.
+Rejected: restoring in play mode and calling `ReloadActiveSlot`, which wins the
+race most of the time. Most of the time is not a contract.
+
+**Restore parks the outgoing state at `_prerestore` first.** It is a net, not a
+history -- recoverable once. Every file the slot owns is deleted before the
+copy, so a stale `prologue.json` cannot linger and send the boot path down the
+wrong branch, but **only the four NAMED files, never a recursive folder
+delete**, so a mistake here cannot reach anything the slot does not own.
+
+**`snapshotUseActiveSlot` is an explicit toggle rather than a magic zero**,
+following the standing rule: "use the active one" and "not filled in yet" are
+indistinguishable in the inspector otherwise. Slot resolution asks
+`SaveSlotManager` in play mode and falls back to `FindMostRecentSlotId()` with
+play stopped, rather than duplicating that manager's private PlayerPrefs key --
+a key string in two places is a key string that drifts.
+
+**The label sanitiser folds anything that is not a letter, digit, dash or
+underscore**, and an empty label resolves to `unnamed` rather than to the
+snapshots root itself, which a later restore would otherwise try to read as
+though it were a slot. `SnapshotLabels()` skips a folder with no `save.json`:
+a half-copied snapshot that listed as available would restore an unloadable
+slot.
+
+**The guide: `Docs/DCR_Guide_Smoke_Test.html`, 19 chapters, 187 checks.**
+Ordered by SESSION FLOW rather than canon number -- testing in canon order
+bounces between floors and game phases on every item and pays the setup cost
+each time. Every chapter opens with its readouts and only then asks the tester
+to look at anything. Roughly twenty of the fifty areas have no diagnostic at
+all; those carry an `EYE` marker and a one-line "correct looks like" drawn from
+canon rather than from taste, and they are where the test cycle actually goes.
+Each failing step names the diagnostic to run before writing it up.
+
+**Five fixtures in slots 6-10**, leaving 1-5 for real runs: post-prologue,
+mid-game, deep, late (level 24, nothing provoked) and endgame (level 25, not
+yet armed). **F4 and F5 cannot share a slot**, and that is load-bearing:
+`SuppressMidGameThreats` goes true when the trial ARMS, so one slot for both
+would end the threat chapter the first time the climax chapter was touched.
+
+**The legacy-load claim, and how it is tested without a legacy save.** The save
+gained roughly forty additive fields since the baseline while
+`CURRENT_VERSION` stayed at 3 -- an untested claim that older saves still load.
+No pre-baseline save survives, so the guide builds a SYNTHETIC one by stripping
+the additive keys from a current `save.json` and setting `saveVersion` to 1.
+Valid on three facts read at source: the version guard refuses only saves
+NEWER than the build, `JsonUtility` leaves absent fields at their C# defaults,
+and `SaveMigrationRegistry.MigrateToCurrent` runs on the way in. `saveVersion`
+0 is separately covered -- it is treated as an implicit v1.
+
+**The five `pending smoke test` status lines are deliberately NOT cleared by
+this delivery.** They are cleared by PASSING the test, not by shipping it. A
+status line that moves on delivery is precisely the drift canon exists to
+prevent, and clearing them here would have made this entry a liability the
+moment the first chapter failed.
+
+**FIVE, and the miscount is recorded because the correction method is the useful
+part.** The scoping pass for this entry read six, by folding in entry 47.
+Walking each heading to its own status line shows 47 reads
+`Verified: <date of landing>` -- an UNFILLED PLACEHOLDER, not a pending status.
+Entry **15B** carries the same placeholder; **27**, **27A** and **33** carry the
+softer `landing date unrecorded` form. All five are post-baseline and all are
+tested by the guide; none was flagged the way a reader would expect. The two
+placeholders are owed a real date in the same edit that clears the five, and the
+guide asks for it. A figure taken from a scan rather than walked to its source is
+the failure class here, and this project has named it before.
+
+**Key files:** `Save/SlotPaths.cs` (`SnapshotsRoot`, `SnapshotFolder`,
+`SanitiseLabel`, `SnapshotExists`, `SnapshotLabels`, `ReadSnapshotMetadata`,
+`CaptureSnapshot`, `RestoreSnapshot`), `TESTING/Commands.cs` (`Snapshot Slot`,
+`Restore Slot`, `List Snapshots`), `Docs/DCR_Guide_Smoke_Test.html`.
+
+**Rejected this pass:** restoring during play mode (loses the autosave race
+sometimes, which is worse than losing it always); a recursive folder delete on
+restore (a bug in it reaches files the slot does not own); globbing the slot
+folder instead of naming its files (would copy `save.json.tmp`); snapshot
+retention or rotation (deferred -- labels are cheap and a tester who wants a
+second state names it); clearing the five pending status lines on delivery.
