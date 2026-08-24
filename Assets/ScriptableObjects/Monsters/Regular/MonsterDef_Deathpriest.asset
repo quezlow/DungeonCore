@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 3
   category: 1
+  tribe: 0
   novel: 0
   prefab: {fileID: 3677393410031653881, guid: 6b4ddd45e6f5347459d929b07c67e9c7, type: 3}
   capacityCost: 60
@@ -29,6 +30,8 @@ MonoBehaviour:
     intruder makes is a congregation waiting - researched deep in the Bestiary path.
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5

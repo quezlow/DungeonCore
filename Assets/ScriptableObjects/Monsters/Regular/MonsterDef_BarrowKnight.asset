@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 2
   category: 2
+  tribe: 0
   novel: 0
   prefab: {fileID: 6521305296123377141, guid: 0a52c54723cfb6b48b5606b59142258a, type: 3}
   capacityCost: 24
@@ -29,6 +30,8 @@ MonoBehaviour:
     - the barrow gives up its knights only to a core that asks properly.
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5

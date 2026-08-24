@@ -16,6 +16,8 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 2
   category: 2
+  tribe: 0
+  novel: 0
   prefab: {fileID: 3131413977788427536, guid: 3d6d537533ccbf14f9cdd211456a915b, type: 3}
   capacityCost: 8
   manaCost: 22
@@ -28,6 +30,8 @@ MonoBehaviour:
     do not care how far the living thought they stood.
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5

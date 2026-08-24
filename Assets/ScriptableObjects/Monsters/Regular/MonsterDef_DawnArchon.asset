@@ -16,6 +16,8 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 3
   category: 1
+  tribe: 0
+  novel: 0
   prefab: {fileID: 1275702871124272480, guid: ad710519c6d85744ab94b0dd61be8b4c, type: 3}
   capacityCost: 130
   manaCost: 260
@@ -28,6 +30,8 @@ MonoBehaviour:
     The long windup is the mercy; the reach is not.
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5

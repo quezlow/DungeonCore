@@ -16,6 +16,8 @@ MonoBehaviour:
   icon: {fileID: 0}
   voice: 3
   category: 1
+  tribe: 0
+  novel: 0
   prefab: {fileID: 86676977585395175, guid: 412c4977fc011b04ba3b8acb045ca847, type: 3}
   capacityCost: 65
   manaCost: 135
@@ -28,6 +30,8 @@ MonoBehaviour:
     Judgment travels.
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 0
   regenCooldown: 5

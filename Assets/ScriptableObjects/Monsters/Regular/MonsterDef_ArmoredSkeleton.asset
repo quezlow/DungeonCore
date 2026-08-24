@@ -16,6 +16,7 @@ MonoBehaviour:
   icon: {fileID: 1941305032766050162, guid: fc2f36fc949a174499bcd702cc12f522, type: 3}
   voice: 2
   category: 2
+  tribe: 0
   novel: 0
   prefab: {fileID: 7855133275234516531, guid: 3710b2173fcae3a4185b44382717a358, type: 3}
   capacityCost: 10
@@ -30,6 +31,8 @@ MonoBehaviour:
     adventurers reconsider how deep they really want to go."
   isAquatic: 0
   minWildFloor: 0
+  wildCountMin: 2
+  wildCountMax: 6
   wildCoreXpOnDeath: 5
   passiveRegenPerSecond: 3
   regenCooldown: 5

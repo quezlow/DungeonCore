@@ -40,7 +40,7 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 - Definition icons | ChestDefinition.icon: 0 owed, 0 deferred, 0 by design, 0 unclassified, 4 filled.
 - Definition icons | DenTunnelProfile.floors.hoardSprites: 0 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
 - Definition icons | DivineAudienceScript.deities.backdrop: 0 owed, 0 deferred, 6 by design, 0 unclassified, 0 filled.
-- Definition icons | FurnitureDefinition.icon: 6 owed, 0 deferred, 0 by design, 0 unclassified, 2 filled.
+- Definition icons | FurnitureDefinition.icon: 5 owed, 0 deferred, 0 by design, 0 unclassified, 3 filled.
 - Definition icons | MonsterDefinition.icon: 107 owed, 0 deferred, 0 by design, 0 unclassified, 10 filled.
 - Definition icons | MonsterDefinition.projectileSprite: 0 owed, 117 deferred, 0 by design, 0 unclassified, 0 filled.
 - Definition icons | NPCDialogue.npcPortrait: 0 owed, 0 deferred, 0 by design, 0 unclassified, 22 filled.
@@ -65,9 +65,6 @@ Prompts for these follow the contracts in `Docs/DCR_Guide_Art_Authoring.html`
 
 - `Furniture_Alter` FurnitureDefinition.icon
   `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Alter.asset`
-  Build submenu button and selection panel.
-- `Furniture_Brazier` FurnitureDefinition.icon
-  `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Brazier.asset`
   Build submenu button and selection panel.
 - `Furniture_Desk` FurnitureDefinition.icon
   `Assets/ScriptableObjects/Rooms/Furniture/Furniture_Desk.asset`
@@ -1273,7 +1270,7 @@ Real art assigned, not placeholder-named, not shared with a sibling prefab.
 - Definition icons | CaveWallSheetLayout.families.variants.upper.overrideSprite: 6
 - Definition icons | ChestDefinition.icon: 4
 - Definition icons | DenTunnelProfile.floors.hoardSprites: 10
-- Definition icons | FurnitureDefinition.icon: 2
+- Definition icons | FurnitureDefinition.icon: 3
 - Definition icons | MonsterDefinition.icon: 10
 - Definition icons | NPCDialogue.npcPortrait: 22
 - Definition icons | StairsDefinition.icon: 1

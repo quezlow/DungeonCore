@@ -1,0 +1,24 @@
+[PauseAudit] world running; timeScale 1
+  rule: pause permits DECIDING (selection, navigation, orders,
+        ledger-only commitments). It forbids ACTING (anything that
+        reaches an entity on the board or a cell of the tilemap).
+  -- permitted while held ------------------------------------
+    selection, deselection, camera, floor change, stair click
+    orders: patrol, attack-here, post, right-click move
+    research: browse AND commit (pre-paid, refunded, day-clocked)
+    trade: browse AND buy (a ledger swap)
+    openers: trap panel, crypt corpse, caravan wagon, room anchor
+    ghosts and the hover cost preview, every mode
+  -- forbidden while held ------------------------------------
+    mine, dig queue drain, build wall, demolish
+    place: entrance, spawner, chest, furniture, room anchor,
+           trap, stairs, core
+    crypt raise, prisoner release/execute/interrogate
+    caravan rob/tax/let-pass, bribe, room retype/delete/upgrade
+    spells, EXCEPT those flagged castableWhilePaused
+      pause-legal spell: Call to Arms
+  spells: 1 pause-legal, 10 held
+
+UnityEngine.Debug:Log (object)
+Commands:PrintPauseAudit () (at Assets/Scripts/TESTING/Commands.cs:205)
+

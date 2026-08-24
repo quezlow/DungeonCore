@@ -60,7 +60,7 @@ the supersession in one line.
 8D. Faction Reaction to Held Captives (Rescue Party, Ransom-Bearer)
 9. Endgame Climax (Diamond 3 Trial)
 10. Assault Staging
-10A. Squad Formations (March-Holding, Effects, Breaking)
+10A. Squad Formations -- Tactical Layer
 11. Tribute and GiftGivers
 12. Ambient Necromancy and Corpses
 12A. Influence Field, Push and Breach Recede
@@ -83,12 +83,12 @@ the supersession in one line.
 21. The Buried Age
 
 **Part IV -- Later shipped systems**
-22. Deeds
-23. Trophy Hall
+22. Deeds (Diegetic Achievement Layer)
+23. Trophy Hall (Deeds With Teeth)
 24. Surface World: Radial Forest Bands
 25. Camp Growth, Identity & Effects
 26. The Surface War
-27. Bestiary Expansion
+27. Bestiary Expansion (Level-Gated Roster, Affinity Reskins, Depth-Banded Wilds)
 28. Boss Promotion (Rank-on-Spawner, Waiting Halls)
 28A. The Wandering Merchant (Trader Channel)
 29. Wisp Quests (Urgings) and the Pressed Rule
@@ -1416,7 +1416,8 @@ back into the tunnel (flappy respawn state).
 
 ## 15B. Monster Drops (Sparse Base, Honeypot Bosses)
 
-Status: SHIPPED. Verified: <date of landing>.
+Status: SHIPPED. Verified: 2026-08-12 (`6cda3a3f`, resolved from the log by the
+2026-08-18 hygiene pass; the placeholder that stood here was never filled).
 
 Monster loot is authored on the PREFAB's `LootTable` component (not
 MonsterDefinition -- which is why the bestiary expansion guides never covered it
@@ -1753,16 +1754,19 @@ the First Spark and The Drawn Breath (see entry 28A).
 
 ## 19. Buried Age Sites and the Deep Roads
 
-Status: PART SHIPPED. The road substrate, the sites, and the dwarves --
-faction, outpost, vendor, spoil economy, the village (part 3), and now The
-Living Holds (step 7: walking villagers, road patrols, the caravan and its
-verbs, the entry-7 matrix revisit) -- are built and described as-built below.
-The granite overlay, road claiming and the warning ladder have since SHIPPED
-and are recorded as-built in this entry's own later sections -- the sentence
-that stood here predated them.
-Do not assume the classes or APIs of anything still marked DESIGN here. The
-tier-up divine audiences that used to share this entry are now 19A and have
-no dependency on any of this.
+Status: SHIPPED. Verified: 2026-08-18. **EVERY STEP OF THE BUILD ORDER BELOW
+READS SHIPPED**, 1 through 8 including 3a, and nothing in this entry is marked
+DESIGN any more.
+
+**This line said PART SHIPPED until 2026-08-18, and the correction is recorded
+rather than only made.** It had been amended twice as work landed -- first for
+the Living Holds, then for the granite overlay -- while the word PART and the
+"anything still marked DESIGN" warning both survived each amendment. A smoke
+test scope built by reading this line fenced the whole entry out as partly
+unbuilt, which cost real test coverage. **A status line amended in its body but
+not in its verdict is the most expensive kind of stale**, because it reads as
+maintained. The tier-up divine audiences that used to share this entry are now
+19A and have no dependency on any of this.
 
 The deep floors get a civilisation instead of a difficulty curve. Scattered
 ruins alone read as set dressing; a ROAD through them reads as somewhere that
@@ -2733,7 +2737,7 @@ accepted.
 the three rotating `ScriptableObjects/Sites/Plans/DwarvenVillage_*.txt`
 holds (the retired Hearth stays on disk beside them).
 
-### The dwarves (DECIDED in shape)
+### The dwarves -- premise, loyalty and the trade axis (SHIPPED)
 
 The outpost is the INHABITED Buried Age site -- the one Sealed Gate that is
 not sealed. Outposts exist because of roads, so the road runs THROUGH the
@@ -8096,13 +8100,24 @@ destroyed one fails by being absent rather than by being wrong.
 - No Ancient Sites are added to floor index 1. Entry 19 calls index 2's lone
   guard post "deliberate reach -- without it most players would never meet the
   Buried Age at all", and sites at index 1 spend that reveal a floor early.
-- Den behaviour: the populations themselves, their growth ledger and
-  their raids. The substrate carries no den yet, only its tunnels.
+- ~~Den behaviour: the populations themselves, their growth ledger and
+  their raids. The substrate carries no den yet, only its tunnels.~~
+  **SHIPPED, and STRUCK rather than deleted because the sentence outlived the
+  thing it described.** Populations are bodies that persist ("Den populations
+  -- bodies, and why they persist"), the ledger carries `hoard`,
+  `raidCountdown` and `raidsLaunched` ("The den ledger -- hoard, tier and
+  raids"), and both are BUILT sub-headings of this same entry. This bullet was
+  true of the substrate stage and was never revisited when the stages above it
+  landed; a smoke-test scope read it as current and fenced the den arc out.
 - Floor index 1 links no chamber at all on 5.8 per cent of seeds. Accepted:
   the only levers are the clamp, the run bounds, or the landing clearance that
   fork 8 made a hard rule, and a den of pure dead ends is legitimate content.
-- Goblin tier is legible from population and hoard; exactly what renders the
-  hoard is not yet decided.
+- ~~Goblin tier is legible from population and hoard; exactly what renders the
+  hoard is not yet decided.~~ **DECIDED AND SHIPPED: `DenHoardProp` renders it
+  from a per-tier sprite list. See "The visible hoard (BUILT: half B part 2)"
+  above.** Struck rather than deleted for the same reason as the bullet above:
+  the open question was answered in a later stage of this entry and the
+  question was left standing.
 - ~~Cross-den hostility, and the readout it needs.~~ SHIPPED as TRIBE
   hostility with `Print Tribe Matrix`; see below.
 - `DCR_Backlog.html` is stale against canon and was NOT refreshed with this
@@ -9667,9 +9682,18 @@ the same bytes. A report that churns its own diff is a report nobody commits.
 
 ## 44. Monster Allegiance (the Fourth Side)
 
-Status: PART SHIPPED -- the substrate. Verified: 2026-08-13. The dwarven
-skirmish arc's stage 1a-i. No body in the game answers `Faction` yet; stage 1a-ii
-is what makes dwarves mortal.
+Status: SHIPPED -- stage 1 complete. Verified: 2026-08-18. The dwarven
+skirmish arc's stage 1a in full: the substrate (1a-i), then patrol bodies,
+villagers and the caravan (1a-ii parts 2 to 4), then the gate squad's beat.
+
+**The line that stood here claimed "no body in the game answers `Faction` yet"
+and was contradicted by this entry's own subsections.** It was dated 2026-08-13
+and the subsections beneath it landed on the 14th -- `FactionBodyRole` is read
+by `DungeonMonster` and by all seven dwarven controllers, and the caravan
+subsection says *stage 1 complete* in its own heading. **A status line that its
+own sub-headings disprove is worse than no status line**, because a reader who
+trusts precedence stops at the header. Found by a smoke-test scoping pass that
+had fenced this entry out as unbuilt on the strength of that sentence.
 
 **THE PROBLEM WAS NOT "DWARVES NEED A SIDE". It was that `IsWild` had been
 answering three different questions with one bit**, and the three answers agreed
@@ -10960,7 +10984,8 @@ files are listed at the end of its own section above.
 
 ## 47. Lazy Floor Paint (Deferred Disc Painting)
 
-Status: SHIPPED. Verified: <date of landing>.
+Status: SHIPPED. Verified: 2026-08-16 (`19ead997`, resolved from the log by the
+2026-08-18 hygiene pass; the placeholder that stood here was never filled).
 
 Floors no longer pay the floor half of the disc paint at creation. Measured
 at HEAD with `FloorRoot.LogBootstrapTimings` before the change: the terrain
@@ -12535,3 +12560,63 @@ restore (a bug in it reaches files the slot does not own); globbing the slot
 folder instead of naming its files (would copy `save.json.tmp`); snapshot
 retention or rotation (deferred -- labels are cheap and a tester who wants a
 second state names it); clearing the five pending status lines on delivery.
+
+### The fence was wrong, and the failure class is the record (rev 2)
+
+**The guide shipped with a chapter 0 fence table listing five areas as out of
+scope. FOUR WERE STALE.** Corrected 2026-08-18, in the same pass that repaired
+the status lines that caused it.
+
+| Fenced as | Actually |
+|---|---|
+| Kobold-versus-dwarf combat is "its own unbuilt arc" | SHIPPED both paths -- `SkirmishResolver` plus `DenController.ResolveRoadBreach` / `StageSkirmish` / `ApplyBreachOutcome`. **Canon 42 explicitly STRIKES the passage the fence quoted.** |
+| Canon 44 "no body answers `Faction` yet" | Stale header, disproved by its own subsections |
+| Canon 19 "anything marked DESIGN is not built" | Nothing in entry 19 is unbuilt; all eight build-order steps read SHIPPED |
+| Canon 42 "what renders the hoard is undecided" | Answered in this entry's own "The visible hoard (BUILT)" |
+
+Only the missing-art row and two genuine canon 42 decisions survived: no
+Ancient Sites on floor index 1, and floor 1 linking no chamber on 5.8 per cent
+of seeds.
+
+**THE FAILURE WAS METHOD, NOT KNOWLEDGE.** The table was assembled by reading
+status lines and open-lists and taking them at their word, rather than walking
+each claim to the code that would confirm or refute it. This project has named
+that failure before and the rule already existed: *read exact bytes, never
+propose against a remembered or asserted figure.* A canon status line is an
+assertion like any other. **The specific trap is that stale text reads as
+maintained** -- entry 19's line had been amended twice in its body while its
+verdict stayed wrong, and entry 44's was dated a day before the subsections
+that disprove it.
+
+**AND THE COST WAS NOT A MISLABEL.** A wrong fence REMOVES test scope, so the
+error was invisible in the deliverable and would have surfaced only as four
+built systems nobody tested. **A false fence is more expensive than a false
+bug report**, because a false bug costs one round trip and a false fence costs
+a whole system's coverage. Any future fence table names the file and symbol
+that proves each row, or it does not go in.
+
+**Recovered into the guide:** the skirmish gate check (`Road Breach Report`
+reads both prefabs live and asserts one guard loses to four kobolds and holds
+three -- the assertion canon 44 sized the gate squad on, which related two
+independently serialised fields and was therefore checkable from neither alone,
+and which was wrong), the strike-order inversion flag, the staged and resolved
+breach paths, the despawning-is-not-dying rule, den raids, and the dwarven
+trade axis on both sides of the counter.
+
+**Also filled in this pass:** the `<date of landing>` placeholders on entries
+**15B** (2026-08-12) and **47** (2026-08-16), resolved from the log. Entries
+**27**, **27A** and **33** keep the softer `landing date unrecorded` form,
+which is at least honest about itself.
+
+**And four contents lines were brought back into step with their headings**
+-- 10A, 22, 23 and 27, each of which had been retitled at some point without
+the index following. Found by this delivery's own validator rather than by
+eye, and fixed here for a practical reason worth recording: the alternative
+was a check that fails on every future canon delivery, which is a check that
+gets deleted. **A validator nobody can run is worse than no validator**, so a
+cheap mechanical fix beat weakening the rule. The heading is the entry's own
+title and the contents is an index of it, so contents follows heading; no
+judgement was exercised on any of the four.
+
+**Contents and headings are now one-to-one across all 67 entries**, and the
+delivery asserts it. Neither list may gain a member without the other.
