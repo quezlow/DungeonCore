@@ -4973,4 +4973,95 @@ public class Commands : MonoBehaviour
 
         Debug.Log(sb.ToString());
     }
+
+    // -- Readout sweep (canon 56, rev 3) ---------------------------
+    //
+    // The smoke test's first pass is every read-only diagnostic on every
+    // fixture, before a single eyeball step. Interleaved by chapter, the cheap
+    // checks that catch a null on load were being reached late; as one click
+    // per fixture they run first. Each call is caught so a readout that throws
+    // is REPORTED and the sweep goes on -- a sweep that aborts on the third
+    // readout tells you about the third readout and nothing after it.
+    //
+    // Every entry here was checked read-only before inclusion: no spawn,
+    // dispatch, force, save, load, reveal, grant or reset call in its body.
+    // Add to this list only after the same check.
+
+    [ContextMenu("Run Readout Sweep")]
+    void RunReadoutSweep()
+    {
+        string[] names =
+        {
+            "Print Threat Board", "Test Print Dungeon Rating", "Test Print Alignment",
+            "Test Print Wave Stage", "Print Pause Audit",
+            "Print Spell State", "Print Spell Charges", "Validate Spell Picker Wiring",
+            "Print Loot Policy", "Print Appeal Ledger", "Print Chest Tier Stats",
+            "Test Print Faction Standings", "Print Tracked Parties",
+            "Test Print Bestiary", "Print Bestiary Sources", "Test Print Adventurer Affinities",
+            "Print Wisp Lore Page", "Print Divine Audience Script", "Print Sightseer Draw",
+            "Print World Events",
+            "Test Road Report (headless)", "Log Site Placement", "Log Rim Facade",
+            "Log Holy Ground State", "Test Print Feature Stats (all floors)", "Log Point Lights",
+            "Print Den Report", "Print Den Ledger", "Print Den Dig", "Den Cavity Report",
+            "Den Tunnel Report (headless)", "Den Tunnel Breach Check", "Road Breach Report",
+            "Print Tribe Matrix", "Print Deep Occupants",
+            "Print Faction Body Costs", "Test Caravan Route Report", "Print Road Journeys",
+            "Validate Execution Order Contract", "Validate Reveal Consistency",
+            "List Snapshots",
+        };
+        System.Action[] calls =
+        {
+            PrintThreatBoard, TestPrintDungeonRating, TestPrintAlignment,
+            TestPrintWaveStage, PrintPauseAudit,
+            PrintSpellState, PrintSpellCharges, ValidateSpellPickerWiring,
+            PrintLootPolicy, TestPrintAppealLedger, TestPrintChestTierStats,
+            TestPrintFactionStandings, PrintTrackedParties,
+            TestPrintBestiary, PrintBestiarySources, TestPrintAffinities,
+            TestPrintWispLore, TestPrintDivineAudiences, TestPrintSightseerDraw,
+            TestPrintWorldEvents,
+            TestRoadReport, LogSitePlacement, LogRimFacade,
+            LogHolyGroundState, TestPrintFeatureStatsAllFloors, LogPointLights,
+            PrintDenReport, PrintDenLedger, PrintDenDig, DenCavityReport,
+            DenTunnelReport, DenTunnelBreachCheck, RoadBreachReport,
+            PrintTribeMatrix, PrintDeepOccupants,
+            PrintFactionBodyCosts, TestCaravanRouteReport, PrintRoadJourneys,
+            ValidateExecutionOrderContract, ValidateRevealConsistency,
+            ListSnapshots,
+        };
+        if (names.Length != calls.Length)
+        {
+            Debug.LogError("[Sweep] names/calls length mismatch (" + names.Length + " vs "
+                         + calls.Length + ") -- the two lists drifted. Fix before trusting a sweep.");
+            return;
+        }
+
+        var dn = DayNightCycle.Instance;
+        var core = DungeonCore.Instance;
+        Debug.Log("[Sweep] BEGIN -- " + names.Length + " readouts"
+                + (core != null ? ", level " + core.DungeonLevel : ", NO CORE")
+                + (dn != null ? ", day " + dn.CurrentDay : ", NO CLOCK")
+                + (Application.isPlaying ? "" : " (play mode stopped: every instance will read null)"));
+
+        int ran = 0, threw = 0;
+        var failures = new System.Text.StringBuilder();
+        for (int i = 0; i < names.Length; i++)
+        {
+            Debug.Log("[Sweep] ---- " + (i + 1) + "/" + names.Length + "  " + names[i] + " ----");
+            try
+            {
+                calls[i]();
+                ran++;
+            }
+            catch (System.Exception e)
+            {
+                threw++;
+                failures.AppendLine("    " + names[i] + ": " + e.GetType().Name + " -- " + e.Message);
+                Debug.LogError("[Sweep] " + names[i] + " THREW: " + e);
+            }
+        }
+
+        Debug.Log("[Sweep] DONE -- " + ran + " ran, " + threw + " threw."
+                + (threw > 0 ? "\n  readouts that threw:\n" + failures : "")
+                + "\n  Scan this log for: 'no instance', 'refused', 'unassigned', 'MISMATCH', '!!', 'THREW'.");
+    }
 }

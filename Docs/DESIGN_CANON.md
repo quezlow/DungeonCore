@@ -12620,3 +12620,98 @@ judgement was exercised on any of the four.
 
 **Contents and headings are now one-to-one across all 67 entries**, and the
 delivery asserts it. Neither list may gain a member without the other.
+
+### Revision 3 -- the review before the run (2 September)
+
+The tester asked for a fresh-eyes review of the guide before starting. The
+review found one materially wrong step, one structural inversion, one
+unkept promise, and a class of weakness. All four are fixed here; the
+findings are recorded because each one is the same lesson wearing a
+different coat.
+
+**THE LEGACY-SAVE STEP WAS WRONG IN EVERY NUMBER IT CARRIED.** Chapter 16
+asked the tester to hand-delete "about 25" keys from a current `save.json`
+and set `saveVersion` to 1. Derived from the git diff of every `[Serializable]`
+class under `Assets/Scripts` -- not from `DungeonSaveData.cs` alone, since
+sub-objects live in other files -- the real figure is **159 fields across 23
+classes**, and a type-graph walk found two more (`EntranceCaveData`,
+`RiverData`) that a name-based scan had missed because they do not end in
+`SaveData`. Three of the keys the step named (`prisoners`, `buriedConsumed`,
+`buriedSensed`) are per-floor fields on `FloorSaveData`, not top-level;
+deleting them where the step said would have deleted nothing. And
+**`CURRENT_VERSION` was already 3 at the baseline**, so "set to 1" would have
+run two migrations a real pre-baseline save never runs -- a migration test
+mislabelled as a legacy-load test. A save stripped by that list would still
+have carried `dens`, `worldEvents` and the entire dwarven arc, and a load
+fault in any of them would have reported a pass. **A human-transcribed field
+list was wrong on first contact with source, one delivery after the fence
+table taught the same lesson.**
+
+**`Tools/make_legacy_save.py` replaces it, and derives the list every time it
+runs.** It parses every serialisable class and struct at the baseline via
+`git show` and in the working tree, builds the type graph from
+`DungeonSaveData` downward by following field types (`List<T>` and `T[]` into
+`T`; a class defined in the tree into that class; everything else a leaf),
+walks the JSON in lockstep and strips at every node the keys that node's
+class gained. `saveVersion` is left at the baseline's own `CURRENT_VERSION`,
+read from source. `--version N` produces the migration variant and the readout
+says in words that it is one. It reports strip counts per class, every
+external type treated as a leaf, every key the file carries that its class
+does not declare, and refuses with a non-zero exit when it stripped nothing.
+Verified against a synthetic save built from the same type graph: after
+stripping, **every node's keys are a subset of what its class declared at the
+baseline**, and a second run on the output strips nothing. Two parser gaps
+were closed on the way -- serialised structs, and multi-declarations
+(`public int x, y, z;`) -- neither of which had gained a field, both of
+which could.
+
+**THE CHAPTER THAT PROVES SAVE/LOAD WAS SIXTEENTH, AND SEVENTEEN EARLIER
+STEPS DEPENDED ON IT.** Every fixture restore is a load; seventeen steps in
+chapters 2 through 15 say *reload and confirm* or *persists*. Had the save
+layer regressed, every one of those would have produced a meaningless result
+and the tester would have learned why at the end. **Chapter 2A, the gate,**
+now runs five things on F1 before anything else -- the harness against two
+different fixtures, the dawn skip, `Validate Execution Order Contract` after
+a load, `Validate Reveal Consistency` after a load (not after a generate,
+which is the `ReassertOpenGround` lesson), and one round trip compared on
+`Print Threat Board` -- with a stop rule: a failed gate ends the session,
+because everything after it is measured against a broken instrument.
+
+**THE TEST IS NOW TWO PASSES.** There are 41 read-only diagnostics and they
+were interleaved with 24 eyeball steps across the chapters, so the cheap
+checks that catch a null on load were being reached late. `Commands.Run
+Readout Sweep` fires all 41 into the console with a banner between each,
+catches every call so a readout that throws is reported by name rather than
+ending the sweep, and refuses outright if its two parallel lists have
+drifted in length. **Every entry was scanned for side effects before
+inclusion** -- no spawn, dispatch, force, save, load, reveal, grant or reset
+call in any body; the four that looked missing to the scanner were
+expression-bodied one-liners delegating to static print methods. Chapter 2B
+runs the sweep on every fixture and saves each log; pass 2 does not start
+until pass 1 is clean.
+
+**THE REGRESSION PASS PROMISED IN THE SCOPING FORKS WAS NEVER DELIVERED.**
+Fork 1 said the regression set could be listed "exactly from the file diffs"
+and the guide shipped with no regression structure at all. Chapter 16A is
+that list: thirty-one shared-machinery files mapped to the steps that
+exercise them, and three gaps turned into steps -- per-surface claim
+resistance, wall rendering after a load, and the three new masonry tints.
+`DwarvenMasonry = 7` was confirmed appended at the end of the enum, by diff.
+
+**SUSPECT THE STEP FIRST.** Under review, about a dozen of two hundred steps
+were source-verified and one was materially wrong. The inference is honest:
+the diagnostic-backed steps read live state and hold; the ones where a
+number, name or count was *transcribed* are claims, and some are wrong. The
+defect-log chapter now says so, and asks the tester to check the figure
+against canon or source before writing a defect. A false defect costs a
+round trip; a step trusted over the game costs a fix to something that was
+never broken.
+
+**Deferred, on purpose:** re-grounding chapters 5, 8 and 10 in the consuming
+code. They were written from canon summaries, and "projectiles are blocked
+by line of sight" is a hope rather than a check. Pass 1 will show where the
+eyeball time is actually worth spending; doing it beforehand is a session on
+speculation.
+
+**Key files (added this revision):** `Tools/make_legacy_save.py`,
+`TESTING/Commands.cs` (`Run Readout Sweep`).
